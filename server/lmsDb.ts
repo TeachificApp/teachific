@@ -45,6 +45,7 @@ import {
   flashcardCards,
   lessonNotes,
   lessonBookmarks,
+  quizAttempts,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1653,4 +1654,200 @@ export async function createBookmark(data: {
 
 export async function deleteBookmark(id: number) {
   await db.delete(lessonBookmarks).where(eq(lessonBookmarks.id, id));
+}
+
+// ─── Org Analytics with Group Breakdown ───────────────────────────────────────
+
+/**
+ * Get comprehensive org analytics broken down by group.
+ * Covers both courses (enrollments, completions, progress) and quizzes (attempts, scores, pass rates).
+ */
+export async function getOrgAnalyticsByGroup(orgId: number, opts: {
+  groupId?: number;
+  dateFrom?: Date;
+  dateTo?: Date;
+} = {}) {
+  const orgGroups = await db.select().from(groups).where(eq(groups.orgId, orgId));
+  const allGroupMembers = await db.select().from(groupMembers)
+    .where(sql`${groupMembers.groupId} IN (${orgGroups.length > 0 ? sql.raw(orgGroups.map(g => g.id).join(",")) : sql`0`})`);
+
+  const groupUserMap: Record<number, number[]> = {};
+  for (const gm of allGroupMembers) {
+    if (!gm.userId) continue;
+    if (!groupUserMap[gm.groupId]) groupUserMap[gm.groupId] = [];
+    groupUserMap[gm.groupId].push(gm.userId);
+  }
+
+  const targetGroups = opts.groupId
+    ? orgGroups.filter(g => g.id === opts.groupId)
+    : orgGroups;
+
+  const results = [];
+  for (const group of targetGroups) {
+    const userIds = groupUserMap[group.id] ?? [];
+    if (userIds.length === 0) {
+      results.push({
+        groupId: group.id,
+        groupName: group.name,
+        memberCount: 0,
+        courseMetrics: { enrollments: 0, completions: 0, avgProgress: 0 },
+        quizMetrics: { attempts: 0, avgScore: 0, passRate: 0 },
+      });
+      continue;
+    }
+
+    const userIdList = sql.raw(userIds.join(","));
+    const enrollConds: any[] = [
+      eq(courseEnrollments.orgId, orgId),
+      sql`${courseEnrollments.userId} IN (${userIdList})`,
+    ];
+    if (opts.dateFrom) enrollConds.push(gte(courseEnrollments.enrolledAt, opts.dateFrom));
+    if (opts.dateTo) enrollConds.push(sql`${courseEnrollments.enrolledAt} <= ${opts.dateTo}`);
+
+    const [enrollStats] = await db.select({
+      total: sql<number>`count(*)`,
+      completed: sql<number>`SUM(CASE WHEN completedAt IS NOT NULL THEN 1 ELSE 0 END)`,
+      avgProgress: sql<number>`AVG(progressPct)`,
+    }).from(courseEnrollments).where(and(...enrollConds));
+
+    const quizConds: any[] = [
+      eq(quizAttempts.orgId, orgId),
+      sql`${quizAttempts.userId} IN (${userIdList})`,
+    ];
+    if (opts.dateFrom) quizConds.push(gte(quizAttempts.startedAt, opts.dateFrom));
+    if (opts.dateTo) quizConds.push(sql`${quizAttempts.startedAt} <= ${opts.dateTo}`);
+
+    const [quizStats] = await db.select({
+      total: sql<number>`count(*)`,
+      avgScore: sql<number>`AVG(scorePct)`,
+      passed: sql<number>`SUM(CASE WHEN isPassed = 1 THEN 1 ELSE 0 END)`,
+    }).from(quizAttempts).where(and(...quizConds));
+
+    const quizTotal = Number(quizStats?.total ?? 0);
+    results.push({
+      groupId: group.id,
+      groupName: group.name,
+      memberCount: userIds.length,
+      courseMetrics: {
+        enrollments: Number(enrollStats?.total ?? 0),
+        completions: Number(enrollStats?.completed ?? 0),
+        avgProgress: Math.round(Number(enrollStats?.avgProgress ?? 0) * 10) / 10,
+      },
+      quizMetrics: {
+        attempts: quizTotal,
+        avgScore: Math.round(Number(quizStats?.avgScore ?? 0) * 10) / 10,
+        passRate: quizTotal > 0 ? Math.round((Number(quizStats?.passed ?? 0) / quizTotal) * 1000) / 10 : 0,
+      },
+    });
+  }
+  return results;
+}
+
+/**
+ * Get org-level course analytics summary with timeline data.
+ */
+export async function getOrgCourseAnalytics(orgId: number, opts: {
+  dateFrom?: Date;
+  dateTo?: Date;
+  groupBy?: "day" | "week" | "month";
+} = {}) {
+  const conditions: any[] = [eq(courseEnrollments.orgId, orgId)];
+  if (opts.dateFrom) conditions.push(gte(courseEnrollments.enrolledAt, opts.dateFrom));
+  if (opts.dateTo) conditions.push(sql`${courseEnrollments.enrolledAt} <= ${opts.dateTo}`);
+
+  const [summary] = await db.select({
+    totalEnrollments: sql<number>`count(*)`,
+    completions: sql<number>`SUM(CASE WHEN completedAt IS NOT NULL THEN 1 ELSE 0 END)`,
+    avgProgress: sql<number>`AVG(progressPct)`,
+    totalRevenue: sql<number>`COALESCE(SUM(amountPaid), 0)`,
+  }).from(courseEnrollments).where(and(...conditions));
+
+  const groupBy = opts.groupBy ?? "day";
+  const dateFormat = groupBy === "day" ? "%Y-%m-%d" : groupBy === "week" ? "%x-W%v" : "%Y-%m";
+  const timeline = await db.select({
+    period: sql<string>`DATE_FORMAT(enrolledAt, ${dateFormat})`,
+    enrollments: sql<number>`count(*)`,
+    completions: sql<number>`SUM(CASE WHEN completedAt IS NOT NULL THEN 1 ELSE 0 END)`,
+  }).from(courseEnrollments)
+    .where(and(...conditions))
+    .groupBy(sql`DATE_FORMAT(enrolledAt, ${dateFormat})`)
+    .orderBy(sql`DATE_FORMAT(enrolledAt, ${dateFormat})`);
+
+  const perCourse = await db.select({
+    courseId: courseEnrollments.courseId,
+    enrollments: sql<number>`count(*)`,
+    completions: sql<number>`SUM(CASE WHEN completedAt IS NOT NULL THEN 1 ELSE 0 END)`,
+    avgProgress: sql<number>`AVG(progressPct)`,
+    revenue: sql<number>`COALESCE(SUM(amountPaid), 0)`,
+  }).from(courseEnrollments)
+    .where(and(...conditions))
+    .groupBy(courseEnrollments.courseId);
+
+  return {
+    summary: {
+      totalEnrollments: Number(summary?.totalEnrollments ?? 0),
+      completions: Number(summary?.completions ?? 0),
+      avgProgress: Math.round(Number(summary?.avgProgress ?? 0) * 10) / 10,
+      totalRevenue: Number(summary?.totalRevenue ?? 0),
+      completionRate: Number(summary?.totalEnrollments ?? 0) > 0
+        ? Math.round((Number(summary?.completions ?? 0) / Number(summary?.totalEnrollments ?? 0)) * 1000) / 10
+        : 0,
+    },
+    timeline,
+    perCourse,
+  };
+}
+
+/**
+ * Get org-level quiz analytics summary with timeline data.
+ */
+export async function getOrgQuizAnalytics(orgId: number, opts: {
+  dateFrom?: Date;
+  dateTo?: Date;
+  groupBy?: "day" | "week" | "month";
+} = {}) {
+  const conditions: any[] = [eq(quizAttempts.orgId, orgId)];
+  if (opts.dateFrom) conditions.push(gte(quizAttempts.startedAt, opts.dateFrom));
+  if (opts.dateTo) conditions.push(sql`${quizAttempts.startedAt} <= ${opts.dateTo}`);
+
+  const [summary] = await db.select({
+    totalAttempts: sql<number>`count(*)`,
+    avgScore: sql<number>`AVG(scorePct)`,
+    passed: sql<number>`SUM(CASE WHEN isPassed = 1 THEN 1 ELSE 0 END)`,
+    avgTime: sql<number>`AVG(timeTakenSeconds)`,
+  }).from(quizAttempts).where(and(...conditions));
+
+  const totalAttempts = Number(summary?.totalAttempts ?? 0);
+  const groupBy = opts.groupBy ?? "day";
+  const dateFormat = groupBy === "day" ? "%Y-%m-%d" : groupBy === "week" ? "%x-W%v" : "%Y-%m";
+  const timeline = await db.select({
+    period: sql<string>`DATE_FORMAT(startedAt, ${dateFormat})`,
+    attempts: sql<number>`count(*)`,
+    avgScore: sql<number>`AVG(scorePct)`,
+    passed: sql<number>`SUM(CASE WHEN isPassed = 1 THEN 1 ELSE 0 END)`,
+  }).from(quizAttempts)
+    .where(and(...conditions))
+    .groupBy(sql`DATE_FORMAT(startedAt, ${dateFormat})`)
+    .orderBy(sql`DATE_FORMAT(startedAt, ${dateFormat})`);
+
+  const perQuiz = await db.select({
+    quizId: quizAttempts.quizId,
+    attempts: sql<number>`count(*)`,
+    avgScore: sql<number>`AVG(scorePct)`,
+    passed: sql<number>`SUM(CASE WHEN isPassed = 1 THEN 1 ELSE 0 END)`,
+    avgTime: sql<number>`AVG(timeTakenSeconds)`,
+  }).from(quizAttempts)
+    .where(and(...conditions))
+    .groupBy(quizAttempts.quizId);
+
+  return {
+    summary: {
+      totalAttempts,
+      avgScore: Math.round(Number(summary?.avgScore ?? 0) * 10) / 10,
+      passRate: totalAttempts > 0 ? Math.round((Number(summary?.passed ?? 0) / totalAttempts) * 1000) / 10 : 0,
+      avgTime: Math.round(Number(summary?.avgTime ?? 0)),
+    },
+    timeline,
+    perQuiz,
+  };
 }

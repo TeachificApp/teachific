@@ -5,6 +5,7 @@ import type { QuizQuestion, BranchRule } from "../types/quiz";
 
 interface Props {
   onClose: () => void;
+  onSelectQuestion?: (questionId: string) => void;
 }
 
 interface FlowNode {
@@ -42,8 +43,8 @@ const CONDITION_COLORS: Record<string, string> = {
   always: "#6b7280",
 };
 
-export function BranchingFlowVisualizer({ onClose }: Props) {
-  const { quiz } = useQuizStore();
+export function BranchingFlowVisualizer({ onClose, onSelectQuestion }: Props) {
+  const { quiz, setActiveQuestion } = useQuizStore();
   const questions = quiz.questions;
 
   const { nodes, edges } = useMemo(() => {
@@ -274,7 +275,17 @@ export function BranchingFlowVisualizer({ onClose }: Props) {
 
               {/* Nodes */}
               {nodes.map((node) => (
-                <g key={node.id}>
+                <g
+                  key={node.id}
+                  className={node.type === "question" ? "cursor-pointer" : ""}
+                  onClick={() => {
+                    if (node.type === "question") {
+                      setActiveQuestion(node.id);
+                      if (onSelectQuestion) onSelectQuestion(node.id);
+                      onClose();
+                    }
+                  }}
+                >
                   {node.type === "question" ? (
                     <>
                       <rect
@@ -286,12 +297,13 @@ export function BranchingFlowVisualizer({ onClose }: Props) {
                         fill={node.hasBranching ? "#f3e8ff" : "#f9fafb"}
                         stroke={node.hasBranching ? "#a855f7" : "#e5e7eb"}
                         strokeWidth={node.hasBranching ? 2 : 1}
+                        className="hover:stroke-indigo-500 hover:stroke-[2.5px] transition-all"
                       />
                       <text
                         x={node.x + 75}
                         y={node.y + 22}
                         textAnchor="middle"
-                        className="text-xs font-bold fill-gray-700"
+                        className="text-xs font-bold fill-gray-700 pointer-events-none"
                       >
                         {node.label}
                       </text>
@@ -299,7 +311,7 @@ export function BranchingFlowVisualizer({ onClose }: Props) {
                         x={node.x + 75}
                         y={node.y + 38}
                         textAnchor="middle"
-                        className="text-[10px] fill-gray-400"
+                        className="text-[10px] fill-gray-400 pointer-events-none"
                       >
                         {(() => {
                           const q = questions.find((qq) => qq.id === node.id);
@@ -307,7 +319,7 @@ export function BranchingFlowVisualizer({ onClose }: Props) {
                         })()}
                       </text>
                       {node.hasBranching && (
-                        <circle cx={node.x + 140} cy={node.y + 10} r={6} fill="#a855f7" />
+                        <circle cx={node.x + 140} cy={node.y + 10} r={6} fill="#a855f7" className="pointer-events-none" />
                       )}
                     </>
                   ) : (
@@ -342,6 +354,7 @@ export function BranchingFlowVisualizer({ onClose }: Props) {
         <div className="px-6 py-4 border-t border-gray-100 flex justify-between items-center shrink-0">
           <p className="text-xs text-gray-400">
             {questions.filter((q) => q.branchRules && q.branchRules.length > 0).length} question{questions.filter((q) => q.branchRules && q.branchRules.length > 0).length !== 1 ? "s" : ""} with branching rules
+            <span className="ml-3 text-indigo-500">Click a question node to jump to it in the editor</span>
           </p>
           <button
             onClick={onClose}

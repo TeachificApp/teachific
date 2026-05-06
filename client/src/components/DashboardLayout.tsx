@@ -63,6 +63,7 @@ import {
   Wallet,
   Webhook,
   Zap,
+  Library,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -163,6 +164,7 @@ const navGroups: NavGroup[] = [
           { label: "Community", path: "/products/community" },
           { label: "Categories", path: "/products/categories" },
           { label: "Media Library", path: "/media-library" },
+          { label: "Question Bank", path: "/question-bank" },
           { label: "Teachific Studio™ - Lite", path: "/media-library#record-edit" },
         ],
       },
@@ -219,6 +221,7 @@ const navGroups: NavGroup[] = [
         subItems: [
           { label: "Revenue", path: "/analytics/revenue" },
           { label: "Engagement", path: "/analytics/engagement" },
+          { label: "Organization", path: "/analytics/organization" },
           { label: "Marketing", path: "/analytics/marketing" },
           { label: "Custom Reports", path: "/analytics/custom-reports" },
           { label: "Downloads Reports", path: "/admin/downloads/reports" },

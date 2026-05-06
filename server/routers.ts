@@ -119,6 +119,7 @@ import { communityRouter } from "./communityRouter";
 import { stripeRouter } from "./stripeRouter";
 import { authoringRouter } from "./authoringRouter";
 import { quizMakerRouter } from "./quizMakerRouter";
+import { questionBankRouter } from "./questionBankRouter";
 import { teachificPayRouter } from "./teachificPayRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
@@ -182,6 +183,7 @@ export const appRouter = router({
   billing: stripeRouter,
   authoring: authoringRouter,
   quizMaker: quizMakerRouter,
+  questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
 
   // ── Embed Token (cookie-free iframe auth) ─────────────────────────────────

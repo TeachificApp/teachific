@@ -3402,3 +3402,35 @@
 - [ ] Attempt timeline (attempts over time)
 - [x] Filter by date range, group, question type
 - [ ] Export analytics to CSV
+
+## Centralized Question Bank (Per-Organization)
+- [x] Add question_bank_folders table (id, orgId, name, parentId, color, sortOrder, createdAt, updatedAt)
+- [x] Add question_bank_items table (id, orgId, folderId, questionType, stem, choices JSON, correctAnswer, explanation, points, tags, media, lockAnswerOrder, createdAt, updatedAt)
+- [x] Generate and apply migration SQL
+- [x] Backend: folder CRUD procedures (create, rename, move, delete, list tree)
+- [x] Backend: question CRUD procedures (create, update, delete, list with filters, bulk move)
+- [x] Backend: import questions from quiz to bank (copy selected questions into a folder)
+- [x] Backend: import questions from bank to quiz (pull selected bank questions into a quiz)
+- [x] Backend: bulk operations (move to folder, delete multiple, tag multiple)
+- [x] UI: Question Bank page accessible from sidebar (per-org)
+- [x] UI: Folder tree sidebar with create/rename/delete/drag-to-move
+- [x] UI: Question list with search, filter by type/tags/folder
+- [x] UI: Question editor modal (create/edit bank questions with same editor as quiz)
+- [x] UI: Import to Quiz dialog (select questions from bank, choose target quiz)
+- [ ] UI: Export from Quiz dialog (select quiz questions to save to bank folder)
+- [x] UI: Bulk select and bulk actions (move, delete, tag)
+
+## Clickable Branching Flow Visualizer Nodes
+- [x] Make question nodes clickable to jump to that question in the editor
+- [x] Highlight current question node in the visualizer (hover stroke effect)
+- [ ] Add hover tooltip with question details
+
+## Enhanced Analytics (Org + Group Breakdowns for Quizzes & Courses)
+- [x] Org-level analytics dashboard: aggregate quiz stats across all quizzes in org
+- [x] Org-level analytics dashboard: aggregate course stats (enrollments, completions, progress) across all courses in org
+- [x] Filter analytics by organization group (learner groups)
+- [x] Group comparison view: side-by-side stats for different groups
+- [x] Course analytics: completion rates, avg progress, time spent per course, by group
+- [x] Quiz analytics: pass rates, avg scores, attempts, by group
+- [x] Combined dashboard: unified view of quiz + course performance per org
+- [x] Export analytics data to CSV (org-level and group-level)

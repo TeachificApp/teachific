@@ -2321,3 +2321,44 @@ export const privateInvites = mysqlTable("private_invites", {
 });
 export type PrivateInvite = typeof privateInvites.$inferSelect;
 export type InsertPrivateInvite = typeof privateInvites.$inferInsert;
+
+// ─── Question Bank ────────────────────────────────────────────────────────────
+// Centralized question bank organized by org with folder/topic hierarchy
+export const questionBankFolders = mysqlTable("question_bank_folders", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  parentId: int("parentId"), // null = root folder
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 32 }),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type QuestionBankFolder = typeof questionBankFolders.$inferSelect;
+export type InsertQuestionBankFolder = typeof questionBankFolders.$inferInsert;
+
+export const questionBankItems = mysqlTable("question_bank_items", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  folderId: int("folderId"), // null = unfiled
+  questionType: mysqlEnum("questionType", [
+    "mcq", "tf", "short_answer", "long_answer", "matching",
+    "multiple_select", "image_choice", "hotspot", "ordering",
+    "fill_blank", "numeric", "rating_scale",
+  ]).default("mcq").notNull(),
+  stem: text("stem").notNull(), // question text (HTML)
+  // Full question data as JSON (choices, correct answers, media, etc.)
+  dataJson: longtext("dataJson").notNull(),
+  points: float("points").default(1).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).default("medium"),
+  tags: text("tags"), // JSON array of tag strings
+  explanation: text("explanation"),
+  createdBy: int("createdBy").notNull(),
+  usageCount: int("usageCount").default(0).notNull(), // how many quizzes use this question
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type QuestionBankItem = typeof questionBankItems.$inferSelect;
+export type InsertQuestionBankItem = typeof questionBankItems.$inferInsert;

@@ -1236,6 +1236,54 @@ Generate 5-7 blocks that make a compelling school homepage. Use the org's colors
         await requireOrgRole(ctx.user.id, input.orgId, undefined, ctx.user.role);
         return getLmsAnalyticsByOrg(input.orgId);
       }),
+    byGroup: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        groupId: z.number().optional(),
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+      }))
+      .query(async ({ input, ctx }) => {
+        await requireOrgRole(ctx.user.id, input.orgId, undefined, ctx.user.role);
+        const { getOrgAnalyticsByGroup } = await import("./lmsDb");
+        return getOrgAnalyticsByGroup(input.orgId, {
+          groupId: input.groupId,
+          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+        });
+      }),
+    courseAnalytics: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+        groupBy: z.enum(["day", "week", "month"]).optional(),
+      }))
+      .query(async ({ input, ctx }) => {
+        await requireOrgRole(ctx.user.id, input.orgId, undefined, ctx.user.role);
+        const { getOrgCourseAnalytics } = await import("./lmsDb");
+        return getOrgCourseAnalytics(input.orgId, {
+          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          groupBy: input.groupBy,
+        });
+      }),
+    quizAnalytics: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        dateFrom: z.string().optional(),
+        dateTo: z.string().optional(),
+        groupBy: z.enum(["day", "week", "month"]).optional(),
+      }))
+      .query(async ({ input, ctx }) => {
+        await requireOrgRole(ctx.user.id, input.orgId, undefined, ctx.user.role);
+        const { getOrgQuizAnalytics } = await import("./lmsDb");
+        return getOrgQuizAnalytics(input.orgId, {
+          dateFrom: input.dateFrom ? new Date(input.dateFrom) : undefined,
+          dateTo: input.dateTo ? new Date(input.dateTo) : undefined,
+          groupBy: input.groupBy,
+        });
+      }),
   }),
 
   // ── Certificates ─────────────────────────────────────────────────────────
