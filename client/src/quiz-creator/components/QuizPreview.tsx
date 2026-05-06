@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { X, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData } from "../types/quiz";
+import { DndOrdering, DndDragWords } from "./DndQuizInteractions";
 
 interface Props {
   onClose: () => void;
@@ -214,35 +215,26 @@ function ImageChoiceQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer
 // ─── Ordering Question ──────────────────────────────────────────────────────
 function OrderingQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void }) {
   const data = q.data as OrderingData;
-  const items = (answer as string[]) ?? data.items.map((i) => i.id).sort(() => 0.5 - Math.random());
-  if (!answer) setTimeout(() => setAnswer(items), 0);
-  const moveUp = (idx: number) => {
-    if (idx === 0) return;
-    const next = [...items];
-    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-    setAnswer(next);
-  };
-  const moveDown = (idx: number) => {
-    if (idx === items.length - 1) return;
-    const next = [...items];
-    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-    setAnswer(next);
-  };
+  const [initialized, setInitialized] = useState(false);
+  const items = (answer as string[]) ?? [];
+
+  useEffect(() => {
+    if (!initialized && !answer) {
+      const shuffled = [...data.items.map((i) => i.id)].sort(() => 0.5 - Math.random());
+      setAnswer(shuffled);
+      setInitialized(true);
+    }
+  }, [initialized, answer, data.items, setAnswer]);
+
+  if (!items.length) return null;
+
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-gray-400 mb-2">Drag or use arrows to reorder:</p>
-      {items.map((id, idx) => {
-        const item = data.items.find((i) => i.id === id);
-        return (
-          <div key={id} className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white">
-            <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}.</span>
-            <span className="flex-1 text-sm text-gray-700">{item?.text || ""}</span>
-            <button onClick={() => moveUp(idx)} disabled={idx === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
-            <button onClick={() => moveDown(idx)} disabled={idx === items.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
-          </div>
-        );
-      })}
-    </div>
+    <DndOrdering
+      items={data.items}
+      currentOrder={items}
+      onReorder={setAnswer}
+      primaryColor="#14b8a6"
+    />
   );
 }
 
@@ -300,42 +292,16 @@ function DropdownQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer: A
 function DragWordsQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void }) {
   const data = q.data as DragWordsData;
   const selections = (answer as Record<string, string>) ?? {};
-  const allWords = [...data.blanks.map((b) => b.correctWord), ...(data.distractorWords || [])].sort(() => 0.5 - Math.random());
-  const usedWords = Object.values(selections);
-  const availableWords = allWords.filter((w) => !usedWords.includes(w) || usedWords.filter((u) => u === w).length < allWords.filter((a) => a === w).length);
-  const parts = data.template.split(/\{\{(\w+)\}\}/);
+
   return (
-    <div className="space-y-4">
-      <div className="text-sm text-gray-700 leading-relaxed">
-        {parts.map((part, i) => {
-          const blank = data.blanks.find((b) => b.id === part);
-          if (blank) {
-            return selections[blank.id] ? (
-              <span key={i} className="inline-block px-2 py-0.5 mx-1 bg-teal-100 text-teal-700 rounded cursor-pointer text-sm" onClick={() => { const next = { ...selections }; delete next[blank.id]; setAnswer(next); }}>
-                {selections[blank.id]} ×
-              </span>
-            ) : (
-              <span key={i} className="inline-block w-20 h-6 mx-1 border-b-2 border-dashed border-gray-300" />
-            );
-          }
-          return <span key={i}>{part}</span>;
-        })}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {availableWords.map((word, i) => (
-          <button
-            key={i}
-            onClick={() => {
-              const nextBlank = data.blanks.find((b) => !selections[b.id]);
-              if (nextBlank) setAnswer({ ...selections, [nextBlank.id]: word });
-            }}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:border-teal-400 hover:bg-teal-50 transition-colors"
-          >
-            {word}
-          </button>
-        ))}
-      </div>
-    </div>
+    <DndDragWords
+      template={data.template}
+      blanks={data.blanks}
+      distractorWords={data.distractorWords}
+      selections={selections}
+      onSelectionChange={setAnswer}
+      primaryColor="#14b8a6"
+    />
   );
 }
 
@@ -410,6 +376,8 @@ export function QuizPreview({ onClose }: Props) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [questionPath, setQuestionPath] = useState<string[]>([]);
+  const branchingEnabled = questions.some((qq) => qq.branchRules && qq.branchRules.length > 0);
 
   const q = questions[currentIdx];
   const totalPoints = questions.reduce((s, q) => s + q.points, 0);
@@ -554,30 +522,118 @@ export function QuizPreview({ onClose }: Props) {
         {/* Navigation */}
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
           <button
-            onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
-            disabled={currentIdx === 0}
+            onClick={() => {
+              if (branchingEnabled && questionPath.length > 0) {
+                const newPath = [...questionPath];
+                newPath.pop();
+                setQuestionPath(newPath);
+                const prevId = newPath[newPath.length - 1];
+                if (prevId) {
+                  const prevIdx = questions.findIndex((qq) => qq.id === prevId);
+                  if (prevIdx >= 0) setCurrentIdx(prevIdx);
+                } else {
+                  setCurrentIdx(0);
+                }
+              } else {
+                setCurrentIdx((i) => Math.max(0, i - 1));
+              }
+            }}
+            disabled={branchingEnabled ? questionPath.length === 0 : currentIdx === 0}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" /> Previous
           </button>
 
-          {currentIdx < questions.length - 1 ? (
-            <button
-              onClick={() => setCurrentIdx((i) => i + 1)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-              style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
-            >
-              Next <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={() => setSubmitted(true)}
-              className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-              style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
-            >
-              Submit Quiz
-            </button>
-          )}
+          {(() => {
+            const handleNext = () => {
+              if (branchingEnabled && q.branchRules && q.branchRules.length > 0) {
+                setQuestionPath((p) => [...p, q.id]);
+                // Evaluate rules: first matching rule wins
+                const ans = answers[q.id];
+                for (const rule of [...q.branchRules].sort((a, b) => a.priority - b.priority)) {
+                  let matches = false;
+                  switch (rule.condition.type) {
+                    case "correct": {
+                      // Simple correctness check for MCQ/TF
+                      if (q.type === "mcq" || q.type === "image_choice") {
+                        const data = q.data as McqData;
+                        const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
+                        const selected = (ans as string[]) ?? [];
+                        matches = JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
+                      } else if (q.type === "tf") {
+                        matches = ans === (q.data as TfData).correct;
+                      }
+                      break;
+                    }
+                    case "incorrect": {
+                      if (q.type === "mcq" || q.type === "image_choice") {
+                        const data = q.data as McqData;
+                        const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
+                        const selected = (ans as string[]) ?? [];
+                        matches = JSON.stringify([...correctIds].sort()) !== JSON.stringify([...selected].sort());
+                      } else if (q.type === "tf") {
+                        matches = ans !== (q.data as TfData).correct;
+                      }
+                      break;
+                    }
+                    case "choice": {
+                      const selected = (ans as string[]) ?? [];
+                      matches = selected.includes((rule.condition as any).choiceId);
+                      break;
+                    }
+                    case "always": matches = true; break;
+                  }
+                  if (matches) {
+                    if (rule.target.type === "end" || rule.target.type === "result") {
+                      setSubmitted(true); return;
+                    }
+                    if (rule.target.type === "question") {
+                      const target = rule.target as { type: "question"; questionId: string };
+                      const targetIdx = questions.findIndex((qq) => qq.id === target.questionId);
+                      if (targetIdx >= 0) { setCurrentIdx(targetIdx); return; }
+                    }
+                    break;
+                  }
+                }
+                // No rule matched: go next linearly
+                if (currentIdx < questions.length - 1) setCurrentIdx((i) => i + 1);
+                else setSubmitted(true);
+              } else {
+                if (branchingEnabled) setQuestionPath((p) => [...p, q.id]);
+                setCurrentIdx((i) => i + 1);
+              }
+            };
+
+            const isLast = currentIdx >= questions.length - 1;
+            if (branchingEnabled) {
+              return (
+                <button
+                  onClick={handleNext}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                  style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+              );
+            }
+            return isLast ? (
+              <button
+                onClick={() => setSubmitted(true)}
+                className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
+              >
+                Submit Quiz
+              </button>
+            ) : (
+              <button
+                onClick={handleNext}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>

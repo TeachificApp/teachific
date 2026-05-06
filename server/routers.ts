@@ -2242,7 +2242,11 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         );
         const typeMap: Record<string, string> = {
           multiple_choice: "MC", multiple_select: "MR", true_false: "TF",
-          short_answer: "TI", matching: "MG",
+          short_answer: "TI", matching: "MG", sequence: "SEQ",
+          numeric: "NUMG", essay: "ESS", info_slide: "IS",
+          ordering: "SEQ", drag_words: "TI", dropdown: "MC",
+          likert: "SA", drag_drop: "MG", fill_blank: "TI",
+          hotspot: "MC", image_choice: "MC",
         };
         const rows = questionsWithChoices.map((q) => {
           const row: Record<string, string | number> = {
@@ -2307,7 +2311,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
         const typeMap: Record<string, string> = {
           MC: "multiple_choice", MR: "multiple_select", TF: "true_false",
-          TI: "short_answer", MG: "matching",
+          TI: "short_answer", MG: "matching", SEQ: "sequence",
+          NUMG: "numeric", ESS: "essay", IS: "info_slide",
+          RNK: "sequence", SA: "short_answer",
         };
         const questions = rows
           .filter((r) => r["Question Text"]?.trim())

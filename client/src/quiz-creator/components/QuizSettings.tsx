@@ -353,6 +353,27 @@ export function QuizSettings({ onClose }: Props) {
                   <option value="999">All on one page</option>
                 </select>
               </div>
+
+              {/* Branching / Conditional Logic */}
+              <div className="border-t border-gray-100 pt-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={m.branchingEnabled ?? false}
+                    onChange={(e) => updateMeta({ branchingEnabled: e.target.checked })}
+                    className="accent-purple-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-sm text-gray-700 font-medium">Enable Branching Logic</span>
+                    <p className="text-xs text-gray-400 mt-0.5">Route students to different questions based on their answers. When enabled, each question can have branching rules.</p>
+                  </div>
+                </label>
+                {m.branchingEnabled && (
+                  <p className="mt-2 text-xs text-purple-600 bg-purple-50 px-3 py-2 rounded-lg">
+                    Branching is active. Edit individual questions to configure branching rules (If correct → jump to Q5, etc.)
+                  </p>
+                )}
+              </div>
             </div>
           )}
 

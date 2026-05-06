@@ -179,6 +179,29 @@ export type QuestionData =
   | LikertData
   | EssayData;
 
+// ─── Branching / Conditional Logic ──────────────────────────────────────────
+
+export type BranchCondition =
+  | { type: "correct" }                          // answer is correct
+  | { type: "incorrect" }                        // answer is incorrect
+  | { type: "choice"; choiceId: string }         // specific choice selected (MCQ)
+  | { type: "score_above"; threshold: number }   // cumulative score above threshold
+  | { type: "score_below"; threshold: number }   // cumulative score below threshold
+  | { type: "always" };                          // unconditional jump
+
+export type BranchTarget =
+  | { type: "question"; questionId: string }     // jump to specific question
+  | { type: "end" }                              // end quiz immediately
+  | { type: "result" }                           // go to result slide
+  | { type: "next" };                            // continue to next (default)
+
+export interface BranchRule {
+  id: string;
+  condition: BranchCondition;
+  target: BranchTarget;
+  priority: number; // lower = evaluated first
+}
+
 export interface QuizQuestion {
   id: string;
   type: QuestionType;
@@ -200,6 +223,8 @@ export interface QuizQuestion {
   // Per-question appearance
   backgroundImageUrl?: string;
   backgroundColor?: string;
+  // Branching / conditional logic
+  branchRules?: BranchRule[];
   data: QuestionData;
 }
 
@@ -265,6 +290,8 @@ export interface QuizMeta {
   allowBackNavigation?: boolean;
   showProgressBar?: boolean;
   questionsPerPage?: number; // null = one at a time
+  // Branching
+  branchingEnabled?: boolean; // when true, quiz uses branching logic instead of linear flow
 }
 
 export interface QuizFile {

@@ -3349,3 +3349,21 @@
 - [x] Update PublicQuizPlayerPage with renderers for all new question types
 - [x] Extended scoring for ordering, numeric, dropdown, drag_words, fill_blank
 - [x] Audio/video rendering in PublicQuizPlayerPage per question
+
+## Excel Import/Export Verification & Fix
+- [x] Verify existing Excel import/export works with new question types
+- [x] Fix any missing question type mappings in Excel import/export
+- [x] Ensure all 14 question types can round-trip through Excel
+
+## HTML5 Drag-and-Drop for Quiz Player
+- [x] Implement drag-and-drop reordering for ordering questions (replace arrow buttons)
+- [x] Implement drag-and-drop word placement for drag_words questions (replace click-to-place)
+- [x] Add touch support for mobile drag interactions
+- [x] Update both QuizPreview and PublicQuizPlayerPage with DnD
+
+## Quiz Branching / Conditional Logic
+- [x] Add branching data model (per-answer next question routing)
+- [x] Add branching editor UI in quiz builder (per-choice destination selector)
+- [x] Update quiz player to follow branching paths instead of linear sequence
+- [x] Add "end quiz" and "jump to result" branch destinations
+- [x] Support branching in PublicQuizPlayerPage

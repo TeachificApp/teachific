@@ -4,8 +4,9 @@ import { TfEditor, FillBlankEditor, ShortAnswerEditor, ImageChoiceEditor } from 
 import { HotspotEditor } from "./editors/HotspotEditor";
 import { MatchingEditor } from "./editors/MatchingEditor";
 import { OrderingEditor, DragWordsEditor, DropdownEditor, NumericEditor, LikertEditor, EssayEditor, DragDropEditor } from "./editors/AdvancedEditors";
-import type { QuizQuestion, QuestionData } from "../types/quiz";
-import { Upload, Trash2, Music, Video, Image, Palette } from "lucide-react";
+import { BranchingEditor } from "./BranchingEditor";
+import type { QuizQuestion, QuestionData, BranchRule } from "../types/quiz";
+import { Upload, Trash2, Music, Video, Image, Palette, GitBranch } from "lucide-react";
 import { useState } from "react";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -290,6 +291,17 @@ export function QuestionEditor() {
           className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none"
         />
       </div>
+
+      {/* Branching / Conditional Logic */}
+      {quiz.meta.branchingEnabled && (
+        <div className="border-t border-gray-100 pt-4">
+          <BranchingEditor
+            question={question}
+            allQuestions={quiz.questions}
+            onUpdate={(rules: BranchRule[]) => update({ branchRules: rules })}
+          />
+        </div>
+      )}
     </div>
   );
 }

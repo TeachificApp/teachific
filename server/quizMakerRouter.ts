@@ -363,16 +363,25 @@ export const quizMakerRouter = router({
           .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
         if (!existing) throw new Error("Quiz not found");
 
-        await db.update(quizzes).set({
+        // Parse settings to apply quiz-level fields
+        const updateFields: any = {
           title: input.title,
           description: input.description || null,
-        }).where(eq(quizzes.id, input.quizId));
-
-        // Store questions JSON in instructions field as a workaround
-        // (full question sync would require parsing and updating each question row)
-        await db.update(quizzes).set({
           instructions: input.questionsJson,
-        }).where(eq(quizzes.id, input.quizId));
+        };
+        if (input.settingsJson) {
+          try {
+            const settings = JSON.parse(input.settingsJson);
+            if (settings.passingScore !== undefined) updateFields.passingScore = settings.passingScore;
+            if (settings.timeLimit !== undefined) updateFields.timeLimit = settings.timeLimit || null;
+            if (settings.maxAttempts !== undefined) updateFields.maxAttempts = settings.maxAttempts || null;
+            if (settings.shuffleQuestions !== undefined) updateFields.shuffleQuestions = !!settings.shuffleQuestions;
+            if (settings.shuffleAnswers !== undefined) updateFields.shuffleAnswers = !!settings.shuffleAnswers;
+            if (settings.showFeedbackImmediately !== undefined) updateFields.showFeedbackImmediately = !!settings.showFeedbackImmediately;
+            if (settings.showCorrectAnswers !== undefined) updateFields.showCorrectAnswers = !!settings.showCorrectAnswers;
+          } catch (e) { /* ignore parse errors */ }
+        }
+        await db.update(quizzes).set(updateFields).where(eq(quizzes.id, input.quizId));
 
         return { id: input.quizId };
       } else {

@@ -2,9 +2,85 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData } from "@/quiz-creator/types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, BranchRule } from "@/quiz-creator/types/quiz";
+import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInteractions";
 
 type Answer = string | boolean | string[] | Record<string, string>;
+
+// ─── Branching Logic Helper ─────────────────────────────────────────────────
+
+function isAnswerCorrect(q: QuizQuestion, ans: Answer | undefined): boolean {
+  if (!ans) return false;
+  if (q.type === "mcq" || q.type === "image_choice") {
+    const data = q.data as McqData;
+    const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
+    const selected = (ans as string[]) ?? [];
+    return JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
+  } else if (q.type === "tf") {
+    return ans === (q.data as TfData).correct;
+  } else if (q.type === "matching") {
+    const data = q.data as MatchingData;
+    const a = (ans as Record<string, string>) ?? {};
+    return data.pairs.every((p) => a[p.id] === p.id);
+  } else if (q.type === "ordering") {
+    const data = q.data as OrderingData;
+    const a = (ans as string[]) ?? [];
+    return a.length === data.items.length && a.every((id, i) => id === data.items[i].id);
+  } else if (q.type === "numeric") {
+    const data = q.data as NumericData;
+    const a = Number(ans);
+    if (data.allowRange && data.rangeMin != null && data.rangeMax != null) return a >= data.rangeMin && a <= data.rangeMax;
+    return Math.abs(a - data.correctValue) <= data.tolerance;
+  } else if (q.type === "dropdown") {
+    const data = q.data as DropdownData;
+    const a = (ans as Record<string, string>) ?? {};
+    return data.blanks.every((b) => Number(a[b.id]) === b.correctIndex);
+  } else if (q.type === "drag_words") {
+    const data = q.data as DragWordsData;
+    const a = (ans as Record<string, string>) ?? {};
+    return data.blanks.every((b) => a[b.id] === b.correctWord);
+  } else if (q.type === "fill_blank") {
+    const data = q.data as FillBlankData;
+    const a = (ans as Record<string, string>) ?? {};
+    return data.blanks.every((b) => {
+      const userAns = (a[b.id] ?? "").trim();
+      return b.acceptedAnswers.some((accepted) => b.caseSensitive ? userAns === accepted : userAns.toLowerCase() === accepted.toLowerCase());
+    });
+  }
+  return false;
+}
+
+function evaluateBranchRules(
+  rules: BranchRule[] | undefined,
+  question: QuizQuestion,
+  answer: Answer | undefined,
+  cumulativeScore: number,
+  totalPoints: number
+): { type: "question"; questionId: string } | { type: "end" } | { type: "result" } | { type: "next" } | null {
+  if (!rules || rules.length === 0) return null;
+  const sorted = [...rules].sort((a, b) => a.priority - b.priority);
+  const correct = isAnswerCorrect(question, answer);
+  const scorePct = totalPoints > 0 ? Math.round((cumulativeScore / totalPoints) * 100) : 0;
+
+  for (const rule of sorted) {
+    let matches = false;
+    const cond = rule.condition;
+    switch (cond.type) {
+      case "correct": matches = correct; break;
+      case "incorrect": matches = !correct; break;
+      case "choice": {
+        const selected = (answer as string[]) ?? [];
+        matches = selected.includes((cond as { type: "choice"; choiceId: string }).choiceId);
+        break;
+      }
+      case "score_above": matches = scorePct > (cond as { type: "score_above"; threshold: number }).threshold; break;
+      case "score_below": matches = scorePct < (cond as { type: "score_below"; threshold: number }).threshold; break;
+      case "always": matches = true; break;
+    }
+    if (matches) return rule.target;
+  }
+  return null;
+}
 
 interface Branding {
   brandPrimaryColor: string | null;
@@ -227,35 +303,27 @@ function ImageChoiceQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQu
 
 function OrderingQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
   const data = q.data as OrderingData;
-  const items = (answer as string[]) ?? data.items.map((i) => i.id).sort(() => 0.5 - Math.random());
-  if (!answer) setTimeout(() => setAnswer(items), 0);
-  const moveUp = (idx: number) => {
-    if (idx === 0) return;
-    const next = [...items];
-    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-    setAnswer(next);
-  };
-  const moveDown = (idx: number) => {
-    if (idx === items.length - 1) return;
-    const next = [...items];
-    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
-    setAnswer(next);
-  };
+  const [initialized, setInitialized] = useState(false);
+  const items = (answer as string[]) ?? [];
+  
+  // Initialize with shuffled order on first render
+  useEffect(() => {
+    if (!initialized && !answer) {
+      const shuffled = [...data.items.map((i) => i.id)].sort(() => 0.5 - Math.random());
+      setAnswer(shuffled);
+      setInitialized(true);
+    }
+  }, [initialized, answer, data.items, setAnswer]);
+
+  if (!items.length) return null;
+
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-gray-400 mb-2">Use arrows to put items in the correct order:</p>
-      {items.map((id, idx) => {
-        const item = data.items.find((i) => i.id === id);
-        return (
-          <div key={id} className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white">
-            <span className="text-xs font-bold w-5" style={{ color: primaryColor }}>{idx + 1}.</span>
-            <span className="flex-1 text-sm text-gray-700">{item?.text || ""}</span>
-            <button onClick={() => moveUp(idx)} disabled={idx === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
-            <button onClick={() => moveDown(idx)} disabled={idx === items.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
-          </div>
-        );
-      })}
-    </div>
+    <DndOrdering
+      items={data.items}
+      currentOrder={items}
+      onReorder={setAnswer}
+      primaryColor={primaryColor}
+    />
   );
 }
 
@@ -310,42 +378,16 @@ function DropdownQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuest
 function DragWordsQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
   const data = q.data as DragWordsData;
   const selections = (answer as Record<string, string>) ?? {};
-  const allWords = useMemo(() => [...data.blanks.map((b) => b.correctWord), ...(data.distractorWords || [])].sort(() => 0.5 - Math.random()), []);
-  const usedWords = Object.values(selections);
-  const availableWords = allWords.filter((w) => !usedWords.includes(w));
-  const parts = data.template.split(/\{\{(\w+)\}\}/);
+
   return (
-    <div className="space-y-4">
-      <div className="text-sm text-gray-700 leading-relaxed">
-        {parts.map((part, i) => {
-          const blank = data.blanks.find((b) => b.id === part);
-          if (blank) {
-            return selections[blank.id] ? (
-              <span key={i} className="inline-block px-2 py-0.5 mx-1 rounded cursor-pointer text-sm text-white" style={{ background: primaryColor }} onClick={() => { const next = { ...selections }; delete next[blank.id]; setAnswer(next); }}>
-                {selections[blank.id]} ×
-              </span>
-            ) : (
-              <span key={i} className="inline-block w-20 h-6 mx-1 border-b-2 border-dashed border-gray-300" />
-            );
-          }
-          return <span key={i}>{part}</span>;
-        })}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {availableWords.map((word, i) => (
-          <button
-            key={i}
-            onClick={() => {
-              const nextBlank = data.blanks.find((b) => !selections[b.id]);
-              if (nextBlank) setAnswer({ ...selections, [nextBlank.id]: word });
-            }}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            {word}
-          </button>
-        ))}
-      </div>
-    </div>
+    <DndDragWords
+      template={data.template}
+      blanks={data.blanks}
+      distractorWords={data.distractorWords}
+      selections={selections}
+      onSelectionChange={setAnswer}
+      primaryColor={primaryColor}
+    />
   );
 }
 
@@ -486,6 +528,9 @@ export default function PublicQuizPlayerPage() {
   const [started, setStarted] = useState(false);
   const startTimeRef = useRef<number>(0);
 
+  // Branching state: tracks the path of question IDs visited
+  const [questionPath, setQuestionPath] = useState<string[]>([]);
+
   // Branding colors
   const primaryColor = branding?.brandPrimaryColor || "#24abbc";
   const bgColor = branding?.brandBgColor || null;
@@ -507,6 +552,12 @@ export default function PublicQuizPlayerPage() {
     return qs;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quiz, started]);
+
+  // Auto-detect branching: enabled if any question has branchRules defined
+  const branchingEnabled = useMemo(() => {
+    if (!questions || questions.length === 0) return false;
+    return questions.some((qq) => qq.branchRules && qq.branchRules.length > 0);
+  }, [questions]);
 
   // Apply font family
   useEffect(() => {
@@ -762,30 +813,101 @@ export default function PublicQuizPlayerPage() {
         {/* Navigation */}
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
           <button
-            onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
-            disabled={currentIdx === 0}
+            onClick={() => {
+              if (branchingEnabled && questionPath.length > 0) {
+                // Go back along the branching path
+                const newPath = [...questionPath];
+                newPath.pop();
+                setQuestionPath(newPath);
+                const prevId = newPath[newPath.length - 1];
+                if (prevId) {
+                  const prevIdx = questions.findIndex((qq) => qq.id === prevId);
+                  if (prevIdx >= 0) setCurrentIdx(prevIdx);
+                } else {
+                  setCurrentIdx(0);
+                }
+              } else {
+                setCurrentIdx((i) => Math.max(0, i - 1));
+              }
+            }}
+            disabled={branchingEnabled ? questionPath.length === 0 : currentIdx === 0}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" /> Previous
           </button>
 
-          {currentIdx < questions.length - 1 ? (
-            <button
-              onClick={() => setCurrentIdx((i) => i + 1)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
-            >
-              Next <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
-              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
-            >
-              Submit Quiz
-            </button>
-          )}
+          {(() => {
+            // Determine if this is the last question (branching or linear)
+            const isLastLinear = currentIdx >= questions.length - 1;
+            const handleNext = () => {
+              if (branchingEnabled) {
+                // Evaluate branch rules
+                const cumulativeScore = calcScore(
+                  questions.filter((qq) => answers[qq.id] !== undefined),
+                  answers
+                );
+                const target = evaluateBranchRules(
+                  q.branchRules,
+                  q,
+                  answers[q.id],
+                  cumulativeScore,
+                  totalPoints
+                );
+                // Track the path
+                setQuestionPath((p) => [...p, q.id]);
+
+                if (target) {
+                  if (target.type === "end" || target.type === "result") {
+                    handleSubmit();
+                    return;
+                  }
+                  if (target.type === "question") {
+                    const targetIdx = questions.findIndex((qq) => qq.id === target.questionId);
+                    if (targetIdx >= 0) { setCurrentIdx(targetIdx); return; }
+                  }
+                }
+                // Default: go to next linear question
+                if (currentIdx < questions.length - 1) {
+                  setCurrentIdx((i) => i + 1);
+                } else {
+                  handleSubmit();
+                }
+              } else {
+                setCurrentIdx((i) => i + 1);
+              }
+            };
+
+            if (branchingEnabled) {
+              // In branching mode, always show "Next" (branching may end quiz early)
+              return (
+                <button
+                  onClick={handleNext}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                  style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
+                >
+                  Next <ChevronRight className="w-4 h-4" />
+                </button>
+              );
+            }
+
+            return isLastLinear ? (
+              <button
+                onClick={handleSubmit}
+                className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
+              >
+                Submit Quiz
+              </button>
+            ) : (
+              <button
+                onClick={handleNext}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+                style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
+              >
+                Next <ChevronRight className="w-4 h-4" />
+              </button>
+            );
+          })()}
         </div>
       </div>
     </div>
