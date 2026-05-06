@@ -127,6 +127,37 @@ function renderBlock(block: any, idx: number) {
           </div>
         </div>
       );
+    case "faq":
+      return (
+        <div key={block.id} style={{ backgroundColor: d.backgroundColor || "#fff", padding: "60px 24px" }}>
+          {d.headline && <h2 className="text-2xl font-bold text-center mb-8" style={{ color: d.textColor || "#1e293b" }}>{d.headline}</h2>}
+          <div className="max-w-3xl mx-auto space-y-4">
+            {(d.items || []).map((item: any) => (
+              <details key={item.id} className="border rounded-lg p-4">
+                <summary className="font-semibold cursor-pointer" style={{ color: d.textColor || "#1e293b" }}>{item.question}</summary>
+                <p className="mt-3 text-sm opacity-75" style={{ color: d.textColor || "#1e293b" }}>{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      );
+    case "embed_html":
+      return d.embedCode ? (
+        <div key={block.id} style={{ backgroundColor: d.backgroundColor || "#fff", padding: "40px 24px" }}>
+          <div style={{ maxWidth: `${d.maxWidth || 800}px`, margin: "0 auto" }} dangerouslySetInnerHTML={{ __html: d.embedCode }} />
+        </div>
+      ) : null;
+    case "columns": {
+      const gridCols = d.layout === "33-67" ? "1fr 2fr" : d.layout === "67-33" ? "2fr 1fr" : d.layout === "25-75" ? "1fr 3fr" : d.layout === "75-25" ? "3fr 1fr" : "1fr 1fr";
+      return (
+        <div key={block.id} style={{ backgroundColor: d.backgroundColor || "#fff", padding: `${d.paddingY || 40}px 24px` }}>
+          <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: `${d.gap || 24}px`, maxWidth: "1100px", margin: "0 auto" }}>
+            {d.leftContent && <div dangerouslySetInnerHTML={{ __html: d.leftContent }} />}
+            {d.rightContent && <div dangerouslySetInnerHTML={{ __html: d.rightContent }} />}
+          </div>
+        </div>
+      );
+    }
     default:
       return null;
   }

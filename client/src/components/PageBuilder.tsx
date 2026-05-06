@@ -103,7 +103,10 @@ export type BlockType =
   | "icon_list"
   | "numbered_steps"
   | "checklist_steps"
-  | "feature_grid";
+  | "feature_grid"
+  | "faq"
+  | "embed_html"
+  | "columns";
 
 export interface Block {
   id: string;
@@ -300,9 +303,32 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     textColor: "#1e293b",
     columns: 2,
   },
+  faq: {
+    headline: "Frequently Asked Questions",
+    items: [
+      { id: nanoid(4), question: "What format are the files?", answer: "PDF format, ready to print." },
+      { id: nanoid(4), question: "How do I access the content?", answer: "You'll receive instant access after purchase." },
+    ],
+    backgroundColor: "#ffffff",
+    textColor: "#1e293b",
+  },
+  embed_html: {
+    headline: "",
+    embedCode: "",
+    maxWidth: "800",
+    backgroundColor: "#ffffff",
+  },
+  columns: {
+    layout: "50-50",
+    gap: 24,
+    leftContent: "",
+    rightContent: "",
+    backgroundColor: "#ffffff",
+    paddingY: 40,
+  },
 };
 
-// ─── Block Library ────────────────────────────────────────────────────────────
+// ─── Block Library ──────────────────────────────────────────────────────────────────────
 
 const BLOCK_LIBRARY: { type: BlockType; label: string; icon: React.ComponentType<any>; description: string }[] = [
   { type: "banner", label: "Banner / Hero", icon: Layout, description: "Full-width hero with headline and CTA" },
@@ -771,8 +797,61 @@ export function renderBlockPreview(block: Block) {
     case "numbered_steps": return <NumberedStepsPreview data={safeData} />;
     case "checklist_steps": return <ChecklistStepsPreview data={safeData} />;
     case "feature_grid": return <FeatureGridPreview data={safeData} />;
+    case "faq": return <FAQPreview data={safeData} />;
+    case "embed_html": return <EmbedHtmlPreviewBlock data={safeData} />;
+    case "columns": return <ColumnsPreview data={safeData} />;
     default: return null;
   }
+}
+
+// FAQ Preview (public renderer)
+function FAQPreview({ data }: { data: Record<string, any> }) {
+  return (
+    <div style={{ backgroundColor: data.backgroundColor || "#fff", padding: "60px 24px" }}>
+      {data.headline && <h2 style={{ color: data.textColor || "#1e293b", fontSize: "1.875rem", fontWeight: 700, textAlign: "center", marginBottom: "40px" }}>{data.headline}</h2>}
+      <div style={{ maxWidth: "760px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "16px" }}>
+        {(data.items || []).map((item: any) => (
+          <details key={item.id} style={{ border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px 20px" }}>
+            <summary style={{ color: data.textColor || "#1e293b", fontWeight: 600, fontSize: "1rem", cursor: "pointer" }}>{item.question}</summary>
+            <p style={{ color: data.textColor || "#1e293b", opacity: 0.75, lineHeight: "1.6", fontSize: "0.9375rem", marginTop: "12px" }}>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Embed HTML Preview (public renderer)
+function EmbedHtmlPreviewBlock({ data }: { data: Record<string, any> }) {
+  const code = data.embedCode || "";
+  const maxW = data.maxWidth || "800";
+  if (!code.trim()) return null;
+  return (
+    <div style={{ backgroundColor: data.backgroundColor || "#fff", padding: "40px 24px" }}>
+      <div style={{ maxWidth: `${maxW}px`, margin: "0 auto" }} dangerouslySetInnerHTML={{ __html: code }} />
+    </div>
+  );
+}
+
+// Columns Preview (public renderer)
+function ColumnsPreview({ data }: { data: Record<string, any> }) {
+  const layout = data.layout || "50-50";
+  const gap = data.gap || 24;
+  const gridCols = layout === "33-67" ? "1fr 2fr" : layout === "67-33" ? "2fr 1fr" : layout === "25-75" ? "1fr 3fr" : layout === "75-25" ? "3fr 1fr" : "1fr 1fr";
+  return (
+    <div style={{ backgroundColor: data.backgroundColor || "#fff", padding: `${data.paddingY || 40}px 24px` }}>
+      <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: `${gap}px`, maxWidth: "1100px", margin: "0 auto" }}>
+        {data.leftContent && <div dangerouslySetInnerHTML={{ __html: data.leftContent }} />}
+        {data.rightContent && <div dangerouslySetInnerHTML={{ __html: data.rightContent }} />}
+        {!data.leftContent && !data.rightContent && (
+          <>
+            <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8", border: "1px dashed #e2e8f0", borderRadius: "8px" }}>Left column</div>
+            <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8", border: "1px dashed #e2e8f0", borderRadius: "8px" }}>Right column</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Block Settings Field Components (hoisted outside BlockSettings to prevent remount) ─

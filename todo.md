@@ -3267,3 +3267,13 @@
 - [x] Render text elements on canvas using dangerouslySetInnerHTML for HTML content
 - [x] Add CSS styles for rich text editor (toolbar, buttons, content area, compact variant)
 - [x] Verify TypeScript compiles cleanly and Vite build succeeds
+
+## Landing Page Builder UX Improvements
+- [x] Redesign FAQ editor: replace raw JSON textarea with visual Q&A pair inputs (add/remove individual items)
+- [x] Each FAQ item has separate Question and Answer text fields with add/delete buttons
+- [x] Review all other block editors for raw code/JSON inputs and replace with user-friendly controls
+- [x] Add new block type: Embed HTML (textarea for pasting embed codes like YouTube, Vimeo, etc.)
+- [x] Add new block type: Divided Columns (2-column layout for side-by-side content)
+- [x] Divided Columns: allow adding sub-blocks into left and right columns
+- [x] Add live preview pane to page builder for real-time editing feedback
+- [x] Verify build compiles and save checkpoint

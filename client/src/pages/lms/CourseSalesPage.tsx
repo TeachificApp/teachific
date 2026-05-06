@@ -371,6 +371,28 @@ function RenderBlock({ block, primaryColor, curriculum, pricing, legalDocs, onEn
     case "spacer":
       return <div style={{ height: d.height || 40 }} />;
 
+    case "faq":
+      return (
+        <div style={{ backgroundColor: d.backgroundColor || "#fff", padding: "60px 24px" }}>
+          {d.headline && <h2 className="text-2xl font-bold text-center mb-8" style={{ color: d.textColor || "#1e293b" }}>{d.headline}</h2>}
+          <div className="max-w-3xl mx-auto space-y-4">
+            {(d.items || []).map((item: any) => (
+              <details key={item.id} className="border rounded-lg p-4">
+                <summary className="font-semibold cursor-pointer" style={{ color: d.textColor || "#1e293b" }}>{item.question}</summary>
+                <p className="mt-3 text-sm opacity-75" style={{ color: d.textColor || "#1e293b" }}>{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "embed_html":
+      return d.embedCode ? (
+        <div style={{ backgroundColor: d.backgroundColor || "#fff", padding: "40px 24px" }}>
+          <div style={{ maxWidth: `${d.maxWidth || 800}px`, margin: "0 auto" }} dangerouslySetInnerHTML={{ __html: d.embedCode }} />
+        </div>
+      ) : null;
+
     default:
       return null;
   }

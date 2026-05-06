@@ -76,6 +76,10 @@ import {
   Settings,
   Layers,
   Move,
+  HelpCircle,
+  Columns2,
+  Monitor,
+  Maximize2,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 
@@ -100,7 +104,10 @@ export type BlockType =
   | "checklist_steps"
   | "feature_grid"
   | "text_block"
-  | "footer";
+  | "footer"
+  | "faq"
+  | "embed_html"
+  | "columns";
 
 export interface Block {
   id: string;
@@ -315,6 +322,29 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     textColor: "#94a3b8",
     links: [],
   },
+  faq: {
+    headline: "Frequently Asked Questions",
+    items: [
+      { id: nanoid(4), question: "What format are the files?", answer: "PDF format, ready to print." },
+      { id: nanoid(4), question: "How do I access the content?", answer: "You'll receive instant access after purchase." },
+    ],
+    backgroundColor: "#ffffff",
+    textColor: "#1e293b",
+  },
+  embed_html: {
+    headline: "",
+    embedCode: "",
+    maxWidth: "800",
+    backgroundColor: "#ffffff",
+  },
+  columns: {
+    layout: "50-50",
+    gap: 24,
+    leftBlocks: [],
+    rightBlocks: [],
+    backgroundColor: "#ffffff",
+    paddingY: 40,
+  },
 };
 
 // ─── Element Library (left sidebar tiles) ────────────────────────────────────
@@ -337,9 +367,11 @@ const ELEMENT_LIBRARY = [
   { type: "html" as BlockType, label: "HTML / Code", icon: Code, category: "Elements" },
   { type: "divider" as BlockType, label: "Divider", icon: Minus, category: "Elements" },
   { type: "spacer" as BlockType, label: "Spacer", icon: Type, category: "Elements" },
+  { type: "faq" as BlockType, label: "FAQ", icon: HelpCircle, category: "Content" },
+  { type: "embed_html" as BlockType, label: "Embed (HTML)", icon: Code, category: "Media" },
+  { type: "columns" as BlockType, label: "Columns (Side by Side)", icon: Columns2, category: "Sections" },
 ];
-
-const CATEGORIES = ["Sections", "Course", "Media", "Content", "Elements"];
+const CATEGORIES = ["Sections", "Course", "Media", "Content", "Elements"];;
 
 // ─── Canvas Block Renderers (full-fidelity, click-to-edit) ────────────────────
 
@@ -742,6 +774,67 @@ function ChecklistStepsCanvas({ data, onChange }: { data: Record<string, any>; o
   );
 }
 
+// FAQ Canvas Block
+function FAQCanvas({ data, onChange }: { data: Record<string, any>; onChange: (d: Record<string, any>) => void }) {
+  return (
+    <div style={{ backgroundColor: data.backgroundColor || "#fff", padding: "60px 40px" }}>
+      <InlineText tag="h2" value={data.headline} onChange={v => onChange({ ...data, headline: v })} style={{ color: data.textColor || "#1e293b", fontSize: "1.875rem", fontWeight: 700, textAlign: "center", marginBottom: "40px" }} placeholder="FAQ headline…" />
+      <div style={{ maxWidth: "760px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "16px" }}>
+        {(data.items || []).map((item: any, i: number) => (
+          <div key={item.id} style={{ border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px 20px" }}>
+            <InlineText tag="h3" value={item.question} onChange={v => { const items = [...data.items]; items[i] = { ...item, question: v }; onChange({ ...data, items }); }} style={{ color: data.textColor || "#1e293b", fontWeight: 600, fontSize: "1rem", marginBottom: "8px" }} placeholder="Question…" />
+            <InlineText tag="p" value={item.answer} onChange={v => { const items = [...data.items]; items[i] = { ...item, answer: v }; onChange({ ...data, items }); }} style={{ color: data.textColor || "#1e293b", opacity: 0.75, lineHeight: "1.6", fontSize: "0.9375rem" }} placeholder="Answer…" multiline />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Embed HTML Canvas Block
+function EmbedHtmlCanvas({ data }: { data: Record<string, any> }) {
+  const code = data.embedCode || "";
+  const maxW = data.maxWidth || "800";
+  const srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:0;display:flex;align-items:center;justify-content:center;min-height:60px;background:${data.backgroundColor || "#fff"};}</style></head><body>${code}</body></html>`;
+  return (
+    <div style={{ backgroundColor: data.backgroundColor || "#fff", padding: "40px 20px" }}>
+      <div style={{ maxWidth: `${maxW}px`, margin: "0 auto" }}>
+        {code.trim() ? (
+          <iframe srcDoc={srcdoc} sandbox="allow-scripts allow-same-origin" style={{ width: "100%", border: "none", minHeight: "80px", borderRadius: "8px" }} onLoad={e => { try { const h = e.currentTarget.contentWindow?.document?.body?.scrollHeight; if (h) e.currentTarget.style.height = h + "px"; } catch {} }} title="Embed Preview" />
+        ) : (
+          <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8", fontSize: "0.875rem", border: "2px dashed #e2e8f0", borderRadius: "8px" }}>
+            <Code size={32} style={{ margin: "0 auto 8px", display: "block" }} />
+            Embed block — paste your embed code in the properties panel
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Columns (Divided) Canvas Block
+function ColumnsCanvas({ data, onChange }: { data: Record<string, any>; onChange: (d: Record<string, any>) => void }) {
+  const layout = data.layout || "50-50";
+  const gap = data.gap || 24;
+  const gridCols = layout === "33-67" ? "1fr 2fr" : layout === "67-33" ? "2fr 1fr" : layout === "25-75" ? "1fr 3fr" : layout === "75-25" ? "3fr 1fr" : "1fr 1fr";
+  return (
+    <div style={{ backgroundColor: data.backgroundColor || "#fff", padding: `${data.paddingY || 40}px 40px` }}>
+      <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: `${gap}px`, maxWidth: "1100px", margin: "0 auto", minHeight: "120px" }}>
+        <div style={{ border: "2px dashed #e2e8f0", borderRadius: "8px", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "0.875rem" }}>
+          <Columns2 size={24} style={{ marginBottom: "8px", opacity: 0.5 }} />
+          Left Column
+          {(data.leftContent) && <div style={{ marginTop: "8px", color: "#1e293b", fontSize: "0.8125rem", textAlign: "center" }} dangerouslySetInnerHTML={{ __html: data.leftContent }} />}
+        </div>
+        <div style={{ border: "2px dashed #e2e8f0", borderRadius: "8px", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#94a3b8", fontSize: "0.875rem" }}>
+          <Columns2 size={24} style={{ marginBottom: "8px", opacity: 0.5 }} />
+          Right Column
+          {(data.rightContent) && <div style={{ marginTop: "8px", color: "#1e293b", fontSize: "0.8125rem", textAlign: "center" }} dangerouslySetInnerHTML={{ __html: data.rightContent }} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Master canvas block renderer
 function renderCanvasBlock(block: Block, onChange: (d: Record<string, any>) => void) {
   const p = { data: block.data ?? {}, onChange };
@@ -764,11 +857,13 @@ function renderCanvasBlock(block: Block, onChange: (d: Record<string, any>) => v
     case "pricing": return <PricingCanvas data={block.data} />;
     case "spacer": return <SpacerCanvas data={block.data} />;
     case "divider": return <DividerCanvas data={block.data} />;
+    case "faq": return <FAQCanvas {...p} />;
+    case "embed_html": return <EmbedHtmlCanvas data={block.data} />;
+    case "columns": return <ColumnsCanvas {...p} />;
     default: return <div style={{ padding: "20px", color: "#94a3b8" }}>Unknown block type</div>;
   }
 }
-
-// ─── Properties Panel ─────────────────────────────────────────────────────────
+// ─── Properties Panell ─────────────────────────────────────────────────────────
 
 function ColorProp({ label, field, data, onChange }: { label: string; field: string; data: Record<string, any>; onChange: (d: Record<string, any>) => void }) {
   return (
@@ -1162,6 +1257,56 @@ function PropertiesPanel({ block, onChange, onDelete, onDuplicate, onToggleVisib
             <ColorProp label="Background Color" field="backgroundColor" data={d} onChange={onChange} />
             <ColorProp label="Text Color" field="textColor" data={d} onChange={onChange} />
           </>}
+          {block.type === "faq" && <>
+            <TextProp label="Headline" field="headline" data={d} onChange={onChange} />
+            <Separator />
+            <Label className="text-xs font-semibold">Questions & Answers</Label>
+            {(d.items || []).map((item: any, i: number) => (
+              <div key={item.id} className="border border-border rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Q&A {i + 1}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => set("items", d.items.filter((_: any, j: number) => j !== i))}><Trash2 size={11} /></Button>
+                </div>
+                <Input value={item.question} onChange={e => { const items = [...d.items]; items[i] = { ...item, question: e.target.value }; set("items", items); }} className="h-8 text-xs font-semibold" placeholder="Question" />
+                <Textarea value={item.answer} onChange={e => { const items = [...d.items]; items[i] = { ...item, answer: e.target.value }; set("items", items); }} className="text-xs min-h-[56px]" placeholder="Answer" />
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => set("items", [...(d.items || []), { id: nanoid(4), question: "New question?", answer: "Answer here." }])}>
+              <Plus size={12} className="mr-1" /> Add Q&A
+            </Button>
+            <Separator />
+            <ColorProp label="Background Color" field="backgroundColor" data={d} onChange={onChange} />
+            <ColorProp label="Text Color" field="textColor" data={d} onChange={onChange} />
+          </>}
+          {block.type === "embed_html" && <>
+            <TextProp label="Headline (optional)" field="headline" data={d} onChange={onChange} />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Embed Code</Label>
+              <Textarea value={d.embedCode || ""} onChange={e => onChange({ ...d, embedCode: e.target.value })} className="text-xs font-mono min-h-[120px]" placeholder='Paste embed code here (e.g. YouTube iframe, Vimeo, etc.)' />
+              <p className="text-[10px] text-muted-foreground">Paste any HTML embed code — YouTube, Vimeo, Spotify, Google Maps, etc.</p>
+            </div>
+            <TextProp label="Max Width (px)" field="maxWidth" data={d} onChange={onChange} placeholder="800" />
+            <ColorProp label="Background Color" field="backgroundColor" data={d} onChange={onChange} />
+          </>}
+          {block.type === "columns" && <>
+            <SelectProp label="Column Layout" field="layout" data={d} onChange={onChange} options={[
+              { value: "50-50", label: "50% / 50% (Equal)" },
+              { value: "33-67", label: "33% / 67%" },
+              { value: "67-33", label: "67% / 33%" },
+              { value: "25-75", label: "25% / 75%" },
+              { value: "75-25", label: "75% / 25%" },
+            ]} />
+            <NumberProp label="Gap (px)" field="gap" data={d} onChange={onChange} min={0} max={80} />
+            <NumberProp label="Vertical Padding (px)" field="paddingY" data={d} onChange={onChange} min={0} max={200} />
+            <Separator />
+            <Label className="text-xs font-semibold">Left Column Content</Label>
+            <Textarea value={d.leftContent || ""} onChange={e => onChange({ ...d, leftContent: e.target.value })} className="text-xs min-h-[80px]" placeholder="Enter text or HTML for left column" />
+            <Separator />
+            <Label className="text-xs font-semibold">Right Column Content</Label>
+            <Textarea value={d.rightContent || ""} onChange={e => onChange({ ...d, rightContent: e.target.value })} className="text-xs min-h-[80px]" placeholder="Enter text or HTML for right column" />
+            <Separator />
+            <ColorProp label="Background Color" field="backgroundColor" data={d} onChange={onChange} />
+          </>}
         </div>
       </ScrollArea>
     </div>
@@ -1297,6 +1442,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [propsPanelCollapsed, setPropsPanelCollapsed] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Sections");
 
   // Undo/Redo
@@ -1487,9 +1633,17 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
         )}
       </div>
 
-      {/* ── Canvas Toolbar (Save button when onSave is provided) ─────────── */}
-      {onSave && (
-        <div style={{ position: "absolute", top: 8, right: 284, zIndex: 20 }}>
+      {/* ── Canvas Toolbar (Save + Preview buttons) ───────────────────── */}
+      <div style={{ position: "absolute", top: 8, right: propsPanelCollapsed ? 54 : 284, zIndex: 20, display: "flex", gap: 8 }}>
+        <button
+          onClick={() => setShowPreview(v => !v)}
+          style={{ background: showPreview ? "#6366f1" : "#64748b", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+          title="Toggle Live Preview"
+        >
+          <Monitor size={14} />
+          {showPreview ? "Editor" : "Preview"}
+        </button>
+        {onSave && (
           <button
             onClick={() => onSave(blocks)}
             disabled={isSaving}
@@ -1497,9 +1651,25 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
           >
             {isSaving ? "Saving…" : "Save"}
           </button>
+        )}
+      </div>
+      {/* ── Center: Canvas or Preview ──────────────────────────────────────────────── */}
+      {showPreview ? (
+        <div className="flex-1 overflow-auto bg-white">
+          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+            {blocks.filter(b => b.visible !== false).map(block => (
+              <div key={block.id}>{renderCanvasBlock(block, () => {})}</div>
+            ))}
+            {blocks.filter(b => b.visible !== false).length === 0 && (
+              <div className="flex flex-col items-center justify-center h-96 text-muted-foreground">
+                <Monitor size={48} className="mb-4 opacity-30" />
+                <p className="text-lg font-medium">No blocks to preview</p>
+                <p className="text-sm mt-1">Add some sections to see the live preview</p>
+              </div>
+            )}
+          </div>
         </div>
-      )}
-      {/* ── Center: Canvas ─────────────────────────────────────────────────────── */}
+      ) : (
       <div
         id="wysiwyg-canvas"
         className="flex-1 overflow-auto"
@@ -1531,10 +1701,10 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
                 {(activeId as string).startsWith("tile-") ? "Drop to add section…" : "Moving section…"}
               </div>
             )}
-          </DragOverlay>
+             </DragOverlay>
       </div>
-
-      {/* ── Right Panel: Properties ─────────────────────────────────────────── */}
+      )}
+      {/* ── Right Panel: Properties ───────────────────────────────────────── */}
       <div className={`flex flex-col bg-white border-l border-border transition-all duration-200 shrink-0 ${propsPanelCollapsed ? "w-10" : "w-80"}`}>
         {/* Panel header */}
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
