@@ -3337,3 +3337,15 @@
 - [x] Preview as Student button on CourseBuilderPage (opens course player in new tab with ?preview=1)
 - [x] Preview as Student button on QuizBuilderPage (opens quiz player in new tab)
 - [x] Preview as Student button on DigitalProductEditorPage (opens product sales page in new tab)
+
+## Quiz Maker iSpring-equivalent Enhancements
+- [x] Add new question types: ordering, drag_drop, drag_words, dropdown, numeric, likert, essay
+- [x] Implement iSpring .quiz file importer (ZIP/document.json parsing, media extraction)
+- [x] Add iSpring import option to File menu in EditorToolbar
+- [x] Create AdvancedEditors.tsx with editors for all new question types
+- [x] Add per-question media attachments (image, audio, video, background)
+- [x] Enhanced QuizSettings with branding, navigation, intro/result slides
+- [x] Update QuizPreview with renderers for all new question types
+- [x] Update PublicQuizPlayerPage with renderers for all new question types
+- [x] Extended scoring for ordering, numeric, dropdown, drag_words, fill_blank
+- [x] Audio/video rendering in PublicQuizPlayerPage per question

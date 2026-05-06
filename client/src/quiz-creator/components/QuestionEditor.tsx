@@ -3,8 +3,10 @@ import { McqEditor } from "./editors/McqEditor";
 import { TfEditor, FillBlankEditor, ShortAnswerEditor, ImageChoiceEditor } from "./editors/SimpleEditors";
 import { HotspotEditor } from "./editors/HotspotEditor";
 import { MatchingEditor } from "./editors/MatchingEditor";
+import { OrderingEditor, DragWordsEditor, DropdownEditor, NumericEditor, LikertEditor, EssayEditor, DragDropEditor } from "./editors/AdvancedEditors";
 import type { QuizQuestion, QuestionData } from "../types/quiz";
-import { Upload, Trash2 } from "lucide-react";
+import { Upload, Trash2, Music, Video, Image, Palette } from "lucide-react";
+import { useState } from "react";
 
 const TYPE_LABELS: Record<string, string> = {
   mcq: "Multiple Choice",
@@ -14,6 +16,13 @@ const TYPE_LABELS: Record<string, string> = {
   fill_blank: "Fill in the Blank",
   short_answer: "Short Answer",
   image_choice: "Image Choice",
+  ordering: "Sequence / Ordering",
+  drag_drop: "Drag & Drop",
+  drag_words: "Drag the Words",
+  dropdown: "Select from Lists",
+  numeric: "Numeric",
+  likert: "Likert Scale",
+  essay: "Essay",
 };
 
 export function QuestionEditor() {
@@ -34,18 +43,36 @@ export function QuestionEditor() {
   const update = (updates: Partial<QuizQuestion>) => updateQuestion(question.id, updates);
   const updateData = (data: QuestionData) => update({ data });
 
-  const uploadStemImage = () => {
+  const [showMediaPanel, setShowMediaPanel] = useState(false);
+
+  const uploadFile = (accept: string, callback: (url: string, name: string) => void) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/*";
+    input.accept = accept;
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => update({ image: { url: reader.result as string, alt: file.name } });
+      reader.onload = () => callback(reader.result as string, file.name);
       reader.readAsDataURL(file);
     };
     input.click();
+  };
+
+  const uploadStemImage = () => {
+    uploadFile("image/*", (url, name) => update({ image: { url, alt: name } }));
+  };
+
+  const uploadAudio = () => {
+    uploadFile("audio/*", (url) => update({ audio: { url, label: "Audio" } }));
+  };
+
+  const uploadVideo = () => {
+    uploadFile("video/*", (url) => update({ video: { url, type: "file" } }));
+  };
+
+  const uploadBackground = () => {
+    uploadFile("image/*", (url) => update({ backgroundImageUrl: url }));
   };
 
   return (
@@ -78,26 +105,98 @@ export function QuestionEditor() {
         </button>
       </div>
 
-      {/* Stem image */}
-      {question.image ? (
-        <div className="relative rounded-xl overflow-hidden border border-gray-200">
-          <img src={question.image.url} alt={question.image.alt} className="w-full max-h-48 object-cover" />
-          <button
-            onClick={() => update({ image: null })}
-            className="absolute top-2 right-2 bg-white/80 hover:bg-white text-gray-600 hover:text-red-500 rounded-full p-1.5 shadow transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+      {/* Media attachments */}
+      <div className="space-y-3">
+        {/* Image */}
+        {question.image ? (
+          <div className="relative rounded-xl overflow-hidden border border-gray-200">
+            <img src={question.image.url} alt={question.image.alt} className="w-full max-h-48 object-cover" />
+            <button
+              onClick={() => update({ image: null })}
+              className="absolute top-2 right-2 bg-white/80 hover:bg-white text-gray-600 hover:text-red-500 rounded-full p-1.5 shadow transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Audio */}
+        {question.audio ? (
+          <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
+            <Music className="w-4 h-4 text-purple-500 shrink-0" />
+            <audio src={question.audio.url} controls className="flex-1 h-8" />
+            <button
+              onClick={() => update({ audio: null })}
+              className="text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Video */}
+        {question.video ? (
+          <div className="relative rounded-xl overflow-hidden border border-gray-200">
+            <video src={question.video.url} controls className="w-full max-h-48" />
+            <button
+              onClick={() => update({ video: null })}
+              className="absolute top-2 right-2 bg-white/80 hover:bg-white text-gray-600 hover:text-red-500 rounded-full p-1.5 shadow transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Background indicator */}
+        {question.backgroundImageUrl && (
+          <div className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg border border-amber-100">
+            <Palette className="w-3.5 h-3.5 text-amber-600" />
+            <span className="text-xs text-amber-700">Custom background set</span>
+            <button
+              onClick={() => update({ backgroundImageUrl: undefined, backgroundColor: undefined })}
+              className="ml-auto text-gray-400 hover:text-red-500"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Add media buttons */}
+        <div className="flex flex-wrap gap-2">
+          {!question.image && (
+            <button
+              onClick={uploadStemImage}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-teal-600 border border-gray-200 hover:border-teal-300 rounded-lg transition-colors"
+            >
+              <Image className="w-3.5 h-3.5" /> Image
+            </button>
+          )}
+          {!question.audio && (
+            <button
+              onClick={uploadAudio}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-purple-600 border border-gray-200 hover:border-purple-300 rounded-lg transition-colors"
+            >
+              <Music className="w-3.5 h-3.5" /> Audio
+            </button>
+          )}
+          {!question.video && (
+            <button
+              onClick={uploadVideo}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors"
+            >
+              <Video className="w-3.5 h-3.5" /> Video
+            </button>
+          )}
+          {!question.backgroundImageUrl && (
+            <button
+              onClick={uploadBackground}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 hover:text-amber-600 border border-gray-200 hover:border-amber-300 rounded-lg transition-colors"
+            >
+              <Palette className="w-3.5 h-3.5" /> Background
+            </button>
+          )}
         </div>
-      ) : (
-        <button
-          onClick={uploadStemImage}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-teal-600 transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          Add image to question
-        </button>
-      )}
+      </div>
 
       {/* Divider */}
       <div className="border-t border-gray-100" />
@@ -125,6 +224,27 @@ export function QuestionEditor() {
         )}
         {question.type === "image_choice" && (
           <ImageChoiceEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "ordering" && (
+          <OrderingEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "drag_drop" && (
+          <DragDropEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "drag_words" && (
+          <DragWordsEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "dropdown" && (
+          <DropdownEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "numeric" && (
+          <NumericEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "likert" && (
+          <LikertEditor data={question.data as any} onChange={updateData} />
+        )}
+        {question.type === "essay" && (
+          <EssayEditor data={question.data as any} onChange={updateData} />
         )}
       </div>
 

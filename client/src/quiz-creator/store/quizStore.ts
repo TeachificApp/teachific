@@ -7,15 +7,18 @@ import type {
   QuestionType,
   LicenseState,
   LicenseTier,
+  QuestionData,
 } from "../types/quiz";
 
-function defaultData(type: QuestionType) {
+function defaultData(type: QuestionType): QuestionData {
   switch (type) {
     case "mcq":
       return {
         choices: [
           { id: uuidv4(), text: "Option A", correct: true },
           { id: uuidv4(), text: "Option B", correct: false },
+          { id: uuidv4(), text: "Option C", correct: false },
+          { id: uuidv4(), text: "Option D", correct: false },
         ],
         multiSelect: false,
       };
@@ -26,17 +29,21 @@ function defaultData(type: QuestionType) {
         pairs: [
           { id: uuidv4(), premise: "Term 1", response: "Definition 1" },
           { id: uuidv4(), premise: "Term 2", response: "Definition 2" },
+          { id: uuidv4(), premise: "Term 3", response: "Definition 3" },
         ],
       };
     case "hotspot":
       return { imageUrl: "", imageAlt: "", regions: [], multiSelect: false };
     case "fill_blank":
       return {
-        template: "The {{blank1}} is important.",
-        blanks: [{ id: "blank1", acceptedAnswers: ["answer"], caseSensitive: false }],
+        template: "The {{blank1}} is important for {{blank2}}.",
+        blanks: [
+          { id: "blank1", acceptedAnswers: ["answer"], caseSensitive: false },
+          { id: "blank2", acceptedAnswers: ["learning"], caseSensitive: false },
+        ],
       };
     case "short_answer":
-      return { sampleAnswer: "", keywords: [], autoGrade: false };
+      return { sampleAnswer: "", keywords: [], autoGrade: false, acceptedVariants: [] };
     case "image_choice":
       return {
         choices: [
@@ -44,6 +51,63 @@ function defaultData(type: QuestionType) {
           { id: uuidv4(), imageUrl: "", label: "Option B", correct: false },
         ],
         multiSelect: false,
+      };
+    case "ordering":
+      return {
+        items: [
+          { id: uuidv4(), text: "First item" },
+          { id: uuidv4(), text: "Second item" },
+          { id: uuidv4(), text: "Third item" },
+          { id: uuidv4(), text: "Fourth item" },
+        ],
+      };
+    case "drag_drop":
+      return {
+        backgroundImageUrl: "",
+        targets: [
+          { id: uuidv4(), label: "Target 1", x: 10, y: 10, width: 20, height: 15 },
+          { id: uuidv4(), label: "Target 2", x: 60, y: 10, width: 20, height: 15 },
+        ],
+        items: [],
+      };
+    case "drag_words":
+      return {
+        template: "The {{blank1}} jumped over the {{blank2}}.",
+        blanks: [
+          { id: "blank1", correctWord: "fox" },
+          { id: "blank2", correctWord: "fence" },
+        ],
+        distractorWords: ["cat", "wall"],
+      };
+    case "dropdown":
+      return {
+        template: "The capital of France is {{blank1}} and it is in {{blank2}}.",
+        blanks: [
+          { id: "blank1", options: ["Paris", "London", "Berlin", "Madrid"], correctIndex: 0 },
+          { id: "blank2", options: ["Europe", "Asia", "Africa", "America"], correctIndex: 0 },
+        ],
+      };
+    case "numeric":
+      return {
+        correctValue: 0,
+        tolerance: 0,
+        allowRange: false,
+      };
+    case "likert":
+      return {
+        statements: [
+          { id: uuidv4(), text: "I found this topic interesting" },
+          { id: uuidv4(), text: "I feel confident about this subject" },
+        ],
+        scaleLabels: ["Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"],
+        scaleSize: 5,
+      };
+    case "essay":
+      return {
+        minWords: undefined,
+        maxWords: undefined,
+        placeholder: "Write your answer here...",
+        rubric: "",
       };
   }
 }
@@ -53,12 +117,12 @@ function newQuestion(type: QuestionType, order: number): QuizQuestion {
     id: uuidv4(),
     type,
     order,
-    points: 1,
+    points: type === "likert" || type === "essay" ? 0 : 1,
     required: true,
     stem: "",
     image: null,
     explanation: "",
-    data: defaultData(type) as QuizQuestion["data"],
+    data: defaultData(type),
   };
 }
 
@@ -83,6 +147,8 @@ function defaultMeta(): QuizMeta {
     showFeedback: "immediate",
     allowRetry: true,
     maxAttempts: 3,
+    allowBackNavigation: true,
+    showProgressBar: true,
   };
 }
 

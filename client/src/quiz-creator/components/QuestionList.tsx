@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { QuizQuestion, QuestionType } from "../types/quiz";
-import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image } from "lucide-react";
+import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, Hash, BarChart3, FileText } from "lucide-react";
 
 const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   mcq: <CheckSquare className="w-3.5 h-3.5" />,
@@ -28,6 +28,13 @@ const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   fill_blank: <AlignLeft className="w-3.5 h-3.5" />,
   short_answer: <MessageSquare className="w-3.5 h-3.5" />,
   image_choice: <Image className="w-3.5 h-3.5" />,
+  ordering: <ArrowDownUp className="w-3.5 h-3.5" />,
+  drag_drop: <Move className="w-3.5 h-3.5" />,
+  drag_words: <Type className="w-3.5 h-3.5" />,
+  dropdown: <ChevronDown className="w-3.5 h-3.5" />,
+  numeric: <Hash className="w-3.5 h-3.5" />,
+  likert: <BarChart3 className="w-3.5 h-3.5" />,
+  essay: <FileText className="w-3.5 h-3.5" />,
 };
 
 const TYPE_LABELS: Record<QuestionType, string> = {
@@ -35,12 +42,22 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   tf: "True / False",
   matching: "Matching",
   hotspot: "Hotspot",
-  fill_blank: "Fill in Blank",
+  fill_blank: "Fill in the Blank",
   short_answer: "Short Answer",
   image_choice: "Image Choice",
+  ordering: "Sequence / Ordering",
+  drag_drop: "Drag & Drop",
+  drag_words: "Drag the Words",
+  dropdown: "Select from Lists",
+  numeric: "Numeric",
+  likert: "Likert Scale",
+  essay: "Essay",
 };
 
-const QUESTION_TYPES: QuestionType[] = ["mcq", "tf", "matching", "hotspot", "fill_blank", "short_answer", "image_choice"];
+const QUESTION_TYPES: QuestionType[] = [
+  "mcq", "tf", "matching", "ordering", "fill_blank", "drag_words", "dropdown",
+  "hotspot", "drag_drop", "image_choice", "short_answer", "numeric", "likert", "essay",
+];
 
 function SortableQuestionItem({ question, isActive, onClick }: { question: QuizQuestion; isActive: boolean; onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id });

@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData } from "@/quiz-creator/types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData } from "@/quiz-creator/types/quiz";
 
 type Answer = string | boolean | string[] | Record<string, string>;
 
@@ -223,6 +223,191 @@ function ImageChoiceQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQu
   );
 }
 
+// ─── New Question Type Renderers ────────────────────────────────────────────
+
+function OrderingQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
+  const data = q.data as OrderingData;
+  const items = (answer as string[]) ?? data.items.map((i) => i.id).sort(() => 0.5 - Math.random());
+  if (!answer) setTimeout(() => setAnswer(items), 0);
+  const moveUp = (idx: number) => {
+    if (idx === 0) return;
+    const next = [...items];
+    [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    setAnswer(next);
+  };
+  const moveDown = (idx: number) => {
+    if (idx === items.length - 1) return;
+    const next = [...items];
+    [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    setAnswer(next);
+  };
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-gray-400 mb-2">Use arrows to put items in the correct order:</p>
+      {items.map((id, idx) => {
+        const item = data.items.find((i) => i.id === id);
+        return (
+          <div key={id} className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white">
+            <span className="text-xs font-bold w-5" style={{ color: primaryColor }}>{idx + 1}.</span>
+            <span className="flex-1 text-sm text-gray-700">{item?.text || ""}</span>
+            <button onClick={() => moveUp(idx)} disabled={idx === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
+            <button onClick={() => moveDown(idx)} disabled={idx === items.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NumericQuestion({ answer, setAnswer, primaryColor, data }: { answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string; data: NumericData }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          value={(answer as string) ?? ""}
+          onChange={(e) => setAnswer(e.target.value)}
+          placeholder="Enter a number..."
+          className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2"
+          style={{ "--tw-ring-color": `${primaryColor}50` } as any}
+        />
+        {data.unit && <span className="text-sm text-gray-500">{data.unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+function DropdownQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
+  const data = q.data as DropdownData;
+  const selections = (answer as Record<string, string>) ?? {};
+  const parts = data.template.split(/\{\{(\w+)\}\}/);
+  return (
+    <div className="text-sm text-gray-700 leading-relaxed flex flex-wrap items-center gap-1">
+      {parts.map((part, i) => {
+        const blank = data.blanks.find((b) => b.id === part);
+        if (blank) {
+          return (
+            <select
+              key={i}
+              value={selections[blank.id] ?? ""}
+              onChange={(e) => setAnswer({ ...selections, [blank.id]: e.target.value })}
+              className="px-2 py-1 border border-gray-300 rounded text-sm bg-white focus:ring-2"
+              style={{ "--tw-ring-color": `${primaryColor}50` } as any}
+            >
+              <option value="">Select...</option>
+              {blank.options.map((opt, oi) => (
+                <option key={oi} value={String(oi)}>{opt}</option>
+              ))}
+            </select>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </div>
+  );
+}
+
+function DragWordsQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
+  const data = q.data as DragWordsData;
+  const selections = (answer as Record<string, string>) ?? {};
+  const allWords = useMemo(() => [...data.blanks.map((b) => b.correctWord), ...(data.distractorWords || [])].sort(() => 0.5 - Math.random()), []);
+  const usedWords = Object.values(selections);
+  const availableWords = allWords.filter((w) => !usedWords.includes(w));
+  const parts = data.template.split(/\{\{(\w+)\}\}/);
+  return (
+    <div className="space-y-4">
+      <div className="text-sm text-gray-700 leading-relaxed">
+        {parts.map((part, i) => {
+          const blank = data.blanks.find((b) => b.id === part);
+          if (blank) {
+            return selections[blank.id] ? (
+              <span key={i} className="inline-block px-2 py-0.5 mx-1 rounded cursor-pointer text-sm text-white" style={{ background: primaryColor }} onClick={() => { const next = { ...selections }; delete next[blank.id]; setAnswer(next); }}>
+                {selections[blank.id]} ×
+              </span>
+            ) : (
+              <span key={i} className="inline-block w-20 h-6 mx-1 border-b-2 border-dashed border-gray-300" />
+            );
+          }
+          return <span key={i}>{part}</span>;
+        })}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {availableWords.map((word, i) => (
+          <button
+            key={i}
+            onClick={() => {
+              const nextBlank = data.blanks.find((b) => !selections[b.id]);
+              if (nextBlank) setAnswer({ ...selections, [nextBlank.id]: word });
+            }}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            {word}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LikertQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
+  const data = q.data as LikertData;
+  const selections = (answer as Record<string, string>) ?? {};
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr>
+            <th className="text-left py-2 pr-4 text-xs text-gray-500">Statement</th>
+            {data.scaleLabels.map((label, i) => (
+              <th key={i} className="text-center px-2 py-2 text-xs text-gray-500 whitespace-nowrap">{label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.statements.map((stmt) => (
+            <tr key={stmt.id} className="border-t border-gray-100">
+              <td className="py-3 pr-4 text-gray-700">{stmt.text}</td>
+              {data.scaleLabels.map((_, i) => (
+                <td key={i} className="text-center px-2 py-3">
+                  <input
+                    type="radio"
+                    name={stmt.id}
+                    checked={selections[stmt.id] === String(i)}
+                    onChange={() => setAnswer({ ...selections, [stmt.id]: String(i) })}
+                    style={{ accentColor: primaryColor }}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EssayQuestion({ answer, setAnswer, primaryColor, data }: { answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string; data: EssayData }) {
+  const text = (answer as string) ?? "";
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  return (
+    <div className="space-y-2">
+      <textarea
+        value={text}
+        onChange={(e) => setAnswer(e.target.value)}
+        placeholder={data.placeholder || "Write your answer here..."}
+        rows={6}
+        className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 resize-none"
+        style={{ "--tw-ring-color": `${primaryColor}50` } as any}
+      />
+      <div className="flex items-center gap-3 text-xs text-gray-400">
+        <span>{wordCount} words</span>
+        {data.minWords && <span>Min: {data.minWords}</span>}
+        {data.maxWords && <span>Max: {data.maxWords}</span>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Scoring ─────────────────────────────────────────────────────────────────
 
 function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): number {
@@ -252,7 +437,30 @@ function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): 
         );
       });
       if (allCorrect) earned += q.points;
+    } else if (q.type === "ordering") {
+      const data = q.data as OrderingData;
+      const a = (ans as string[]) ?? [];
+      if (a.length === data.items.length && a.every((id, i) => id === data.items[i].id)) earned += q.points;
+    } else if (q.type === "numeric") {
+      const data = q.data as NumericData;
+      const a = Number(ans);
+      if (data.allowRange && data.rangeMin != null && data.rangeMax != null) {
+        if (a >= data.rangeMin && a <= data.rangeMax) earned += q.points;
+      } else {
+        if (Math.abs(a - data.correctValue) <= data.tolerance) earned += q.points;
+      }
+    } else if (q.type === "dropdown") {
+      const data = q.data as DropdownData;
+      const a = (ans as Record<string, string>) ?? {};
+      const allCorrect = data.blanks.every((b) => Number(a[b.id]) === b.correctIndex);
+      if (allCorrect) earned += q.points;
+    } else if (q.type === "drag_words") {
+      const data = q.data as DragWordsData;
+      const a = (ans as Record<string, string>) ?? {};
+      const allCorrect = data.blanks.every((b) => a[b.id] === b.correctWord);
+      if (allCorrect) earned += q.points;
     }
+    // likert and essay are not auto-graded
   });
   return earned;
 }
@@ -526,9 +734,16 @@ export default function PublicQuizPlayerPage() {
               <span className="text-xs text-gray-400">{q.points} point{q.points !== 1 ? "s" : ""}</span>
             </div>
             <p className="text-base font-medium text-gray-800">{q.stem || "(No question text)"}</p>
-            {q.image && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
+             {q.image && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
+            {q.audio && (
+              <div className="mt-3 flex items-center gap-2 p-2 bg-gray-50 rounded-xl">
+                <audio src={q.audio.url} controls className="flex-1 h-8" />
+              </div>
+            )}
+            {q.video && (
+              <video src={q.video.url} controls className="mt-3 w-full max-h-48 rounded-xl" />
+            )}
           </div>
-
           {q.type === "mcq" && <McqQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "tf" && <TfQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
@@ -536,6 +751,12 @@ export default function PublicQuizPlayerPage() {
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "ordering" && <OrderingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "numeric" && <NumericQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} data={q.data as NumericData} />}
+          {q.type === "dropdown" && <DropdownQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "drag_words" && <DragWordsQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "likert" && <LikertQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "essay" && <EssayQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} data={q.data as EssayData} />}
         </div>
 
         {/* Navigation */}

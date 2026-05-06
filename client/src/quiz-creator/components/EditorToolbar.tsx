@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { downloadQuiz, openQuizFile } from "../lib/quizFile";
+import { importISpringQuiz, isISpringQuizFile } from "../lib/ispringImporter";
 import {
   Save,
   FolderOpen,
@@ -14,6 +15,7 @@ import {
   Cloud,
   CloudUpload,
   Globe,
+  FileArchive,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,10 +79,58 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       try {
-        const loaded = await openQuizFile(file, license.licenseKey);
-        loadQuiz(loaded, file.name);
+        // Check if it's an iSpring ZIP file
+        const isISpring = await isISpringQuizFile(file);
+        if (isISpring) {
+          const result = await importISpringQuiz(file, async (mediaFile) => {
+            // Upload media via tRPC or direct S3 - for now use data URL
+            return new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.readAsDataURL(mediaFile);
+            });
+          });
+          loadQuiz(result.quiz, file.name);
+          if (result.warnings.length > 0) {
+            alert(`Imported ${result.questionCount} questions with ${result.mediaCount} media files.\n\nWarnings:\n${result.warnings.join("\n")}`);
+          }
+        } else {
+          const loaded = await openQuizFile(file, license.licenseKey);
+          loadQuiz(loaded, file.name);
+        }
       } catch (err) {
         alert("Could not open file: " + (err as Error).message);
+      }
+    };
+    input.click();
+    setFileMenuOpen(false);
+  };
+
+  const handleImportISpring = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".quiz,.zip";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const result = await importISpringQuiz(file, async (mediaFile) => {
+          // Upload media - for now use data URL as fallback
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(mediaFile);
+          });
+        });
+        loadQuiz(result.quiz, file.name);
+        const msg = `Successfully imported!\n\n• ${result.questionCount} questions\n• ${result.mediaCount} media files`;
+        if (result.warnings.length > 0) {
+          alert(msg + `\n\nWarnings:\n${result.warnings.join("\n")}`);
+        } else {
+          alert(msg);
+        }
+      } catch (err) {
+        alert("Import failed: " + (err as Error).message);
       }
     };
     input.click();
@@ -146,6 +196,12 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
               >
                 <FolderOpen className="w-4 h-4 text-gray-400" /> Open .quiz
+              </button>
+              <button
+                onClick={handleImportISpring}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
+              >
+                <FileArchive className="w-4 h-4 text-orange-400" /> Import iSpring .quiz
               </button>
               <div className="border-t border-gray-100" />
               <button
