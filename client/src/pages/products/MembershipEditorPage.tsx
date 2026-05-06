@@ -96,7 +96,7 @@ export default function MembershipEditorPage() {
     { orgId: orgId! },
     { enabled: !!orgId }
   );
-  const { data: products } = trpc.lms.digitalProducts.list.useQuery(
+  const { data: products } = trpc.lms.downloads.listProducts.useQuery(
     { orgId: orgId! },
     { enabled: !!orgId }
   );
@@ -106,7 +106,7 @@ export default function MembershipEditorPage() {
   );
 
   // Org members for adding to membership
-  const { data: orgMembers } = trpc.orgs.members.useQuery(
+  const { data: orgMembersList } = trpc.orgs.members.list.useQuery(
     { orgId: orgId! },
     { enabled: !!orgId }
   );
@@ -368,7 +368,7 @@ export default function MembershipEditorPage() {
                     <SelectValue placeholder="Select item..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {getContentOptions().map((opt) => (
+                    {getContentOptions().map((opt: { id: number; name: string }) => (
                       <SelectItem key={opt.id} value={opt.id.toString()}>
                         {opt.name}
                       </SelectItem>
@@ -453,7 +453,7 @@ export default function MembershipEditorPage() {
                     <SelectValue placeholder="Select a user..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {orgMembers?.map((m: any) => (
+                    {orgMembersList?.map((m: any) => (
                       <SelectItem key={m.userId} value={m.userId.toString()}>
                         {m.user?.name ?? m.user?.email ?? `User #${m.userId}`}
                       </SelectItem>
@@ -577,7 +577,7 @@ export default function MembershipEditorPage() {
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {getRuleEntityOptions().map((opt) => (
+                        {getRuleEntityOptions().map((opt: { id: number; name: string }) => (
                           <SelectItem key={opt.id} value={opt.id.toString()}>
                             {opt.name}
                           </SelectItem>

@@ -1530,7 +1530,7 @@ export async function addMembershipMember(data: { membershipId: number; userId: 
   return rows[0] ?? null;
 }
 export async function updateMembershipMember(id: number, data: Partial<{ status: string; expiresAt: Date | null; cancelledAt: Date | null }>) {
-  await db.update(membershipMembers).set(data).where(eq(membershipMembers.id, id));
+  await db.update(membershipMembers).set(data as any).where(eq(membershipMembers.id, id));
 }
 export async function removeMembershipMember(id: number) {
   await db.delete(membershipMembers).where(eq(membershipMembers.id, id));
@@ -1561,7 +1561,7 @@ export async function addMembershipRule(data: { membershipId: number; triggerTyp
   return rows[0] ?? null;
 }
 export async function updateMembershipRule(id: number, data: Partial<{ isActive: boolean; triggerType: string; triggerEntityId: number; triggerTag: string; action: string }>) {
-  await db.update(membershipRules).set(data).where(eq(membershipRules.id, id));
+  await db.update(membershipRules).set(data as any).where(eq(membershipRules.id, id));
 }
 export async function removeMembershipRule(id: number) {
   await db.delete(membershipRules).where(eq(membershipRules.id, id));
