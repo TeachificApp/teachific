@@ -2364,3 +2364,42 @@ export const questionBankItems = mysqlTable("question_bank_items", {
 });
 export type QuestionBankItem = typeof questionBankItems.$inferSelect;
 export type InsertQuestionBankItem = typeof questionBankItems.$inferInsert;
+
+// ─── Membership Members ──────────────────────────────────────────────────────
+export const membershipMembers = mysqlTable("membership_members", {
+  id: int("id").autoincrement().primaryKey(),
+  membershipId: int("membershipId").notNull(),
+  userId: int("userId").notNull(),
+  status: mysqlEnum("status", ["active", "paused", "cancelled", "expired"]).default("active").notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  cancelledAt: timestamp("cancelledAt"),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+});
+export type MembershipMember = typeof membershipMembers.$inferSelect;
+export type InsertMembershipMember = typeof membershipMembers.$inferInsert;
+
+// ─── Membership Content (what's included in a membership) ────────────────────
+export const membershipContent = mysqlTable("membership_content", {
+  id: int("id").autoincrement().primaryKey(),
+  membershipId: int("membershipId").notNull(),
+  contentType: mysqlEnum("contentType", ["course", "digital_product", "community", "webinar"]).notNull(),
+  contentId: int("contentId").notNull(),
+  addedAt: timestamp("addedAt").defaultNow().notNull(),
+});
+export type MembershipContent = typeof membershipContent.$inferSelect;
+export type InsertMembershipContent = typeof membershipContent.$inferInsert;
+
+// ─── Membership Auto-Enrollment Rules ────────────────────────────────────────
+export const membershipRules = mysqlTable("membership_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  membershipId: int("membershipId").notNull(),
+  triggerType: mysqlEnum("triggerType", ["course_purchase", "product_purchase", "webinar_registration", "tag_added", "manual"]).notNull(),
+  triggerEntityId: int("triggerEntityId"),
+  triggerTag: varchar("triggerTag", { length: 255 }),
+  action: mysqlEnum("action", ["add_to_membership", "remove_from_membership"]).default("add_to_membership").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type MembershipRule = typeof membershipRules.$inferSelect;
+export type InsertMembershipRule = typeof membershipRules.$inferInsert;

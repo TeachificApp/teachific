@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -15,30 +16,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Save,
   Globe,
-  EyeOff,
+  Eye,
   Video,
   Calendar,
   Users,
-  LayoutTemplate,
-  GitBranch,
   Bot,
-  Upload,
-  Link2,
+  GitBranch,
   ExternalLink,
   Copy,
-  CheckCircle,
+  Check,
   Plus,
   Trash2,
   GripVertical,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
-import { WysiwygPageBuilder as PageBuilder } from "@/components/WysiwygPageBuilder";
 
 function slugify(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -69,10 +65,23 @@ const POST_WEBINAR_ACTIONS = [
   { value: "product", label: "Show product offer overlay" },
 ];
 
+// ─── Tab definitions ──────────────────────────────────────────────────────────
+type TabId = "details" | "video" | "schedule" | "ai_viewers" | "sales_page" | "funnel";
+
+const tabs = [
+  { id: "details" as const, label: "Details", icon: FileText },
+  { id: "video" as const, label: "Video", icon: Video },
+  { id: "schedule" as const, label: "Schedule", icon: Calendar },
+  { id: "ai_viewers" as const, label: "AI Viewers", icon: Bot },
+  { id: "sales_page" as const, label: "Sales Page", icon: Globe },
+  { id: "funnel" as const, label: "Funnel", icon: GitBranch },
+];
+
 export default function WebinarEditorPage() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const webinarId = Number(id);
+  const [activeTab, setActiveTab] = useState<TabId>("details");
 
   const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
   const { data: webinar, refetch } = trpc.lms.webinars.get.useQuery(
@@ -122,7 +131,7 @@ export default function WebinarEditorPage() {
         slug: webinar.slug ?? "",
         description: webinar.description ?? "",
         type: (webinar.type as "live" | "evergreen") ?? "evergreen",
-        videoSource: (webinar.videoSource ?? "youtube") as "youtube" | "vimeo" | "upload" | "zoom" | "teams" | "embed",
+        videoSource: (webinar.videoSource ?? "youtube") as string,
         videoUrl: webinar.videoUrl ?? "",
         videoFileUrl: webinar.videoFileUrl ?? "",
         meetingUrl: webinar.meetingUrl ?? "",
@@ -226,613 +235,634 @@ export default function WebinarEditorPage() {
     setSteps((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   };
 
+  // Loading state
   if (!webinar) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        Loading webinar...
+      <div className="flex flex-col h-full p-6 gap-4">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/lms/webinars")}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold">{webinar.title}</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                {webinar.isPublished ? (
-                  <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">
-                    <Globe className="w-3 h-3 mr-1" />Published
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground text-xs">
-                    <EyeOff className="w-3 h-3 mr-1" />Draft
-                  </Badge>
-                )}
-                <Badge variant="outline" className="capitalize text-xs">
-                  {webinar.type === "live" ? "🔴 Live" : "♻️ Evergreen"}
-                </Badge>
-              </div>
+    <div className="flex flex-col h-full">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-background sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/lms/webinars")}
+            className="h-8 w-8"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-semibold leading-tight">{form.title || "Webinar"}</h1>
+              <Badge
+                variant="outline"
+                className={
+                  form.isPublished
+                    ? "text-green-600 border-green-300 bg-green-50 dark:bg-green-900/20"
+                    : "text-yellow-600 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20"
+                }
+              >
+                {form.isPublished ? "Published" : "Draft"}
+              </Badge>
+              <Badge variant="outline" className="capitalize text-xs">
+                {form.type === "live" ? "Live" : "Evergreen"}
+              </Badge>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                updateMutation.mutate({ id: webinarId, isPublished: !form.isPublished })
-              }
-            >
-              {form.isPublished ? (
-                <><EyeOff className="w-4 h-4 mr-2" />Unpublish</>
-              ) : (
-                <><Globe className="w-4 h-4 mr-2" />Publish</>
-              )}
-            </Button>
-            <Button onClick={handleSave} disabled={updateMutation.isPending}>
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </Button>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              updateMutation.mutate({ id: webinarId, isPublished: !form.isPublished })
+            }
+            className="gap-1.5"
+          >
+            <Globe className="h-3.5 w-3.5" />
+            {form.isPublished ? "Unpublish" : "Publish"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="gap-1.5"
+          >
+            <Save className="h-3.5 w-3.5" />
+            Save
+          </Button>
+        </div>
+      </div>
 
-        {/* URL bar */}
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-1">Registration Page</p>
-                <div className="flex items-center gap-2 bg-muted rounded px-3 py-2 text-sm font-mono">
-                  <span className="truncate flex-1">{regUrl}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyUrl(regUrl)}>
-                    {copied ? <CheckCircle className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  </Button>
-                  <a href={regUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                  </a>
+      {/* Tab bar */}
+      <div className="flex items-center gap-0 px-2 sm:px-6 border-b border-border bg-background overflow-x-auto scrollbar-none">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+              activeTab === tab.id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <tab.icon className="h-3.5 w-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-auto p-6">
+        {activeTab === "details" && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            {/* URL bar */}
+            <div className="border rounded-lg p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Registration Page</p>
+                  <div className="flex items-center gap-2 bg-muted rounded px-3 py-2 text-sm font-mono">
+                    <span className="truncate flex-1">{regUrl}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyUrl(regUrl)}>
+                      {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    </Button>
+                    <a href={regUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                    </a>
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-muted-foreground mb-1">Watch Page</p>
-                <div className="flex items-center gap-2 bg-muted rounded px-3 py-2 text-sm font-mono">
-                  <span className="truncate flex-1">{watchUrl}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyUrl(watchUrl)}>
-                    <Copy className="w-3.5 h-3.5" />
-                  </Button>
-                  <a href={watchUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                  </a>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Watch Page</p>
+                  <div className="flex items-center gap-2 bg-muted rounded px-3 py-2 text-sm font-mono">
+                    <span className="truncate flex-1">{watchUrl}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyUrl(watchUrl)}>
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                    <a href={watchUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Tabs */}
-        <Tabs defaultValue="details">
-          <div className="overflow-x-auto pb-1"><TabsList className="flex w-max min-w-full sm:grid sm:grid-cols-6 sm:w-full sm:max-w-3xl">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="video">Video</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="ai-viewers">AI Viewers</TabsTrigger>
-            <TabsTrigger value="sales-page">Sales Page</TabsTrigger>
-            <TabsTrigger value="funnel">Funnel</TabsTrigger>
-          </TabsList></div>
-
-          {/* ── Details ── */}
-          <TabsContent value="details" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Webinar Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Title</Label>
-                    <Input
-                      value={form.title}
-                      onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>URL Slug</Label>
-                    <Input
-                      value={form.slug}
-                      onChange={(e) => setForm((f) => ({ ...f, slug: slugify(e.target.value) }))}
-                    />
-                  </div>
-                </div>
+            {/* Webinar Details */}
+            <div className="space-y-4">
+              <h3 className="font-semibold">Webinar Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={form.description}
-                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={4}
-                    placeholder="What will attendees learn?"
+                  <Label>Title</Label>
+                  <Input
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Type</Label>
-                    <Select
-                      value={form.type}
-                      onValueChange={(v) => setForm((f) => ({ ...f, type: v as "live" | "evergreen" }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="evergreen">♻️ Evergreen (on-demand)</SelectItem>
-                        <SelectItem value="live">🔴 Live (scheduled)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Thumbnail URL</Label>
-                    <Input
-                      value={form.thumbnailUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, thumbnailUrl: e.target.value }))}
-                      placeholder="https://..."
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={form.requireRegistration}
-                    onCheckedChange={(v) => setForm((f) => ({ ...f, requireRegistration: v }))}
-                  />
-                  <Label>Require registration before watching</Label>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Post-Webinar Action</CardTitle>
-                <CardDescription>What happens after the webinar ends?</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Action</Label>
+                  <Label>URL Slug</Label>
+                  <Input
+                    value={form.slug}
+                    onChange={(e) => setForm((f) => ({ ...f, slug: slugify(e.target.value) }))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  rows={4}
+                  placeholder="What will attendees learn?"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Type</Label>
                   <Select
-                    value={form.postWebinarAction}
-                    onValueChange={(v) => setForm((f) => ({ ...f, postWebinarAction: v }))}
+                    value={form.type}
+                    onValueChange={(v) => setForm((f) => ({ ...f, type: v as "live" | "evergreen" }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {POST_WEBINAR_ACTIONS.map((a) => (
-                        <SelectItem key={a.value} value={a.value}>
-                          {a.label}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="evergreen">Evergreen (on-demand)</SelectItem>
+                      <SelectItem value="live">Live (scheduled)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {form.postWebinarAction === "url" && (
-                  <div className="space-y-1.5">
-                    <Label>Redirect URL</Label>
-                    <Input
-                      value={form.postWebinarUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, postWebinarUrl: e.target.value }))}
-                      placeholder="https://..."
-                    />
-                  </div>
-                )}
-                {form.postWebinarAction === "thankyou" && (
-                  <div className="space-y-1.5">
-                    <Label>Thank You Message</Label>
-                    <Textarea
-                      value={form.postWebinarMessage}
-                      onChange={(e) => setForm((f) => ({ ...f, postWebinarMessage: e.target.value }))}
-                      rows={3}
-                    />
-                  </div>
-                )}
                 <div className="space-y-1.5">
-                  <Label>Show CTA after (seconds into webinar)</Label>
+                  <Label>Thumbnail URL</Label>
+                  <Input
+                    value={form.thumbnailUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, thumbnailUrl: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={form.requireRegistration}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, requireRegistration: v }))}
+                />
+                <Label>Require registration before watching</Label>
+              </div>
+            </div>
+
+            {/* Post-Webinar Action */}
+            <div className="space-y-4 border-t pt-6">
+              <h3 className="font-semibold">Post-Webinar Action</h3>
+              <p className="text-sm text-muted-foreground">What happens after the webinar ends?</p>
+              <div className="space-y-1.5">
+                <Label>Action</Label>
+                <Select
+                  value={form.postWebinarAction}
+                  onValueChange={(v) => setForm((f) => ({ ...f, postWebinarAction: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {POST_WEBINAR_ACTIONS.map((a) => (
+                      <SelectItem key={a.value} value={a.value}>
+                        {a.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.postWebinarAction === "url" && (
+                <div className="space-y-1.5">
+                  <Label>Redirect URL</Label>
+                  <Input
+                    value={form.postWebinarUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, postWebinarUrl: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </div>
+              )}
+              {form.postWebinarAction === "thankyou" && (
+                <div className="space-y-1.5">
+                  <Label>Thank You Message</Label>
+                  <Textarea
+                    value={form.postWebinarMessage}
+                    onChange={(e) => setForm((f) => ({ ...f, postWebinarMessage: e.target.value }))}
+                    rows={3}
+                  />
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label>Show CTA after (seconds into webinar)</Label>
+                <Input
+                  type="number"
+                  value={form.postWebinarDelaySeconds}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, postWebinarDelaySeconds: Number(e.target.value) }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {Math.floor(form.postWebinarDelaySeconds / 60)} minutes into the webinar
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "video" && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h3 className="font-semibold">Video Source</h3>
+              <p className="text-sm text-muted-foreground">Choose how your webinar video is delivered.</p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Video Source</Label>
+                <Select
+                  value={form.videoSource}
+                  onValueChange={(v) => setForm((f) => ({ ...f, videoSource: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VIDEO_SOURCES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(form.videoSource === "youtube" || form.videoSource === "vimeo") && (
+                <div className="space-y-1.5">
+                  <Label>Video URL</Label>
+                  <Input
+                    value={form.videoUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                    placeholder={
+                      form.videoSource === "youtube"
+                        ? "https://www.youtube.com/watch?v=..."
+                        : "https://vimeo.com/..."
+                    }
+                  />
+                </div>
+              )}
+
+              {form.videoSource === "upload" && (
+                <div className="space-y-1.5">
+                  <Label>Video File URL</Label>
+                  <Input
+                    value={form.videoFileUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, videoFileUrl: e.target.value }))}
+                    placeholder="https://cdn.../video.mp4"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Upload your video file via the Media Library, then paste the URL here.
+                  </p>
+                </div>
+              )}
+
+              {(form.videoSource === "zoom" || form.videoSource === "teams") && (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label>Meeting URL</Label>
+                    <Input
+                      value={form.meetingUrl}
+                      onChange={(e) => setForm((f) => ({ ...f, meetingUrl: e.target.value }))}
+                      placeholder={
+                        form.videoSource === "zoom"
+                          ? "https://zoom.us/j/..."
+                          : "https://teams.microsoft.com/..."
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Meeting ID (optional)</Label>
+                    <Input
+                      value={form.meetingId}
+                      onChange={(e) => setForm((f) => ({ ...f, meetingId: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {form.videoSource === "embed" && (
+                <div className="space-y-1.5">
+                  <Label>Embed URL or Code</Label>
+                  <Textarea
+                    value={form.videoUrl}
+                    onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                    rows={4}
+                    placeholder="<iframe ...></iframe> or embed URL"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Duration (minutes)</Label>
+                <Input
+                  type="number"
+                  value={form.durationMinutes}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "schedule" && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h3 className="font-semibold">Schedule</h3>
+              <p className="text-sm text-muted-foreground">
+                {form.type === "live"
+                  ? "Set the date and time for your live webinar."
+                  : "For evergreen webinars, viewers can watch anytime. Optionally set a replay delay."}
+              </p>
+            </div>
+            <div className="space-y-4">
+              {form.type === "live" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Scheduled Date & Time</Label>
+                    <Input
+                      type="datetime-local"
+                      value={form.scheduledAt}
+                      onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Timezone</Label>
+                    <Input
+                      value={form.timezone}
+                      onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
+                      placeholder="America/New_York"
+                    />
+                  </div>
+                </>
+              )}
+              {form.type === "evergreen" && (
+                <div className="space-y-1.5">
+                  <Label>Replay Delay (minutes after registration)</Label>
                   <Input
                     type="number"
-                    value={form.postWebinarDelaySeconds}
+                    value={form.replayDelayMinutes}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, postWebinarDelaySeconds: Number(e.target.value) }))
+                      setForm((f) => ({ ...f, replayDelayMinutes: Number(e.target.value) }))
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    {Math.floor(form.postWebinarDelaySeconds / 60)} minutes into the webinar
+                    Set to 0 for instant access. Set to e.g. 15 to simulate a "starting soon" delay.
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
+            </div>
+          </div>
+        )}
 
-          {/* ── Video ── */}
-          <TabsContent value="video" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Video Source</CardTitle>
-                <CardDescription>
-                  Choose how your webinar video is delivered.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Video Source</Label>
-                  <Select
-                    value={form.videoSource}
-                    onValueChange={(v) => setForm((f) => ({ ...f, videoSource: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {VIDEO_SOURCES.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
-                          {s.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {(form.videoSource === "youtube" || form.videoSource === "vimeo") && (
+        {activeTab === "ai_viewers" && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2">
+                <Bot className="w-5 h-5 text-primary" />
+                AI-Generated Viewer Count
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Simulate a live audience by showing a dynamic viewer count that follows a
+                realistic bell-curve pattern.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={form.aiViewersEnabled}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, aiViewersEnabled: v }))}
+                />
+                <Label>Enable AI viewer count</Label>
+              </div>
+              {form.aiViewersEnabled && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <Label>Video URL</Label>
-                    <Input
-                      value={form.videoUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-                      placeholder={
-                        form.videoSource === "youtube"
-                          ? "https://www.youtube.com/watch?v=..."
-                          : "https://vimeo.com/..."
-                      }
-                    />
-                  </div>
-                )}
-
-                {form.videoSource === "upload" && (
-                  <div className="space-y-1.5">
-                    <Label>Video File URL</Label>
-                    <Input
-                      value={form.videoFileUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, videoFileUrl: e.target.value }))}
-                      placeholder="https://cdn.../video.mp4"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Upload your video file via the Media Library, then paste the URL here.
-                    </p>
-                  </div>
-                )}
-
-                {(form.videoSource === "zoom" || form.videoSource === "teams") && (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label>Meeting URL</Label>
-                      <Input
-                        value={form.meetingUrl}
-                        onChange={(e) => setForm((f) => ({ ...f, meetingUrl: e.target.value }))}
-                        placeholder={
-                          form.videoSource === "zoom"
-                            ? "https://zoom.us/j/..."
-                            : "https://teams.microsoft.com/..."
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Meeting ID (optional)</Label>
-                      <Input
-                        value={form.meetingId}
-                        onChange={(e) => setForm((f) => ({ ...f, meetingId: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {form.videoSource === "embed" && (
-                  <div className="space-y-1.5">
-                    <Label>Embed URL or Code</Label>
-                    <Textarea
-                      value={form.videoUrl}
-                      onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
-                      rows={4}
-                      placeholder="<iframe ...></iframe> or embed URL"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <Label>Duration (minutes)</Label>
-                  <Input
-                    type="number"
-                    value={form.durationMinutes}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* ── Schedule ── */}
-          <TabsContent value="schedule" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Schedule</CardTitle>
-                <CardDescription>
-                  {form.type === "live"
-                    ? "Set the date and time for your live webinar."
-                    : "For evergreen webinars, viewers can watch anytime. Optionally set a replay delay."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {form.type === "live" && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label>Scheduled Date & Time</Label>
-                      <Input
-                        type="datetime-local"
-                        value={form.scheduledAt}
-                        onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Timezone</Label>
-                      <Input
-                        value={form.timezone}
-                        onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
-                        placeholder="America/New_York"
-                      />
-                    </div>
-                  </>
-                )}
-                {form.type === "evergreen" && (
-                  <div className="space-y-1.5">
-                    <Label>Replay Delay (minutes after registration)</Label>
+                    <Label>Minimum viewers</Label>
                     <Input
                       type="number"
-                      value={form.replayDelayMinutes}
+                      value={form.aiViewersMin}
                       onChange={(e) =>
-                        setForm((f) => ({ ...f, replayDelayMinutes: Number(e.target.value) }))
+                        setForm((f) => ({ ...f, aiViewersMin: Number(e.target.value) }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Maximum viewers</Label>
+                    <Input
+                      type="number"
+                      value={form.aiViewersMax}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, aiViewersMax: Number(e.target.value) }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Peak at (minutes)</Label>
+                    <Input
+                      type="number"
+                      value={form.aiViewersPeakAt}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, aiViewersPeakAt: Number(e.target.value) }))
                       }
                     />
                     <p className="text-xs text-muted-foreground">
-                      Set to 0 for instant access. Set to e.g. 15 to simulate a "starting soon" delay.
+                      Viewer count peaks at this minute mark
                     </p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* ── AI Viewers ── */}
-          <TabsContent value="ai-viewers" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-primary" />
-                  AI-Generated Viewer Count
-                </CardTitle>
-                <CardDescription>
-                  Simulate a live audience by showing a dynamic viewer count that follows a
-                  realistic bell-curve pattern — ramping up, peaking, then gradually declining.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={form.aiViewersEnabled}
-                    onCheckedChange={(v) => setForm((f) => ({ ...f, aiViewersEnabled: v }))}
-                  />
-                  <Label>Enable AI viewer count</Label>
                 </div>
-                {form.aiViewersEnabled && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Minimum viewers</Label>
-                      <Input
-                        type="number"
-                        value={form.aiViewersMin}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, aiViewersMin: Number(e.target.value) }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Maximum viewers</Label>
-                      <Input
-                        type="number"
-                        value={form.aiViewersMax}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, aiViewersMax: Number(e.target.value) }))
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Peak at (minutes)</Label>
-                      <Input
-                        type="number"
-                        value={form.aiViewersPeakAt}
-                        onChange={(e) =>
-                          setForm((f) => ({ ...f, aiViewersPeakAt: Number(e.target.value) }))
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Viewer count peaks at this minute mark
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {form.aiViewersEnabled && (
-                  <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
-                    <strong>Preview:</strong> Viewers will ramp from {form.aiViewersMin} to{" "}
-                    {form.aiViewersMax} over {form.aiViewersPeakAt} minutes, then gradually
-                    decline. A ±5% random jitter is applied each update.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+              )}
+              {form.aiViewersEnabled && (
+                <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200">
+                  <strong>Preview:</strong> Viewers will ramp from {form.aiViewersMin} to{" "}
+                  {form.aiViewersMax} over {form.aiViewersPeakAt} minutes, then gradually
+                  decline. A ±5% random jitter is applied each update.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-          {/* ── Sales Page ── */}
-          <TabsContent value="sales-page" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Registration / Sales Page Builder</CardTitle>
-                <CardDescription>
+        {activeTab === "sales_page" && (
+          <div className="max-w-3xl mx-auto">
+            <div className="border border-border rounded-xl p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">Registration / Sales Page</h3>
+                <p className="text-sm text-muted-foreground mt-1">
                   Build the page visitors see before registering. Use the full-screen editor for the best experience.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
                 <Button
-                  className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+                  className="gap-2"
                   onClick={() => navigate(`/lms/webinars/${webinarId}/page-builder`)}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Open Full-Screen Page Editor
+                  Open Sales Page Builder
                 </Button>
-                {salesBlocks.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {salesBlocks.length} block{salesBlocks.length !== 1 ? "s" : ""} configured on this registration page
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => window.open(regUrl, "_blank")}
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview Registration Page
+                </Button>
+              </div>
+              {salesBlocks.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {salesBlocks.length} block{salesBlocks.length !== 1 ? "s" : ""} configured on this registration page
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                The sales page builder opens in full-screen mode. Your changes are saved automatically.
+              </p>
+            </div>
+          </div>
+        )}
 
-          {/* ── Funnel ── */}
-          <TabsContent value="funnel" className="space-y-4 mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="w-5 h-5 text-primary" />
-                  Sales Funnel Builder
-                </CardTitle>
-                <CardDescription>
-                  Define the sequence of pages and emails that guide registrants through your
-                  webinar funnel — from registration to post-webinar offer.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {steps.map((step, i) => (
-                  <div key={i} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Step {i + 1}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={step.isActive ?? true}
-                          onCheckedChange={(v) => updateStep(i, { isActive: v })}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => removeFunnelStep(i)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+        {activeTab === "funnel" && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2">
+                <GitBranch className="w-5 h-5 text-primary" />
+                Sales Funnel Builder
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Define the sequence of pages and emails that guide registrants through your
+                webinar funnel — from registration to post-webinar offer.
+              </p>
+            </div>
+            <div className="space-y-4">
+              {steps.map((step, i) => (
+                <div key={i} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Step {i + 1}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label>Step Type</Label>
-                        <Select
-                          value={step.stepType}
-                          onValueChange={(v) => updateStep(i, { stepType: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {FUNNEL_STEP_TYPES.map((t) => (
-                              <SelectItem key={t.value} value={t.value}>
-                                {t.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>Title</Label>
-                        <Input
-                          value={step.title ?? ""}
-                          onChange={(e) => updateStep(i, { title: e.target.value })}
-                        />
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={step.isActive ?? true}
+                        onCheckedChange={(v) => updateStep(i, { isActive: v })}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive"
+                        onClick={() => removeFunnelStep(i)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    {(step.stepType === "reminder" || step.stepType === "confirmation") && (
-                      <>
-                        <div className="space-y-1.5">
-                          <Label>Email Subject</Label>
-                          <Input
-                            value={step.emailSubject ?? ""}
-                            onChange={(e) => updateStep(i, { emailSubject: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label>Email Body</Label>
-                          <Textarea
-                            value={step.emailBody ?? ""}
-                            onChange={(e) => updateStep(i, { emailBody: e.target.value })}
-                            rows={4}
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label>Trigger</Label>
-                            <Select
-                              value={step.triggerType ?? "delay"}
-                              onValueChange={(v) => updateStep(i, { triggerType: v })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="immediate">Immediately</SelectItem>
-                                <SelectItem value="delay">After delay</SelectItem>
-                                <SelectItem value="scheduled">At scheduled time</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {step.triggerType === "delay" && (
-                            <div className="space-y-1.5">
-                              <Label>Delay (minutes)</Label>
-                              <Input
-                                type="number"
-                                value={step.triggerDelayMinutes ?? 60}
-                                onChange={(e) =>
-                                  updateStep(i, { triggerDelayMinutes: Number(e.target.value) })
-                                }
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
                   </div>
-                ))}
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={addFunnelStep}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Step
-                  </Button>
-                  <Button onClick={handleSaveFunnel} disabled={saveFunnelMutation.isPending}>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Funnel
-                  </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Step Type</Label>
+                      <Select
+                        value={step.stepType}
+                        onValueChange={(v) => updateStep(i, { stepType: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FUNNEL_STEP_TYPES.map((t) => (
+                            <SelectItem key={t.value} value={t.value}>
+                              {t.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Title</Label>
+                      <Input
+                        value={step.title ?? ""}
+                        onChange={(e) => updateStep(i, { title: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  {(step.stepType === "reminder" || step.stepType === "confirmation") && (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label>Email Subject</Label>
+                        <Input
+                          value={step.emailSubject ?? ""}
+                          onChange={(e) => updateStep(i, { emailSubject: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Email Body</Label>
+                        <Textarea
+                          value={step.emailBody ?? ""}
+                          onChange={(e) => updateStep(i, { emailBody: e.target.value })}
+                          rows={4}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label>Trigger</Label>
+                          <Select
+                            value={step.triggerType ?? "delay"}
+                            onValueChange={(v) => updateStep(i, { triggerType: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="immediate">Immediately</SelectItem>
+                              <SelectItem value="delay">After delay</SelectItem>
+                              <SelectItem value="scheduled">At scheduled time</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {step.triggerType === "delay" && (
+                          <div className="space-y-1.5">
+                            <Label>Delay (minutes)</Label>
+                            <Input
+                              type="number"
+                              value={step.triggerDelayMinutes ?? 60}
+                              onChange={(e) =>
+                                updateStep(i, { triggerDelayMinutes: Number(e.target.value) })
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              ))}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={addFunnelStep}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Step
+                </Button>
+                <Button onClick={handleSaveFunnel} disabled={saveFunnelMutation.isPending}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Funnel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

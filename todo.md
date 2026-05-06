@@ -3481,7 +3481,7 @@
 - [ ] CustomPagesPage: Replace Sheet-based WysiwygPageBuilder with full-screen navigation to PageBuilderPage (teal)
 - [ ] PageBuilder.tsx component: Change all purple/indigo defaults to teal
 - [ ] WysiwygPageBuilder.tsx: Ensure all accent colors default to teal
-- [ ] CourseBuilderPage sales page tab: Ensure it navigates to full-screen PageBuilderPage
+- [x] CourseBuilderPage sales page tab: Ensure it navigates to full-screen PageBuilderPage
 
 ## Subdomain / Custom Domain / Whitelabel Routing
 - [x] All products (courses, downloads, webinars, custom pages, quizzes) served at org subdomain or custom domain
@@ -3518,3 +3518,29 @@
 - [x] If afterPurchaseRedirectUrl is set, redirect there after successful payment
 - [x] If thankYouPageEnabled and no redirect URL, redirect to /courses/:id/thank-you
 - [x] Default fallback: redirect to course player /learn/:courseId
+
+## Standardize Product Editors (Consistent Full-Screen Layout)
+- [ ] All product editors (courses, downloads, webinars, memberships) use same visual layout
+- [x] All product editors open full-screen without sidebar navigation
+- [x] All products have full-screen sales page builder (not inline/sheet)
+- [x] DigitalProductEditorPage: full-screen layout matching course editor style
+- [x] WebinarEditorPage: full-screen layout matching course editor style
+- [x] MembershipEditorPage: full-screen layout matching course editor style
+- [x] Remove old inline/sheet-based page builders from product editors
+
+## Membership Features (Missing Implementation)
+- [x] Membership content inclusion: select which courses to include
+- [x] Membership content inclusion: select which digital products to include
+- [x] Membership content inclusion: select which communities to include
+- [x] Membership member management: view/add/remove members
+- [x] Membership auto-enrollment rules: if user buys course X, auto-add to membership Y
+- [x] Membership auto-enrollment rules: if user buys product X, auto-add to membership Y
+- [x] Membership rules engine: trigger-based membership assignment
+
+## Product Editor Fixes (from user feedback)
+- [x] Add "Sales Page" tab to CourseBuilderPage (currently missing)
+- [ ] CourseBuilderPage Sales Page tab: button to open full-screen page builder
+- [ ] DigitalProductEditorPage: rewrite to full-screen layout matching CourseBuilder (no sidebar)
+- [ ] DigitalProductEditorPage: Sales Page tab should link to full-screen builder (not inline)
+- [ ] WebinarEditorPage: rewrite to full-screen layout matching CourseBuilder (no sidebar)
+- [ ] All product editors: remove DashboardLayout wrapper from routes (full-screen only)

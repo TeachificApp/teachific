@@ -175,6 +175,17 @@ import {
   createMembership,
   updateMembership,
   deleteMembership,
+  getMembershipMembers,
+  addMembershipMember,
+  updateMembershipMember,
+  removeMembershipMember,
+  getMembershipContentItems,
+  addMembershipContent,
+  removeMembershipContent,
+  getMembershipRules,
+  addMembershipRule,
+  updateMembershipRule,
+  removeMembershipRule,
   getBundlesByOrg,
   getBundleById,
   createBundle,
@@ -3887,6 +3898,88 @@ Generate 5-7 blocks that make a compelling school homepage. Use the org's colors
         if (!m) throw new TRPCError({ code: "NOT_FOUND" });
         await requireOrgAdmin(ctx.user.id, m.orgId, ctx.user.role);
         await deleteMembership(input.id);
+        return { ok: true };
+      }),
+    // ── Members ──
+    getMembers: protectedProcedure
+      .input(z.object({ membershipId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const m = await getMembershipById(input.membershipId);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgRole(ctx.user.id, m.orgId, undefined, ctx.user.role);
+        return getMembershipMembers(input.membershipId);
+      }),
+    addMember: protectedProcedure
+      .input(z.object({ membershipId: z.number(), userId: z.number(), status: z.enum(['active','paused','cancelled','expired']).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const m = await getMembershipById(input.membershipId);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, m.orgId, ctx.user.role);
+        return addMembershipMember(input);
+      }),
+    updateMember: protectedProcedure
+      .input(z.object({ id: z.number(), status: z.enum(['active','paused','cancelled','expired']).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        await updateMembershipMember(input.id, { status: input.status });
+        return { ok: true };
+      }),
+    removeMember: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await removeMembershipMember(input.id);
+        return { ok: true };
+      }),
+    // ── Content ──
+    getContent: protectedProcedure
+      .input(z.object({ membershipId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const m = await getMembershipById(input.membershipId);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgRole(ctx.user.id, m.orgId, undefined, ctx.user.role);
+        return getMembershipContentItems(input.membershipId);
+      }),
+    addContent: protectedProcedure
+      .input(z.object({ membershipId: z.number(), contentType: z.enum(['course','digital_product','community','webinar']), contentId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const m = await getMembershipById(input.membershipId);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, m.orgId, ctx.user.role);
+        return addMembershipContent(input);
+      }),
+    removeContent: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await removeMembershipContent(input.id);
+        return { ok: true };
+      }),
+    // ── Rules ──
+    getRules: protectedProcedure
+      .input(z.object({ membershipId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const m = await getMembershipById(input.membershipId);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgRole(ctx.user.id, m.orgId, undefined, ctx.user.role);
+        return getMembershipRules(input.membershipId);
+      }),
+    addRule: protectedProcedure
+      .input(z.object({ membershipId: z.number(), triggerType: z.enum(['course_purchase','product_purchase','webinar_registration','tag_added','manual']), triggerEntityId: z.number().optional(), triggerTag: z.string().optional(), action: z.enum(['add_to_membership','remove_from_membership']).optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const m = await getMembershipById(input.membershipId);
+        if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, m.orgId, ctx.user.role);
+        return addMembershipRule(input);
+      }),
+    updateRule: protectedProcedure
+      .input(z.object({ id: z.number(), isActive: z.boolean().optional(), triggerType: z.enum(['course_purchase','product_purchase','webinar_registration','tag_added','manual']).optional(), triggerEntityId: z.number().optional(), triggerTag: z.string().optional(), action: z.enum(['add_to_membership','remove_from_membership']).optional() }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateMembershipRule(id, data);
+        return { ok: true };
+      }),
+    removeRule: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await removeMembershipRule(input.id);
         return { ok: true };
       }),
   }),

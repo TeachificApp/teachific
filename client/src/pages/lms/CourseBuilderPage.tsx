@@ -57,6 +57,7 @@ import {
   Clock,
   Lock,
   Unlock,
+  Globe,
 } from "lucide-react";
 import {
   DndContext,
@@ -437,10 +438,10 @@ export default function CourseBuilderPage() {
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   // Derive active tab from URL sub-path (e.g. /lms/courses/5/curriculum → "curriculum")
-  type TabId = "overview" | "curriculum" | "settings" | "pricing" | "after_purchase" | "drip";
+  type TabId = "overview" | "curriculum" | "settings" | "pricing" | "sales_page" | "after_purchase" | "drip";
   const tabFromUrl = ((): TabId => {
     const seg = location.split("/").pop() ?? "";
-    if (["overview", "curriculum", "settings", "pricing", "after_purchase", "drip"].includes(seg))
+    if (["overview", "curriculum", "settings", "pricing", "sales_page", "after_purchase", "drip"].includes(seg))
       return seg as TabId;
     return "curriculum";
   })();
@@ -492,6 +493,7 @@ export default function CourseBuilderPage() {
     { id: "curriculum", label: "Curriculum", icon: FileText },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "pricing", label: "Pricing", icon: DollarSign },
+    { id: "sales_page", label: "Sales Page", icon: Globe },
     { id: "after_purchase", label: "After Purchase", icon: CheckCircle },
     { id: "drip", label: "Drip Schedule", icon: Calendar },
   ] as const;
@@ -647,6 +649,45 @@ export default function CourseBuilderPage() {
 
         {activeTab === "pricing" && (
           <CoursePricingTab courseId={courseId} />
+        )}
+
+        {activeTab === "sales_page" && (
+          <div className="max-w-3xl mx-auto">
+            <div className="border border-border rounded-xl p-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">Course Sales Page</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Design a custom landing page for your course. This page is shown to visitors before they enroll.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  className="gap-2"
+                  onClick={() => setLocation(`/lms/courses/${courseId}/page-builder`)}
+                >
+                  <Edit className="h-4 w-4" />
+                  Open Sales Page Builder
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    const org = orgs?.[0];
+                    const url = org
+                      ? getOrgCourseUrl(org.slug, course.slug, org.customDomain, org.domainVerificationStatus)
+                      : `/courses/${course.slug}`;
+                    window.open(url, "_blank");
+                  }}
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview Sales Page
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The sales page builder opens in full-screen mode. Your changes are saved automatically.
+              </p>
+            </div>
+          </div>
         )}
 
         {activeTab === "after_purchase" && (

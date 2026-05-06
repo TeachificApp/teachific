@@ -74,6 +74,7 @@ import DiscussionsPage from "./pages/members/DiscussionsPage";
 import AssignmentsPage from "./pages/members/AssignmentsPage";
 
 import MembershipsPage from "./pages/products/MembershipsPage";
+import MembershipEditorPage from "./pages/products/MembershipEditorPage";
 import BundlesPage from "./pages/products/BundlesPage";
 import CommunityPage from "./pages/products/CommunityPage";
 import CommunityLearnerPage from "./pages/lms/CommunityLearnerPage";
@@ -239,17 +240,19 @@ function AdminRouter() {
           <Route path="/lms/courses/:id/curriculum" component={CourseBuilderPage} />
           <Route path="/lms/courses/:id/settings" component={CourseBuilderPage} />
           <Route path="/lms/courses/:id/pricing" component={CourseBuilderPage} />
+          <Route path="/lms/courses/:id/sales_page" component={CourseBuilderPage} />
           <Route path="/lms/courses/:id/drip" component={CourseBuilderPage} />
           <Route path="/lms/courses/:id/after_purchase" component={CourseBuilderPage} />
           <Route path="/lms/courses/:id" component={CourseBuilderPage} />
           <Route path="/admin/downloads" component={DigitalProductsPage} />
           <Route path="/admin/downloads/reports" component={DigitalDownloadsReportsPage} />
-          <Route path="/admin/downloads/new" component={DigitalProductEditorPage} />
-          <Route path="/admin/downloads/:id" component={DigitalProductEditorPage} />
+          <Route path="/admin/downloads/new">{() => <DigitalProductEditorPage />}</Route>
+          <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>
           <Route path="/lms/webinars" component={WebinarsPage} />
           <Route path="/lms/webinars/reports" component={WebinarReportsPage} />
-          <Route path="/lms/webinars/:id/edit" component={WebinarEditorPage} />
+          <Route path="/lms/webinars/:id/edit">{() => <WebinarEditorPage />}</Route>
           <Route path="/products/memberships" component={MembershipsPage} />
+          <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
           <Route path="/products/bundles" component={BundlesPage} />
           <Route path="/lms/forms" component={FormsPage} />
           <Route path="/lms/forms/:id/responses" component={FormResponsesPage} />
@@ -364,6 +367,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/courses/:id/curriculum">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses/:id/settings">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses/:id/pricing">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
+        <Route path="/lms/courses/:id/sales_page">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses/:id/drip">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses/:id/after_purchase">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses/:id">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
@@ -374,11 +378,12 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/members/assignments">{() => <DashboardLayout><AssignmentsPage /></DashboardLayout>}</Route>
         <Route path="/members">{() => { window.location.replace("/members/users"); return null; }}</Route>
         <Route path="/admin/downloads">{() => <DashboardLayout><DigitalProductsPage /></DashboardLayout>}</Route>
-        <Route path="/admin/downloads/new">{() => <DashboardLayout><DigitalProductEditorPage /></DashboardLayout>}</Route>
-        <Route path="/admin/downloads/:id">{() => <DashboardLayout><DigitalProductEditorPage /></DashboardLayout>}</Route>
+        <Route path="/admin/downloads/new">{() => <DigitalProductEditorPage />}</Route>
+        <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>
         <Route path="/lms/webinars">{() => <DashboardLayout><WebinarsPage /></DashboardLayout>}</Route>
-        <Route path="/lms/webinars/:id/edit">{() => <DashboardLayout><WebinarEditorPage /></DashboardLayout>}</Route>
+        <Route path="/lms/webinars/:id/edit">{() => <WebinarEditorPage />}</Route>
         <Route path="/products/memberships">{() => <DashboardLayout><MembershipsPage /></DashboardLayout>}</Route>
+        <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
         <Route path="/products/bundles">{() => <DashboardLayout><BundlesPage /></DashboardLayout>}</Route>
         <Route path="/lms/forms">{() => <DashboardLayout><FormsPage /></DashboardLayout>}</Route>
         <Route path="/lms/forms/:id/responses">{() => <DashboardLayout><FormResponsesPage /></DashboardLayout>}</Route>

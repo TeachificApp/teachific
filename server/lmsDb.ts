@@ -40,6 +40,9 @@ import {
   revenuePartners,
   courseOrders,
   memberships,
+  membershipMembers,
+  membershipContent,
+  membershipRules,
   bundles,
   flashcardDecks,
   flashcardCards,
@@ -1514,6 +1517,54 @@ export async function updateMembership(id: number, data: Partial<typeof membersh
 }
 export async function deleteMembership(id: number) {
   await db.delete(memberships).where(eq(memberships.id, id));
+}
+
+// ─── Membership Members ─────────────────────────────────────────────────────
+export async function getMembershipMembers(membershipId: number) {
+  return db.select().from(membershipMembers).where(eq(membershipMembers.membershipId, membershipId)).orderBy(desc(membershipMembers.joinedAt));
+}
+export async function addMembershipMember(data: { membershipId: number; userId: number; status?: "active" | "paused" | "cancelled" | "expired"; stripeSubscriptionId?: string }) {
+  const result = await db.insert(membershipMembers).values(data);
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  const rows = await db.select().from(membershipMembers).where(eq(membershipMembers.id, Number(id)));
+  return rows[0] ?? null;
+}
+export async function updateMembershipMember(id: number, data: Partial<{ status: string; expiresAt: Date | null; cancelledAt: Date | null }>) {
+  await db.update(membershipMembers).set(data).where(eq(membershipMembers.id, id));
+}
+export async function removeMembershipMember(id: number) {
+  await db.delete(membershipMembers).where(eq(membershipMembers.id, id));
+}
+
+// ─── Membership Content ─────────────────────────────────────────────────────
+export async function getMembershipContentItems(membershipId: number) {
+  return db.select().from(membershipContent).where(eq(membershipContent.membershipId, membershipId)).orderBy(asc(membershipContent.addedAt));
+}
+export async function addMembershipContent(data: { membershipId: number; contentType: "course" | "digital_product" | "community" | "webinar"; contentId: number }) {
+  const result = await db.insert(membershipContent).values(data);
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  const rows = await db.select().from(membershipContent).where(eq(membershipContent.id, Number(id)));
+  return rows[0] ?? null;
+}
+export async function removeMembershipContent(id: number) {
+  await db.delete(membershipContent).where(eq(membershipContent.id, id));
+}
+
+// ─── Membership Rules ───────────────────────────────────────────────────────
+export async function getMembershipRules(membershipId: number) {
+  return db.select().from(membershipRules).where(eq(membershipRules.membershipId, membershipId)).orderBy(desc(membershipRules.createdAt));
+}
+export async function addMembershipRule(data: { membershipId: number; triggerType: "course_purchase" | "product_purchase" | "webinar_registration" | "tag_added" | "manual"; triggerEntityId?: number; triggerTag?: string; action?: "add_to_membership" | "remove_from_membership" }) {
+  const result = await db.insert(membershipRules).values(data);
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  const rows = await db.select().from(membershipRules).where(eq(membershipRules.id, Number(id)));
+  return rows[0] ?? null;
+}
+export async function updateMembershipRule(id: number, data: Partial<{ isActive: boolean; triggerType: string; triggerEntityId: number; triggerTag: string; action: string }>) {
+  await db.update(membershipRules).set(data).where(eq(membershipRules.id, id));
+}
+export async function removeMembershipRule(id: number) {
+  await db.delete(membershipRules).where(eq(membershipRules.id, id));
 }
 
 // ─── Bundles ──────────────────────────────────────────────────────────────────
