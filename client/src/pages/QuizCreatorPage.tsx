@@ -12,7 +12,8 @@ import QuizAnalyticsPanel from "@/quiz-creator/components/QuizAnalyticsPanel";
 import { useQuizStore } from "@/quiz-creator/store/quizStore";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
-import { Palette, BarChart3, Download, Loader2, X } from "lucide-react";
+import { Palette, BarChart3, Download, Loader2, X, GitBranch } from "lucide-react";
+import { BranchingFlowVisualizer } from "@/quiz-creator/components/BranchingFlowVisualizer";
 import { toast } from "sonner";
 
 type RightPanel = null | "branding" | "analytics";
@@ -25,6 +26,7 @@ export default function QuizCreatorPage() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showBranchingViz, setShowBranchingViz] = useState(false);
 
   const { quiz } = useQuizStore();
   const { user } = useAuth();
@@ -93,6 +95,13 @@ export default function QuizCreatorPage() {
             >
               <BarChart3 className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => setShowBranchingViz(true)}
+              className={`p-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-200 ${quiz.meta.branchingEnabled ? "text-purple-600" : ""}`}
+              title="Branching Flow Visualizer"
+            >
+              <GitBranch className="w-4 h-4" />
+            </button>
             <div className="relative">
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
@@ -153,6 +162,7 @@ export default function QuizCreatorPage() {
           quizId={cloudId ?? null}
         />
       )}
+      {showBranchingViz && <BranchingFlowVisualizer onClose={() => setShowBranchingViz(false)} />}
     </div>
   );
 }

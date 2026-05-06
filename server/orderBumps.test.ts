@@ -16,8 +16,8 @@ describe("order_bumps schema", () => {
     expect(cols).toContain("id");
     expect(cols).toContain("orgId");
     expect(cols).toContain("name");
-    expect(cols).toContain("sourceProductType");
-    expect(cols).toContain("sourceProductId");
+    expect(cols).toContain("triggerProductType");
+    expect(cols).toContain("triggerProductId");
     expect(cols).toContain("bumpProductType");
     expect(cols).toContain("bumpProductId");
     expect(cols).toContain("placement");
@@ -31,9 +31,9 @@ describe("order_bumps schema", () => {
     expect(schema.orderBumpConversions).toBeDefined();
     const cols = Object.keys(schema.orderBumpConversions);
     expect(cols).toContain("id");
-    expect(cols).toContain("orderBumpId");
-    expect(cols).toContain("userId");
-    expect(cols).toContain("convertedAt");
+    expect(cols).toContain("bumpId");
+    expect(cols).toContain("orgId");
+    expect(cols).toContain("createdAt");
   });
 });
 
@@ -63,8 +63,8 @@ describe("orderBumpsDb helpers", () => {
   it("exports all required CRUD functions", async () => {
     const db = await import("./orderBumpsDb");
     expect(typeof db.createOrderBump).toBe("function");
-    expect(typeof db.getOrderBumps).toBe("function");
-    expect(typeof db.getOrderBumpById).toBe("function");
+    expect(typeof db.listOrderBumps).toBe("function");
+    expect(typeof db.getOrderBump).toBe("function");
     expect(typeof db.updateOrderBump).toBe("function");
     expect(typeof db.deleteOrderBump).toBe("function");
     expect(typeof db.getOrderBumpsForProduct).toBe("function");
@@ -73,16 +73,16 @@ describe("orderBumpsDb helpers", () => {
 
   it("exports visibility update functions", async () => {
     const db = await import("./orderBumpsDb");
-    expect(typeof db.updateDigitalProductVisibility).toBe("function");
+    expect(typeof db.updateDownloadVisibility).toBe("function");
     expect(typeof db.updateQuizVisibility).toBe("function");
   });
 
   it("exports private invite functions", async () => {
     const db = await import("./orderBumpsDb");
     expect(typeof db.createPrivateInvite).toBe("function");
-    expect(typeof db.getPrivateInvites).toBe("function");
+    expect(typeof db.listPrivateInvites).toBe("function");
     expect(typeof db.deletePrivateInvite).toBe("function");
-    expect(typeof db.checkPrivateInvite).toBe("function");
+    expect(typeof db.getPrivateInviteByToken).toBe("function");
   });
 });
 
@@ -97,6 +97,6 @@ describe("private_invites schema", () => {
     expect(cols).toContain("productType");
     expect(cols).toContain("productId");
     expect(cols).toContain("email");
-    expect(cols).toContain("invitedAt");
+    expect(cols).toContain("createdAt");
   });
 });

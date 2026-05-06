@@ -225,6 +225,10 @@ export interface QuizQuestion {
   backgroundColor?: string;
   // Branching / conditional logic
   branchRules?: BranchRule[];
+  // Group assignment
+  groupId?: string;
+  // Randomization override
+  lockAnswerOrder?: boolean; // if true, answers stay in set order even when quiz-level shuffle is on
   data: QuestionData;
 }
 
@@ -263,6 +267,26 @@ export interface QuizResultSlide {
   showReviewButton?: boolean;
 }
 
+// ─── Question Groups / Pools ─────────────────────────────────────────────────
+
+export interface QuestionGroup {
+  id: string;
+  name: string;
+  color: string; // hex color for visual identification
+}
+
+export interface GroupDrawConfig {
+  groupId: string;
+  drawCount: number; // how many questions to draw from this group per attempt
+}
+
+export interface DrawConfig {
+  enabled: boolean; // when true, use pool/draw mode instead of showing all questions
+  totalQuestions: number; // total questions to show per attempt (sum of group draws + ungrouped)
+  groupDraws: GroupDrawConfig[]; // per-group draw counts
+  ungroupedDrawCount: number; // how many ungrouped questions to include
+}
+
 export interface QuizMeta {
   id: string;
   title: string;
@@ -292,6 +316,9 @@ export interface QuizMeta {
   questionsPerPage?: number; // null = one at a time
   // Branching
   branchingEnabled?: boolean; // when true, quiz uses branching logic instead of linear flow
+  // Question Groups / Pools
+  groups?: QuestionGroup[];
+  drawConfig?: DrawConfig;
 }
 
 export interface QuizFile {

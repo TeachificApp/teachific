@@ -278,6 +278,50 @@ export function QuestionEditor() {
         </div>
       </div>
 
+      {/* Group assignment & answer lock */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Group selector */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Question Group</label>
+          <select
+            value={question.groupId || ""}
+            onChange={(e) => update({ groupId: e.target.value || undefined })}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50"
+          >
+            <option value="">No group</option>
+            {(quiz.meta.groups || []).map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          {question.groupId && (() => {
+            const group = (quiz.meta.groups || []).find((g) => g.id === question.groupId);
+            return group ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: group.color }} />
+                <span className="text-xs text-gray-400">{group.name}</span>
+              </div>
+            ) : null;
+          })()}
+        </div>
+        {/* Lock answer order */}
+        <div className="flex items-end pb-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={question.lockAnswerOrder ?? false}
+              onChange={(e) => update({ lockAnswerOrder: e.target.checked })}
+              className="accent-amber-500"
+            />
+            <span className="leading-tight">
+              Lock answer order
+              <span className="block text-xs text-gray-400">Override quiz-level shuffle</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
       {/* Explanation / Feedback */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">

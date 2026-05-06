@@ -59,7 +59,7 @@ const QUESTION_TYPES: QuestionType[] = [
   "hotspot", "drag_drop", "image_choice", "short_answer", "numeric", "likert", "essay",
 ];
 
-function SortableQuestionItem({ question, isActive, onClick }: { question: QuizQuestion; isActive: boolean; onClick: () => void }) {
+function SortableQuestionItem({ question, isActive, onClick, groupColor }: { question: QuizQuestion; isActive: boolean; onClick: () => void; groupColor?: string }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: question.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
 
@@ -80,6 +80,14 @@ function SortableQuestionItem({ question, isActive, onClick }: { question: QuizQ
       >
         <GripVertical className="w-3.5 h-3.5" />
       </button>
+      {/* Group color dot */}
+      {groupColor && (
+        <span
+          className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-white shadow-sm"
+          style={{ backgroundColor: groupColor }}
+          title="Group indicator"
+        />
+      )}
       <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
         isActive ? "bg-teal-500 text-white" : "bg-gray-100 text-gray-500"
       }`}>
@@ -143,14 +151,18 @@ export function QuestionList() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={quiz.questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-              {quiz.questions.map((q) => (
-                <SortableQuestionItem
-                  key={q.id}
-                  question={q}
-                  isActive={q.id === activeQuestionId}
-                  onClick={() => setActiveQuestion(q.id)}
-                />
-              ))}
+              {quiz.questions.map((q) => {
+                const group = q.groupId ? (quiz.meta.groups || []).find((g) => g.id === q.groupId) : undefined;
+                return (
+                  <SortableQuestionItem
+                    key={q.id}
+                    question={q}
+                    isActive={q.id === activeQuestionId}
+                    onClick={() => setActiveQuestion(q.id)}
+                    groupColor={group?.color}
+                  />
+                );
+              })}
             </SortableContext>
           </DndContext>
         )}

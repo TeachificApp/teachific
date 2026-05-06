@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Users, Clock, Award, TrendingUp, ChevronDown, ChevronUp, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
-import { useState } from "react";
+import { BarChart3, Users, Clock, Award, TrendingUp, ChevronDown, ChevronUp, CheckCircle2, XCircle, HelpCircle, Filter } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useQuizStore } from "../store/quizStore";
 
 interface QuizAnalyticsPanelProps {
   quizId: number | null;
@@ -9,6 +10,9 @@ interface QuizAnalyticsPanelProps {
 export default function QuizAnalyticsPanel({ quizId }: QuizAnalyticsPanelProps) {
   const [showAttempts, setShowAttempts] = useState(false);
   const [showQuestionDetails, setShowQuestionDetails] = useState(true);
+  const [groupFilter, setGroupFilter] = useState<string>("all");
+  const { quiz } = useQuizStore();
+  const groups = quiz.meta.groups || [];
 
   const { data: analytics, isLoading: analyticsLoading } = trpc.quizMaker.getQuizAnalytics.useQuery(
     { quizId: quizId! },
@@ -134,6 +138,43 @@ export default function QuizAnalyticsPanel({ quizId }: QuizAnalyticsPanelProps) 
 
         {showQuestionDetails && (
           <div className="mt-3 space-y-3">
+            {/* Group filter */}
+            {groups.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-3 h-3 text-gray-400" />
+                <button
+                  onClick={() => setGroupFilter("all")}
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
+                    groupFilter === "all" ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  All
+                </button>
+                {groups.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setGroupFilter(g.id)}
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
+                      groupFilter === g.id ? "text-white" : "text-gray-600 hover:opacity-80"
+                    }`}
+                    style={{
+                      backgroundColor: groupFilter === g.id ? g.color : `${g.color}20`,
+                      borderColor: g.color,
+                    }}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setGroupFilter("ungrouped")}
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
+                    groupFilter === "ungrouped" ? "bg-gray-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  Ungrouped
+                </button>
+              </div>
+            )}
             {questionLoading ? (
               <div className="text-center py-2">
                 <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -141,9 +182,16 @@ export default function QuizAnalyticsPanel({ quizId }: QuizAnalyticsPanelProps) 
             ) : questionAnalytics?.questions.length === 0 ? (
               <p className="text-xs text-gray-400 text-center py-2">No question data available</p>
             ) : (
-              questionAnalytics?.questions.map((q, idx) => (
-                <QuestionCard key={q.id} question={q} index={idx} />
-              ))
+              questionAnalytics?.questions
+                .filter((q) => {
+                  if (groupFilter === "all") return true;
+                  const quizQ = quiz.questions.find((qq) => qq.id === q.id);
+                  if (groupFilter === "ungrouped") return !quizQ?.groupId;
+                  return quizQ?.groupId === groupFilter;
+                })
+                .map((q, idx) => (
+                  <QuestionCard key={q.id} question={q} index={idx} />
+                ))
             )}
           </div>
         )}

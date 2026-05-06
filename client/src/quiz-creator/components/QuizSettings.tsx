@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuizStore } from "../store/quizStore";
-import { X, Upload, Trash2 } from "lucide-react";
+import { X, Upload, Trash2, Plus, Palette } from "lucide-react";
+import type { QuestionGroup, DrawConfig, GroupDrawConfig } from "../types/quiz";
 
 interface Props {
   onClose: () => void;
 }
 
-type Tab = "general" | "scoring" | "branding" | "navigation" | "intro" | "results";
+type Tab = "general" | "scoring" | "branding" | "navigation" | "groups" | "intro" | "results";
 
 export function QuizSettings({ onClose }: Props) {
   const { quiz, updateMeta } = useQuizStore();
@@ -18,9 +19,56 @@ export function QuizSettings({ onClose }: Props) {
     { id: "scoring", label: "Scoring & Rules" },
     { id: "branding", label: "Branding" },
     { id: "navigation", label: "Navigation" },
+    { id: "groups", label: "Groups & Pools" },
     { id: "intro", label: "Intro Slide" },
     { id: "results", label: "Result Slide" },
   ];
+
+  const GROUP_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#6366f1", "#a855f7", "#ec4899"];
+
+  const addGroup = () => {
+    const groups = m.groups || [];
+    const newGroup: QuestionGroup = {
+      id: crypto.randomUUID(),
+      name: `Group ${groups.length + 1}`,
+      color: GROUP_COLORS[groups.length % GROUP_COLORS.length],
+    };
+    updateMeta({ groups: [...groups, newGroup] });
+  };
+
+  const updateGroup = (id: string, patch: Partial<QuestionGroup>) => {
+    const groups = (m.groups || []).map((g) => (g.id === id ? { ...g, ...patch } : g));
+    updateMeta({ groups });
+  };
+
+  const deleteGroup = (id: string) => {
+    const groups = (m.groups || []).filter((g) => g.id !== id);
+    // Also remove from drawConfig
+    const drawConfig = m.drawConfig;
+    if (drawConfig) {
+      updateMeta({ groups, drawConfig: { ...drawConfig, groupDraws: drawConfig.groupDraws.filter((gd) => gd.groupId !== id) } });
+    } else {
+      updateMeta({ groups });
+    }
+  };
+
+  const updateDrawConfig = (patch: Partial<DrawConfig>) => {
+    const current: DrawConfig = m.drawConfig || { enabled: false, totalQuestions: quiz.questions.length, groupDraws: [], ungroupedDrawCount: quiz.questions.length };
+    updateMeta({ drawConfig: { ...current, ...patch } });
+  };
+
+  const updateGroupDraw = (groupId: string, drawCount: number) => {
+    const current: DrawConfig = m.drawConfig || { enabled: false, totalQuestions: quiz.questions.length, groupDraws: [], ungroupedDrawCount: quiz.questions.length };
+    const existing = current.groupDraws.find((gd) => gd.groupId === groupId);
+    let groupDraws: GroupDrawConfig[];
+    if (existing) {
+      groupDraws = current.groupDraws.map((gd) => (gd.groupId === groupId ? { ...gd, drawCount } : gd));
+    } else {
+      groupDraws = [...current.groupDraws, { groupId, drawCount }];
+    }
+    const total = groupDraws.reduce((s, gd) => s + gd.drawCount, 0) + (current.ungroupedDrawCount || 0);
+    updateMeta({ drawConfig: { ...current, groupDraws, totalQuestions: total } });
+  };
 
   const uploadImage = (callback: (url: string) => void) => {
     const input = document.createElement("input");
@@ -168,22 +216,48 @@ export function QuizSettings({ onClose }: Props) {
                   </select>
                 </div>
               </div>
-              <div className="space-y-2 pt-2">
-                {[
-                  { key: "shuffleQuestions", label: "Shuffle question order" },
-                  { key: "shuffleAnswers", label: "Shuffle answer choices" },
-                  { key: "allowRetry", label: "Allow retry after failure" },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={m[key as keyof typeof m] as boolean}
-                      onChange={(e) => updateMeta({ [key]: e.target.checked })}
-                      className="accent-teal-500 w-4 h-4"
-                    />
-                    <span className="text-sm text-gray-700">{label}</span>
-                  </label>
-                ))}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Randomization</h4>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={m.shuffleQuestions}
+                    onChange={(e) => updateMeta({ shuffleQuestions: e.target.checked })}
+                    className="accent-teal-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-sm text-gray-700">Shuffle question order</span>
+                    <p className="text-xs text-gray-400">Randomize the order questions appear for each attempt</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={m.shuffleAnswers}
+                    onChange={(e) => updateMeta({ shuffleAnswers: e.target.checked })}
+                    className="accent-teal-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-sm text-gray-700">Shuffle answer choices</span>
+                    <p className="text-xs text-gray-400">Randomize answer order for all questions. Override per-question with "Lock answer order"</p>
+                  </div>
+                </label>
+                {m.shuffleAnswers && (
+                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg ml-7">
+                    Tip: For questions where answer order matters (e.g. "All of the above"), enable "Lock answer order" on that specific question in the editor.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2 pt-2 border-t border-gray-100">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={m.allowRetry}
+                    onChange={(e) => updateMeta({ allowRetry: e.target.checked })}
+                    className="accent-teal-500 w-4 h-4"
+                  />
+                  <span className="text-sm text-gray-700">Allow retry after failure</span>
+                </label>
               </div>
             </div>
           )}
@@ -374,6 +448,136 @@ export function QuizSettings({ onClose }: Props) {
                   </p>
                 )}
               </div>
+            </div>
+          )}
+
+          {tab === "groups" && (
+            <div className="space-y-5">
+              <p className="text-xs text-gray-500">Organize questions into groups and optionally enable pool mode to draw a subset per attempt.</p>
+
+              {/* Pool Mode Toggle */}
+              <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={m.drawConfig?.enabled ?? false}
+                    onChange={(e) => updateDrawConfig({ enabled: e.target.checked })}
+                    className="accent-indigo-500 w-4 h-4"
+                  />
+                  <div>
+                    <span className="text-sm text-gray-700 font-medium">Enable Question Pool / Draw Mode</span>
+                    <p className="text-xs text-gray-400 mt-0.5">When enabled, each attempt draws a random subset of questions from each group instead of showing all questions.</p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Groups List */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Question Groups</h4>
+                  <button
+                    onClick={addGroup}
+                    className="flex items-center gap-1 text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Group
+                  </button>
+                </div>
+
+                {(!m.groups || m.groups.length === 0) && (
+                  <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-gray-200 rounded-xl">
+                    No groups yet. Create groups to organize your questions.
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {(m.groups || []).map((group) => {
+                    const questionsInGroup = quiz.questions.filter((q) => q.groupId === group.id).length;
+                    const groupDraw = m.drawConfig?.groupDraws?.find((gd) => gd.groupId === group.id);
+                    return (
+                      <div key={group.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl">
+                        {/* Color swatch */}
+                        <div className="relative">
+                          <input
+                            type="color"
+                            value={group.color}
+                            onChange={(e) => updateGroup(group.id, { color: e.target.value })}
+                            className="w-6 h-6 rounded-full border-2 border-white shadow cursor-pointer appearance-none"
+                            style={{ backgroundColor: group.color }}
+                          />
+                        </div>
+                        {/* Name */}
+                        <input
+                          type="text"
+                          value={group.name}
+                          onChange={(e) => updateGroup(group.id, { name: e.target.value })}
+                          className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50"
+                        />
+                        {/* Question count badge */}
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          {questionsInGroup} Q{questionsInGroup !== 1 ? "s" : ""}
+                        </span>
+                        {/* Draw count (only when pool mode enabled) */}
+                        {m.drawConfig?.enabled && (
+                          <div className="flex items-center gap-1">
+                            <label className="text-xs text-gray-500">Draw:</label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={questionsInGroup}
+                              value={groupDraw?.drawCount ?? questionsInGroup}
+                              onChange={(e) => updateGroupDraw(group.id, Math.max(0, Number(e.target.value)))}
+                              className="w-14 px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400/50 text-center"
+                            />
+                          </div>
+                        )}
+                        {/* Delete */}
+                        <button
+                          onClick={() => deleteGroup(group.id)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Ungrouped draw count (when pool mode enabled) */}
+              {m.drawConfig?.enabled && (
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm text-gray-700 font-medium">Ungrouped Questions</span>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {quiz.questions.filter((q) => !q.groupId).length} questions not assigned to any group
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-500">Draw:</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={quiz.questions.filter((q) => !q.groupId).length}
+                        value={m.drawConfig?.ungroupedDrawCount ?? quiz.questions.filter((q) => !q.groupId).length}
+                        onChange={(e) => {
+                          const val = Math.max(0, Number(e.target.value));
+                          const groupTotal = (m.drawConfig?.groupDraws || []).reduce((s, gd) => s + gd.drawCount, 0);
+                          updateDrawConfig({ ungroupedDrawCount: val, totalQuestions: groupTotal + val });
+                        }}
+                        className="w-16 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400/50 text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {m.drawConfig?.enabled && (
+                <div className="text-xs text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg">
+                  Each attempt will show <strong>{m.drawConfig.totalQuestions}</strong> questions out of <strong>{quiz.questions.length}</strong> total.
+                </div>
+              )}
             </div>
           )}
 

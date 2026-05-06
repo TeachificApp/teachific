@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { X, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData } from "../types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, DrawConfig } from "../types/quiz";
 import { DndOrdering, DndDragWords } from "./DndQuizInteractions";
 
 interface Props {
@@ -10,8 +10,15 @@ interface Props {
 
 type Answer = string | boolean | string[] | Record<string, string>;
 
-function McqQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void }) {
+function McqQuestion({ q, answer, setAnswer, shuffleChoices }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; shuffleChoices?: boolean }) {
   const data = q.data as McqData;
+  const choices = useMemo(() => {
+    if (shuffleChoices && !q.lockAnswerOrder) {
+      return [...data.choices].sort(() => 0.5 - Math.random());
+    }
+    return data.choices;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.id]);
   const selected = (answer as string[]) ?? [];
   const toggle = (id: string) => {
     if (data.multiSelect) {
@@ -22,7 +29,7 @@ function McqQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer: Answer
   };
   return (
     <div className="space-y-2">
-      {data.choices.map((c) => (
+      {choices.map((c) => (
         <button
           key={c.id}
           onClick={() => toggle(c.id)}
@@ -184,8 +191,15 @@ function ShortAnswerQuestion({ answer, setAnswer }: { answer: Answer; setAnswer:
   );
 }
 
-function ImageChoiceQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void }) {
+function ImageChoiceQuestion({ q, answer, setAnswer, shuffleChoices }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; shuffleChoices?: boolean }) {
   const data = q.data as ImageChoiceData;
+  const choices = useMemo(() => {
+    if (shuffleChoices && !q.lockAnswerOrder) {
+      return [...data.choices].sort(() => 0.5 - Math.random());
+    }
+    return data.choices;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.id]);
   const selected = (answer as string[]) ?? [];
   const toggle = (id: string) => {
     if (data.multiSelect) {
@@ -196,7 +210,7 @@ function ImageChoiceQuestion({ q, answer, setAnswer }: { q: QuizQuestion; answer
   };
   return (
     <div className="grid grid-cols-2 gap-3">
-      {data.choices.map((c) => (
+      {choices.map((c) => (
         <button
           key={c.id}
           onClick={() => toggle(c.id)}
@@ -369,9 +383,38 @@ function EssayQuestion({ answer, setAnswer, data }: { answer: Answer; setAnswer:
 
 export function QuizPreview({ onClose }: Props) {
   const { quiz } = useQuizStore();
-  const questions = quiz.meta.shuffleQuestions
-    ? [...quiz.questions].sort(() => 0.5 - Math.random())
-    : quiz.questions;
+
+  // Pool/Draw mode + shuffle
+  const questions = useMemo(() => {
+    let qs = [...quiz.questions];
+    const drawConfig = quiz.meta.drawConfig as DrawConfig | undefined;
+    if (drawConfig?.enabled) {
+      const grouped: Record<string, QuizQuestion[]> = {};
+      const ungrouped: QuizQuestion[] = [];
+      qs.forEach((q) => {
+        if (q.groupId) {
+          if (!grouped[q.groupId]) grouped[q.groupId] = [];
+          grouped[q.groupId].push(q);
+        } else {
+          ungrouped.push(q);
+        }
+      });
+      const drawn: QuizQuestion[] = [];
+      for (const gd of drawConfig.groupDraws) {
+        const pool = grouped[gd.groupId] || [];
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        drawn.push(...shuffled.slice(0, gd.drawCount));
+      }
+      const shuffledUngrouped = [...ungrouped].sort(() => 0.5 - Math.random());
+      drawn.push(...shuffledUngrouped.slice(0, drawConfig.ungroupedDrawCount));
+      qs = drawn;
+    }
+    if (quiz.meta.shuffleQuestions) {
+      return qs.sort(() => 0.5 - Math.random());
+    }
+    return qs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz.questions.length, quiz.meta.shuffleQuestions, quiz.meta.drawConfig?.enabled]);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
@@ -504,13 +547,13 @@ export function QuizPreview({ onClose }: Props) {
             {q.image && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
           </div>
 
-          {q.type === "mcq" && <McqQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
+          {q.type === "mcq" && <McqQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} shuffleChoices={quiz.meta.shuffleAnswers} />}
           {q.type === "tf" && <TfQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "hotspot" && (q.data as HotspotData).imageUrl && <HotspotQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
-          {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
+          {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} shuffleChoices={quiz.meta.shuffleAnswers} />}
           {q.type === "ordering" && <OrderingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "numeric" && <NumericQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} data={q.data as NumericData} />}
           {q.type === "dropdown" && <DropdownQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}

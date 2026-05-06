@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, BranchRule } from "@/quiz-creator/types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, BranchRule, DrawConfig } from "@/quiz-creator/types/quiz";
 import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInteractions";
 
 type Answer = string | boolean | string[] | Record<string, string>;
@@ -92,8 +92,15 @@ interface Branding {
 
 // ─── Question Renderers ──────────────────────────────────────────────────────
 
-function McqQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
+function McqQuestion({ q, answer, setAnswer, primaryColor, shuffleChoices }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string; shuffleChoices?: boolean }) {
   const data = q.data as McqData;
+  const choices = useMemo(() => {
+    if (shuffleChoices && !q.lockAnswerOrder) {
+      return [...data.choices].sort(() => 0.5 - Math.random());
+    }
+    return data.choices;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.id]);
   const selected = (answer as string[]) ?? [];
   const toggle = (id: string) => {
     if (data.multiSelect) {
@@ -104,7 +111,7 @@ function McqQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; 
   };
   return (
     <div className="space-y-2">
-      {data.choices.map((c) => (
+      {choices.map((c) => (
         <button
           key={c.id}
           onClick={() => toggle(c.id)}
@@ -270,8 +277,15 @@ function ShortAnswerQuestion({ answer, setAnswer, primaryColor }: { answer: Answ
   );
 }
 
-function ImageChoiceQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string }) {
+function ImageChoiceQuestion({ q, answer, setAnswer, primaryColor, shuffleChoices }: { q: QuizQuestion; answer: Answer; setAnswer: (a: Answer) => void; primaryColor: string; shuffleChoices?: boolean }) {
   const data = q.data as ImageChoiceData;
+  const choices = useMemo(() => {
+    if (shuffleChoices && !q.lockAnswerOrder) {
+      return [...data.choices].sort(() => 0.5 - Math.random());
+    }
+    return data.choices;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.id]);
   const selected = (answer as string[]) ?? [];
   const toggle = (id: string) => {
     if (data.multiSelect) {
@@ -282,7 +296,7 @@ function ImageChoiceQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQu
   };
   return (
     <div className="grid grid-cols-2 gap-3">
-      {data.choices.map((c) => (
+      {choices.map((c) => (
         <button
           key={c.id}
           onClick={() => toggle(c.id)}
@@ -542,10 +556,37 @@ export default function PublicQuizPlayerPage() {
     ? `linear-gradient(135deg, ${bgColor}, ${bgColor}dd)`
     : "linear-gradient(135deg, #f9fafb, #e6f7f8)";
 
-  // Shuffle questions once on start
+  // Shuffle questions once on start, with pool/draw mode support
   const questions = useMemo(() => {
     if (!quiz) return [];
-    const qs = quiz.questions as QuizQuestion[];
+    let qs = quiz.questions as QuizQuestion[];
+
+    // Pool/Draw mode: randomly select a subset of questions from each group
+    const drawConfig = (quiz as any).drawConfig as DrawConfig | undefined;
+    if (drawConfig?.enabled) {
+      const grouped: Record<string, QuizQuestion[]> = {};
+      const ungrouped: QuizQuestion[] = [];
+      qs.forEach((q) => {
+        if (q.groupId) {
+          if (!grouped[q.groupId]) grouped[q.groupId] = [];
+          grouped[q.groupId].push(q);
+        } else {
+          ungrouped.push(q);
+        }
+      });
+      const drawn: QuizQuestion[] = [];
+      // Draw from each group
+      for (const gd of drawConfig.groupDraws) {
+        const pool = grouped[gd.groupId] || [];
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        drawn.push(...shuffled.slice(0, gd.drawCount));
+      }
+      // Draw ungrouped
+      const shuffledUngrouped = [...ungrouped].sort(() => 0.5 - Math.random());
+      drawn.push(...shuffledUngrouped.slice(0, drawConfig.ungroupedDrawCount));
+      qs = drawn;
+    }
+
     if (quiz.shuffleQuestions) {
       return [...qs].sort(() => 0.5 - Math.random());
     }
@@ -795,13 +836,13 @@ export default function PublicQuizPlayerPage() {
               <video src={q.video.url} controls className="mt-3 w-full max-h-48 rounded-xl" />
             )}
           </div>
-          {q.type === "mcq" && <McqQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "mcq" && <McqQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} shuffleChoices={quiz.shuffleAnswers} />}
           {q.type === "tf" && <TfQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "hotspot" && (q.data as HotspotData).imageUrl && <HotspotQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
-          {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} shuffleChoices={quiz.shuffleAnswers} />}
           {q.type === "ordering" && <OrderingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "numeric" && <NumericQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} data={q.data as NumericData} />}
           {q.type === "dropdown" && <DropdownQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}

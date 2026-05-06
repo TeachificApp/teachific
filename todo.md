@@ -3367,3 +3367,38 @@
 - [x] Update quiz player to follow branching paths instead of linear sequence
 - [x] Add "end quiz" and "jump to result" branch destinations
 - [x] Support branching in PublicQuizPlayerPage
+
+## Question Pools/Banks with Groups
+- [x] Add QuestionGroup type (id, name, color) to quiz types
+- [x] Each question gets optional groupId field
+- [x] QuizMeta gets groups array and drawConfig (total questions per attempt, per-group draw counts)
+- [x] Group management UI in quiz builder (create/rename/delete/recolor groups)
+- [x] Assign questions to groups (drag or dropdown selector)
+- [x] Draw configuration panel: set how many questions to show per attempt, how many from each group
+- [x] Quiz player: on start, draw the configured number of questions from each group randomly
+- [x] Show group labels in quiz builder question list
+
+## Advanced Randomization Controls
+- [x] Quiz-level shuffleQuestions toggle (randomize question order per attempt)
+- [x] Quiz-level shuffleAnswers toggle (randomize answer order for all questions)
+- [x] Per-question lockAnswerOrder override (keeps answers in set order even when quiz-level shuffle is on)
+- [x] UI: toggle in QuizSettings for quiz-level shuffles
+- [x] UI: per-question "Lock answer order" checkbox in QuestionEditor
+- [x] Player respects both quiz-level and per-question shuffle settings
+
+## Branching Flow Visualizer
+- [x] Visual flowchart/graph component showing questions as nodes and branch rules as edges
+- [x] Color-coded edges for different conditions (correct=green, incorrect=red, choice=blue, always=gray)
+- [ ] Clickable nodes to jump to question editor
+- [x] Auto-layout algorithm (top-to-bottom or left-to-right)
+- [x] Show "End Quiz" and "Show Result" as terminal nodes
+- [x] Accessible from quiz builder as a tab or panel
+
+## Quiz Analytics Dashboard
+- [x] Per-question analytics: times answered, % correct, avg time spent
+- [x] Most-missed questions ranking
+- [ ] Branching path distribution: which paths students take most often
+- [x] Score distribution histogram
+- [ ] Attempt timeline (attempts over time)
+- [x] Filter by date range, group, question type
+- [ ] Export analytics to CSV
