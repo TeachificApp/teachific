@@ -17,12 +17,35 @@ import type { Block as PBBlock } from "@/components/PageBuilder";
 // ─── View Mode Types ─────────────────────────────────────────────────────────
 type ViewMode = "editor" | "visitor" | "customer";
 
+// ─── Determine context from URL params ───────────────────────────────────────
+function usePageContext() {
+  const params = useParams<{ courseId?: string; pageId?: string; productId?: string; webinarId?: string }>();
+  const path = window.location.pathname;
+
+  if (params.productId || path.includes("/downloads/")) {
+    const id = params.productId || path.match(/\/downloads\/(\d+)\//)?.[1];
+    return { type: "product" as const, id: id ? parseInt(id) : undefined };
+  }
+  if (params.webinarId || path.includes("/webinars/")) {
+    const id = params.webinarId || path.match(/\/webinars\/(\d+)\//)?.[1];
+    return { type: "webinar" as const, id: id ? parseInt(id) : undefined };
+  }
+  if (params.courseId && path.includes("/thank-you-builder")) {
+    return { type: "thankyou" as const, id: parseInt(params.courseId) };
+  }
+  if (params.courseId) {
+    return { type: "course" as const, id: parseInt(params.courseId) };
+  }
+  if (params.pageId) {
+    return { type: "page" as const, id: parseInt(params.pageId) };
+  }
+  return { type: "page" as const, id: undefined };
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function PageBuilderPage() {
-  const params = useParams<{ courseId?: string; pageId?: string }>();
+  const context = usePageContext();
   const [, setLocation] = useLocation();
-  const courseId = params.courseId ? parseInt(params.courseId) : undefined;
-  const pageId = params.pageId ? parseInt(params.pageId) : undefined;
 
   const { data: orgs } = trpc.orgs.myOrgs.useQuery();
   const orgId = orgs?.[0]?.id;
@@ -32,9 +55,34 @@ export default function PageBuilderPage() {
     { enabled: !!orgId }
   );
 
-  const { data: page, isLoading } = trpc.lms.pages.get.useQuery(
-    { id: pageId! },
-    { enabled: !!pageId }
+  // Load page data (for page type)
+  const { data: page, isLoading: pageLoading } = trpc.lms.pages.get.useQuery(
+    { id: context.id! },
+    { enabled: context.type === "page" && !!context.id }
+  );
+
+  // Load page by course (for course type)
+  const { data: coursePage, isLoading: coursePageLoading } = trpc.lms.pages.getByCourse.useQuery(
+    { courseId: context.id! },
+    { enabled: context.type === "course" && !!context.id }
+  );
+
+  // Load digital product data
+  const { data: product, isLoading: productLoading } = trpc.lms.downloads.getProduct.useQuery(
+    { id: context.id! },
+    { enabled: context.type === "product" && !!context.id }
+  );
+
+  // Load webinar data
+  const { data: webinar, isLoading: webinarLoading } = trpc.lms.webinars.get.useQuery(
+    { id: context.id! },
+    { enabled: context.type === "webinar" && !!context.id }
+  );
+
+  // Load course data (for thank-you page builder)
+  const { data: thankYouCourse, isLoading: thankYouLoading } = trpc.lms.courses.get.useQuery(
+    { id: context.id! },
+    { enabled: context.type === "thankyou" && !!context.id }
   );
 
   const { data: courses } = trpc.lms.courses.list.useQuery(
@@ -51,10 +99,10 @@ export default function PageBuilderPage() {
 
   // Theme-based accent color (defaults to teal)
   const accentColor = theme?.primaryColor || "#189aa1";
-  const accentColorLight = theme?.accentColor || "#4ad9e0";
 
+  // Initialize state based on context type
   useEffect(() => {
-    if (page) {
+    if (context.type === "page" && page) {
       setPageTitle(page.title || "Untitled Page");
       setPageSlug(page.slug || "");
       setIsPublished(page.isPublished || false);
@@ -65,13 +113,67 @@ export default function PageBuilderPage() {
         setBlocks([]);
       }
     }
-  }, [page]);
+  }, [page, context.type]);
 
+  useEffect(() => {
+    if (context.type === "course" && coursePage) {
+      setPageTitle(coursePage.title || "Course Sales Page");
+      setPageSlug(coursePage.slug || "");
+      setIsPublished(coursePage.isPublished || false);
+      try {
+        const parsed = JSON.parse(coursePage.blocksJson || "[]");
+        setBlocks(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setBlocks([]);
+      }
+    }
+  }, [coursePage, context.type]);
+
+  useEffect(() => {
+    if (context.type === "product" && product) {
+      setPageTitle(product.title ? `${product.title} - Sales Page` : "Product Sales Page");
+      setPageSlug(product.slug || "");
+      try {
+        const raw = product.salesPageBlocksJson;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
+        setBlocks(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setBlocks([]);
+      }
+    }
+  }, [product, context.type]);
+
+  useEffect(() => {
+    if (context.type === "webinar" && webinar) {
+      setPageTitle(webinar.title ? `${webinar.title} - Registration Page` : "Webinar Registration Page");
+      setPageSlug(webinar.slug || "");
+      try {
+        const raw = webinar.salesPageBlocksJson;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
+        setBlocks(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setBlocks([]);
+      }
+    }
+  }, [webinar, context.type]);
+
+  useEffect(() => {
+    if (context.type === "thankyou" && thankYouCourse) {
+      setPageTitle(`${thankYouCourse.title} - Thank You Page`);
+      setPageSlug("");
+      try {
+        const raw = thankYouCourse.thankYouPageBlocks;
+        const parsed = typeof raw === "string" ? JSON.parse(raw) : [];
+        setBlocks(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setBlocks([]);
+      }
+    }
+  }, [thankYouCourse, context.type]);
+
+  // Save mutations
   const updatePage = trpc.lms.pages.update.useMutation({
-    onSuccess: () => {
-      toast.success("Page saved successfully");
-      setIsDirty(false);
-    },
+    onSuccess: () => { toast.success("Page saved successfully"); setIsDirty(false); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -84,6 +186,21 @@ export default function PageBuilderPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  const updateProduct = trpc.lms.downloads.updateProduct.useMutation({
+    onSuccess: () => { toast.success("Sales page saved"); setIsDirty(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateWebinar = trpc.lms.webinars.update.useMutation({
+    onSuccess: () => { toast.success("Registration page saved"); setIsDirty(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateCourse = trpc.lms.courses.update.useMutation({
+    onSuccess: () => { toast.success("Thank you page saved"); setIsDirty(false); },
+    onError: (e) => toast.error(e.message),
+  });
+
   const handleBlocksChange = useCallback((newBlocks: Block[]) => {
     setBlocks(newBlocks);
     setIsDirty(true);
@@ -91,43 +208,59 @@ export default function PageBuilderPage() {
 
   const handleSave = () => {
     const blocksJson = JSON.stringify(blocks);
-    if (pageId) {
-      updatePage.mutate({
-        id: pageId,
-        blocksJson,
-        title: pageTitle,
-        slug: pageSlug || undefined,
-        isPublished,
-      });
+
+    if (context.type === "page" && context.id) {
+      updatePage.mutate({ id: context.id, blocksJson, title: pageTitle, slug: pageSlug || undefined, isPublished });
+    } else if (context.type === "course") {
+      if (coursePage?.id) {
+        updatePage.mutate({ id: coursePage.id, blocksJson, title: pageTitle, slug: pageSlug || undefined, isPublished });
+      } else if (orgId && context.id) {
+        createPage.mutate({ orgId, courseId: context.id, pageType: "course_sales", title: pageTitle, slug: pageSlug || undefined } as any);
+      }
+    } else if (context.type === "product" && context.id) {
+      updateProduct.mutate({ id: context.id, salesPageBlocksJson: blocks as any });
+    } else if (context.type === "webinar" && context.id) {
+      updateWebinar.mutate({ id: context.id, salesPageBlocksJson: blocks as any });
+    } else if (context.type === "thankyou" && context.id) {
+      updateCourse.mutate({ id: context.id, thankYouPageBlocks: blocksJson, thankYouPageEnabled: true });
     } else if (orgId) {
-      createPage.mutate({
-        orgId,
-        courseId,
-        pageType: "course_sales",
-        title: pageTitle,
-        slug: pageSlug || undefined,
-      } as any);
+      createPage.mutate({ orgId, pageType: "custom", title: pageTitle, slug: pageSlug || undefined } as any);
     }
   };
 
-  const isSaving = updatePage.isPending || createPage.isPending;
+  const isSaving = updatePage.isPending || createPage.isPending || updateProduct.isPending || updateWebinar.isPending || updateCourse.isPending;
+  const isLoading = pageLoading || coursePageLoading || productLoading || webinarLoading || thankYouLoading;
   const courseList = (courses || []).map((c: any) => ({ id: c.id, title: c.title }));
-  const previewUrl = page?.slug ? `/p/${page.slug}` : null;
 
-  // Get the course name if this is a course page
-  const courseName = courseId
-    ? courseList.find(c => c.id === courseId)?.title
-    : page?.courseId
-    ? courseList.find(c => c.id === page.courseId)?.title
-    : null;
+  // Determine preview URL
+  const previewUrl = context.type === "product" && product?.slug
+    ? `/shop/${product.slug}`
+    : context.type === "webinar" && webinar?.slug
+    ? `/webinar/${webinar.slug}/register`
+    : context.type === "thankyou" && context.id
+    ? `/courses/${context.id}/thank-you`
+    : page?.slug ? `/p/${page.slug}` : null;
 
-  const backLabel = courseName
-    ? `← Back to Product`
-    : `← Back to Pages`;
+  // Determine product name for header
+  const productName = context.type === "product"
+    ? product?.title || "Digital Product"
+    : context.type === "webinar"
+    ? webinar?.title || "Webinar"
+    : context.type === "thankyou"
+    ? (thankYouCourse?.title || "Course") + " - Thank You"
+    : context.type === "course"
+    ? courseList.find(c => c.id === context.id)?.title || "Course"
+    : pageTitle || "Page Editor";
 
   const handleBack = () => {
-    if (courseId) {
-      setLocation(`/lms/courses/${courseId}/edit`);
+    if (context.type === "thankyou" && context.id) {
+      setLocation(`/lms/courses/${context.id}/after_purchase`);
+    } else if (context.type === "course" && context.id) {
+      setLocation(`/lms/courses/${context.id}/edit`);
+    } else if (context.type === "product" && context.id) {
+      setLocation(`/admin/downloads/${context.id}`);
+    } else if (context.type === "webinar" && context.id) {
+      setLocation(`/lms/webinars/${context.id}/edit`);
     } else if (page?.courseId) {
       setLocation(`/lms/courses/${page.courseId}/edit`);
     } else {
@@ -154,7 +287,7 @@ export default function PageBuilderPage() {
           </button>
           <div className="w-px h-6 bg-border shrink-0" />
           <span className="text-sm font-bold text-foreground truncate max-w-[200px]">
-            {courseName || pageTitle || "Page Editor"}
+            {productName}
           </span>
         </div>
 
@@ -189,12 +322,12 @@ export default function PageBuilderPage() {
           )}
           <Button
             onClick={handleSave}
-            disabled={isSaving || (!isDirty && !!pageId)}
+            disabled={isSaving || (!isDirty && !!context.id)}
             className="gap-2 text-sm font-semibold px-5 shadow-md"
             style={{
               backgroundColor: accentColor,
               color: "#fff",
-              opacity: (isSaving || (!isDirty && !!pageId)) ? 0.5 : 1,
+              opacity: (isSaving || (!isDirty && !!context.id)) ? 0.5 : 1,
             }}
           >
             <Save className="h-4 w-4" />
@@ -204,38 +337,40 @@ export default function PageBuilderPage() {
       </div>
 
       {/* ─── Page Title & Slug Bar ──────────────────────────────────────────── */}
-      <div className="h-10 flex items-center gap-4 px-4 border-b border-border bg-slate-50 shrink-0">
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Page Title</label>
-          <Input
-            value={pageTitle}
-            onChange={(e) => { setPageTitle(e.target.value); setIsDirty(true); }}
-            className="h-7 text-sm font-semibold border-border bg-white w-48"
-          />
+      {(context.type === "page" || context.type === "course") && (
+        <div className="h-10 flex items-center gap-4 px-4 border-b border-border bg-slate-50 shrink-0">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Page Title</label>
+            <Input
+              value={pageTitle}
+              onChange={(e) => { setPageTitle(e.target.value); setIsDirty(true); }}
+              className="h-7 text-sm font-semibold border-border bg-white w-48"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">URL Slug</label>
+            <Input
+              value={pageSlug}
+              onChange={(e) => { setPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); setIsDirty(true); }}
+              className="h-7 text-sm border-border bg-white w-48 font-mono"
+              placeholder="my-page-slug"
+            />
+          </div>
+          {isPublished && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accentColor}15`, color: accentColor }}>
+              Published
+            </span>
+          )}
+          {!isPublished && context.id && (
+            <button
+              onClick={() => { setIsPublished(true); setIsDirty(true); }}
+              className="text-xs font-medium px-2 py-0.5 rounded-full border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
+            >
+              Draft — Click to Publish
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">URL Slug</label>
-          <Input
-            value={pageSlug}
-            onChange={(e) => { setPageSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")); setIsDirty(true); }}
-            className="h-7 text-sm border-border bg-white w-48 font-mono"
-            placeholder="my-page-slug"
-          />
-        </div>
-        {isPublished && (
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: `${accentColor}15`, color: accentColor }}>
-            Published
-          </span>
-        )}
-        {!isPublished && pageId && (
-          <button
-            onClick={() => { setIsPublished(true); setIsDirty(true); }}
-            className="text-xs font-medium px-2 py-0.5 rounded-full border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors"
-          >
-            Draft — Click to Publish
-          </button>
-        )}
-      </div>
+      )}
 
       {/* ─── Editor / Preview Area ──────────────────────────────────────────── */}
       {isLoading ? (

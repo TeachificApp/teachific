@@ -579,6 +579,8 @@ export const courses = mysqlTable("courses", {
   welcomeEmailSubject: varchar("welcomeEmailSubject", { length: 255 }),
   welcomeEmailBody: text("welcomeEmailBody"),
   afterPurchaseRedirectUrl: text("afterPurchaseRedirectUrl"),
+  thankYouPageEnabled: boolean("thankYouPageEnabled").default(false).notNull(),
+  thankYouPageBlocks: text("thankYouPageBlocks"), // JSON array of page builder blocks
   upsellCourseId: int("upsellCourseId"),
   // Custom page code
   headerCode: text("headerCode"),

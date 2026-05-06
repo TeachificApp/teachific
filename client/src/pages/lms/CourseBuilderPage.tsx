@@ -3,6 +3,7 @@ import { LessonEditorSheet } from "@/components/lms/LessonEditorSheet";
 import CourseOverviewTab from "@/components/lms/CourseOverviewTab";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { getOrgCoursePlayerUrl, getOrgCourseUrl, getOrgThankYouUrl } from "@/lib/orgUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -547,7 +548,13 @@ export default function CourseBuilderPage() {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            onClick={() => window.open(`/learn/${courseId}?preview=1`, "_blank")}
+            onClick={() => {
+              const org = orgs?.[0];
+              const url = org
+                ? `${getOrgCoursePlayerUrl(org.slug, courseId, org.customDomain, org.domainVerificationStatus)}?preview=1`
+                : `/learn/${courseId}?preview=1`;
+              window.open(url, "_blank");
+            }}
           >
             <Eye className="h-3.5 w-3.5" />
             Preview as Student
@@ -643,7 +650,7 @@ export default function CourseBuilderPage() {
         )}
 
         {activeTab === "after_purchase" && (
-          <AfterPurchaseTab course={course} onSave={(data: any) => updateCourse.mutate({ id: courseId, ...data })} />
+          <AfterPurchaseTab course={course} courseId={courseId} onSave={(data: any) => updateCourse.mutate({ id: courseId, ...data })} />
         )}
         {activeTab === "drip" && (
           <DripScheduleTab courseId={courseId} curriculum={curriculum || []} onRefresh={refetch} />
@@ -1497,12 +1504,15 @@ function CourseThumbnailUpload({
 
 
 // ─── After Purchase Tab ─────────────────────────────────────────────────────
-function AfterPurchaseTab({ course, onSave }: { course: any; onSave: (data: any) => void }) {
+function AfterPurchaseTab({ course, courseId, onSave }: { course: any; courseId: number; onSave: (data: any) => void }) {
+  const [, setLocation] = useLocation();
   const [welcomeEmailEnabled, setWelcomeEmailEnabled] = useState(course?.welcomeEmailEnabled ?? true);
   const [welcomeEmailSubject, setWelcomeEmailSubject] = useState(course?.welcomeEmailSubject ?? "");
   const [welcomeEmailBody, setWelcomeEmailBody] = useState(course?.welcomeEmailBody ?? "");
   const [afterPurchaseRedirectUrl, setAfterPurchaseRedirectUrl] = useState(course?.afterPurchaseRedirectUrl ?? "");
+  const [thankYouPageEnabled, setThankYouPageEnabled] = useState(course?.thankYouPageEnabled ?? false);
   const [dirty, setDirty] = useState(false);
+  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
 
   const handleSave = () => {
     onSave({
@@ -1510,16 +1520,57 @@ function AfterPurchaseTab({ course, onSave }: { course: any; onSave: (data: any)
       welcomeEmailSubject: welcomeEmailSubject || null,
       welcomeEmailBody: welcomeEmailBody || null,
       afterPurchaseRedirectUrl: afterPurchaseRedirectUrl || null,
+      thankYouPageEnabled,
     });
     setDirty(false);
     toast.success("After-purchase settings saved");
   };
+
+  const thankYouPageUrl = (() => {
+    const org = orgs?.[0];
+    if (org) {
+      return getOrgThankYouUrl(org.slug, courseId, org.customDomain, org.domainVerificationStatus);
+    }
+    return `/courses/${courseId}/thank-you`;
+  })();
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 py-6">
       <div>
         <h2 className="text-lg font-semibold mb-1">After Purchase Settings</h2>
         <p className="text-sm text-muted-foreground">Configure what happens after a student purchases this course.</p>
+      </div>
+
+      {/* Custom Thank You Page */}
+      <div className="space-y-4 border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <Label className="font-medium">Custom Thank You Page</Label>
+          </div>
+          <Switch
+            checked={thankYouPageEnabled}
+            onCheckedChange={(v) => { setThankYouPageEnabled(v); setDirty(true); }}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Show a custom thank-you page after purchase instead of the default confirmation. Build it with the page builder using your brand colors and messaging.
+        </p>
+        {thankYouPageEnabled && (
+          <div className="space-y-3 pt-2">
+            <Button
+              variant="outline"
+              className="gap-2 border-teal-300 text-teal-700 hover:bg-teal-50"
+              onClick={() => setLocation(`/lms/courses/${courseId}/thank-you-builder`)}
+            >
+              <Edit className="h-4 w-4" />
+              Open Thank You Page Builder
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Public URL: <span className="font-mono text-teal-600">{thankYouPageUrl}</span>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Redirect URL */}
@@ -1530,13 +1581,18 @@ function AfterPurchaseTab({ course, onSave }: { course: any; onSave: (data: any)
         </div>
         <p className="text-sm text-muted-foreground">
           After successful purchase, redirect the student to this URL instead of the default thank-you page.
-          Leave empty to show the default course access page.
+          Leave empty to use the custom thank-you page (if enabled) or the default course access page.
         </p>
         <Input
           placeholder="https://example.com/thank-you"
           value={afterPurchaseRedirectUrl}
           onChange={(e) => { setAfterPurchaseRedirectUrl(e.target.value); setDirty(true); }}
         />
+        {afterPurchaseRedirectUrl && thankYouPageEnabled && (
+          <p className="text-xs text-amber-600">
+            Note: The redirect URL takes priority over the custom thank-you page. Clear this field to use your custom page.
+          </p>
+        )}
       </div>
 
       {/* Welcome Email */}

@@ -3454,7 +3454,7 @@
 ## After Purchase Feature (Complete)
 - [x] After purchase redirect URL configuration
 - [x] Welcome email template editor (subject, body with merge tags)
-- [ ] Thank you page builder (use page builder blocks)
+- [x] Thank you page builder (use page builder blocks)
 - [ ] Auto-enroll in related courses option
 - [ ] Post-purchase webhook URL
 
@@ -3464,3 +3464,57 @@
 - [x] Visual drip schedule table with per-lesson controls
 - [ ] Email notification when drip content unlocks
 - [x] Student view: locked content with unlock date shown (already in player)
+
+## Custom Thank You Page (Per-Course)
+- [x] Add thankYouPageBlocks JSON field to courses table (stores page builder blocks)
+- [x] Add thankYouPageEnabled boolean field to courses table
+- [x] Backend: update course.update procedure to accept thankYouPageBlocks
+- [x] UI: Thank You Page builder section in After Purchase tab using WysiwygPageBuilder
+- [x] Public route: /thank-you/:courseId renders the custom thank-you page blocks
+- [x] After purchase redirect: if thankYouPageEnabled, redirect to custom thank-you page instead of default
+- [x] Default thank-you page template with course access button if no custom page is set
+
+## Standardize ALL Page Editors to Full-Screen AAU-Style with Teal Defaults
+- [ ] DigitalProductEditorPage: Replace inline PageBuilder with full-screen WysiwygPageBuilder (teal)
+- [ ] WebinarEditorPage: Replace inline PageBuilder with full-screen WysiwygPageBuilder (teal)
+- [ ] PlatformAdmin PageCreatorTab: Replace Sheet-based PageBuilder with full-screen WysiwygPageBuilder (teal)
+- [ ] CustomPagesPage: Replace Sheet-based WysiwygPageBuilder with full-screen navigation to PageBuilderPage (teal)
+- [ ] PageBuilder.tsx component: Change all purple/indigo defaults to teal
+- [ ] WysiwygPageBuilder.tsx: Ensure all accent colors default to teal
+- [ ] CourseBuilderPage sales page tab: Ensure it navigates to full-screen PageBuilderPage
+
+## Subdomain / Custom Domain / Whitelabel Routing
+- [x] All products (courses, downloads, webinars, custom pages, quizzes) served at org subdomain or custom domain
+- [x] SubdomainSchoolRouter already has routes for /courses/:courseId, /shop/:slug, /webinar/:slug, /quiz/:shareToken, /p/:slug
+- [x] Add /courses/:courseId/thank-you route to SubdomainSchoolRouter
+- [x] Ensure all admin "share" links and "preview" buttons use org subdomain/custom domain URL
+- [x] CourseBuilderPage share/preview links use getOrgBaseUrl() for course URLs
+- [x] DigitalProductEditorPage share link uses getOrgBaseUrl() + /shop/:slug
+- [x] WebinarEditorPage share link uses getOrgBaseUrl() + /webinar/:slug
+- [ ] QuizCreatorPage published quiz link uses getOrgBaseUrl() + /quiz/:shareToken
+- [ ] Custom pages share links use getOrgBaseUrl() + /p/:slug
+- [x] Whitelabel support: custom domain only available on Pro+ subscription tiers
+- [x] OrgSettingsPage domain section shows plan-gated custom domain configuration
+- [x] Thank-you page route added to both SubdomainSchoolRouter and BareRouter
+- [x] Thank-you page public renderer component (ThankYouPage.tsx)
+
+## Thank You Page Builder (Complete Implementation)
+- [x] AfterPurchaseTab: toggle switch for thankYouPageEnabled
+- [x] AfterPurchaseTab: "Open Thank You Page Builder" button navigating to page builder
+- [x] PageBuilderPage: support "thankyou" context type with courseId
+- [x] App.tsx: add /lms/courses/:courseId/thank-you-builder route
+- [x] ThankYouPage.tsx: public renderer that loads course thankYouPageBlocks and renders them
+- [x] After purchase flow: redirect to thank-you page when enabled
+
+## Custom Domain Setup for Org Admins
+- [x] Custom domain settings UI in org admin settings (CNAME to teachific.app)
+- [x] CNAME verification backend (DNS lookup to verify CNAME points to teachific.app)
+- [x] Domain verification status display (unverified, pending, verified, failed)
+- [x] Instructions for org admins on how to set up CNAME record
+- [x] Restrict custom domain feature to higher subscription tiers (whitelabel)
+
+## Post-Purchase Redirect Flow
+- [x] Checkout success_url respects afterPurchaseRedirectUrl field from course
+- [x] If afterPurchaseRedirectUrl is set, redirect there after successful payment
+- [x] If thankYouPageEnabled and no redirect URL, redirect to /courses/:id/thank-you
+- [x] Default fallback: redirect to course player /learn/:courseId

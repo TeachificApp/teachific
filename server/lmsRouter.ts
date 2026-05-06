@@ -424,6 +424,8 @@ export const lmsRouter = router({
           welcomeEmailSubject: z.string().optional(),
           welcomeEmailBody: z.string().optional(),
           afterPurchaseRedirectUrl: z.string().optional(),
+          thankYouPageEnabled: z.boolean().optional(),
+          thankYouPageBlocks: z.string().optional(),
           headerCode: z.string().optional(),
           footerCode: z.string().optional(),
           designTemplate: z.string().optional(),
@@ -481,6 +483,20 @@ export const lmsRouter = router({
         await requireOrgRole(ctx.user.id, input.orgId, undefined, ctx.user.role);
         await reorderCourses(input.courseIds);
         return { success: true };
+      }),
+    getThankYouPage: publicProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ input }) => {
+        const course = await getCourseById(input.courseId);
+        if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!course.thankYouPageEnabled || !course.thankYouPageBlocks) {
+          return null;
+        }
+        return {
+          courseId: course.id,
+          courseTitle: course.title,
+          blocks: course.thankYouPageBlocks,
+        };
       }),
   }),
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { getOrgWebinarUrl, getOrgWebinarWatchUrl } from "@/lib/orgUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +74,7 @@ export default function WebinarEditorPage() {
   const [, navigate] = useLocation();
   const webinarId = Number(id);
 
+  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
   const { data: webinar, refetch } = trpc.lms.webinars.get.useQuery(
     { id: webinarId },
     { enabled: !!webinarId }
@@ -187,8 +189,13 @@ export default function WebinarEditorPage() {
     saveFunnelMutation.mutate({ webinarId, steps: steps as any });
   };
 
-  const regUrl = `${window.location.origin}/webinar/${form.slug}/register`;
-  const watchUrl = `${window.location.origin}/webinar/${form.slug}/watch`;
+  const wOrg = myOrgs?.[0];
+  const regUrl = wOrg && form.slug
+    ? getOrgWebinarUrl(wOrg.slug, form.slug, wOrg.customDomain, wOrg.domainVerificationStatus)
+    : `${window.location.origin}/webinar/${form.slug}/register`;
+  const watchUrl = wOrg && form.slug
+    ? getOrgWebinarWatchUrl(wOrg.slug, form.slug, wOrg.customDomain, wOrg.domainVerificationStatus)
+    : `${window.location.origin}/webinar/${form.slug}/watch`;
 
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url);
@@ -678,15 +685,22 @@ export default function WebinarEditorPage() {
               <CardHeader>
                 <CardTitle>Registration / Sales Page Builder</CardTitle>
                 <CardDescription>
-                  Build the page visitors see before registering. Drag and drop blocks below.
-                  Includes countdown timers, video previews, testimonials, and more.
+                  Build the page visitors see before registering. Use the full-screen editor for the best experience.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                <PageBuilder
-                  initialBlocks={salesBlocks}
-                  onChange={setSalesBlocks}
-                />
+              <CardContent className="space-y-3">
+                <Button
+                  className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+                  onClick={() => navigate(`/lms/webinars/${webinarId}/page-builder`)}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open Full-Screen Page Editor
+                </Button>
+                {salesBlocks.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {salesBlocks.length} block{salesBlocks.length !== 1 ? "s" : ""} configured on this registration page
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

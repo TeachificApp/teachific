@@ -460,7 +460,13 @@ export default function CourseSalesPage() {
     onSuccess: () => {
       utils.lms.enrollments.myEnrollments.invalidate();
       toast.success("Enrolled successfully!");
-      setLocation(`/learn/${courseId}`);
+      if (course?.afterPurchaseRedirectUrl) {
+        window.location.href = course.afterPurchaseRedirectUrl;
+      } else if (course?.thankYouPageEnabled) {
+        setLocation(`/courses/${courseId}/thank-you`);
+      } else {
+        setLocation(`/learn/${courseId}`);
+      }
     },
     onError: (e) => toast.error(e.message),
   });
@@ -486,7 +492,11 @@ export default function CourseSalesPage() {
         courseName: course.title,
         isGroupRegistration: false,
         groupSize: 1,
-        successUrl: `${window.location.origin}/learn/${courseId}?enrolled=1`,
+        successUrl: course.afterPurchaseRedirectUrl
+          ? course.afterPurchaseRedirectUrl
+          : course.thankYouPageEnabled
+            ? `${window.location.origin}/courses/${courseId}/thank-you`
+            : `${window.location.origin}/learn/${courseId}?enrolled=1`,
         cancelUrl: window.location.href,
       });
       return;

@@ -129,6 +129,7 @@ import CreatorEditorPage from "./pages/CreatorEditorPage";
 import CreatorLandingPage from "./pages/CreatorLandingPage";
 import DesktopDownloadPage from "./pages/DesktopDownloadPage";
 
+import ThankYouPage from "./pages/ThankYouPage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -155,6 +156,8 @@ function BareRouter() {
         <Route path="/forms/:slug" component={FormPlayerPage} />
         <Route path="/school">{() => <SchoolPage />}</Route>
         <Route path="/school/:orgSlug">{() => <SchoolPage />}</Route>
+        <Route path="/school/courses/:courseId/thank-you" component={ThankYouPage} />
+        <Route path="/school/:orgSlug/courses/:courseId/thank-you" component={ThankYouPage} />
         <Route path="/school/courses/:courseId" component={CourseSalesPage} />
         <Route path="/school/:orgSlug/courses/:courseId" component={CourseSalesPage} />
         {/* Member portal routes — require auth, show member sidebar */}
@@ -320,6 +323,9 @@ function AdminRouter() {
           <Route path="/lms/branding" component={BrandingPage} />
           <Route path="/lms/page-builder/:pageId" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
+          <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
+          <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
+          <Route path="/lms/webinars/:webinarId/page-builder" component={PageBuilderPage} />
           <Route path="/lms/custom-pages" component={CustomPagesPage} />
           <Route path="/lms/settings" component={OrgSettingsPage} />
           <Route path="/learn/:courseId" component={CoursePlayerPage} />
@@ -410,6 +416,9 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/custom-pages">{() => <DashboardLayout><CustomPagesPage /></DashboardLayout>}</Route>
         <Route path="/lms/page-builder/:pageId" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
+        <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
+        <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
+        <Route path="/lms/webinars/:webinarId/page-builder" component={PageBuilderPage} />
 
         {/* ── Learner / public routes ── */}
         <Route path="/learn/:courseId/overview" component={CourseOverviewPage} />
@@ -417,6 +426,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/learn/:courseId" component={CoursePlayerPage} />
         <Route path="/my-courses" component={SchoolMyCoursesPage} />
         <Route path="/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>
+        <Route path="/courses/:courseId/thank-you" component={ThankYouPage} />
         <Route path="/courses/:courseId" component={CourseSalesPage} />
         <Route path="/community/:hubId" component={CommunityLearnerPage} />
         <Route path="/embed/:id" component={EmbedPage} />

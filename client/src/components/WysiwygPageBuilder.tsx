@@ -132,14 +132,14 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     ctaUrl: "#",
     ctaSecondaryText: "",
     ctaSecondaryUrl: "",
-    ctaBgColor: "#6366f1",
+    ctaBgColor: "#189aa1",
     ctaTextColor: "#ffffff",
     backgroundType: "color",
     backgroundColor: "#1e293b",
     backgroundImageUrl: "",
     backgroundVideoUrl: "",
     gradientFrom: "#1e293b",
-    gradientTo: "#6366f1",
+    gradientTo: "#189aa1",
     gradientDirection: "to bottom right",
     textColor: "#ffffff",
     headlineColor: "",
@@ -160,7 +160,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     imageAlt: "",
     ctaText: "",
     ctaUrl: "",
-    ctaBgColor: "#6366f1",
+    ctaBgColor: "#189aa1",
     ctaTextColor: "#ffffff",
     backgroundType: "color",
     backgroundColor: "#ffffff",
@@ -186,14 +186,14 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     ctaText: "Start Learning",
     ctaUrl: "#",
     ctaStyle: "primary",
-    ctaBgColor: "#6366f1",
+    ctaBgColor: "#189aa1",
     ctaTextColor: "#ffffff",
     backgroundType: "color",
     backgroundColor: "#0f172a",
     backgroundImageUrl: "",
     backgroundVideoUrl: "",
     gradientFrom: "#0f172a",
-    gradientTo: "#6366f1",
+    gradientTo: "#189aa1",
     gradientDirection: "to bottom right",
     textColor: "#ffffff",
     headlineColor: "",
@@ -234,7 +234,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     courseId: null,
     backgroundColor: "#ffffff",
     textColor: "#1e293b",
-    accentColor: "#6366f1",
+    accentColor: "#189aa1",
   },
   checklist: {
     headline: "Course Includes",
@@ -260,7 +260,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     backgroundImageUrl: "",
     backgroundVideoUrl: "",
     gradientFrom: "#1e293b",
-    gradientTo: "#6366f1",
+    gradientTo: "#189aa1",
     gradientDirection: "to bottom right",
     overlay: true,
     overlayOpacity: 0.6,
@@ -276,7 +276,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
       { id: nanoid(4), icon: "Star", text: "Expert instructors" },
       { id: nanoid(4), icon: "Zap", text: "Fast and efficient" },
     ],
-    iconColor: "#6366f1",
+    iconColor: "#189aa1",
     backgroundColor: "#ffffff",
     textColor: "#1e293b",
     columns: 1,
@@ -288,7 +288,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
       { id: nanoid(4), title: "Choose a Course", description: "Browse our catalog and pick what interests you" },
       { id: nanoid(4), title: "Start Learning", description: "Access your course materials immediately" },
     ],
-    numberColor: "#6366f1",
+    numberColor: "#189aa1",
     backgroundColor: "#f8fafc",
     textColor: "#1e293b",
   },
@@ -311,7 +311,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
       { id: nanoid(4), icon: "Award", title: "Certification", description: "Earn recognized certificates" },
       { id: nanoid(4), icon: "Clock", title: "Lifetime Access", description: "Learn at your own pace, forever" },
     ],
-    iconColor: "#6366f1",
+    iconColor: "#189aa1",
     backgroundColor: "#ffffff",
     textColor: "#1e293b",
     columns: 2,
@@ -434,7 +434,7 @@ function InlineText({
       onClick={(e: React.MouseEvent) => e.stopPropagation()}
       style={{
         ...style,
-        outline: editing ? "2px solid #6366f1" : "none",
+        outline: editing ? "2px solid #189aa1" : "none",
         outlineOffset: "2px",
         borderRadius: "3px",
         cursor: "text",
@@ -453,7 +453,7 @@ function InlineText({
 function getBgStyle(data: Record<string, any>, fallback = "#1e293b"): React.CSSProperties {
   const type = data.backgroundType ?? "color";
   if (type === "image" && data.backgroundImageUrl) return { backgroundImage: `url(${data.backgroundImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" };
-  if (type === "gradient") return { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || fallback}, ${data.gradientTo || "#6366f1"})` };
+  if (type === "gradient") return { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || fallback}, ${data.gradientTo || "#189aa1"})` };
   if (type === "video") return { backgroundColor: "#000" };
   return { backgroundColor: data.backgroundColor || fallback };
 }
@@ -499,7 +499,7 @@ function BannerCanvas({ data, onChange }: { data: Record<string, any>; onChange:
             tag="span"
             value={data.ctaText || "Enroll Now"}
             onChange={v => onChange({ ...data, ctaText: v })}
-            style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", fontWeight: 600, fontSize: "1rem", display: "inline-block" }}
+            style={{ backgroundColor: data.ctaBgColor || "#189aa1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", fontWeight: 600, fontSize: "1rem", display: "inline-block" }}
             placeholder="Button text…"
           />
         )}
@@ -540,7 +540,7 @@ function TextMediaCanvas({ data, onChange }: { data: Record<string, any>; onChan
         <div style={{ flex: 1 }}>
           <InlineText tag="h2" value={data.headline} onChange={v => onChange({ ...data, headline: v })} style={{ color: data.textColor || "#1e293b", fontSize: "1.875rem", fontWeight: 700, marginBottom: "16px" }} placeholder="Headline…" />
           <InlineText tag="p" value={data.body} onChange={v => onChange({ ...data, body: v })} style={{ color: data.textColor || "#1e293b", lineHeight: "1.7", opacity: 0.85 }} placeholder="Body text…" multiline />
-          {data.ctaText && <a href={data.ctaUrl || "#"} style={{ display: "inline-block", marginTop: "24px", backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", fontWeight: 600 }}>{data.ctaText}</a>}
+          {data.ctaText && <a href={data.ctaUrl || "#"} style={{ display: "inline-block", marginTop: "24px", backgroundColor: data.ctaBgColor || "#189aa1", color: data.ctaTextColor || "#fff", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", fontWeight: 600 }}>{data.ctaText}</a>}
         </div>
         <div style={{ flex: 1 }}>
           {data.imageUrl ? (
@@ -572,7 +572,7 @@ function CTACanvas({ data, onChange }: { data: Record<string, any>; onChange: (d
           <InlineText tag="h2" value={data.headline2 || ""} onChange={v => onChange({ ...data, headline2: v })} style={{ color: data.headline2Color || data.textColor || "#fff", fontSize: "2rem", fontWeight: 700, marginBottom: "12px" }} placeholder="Headline line 2 (optional)…" />
         )}
         <InlineText tag="p" value={data.subtext} onChange={v => onChange({ ...data, subtext: v })} style={{ color: data.textColor || "#fff", opacity: 0.8, marginBottom: "32px", fontSize: "1.125rem" }} placeholder="Supporting text…" multiline />
-        <InlineText tag="span" value={data.ctaText || "Get Started"} onChange={v => onChange({ ...data, ctaText: v })} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "14px 36px", borderRadius: "8px", fontWeight: 700, fontSize: "1.125rem", display: "inline-block" }} placeholder="Button text…" />
+        <InlineText tag="span" value={data.ctaText || "Get Started"} onChange={v => onChange({ ...data, ctaText: v })} style={{ backgroundColor: data.ctaBgColor || "#189aa1", color: data.ctaTextColor || "#fff", padding: "14px 36px", borderRadius: "8px", fontWeight: 700, fontSize: "1.125rem", display: "inline-block" }} placeholder="Button text…" />
       </div>
     </div>
   );
@@ -586,7 +586,7 @@ function FeatureGridCanvas({ data, onChange }: { data: Record<string, any>; onCh
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "24px", maxWidth: "1000px", margin: "0 auto" }}>
         {(data.features || []).map((f: any, i: number) => (
           <div key={f.id} style={{ backgroundColor: "#f8fafc", borderRadius: "12px", padding: "28px", border: "1px solid #e2e8f0" }}>
-            <div style={{ width: "48px", height: "48px", borderRadius: "10px", backgroundColor: data.iconColor || "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>
+            <div style={{ width: "48px", height: "48px", borderRadius: "10px", backgroundColor: data.iconColor || "#189aa1", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" }}>
               <LucideIcon name={f.icon || "Star"} size={24} color="#fff" />
             </div>
             <InlineText tag="h3" value={f.title} onChange={v => { const features = [...data.features]; features[i] = { ...f, title: v }; onChange({ ...data, features }); }} style={{ color: data.textColor || "#1e293b", fontWeight: 700, fontSize: "1.0625rem", marginBottom: "8px" }} placeholder="Feature title…" />
@@ -688,9 +688,9 @@ function ImageCanvas({ data }: { data: Record<string, any> }) {
 
 function ButtonCanvas({ data, onChange }: { data: Record<string, any>; onChange: (d: Record<string, any>) => void }) {
   const variants: Record<string, React.CSSProperties> = {
-    primary: { backgroundColor: "#6366f1", color: "#fff" },
+    primary: { backgroundColor: "#189aa1", color: "#fff" },
     secondary: { backgroundColor: "#e2e8f0", color: "#1e293b" },
-    outline: { backgroundColor: "transparent", color: "#6366f1", border: "2px solid #6366f1" },
+    outline: { backgroundColor: "transparent", color: "#189aa1", border: "2px solid #189aa1" },
   };
   const sizes: Record<string, React.CSSProperties> = {
     small: { padding: "8px 20px", fontSize: "0.875rem" },
@@ -767,7 +767,7 @@ function IconListCanvas({ data, onChange }: { data: Record<string, any>; onChang
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.columns || 1}, 1fr)`, gap: "16px", maxWidth: "800px", margin: "0 auto" }}>
         {(data.items || []).map((item: any, i: number) => (
           <div key={item.id} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: data.iconColor || "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: "32px", height: "32px", borderRadius: "8px", backgroundColor: data.iconColor || "#189aa1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <LucideIcon name={item.icon || "Check"} size={16} color="#fff" />
             </div>
             <InlineText tag="span" value={item.text} onChange={v => { const items = [...data.items]; items[i] = { ...item, text: v }; onChange({ ...data, items }); }} style={{ color: data.textColor || "#1e293b", display: "block" }} placeholder="Item text…" />
@@ -785,7 +785,7 @@ function NumberedStepsCanvas({ data, onChange }: { data: Record<string, any>; on
       <div style={{ maxWidth: "760px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" }}>
         {(data.steps || []).map((step: any, i: number) => (
           <div key={step.id} style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-            <div style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: data.numberColor || "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontWeight: 700, fontSize: "1.125rem" }}>{i + 1}</div>
+            <div style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: data.numberColor || "#189aa1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "#fff", fontWeight: 700, fontSize: "1.125rem" }}>{i + 1}</div>
             <div style={{ flex: 1 }}>
               <InlineText tag="h3" value={step.title} onChange={v => { const steps = [...data.steps]; steps[i] = { ...step, title: v }; onChange({ ...data, steps }); }} style={{ color: data.textColor || "#1e293b", fontWeight: 600, fontSize: "1.0625rem", marginBottom: "4px" }} placeholder="Step title…" />
               <InlineText tag="p" value={step.description} onChange={v => { const steps = [...data.steps]; steps[i] = { ...step, description: v }; onChange({ ...data, steps }); }} style={{ color: data.textColor || "#1e293b", opacity: 0.75, lineHeight: "1.6" }} placeholder="Step description…" multiline />

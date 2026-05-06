@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from "react";
+import { useLocation } from "wouter";
 import { CANONICAL_FEATURE_KEYS } from "../../../../shared/tierLimits";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -1564,6 +1565,7 @@ function OverviewTab() {
 
 // ─── Page Creator Tab ─────────────────────────────────────────────────────────
 function PageCreatorTab() {
+  const [, navigate] = useLocation();
   const { data: orgs = [] } = trpc.platformAdmin.listOrgs.useQuery();
   const [selectedOrgId, setSelectedOrgId] = useState<number|null>(null);
   const { data: pages = [], refetch } = trpc.lms.pages.list.useQuery({orgId:selectedOrgId??0},{enabled:!!selectedOrgId});
@@ -1615,7 +1617,7 @@ function PageCreatorTab() {
                   <TableCell><Badge variant="outline" className={page.isPublished?"border-green-500/40 text-green-300":"border-gray-300 text-slate-700"}>{page.isPublished?"Published":"Draft"}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-teal-600 hover:text-teal-700" onClick={()=>setEditingPage(page)} title="Edit page"><Edit className="w-3.5 h-3.5"/></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-teal-600 hover:text-teal-700" onClick={()=>navigate(`/lms/page-builder/${page.id}`)} title="Edit page in full-screen builder"><Edit className="w-3.5 h-3.5"/></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={()=>{if(confirm("Delete this page?"))deletePage.mutate({id:page.id});}}><Trash2 className="w-3.5 h-3.5"/></Button>
                     </div>
                   </TableCell>
@@ -1626,49 +1628,7 @@ function PageCreatorTab() {
           </Table>
         </Card>
       )}
-      {/* Edit Page Sheet */}
-      <Sheet open={!!editingPage} onOpenChange={(open)=>{ if(!open) setEditingPage(null); }}>
-        <SheetContent className="w-full sm:max-w-[85vw] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Edit Page: {editingPage?.title}</SheetTitle>
-          </SheetHeader>
-          {editingPage && (
-            <div className="mt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Page Title</Label>
-                  <Input value={editingPage.title} onChange={(e)=>setEditingPage({...editingPage,title:e.target.value})} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>URL Slug</Label>
-                  <Input value={editingPage.slug} onChange={(e)=>setEditingPage({...editingPage,slug:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"")})} className="font-mono" />
-                </div>
-              </div>
-              <PageBuilder
-                initialBlocks={(() => { try { return JSON.parse(editingPage.blocksJson || "[]"); } catch { return []; } })()}
-                onChange={(blocks: Block[]) => setEditingPage((p: any) => ({...p, blocksJson: JSON.stringify(blocks)}))}
-              />
-              <div className="flex items-center gap-6 pt-2">
-                <div className="flex items-center gap-2">
-                  <Switch checked={editingPage.showHeader ?? true} onCheckedChange={(v)=>setEditingPage({...editingPage,showHeader:v})} />
-                  <Label>Show Header</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={editingPage.showFooter ?? true} onCheckedChange={(v)=>setEditingPage({...editingPage,showFooter:v})} />
-                  <Label>Show Footer</Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch checked={editingPage.isPublished ?? false} onCheckedChange={(v)=>setEditingPage({...editingPage,isPublished:v})} />
-                  <Label>Published</Label>
-                </div>
-                <Button onClick={handleSavePage} disabled={updatePage.isPending} className="ml-auto bg-teal-600 hover:bg-teal-700 gap-2">
-                  {updatePage.isPending ? "Saving..." : <><Edit className="h-4 w-4"/> Save Page</>}
-                </Button>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
+      {/* Edit Page Sheet removed — now navigates to full-screen page builder */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="bg-gray-50 border-gray-200 text-slate-900">
           <DialogHeader><DialogTitle>Create New Page</DialogTitle></DialogHeader>

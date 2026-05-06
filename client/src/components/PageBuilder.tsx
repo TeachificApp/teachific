@@ -206,7 +206,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     courseId: null,
     backgroundColor: "#ffffff",
     textColor: "#1e293b",
-    accentColor: "#6366f1",
+    accentColor: "#189aa1",
   },
   checklist: {
     headline: "Course Includes",
@@ -261,7 +261,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
       { id: nanoid(4), icon: "star", text: "Expert instructors" },
       { id: nanoid(4), icon: "zap", text: "Fast and efficient" },
     ],
-    iconColor: "#6366f1",
+    iconColor: "#189aa1",
     backgroundColor: "#ffffff",
     textColor: "#1e293b",
     columns: 1,
@@ -273,7 +273,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
       { id: nanoid(4), title: "Choose a Course", description: "Browse our catalog and pick what interests you", mediaType: "none", mediaUrl: "", mediaPosition: "below" },
       { id: nanoid(4), title: "Start Learning", description: "Access your course materials immediately", mediaType: "none", mediaUrl: "", mediaPosition: "below" },
     ],
-    numberColor: "#6366f1",
+    numberColor: "#189aa1",
     backgroundColor: "#f8fafc",
     textColor: "#1e293b",
     listPosition: "left",
@@ -300,7 +300,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
       { id: nanoid(4), icon: "award", title: "Certification", description: "Earn recognized certificates" },
       { id: nanoid(4), icon: "clock", title: "Lifetime Access", description: "Learn at your own pace, forever" },
     ],
-    iconColor: "#6366f1",
+    iconColor: "#189aa1",
     backgroundColor: "#ffffff",
     textColor: "#1e293b",
     columns: 2,
@@ -358,7 +358,7 @@ const BLOCK_LIBRARY: { type: BlockType; label: string; icon: React.ComponentType
 function BannerPreview({ data }: { data: Record<string, any> }) {
   const isVideo = data.backgroundType === "video" && data.backgroundVideoUrl;
   const bg = data.backgroundType === "gradient"
-    ? { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || "#1e293b"}, ${data.gradientTo || "#6366f1"})` }
+    ? { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || "#1e293b"}, ${data.gradientTo || "#189aa1"})` }
     : data.backgroundType === "image" && data.backgroundImageUrl
     ? { backgroundImage: `url(${data.backgroundImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : isVideo ? { backgroundColor: "#000" }
@@ -381,7 +381,7 @@ function BannerPreview({ data }: { data: Record<string, any> }) {
           {data.headline2 && <h1 style={{ color: h2Color, fontSize: "2.5rem", fontWeight: 700, margin: "0 0 16px" }}>{data.headline2}</h1>}
           {data.subtext && <p style={{ color: data.textColor || "#fff", fontSize: "1.125rem", margin: "0 0 24px", opacity: 0.9 }}>{data.subtext}</p>}
           <div style={{ display: "flex", gap: "12px", justifyContent: data.alignment === "center" && !hasInlineMedia ? "center" : "flex-start", flexWrap: "wrap" }}>
-            {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem" }}>{data.ctaText}</a>}
+            {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#189aa1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem" }}>{data.ctaText}</a>}
             {data.ctaSecondaryText && <a href={data.ctaSecondaryUrl || "#"} style={{ backgroundColor: data.ctaSecondaryBgColor || "transparent", color: data.ctaSecondaryTextColor || data.textColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem", border: `2px solid ${data.ctaSecondaryBgColor || data.textColor || "#fff"}` }}>{data.ctaSecondaryText}</a>}
             {data.previewPageUrl && <a href={data.previewPageUrl} style={{ backgroundColor: "transparent", color: data.textColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 500, fontSize: "0.95rem", border: "1.5px solid rgba(255,255,255,0.5)", opacity: 0.85 }}>Preview</a>}
           </div>
@@ -408,7 +408,7 @@ function TextMediaPreview({ data }: { data: Record<string, any> }) {
         <div style={{ flex: 1 }}>
           {data.headline && <h2 style={{ color: data.textColor || "#1e293b", fontSize: "1.875rem", fontWeight: 700, marginBottom: "16px" }}>{data.headline}</h2>}
           {data.body && <p style={{ color: data.textColor || "#1e293b", lineHeight: 1.7, opacity: 0.85 }}>{data.body}</p>}
-          {data.ctaText && <a href={data.ctaUrl || "#"} style={{ display: "inline-block", marginTop: "24px", backgroundColor: "#6366f1", color: "#fff", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", fontWeight: 600 }}>{data.ctaText}</a>}
+          {data.ctaText && <a href={data.ctaUrl || "#"} style={{ display: "inline-block", marginTop: "24px", backgroundColor: "#189aa1", color: "#fff", padding: "10px 24px", borderRadius: "8px", textDecoration: "none", fontWeight: 600 }}>{data.ctaText}</a>}
         </div>
         <div style={{ flex: 1 }}>
           {data.imageUrl ? (
@@ -445,7 +445,7 @@ function ImagePreview({ data }: { data: Record<string, any> }) {
 function CTAPreview({ data }: { data: Record<string, any> }) {
   const isVideo = data.backgroundType === "video" && data.backgroundVideoUrl;
   const bg = data.backgroundType === "gradient"
-    ? { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || "#0f172a"}, ${data.gradientTo || "#6366f1"})` }
+    ? { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || "#0f172a"}, ${data.gradientTo || "#189aa1"})` }
     : data.backgroundType === "image" && data.backgroundImageUrl
     ? { backgroundImage: `url(${data.backgroundImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : isVideo ? { backgroundColor: "#000" }
@@ -464,7 +464,7 @@ function CTAPreview({ data }: { data: Record<string, any> }) {
         <h2 style={{ color: h1Color, fontSize: "2rem", fontWeight: 700, marginBottom: data.headline2 ? "4px" : "12px" }}>{data.headline}</h2>
         {data.headline2 && <h2 style={{ color: h2Color, fontSize: "2rem", fontWeight: 700, marginBottom: "12px" }}>{data.headline2}</h2>}
         {data.subtext && <p style={{ color: data.textColor || "#fff", opacity: 0.8, marginBottom: "32px", fontSize: "1.125rem" }}>{data.subtext}</p>}
-        {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "14px 36px", borderRadius: "8px", textDecoration: "none", fontWeight: 700, fontSize: "1.125rem" }}>{data.ctaText}</a>}
+        {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#189aa1", color: data.ctaTextColor || "#fff", padding: "14px 36px", borderRadius: "8px", textDecoration: "none", fontWeight: 700, fontSize: "1.125rem" }}>{data.ctaText}</a>}
       </div>
     </div>
   );
@@ -512,7 +512,7 @@ function TestimonialsPreview({ data }: { data: Record<string, any> }) {
               {t.avatarUrl ? (
                 <img src={t.avatarUrl} alt={t.author} style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }} />
               ) : (
-                <div style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>{t.author?.[0] || "?"}</div>
+                <div style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "#189aa1", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>{t.author?.[0] || "?"}</div>
               )}
               <div>
                 <div style={{ fontWeight: 600, color: data.textColor || "#1e293b" }}>{t.author}</div>
@@ -646,10 +646,10 @@ function BgSectionPreview({ data }: { data: Record<string, any> }) {
 
 function ButtonPreview({ data }: { data: Record<string, any> }) {
   const styles: Record<string, React.CSSProperties> = {
-    primary: { backgroundColor: "#6366f1", color: "#fff", border: "none" },
+    primary: { backgroundColor: "#189aa1", color: "#fff", border: "none" },
     secondary: { backgroundColor: "#e2e8f0", color: "#1e293b", border: "none" },
-    outline: { backgroundColor: "transparent", color: "#6366f1", border: "2px solid #6366f1" },
-    ghost: { backgroundColor: "transparent", color: "#6366f1", border: "none" },
+    outline: { backgroundColor: "transparent", color: "#189aa1", border: "2px solid #189aa1" },
+    ghost: { backgroundColor: "transparent", color: "#189aa1", border: "none" },
   };
   const sizes: Record<string, React.CSSProperties> = {
     small: { padding: "8px 20px", fontSize: "0.875rem" },
@@ -669,7 +669,7 @@ function ButtonPreview({ data }: { data: Record<string, any> }) {
 // ICON_SVG removed — now using LucideIcon component directly
 
 // Helper to render the icon/image/none for a feature card or list item
-function BlockIcon({ iconType, iconName, imageUrl, size = 24, bgColor = "#6366f1" }: {
+function BlockIcon({ iconType, iconName, imageUrl, size = 24, bgColor = "#189aa1" }: {
   iconType?: string; iconName?: string; imageUrl?: string; size?: number; bgColor?: string;
 }) {
   const boxSize = size * 2;
@@ -697,7 +697,7 @@ function IconListPreview({ data }: { data: Record<string, any> }) {
         {(data.items || []).map((item: any) => (
           <div key={item.id} style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
             {item.iconType !== "none" && (
-              <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: item.iconType === "image" ? "transparent" : (data.iconColor || "#6366f1"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+              <div style={{ width: "36px", height: "36px", borderRadius: "8px", backgroundColor: item.iconType === "image" ? "transparent" : (data.iconColor || "#189aa1"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
                 {item.iconType === "image" && item.imageUrl
                   ? <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : <LucideIcon name={item.icon || "Check"} size={18} color="#fff" />
@@ -736,7 +736,7 @@ function StepMediaItem({ step, textColor }: { step: any; textColor: string }) {
 
 function NumberedStepsPreview({ data }: { data: Record<string, any> }) {
   const tc = data.textColor || "#1e293b";
-  const nc = data.numberColor || "#6366f1";
+  const nc = data.numberColor || "#189aa1";
   const layout = data.layout || "left";
   const centered = layout === "center";
   return (
@@ -784,7 +784,7 @@ function FeatureGridPreview({ data }: { data: Record<string, any> }) {
         {(data.features || []).map((f: any) => (
           <div key={f.id} style={{ backgroundColor: "#f8fafc", borderRadius: "12px", padding: "28px", border: "1px solid #e2e8f0" }}>
             {f.iconType !== "none" && (
-              <div style={{ width: "48px", height: "48px", borderRadius: "10px", backgroundColor: f.iconType === "image" ? "transparent" : (data.iconColor || "#6366f1"), display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px", overflow: "hidden" }}>
+              <div style={{ width: "48px", height: "48px", borderRadius: "10px", backgroundColor: f.iconType === "image" ? "transparent" : (data.iconColor || "#189aa1"), display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px", overflow: "hidden" }}>
                 {f.iconType === "image" && f.imageUrl
                   ? <img src={f.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   : <LucideIcon name={f.icon || "Star"} size={24} color="#fff" />

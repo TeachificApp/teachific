@@ -366,7 +366,7 @@ function DashboardLayoutContent({
   const { data: orgs } = trpc.orgs.myOrgs.useQuery();
   const orgSlug = orgs?.[0]?.slug;
   const previewUrl = orgSlug
-    ? `${getOrgBaseUrl(orgSlug)}?preview=1`
+    ? `${getOrgBaseUrl(orgSlug, orgs?.[0]?.customDomain, orgs?.[0]?.domainVerificationStatus)}?preview=1`
     : null;
 
   // Determine which accordion groups are open

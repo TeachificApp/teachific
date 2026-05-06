@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { WysiwygPageBuilder as PageBuilder } from "@/components/WysiwygPageBuilder";
 import type { Block } from "@/components/WysiwygPageBuilder";
-import { Plus, Edit, Trash2, Eye, EyeOff, Search, Building2, ChevronDown, X, Layout, Copy, Globe, GlobeLock, Save, SquarePen } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, EyeOff, Search, Building2, ChevronDown, X, Layout, Copy, Globe, GlobeLock, Save, SquarePen, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -488,23 +488,24 @@ export default function CustomPagesPage() {
               <div>
                 <Label className="flex items-center gap-2 mb-2">
                   <Layout className="h-4 w-4" />
-                  Page Content (Drag & Drop Builder)
+                  Page Content
                 </Label>
-                <div className="border border-border rounded-lg overflow-hidden" style={{ minHeight: 400 }}>
-                  <PageBuilder
-                    initialBlocks={(() => {
-                      try {
-                        const parsed = JSON.parse(editingPage.blocksJson || "[]");
-                        return Array.isArray(parsed) ? parsed : [];
-                      } catch {
-                        return [];
-                      }
-                    })()}
-                    onChange={(blocks: Block[]) =>
-                      setEditingPage({ ...editingPage, blocksJson: JSON.stringify(blocks) })
-                    }
-                    orgId={selectedOrgId ?? undefined}
-                  />
+                <div className="border border-border rounded-lg p-6 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {(() => { try { const b = JSON.parse(editingPage.blocksJson || "[]"); return `${Array.isArray(b) ? b.length : 0} blocks configured`; } catch { return "0 blocks configured"; } })()}
+                  </p>
+                  {editingPage.id && (
+                    <Button
+                      className="gap-2 bg-teal-600 hover:bg-teal-700"
+                      onClick={() => { setEditingPage(null); setLocation(`/lms/page-builder/${editingPage.id}`); }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Open Full-Screen Page Editor
+                    </Button>
+                  )}
+                  {!editingPage.id && (
+                    <p className="text-xs text-muted-foreground">Save the page first, then edit content in the full-screen builder.</p>
+                  )}
                 </div>
               </div>
 

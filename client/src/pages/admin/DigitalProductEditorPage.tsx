@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { getOrgShopUrl } from "@/lib/orgUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -180,6 +181,7 @@ export default function DigitalProductEditorPage() {
     ? Number(new URLSearchParams(window.location.search).get("orgId") ?? "0")
     : undefined;
 
+  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
   const { data: product, refetch } = trpc.lms.downloads.getProduct.useQuery(
     { id: productId! },
     { enabled: !!productId }
@@ -391,7 +393,10 @@ export default function DigitalProductEditorPage() {
     setPriceList((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const shopUrl = `${window.location.origin}/shop/${slug}`;
+  const org = myOrgs?.[0];
+  const shopUrl = org && slug
+    ? getOrgShopUrl(org.slug, slug, org.customDomain, org.domainVerificationStatus)
+    : `${window.location.origin}/shop/${slug}`;
 
   const copyShopUrl = () => {
     navigator.clipboard.writeText(shopUrl);
@@ -429,7 +434,7 @@ export default function DigitalProductEditorPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`/shop/${slug}`, "_blank")}
+                onClick={() => window.open(shopUrl, "_blank")}
               >
                 <ExternalLink className="w-4 h-4 mr-1" />
                 Preview as Customer
@@ -621,17 +626,30 @@ export default function DigitalProductEditorPage() {
 
         {/* ── Sales Page ─────────────────────────────────────────────────── */}
         <TabsContent value="sales-page">
-          <div className="mb-4">
-            <h3 className="font-semibold">Sales Page Builder</h3>
-            <p className="text-sm text-muted-foreground">
-              Design your product sales page with drag-and-drop blocks. This page will be shown at{" "}
-              <span className="font-mono text-xs">/shop/{slug || "your-slug"}</span>.
-            </p>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold">Sales Page Builder</h3>
+              <p className="text-sm text-muted-foreground">
+                Design your product sales page with drag-and-drop blocks. This page will be shown at{" "}
+                <span className="font-mono text-xs">/shop/{slug || "your-slug"}</span>.
+              </p>
+            </div>
+            <Button
+              className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+              onClick={() => {
+                if (!productId) { toast.error("Save the product first before editing the sales page"); return; }
+                navigate(`/admin/downloads/${productId}/page-builder`);
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open Full-Screen Page Editor
+            </Button>
+            {salesPageBlocks.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {salesPageBlocks.length} block{salesPageBlocks.length !== 1 ? "s" : ""} configured on this sales page
+              </p>
+            )}
           </div>
-          <PageBuilder
-            initialBlocks={salesPageBlocks}
-            onChange={setSalesPageBlocks}
-          />
         </TabsContent>
 
         {/* ── Access Controls ────────────────────────────────────────────── */}
