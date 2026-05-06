@@ -363,14 +363,14 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms">{() => <DashboardLayout><LmsDashboardPage /></DashboardLayout>}</Route>
         <Route path="/lms/dashboard">{() => <DashboardLayout><LmsDashboardPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses">{() => <DashboardLayout><CoursesPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/new">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id/curriculum">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id/settings">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id/pricing">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id/sales_page">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id/drip">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id/after_purchase">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/:id">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
+        <Route path="/lms/courses/new" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id/curriculum" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id/settings" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id/pricing" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id/sales_page" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id/drip" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id/after_purchase" component={CourseBuilderPage} />
+        <Route path="/lms/courses/:id" component={CourseBuilderPage} />
         <Route path="/members/users">{() => <DashboardLayout><MembersPage /></DashboardLayout>}</Route>
         <Route path="/members/groups">{() => <DashboardLayout><GroupsPage /></DashboardLayout>}</Route>
         <Route path="/members/certificates">{() => <DashboardLayout><MemberCertificatesPage /></DashboardLayout>}</Route>
@@ -453,6 +453,29 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
   );
 }
 
+// Full-screen product editors — no sidebar, no DashboardLayout
+function FullScreenEditorRouter() {
+  return (
+    <Switch>
+      <Route path="/lms/courses/new" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/curriculum" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/settings" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/pricing" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/sales_page" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/drip" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/after_purchase" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id/thank-you-builder" component={PageBuilderPage} />
+      <Route path="/lms/courses/:id/page-builder" component={PageBuilderPage} />
+      <Route path="/lms/courses/:id" component={CourseBuilderPage} />
+      <Route path="/admin/downloads/new">{() => <DigitalProductEditorPage />}</Route>
+      <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>
+      <Route path="/lms/webinars/:id/edit">{() => <WebinarEditorPage />}</Route>
+      <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
 function Router() {
   // If running on an org subdomain, serve the school portal directly
   const subdomain = getSubdomain();
@@ -465,6 +488,17 @@ function Router() {
   }
 
   const path = window.location.pathname;
+
+  // Full-screen product editors — no sidebar/DashboardLayout
+  const isFullScreenEditor =
+    /^\/admin\/downloads\/(new|\d+)$/.test(path) ||
+    /^\/lms\/webinars\/\d+\/edit$/.test(path) ||
+    /^\/products\/memberships\/\d+\/edit$/.test(path) ||
+    /^\/lms\/courses\/(new|\d+)/.test(path);
+  if (isFullScreenEditor) {
+    return <FullScreenEditorRouter />;
+  }
+
   const isBare =
     path === "/" ||
     path.startsWith("/embed/") ||
