@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   Eye,
   Globe,
-  LayoutDashboard,
 } from "lucide-react";
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -119,13 +118,20 @@ export default function PageBuilderPage() {
         {/* Left: Back to Admin + title */}
         <div className="flex items-center gap-2 min-w-0">
           <button
-            onClick={() => setLocation("/lms")}
+            onClick={() => {
+              if (courseId) {
+                setLocation(`/lms/courses/${courseId}/edit`);
+              } else if (page?.courseId) {
+                setLocation(`/lms/courses/${page.courseId}/edit`);
+              } else {
+                setLocation("/lms");
+              }
+            }}
             className="h-7 px-2 rounded-lg hover:bg-accent flex items-center gap-1.5 shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            title="Back to Admin"
+            title="Back"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <LayoutDashboard className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Admin</span>
+            <span className="hidden sm:inline">{courseId || page?.courseId ? "Back to Course" : "Back to Admin"}</span>
           </button>
           <div className="w-px h-5 bg-border shrink-0" />
           <Input

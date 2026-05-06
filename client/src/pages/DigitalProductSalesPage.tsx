@@ -12,33 +12,61 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Download, ShieldCheck, Clock, RefreshCw, Package, Check, Loader2 } from "lucide-react";
+import { Download, ShieldCheck, Clock, RefreshCw, Package, Check, Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { OrderBumpOffer, OrderBumpInterstitial } from "@/components/OrderBumpOffer";
 
 // ─── Block renderer (simplified for sales page) ────────────────────────────────
 function renderBlock(block: any, idx: number) {
   const d = block.data || {};
   switch (block.type) {
-    case "banner":
+    case "banner": {
+      const isVid = d.backgroundType === "video" && d.backgroundVideoUrl;
+      const bannerBg = d.backgroundType === "gradient"
+        ? { background: `linear-gradient(${d.gradientDirection || "to bottom right"}, ${d.gradientFrom || "#1e293b"}, ${d.gradientTo || "#6366f1"})` }
+        : d.backgroundType === "image" && (d.backgroundImageUrl || d.backgroundImage)
+        ? { backgroundImage: `url(${d.backgroundImageUrl || d.backgroundImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+        : isVid ? { backgroundColor: "#000" }
+        : { backgroundColor: d.backgroundColor || "#24abbc" };
+      const h1c = d.headlineColor || d.textColor || "#fff";
+      const h2c = d.headline2Color || d.textColor || "#fff";
+      const hasInline = d.inlineMediaUrl && d.inlineMediaType;
       return (
         <div
           key={block.id}
-          className="relative w-full py-20 px-8 text-center overflow-hidden"
-          style={{
-            background: d.backgroundType === "image" && d.backgroundImage
-              ? `url(${d.backgroundImage}) center/cover no-repeat`
-              : (d.backgroundColor || "#24abbc"),
-          }}
+          className="relative w-full py-20 px-8 overflow-hidden flex items-center justify-center"
+          style={bannerBg}
         >
-          {d.backgroundType === "image" && (
-            <div className="absolute inset-0 bg-black/40" />
+          {isVid && (
+            <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover z-0" src={d.backgroundVideoUrl} />
           )}
-          <div className="relative z-10">
-            {d.headline && <h1 className="text-4xl font-bold text-white mb-4">{d.headline}</h1>}
-            {d.subheadline && <p className="text-xl text-white/90 mb-6">{d.subheadline}</p>}
+          {(d.backgroundType === "image" || d.backgroundImage || isVid) && d.overlay !== false && (
+            <div className="absolute inset-0 z-[1]" style={{ backgroundColor: `rgba(0,0,0,${d.overlayOpacity ?? 0.4})` }} />
+          )}
+          <div className={`relative z-10 animate-fade-in-up w-full ${hasInline ? "flex items-center gap-10 max-w-5xl" : "flex flex-col items-center gap-4 max-w-3xl text-center"}`} style={{ flexDirection: hasInline && d.inlineMediaPosition === "left" ? "row-reverse" : "row" }}>
+            <div className={hasInline ? "flex-1" : ""}>
+              {d.headline && <h1 className="text-4xl font-bold mb-1" style={{ color: h1c }}>{d.headline}</h1>}
+              {d.headline2 && <h1 className="text-4xl font-bold mb-2" style={{ color: h2c }}>{d.headline2}</h1>}
+              {(d.subheadline || d.subtext) && <p className="text-xl opacity-90 mt-3" style={{ color: d.textColor || "#fff" }}>{d.subheadline || d.subtext}</p>}
+              {d.ctaText && (
+                <a href={d.ctaUrl || "#"} className="inline-block mt-4">
+                  <button className="px-8 py-3 rounded-full font-semibold" style={{ backgroundColor: d.ctaBgColor || "rgba(255,255,255,0.2)", color: d.ctaTextColor || "#fff", border: d.ctaBgColor ? "none" : "2px solid rgba(255,255,255,0.7)" }}>{d.ctaText}</button>
+                </a>
+              )}
+            </div>
+            {hasInline && (
+              <div className="flex-1 flex justify-center">
+                {d.inlineMediaType.startsWith("video") ? (
+                  <video autoPlay muted loop playsInline className="max-w-full max-h-[320px] rounded-xl" src={d.inlineMediaUrl} />
+                ) : (
+                  <img src={d.inlineMediaUrl} alt="" className="max-w-full max-h-[320px] rounded-xl object-cover" />
+                )}
+              </div>
+            )}
           </div>
         </div>
       );
+    }
     case "text_media":
       return (
         <div key={block.id} className="max-w-4xl mx-auto px-6 py-12 grid md:grid-cols-2 gap-8 items-center">
@@ -51,17 +79,29 @@ function renderBlock(block: any, idx: number) {
           )}
         </div>
       );
-    case "cta":
+    case "cta": {
+      const ctaBg = d.backgroundType === "gradient"
+        ? { background: `linear-gradient(${d.gradientDirection || "to bottom right"}, ${d.gradientFrom || "#0f172a"}, ${d.gradientTo || "#6366f1"})` }
+        : { backgroundColor: d.backgroundColor || "#f8fafc" };
+      const ctaH1 = d.headlineColor || d.textColor || undefined;
+      const ctaH2 = d.headline2Color || d.textColor || undefined;
       return (
         <div
           key={block.id}
           className="py-16 px-8 text-center"
-          style={{ background: d.backgroundColor || "#f8fafc" }}
+          style={ctaBg}
         >
-          {d.headline && <h2 className="text-3xl font-bold mb-3">{d.headline}</h2>}
-          {d.subtext && <p className="text-muted-foreground mb-6">{d.subtext}</p>}
+          {d.headline && <h2 className="text-3xl font-bold mb-1" style={{ color: ctaH1 }}>{d.headline}</h2>}
+          {d.headline2 && <h2 className="text-3xl font-bold mb-3" style={{ color: ctaH2 }}>{d.headline2}</h2>}
+          {d.subtext && <p className="mb-6 opacity-80" style={{ color: d.textColor }}>{d.subtext}</p>}
+          {d.ctaText && (
+            <a href={d.ctaUrl || "#"} className="inline-block">
+              <button className="px-8 py-3 rounded-lg font-semibold" style={{ backgroundColor: d.ctaBgColor || "#6366f1", color: d.ctaTextColor || "#fff" }}>{d.ctaText}</button>
+            </a>
+          )}
         </div>
       );
+    }
     case "checklist":
       return (
         <div key={block.id} className="max-w-2xl mx-auto px-6 py-10">
@@ -302,6 +342,7 @@ export default function DigitalProductSalesPage() {
   const [selectedPriceId, setSelectedPriceId] = useState<number | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
+  const [showBumpInterstitial, setShowBumpInterstitial] = useState<"before" | "after" | null>(null);
 
   const { data: product, isLoading } = trpc.lms.downloads.getProductBySlug.useQuery({ slug });
 
@@ -322,6 +363,50 @@ export default function DigitalProductSalesPage() {
           <p className="text-muted-foreground">This product may no longer be available.</p>
         </div>
       </div>
+    );
+  }
+
+  // Fetch order bumps for this product
+  const { data: beforeBumps } = trpc.lms.orderBumps.getForProduct.useQuery(
+    { orgId: product.orgId, productType: "download", productId: product.id, placement: "before_checkout" },
+    { enabled: !!product }
+  );
+  const { data: duringBumps } = trpc.lms.orderBumps.getForProduct.useQuery(
+    { orgId: product.orgId, productType: "download", productId: product.id, placement: "during_checkout" },
+    { enabled: !!product }
+  );
+  const { data: afterBumps } = trpc.lms.orderBumps.getForProduct.useQuery(
+    { orgId: product.orgId, productType: "download", productId: product.id, placement: "after_checkout" },
+    { enabled: !!product }
+  );
+
+  // Before checkout interstitial
+  if (showBumpInterstitial === "before" && beforeBumps && beforeBumps.length > 0) {
+    return (
+      <OrderBumpInterstitial
+        bumps={beforeBumps}
+        orgId={product.orgId}
+        onComplete={() => {
+          setShowBumpInterstitial(null);
+          setCheckoutOpen(true);
+        }}
+        onSkipAll={() => {
+          setShowBumpInterstitial(null);
+          setCheckoutOpen(true);
+        }}
+      />
+    );
+  }
+
+  // After checkout interstitial
+  if (showBumpInterstitial === "after" && afterBumps && afterBumps.length > 0 && successEmail) {
+    return (
+      <OrderBumpInterstitial
+        bumps={afterBumps}
+        orgId={product.orgId}
+        onComplete={() => setShowBumpInterstitial(null)}
+        onSkipAll={() => setShowBumpInterstitial(null)}
+      />
     );
   }
 
@@ -448,10 +533,31 @@ export default function DigitalProductSalesPage() {
             </div>
           )}
 
+          {/* During Checkout bumps - shown inline above buy button */}
+          {duringBumps && duringBumps.length > 0 && (
+            <div className="space-y-3 mb-4">
+              {duringBumps.map((bump: any) => (
+                <OrderBumpOffer
+                  key={bump.id}
+                  bump={bump}
+                  orgId={product.orgId}
+                  onAccept={() => toast.success("Added to your order!")}
+                  onDecline={() => {}}
+                  variant="inline"
+                />
+              ))}
+            </div>
+          )}
           <Button
             className="w-full h-12 text-base"
             disabled={!effectivePriceId || activePrices.length === 0}
-            onClick={() => setCheckoutOpen(true)}
+            onClick={() => {
+              if (beforeBumps && beforeBumps.length > 0) {
+                setShowBumpInterstitial("before");
+              } else {
+                setCheckoutOpen(true);
+              }
+            }}
           >
             <Download className="w-5 h-5 mr-2" />
             Buy Now — Get Instant Access
@@ -472,7 +578,12 @@ export default function DigitalProductSalesPage() {
           selectedPriceId={effectivePriceId}
           onSuccess={(email) => {
             setCheckoutOpen(false);
-            setSuccessEmail(email);
+            if (afterBumps && afterBumps.length > 0) {
+              setSuccessEmail(email);
+              setShowBumpInterstitial("after");
+            } else {
+              setSuccessEmail(email);
+            }
           }}
         />
       )}

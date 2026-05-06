@@ -332,6 +332,8 @@ export const quizzes = mysqlTable("quizzes", {
   showFeedbackImmediately: boolean("showFeedbackImmediately").default(true).notNull(),
   showCorrectAnswers: boolean("showCorrectAnswers").default(true).notNull(),
   isPublished: boolean("isPublished").default(false).notNull(),
+  // Visibility status (supersedes isPublished for richer control)
+  visibility: mysqlEnum("visibility", ["draft", "published", "hidden", "private", "archived"]).default("draft").notNull(),
   shareToken: varchar("shareToken", { length: 32 }).unique(),
   publishedAt: timestamp("publishedAt"),
   // Branding/theming for published quiz player
@@ -1022,6 +1024,8 @@ export const digitalProducts = mysqlTable("digital_products", {
   thumbnailUrl: text("thumbnailUrl"),
   salesPageBlocksJson: json("salesPageBlocksJson"),
   isPublished: boolean("isPublished").default(false),
+  // Visibility status (supersedes isPublished for richer control)
+  visibility: mysqlEnum("visibility", ["draft", "published", "hidden", "private", "archived"]).default("draft").notNull(),
   // Access controls (defaults applied at order creation)
   defaultAccessDays: int("defaultAccessDays"), // null = lifetime
   defaultMaxDownloads: int("defaultMaxDownloads"), // null = unlimited
@@ -2258,3 +2262,62 @@ export const lessonBookmarks = mysqlTable("lesson_bookmarks", {
 });
 export type LessonBookmark = typeof lessonBookmarks.$inferSelect;
 export type InsertLessonBookmark = typeof lessonBookmarks.$inferInsert;
+
+// ─── Order Bumps ──────────────────────────────────────────────────────────────
+// Upsell/cross-sell offers shown before, during, or after checkout
+export const orderBumps = mysqlTable("order_bumps", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  triggerProductType: mysqlEnum("triggerProductType", ["course", "download", "quiz"]).notNull(),
+  triggerProductId: int("triggerProductId").notNull(),
+  bumpProductType: mysqlEnum("bumpProductType", ["course", "download", "quiz"]).notNull(),
+  bumpProductId: int("bumpProductId").notNull(),
+  placement: mysqlEnum("placement", ["before_checkout", "during_checkout", "after_checkout"]).default("during_checkout").notNull(),
+  headline: varchar("headline", { length: 500 }),
+  description: text("description"),
+  discountPercent: int("discountPercent").default(0),
+  discountedPrice: varchar("discountedPrice", { length: 20 }),
+  landingPageJson: json("landingPageJson"),
+  buttonText: varchar("buttonText", { length: 100 }).default("Add to Order"),
+  declineText: varchar("declineText", { length: 100 }).default("No thanks"),
+  imageUrl: text("imageUrl"),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type OrderBump = typeof orderBumps.$inferSelect;
+export type InsertOrderBump = typeof orderBumps.$inferInsert;
+
+// ─── Order Bump Conversions ───────────────────────────────────────────────────
+export const orderBumpConversions = mysqlTable("order_bump_conversions", {
+  id: int("id").autoincrement().primaryKey(),
+  bumpId: int("bumpId").notNull(),
+  orgId: int("orgId").notNull(),
+  triggerOrderId: int("triggerOrderId"),
+  bumpOrderId: int("bumpOrderId"),
+  buyerEmail: varchar("buyerEmail", { length: 255 }),
+  accepted: boolean("accepted").default(false).notNull(),
+  sessionId: varchar("sessionId", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type OrderBumpConversion = typeof orderBumpConversions.$inferSelect;
+export type InsertOrderBumpConversion = typeof orderBumpConversions.$inferInsert;
+
+// ─── Private Invites ──────────────────────────────────────────────────────────
+export const privateInvites = mysqlTable("private_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  productType: mysqlEnum("productType", ["course", "download", "quiz"]).notNull(),
+  productId: int("productId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  inviteToken: varchar("inviteToken", { length: 64 }).notNull().unique(),
+  invitedBy: int("invitedBy").notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "expired"]).default("pending").notNull(),
+  expiresAt: timestamp("expiresAt"),
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PrivateInvite = typeof privateInvites.$inferSelect;
+export type InsertPrivateInvite = typeof privateInvites.$inferInsert;

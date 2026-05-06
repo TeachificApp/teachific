@@ -304,7 +304,9 @@ export const lmsRouter = router({
         const org = await getOrgBySlug(input.slug);
         if (!org) return [];
         const courses = await getCoursesByOrg(org.id);
-        // Only return published courses to the public
+        // Only return published courses to the public directory
+        // Hidden courses are accessible via direct URL but not listed here
+        // Private courses require email invite, archived are completely hidden
         return courses.filter((c: any) => c.status === "published");
       }),
     themeBySlug: publicProcedure
@@ -2059,7 +2061,12 @@ Generate 5-7 blocks that make a compelling school homepage. Use the org's colors
       .input(z.object({ slug: z.string() }))
       .query(async ({ input }) => {
         const product = await getDigitalProductBySlug(input.slug);
-        if (!product || !product.isPublished) throw new TRPCError({ code: "NOT_FOUND" });
+        // Enforce visibility: only published and hidden products are accessible via URL
+        // Draft, private (invite-only), and archived products are not accessible
+        const visibility = (product as any)?.visibility ?? (product?.isPublished ? "published" : "draft");
+        if (!product || (visibility !== "published" && visibility !== "hidden")) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
         const prices = await listProductPrices(product.id);
         // Check if org has Stripe configured for checkout
         const db = await getDb();
@@ -4227,6 +4234,209 @@ Generate 5-7 blocks that make a compelling school homepage. Use the org's colors
           }
         }
         return { totalEmails };
+      }),
+  }),
+
+  // ─── Order Bumps ────────────────────────────────────────────────────────────
+  orderBumps: router({
+    list: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ input }) => {
+        const { listOrderBumps } = await import("./orderBumpsDb");
+        return listOrderBumps(input.orgId);
+      }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const { getOrderBump } = await import("./orderBumpsDb");
+        return getOrderBump(input.id);
+      }),
+
+    getForProduct: publicProcedure
+      .input(z.object({
+        orgId: z.number(),
+        productType: z.enum(["course", "download", "quiz"]),
+        productId: z.number(),
+        placement: z.enum(["before_checkout", "during_checkout", "after_checkout"]).optional(),
+      }))
+      .query(async ({ input }) => {
+        const { getOrderBumpsForProduct } = await import("./orderBumpsDb");
+        return getOrderBumpsForProduct(input.orgId, input.productType, input.productId, input.placement);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        name: z.string().min(1),
+        triggerProductType: z.enum(["course", "download", "quiz"]),
+        triggerProductId: z.number(),
+        bumpProductType: z.enum(["course", "download", "quiz"]),
+        bumpProductId: z.number(),
+        placement: z.enum(["before_checkout", "during_checkout", "after_checkout"]).optional(),
+        headline: z.string().optional(),
+        description: z.string().optional(),
+        discountPercent: z.number().min(0).max(100).optional(),
+        discountedPrice: z.string().optional(),
+        landingPageJson: z.any().optional(),
+        buttonText: z.string().optional(),
+        declineText: z.string().optional(),
+        imageUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { createOrderBump } = await import("./orderBumpsDb");
+        const id = await createOrderBump(input);
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        triggerProductType: z.enum(["course", "download", "quiz"]).optional(),
+        triggerProductId: z.number().optional(),
+        bumpProductType: z.enum(["course", "download", "quiz"]).optional(),
+        bumpProductId: z.number().optional(),
+        placement: z.enum(["before_checkout", "during_checkout", "after_checkout"]).optional(),
+        headline: z.string().optional(),
+        description: z.string().optional(),
+        discountPercent: z.number().min(0).max(100).optional(),
+        discountedPrice: z.string().optional(),
+        landingPageJson: z.any().optional(),
+        buttonText: z.string().optional(),
+        declineText: z.string().optional(),
+        imageUrl: z.string().optional(),
+        isActive: z.boolean().optional(),
+        sortOrder: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        const { updateOrderBump } = await import("./orderBumpsDb");
+        await updateOrderBump(id, data);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteOrderBump } = await import("./orderBumpsDb");
+        await deleteOrderBump(input.id);
+        return { success: true };
+      }),
+
+    recordConversion: publicProcedure
+      .input(z.object({
+        bumpId: z.number(),
+        orgId: z.number(),
+        triggerOrderId: z.number().optional(),
+        bumpOrderId: z.number().optional(),
+        buyerEmail: z.string().optional(),
+        accepted: z.boolean(),
+        sessionId: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { recordBumpConversion } = await import("./orderBumpsDb");
+        const id = await recordBumpConversion(input);
+        return { id };
+      }),
+
+    stats: protectedProcedure
+      .input(z.object({ bumpId: z.number() }))
+      .query(async ({ input }) => {
+        const { getBumpConversionStats } = await import("./orderBumpsDb");
+        return getBumpConversionStats(input.bumpId);
+      }),
+  }),
+
+  // ─── Visibility Management ────────────────────────────────────────────────
+  visibility: router({
+    updateCourse: protectedProcedure
+      .input(z.object({
+        courseId: z.number(),
+        visibility: z.enum(["draft", "published", "hidden", "private", "archived"]),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateCourseVisibility } = await import("./orderBumpsDb");
+        await updateCourseVisibility(input.courseId, input.visibility);
+        return { success: true };
+      }),
+
+    updateDownload: protectedProcedure
+      .input(z.object({
+        productId: z.number(),
+        visibility: z.enum(["draft", "published", "hidden", "private", "archived"]),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateDownloadVisibility } = await import("./orderBumpsDb");
+        await updateDownloadVisibility(input.productId, input.visibility);
+        return { success: true };
+      }),
+
+    updateQuiz: protectedProcedure
+      .input(z.object({
+        quizId: z.number(),
+        visibility: z.enum(["draft", "published", "hidden", "private", "archived"]),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateQuizVisibility } = await import("./orderBumpsDb");
+        await updateQuizVisibility(input.quizId, input.visibility);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Private Invites ──────────────────────────────────────────────────────
+  privateInvites: router({
+    list: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        productType: z.enum(["course", "download", "quiz"]),
+        productId: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const { listPrivateInvites } = await import("./orderBumpsDb");
+        return listPrivateInvites(input.orgId, input.productType, input.productId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        productType: z.enum(["course", "download", "quiz"]),
+        productId: z.number(),
+        email: z.string().email(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const crypto = await import("crypto");
+        const token = crypto.randomBytes(32).toString("hex");
+        const { createPrivateInvite } = await import("./orderBumpsDb");
+        const id = await createPrivateInvite({
+          ...input,
+          inviteToken: token,
+          invitedBy: ctx.user.id,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        });
+        return { id, token };
+      }),
+
+    accept: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const { getPrivateInviteByToken, acceptPrivateInvite } = await import("./orderBumpsDb");
+        const invite = await getPrivateInviteByToken(input.token);
+        if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found" });
+        if (invite.status === "accepted") throw new TRPCError({ code: "BAD_REQUEST", message: "Invite already accepted" });
+        if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
+        }
+        await acceptPrivateInvite(input.token);
+        return { productType: invite.productType, productId: invite.productId, orgId: invite.orgId };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deletePrivateInvite } = await import("./orderBumpsDb");
+        await deletePrivateInvite(input.id);
+        return { success: true };
       }),
   }),
 });

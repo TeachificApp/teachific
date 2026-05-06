@@ -571,8 +571,10 @@ export const quizMakerRouter = router({
         .select()
         .from(quizzes)
         .where(and(eq(quizzes.shareToken, input.shareToken), eq(quizzes.isPublished, true)));
-      if (!quiz) throw new Error("Quiz not found or not published");
-
+       if (!quiz) throw new Error("Quiz not found or not published");
+      // Enforce visibility: archived/draft quizzes are not accessible
+      const quizVis = (quiz as any).visibility ?? "published";
+      if (quizVis === "archived" || quizVis === "draft") throw new Error("Quiz not found or not published");
       // Parse questions from the instructions JSON field
       const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
 
@@ -614,7 +616,9 @@ export const quizMakerRouter = router({
         .from(quizzes)
         .where(and(eq(quizzes.shareToken, input.shareToken), eq(quizzes.isPublished, true)));
       if (!quiz) throw new Error("Quiz not found or not published");
-
+      // Enforce visibility: archived/draft quizzes cannot accept submissions
+      const quizVis2 = (quiz as any).visibility ?? "published";
+      if (quizVis2 === "archived" || quizVis2 === "draft") throw new Error("Quiz not found or not published");
       const scorePct = input.totalPoints > 0 ? (input.score / input.totalPoints) * 100 : 0;
 
       const [result] = await db.insert(quizAttempts).values({

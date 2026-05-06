@@ -3277,3 +3277,63 @@
 - [x] Divided Columns: allow adding sub-blocks into left and right columns
 - [x] Add live preview pane to page builder for real-time editing feedback
 - [x] Verify build compiles and save checkpoint
+
+## Order Bumps System
+- [ ] Add order_bumps and order_bump_conversions tables to schema
+- [ ] Add visibility column to quizzes and digital_products tables
+- [ ] Create orderBumpsDb.ts with CRUD helpers
+- [ ] Add orderBumps, visibility, and privateInvites sub-routers to lmsRouter
+- [ ] Build OrderBumpsPage (list/manage bumps)
+- [ ] Build OrderBumpEditorPage (landing page builder for bump offers)
+- [ ] Integrate order bumps into checkout flow (before/during/after)
+- [ ] Add OrderBumpOffer component for displaying bumps to customers
+- [ ] Enforce visibility rules in public-facing pages
+
+## Visibility Status for Courses/Downloads/Quizzes
+- [ ] Add visibility dropdown to CourseBuilderPage (draft/published/hidden/private/archived)
+- [ ] Add visibility dropdown to DigitalProductEditorPage
+- [ ] Add visibility dropdown to Quiz ShareDialog
+- [ ] Enforce visibility in public course listing (coursesBySlug)
+- [ ] Enforce visibility in public digital product page (getProductBySlug)
+- [ ] Enforce visibility in public quiz access (getPublishedQuiz)
+
+## Two-Line Headline for Hero/CTA Block
+- [x] Add headline2 field to hero/CTA block defaults in WysiwygPageBuilder
+- [x] Update hero block editor panel to show both headline fields
+- [x] Update hero canvas renderer to display both headline lines
+- [x] Update PageBuilder.tsx public renderer for two-line headline
+- [x] Update DigitalProductSalesPage and CourseSalesPage renderers
+
+## Banner Headline Animation
+- [x] Add subtle fade-in/slide-up animation for headline text on page load in banner/hero blocks
+- [x] Apply to PageBuilder public renderer, CourseSalesPage, and DigitalProductSalesPage
+
+## Banner Video Background & Upload & Headline Colors
+- [ ] Add video background option to hero/banner block (already exists in CTA, ensure banner has it too)
+- [ ] Add direct file upload button for image/video background in banner properties panel
+- [ ] Add separate font color picker for headline 1 (headlineColor)
+- [ ] Add separate font color picker for headline 2 (headline2Color)
+- [ ] Update canvas renderers and public renderers to use per-headline colors
+- [ ] Add inline image/video media element within hero banner (separate from background)
+- [ ] Allow left/center/right placement of inline media relative to text content
+- [ ] Add upload support for inline media in banner properties panel
+
+## Preview as Student/Customer Feature
+- [ ] Preview as Student for courses (view course content as enrolled student would see it)
+- [ ] Preview as Student for quizzes (take quiz as student would see it)
+- [ ] Preview as Customer for downloads (view download page as customer would see it)
+- [ ] Preview banner/button in admin course builder, quiz editor, and download editor
+
+## Page Builder UI Redesign (Full-page layout like reference)
+- [x] Redesign WysiwygPageBuilder to full-page layout (no scrolling wrapper)
+- [x] Top toolbar with Back to Admin, page title, Preview button, Save button
+- [x] Left sidebar: block list with drag handles, block type + subtitle preview
+- [x] Center area: live content preview (full-width, scrollable)
+- [x] Right sidebar: properties panel overlays the preview when a block is selected
+- [x] Block library categorized (Layout, Content, Conversion, Social Proof)
+- [x] Back to Admin button returns to the specific product editor (course/quiz/download) the page belongs to
+
+## Preview as Student/Member Feature
+- [x] Preview as Student button on CourseBuilderPage (opens course player in new tab with ?preview=1)
+- [x] Preview as Student button on QuizBuilderPage (opens quiz player in new tab)
+- [x] Preview as Student button on DigitalProductEditorPage (opens product sales page in new tab)

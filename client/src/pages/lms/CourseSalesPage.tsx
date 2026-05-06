@@ -13,6 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { OrderBumpOffer, OrderBumpInterstitial } from "@/components/OrderBumpOffer";
 import {
   ChevronLeft,
   Star,
@@ -25,6 +26,7 @@ import {
   Lock,
   Users,
   Award,
+  Zap,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,31 +52,57 @@ function RenderBlock({ block, primaryColor, curriculum, pricing, legalDocs, onEn
   const [expandedSections, setExpandedSections] = useState<Record<number, boolean>>({});
 
   switch (block.type) {
-    case "banner":
+    case "banner": {
+      const isVid = d.backgroundType === "video" && d.backgroundVideoUrl;
+      const bannerBg = d.backgroundType === "gradient"
+        ? { background: `linear-gradient(${d.gradientDirection || "to bottom right"}, ${d.gradientFrom || "#1e293b"}, ${d.gradientTo || "#6366f1"})` }
+        : d.backgroundType === "image" && (d.backgroundImageUrl || d.imageUrl)
+        ? { backgroundImage: `url(${d.backgroundImageUrl || d.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+        : isVid ? { backgroundColor: "#000" }
+        : { backgroundColor: d.backgroundColor || d.bgColor || primaryColor };
+      const h1c = d.headlineColor || d.textColor || "#fff";
+      const h2c = d.headline2Color || d.textColor || "#fff";
+      const hasInline = d.inlineMediaUrl && d.inlineMediaType;
       return (
         <div
-          className="relative w-full min-h-[320px] flex flex-col items-center justify-center text-center px-8 py-16"
-          style={{ backgroundColor: d.bgColor || primaryColor, color: d.textColor || "#fff" }}
+          className="relative w-full min-h-[320px] flex items-center justify-center px-8 py-16"
+          style={{ ...bannerBg, color: d.textColor || "#fff" }}
         >
-          {d.imageUrl && (
-            <img src={d.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
+          {isVid && (
+            <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover z-0" src={d.backgroundVideoUrl} />
           )}
-          <div className="relative z-10 flex flex-col items-center gap-5 max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight">{d.headline}</h1>
-            {d.subheadline && <p className="text-xl opacity-90">{d.subheadline}</p>}
-            {d.ctaText && (
-              <a href={d.ctaUrl || "#pricing"}>
-                <button
-                  className="mt-2 px-8 py-3 rounded-full font-semibold text-base"
-                  style={{ backgroundColor: "rgba(255,255,255,0.2)", border: "2px solid rgba(255,255,255,0.7)" }}
-                >
-                  {d.ctaText}
-                </button>
-              </a>
+          {(d.backgroundType === "image" || d.imageUrl || isVid) && d.overlay !== false && (
+            <div className="absolute inset-0 z-[1]" style={{ backgroundColor: `rgba(0,0,0,${d.overlayOpacity ?? 0.5})` }} />
+          )}
+          <div className={`relative z-10 animate-fade-in-up w-full ${hasInline ? "flex items-center gap-10 max-w-5xl" : "flex flex-col items-center gap-5 max-w-3xl text-center"}`} style={{ flexDirection: hasInline && d.inlineMediaPosition === "left" ? "row-reverse" : "row" }}>
+            <div className={hasInline ? "flex-1" : ""}>
+              <h1 className="text-4xl md:text-5xl font-bold leading-tight" style={{ color: h1c }}>{d.headline}</h1>
+              {d.headline2 && <h1 className="text-4xl md:text-5xl font-bold leading-tight mt-1" style={{ color: h2c }}>{d.headline2}</h1>}
+              {(d.subheadline || d.subtext) && <p className="text-xl opacity-90 mt-4">{d.subheadline || d.subtext}</p>}
+              {d.ctaText && (
+                <a href={d.ctaUrl || "#pricing"} className="inline-block mt-4">
+                  <button
+                    className="px-8 py-3 rounded-full font-semibold text-base"
+                    style={{ backgroundColor: d.ctaBgColor || "rgba(255,255,255,0.2)", color: d.ctaTextColor || "#fff", border: d.ctaBgColor ? "none" : "2px solid rgba(255,255,255,0.7)" }}
+                  >
+                    {d.ctaText}
+                  </button>
+                </a>
+              )}
+            </div>
+            {hasInline && (
+              <div className="flex-1 flex justify-center">
+                {d.inlineMediaType.startsWith("video") ? (
+                  <video autoPlay muted loop playsInline className="max-w-full max-h-[320px] rounded-xl" src={d.inlineMediaUrl} />
+                ) : (
+                  <img src={d.inlineMediaUrl} alt="" className="max-w-full max-h-[320px] rounded-xl object-cover" />
+                )}
+              </div>
             )}
           </div>
         </div>
       );
+    }
 
     case "text":
       return (
@@ -467,6 +495,17 @@ export default function CourseSalesPage() {
   };
 
   const primaryColor = theme?.studentPrimaryColor || theme?.primaryColor || "#24abbc";
+  const [showBumpInterstitial, setShowBumpInterstitial] = useState<"before" | "after" | null>(null);
+
+  // Fetch order bumps for this course
+  const { data: beforeBumps } = trpc.lms.orderBumps.getForProduct.useQuery(
+    { orgId: course?.orgId ?? 0, productType: "course", productId: courseId, placement: "before_checkout" },
+    { enabled: !!course }
+  );
+  const { data: duringBumps } = trpc.lms.orderBumps.getForProduct.useQuery(
+    { orgId: course?.orgId ?? 0, productType: "course", productId: courseId, placement: "during_checkout" },
+    { enabled: !!course }
+  );
 
   let blocks: any[] = [];
   if (page?.blocksJson) {
@@ -579,7 +618,7 @@ export default function CourseSalesPage() {
             />
           )}
 
-          {/* Pricing */}
+           {/* Pricing */}
           {pricing && pricing.length > 0 && (
             <RenderBlock
               block={{ type: "pricing", data: { heading: "Pricing Options" } }}
@@ -591,9 +630,26 @@ export default function CourseSalesPage() {
               course={course}
             />
           )}
+          {/* During Checkout Order Bumps */}
+          {duringBumps && duringBumps.length > 0 && (
+            <div className="max-w-2xl mx-auto px-4 py-6">
+              <h3 className="text-lg font-semibold mb-3 text-center">Special Offers</h3>
+              <div className="space-y-3">
+                {duringBumps.map((bump: any) => (
+                  <OrderBumpOffer
+                    key={bump.id}
+                    bump={bump}
+                    orgId={course!.orgId}
+                    onAccept={() => toast.success("Added to your order!")}
+                    onDecline={() => {}}
+                    variant="inline"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
-
       {/* Footer */}
       <footer className="border-t border-border mt-12">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center">

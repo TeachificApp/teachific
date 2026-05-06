@@ -92,6 +92,8 @@ import GroupOrdersPage from "./pages/sales/GroupOrdersPage";
 import CouponsPage from "./pages/sales/CouponsPage";
 import InvoicesPage from "./pages/sales/InvoicesPage";
 import RevenuePartnersPage from "./pages/sales/RevenuePartnersPage";
+import OrderBumpsPage from "./pages/sales/OrderBumpsPage";
+import OrderBumpEditorPage from "./pages/sales/OrderBumpEditorPage";
 
 // Analytics section
 import RevenueAnalyticsPage from "./pages/analytics/RevenueAnalyticsPage";
@@ -269,6 +271,8 @@ function AdminRouter() {
           <Route path="/sales/coupons" component={CouponsPage} />
           <Route path="/sales/invoices" component={InvoicesPage} />
           <Route path="/sales/revenue-partners" component={RevenuePartnersPage} />
+          <Route path="/sales/order-bumps" component={OrderBumpsPage} />
+          <Route path="/sales/order-bumps/:id" component={OrderBumpEditorPage} />
 
           {/* ── Analytics ── */}
           <Route path="/analytics/revenue" component={RevenueAnalyticsPage} />

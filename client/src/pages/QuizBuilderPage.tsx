@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 import { useOrgPlan } from "@/hooks/useOrgPlan";
 import {
-  ChevronLeft, Download, GripVertical, Plus, Save, Trash2, Upload, CheckCircle2, Sparkles, Loader2, Info, FileArchive,
+  ChevronLeft, Download, GripVertical, Plus, Save, Trash2, Upload, CheckCircle2, Sparkles, Loader2, Info, FileArchive, Eye,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -289,6 +289,12 @@ export default function QuizBuilderPage() {
         {!isNew && <Button variant="outline" onClick={handleExportXls} className="gap-2"><Download className="h-4 w-4" />Export XLS</Button>}
         <Button variant="outline" size="icon" onClick={() => setImportInfoOpen(true)} title="Import instructions"><Info className="h-4 w-4" /></Button>
         <Button variant="outline" asChild className="gap-2"><a href="/api/quiz/template"><FileArchive className="h-4 w-4" />Template (ZIP)</a></Button>
+        {!isNew && quizId && (
+          <Button variant="outline" className="gap-2" onClick={() => window.open(`/quizzes/${quizId}/play`, "_blank")}>
+            <Eye className="h-4 w-4" />
+            Preview as Student
+          </Button>
+        )}
         <Button onClick={handleSave} disabled={saving} className="gap-2"><Save className="h-4 w-4" />{saving ? "Saving..." : "Save Quiz"}</Button>
       </div>
 

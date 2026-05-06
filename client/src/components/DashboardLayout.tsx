@@ -202,6 +202,7 @@ const navGroups: NavGroup[] = [
           { label: "Coupons", path: "/sales/coupons" },
           { label: "Invoices", path: "/sales/invoices" },
           { label: "Revenue Partners", path: "/sales/revenue-partners" },
+          { label: "Order Bumps", path: "/sales/order-bumps" },
         ],
       },
     ],

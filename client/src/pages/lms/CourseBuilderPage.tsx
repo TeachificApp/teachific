@@ -526,9 +526,11 @@ export default function CourseBuilderPage() {
               <Badge
                 variant="outline"
                 className={
-                  course.status === "published"
-                    ? "text-green-600 border-green-300 bg-green-50 dark:bg-green-900/20"
-                    : "text-yellow-600 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20"
+                  course.status === "published" ? "text-green-600 border-green-300 bg-green-50 dark:bg-green-900/20" :
+                  course.status === "hidden" ? "text-blue-600 border-blue-300 bg-blue-50 dark:bg-blue-900/20" :
+                  course.status === "private" ? "text-purple-600 border-purple-300 bg-purple-50 dark:bg-purple-900/20" :
+                  course.status === "archived" ? "text-gray-600 border-gray-300 bg-gray-50 dark:bg-gray-900/20" :
+                  "text-yellow-600 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20"
                 }
               >
                 {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
@@ -544,19 +546,19 @@ export default function CourseBuilderPage() {
             onClick={() => window.open(`/learn/${courseId}?preview=1`, "_blank")}
           >
             <Eye className="h-3.5 w-3.5" />
-            Preview
+            Preview as Student
           </Button>
-          <Button
-            size="sm"
-            onClick={() =>
-              updateCourse.mutate({
-                id: courseId,
-                status: course.status === "published" ? "draft" : "published",
-              })
-            }
+          <select
+            className="h-8 px-2 text-sm border rounded-md bg-background"
+            value={course.status}
+            onChange={(e) => updateCourse.mutate({ id: courseId, status: e.target.value as any })}
           >
-            {course.status === "published" ? "Unpublish" : "Publish"}
-          </Button>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="hidden">Hidden (URL only)</option>
+            <option value="private">Private (Invite only)</option>
+            <option value="archived">Archived</option>
+          </select>
         </div>
       </div>
 

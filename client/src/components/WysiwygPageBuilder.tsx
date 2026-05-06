@@ -78,8 +78,7 @@ import {
   Move,
   HelpCircle,
   Columns2,
-  Monitor,
-  Maximize2,
+
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 
@@ -127,6 +126,7 @@ function LucideIcon({ name, size = 18, color = "currentColor" }: { name: string;
 const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   banner: {
     headline: "Welcome to Our Course",
+    headline2: "",
     subtext: "Start learning today and transform your skills.",
     ctaText: "Enroll Now",
     ctaUrl: "#",
@@ -142,10 +142,15 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     gradientTo: "#6366f1",
     gradientDirection: "to bottom right",
     textColor: "#ffffff",
+    headlineColor: "",
+    headline2Color: "",
     height: "large",
     alignment: "center",
     overlay: true,
     overlayOpacity: 0.5,
+    inlineMediaUrl: "",
+    inlineMediaPosition: "right",
+    inlineMediaType: "",
   },
   text_media: {
     headline: "Why Choose This Course?",
@@ -176,6 +181,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   },
   cta: {
     headline: "Ready to Get Started?",
+    headline2: "",
     subtext: "Join thousands of students already learning.",
     ctaText: "Start Learning",
     ctaUrl: "#",
@@ -190,6 +196,8 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     gradientTo: "#6366f1",
     gradientDirection: "to bottom right",
     textColor: "#ffffff",
+    headlineColor: "",
+    headline2Color: "",
     alignment: "center",
     overlay: true,
     overlayOpacity: 0.5,
@@ -451,6 +459,59 @@ function BannerCanvas({ data, onChange }: { data: Record<string, any>; onChange:
   const isVideo = data.backgroundType === "video" && data.backgroundVideoUrl;
   const bg = getBgStyle(data, "#1e293b");
   const heights: Record<string, string> = { small: "200px", medium: "320px", large: "480px" };
+  const hasInlineMedia = data.inlineMediaUrl;
+  const mediaPosition = data.inlineMediaPosition || "right";
+  const isInlineVideo = data.inlineMediaUrl && (data.inlineMediaUrl.match(/\.(mp4|webm|ogg)/) || data.inlineMediaType === "video");
+
+  const textContent = (
+    <div className="animate-fade-in-up" style={{ textAlign: data.alignment || "center", flex: hasInlineMedia ? "1" : undefined, minWidth: hasInlineMedia ? "0" : undefined }}>
+      <InlineText
+        tag="h1"
+        value={data.headline}
+        onChange={v => onChange({ ...data, headline: v })}
+        style={{ color: data.headlineColor || data.textColor || "#fff", fontSize: "2.5rem", fontWeight: 700, margin: "0 0 4px" }}
+        placeholder="Add headline line 1…"
+      />
+      {(data.headline2 || true) && (
+        <InlineText
+          tag="h1"
+          value={data.headline2 || ""}
+          onChange={v => onChange({ ...data, headline2: v })}
+          style={{ color: data.headline2Color || data.textColor || "#fff", fontSize: "2.5rem", fontWeight: 700, margin: "0 0 16px" }}
+          placeholder="Headline line 2 (optional)…"
+        />
+      )}
+      <InlineText
+        tag="p"
+        value={data.subtext}
+        onChange={v => onChange({ ...data, subtext: v })}
+        style={{ color: data.textColor || "#fff", fontSize: "1.125rem", margin: "0 0 24px", opacity: 0.9 }}
+        placeholder="Add a subtitle…"
+        multiline
+      />
+      <div style={{ display: "flex", gap: "12px", justifyContent: data.alignment === "center" ? "center" : "flex-start", flexWrap: "wrap" }}>
+        {(data.ctaText || true) && (
+          <InlineText
+            tag="span"
+            value={data.ctaText || "Enroll Now"}
+            onChange={v => onChange({ ...data, ctaText: v })}
+            style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", fontWeight: 600, fontSize: "1rem", display: "inline-block" }}
+            placeholder="Button text…"
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  const mediaContent = hasInlineMedia ? (
+    <div style={{ flex: "0 0 40%", maxWidth: "400px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {isInlineVideo ? (
+        <video autoPlay muted loop playsInline style={{ width: "100%", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }} src={data.inlineMediaUrl} />
+      ) : (
+        <img src={data.inlineMediaUrl} alt="" style={{ width: "100%", borderRadius: "12px", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }} />
+      )}
+    </div>
+  ) : null;
 
   return (
     <div style={{ ...bg, minHeight: heights[data.height] || "320px", position: "relative", display: "flex", alignItems: "center", justifyContent: data.alignment === "left" ? "flex-start" : data.alignment === "right" ? "flex-end" : "center" }}>
@@ -458,33 +519,9 @@ function BannerCanvas({ data, onChange }: { data: Record<string, any>; onChange:
       {(data.backgroundType === "image" || isVideo) && data.overlay && (
         <div style={{ position: "absolute", inset: 0, backgroundColor: `rgba(0,0,0,${data.overlayOpacity ?? 0.5})`, zIndex: 1 }} />
       )}
-      <div style={{ position: "relative", zIndex: 2, textAlign: data.alignment || "center", padding: "40px 60px", maxWidth: "800px", width: "100%" }}>
-        <InlineText
-          tag="h1"
-          value={data.headline}
-          onChange={v => onChange({ ...data, headline: v })}
-          style={{ color: data.textColor || "#fff", fontSize: "2.5rem", fontWeight: 700, margin: "0 0 16px" }}
-          placeholder="Add a headline…"
-        />
-        <InlineText
-          tag="p"
-          value={data.subtext}
-          onChange={v => onChange({ ...data, subtext: v })}
-          style={{ color: data.textColor || "#fff", fontSize: "1.125rem", margin: "0 0 24px", opacity: 0.9 }}
-          placeholder="Add a subtitle…"
-          multiline
-        />
-        <div style={{ display: "flex", gap: "12px", justifyContent: data.alignment === "center" ? "center" : "flex-start", flexWrap: "wrap" }}>
-          {(data.ctaText || true) && (
-            <InlineText
-              tag="span"
-              value={data.ctaText || "Enroll Now"}
-              onChange={v => onChange({ ...data, ctaText: v })}
-              style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", fontWeight: 600, fontSize: "1rem", display: "inline-block" }}
-              placeholder="Button text…"
-            />
-          )}
-        </div>
+      <div style={{ position: "relative", zIndex: 2, padding: "40px 60px", maxWidth: hasInlineMedia ? "100%" : "800px", width: "100%", display: hasInlineMedia ? "flex" : "block", alignItems: "center", gap: "40px", flexDirection: mediaPosition === "left" ? "row-reverse" : "row" }}>
+        {textContent}
+        {mediaContent}
       </div>
     </div>
   );
@@ -525,8 +562,11 @@ function CTACanvas({ data, onChange }: { data: Record<string, any>; onChange: (d
     <div style={{ ...bg, padding: "80px 40px", textAlign: data.alignment || "center", position: "relative" }}>
       {isVideo && <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} src={data.backgroundVideoUrl} />}
       {(data.backgroundType === "image" || isVideo) && data.overlay && <div style={{ position: "absolute", inset: 0, backgroundColor: `rgba(0,0,0,${data.overlayOpacity ?? 0.5})`, zIndex: 1 }} />}
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <InlineText tag="h2" value={data.headline} onChange={v => onChange({ ...data, headline: v })} style={{ color: data.textColor || "#fff", fontSize: "2rem", fontWeight: 700, marginBottom: "12px" }} placeholder="CTA Headline…" />
+      <div className="animate-fade-in-up" style={{ position: "relative", zIndex: 2 }}>
+        <InlineText tag="h2" value={data.headline} onChange={v => onChange({ ...data, headline: v })} style={{ color: data.headlineColor || data.textColor || "#fff", fontSize: "2rem", fontWeight: 700, marginBottom: data.headline2 ? "4px" : "12px" }} placeholder="CTA Headline line 1…" />
+        {(data.headline2 !== undefined) && (
+          <InlineText tag="h2" value={data.headline2 || ""} onChange={v => onChange({ ...data, headline2: v })} style={{ color: data.headline2Color || data.textColor || "#fff", fontSize: "2rem", fontWeight: 700, marginBottom: "12px" }} placeholder="Headline line 2 (optional)…" />
+        )}
         <InlineText tag="p" value={data.subtext} onChange={v => onChange({ ...data, subtext: v })} style={{ color: data.textColor || "#fff", opacity: 0.8, marginBottom: "32px", fontSize: "1.125rem" }} placeholder="Supporting text…" multiline />
         <InlineText tag="span" value={data.ctaText || "Get Started"} onChange={v => onChange({ ...data, ctaText: v })} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "14px 36px", borderRadius: "8px", fontWeight: 700, fontSize: "1.125rem", display: "inline-block" }} placeholder="Button text…" />
       </div>
@@ -980,7 +1020,8 @@ function PropertiesPanel({ block, onChange, onDelete, onDuplicate, onToggleVisib
         <div className="p-4 space-y-4">
           {/* Block-specific properties */}
           {block.type === "banner" && <>
-            <TextProp label="Headline" field="headline" data={d} onChange={onChange} placeholder="Your headline…" />
+            <TextProp label="Headline Line 1" field="headline" data={d} onChange={onChange} placeholder="Your headline…" />
+            <TextProp label="Headline Line 2" field="headline2" data={d} onChange={onChange} placeholder="Second line (optional)…" />
             <TextProp label="Subtext" field="subtext" data={d} onChange={onChange} multiline placeholder="Supporting text…" />
             <TextProp label="CTA Button Text" field="ctaText" data={d} onChange={onChange} placeholder="Enroll Now" />
             <TextProp label="CTA Button URL" field="ctaUrl" data={d} onChange={onChange} placeholder="https://…" />
@@ -1001,13 +1042,19 @@ function PropertiesPanel({ block, onChange, onDelete, onDuplicate, onToggleVisib
             </>
             }
             {d.backgroundType === "video" && <>
-              <TextProp label="Background Video URL" field="backgroundVideoUrl" data={d} onChange={onChange} placeholder="https://…" />
+              <ImageUploadProp label="Background Video" field="backgroundVideoUrl" data={d} onChange={onChange} orgId={orgId} />
               <div className="flex items-center gap-2"><input type="checkbox" checked={!!d.overlay} onChange={e => onChange({ ...d, overlay: e.target.checked })} /><span className="text-xs text-muted-foreground">Overlay</span></div>
               {d.overlay && <NumberProp label="Overlay Opacity" field="overlayOpacity" data={d} onChange={onChange} min={0} max={1} />}
             </>}
-            <ColorProp label="Text Color" field="textColor" data={d} onChange={onChange} />
+            <Separator />
+            <ColorProp label="Headline 1 Color" field="headlineColor" data={d} onChange={onChange} />
+            <ColorProp label="Headline 2 Color" field="headline2Color" data={d} onChange={onChange} />
+            <ColorProp label="Body Text Color" field="textColor" data={d} onChange={onChange} />
             <SelectProp label="Height" field="height" data={d} onChange={onChange} options={[{ value: "small", label: "Small" }, { value: "medium", label: "Medium" }, { value: "large", label: "Large" }]} />
             <SelectProp label="Alignment" field="alignment" data={d} onChange={onChange} options={[{ value: "left", label: "Left" }, { value: "center", label: "Center" }, { value: "right", label: "Right" }]} />
+            <Separator />
+            <ImageUploadProp label="Inline Image/Video" field="inlineMediaUrl" data={d} onChange={onChange} orgId={orgId} />
+            {d.inlineMediaUrl && <SelectProp label="Media Position" field="inlineMediaPosition" data={d} onChange={onChange} options={[{ value: "left", label: "Left of text" }, { value: "right", label: "Right of text" }, { value: "center", label: "Below text (center)" }]} />}
           </>}
 
           {block.type === "text_media" && <>
@@ -1033,7 +1080,8 @@ function PropertiesPanel({ block, onChange, onDelete, onDuplicate, onToggleVisib
           </>}
 
           {block.type === "cta" && <>
-            <TextProp label="Headline" field="headline" data={d} onChange={onChange} />
+            <TextProp label="Headline Line 1" field="headline" data={d} onChange={onChange} />
+            <TextProp label="Headline Line 2" field="headline2" data={d} onChange={onChange} placeholder="Second line (optional)…" />
             <TextProp label="Subtext" field="subtext" data={d} onChange={onChange} multiline />
             <TextProp label="Button Text" field="ctaText" data={d} onChange={onChange} />
             <TextProp label="Button URL" field="ctaUrl" data={d} onChange={onChange} placeholder="https://…" />
@@ -1053,11 +1101,14 @@ function PropertiesPanel({ block, onChange, onDelete, onDuplicate, onToggleVisib
               {d.overlay && <NumberProp label="Overlay Opacity" field="overlayOpacity" data={d} onChange={onChange} min={0} max={1} />}
             </>}
             {d.backgroundType === "video" && <>
-              <TextProp label="Background Video URL" field="backgroundVideoUrl" data={d} onChange={onChange} placeholder="https://…" />
+              <ImageUploadProp label="Background Video" field="backgroundVideoUrl" data={d} onChange={onChange} orgId={orgId} />
               <div className="flex items-center gap-2"><input type="checkbox" checked={!!d.overlay} onChange={e => onChange({ ...d, overlay: e.target.checked })} /><span className="text-xs text-muted-foreground">Overlay</span></div>
               {d.overlay && <NumberProp label="Overlay Opacity" field="overlayOpacity" data={d} onChange={onChange} min={0} max={1} />}
             </>}
-            <ColorProp label="Text Color" field="textColor" data={d} onChange={onChange} />
+            <Separator />
+            <ColorProp label="Headline 1 Color" field="headlineColor" data={d} onChange={onChange} />
+            <ColorProp label="Headline 2 Color" field="headline2Color" data={d} onChange={onChange} />
+            <ColorProp label="Body Text Color" field="textColor" data={d} onChange={onChange} />
             <SelectProp label="Alignment" field="alignment" data={d} onChange={onChange} options={[{ value: "left", label: "Left" }, { value: "center", label: "Center" }]} />
           </>}
 
@@ -1425,6 +1476,59 @@ function ElementTile({ type, label, icon: Icon, onAdd }: { type: BlockType; labe
   );
 }
 
+// ─── Sortable Block List Item (left sidebar) ─────────────────────────────────
+function SortableBlockListItem({
+  block,
+  label,
+  subtitle,
+  isSelected,
+  onSelect,
+}: {
+  block: Block;
+  label: string;
+  subtitle: string;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 px-2 py-2 mx-1 my-0.5 rounded-lg cursor-pointer transition-colors ${
+        isSelected
+          ? "bg-teal-50 border border-teal-400"
+          : "hover:bg-slate-50 border border-transparent"
+      } ${!block.visible ? "opacity-40" : ""}`}
+      onClick={onSelect}
+    >
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground shrink-0"
+        onClick={e => e.stopPropagation()}
+      >
+        <GripVertical size={14} />
+      </div>
+      {/* Block info */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-xs font-semibold truncate ${isSelected ? "text-teal-800" : "text-foreground"}`}>
+          {label}
+        </p>
+        {subtitle && (
+          <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main WysiwygPageBuilder Component ────────────────────────────────────────
 
 export interface WysiwygPageBuilderProps {
@@ -1436,13 +1540,22 @@ export interface WysiwygPageBuilderProps {
   courses?: { id: number; title: string }[];
   orgId?: number;
 }
+
+// Helper to get a subtitle/summary for a block in the left panel list
+function getBlockSubtitle(block: Block): string {
+  const d = block.data ?? {};
+  if (d.headline) return d.headline.substring(0, 30) + (d.headline.length > 30 ? "…" : "");
+  if (d.text) return d.text.substring(0, 30) + (d.text.length > 30 ? "…" : "");
+  if (d.body) return d.body.substring(0, 30) + (d.body.length > 30 ? "…" : "");
+  if (d.ctaText) return d.ctaText;
+  return "";
+}
+
 export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSaving = false, pageType, courses = [], orgId = 0 }: WysiwygPageBuilderProps) {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [propsPanelCollapsed, setPropsPanelCollapsed] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showElementLibrary, setShowElementLibrary] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Sections");
 
   // Undo/Redo
@@ -1503,6 +1616,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
     const newBlocks = [...blocks, newBlock];
     updateBlocks(newBlocks);
     setSelectedId(newBlock.id);
+    setShowElementLibrary(false);
     // Scroll to bottom of canvas
     setTimeout(() => {
       document.getElementById("wysiwyg-canvas")?.scrollTo({ top: 99999, behavior: "smooth" });
@@ -1542,7 +1656,6 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
     if (active.data.current?.isElementTile) {
       const blockType = active.data.current.blockType as BlockType;
       if (over) {
-        // If dropped over an existing block, insert before it; otherwise append
         const targetIdx = blocks.findIndex(b => b.id === over.id);
         const defaults = BLOCK_DEFAULTS[blockType] ?? {};
         const newBlock: Block = { id: nanoid(8), type: blockType, data: defaults, visible: true };
@@ -1554,11 +1667,12 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
           updateBlocks([...blocks, newBlock]);
         }
         setSelectedId(newBlock.id);
+        setShowElementLibrary(false);
       }
       return;
     }
 
-    // Case 2: Reorder existing blocks
+    // Case 2: Reorder existing blocks (from block list sidebar)
     if (!over || active.id === over.id) return;
     const oldIdx = blocks.findIndex(b => b.id === active.id);
     const newIdx = blocks.findIndex(b => b.id === over.id);
@@ -1577,154 +1691,133 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
-      {/* ── Left Sidebar: Element Library ────────────────────────────────── */}
-      <div className={`flex flex-col bg-white border-r border-border transition-all duration-200 shrink-0 ${sidebarCollapsed ? "w-10" : "w-52"}`}>
-        {/* Sidebar header */}
+    <div className="flex h-full bg-slate-100 overflow-hidden">
+      {/* ── Left Sidebar: Block List + Element Library ────────────────────── */}
+      <div className="flex flex-col bg-white border-r border-border shrink-0 w-64">
+        {/* Sidebar header with block count */}
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-          {!sidebarCollapsed && <span className="text-xs font-semibold text-foreground">Elements</span>}
-          <div className="flex items-center gap-1 ml-auto">
-            {!sidebarCollapsed && (
-              <>
-                <button onClick={undo} disabled={!canUndo} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 transition-colors" title="Undo (Ctrl+Z)">
-                  <Undo2 size={12} />
-                </button>
-                <button onClick={redo} disabled={!canRedo} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 transition-colors" title="Redo (Ctrl+Y)">
-                  <Redo2 size={12} />
-                </button>
-              </>
-            )}
-            <button onClick={() => setSidebarCollapsed(v => !v)} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-              {sidebarCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+          <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Blocks ({blocks.length})</span>
+          <div className="flex items-center gap-1">
+            <button onClick={undo} disabled={!canUndo} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 transition-colors" title="Undo (Ctrl+Z)">
+              <Undo2 size={12} />
+            </button>
+            <button onClick={redo} disabled={!canRedo} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-30 transition-colors" title="Redo (Ctrl+Y)">
+              <Redo2 size={12} />
             </button>
           </div>
         </div>
 
-        {!sidebarCollapsed && (
-          <>
-            {/* Category tabs */}
-            <div className="flex flex-col border-b border-border">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`text-left px-3 py-1.5 text-xs font-medium transition-colors ${activeCategory === cat ? "bg-indigo-50 text-indigo-700 border-r-2 border-indigo-500" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Element tiles grid */}
-            <ScrollArea className="flex-1">
-              <div className="p-2 grid grid-cols-2 gap-1.5">
-                {categoryElements.map(item => (
-                  <ElementTile
-                    key={item.type}
-                    type={item.type}
-                    label={item.label}
-                    icon={item.icon}
-                    onAdd={addBlock}
-                  />
-                ))}
-              </div>
-            </ScrollArea>
-          </>
-        )}
-      </div>
-
-      {/* ── Canvas Toolbar (Save + Preview buttons) ───────────────────── */}
-      <div style={{ position: "absolute", top: 8, right: propsPanelCollapsed ? 54 : 284, zIndex: 20, display: "flex", gap: 8 }}>
-        <button
-          onClick={() => setShowPreview(v => !v)}
-          style={{ background: showPreview ? "#6366f1" : "#64748b", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-          title="Toggle Live Preview"
-        >
-          <Monitor size={14} />
-          {showPreview ? "Editor" : "Preview"}
-        </button>
-        {onSave && (
-          <button
-            onClick={() => onSave(blocks)}
-            disabled={isSaving}
-            style={{ background: "#0ea5e9", color: "#fff", border: "none", borderRadius: 6, padding: "6px 18px", fontWeight: 600, fontSize: 13, cursor: isSaving ? "not-allowed" : "pointer", opacity: isSaving ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6 }}
-          >
-            {isSaving ? "Saving…" : "Save"}
-          </button>
-        )}
-      </div>
-      {/* ── Center: Canvas or Preview ──────────────────────────────────────────────── */}
-      {showPreview ? (
-        <div className="flex-1 overflow-auto bg-white">
-          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-            {blocks.filter(b => b.visible !== false).map(block => (
-              <div key={block.id}>{renderCanvasBlock(block, () => {})}</div>
-            ))}
-            {blocks.filter(b => b.visible !== false).length === 0 && (
-              <div className="flex flex-col items-center justify-center h-96 text-muted-foreground">
-                <Monitor size={48} className="mb-4 opacity-30" />
-                <p className="text-lg font-medium">No blocks to preview</p>
-                <p className="text-sm mt-1">Add some sections to see the live preview</p>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-      <div
-        id="wysiwyg-canvas"
-        className="flex-1 overflow-auto"
-        onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}
-      >
+        {/* Block list - sortable */}
+        <ScrollArea className="flex-1">
           <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-            <CanvasDropZone isEmpty={blocks.length === 0}>
-              {blocks.map(block => (
-                <SortableCanvasBlock
-                  key={block.id}
-                  block={block}
-                  isSelected={selectedId === block.id}
-                  onSelect={() => {
-                    setSelectedId(block.id);
-                    if (propsPanelCollapsed) setPropsPanelCollapsed(false);
-                  }}
-                  onDelete={() => deleteBlock(block.id)}
-                  onDuplicate={() => duplicateBlock(block.id)}
-                  onToggleVisible={() => toggleVisible(block.id)}
-                  onChange={data => updateBlockData(block.id, data)}
-                />
-              ))}
-            </CanvasDropZone>
+            <div className="py-1">
+              {blocks.map(block => {
+                const libEntry = ELEMENT_LIBRARY.find(e => e.type === block.type);
+                const subtitle = getBlockSubtitle(block);
+                return (
+                  <SortableBlockListItem
+                    key={block.id}
+                    block={block}
+                    label={libEntry?.label || block.type}
+                    subtitle={subtitle}
+                    isSelected={selectedId === block.id}
+                    onSelect={() => setSelectedId(block.id)}
+                  />
+                );
+              })}
+            </div>
           </SortableContext>
-
-          <DragOverlay>
-            {activeId && (
-              <div className="bg-white rounded-lg shadow-2xl border-2 border-indigo-500 p-3 opacity-90 text-sm font-medium text-indigo-700">
-                {(activeId as string).startsWith("tile-") ? "Drop to add section…" : "Moving section…"}
-              </div>
-            )}
-             </DragOverlay>
-      </div>
-      )}
-      {/* ── Right Panel: Properties ───────────────────────────────────────── */}
-      <div className={`flex flex-col bg-white border-l border-border transition-all duration-200 shrink-0 ${propsPanelCollapsed ? "w-10" : "w-80"}`}>
-        {/* Panel header */}
-        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-          {!propsPanelCollapsed && (
-            <div className="flex items-center gap-1.5">
-              <Settings size={13} className="text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground">Properties</span>
+          {blocks.length === 0 && (
+            <div className="px-4 py-8 text-center text-muted-foreground">
+              <Layers size={24} className="mx-auto mb-2 opacity-40" />
+              <p className="text-xs">No blocks yet</p>
+              <p className="text-xs opacity-60">Add elements below</p>
             </div>
           )}
-          <button
-            onClick={() => setPropsPanelCollapsed(v => !v)}
-            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors ml-auto"
-          >
-            {propsPanelCollapsed ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
-          </button>
+        </ScrollArea>
+
+        {/* Element Library Section (bottom of sidebar) */}
+        <div className="border-t border-border">
+          {/* Category tabs as horizontal pills */}
+          <div className="px-2 pt-2 pb-1 flex flex-wrap gap-1">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => { setActiveCategory(cat); setShowElementLibrary(true); }}
+                className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors ${
+                  activeCategory === cat && showElementLibrary
+                    ? "bg-teal-600 text-white"
+                    : "bg-slate-100 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Element tiles grid */}
+          {showElementLibrary && (
+            <div className="px-2 pb-2 grid grid-cols-2 gap-1.5 max-h-40 overflow-auto">
+              {categoryElements.map(item => (
+                <ElementTile
+                  key={item.type}
+                  type={item.type}
+                  label={item.label}
+                  icon={item.icon}
+                  onAdd={addBlock}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Center: Live Content Preview ──────────────────────────────────── */}
+      <div className="flex-1 relative overflow-hidden">
+        <div
+          id="wysiwyg-canvas"
+          className="h-full overflow-auto bg-white"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}
+        >
+          {blocks.filter(b => b.visible !== false).length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <Layers size={48} className="mb-4 opacity-20" />
+              <p className="text-lg font-medium">Start building your page</p>
+              <p className="text-sm mt-1 opacity-60">Select elements from the left panel to add sections</p>
+            </div>
+          ) : (
+            <div>
+              {blocks.filter(b => b.visible !== false).map(block => (
+                <div
+                  key={block.id}
+                  className={`relative cursor-pointer transition-all ${selectedId === block.id ? "ring-2 ring-teal-500 ring-inset" : "hover:ring-1 hover:ring-teal-300 hover:ring-inset"}`}
+                  onClick={(e) => { e.stopPropagation(); setSelectedId(block.id); }}
+                >
+                  {renderCanvasBlock(block, (data) => updateBlockData(block.id, data))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {!propsPanelCollapsed && (
-          <div className="flex-1 overflow-hidden">
-            {selectedBlock ? (
+        {/* ── Right Panel: Properties (overlays the preview) ─────────────── */}
+        {selectedBlock && (
+          <div className="absolute top-0 right-0 h-full w-80 bg-white border-l border-border shadow-xl z-30 flex flex-col animate-in slide-in-from-right-4 duration-200">
+            {/* Panel header with close */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <span className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                Edit: {ELEMENT_LIBRARY.find(e => e.type === selectedBlock.type)?.label || selectedBlock.type}
+              </span>
+              <button
+                onClick={() => setSelectedId(null)}
+                className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Properties content */}
+            <div className="flex-1 overflow-hidden">
               <PropertiesPanel
                 block={selectedBlock}
                 onChange={data => updateBlockData(selectedBlock.id, data)}
@@ -1734,16 +1827,18 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
                 courses={courses}
                 orgId={orgId}
               />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6 text-muted-foreground">
-                <Settings size={28} className="mb-3 opacity-30" />
-                <p className="text-sm font-medium">No section selected</p>
-                <p className="text-xs mt-1 opacity-70">Click any section on the canvas to edit its properties</p>
-              </div>
-            )}
+            </div>
           </div>
         )}
       </div>
+
+      <DragOverlay>
+        {activeId && (
+          <div className="bg-white rounded-lg shadow-2xl border-2 border-teal-500 p-3 opacity-90 text-sm font-medium text-teal-700">
+            {(activeId as string).startsWith("tile-") ? "Drop to add section…" : "Moving block…"}
+          </div>
+        )}
+      </DragOverlay>
     </div>
     </DndContext>
   );

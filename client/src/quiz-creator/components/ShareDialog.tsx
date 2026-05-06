@@ -191,17 +191,21 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                 <p className="text-xs text-gray-400">Paste this HTML into any website to embed the quiz.</p>
               </div>
 
-              {/* Unpublish */}
-              <div className="pt-2 border-t border-gray-100">
-                <button
-                  onClick={handleUnpublish}
-                  disabled={publishing}
-                  className="flex items-center gap-2 text-sm text-red-500 hover:text-red-600 transition-colors disabled:opacity-50"
+              {/* Visibility */}
+              <div className="pt-2 border-t border-gray-100 space-y-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Visibility</label>
+                <select
+                  className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg bg-white"
+                  value="published"
+                  onChange={(e) => {
+                    if (e.target.value === "draft") handleUnpublish();
+                  }}
                 >
-                  <GlobeLock className="w-4 h-4" />
-                  {publishing ? "Unpublishing..." : "Unpublish Quiz"}
-                </button>
-                <p className="text-xs text-gray-400 mt-1">This will make the quiz inaccessible via the share link.</p>
+                  <option value="published">Published — Anyone with link</option>
+                  <option value="hidden">Hidden — URL only (not in directory)</option>
+                  <option value="draft">Draft — Unpublish</option>
+                </select>
+                <p className="text-xs text-gray-400">Controls who can access this quiz.</p>
               </div>
             </>
           )}

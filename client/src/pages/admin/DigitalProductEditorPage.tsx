@@ -432,7 +432,7 @@ export default function DigitalProductEditorPage() {
                 onClick={() => window.open(`/shop/${slug}`, "_blank")}
               >
                 <ExternalLink className="w-4 h-4 mr-1" />
-                Preview
+                Preview as Customer
               </Button>
             </>
           )}
@@ -556,18 +556,26 @@ export default function DigitalProductEditorPage() {
             )}
           </div>
 
-          {/* Publish toggle */}
+          {/* Visibility */}
           {!isNew && (
-            <div className="flex items-center gap-3 p-4 border rounded-lg">
-              <Switch checked={isPublished} onCheckedChange={setIsPublished} />
-              <div>
-                <p className="font-medium">{isPublished ? "Published" : "Draft"}</p>
-                <p className="text-sm text-muted-foreground">
-                  {isPublished
-                    ? "Sales page is live and buyers can purchase."
-                    : "Sales page is hidden from public."}
-                </p>
-              </div>
+            <div className="p-4 border rounded-lg space-y-2">
+              <Label className="text-sm font-medium">Visibility</Label>
+              <select
+                className="w-full h-9 px-3 text-sm border rounded-md bg-background"
+                value={isPublished ? "published" : "draft"}
+                onChange={(e) => setIsPublished(e.target.value === "published" || e.target.value === "hidden")}
+              >
+                <option value="draft">Draft — Not visible to anyone</option>
+                <option value="published">Published — Visible in public directory</option>
+                <option value="hidden">Hidden — Accessible via URL only</option>
+                <option value="private">Private — Email invite only</option>
+                <option value="archived">Archived — No longer available</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {isPublished
+                  ? "Sales page is live and buyers can purchase."
+                  : "Sales page is hidden from public."}
+              </p>
             </div>
           )}
         </TabsContent>

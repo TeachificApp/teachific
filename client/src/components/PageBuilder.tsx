@@ -120,6 +120,7 @@ export interface Block {
 const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   banner: {
     headline: "Welcome to Our Course",
+    headline2: "",
     subtext: "Start learning today and transform your skills.",
     ctaText: "Enroll Now",
     ctaUrl: "#",
@@ -157,6 +158,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   },
   cta: {
     headline: "Ready to Get Started?",
+    headline2: "",
     subtext: "Join thousands of students already learning.",
     ctaText: "Start Learning",
     ctaUrl: "#",
@@ -355,27 +357,44 @@ const BLOCK_LIBRARY: { type: BlockType; label: string; icon: React.ComponentType
 
 function BannerPreview({ data }: { data: Record<string, any> }) {
   const isVideo = data.backgroundType === "video" && data.backgroundVideoUrl;
-  const bg = data.backgroundType === "image" && data.backgroundImageUrl
+  const bg = data.backgroundType === "gradient"
+    ? { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || "#1e293b"}, ${data.gradientTo || "#6366f1"})` }
+    : data.backgroundType === "image" && data.backgroundImageUrl
     ? { backgroundImage: `url(${data.backgroundImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : isVideo ? { backgroundColor: "#000" }
     : { backgroundColor: data.backgroundColor || "#1e293b" };
   const heights: Record<string, string> = { small: "160px", medium: "240px", large: "360px" };
+  const hasInlineMedia = data.inlineMediaUrl && data.inlineMediaType;
+  const h1Color = data.headlineColor || data.textColor || "#fff";
+  const h2Color = data.headline2Color || data.textColor || "#fff";
   return (
     <div style={{ ...bg, minHeight: heights[data.height] || "240px", position: "relative", display: "flex", alignItems: "center", justifyContent: data.alignment === "left" ? "flex-start" : data.alignment === "right" ? "flex-end" : "center" }}>
       {isVideo && (
         <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} src={data.backgroundVideoUrl} />
       )}
-      {(data.backgroundType === "image" || isVideo) && (
+      {(data.backgroundType === "image" || isVideo) && data.overlay !== false && (
         <div style={{ position: "absolute", inset: 0, backgroundColor: `rgba(0,0,0,${data.overlayOpacity ?? 0.5})`, zIndex: 1 }} />
       )}
-      <div style={{ position: "relative", zIndex: 2, textAlign: data.alignment || "center", padding: "40px 60px", maxWidth: "800px" }}>
-        <h1 style={{ color: data.textColor || "#fff", fontSize: "2.5rem", fontWeight: 700, margin: "0 0 16px" }}>{data.headline}</h1>
-        {data.subtext && <p style={{ color: data.textColor || "#fff", fontSize: "1.125rem", margin: "0 0 24px", opacity: 0.9 }}>{data.subtext}</p>}
-        <div style={{ display: "flex", gap: "12px", justifyContent: data.alignment === "center" ? "center" : "flex-start", flexWrap: "wrap" }}>
-          {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem" }}>{data.ctaText}</a>}
-          {data.ctaSecondaryText && <a href={data.ctaSecondaryUrl || "#"} style={{ backgroundColor: data.ctaSecondaryBgColor || "transparent", color: data.ctaSecondaryTextColor || data.textColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem", border: `2px solid ${data.ctaSecondaryBgColor || data.textColor || "#fff"}` }}>{data.ctaSecondaryText}</a>}
-          {data.previewPageUrl && <a href={data.previewPageUrl} style={{ backgroundColor: "transparent", color: data.textColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 500, fontSize: "0.95rem", border: "1.5px solid rgba(255,255,255,0.5)", opacity: 0.85 }}>Preview</a>}
+      <div className="animate-fade-in-up" style={{ position: "relative", zIndex: 2, textAlign: hasInlineMedia && data.inlineMediaPosition !== "center" ? "left" : (data.alignment || "center"), padding: "40px 60px", maxWidth: hasInlineMedia ? "1100px" : "800px", width: "100%", display: hasInlineMedia ? "flex" : "block", alignItems: "center", gap: "40px", flexDirection: data.inlineMediaPosition === "left" ? "row-reverse" : "row" }}>
+        <div style={{ flex: hasInlineMedia ? 1 : undefined }}>
+          <h1 style={{ color: h1Color, fontSize: "2.5rem", fontWeight: 700, margin: data.headline2 ? "0 0 4px" : "0 0 16px" }}>{data.headline}</h1>
+          {data.headline2 && <h1 style={{ color: h2Color, fontSize: "2.5rem", fontWeight: 700, margin: "0 0 16px" }}>{data.headline2}</h1>}
+          {data.subtext && <p style={{ color: data.textColor || "#fff", fontSize: "1.125rem", margin: "0 0 24px", opacity: 0.9 }}>{data.subtext}</p>}
+          <div style={{ display: "flex", gap: "12px", justifyContent: data.alignment === "center" && !hasInlineMedia ? "center" : "flex-start", flexWrap: "wrap" }}>
+            {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem" }}>{data.ctaText}</a>}
+            {data.ctaSecondaryText && <a href={data.ctaSecondaryUrl || "#"} style={{ backgroundColor: data.ctaSecondaryBgColor || "transparent", color: data.ctaSecondaryTextColor || data.textColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "1rem", border: `2px solid ${data.ctaSecondaryBgColor || data.textColor || "#fff"}` }}>{data.ctaSecondaryText}</a>}
+            {data.previewPageUrl && <a href={data.previewPageUrl} style={{ backgroundColor: "transparent", color: data.textColor || "#fff", padding: "12px 28px", borderRadius: "8px", textDecoration: "none", fontWeight: 500, fontSize: "0.95rem", border: "1.5px solid rgba(255,255,255,0.5)", opacity: 0.85 }}>Preview</a>}
+          </div>
         </div>
+        {hasInlineMedia && (
+          <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+            {data.inlineMediaType.startsWith("video") ? (
+              <video autoPlay muted loop playsInline style={{ maxWidth: "100%", maxHeight: "320px", borderRadius: "12px" }} src={data.inlineMediaUrl} />
+            ) : (
+              <img src={data.inlineMediaUrl} alt="" style={{ maxWidth: "100%", maxHeight: "320px", borderRadius: "12px", objectFit: "cover" }} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -425,22 +444,27 @@ function ImagePreview({ data }: { data: Record<string, any> }) {
 
 function CTAPreview({ data }: { data: Record<string, any> }) {
   const isVideo = data.backgroundType === "video" && data.backgroundVideoUrl;
-  const bg = data.backgroundType === "image" && data.backgroundImageUrl
+  const bg = data.backgroundType === "gradient"
+    ? { background: `linear-gradient(${data.gradientDirection || "to bottom right"}, ${data.gradientFrom || "#0f172a"}, ${data.gradientTo || "#6366f1"})` }
+    : data.backgroundType === "image" && data.backgroundImageUrl
     ? { backgroundImage: `url(${data.backgroundImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : isVideo ? { backgroundColor: "#000" }
     : { backgroundColor: data.backgroundColor || "#0f172a" };
+  const h1Color = data.headlineColor || data.textColor || "#fff";
+  const h2Color = data.headline2Color || data.textColor || "#fff";
   return (
     <div style={{ ...bg, padding: "80px 40px", textAlign: data.alignment || "center", position: "relative" }}>
       {isVideo && (
         <video autoPlay muted loop playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} src={data.backgroundVideoUrl} />
       )}
-      {(data.backgroundType === "image" || isVideo) && (
+      {(data.backgroundType === "image" || isVideo) && data.overlay !== false && (
         <div style={{ position: "absolute", inset: 0, backgroundColor: `rgba(0,0,0,${data.overlayOpacity ?? 0.5})`, zIndex: 1 }} />
       )}
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <h2 style={{ color: data.textColor || "#fff", fontSize: "2rem", fontWeight: 700, marginBottom: "12px" }}>{data.headline}</h2>
+      <div className="animate-fade-in-up" style={{ position: "relative", zIndex: 2 }}>
+        <h2 style={{ color: h1Color, fontSize: "2rem", fontWeight: 700, marginBottom: data.headline2 ? "4px" : "12px" }}>{data.headline}</h2>
+        {data.headline2 && <h2 style={{ color: h2Color, fontSize: "2rem", fontWeight: 700, marginBottom: "12px" }}>{data.headline2}</h2>}
         {data.subtext && <p style={{ color: data.textColor || "#fff", opacity: 0.8, marginBottom: "32px", fontSize: "1.125rem" }}>{data.subtext}</p>}
-        {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: "#6366f1", color: "#fff", padding: "14px 36px", borderRadius: "8px", textDecoration: "none", fontWeight: 700, fontSize: "1.125rem" }}>{data.ctaText}</a>}
+        {data.ctaText && <a href={data.ctaUrl || "#"} style={{ backgroundColor: data.ctaBgColor || "#6366f1", color: data.ctaTextColor || "#fff", padding: "14px 36px", borderRadius: "8px", textDecoration: "none", fontWeight: 700, fontSize: "1.125rem" }}>{data.ctaText}</a>}
       </div>
     </div>
   );
@@ -1029,7 +1053,8 @@ function BlockSettings({ block, onChange, courses, orgId }: {
     case "banner":
       return (
         <div className="space-y-3">
-          <TextField label="Headline" field="headline" d={d} set={set} />
+          <TextField label="Headline Line 1" field="headline" d={d} set={set} />
+          <TextField label="Headline Line 2" field="headline2" d={d} set={set} />
           <TextField label="Subtext" field="subtext" multiline d={d} set={set} />
           <TextField label="Primary CTA Text" field="ctaText" d={d} set={set} />
           <TextField label="Primary CTA URL" field="ctaUrl" d={d} set={set} />
@@ -1096,7 +1121,8 @@ function BlockSettings({ block, onChange, courses, orgId }: {
     case "cta":
       return (
         <div className="space-y-3">
-          <TextField label="Headline" field="headline" d={d} set={set} />
+          <TextField label="Headline Line 1" field="headline" d={d} set={set} />
+          <TextField label="Headline Line 2" field="headline2" d={d} set={set} />
           <TextField label="Subtext" field="subtext" d={d} set={set} />
           <TextField label="Button Text" field="ctaText" d={d} set={set} />
           <TextField label="Button URL" field="ctaUrl" d={d} set={set} />
