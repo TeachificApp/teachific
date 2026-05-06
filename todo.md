@@ -3258,3 +3258,12 @@
 - [x] Show which answer options were selected most frequently for MCQ questions
 - [x] Write vitest tests for getQuestionAnalytics procedure
 - [x] Save checkpoint
+
+## TeachificCreator Rich Text Editor
+- [x] Install TipTap rich text editor packages (@tiptap/react, starter-kit, text-align, text-style, underline, highlight, font-family)
+- [x] Create RichTextEditor component with toolbar (bold, italic, underline, strikethrough, font size, font family, text color, highlight, alignment, bullet/numbered lists)
+- [x] Replace plain textarea in Add Text Box dialog with RichTextEditor
+- [x] Replace plain textarea in Properties panel (text element editing) with RichTextEditor
+- [x] Render text elements on canvas using dangerouslySetInnerHTML for HTML content
+- [x] Add CSS styles for rich text editor (toolbar, buttons, content area, compact variant)
+- [x] Verify TypeScript compiles cleanly and Vite build succeeds
