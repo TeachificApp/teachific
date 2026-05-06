@@ -52,6 +52,10 @@ import {
   LayoutList,
   Users,
   BookOpen,
+  Mail,
+  Clock,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import {
   DndContext,
@@ -638,18 +642,11 @@ export default function CourseBuilderPage() {
           <CoursePricingTab courseId={courseId} />
         )}
 
-        {(activeTab === "after_purchase" || activeTab === "drip") && (
-          <div className="max-w-2xl mx-auto flex flex-col items-center justify-center py-16 gap-3 text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-              {activeTab === "drip" ? <Calendar className="h-6 w-6 text-muted-foreground" /> : <CheckCircle className="h-6 w-6 text-muted-foreground" />}
-            </div>
-            <p className="font-medium">Coming Soon</p>
-            <p className="text-sm text-muted-foreground">
-              {activeTab === "drip"
-                ? "Drip schedule configuration will be available shortly."
-                : "After-purchase redirect and welcome email settings coming soon."}
-            </p>
-          </div>
+        {activeTab === "after_purchase" && (
+          <AfterPurchaseTab course={course} onSave={(data: any) => updateCourse.mutate({ id: courseId, ...data })} />
+        )}
+        {activeTab === "drip" && (
+          <DripScheduleTab courseId={courseId} curriculum={curriculum || []} onRefresh={refetch} />
         )}
       </div>
 
@@ -1493,6 +1490,286 @@ function CourseThumbnailUpload({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── After Purchase Tab ─────────────────────────────────────────────────────
+function AfterPurchaseTab({ course, onSave }: { course: any; onSave: (data: any) => void }) {
+  const [welcomeEmailEnabled, setWelcomeEmailEnabled] = useState(course?.welcomeEmailEnabled ?? true);
+  const [welcomeEmailSubject, setWelcomeEmailSubject] = useState(course?.welcomeEmailSubject ?? "");
+  const [welcomeEmailBody, setWelcomeEmailBody] = useState(course?.welcomeEmailBody ?? "");
+  const [afterPurchaseRedirectUrl, setAfterPurchaseRedirectUrl] = useState(course?.afterPurchaseRedirectUrl ?? "");
+  const [dirty, setDirty] = useState(false);
+
+  const handleSave = () => {
+    onSave({
+      welcomeEmailEnabled,
+      welcomeEmailSubject: welcomeEmailSubject || null,
+      welcomeEmailBody: welcomeEmailBody || null,
+      afterPurchaseRedirectUrl: afterPurchaseRedirectUrl || null,
+    });
+    setDirty(false);
+    toast.success("After-purchase settings saved");
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-8 py-6">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">After Purchase Settings</h2>
+        <p className="text-sm text-muted-foreground">Configure what happens after a student purchases this course.</p>
+      </div>
+
+      {/* Redirect URL */}
+      <div className="space-y-3 border border-border rounded-xl p-5">
+        <div className="flex items-center gap-2">
+          <ExternalLink className="h-4 w-4 text-muted-foreground" />
+          <Label className="font-medium">Post-Purchase Redirect URL</Label>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          After successful purchase, redirect the student to this URL instead of the default thank-you page.
+          Leave empty to show the default course access page.
+        </p>
+        <Input
+          placeholder="https://example.com/thank-you"
+          value={afterPurchaseRedirectUrl}
+          onChange={(e) => { setAfterPurchaseRedirectUrl(e.target.value); setDirty(true); }}
+        />
+      </div>
+
+      {/* Welcome Email */}
+      <div className="space-y-4 border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <Label className="font-medium">Welcome Email</Label>
+          </div>
+          <Switch
+            checked={welcomeEmailEnabled}
+            onCheckedChange={(v) => { setWelcomeEmailEnabled(v); setDirty(true); }}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Send an automated welcome email when a student enrolls in this course.
+        </p>
+
+        {welcomeEmailEnabled && (
+          <div className="space-y-3 pt-2">
+            <div>
+              <Label className="text-sm">Subject Line</Label>
+              <Input
+                placeholder="Welcome to {{course_title}}!"
+                value={welcomeEmailSubject}
+                onChange={(e) => { setWelcomeEmailSubject(e.target.value); setDirty(true); }}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Available variables: {"{{course_title}}"}, {"{{student_name}}"}, {"{{instructor_name}}"}
+              </p>
+            </div>
+            <div>
+              <Label className="text-sm">Email Body</Label>
+              <Textarea
+                placeholder="Hi {{student_name}},&#10;&#10;Welcome to {{course_title}}! We're excited to have you on board.&#10;&#10;Here's how to get started..."
+                value={welcomeEmailBody}
+                onChange={(e) => { setWelcomeEmailBody(e.target.value); setDirty(true); }}
+                className="mt-1 min-h-[150px]"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Available variables: {"{{course_title}}"}, {"{{student_name}}"}, {"{{instructor_name}}"}, {"{{course_url}}"}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Save */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={!dirty}>
+          Save Settings
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Drip Schedule Tab ──────────────────────────────────────────────────────
+function DripScheduleTab({
+  courseId,
+  curriculum,
+  onRefresh,
+}: {
+  courseId: number;
+  curriculum: Array<{
+    id: number;
+    title: string;
+    lessons: Array<{
+      id: number;
+      title: string;
+      lessonType: string;
+      dripType?: string;
+      dripDays?: number | null;
+      dripDate?: string | Date | null;
+      sortOrder: number;
+    }>;
+  }>;
+  onRefresh: () => void;
+}) {
+  const updateLesson = trpc.lms.curriculum.updateLesson.useMutation({
+    onSuccess: () => {
+      onRefresh();
+      toast.success("Drip schedule updated");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const allLessons = curriculum.flatMap((section) =>
+    section.lessons.map((l) => ({ ...l, sectionTitle: section.title }))
+  );
+
+  const handleDripChange = (lessonId: number, dripType: string, dripDays?: number | null, dripDate?: string | null) => {
+    updateLesson.mutate({
+      id: lessonId,
+      dripType: dripType as any,
+      dripDays: dripType === "days_after_enrollment" ? (dripDays ?? 0) : null,
+      dripDate: dripType === "specific_date" ? dripDate : null,
+    });
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6 py-6">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">Drip Schedule</h2>
+        <p className="text-sm text-muted-foreground">
+          Control when lessons become available to students. Use drip scheduling to release content gradually
+          over time after enrollment, or on specific dates.
+        </p>
+      </div>
+
+      <div className="border border-border rounded-xl overflow-hidden">
+        <div className="grid grid-cols-[1fr_180px_140px] gap-2 px-4 py-2.5 bg-muted/50 text-xs font-medium text-muted-foreground border-b border-border">
+          <span>Lesson</span>
+          <span>Release Type</span>
+          <span>Schedule</span>
+        </div>
+
+        {allLessons.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+            No lessons yet. Add lessons in the Curriculum tab first.
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {allLessons.map((lesson) => (
+              <DripLessonRow
+                key={lesson.id}
+                lesson={lesson}
+                onDripChange={handleDripChange}
+                isUpdating={updateLesson.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-muted/30 border border-border rounded-xl p-4 space-y-2">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <Clock className="h-4 w-4" /> How Drip Scheduling Works
+        </h3>
+        <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+          <li><strong>Immediately</strong> — Lesson is available as soon as the student enrolls.</li>
+          <li><strong>Days after enrollment</strong> — Lesson unlocks X days after the student's enrollment date.</li>
+          <li><strong>Specific date</strong> — Lesson unlocks on a specific calendar date for all students.</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function DripLessonRow({
+  lesson,
+  onDripChange,
+  isUpdating,
+}: {
+  lesson: { id: number; title: string; lessonType: string; sectionTitle: string; dripType?: string; dripDays?: number | null; dripDate?: string | Date | null };
+  onDripChange: (lessonId: number, dripType: string, dripDays?: number | null, dripDate?: string | null) => void;
+  isUpdating: boolean;
+}) {
+  const [dripType, setDripType] = useState(lesson.dripType ?? "immediate");
+  const [dripDays, setDripDays] = useState(lesson.dripDays ?? 0);
+  const [dripDate, setDripDate] = useState(
+    lesson.dripDate ? (typeof lesson.dripDate === "string" ? lesson.dripDate.split("T")[0] : new Date(lesson.dripDate).toISOString().split("T")[0]) : ""
+  );
+
+  const handleTypeChange = (newType: string) => {
+    setDripType(newType);
+    onDripChange(lesson.id, newType, dripDays, dripDate || null);
+  };
+
+  const handleDaysBlur = () => {
+    if (dripType === "days_after_enrollment") {
+      onDripChange(lesson.id, dripType, dripDays, null);
+    }
+  };
+
+  const handleDateChange = (val: string) => {
+    setDripDate(val);
+    if (dripType === "specific_date" && val) {
+      onDripChange(lesson.id, dripType, null, val);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-[1fr_180px_140px] gap-2 px-4 py-3 items-center">
+      <div className="flex items-center gap-2 min-w-0">
+        {dripType === "immediate" ? (
+          <Unlock className="h-3.5 w-3.5 text-green-500 shrink-0" />
+        ) : (
+          <Lock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm truncate">{lesson.title}</p>
+          <p className="text-xs text-muted-foreground truncate">{lesson.sectionTitle}</p>
+        </div>
+      </div>
+
+      <Select value={dripType} onValueChange={handleTypeChange}>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="immediate">Immediately</SelectItem>
+          <SelectItem value="days_after_enrollment">Days after enrollment</SelectItem>
+          <SelectItem value="specific_date">Specific date</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <div>
+        {dripType === "days_after_enrollment" && (
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              min={0}
+              value={dripDays}
+              onChange={(e) => setDripDays(parseInt(e.target.value) || 0)}
+              onBlur={handleDaysBlur}
+              className="h-8 text-xs w-16"
+            />
+            <span className="text-xs text-muted-foreground">days</span>
+          </div>
+        )}
+        {dripType === "specific_date" && (
+          <Input
+            type="date"
+            value={dripDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="h-8 text-xs"
+          />
+        )}
+        {dripType === "immediate" && (
+          <span className="text-xs text-green-600">Available now</span>
+        )}
       </div>
     </div>
   );

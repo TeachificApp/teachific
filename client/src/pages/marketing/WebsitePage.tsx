@@ -10,9 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Globe, Save, ExternalLink, Code, Eye } from "lucide-react";
+import { useLocation } from "wouter";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
 
 export default function WebsitePage() {
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const { data: orgCtx, isLoading: orgLoading } = trpc.orgs.myContext.useQuery();
   const orgId = orgCtx?.org?.id;
@@ -229,8 +231,8 @@ export default function WebsitePage() {
               <CardDescription>Create additional pages for your website</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="gap-2" onClick={() => toast.info("Custom page builder coming soon")}>
-                <Globe className="h-4 w-4" />Add Custom Page
+              <Button variant="outline" className="gap-2" onClick={() => setLocation("/lms/custom-pages")}>
+                <Globe className="h-4 w-4" />Manage Pages
               </Button>
             </CardContent>
           </Card>

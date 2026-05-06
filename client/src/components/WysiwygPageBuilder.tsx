@@ -357,29 +357,33 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
 
 // ─── Element Library (left sidebar tiles) ────────────────────────────────────
 const ELEMENT_LIBRARY = [
-  { type: "banner" as BlockType, label: "Hero Banner", icon: Layout, category: "Sections" },
-  { type: "text_media" as BlockType, label: "Text & Image", icon: AlignLeft, category: "Sections" },
-  { type: "bg_section" as BlockType, label: "Background Section", icon: Image, category: "Sections" },
-  { type: "cta" as BlockType, label: "Call to Action", icon: MousePointer, category: "Sections" },
-  { type: "feature_grid" as BlockType, label: "Feature Grid", icon: Grid, category: "Sections" },
-  { type: "testimonials" as BlockType, label: "Testimonials", icon: Star, category: "Sections" },
-  { type: "pricing" as BlockType, label: "Pricing", icon: DollarSign, category: "Sections" },
-  { type: "course_outline" as BlockType, label: "Course Outline", icon: BookOpen, category: "Course" },
-  { type: "video" as BlockType, label: "Video", icon: Video, category: "Media" },
-  { type: "image" as BlockType, label: "Image", icon: Image, category: "Media" },
+  // Layout
+  { type: "banner" as BlockType, label: "Hero / Banner", icon: Layout, category: "Layout" },
+  { type: "columns" as BlockType, label: "Two Columns", icon: Columns2, category: "Layout" },
+  { type: "bg_section" as BlockType, label: "Background Section", icon: Image, category: "Layout" },
+  { type: "spacer" as BlockType, label: "Spacer", icon: Type, category: "Layout" },
+  { type: "divider" as BlockType, label: "Divider", icon: Minus, category: "Layout" },
+  // Content
+  { type: "text_media" as BlockType, label: "Text & Media", icon: AlignLeft, category: "Content" },
+  { type: "video" as BlockType, label: "Video", icon: Video, category: "Content" },
+  { type: "image" as BlockType, label: "Image Block", icon: Image, category: "Content" },
   { type: "checklist" as BlockType, label: "Checklist", icon: CheckSquare, category: "Content" },
   { type: "icon_list" as BlockType, label: "Icon List", icon: List, category: "Content" },
   { type: "numbered_steps" as BlockType, label: "Numbered Steps", icon: Hash, category: "Content" },
   { type: "checklist_steps" as BlockType, label: "Checklist Steps", icon: CheckSquare, category: "Content" },
-  { type: "button" as BlockType, label: "Button", icon: MousePointer, category: "Elements" },
-  { type: "html" as BlockType, label: "HTML / Code", icon: Code, category: "Elements" },
-  { type: "divider" as BlockType, label: "Divider", icon: Minus, category: "Elements" },
-  { type: "spacer" as BlockType, label: "Spacer", icon: Type, category: "Elements" },
   { type: "faq" as BlockType, label: "FAQ", icon: HelpCircle, category: "Content" },
-  { type: "embed_html" as BlockType, label: "Embed (HTML)", icon: Code, category: "Media" },
-  { type: "columns" as BlockType, label: "Columns (Side by Side)", icon: Columns2, category: "Sections" },
+  { type: "feature_grid" as BlockType, label: "Feature Grid", icon: Grid, category: "Content" },
+  { type: "course_outline" as BlockType, label: "Course Outline", icon: BookOpen, category: "Content" },
+  { type: "html" as BlockType, label: "HTML Block", icon: Code, category: "Content" },
+  { type: "embed_html" as BlockType, label: "Embed (HTML)", icon: Code, category: "Content" },
+  // Conversion
+  { type: "cta" as BlockType, label: "CTA / Pricing", icon: MousePointer, category: "Conversion" },
+  { type: "pricing" as BlockType, label: "Pricing Table", icon: DollarSign, category: "Conversion" },
+  { type: "button" as BlockType, label: "CTA Button", icon: MousePointer, category: "Conversion" },
+  // Social Proof
+  { type: "testimonials" as BlockType, label: "Reviews", icon: Star, category: "Social Proof" },
 ];
-const CATEGORIES = ["Sections", "Course", "Media", "Content", "Elements"];;
+const CATEGORIES = ["Layout", "Content", "Conversion", "Social Proof"];
 
 // ─── Canvas Block Renderers (full-fidelity, click-to-edit) ────────────────────
 

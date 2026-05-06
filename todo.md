@@ -3434,3 +3434,33 @@
 - [x] Quiz analytics: pass rates, avg scores, attempts, by group
 - [x] Combined dashboard: unified view of quiz + course performance per org
 - [x] Export analytics data to CSV (org-level and group-level)
+
+## Page Builder Visual Rebuild (Match All About Ultrasound Project)
+- [x] Rebuild PageBuilderPage with teal header bar (Back to Product, product name, Editor/As Visitor/As Customer toggle, Open Page, Save button)
+- [x] Left sidebar: blocks list with drag handles, showing block name + subtitle preview
+- [x] Right panel: live preview of the page as it will appear to visitors
+- [x] Block category tabs at bottom of sidebar: Layout, Content, Conversion, Social Proof
+- [x] Layout blocks: Hero/Banner, Two Columns, Divided Columns, Spacer, Divider
+- [x] Content blocks: Text/Rich Text, Image Block, Video, Course Outline, HTML Block
+- [x] Conversion blocks: CTA/Pricing, Call to Action, Pricing
+- [x] Social Proof blocks: Testimonials/Reviews, Checklist
+- [x] Block editing: click Edit on any block to open inline editor
+- [x] Block actions: Edit, Hide/Show, Duplicate, Move, Delete
+- [x] Drag-to-reorder blocks in the sidebar list
+- [x] Background Image Section block type
+- [x] Page title and URL slug editable in header area
+- [x] Works for course landing pages, homepage, and custom pages
+
+## After Purchase Feature (Complete)
+- [x] After purchase redirect URL configuration
+- [x] Welcome email template editor (subject, body with merge tags)
+- [ ] Thank you page builder (use page builder blocks)
+- [ ] Auto-enroll in related courses option
+- [ ] Post-purchase webhook URL
+
+## Drip Schedule Feature (Complete)
+- [x] Drip schedule configuration per section/lesson
+- [x] Schedule types: days after enrollment, specific date
+- [x] Visual drip schedule table with per-lesson controls
+- [ ] Email notification when drip content unlocks
+- [x] Student view: locked content with unlock date shown (already in player)
