@@ -1,0 +1,26 @@
+[Unit]
+Description=Teachific Failover Monitor
+Documentation=file:///home/ubuntu/scorm-host/REPLICATION_SETUP.md
+After=network.target
+Wants=teachific-sync.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/scorm-host
+ExecStart=/usr/bin/node /home/ubuntu/scorm-host/scripts/failover-monitor.mjs monitor
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=teachific-monitor
+
+# Resource limits
+MemoryLimit=512M
+CPUQuota=50%
+
+# Logging
+Environment="CHECK_INTERVAL_SECONDS=60"
+
+[Install]
+WantedBy=multi-user.target

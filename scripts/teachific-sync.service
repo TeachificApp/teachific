@@ -1,0 +1,16 @@
+[Unit]
+Description=Teachific Database Sync to Railway
+Documentation=file:///home/ubuntu/scorm-host/REPLICATION_SETUP.md
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/scorm-host
+ExecStart=/usr/bin/node /home/ubuntu/scorm-host/scripts/migrate-to-railway.mjs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=teachific-sync
+
+[Install]
+WantedBy=multi-user.target

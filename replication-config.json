@@ -1,0 +1,29 @@
+{
+  "manus": {
+    "mysql": {
+      "host": "gateway04.us-east-1.prod.aws.tidbcloud.com",
+      "port": 4000,
+      "username": "2mhhtxpXA9Esras.7d3251b537d6",
+      "password": "ps2dxQvK5a32w3zvii4v",
+      "database": "fJXMsdmk8vcb8V4GDt37f6",
+      "ssl": true
+    }
+  },
+  "railway": {
+    "mysql": {
+      "host": "roundhouse.proxy.rlwy.net",
+      "port": 25456,
+      "username": "root",
+      "password": "sLDKCIPwEFYclujJlwXfKtJSzXHBulcV",
+      "database": "railway"
+    }
+  },
+  "cloudflare": {
+    "r2": {
+      "accountId": "926e046281eccc776864fd105e322ac8",
+      "bucketName": "teachific",
+      "accessKeyId": "cfat_fbBYg0l4UlQGBEfT6PrBebZh3VPjUGKgsgDQ2Xy0f1e6f4af",
+      "endpoint": "https://926e046281eccc776864fd105e322ac8.r2.cloudflarestorage.com"
+    }
+  }
+}
