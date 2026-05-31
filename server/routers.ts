@@ -114,6 +114,9 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { lmsRouter } from "./lmsRouter";
 import { emailCampaignsRouter } from "./emailCampaignsRouter";
+import { funnelsRouter } from "./funnelsRouter";
+import { mediaRouter } from "./mediaRouter";
+import { membershipRouter } from "./membershipRouter";
 import { formsRouter } from "./formsRouter";
 import { customAuthRouter } from "./customAuthRouter";
 import { communityRouter } from "./communityRouter";
@@ -179,6 +182,9 @@ export const appRouter = router({
   system: systemRouter,
   lms: lmsRouter,
   emailCampaigns: emailCampaignsRouter,
+  funnels: funnelsRouter,
+  media: mediaRouter,
+  membership: membershipRouter,
   customAuth: customAuthRouter,
   forms: formsRouter,
   community: communityRouter,
