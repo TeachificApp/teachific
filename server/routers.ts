@@ -178,7 +178,6 @@ const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
 // ─── App Router ────────────────────────────────────────────────────────────
 
 export const appRouter = router({
-  auth: authRouter,
   system: systemRouter,
   lms: lmsRouter,
   emailCampaigns: emailCampaignsRouter,

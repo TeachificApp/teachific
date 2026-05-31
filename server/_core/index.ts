@@ -16,6 +16,7 @@ import contentRouter from "../contentRoutes";
 import digitalDownloadRouter from "../digitalDownloadRoutes";
 import mediaUploadRouter from "../mediaUploadRoutes";
 import stripeWebhookRouter from "../stripeWebhookRoutes";
+import { embeddedCheckoutWebhookRouter } from "../embeddedCheckoutWebhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -139,8 +140,9 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Stripe webhook MUST be before express.json() for raw body signature verification
+  // Stripe webhooks MUST be before express.json() for raw body signature verification
   app.use("/api/stripe", stripeWebhookRouter);
+  app.use("/api/webhooks/stripe", embeddedCheckoutWebhookRouter);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "3gb" }));
