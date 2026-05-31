@@ -1256,25 +1256,31 @@ export const formsRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: `Could not fetch URL: ${e.message}` });
       }
 
-      // Strip scripts/styles/tags and truncate to 40k chars for LLM
-      const stripped = html
+      // Preserve HTML structure (only remove scripts/styles) for better form parsing
+      const cleaned = html
         .replace(/<script[\s\S]*?<\/script>/gi, "")
         .replace(/<style[\s\S]*?<\/style>/gi, "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 40000);
+        .replace(/<!--[\s\S]*?-->/gi, "")
+        .slice(0, 100000);
 
       const { invokeLLM } = await import("./_core/llm");
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: "You are a form extraction assistant. Given the text content of a web page that contains a form, extract all form fields and return them as a JSON object. Only extract actual user-input fields (text, email, phone, number, textarea, select/dropdown, radio, checkbox, date, file, url, rating). Do NOT include submit buttons or hidden fields.",
+            content: `You are a form extraction assistant. Given HTML content of a web page containing a form, extract:
+1. All form fields (text, email, phone, number, textarea, select/dropdown, radio, checkbox, date, file, url, rating)
+2. Form title and description
+3. Conditional logic/branching patterns (e.g., "show field X if field Y equals Z")
+4. Field grouping and sections
+
+Return a complete JSON object with all fields, their properties, and any branching rules detected.
+Do NOT include submit buttons or hidden fields.
+Be thorough in extracting ALL fields and their properties.`,
           },
           {
             role: "user",
-            content: `Extract all form fields from this page content:\n\n${stripped}`,
+            content: `Extract all form fields, structure, and branching logic from this HTML:\n\n${cleaned}`,
           },
         ],
         response_format: {
@@ -1292,10 +1298,12 @@ export const formsRouter = router({
                   items: {
                     type: "object",
                     properties: {
+                      id: { type: "string", description: "Unique field identifier" },
                       type: { type: "string", enum: ["text", "email", "phone", "number", "textarea", "select", "radio", "checkbox", "date", "file", "url", "rating", "section"] },
-                      label: { type: "string" },
-                      placeholder: { type: "string" },
-                      required: { type: "boolean" },
+                      label: { type: "string", description: "Field label or question text" },
+                      placeholder: { type: "string", description: "Placeholder text" },
+                      helpText: { type: "string", description: "Help or description text" },
+                      required: { type: "boolean", description: "Is this field required?" },
                       options: {
                         type: "array",
                         items: {
@@ -1304,14 +1312,31 @@ export const formsRouter = router({
                           required: ["value", "label"],
                           additionalProperties: false,
                         },
+                        description: "Options for select/radio/checkbox fields",
                       },
                     },
-                    required: ["type", "label", "required", "options"],
+                    required: ["id", "type", "label", "required", "options"],
                     additionalProperties: false,
                   },
                 },
+                branchingRules: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      sourceFieldId: { type: "string", description: "ID of the field that triggers the rule" },
+                      operator: { type: "string", enum: ["equals", "not_equals", "contains", "not_contains", "is_empty", "is_not_empty"] },
+                      value: { type: "string", description: "Value to compare against" },
+                      action: { type: "string", enum: ["show_field", "hide_field", "jump_to_field", "submit_form"] },
+                      targetFieldId: { type: "string", description: "ID of the field to show/hide/jump to" },
+                    },
+                    required: ["sourceFieldId", "operator", "action"],
+                    additionalProperties: false,
+                  },
+                  description: "Conditional logic and branching rules",
+                },
               },
-              required: ["title", "description", "fields"],
+              required: ["title", "description", "fields", "branchingRules"],
               additionalProperties: false,
             },
           },
@@ -1324,19 +1349,34 @@ export const formsRouter = router({
       let parsed: any;
       try {
         parsed = typeof content === "string" ? JSON.parse(content) : content;
-      } catch {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not parse LLM response" });
+      } catch (e) {
+        console.error("LLM Response parsing error:", e, "Content:", content);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not parse LLM response: " + String(e) });
+      }
+
+      // Validate we got fields
+      if (!parsed.fields || parsed.fields.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No form fields detected. Please ensure the URL contains a valid form." });
       }
 
       return {
-        title: parsed.title ?? "",
+        title: parsed.title ?? "Imported Form",
         description: parsed.description ?? "",
         fields: (parsed.fields ?? []).map((f: any, i: number) => ({
           type: f.type ?? "text",
           label: f.label ?? `Field ${i + 1}`,
           placeholder: f.placeholder ?? "",
+          helpText: f.helpText ?? "",
           required: f.required ?? false,
-          options: (f.options ?? []).map((o: any) => ({ value: String(o.value), label: String(o.label) })),
+          options: (f.options ?? []).map((o: any) => ({ value: String(o.value || o.label).toLowerCase().replace(/\s+/g, "_"), label: String(o.label) })),
+          sortOrder: i,
+        })),
+        branchingRules: (parsed.branchingRules ?? []).map((r: any, i: number) => ({
+          sourceFieldId: r.sourceFieldId,
+          operator: r.operator ?? "equals",
+          value: r.value ?? "",
+          action: r.action ?? "show_field",
+          targetFieldId: r.targetFieldId,
           sortOrder: i,
         })),
       };

@@ -3544,3 +3544,50 @@
 - [ ] DigitalProductEditorPage: Sales Page tab should link to full-screen builder (not inline)
 - [ ] WebinarEditorPage: rewrite to full-screen layout matching CourseBuilder (no sidebar)
 - [ ] All product editors: remove DashboardLayout wrapper from routes (full-screen only)
+
+
+## Module Integration (LMS, Email Campaigns, Form Builder, Media Repository, Member Management, Funnel Management)
+
+- [ ] Add affiliate and instructor roles to user schema
+- [ ] Create org user roles table for role assignments
+- [ ] Merge LMS schema (courses, enrollments, lessons, quizzes, certificates)
+- [ ] Merge Email Campaigns schema (campaigns, lists, subscribers, sender profiles)
+- [ ] Merge Form Builder schema (forms, fields, submissions)
+- [ ] Merge Media Repository schema (assets, folders, access rules)
+- [ ] Merge Member Management schema (membership plans, subscriptions)
+- [ ] Merge Funnel Management schema (funnels, pages, leads, digital products)
+- [ ] Add custom domain fields to all product tables (courses, funnels, forms, etc.)
+- [ ] Create affiliate commission tracking tables
+- [ ] Generate and apply database migrations
+- [ ] Integrate LMS router with org-level scoping
+- [ ] Integrate Email Campaigns router with org-level scoping
+- [ ] Integrate Form Builder router with org-level scoping
+- [ ] Integrate Media Repository router with org-level scoping
+- [ ] Integrate Member Management router with org-level scoping
+- [ ] Integrate Funnel Management router with org-level scoping
+- [ ] Create Affiliate router for commission tracking
+- [ ] Integrate LMS admin pages
+- [ ] Integrate Email Campaigns admin pages
+- [ ] Integrate Form Builder admin pages
+- [ ] Integrate Media Repository admin pages
+- [ ] Integrate Member Management admin pages
+- [ ] Integrate Funnel Management admin pages
+- [ ] Create Affiliate admin dashboard
+- [ ] Add CustomDomainManager component for per-product domain setup
+- [ ] Implement custom domain routing in SubdomainSchoolRouter
+- [ ] Test org-level data isolation across all modules
+- [ ] Test custom domain routing for each product type
+- [ ] Test affiliate commission tracking
+- [ ] Test email campaign delivery via org sender profile
+- [ ] Test form submissions and Google Sheets sync (optional)
+- [ ] Test media repository access control
+- [ ] Create comprehensive integration documentation
+
+
+## Bugs & Issues
+
+### Form URL Importer Not Working
+- [ ] Form URL importer only imports form title, no fields are extracted
+- [ ] LLM response parsing failing or LLM not returning field data
+- [ ] Form branching patterns not being detected or imported
+- [ ] Fix: Debug LLM response, enhance schema, preserve HTML structure for better extraction
