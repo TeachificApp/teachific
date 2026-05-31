@@ -91,6 +91,8 @@ const PLAN_META: Record<PlanTier, {
       "Question bank with folders & tags",
       "AI question generation",
       "SCORM & CSV import/export",
+      "Question rotation & answer shuffling",
+      "Advanced feedback & scoring settings",
     ],
   },
   pro: {
@@ -116,6 +118,7 @@ const PLAN_META: Record<PlanTier, {
       "Full QuizMaker + advanced analytics",
       "SCORM/CSV/HTML export",
       "AI quiz & question generation",
+      "Question rotation & randomization",
     ],
   },
   enterprise: {
@@ -136,6 +139,7 @@ const PLAN_META: Record<PlanTier, {
       "Dedicated support",
       "Full QuizMaker + white-label",
       "SCORM/CSV/HTML export",
+      "Question rotation & randomization",
     ],
   },
 };
