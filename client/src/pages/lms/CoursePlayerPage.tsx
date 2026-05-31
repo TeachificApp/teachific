@@ -22,6 +22,7 @@ import {
   Bookmark, BookmarkCheck, PenLine, Trash2, Edit3,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import LessonCommentSection from "@/components/LessonCommentSection";
 
 // ─── Lesson Banner ────────────────────────────────────────────────────────────
 function playBannerSound(soundId: string) {
@@ -1158,6 +1159,10 @@ export default function CoursePlayerPage() {
                     </button>
                   )}
                 </div>
+              </div>
+              {/* Comments Section */}
+              <div className="mt-8 pt-6 border-t border-border">
+                <LessonCommentSection lessonId={currentLesson.id} commentsEnabled={!!(currentLesson as any).commentsEnabled} />
               </div>
             </div>
           ) : (

@@ -1,0 +1,22 @@
+{
+  "query": "SHOW TABLES LIKE '%instructor%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute SHOW TABLES LIKE '%instructor%';",
+  "rows": [
+    {
+      "Tables_in_fJXMsdmk8vcb8V4GDt37f6 (%instructor%)": "instructor_payout_config"
+    },
+    {
+      "Tables_in_fJXMsdmk8vcb8V4GDt37f6 (%instructor%)": "instructors"
+    },
+    {
+      "Tables_in_fJXMsdmk8vcb8V4GDt37f6 (%instructor%)": "lms_course_instructors"
+    },
+    {
+      "Tables_in_fJXMsdmk8vcb8V4GDt37f6 (%instructor%)": "lms_instructors"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_fJXMsdmk8vcb8V4GDt37f6 (%instructor%)\ninstructor_payout_config\ninstructors\nlms_course_instructors\nlms_instructors\n",
+  "stderr": "",
+  "execution_time_ms": 308
+}

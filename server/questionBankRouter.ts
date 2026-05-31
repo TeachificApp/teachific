@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "./_core/trpc";
+import { invokeLLM } from "./_core/llm";
 import {
   getFoldersByOrg,
   getFolderById,
@@ -232,6 +233,117 @@ export const questionBankRouter = router({
         }
       }
       return { imported, skipped: errors.length, errors };
+    }),
+
+  // AI Question Generation
+  aiGenerate: protectedProcedure
+    .input(z.object({
+      orgId: z.number(),
+      folderId: z.number().optional(),
+      topic: z.string().min(1),
+      questionCount: z.number().min(1).max(30).default(5),
+      difficulty: z.enum(["easy","medium","hard","mixed"]).default("mixed"),
+      questionTypes: z.array(z.enum(["mcq","tf","short_answer","matching","multiple_select"])).default(["mcq"]),
+      additionalContext: z.string().optional(),
+      tags: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const typeLabels: Record<string, string> = {
+        mcq: "multiple choice (1 correct answer, 4 options)",
+        tf: "true/false",
+        short_answer: "short answer (text response)",
+        matching: "matching (pairs of items)",
+        multiple_select: "multiple select (multiple correct answers)",
+      };
+      const typesDesc = input.questionTypes.map(t => typeLabels[t] || t).join(", ");
+      const prompt = `Generate ${input.questionCount} quiz questions about: "${input.topic}".
+
+Requirements:
+- Question types to use: ${typesDesc}
+- Difficulty: ${input.difficulty === "mixed" ? "vary between easy, medium, and hard" : input.difficulty}
+${input.additionalContext ? `- Additional context: ${input.additionalContext}` : ""}
+
+Return a JSON object with a "questions" array. Each question must have:
+- questionType: one of "mcq", "tf", "short_answer", "matching", "multiple_select"
+- stem: the question text
+- difficulty: "easy", "medium", or "hard"
+- points: 1 for easy, 2 for medium, 3 for hard
+- explanation: brief explanation of the correct answer
+- dataJson: question-type-specific data:
+  - For mcq: { choices: [{text, isCorrect}], correctFeedback: "", incorrectFeedback: "" }
+  - For tf: { correctAnswer: true/false, correctFeedback: "", incorrectFeedback: "" }
+  - For short_answer: { sampleAnswer: "" }
+  - For multiple_select: { choices: [{text, isCorrect}] }
+  - For matching: { pairs: [{left, right}] }`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: "You are an expert quiz question author. Always respond with valid JSON only, no markdown fences." },
+          { role: "user", content: prompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "quiz_questions",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                questions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      questionType: { type: "string" },
+                      stem: { type: "string" },
+                      difficulty: { type: "string" },
+                      points: { type: "number" },
+                      explanation: { type: "string" },
+                      dataJson: { type: "string" },
+                    },
+                    required: ["questionType","stem","difficulty","points","explanation","dataJson"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["questions"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const content = response?.choices?.[0]?.message?.content ?? "{}";
+      const parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+      const questions: any[] = parsed.questions ?? [];
+
+      let imported = 0;
+      const errors: string[] = [];
+      for (const q of questions) {
+        try {
+          const validTypes = ["mcq","tf","short_answer","long_answer","matching","multiple_select","image_choice","hotspot","ordering","fill_blank","numeric","rating_scale"];
+          const qType = validTypes.includes(q.questionType) ? q.questionType : "mcq";
+          let dataJsonStr = q.dataJson;
+          if (typeof dataJsonStr !== "string") dataJsonStr = JSON.stringify(dataJsonStr);
+          await createQuestion({
+            orgId: input.orgId,
+            folderId: input.folderId ?? null,
+            questionType: qType as any,
+            stem: q.stem,
+            dataJson: dataJsonStr,
+            points: q.points ?? 1,
+            difficulty: ["easy","medium","hard"].includes(q.difficulty) ? q.difficulty as any : "medium",
+            tags: input.tags ?? null,
+            explanation: q.explanation ?? null,
+            createdBy: ctx.user.id,
+          });
+          imported++;
+        } catch (err: any) {
+          errors.push(err.message ?? "Unknown error");
+        }
+      }
+      return { imported, errors };
     }),
 
   // Import questions from bank into a quiz (returns question data for the quiz creator to use)

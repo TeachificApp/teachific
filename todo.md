@@ -3710,3 +3710,120 @@
 - [x] Add visibility column to quizzes table in schema and DB
 - [x] Fix lmsRouter field name mismatches (createdByUserId, orgId, etc.)
 - [x] All 177 tests passing
+
+## Download File Block Audit & Fix
+- [ ] Audit Download File block in LandingPageBuilder.tsx — verify it pulls files from media/upload repo
+- [ ] Audit Download File block in DownloadLandingPageBuilder.tsx
+- [ ] Audit Download File block in ProductLandingPageBuilder.tsx
+- [ ] Audit Download File block in funnel page editors (FunnelPageBuilder)
+- [ ] Audit Download File block in lesson editors (AuthoringPage/LessonEditor)
+- [ ] Audit Download File block in assignment editors
+- [ ] Fix file picker to use MediaLibraryPicker or equivalent across all editors
+- [ ] Ensure block settings panel shows file name, size, and download URL correctly
+- [ ] Ensure consistent block behavior (preview, render, download) across all editors
+- [ ] Verify media upload endpoint returns correct URL for file blocks
+
+## Question Bank + Quiz Builder — Full Build (May 2026)
+
+### Phase A: Schema & DB Migrations
+- [ ] Add folder_id column to quiz_bank_questions table
+- [ ] Add quiz_bank_folders table to schema and DB
+- [ ] Add shareToken, publishDomain, publishSlug columns to quizzes (new table)
+- [ ] Migrate new quizzes table columns to DB (randomize, feedbackMode, etc.)
+
+### Phase B: Question Bank Backend
+- [ ] Add folder CRUD to quizBankRouter (listFolders, createFolder, updateFolder, deleteFolder)
+- [ ] Add folderId filter to listQuestions
+- [ ] Add AI generate questions procedure (invokeLLM with structured JSON schema)
+- [ ] Add importToQuiz procedure (pull questions from bank into a quiz)
+- [ ] Add SCORM export to quizImportRoutes (/api/quiz/export-scorm/:quizId)
+- [ ] Add HTML export to quizImportRoutes (/api/quiz/export-html/:quizId)
+- [ ] Add publishDomain procedure to quizRouter
+
+### Phase C: Question Bank Frontend
+- [ ] Rewrite lms/QuestionBankPage.tsx with folder tree sidebar
+- [ ] Tag management UI in Question Bank
+- [ ] AI generation dialog (topic, count, difficulty, type)
+- [ ] Import from SCORM/CSV with preview table
+
+### Phase D: Quiz Builder Frontend
+- [ ] Rewrite QuizBuilderPage.tsx as full-screen editor using trpc.quiz.*
+- [ ] Question picker panel (pull from bank by folder/tag)
+- [ ] Rotation settings (randomize questions, randomize answers)
+- [ ] Media support per question (image/video upload or URL)
+- [ ] Feedback settings (immediate/end/never)
+- [ ] SCORM export, HTML export, Excel export buttons
+- [ ] Publish to custom domain dialog
+
+### Phase E: Navigation & Routing
+- [ ] Move Question Bank to LMS section in DashboardLayout
+- [ ] Add Quizzes to LMS section in DashboardLayout
+- [ ] Fix /question-bank route to use lms/QuestionBankPage.tsx
+- [ ] Wire /lms/quizzes route to QuizzesPage
+- [ ] Wire /lms/quizzes/new and /lms/quizzes/:id/edit to QuizBuilderPage
+
+## Instructor Portal — Course Management (May 2026)
+- [ ] Audit instructorDashboardRouter.ts procedures
+- [ ] Add backend: getInstructorCourses (courses assigned to instructor)
+- [ ] Add backend: getCourseModules (modules/sections for a course)
+- [ ] Add backend: updateSyllabus (edit course description, outcomes, modules order)
+- [ ] Add backend: createModule (add new section to course)
+- [ ] Add backend: updateModule (rename/reorder section)
+- [ ] Add backend: deleteModule (remove section if no lessons)
+- [ ] Add backend: uploadLesson (create lesson with file upload to S3)
+- [ ] Add backend: updateLesson (edit lesson title, content, order)
+- [ ] Add backend: deleteLesson (remove lesson from course)
+- [ ] Add backend: reorderLessons (drag-drop reorder within module)
+- [ ] Build InstructorPortalPage.tsx with profile menu entry
+- [ ] Build InstructorCoursesTab (list assigned courses with status)
+- [ ] Build InstructorCourseEditor (syllabus editor + module/lesson management)
+- [ ] Build LessonUploadDialog (file upload + URL + text content types)
+- [ ] Build InstructorPaymentSetup (PayPal/ACH payout details)
+- [ ] Build InstructorAnalyticsTab (admin-controlled visibility)
+- [ ] Wire /instructor route in App.tsx
+- [ ] Add "Instructor Portal" to profile menu in DashboardLayout
+
+## Instructor Lesson Approval Workflow (May 2026)
+- [ ] Add requiresLessonApproval field to lms_instructors table
+- [ ] Add lesson_status enum: published/draft/pending_review/rejected to lms_lessons
+- [ ] Add instructor_lesson_submissions table (lessonId, instructorId, status, note, reviewNote, reviewedByAdminId)
+- [ ] Add instructor_course_permissions table (instructorId, courseId, canSelfPublish, grantedByAdminId)
+- [ ] Backend: getInstructorCourses (courses assigned to instructor with canSelfPublish flag)
+- [ ] Backend: getCourseSections (sections/modules for a course)
+- [ ] Backend: getCourseLessons (lessons for a section)
+- [ ] Backend: updateSyllabus (edit course description, outcomes, section order)
+- [ ] Backend: createSection (add module to course)
+- [ ] Backend: updateSection (rename/reorder module)
+- [ ] Backend: deleteSection (remove if empty)
+- [ ] Backend: createLesson (add lesson to section, starts as draft)
+- [ ] Backend: updateLesson (edit lesson content, title, type)
+- [ ] Backend: deleteLesson (remove lesson)
+- [ ] Backend: submitLessonForReview (instructor submits draft lesson → pending_review)
+- [ ] Backend: selfPublishLesson (if canSelfPublish=true, directly publish)
+- [ ] Backend: adminReviewLesson (approve → published / reject → rejected with note)
+- [ ] Backend: adminListPendingLessons (all pending_review lessons across org)
+- [ ] Backend: adminSetInstructorApprovalRequired (toggle requiresLessonApproval per instructor)
+- [ ] Backend: adminSetCoursePermission (set canSelfPublish per instructor per course)
+- [ ] Frontend: InstructorPortalPage with tabs (My Courses, Payments, Analytics)
+- [ ] Frontend: InstructorCourseEditor (syllabus editor, section/lesson tree)
+- [ ] Frontend: LessonEditor (rich text, video URL, file upload, submit for review button)
+- [ ] Frontend: Admin review queue page (list pending lessons, approve/reject with note)
+- [ ] Frontend: Admin instructor settings (requiresLessonApproval toggle, canSelfPublish per course)
+- [ ] Add "Instructor Portal" link to profile menu in DashboardLayout
+- [ ] Wire /instructor-portal route in App.tsx
+
+## Phase 5 Completed (May 31, 2026)
+- [x] Fix quizImportRoutes.ts nested backtick build error
+- [x] Add lesson_comments table and lessonStatus column to DB
+- [x] Copy LessonEffectPlayer and LessonCommentSection from ultrasound-app
+- [x] Add lessonComments to schema.ts and wire lessonCommentsRouter
+- [x] Add instructor_course_permissions and instructor_publish_requests tables
+- [x] Add instructorDashboardRouter with course management and approval workflow
+- [x] Wire /instructor-portal and /lms/instructors routes in App.tsx
+- [x] Add Instructor Portal link to DashboardLayout profile dropdown
+- [x] Add Instructors nav item to DashboardLayout Products section
+- [x] Create InstructorPortal.tsx page with tabs (My Courses, Course Mgmt, Payment, Analytics)
+- [x] Create lms/InstructorsPage.tsx for admin instructor management
+- [x] Add plan gating to QuizzesPage (SCORM/CSV import-export behind fullQuizMaker)
+- [x] Update tierLimits.ts with basicQuizBuilder and fullQuizMaker flags
+- [x] Add LessonCommentSection to CoursePlayerPage after bottom navigation

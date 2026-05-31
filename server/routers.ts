@@ -133,6 +133,11 @@ import { downloadsPublicRouter, downloadsLearnerRouter, downloadsAdminRouter } f
 import { productsPublicRouter, productsLearnerRouter, productsAdminRouter } from "./routers/productsRouter";
 import { quizBankRouter } from "./routers/quizBankRouter";
 import { quizRouter } from "./routers/quizRouter";
+import { teamRouter } from "./routers/teamRouter";
+import { membershipRouter } from "./routers/membershipRouter";
+import { mediaRepoRouter } from "./routers/mediaRepoRouter";
+import { instructorDashboardRouter } from "./routers/instructorDashboardRouter";
+import { lessonCommentsRouter } from "./routers/lessonCommentsRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -218,6 +223,11 @@ export const appRouter = router({
   productsPublic: productsPublicRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
+  teams: teamRouter,
+  memberships: membershipRouter,
+  mediaRepo: mediaRepoRouter,
+  instructorDashboard: instructorDashboardRouter,
+  lessonComments: lessonCommentsRouter,
 
   // ─── Embed Token (cookie-free iframe auth) ─────────────────────────────────
   embed: router({
@@ -356,6 +366,8 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    // Delegate uploadPageMedia to mediaRepoRouter for block editors
+    uploadPageMedia: mediaRepoRouter.uploadPageMedia,
   }),
 
   // ── Resolved Branding (public) ─────────────────────────────────────────────

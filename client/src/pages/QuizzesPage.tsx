@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, Clock, Download, Plus, Star, Trash2, Upload, Users } from "lucide-react";
+import { BookOpen, Clock, Download, FileUp, Lock, Plus, Star, Trash2, Upload, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { useOrgPlan } from "@/hooks/useOrgPlan";
+import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 
 export default function QuizzesPage() {
   const [, setLocation] = useLocation();
@@ -14,8 +16,42 @@ export default function QuizzesPage() {
   const orgId = myOrgs?.[0]?.id ?? 0;
   const { data: quizzes, isLoading, refetch } = trpc.quizzes.list.useQuery({ orgId }, { enabled: !!orgId });
   const deleteQuiz = trpc.quizzes.delete.useMutation({ onSuccess: () => { toast.success("Quiz deleted"); refetch(); } });
+  const { can } = useOrgPlan(orgId);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
+
+  const gated = (feature: string, fn: () => void) => {
+    if (!can(feature as any)) { setUpgradeFeature(feature); setUpgradeOpen(true); return; }
+    fn();
+  };
+
+  const handleScormImport = () => {
+    gated("fullQuizMaker", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".zip";
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append("file", file);
+        toast.loading("Importing SCORM package...");
+        const res = await fetch("/api/quiz/import/scorm", { method: "POST", body: fd });
+        const data = await res.json();
+        toast.dismiss();
+        if (data.questions) {
+          toast.success(`Imported ${data.questions.length} questions from SCORM`);
+          setLocation("/quizzes/new?import=1");
+        } else {
+          toast.error("SCORM import failed: " + (data.error ?? "Unknown error"));
+        }
+      };
+      input.click();
+    });
+  };
 
   const handleImport = () => {
+    gated("fullQuizMaker", () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".xls,.xlsx";
@@ -33,7 +69,7 @@ export default function QuizzesPage() {
         toast.error("Import failed: " + (data.error ?? "Unknown error"));
       }
     };
-    input.click();
+    });
   };
 
   return (
@@ -44,10 +80,22 @@ export default function QuizzesPage() {
           <p className="text-muted-foreground text-sm mt-0.5">{quizzes?.length ?? 0} quizzes total</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleImport} className="gap-2"><Upload className="h-4 w-4" />Import Excel</Button>
+          <Button variant="outline" onClick={handleScormImport} className="gap-2">{!can("fullQuizMaker") && <Lock className="h-3.5 w-3.5 text-amber-500" />}<FileUp className="h-4 w-4" />Import SCORM</Button>
+          <Button variant="outline" onClick={handleImport} className="gap-2">{!can("fullQuizMaker") && <Lock className="h-3.5 w-3.5 text-amber-500" />}<Upload className="h-4 w-4" />Import Excel</Button>
           <Button onClick={() => setLocation("/quizzes/new")} className="gap-2"><Plus className="h-4 w-4" />Create Quiz</Button>
         </div>
       </div>
+
+      {!can("fullQuizMaker") && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-4 flex items-center gap-3">
+          <Lock className="h-5 w-5 text-amber-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Full QuizMaker requires Builder plan or higher</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">Upgrade to unlock SCORM/CSV import &amp; export, AI question generation, and advanced quiz settings.</p>
+          </div>
+          <Button size="sm" variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-100" onClick={() => { setUpgradeFeature("fullQuizMaker"); setUpgradeOpen(true); }}>Upgrade</Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>)}</div>
@@ -81,6 +129,11 @@ export default function QuizzesPage() {
                       <div className="flex gap-1 shrink-0">
                         <Button size="sm" variant="outline" onClick={() => setLocation(`/quizzes/${quiz.id}/play`)}>Play</Button>
                         <Button size="sm" variant="outline" onClick={() => setLocation(`/quizzes/${quiz.id}`)}>Edit</Button>
+                        {can("fullQuizMaker") && (
+                          <Button size="sm" variant="outline" asChild className="gap-1">
+                            <a href={`/api/quiz/export/scorm/${quiz.id}`} download><Download className="h-3.5 w-3.5" />SCORM</a>
+                          </Button>
+                        )}
                         <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteQuiz.mutate({ id: quiz.id })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -113,6 +166,7 @@ export default function QuizzesPage() {
           </div>
         </CardContent>
       </Card>
+       <UpgradePromptDialog open={upgradeOpen} onOpenChange={setUpgradeOpen} feature={upgradeFeature} orgId={orgId} />
     </div>
   );
 }

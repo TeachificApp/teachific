@@ -69,6 +69,7 @@ import EmailMarketingPage from "./pages/lms/EmailMarketingPage";
 import PublicPagePage from "./pages/PublicPagePage";
 
 import GroupsPage from "./pages/members/GroupsPage";
+import TeamsPage from "./pages/members/TeamsPage";
 import GroupManagerPortalPage from "./pages/members/GroupManagerPortalPage";
 import MemberCertificatesPage from "./pages/members/MemberCertificatesPage";
 import DiscussionsPage from "./pages/members/DiscussionsPage";
@@ -118,6 +119,8 @@ import WebhooksPage from "./pages/integrations/WebhooksPage";
 // Profile section
 import ProfilePage from "./pages/profile/ProfilePage";
 import BillingPage from "./pages/profile/BillingPage";
+import InstructorPortal from "./pages/InstructorPortal";
+import InstructorsPage from "./pages/lms/InstructorsPage";
 
 import LandingPage from "./pages/LandingPage";
 import SupportPage from "./pages/SupportPage";
@@ -302,6 +305,7 @@ function AdminRouter() {
           {/* Legacy analytics redirects */}
           <Route path="/analytics" component={AnalyticsPage} />
           <Route path="/lms/analytics" component={LmsAnalyticsPage} />
+          <Route path="/lms/instructors" component={InstructorsPage} />
           <Route path="/lms/activity" component={StudentLogReportsPage} />
 
           {/* ── Integrations ── */}
@@ -385,6 +389,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/courses/:id" component={CourseBuilderPage} />
         <Route path="/members/users">{() => <DashboardLayout><MembersPage /></DashboardLayout>}</Route>
         <Route path="/members/groups">{() => <DashboardLayout><GroupsPage /></DashboardLayout>}</Route>
+        <Route path="/members/teams">{() => <DashboardLayout><TeamsPage /></DashboardLayout>}</Route>
         <Route path="/members/certificates">{() => <DashboardLayout><MemberCertificatesPage /></DashboardLayout>}</Route>
         <Route path="/members/discussions">{() => <DashboardLayout><DiscussionsPage /></DashboardLayout>}</Route>
         <Route path="/members/assignments">{() => <DashboardLayout><AssignmentsPage /></DashboardLayout>}</Route>
@@ -426,6 +431,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/integrations/webhooks">{() => <DashboardLayout><WebhooksPage /></DashboardLayout>}</Route>
         <Route path="/profile">{() => <DashboardLayout><ProfilePage /></DashboardLayout>}</Route>
         <Route path="/billing">{() => <DashboardLayout><BillingPage /></DashboardLayout>}</Route>
+        <Route path="/instructor-portal" component={InstructorPortal} />
         <Route path="/lms/branding">{() => <DashboardLayout><BrandingPage /></DashboardLayout>}</Route>
         <Route path="/lms/settings">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-courses">{() => <DashboardLayout><MyCoursesPage /></DashboardLayout>}</Route>
