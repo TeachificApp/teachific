@@ -228,8 +228,8 @@
 - [x] Add missing schema tables: funnelTemplates, funnelBranchConditions, digitalPurchases, digitalBundles, digitalBundleItems, digitalBundlePurchases, brandMemberships, physicalProducts, physicalProductOrders, physicalProductPricingOptions, blockTemplates, lmsPageTemplates, globalFormTheme, googleFormIntegrations, lmsPricingOptions, emailLists, emailListSubscribers, lmsLandingPages, ipAccessLogs, sharingAbuseFlags, digitalProductFiles, digitalDownloadEvents, lmsArchive, ssoTokens
 - [x] Install dependencies: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities, @dnd-kit/modifiers, @stripe/stripe-js, @stripe/react-stripe-js, cheerio
 - [x] Integrate quiz/download/product purchase flows with existing Stripe checkout (via InlineCheckoutBlock + embeddedCheckoutRouter)
-- [ ] Add org admin UI to OrgSettingsPage for Stripe Connect onboarding and gateway selection
-- [ ] Add org admin UI to configure own Stripe keys (publishable + secret) for Pro+ plans
+- [x] Add org admin UI to OrgSettingsPage for Stripe Connect onboarding and gateway selection (already implemented in OrgPaymentSettingsTab)
+- [x] Add org admin UI to configure own Stripe keys (publishable + secret) for Pro+ plans (already implemented in OrgPaymentSettingsTab)
 - [ ] Test end-to-end: funnel lead capture → CTA with Stripe checkout → fulfillment
 - [ ] Test end-to-end: course/quiz/download purchase with own Stripe gateway
 
@@ -3615,3 +3615,86 @@
 - [ ] LLM response parsing failing or LLM not returning field data
 - [ ] Form branching patterns not being detected or imported
 - [ ] Fix: Debug LLM response, enhance schema, preserve HTML structure for better extraction
+
+## Quiz Builder — Full Implementation (Priority)
+
+### Phase 1: Database Schema
+- [ ] quizBanks table: org-scoped question banks with name, description, tags, visibility
+- [ ] quizBankTags table: tag taxonomy per org for categorizing questions
+- [ ] quizBankQuestions table: question text, type, media (image/video), explanation, feedback, tags, difficulty, points, orgId
+- [ ] quizBankAnswerChoices table: choice text, media, isCorrect, order, matchPair (for matching), hotspotCoords (for hotspot)
+- [ ] quizzes table: title, description, orgId, settings JSON (randomize questions, randomize answers, time limit, pass score, max attempts, show feedback, show correct answers, shuffle pool)
+- [ ] quizQuestionPools table: quiz → question bank tag mapping with pool size (how many to draw per attempt)
+- [ ] quizQuestionOverrides table: manually pinned questions added directly to a quiz (not from pool)
+- [ ] quizAttempts table: userId, quizId, startedAt, completedAt, score, passed, attemptNumber, questionSnapshot JSON
+- [ ] quizAttemptResponses table: attemptId, questionId, selectedChoiceIds, hotspotX/Y, textAnswer, isCorrect, pointsEarned, timeSpent
+- [ ] quizImportJobs table: orgId, source (scorm/csv/xls), status, filename, importedCount, errorLog, createdAt
+
+### Phase 2: Server Routers
+- [ ] quizBankRouter: CRUD for banks, questions, answer choices, tags; bulk tag/untag; media upload to S3
+- [ ] quizRouter: CRUD for quizzes, pool config, question overrides, publish/unpublish
+- [ ] quizAttemptRouter: start attempt (sample questions from pools), submit response, complete attempt, get results
+- [ ] quizImportRouter: parse SCORM imsmanifest.xml + QTI XML, parse CSV/XLS template, preview parsed questions, confirm import to bank
+- [ ] quizAnalyticsRouter: per-quiz stats, per-question stats (most missed, avg time), per-user attempt history, org-level leaderboard
+
+### Phase 3: Question Bank UI
+- [ ] QuestionBankPage: list all banks for org, create/rename/delete bank, filter by tag
+- [ ] QuestionBankDetailPage: list questions in bank, filter by tag/type/difficulty, bulk select, bulk tag
+- [ ] QuestionEditorModal: full question editor with type selector, rich text, media upload (image/video) for question stem
+- [ ] Answer choices editor: add/remove/reorder choices, mark correct, add per-choice media and feedback text
+- [ ] Hotspot question editor: image upload + click-to-place hotspot zones with radius/polygon
+- [ ] Puzzle question editor: drag-and-drop piece arrangement with image upload
+- [ ] Matching question editor: left/right pair editor
+- [ ] Sequence/ordering question editor: drag-and-drop order
+- [ ] Numeric range question editor: min/max correct range
+- [ ] Info slide editor: rich text + media, no answer choices
+- [ ] Per-question explanation/feedback editor with media support
+- [ ] Tag management UI: create/edit/delete tags, assign tags to questions
+- [ ] SCORM import: upload .zip, parse imsmanifest.xml + QTI XML, show preview table, confirm import to bank
+- [ ] CSV/XLS import: upload file, parse columns (Question Type, Question Text, Image, Video, Answer 1-10, Correct Feedback, Incorrect Feedback, Points), preview, confirm import
+- [ ] Export questions to CSV/XLS template format
+
+### Phase 4: Quiz Builder UI
+- [ ] QuizBuilderPage: full-screen editor with sidebar settings and main canvas
+- [ ] Quiz settings panel: title, description, time limit, pass score %, max attempts, show feedback mode (immediate/end/never), show correct answers after completion
+- [ ] Randomization settings: randomize question order, randomize answer order per question
+- [ ] Question pool configurator: add pool from bank tag, set draw count per pool, preview total question count
+- [ ] Manual question picker: search/filter bank and pin specific questions to always appear
+- [ ] Question preview in builder: see rendered question as learner would see it
+- [ ] Scoring settings: points per question, partial credit for multiple select, penalty for wrong answers
+- [ ] Publish/unpublish quiz with visibility controls
+
+### Phase 5: Quiz Player UI
+- [ ] QuizPlayerPage: full-screen player with progress indicator and timer
+- [ ] MC renderer: single choice with radio buttons, optional image/video in question and per-choice
+- [ ] TF renderer: True/False with large tap targets
+- [ ] Multiple Select renderer: checkbox choices with partial credit indicator
+- [ ] Hotspot renderer: image with clickable zones, highlight on hover
+- [ ] Puzzle renderer: drag-and-drop tile arrangement
+- [ ] Matching renderer: drag left items to match right items
+- [ ] Sequence/ordering renderer: drag-and-drop reorder list
+- [ ] Numeric renderer: number input with range validation
+- [ ] Short answer renderer: text input
+- [ ] Info slide renderer: display-only with continue button
+- [ ] Per-question media display: image zoom, inline video player
+- [ ] Immediate feedback mode: show correct/incorrect after each answer with explanation
+- [ ] Navigation: previous/next, question jump panel, flag for review
+- [ ] Auto-submit on time expiry
+- [ ] Resume attempt: if attempt started but not completed, resume from last answered question
+
+### Phase 6: Results & Analytics
+- [ ] QuizResultsPage: score summary, pass/fail badge, time taken, per-question breakdown
+- [ ] Per-question result: show question, user's answer, correct answer, explanation, media
+- [ ] Retry button (if max attempts not reached)
+- [ ] QuizAnalyticsDashboard: attempt count, avg score, pass rate, score distribution chart
+- [ ] Per-question analytics: % correct, avg time, most common wrong answer
+- [ ] Per-user attempt history table with scores and timestamps
+- [ ] Export results to CSV
+
+### Phase 7: Integration
+- [ ] Wire quiz into LMS lesson editor as a lesson type (quiz lesson block)
+- [ ] Wire quiz into landing page builder as a quiz embed block
+- [ ] Wire quiz into funnel page builder as a quiz/lead capture block
+- [ ] Quiz completion triggers course progress update and certificate eligibility check
+- [ ] Quiz purchase flow: quiz can be sold standalone via Stripe checkout
+

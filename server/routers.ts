@@ -131,6 +131,8 @@ import { generalFormRouter } from "./routers/generalFormRouter";
 import { orderBumpsAdminRouter, orderBumpsPublicRouter } from "./routers/orderBumpsRouter";
 import { downloadsPublicRouter, downloadsLearnerRouter, downloadsAdminRouter } from "./routers/downloadsRouter";
 import { productsPublicRouter, productsLearnerRouter, productsAdminRouter } from "./routers/productsRouter";
+import { quizBankRouter } from "./routers/quizBankRouter";
+import { quizRouter } from "./routers/quizRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -214,6 +216,8 @@ export const appRouter = router({
   productsAdmin: productsAdminRouter,
   productsLearner: productsLearnerRouter,
   productsPublic: productsPublicRouter,
+  quizBank: quizBankRouter,
+  quiz: quizRouter,
 
   // ─── Embed Token (cookie-free iframe auth) ─────────────────────────────────
   embed: router({

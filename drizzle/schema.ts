@@ -315,40 +315,6 @@ export const analyticsEvents = mysqlTable("analytics_events", {
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 
-// ─── Quizzes ──────────────────────────────────────────────────────────────────
-export const quizzes = mysqlTable("quizzes", {
-  id: int("id").autoincrement().primaryKey(),
-  packageId: int("packageId"), // null = standalone quiz
-  orgId: int("orgId").notNull(),
-  createdBy: int("createdBy").notNull(),
-  userId: int("userId"), // owner for standalone QuizMaker product
-  title: varchar("title", { length: 500 }).notNull(),
-  description: text("description"),
-  instructions: text("instructions"),
-  passingScore: float("passingScore").default(70),
-  timeLimit: int("timeLimit"), // seconds, null = no limit
-  maxAttempts: int("maxAttempts"), // null = unlimited
-  shuffleQuestions: boolean("shuffleQuestions").default(false).notNull(),
-  shuffleAnswers: boolean("shuffleAnswers").default(false).notNull(),
-  showFeedbackImmediately: boolean("showFeedbackImmediately").default(true).notNull(),
-  showCorrectAnswers: boolean("showCorrectAnswers").default(true).notNull(),
-  isPublished: boolean("isPublished").default(false).notNull(),
-  // Visibility status (supersedes isPublished for richer control)
-  visibility: mysqlEnum("visibility", ["draft", "published", "hidden", "private", "archived"]).default("draft").notNull(),
-  shareToken: varchar("shareToken", { length: 32 }).unique(),
-  publishedAt: timestamp("publishedAt"),
-  // Branding/theming for published quiz player
-  brandPrimaryColor: varchar("brandPrimaryColor", { length: 32 }),
-  brandBgColor: varchar("brandBgColor", { length: 32 }),
-  brandLogoUrl: text("brandLogoUrl"),
-  brandFontFamily: varchar("brandFontFamily", { length: 128 }),
-  completionMessage: text("completionMessage"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Quiz = typeof quizzes.$inferSelect;
-export type InsertQuiz = typeof quizzes.$inferInsert;
 
 // ─── Quiz Questions ───────────────────────────────────────────────────────────
 export const quizQuestions = mysqlTable("quiz_questions", {
@@ -404,46 +370,7 @@ export const quizQuestions = mysqlTable("quiz_questions", {
 export type QuizQuestion = typeof quizQuestions.$inferSelect;
 export type InsertQuizQuestion = typeof quizQuestions.$inferInsert;
 
-// ─── Quiz Answer Choices ──────────────────────────────────────────────────────
-export const quizAnswerChoices = mysqlTable("quiz_answer_choices", {
-  id: int("id").autoincrement().primaryKey(),
-  questionId: int("questionId").notNull(),
-  sortOrder: int("sortOrder").default(0).notNull(),
-  choiceText: text("choiceText").notNull(),
-  choiceHtml: text("choiceHtml"),
-  isCorrect: boolean("isCorrect").default(false).notNull(),
-  matchTarget: text("matchTarget"),
-  matchTargetImageUrl: text("matchTargetImageUrl"),
-  choiceImageUrl: text("choiceImageUrl"),
-});
 
-export type QuizAnswerChoice = typeof quizAnswerChoices.$inferSelect;
-
-// ─── Quiz Attempts ────────────────────────────────────────────────────────────
-export const quizAttempts = mysqlTable("quiz_attempts", {
-  id: int("id").autoincrement().primaryKey(),
-  quizId: int("quizId").notNull(),
-  packageId: int("packageId"),
-  userId: int("userId"),
-  sessionId: int("sessionId"),
-  orgId: int("orgId"),
-  attemptNumber: int("attemptNumber").default(1).notNull(),
-  startedAt: timestamp("startedAt").defaultNow().notNull(),
-  submittedAt: timestamp("submittedAt"),
-  scoreRaw: float("scoreRaw"),
-  scorePct: float("scorePct"),
-  isPassed: boolean("isPassed"),
-  isCompleted: boolean("isCompleted").default(false).notNull(),
-  timeTakenSeconds: int("timeTakenSeconds"),
-  // QuizMaker published quiz fields (for anonymous/public quiz takers)
-  takerName: varchar("takerName", { length: 255 }),
-  takerEmail: varchar("takerEmail", { length: 320 }),
-  answersJson: longtext("answersJson"), // Full answers snapshot for analytics
-  shareToken: varchar("shareToken", { length: 32 }), // Links attempt to published quiz
-  totalPoints: float("totalPoints"),
-});
-
-export type QuizAttempt = typeof quizAttempts.$inferSelect;
 
 // ─── Quiz Responses ───────────────────────────────────────────────────────────
 export const quizResponses = mysqlTable("quiz_responses", {
@@ -3595,3 +3522,214 @@ export const physicalProductOrders = mysqlTable("physical_product_orders", {
 });
 export type PhysicalProductOrder = typeof physicalProductOrders.$inferSelect;
 export type InsertPhysicalProductOrder = typeof physicalProductOrders.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUIZ BUILDER — Question Banks, Quizzes, Attempts, Import
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Question Bank Tags ───────────────────────────────────────────────────────
+export const quizBankTags = mysqlTable("quiz_bank_tags", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  color: varchar("color", { length: 20 }).default("#24abbc"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type QuizBankTag = typeof quizBankTags.$inferSelect;
+
+// ─── Question Banks ───────────────────────────────────────────────────────────
+export const quizBanks = mysqlTable("quiz_banks", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false),
+  questionCount: int("question_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type QuizBank = typeof quizBanks.$inferSelect;
+
+// ─── Question Bank Questions ──────────────────────────────────────────────────
+export const quizBankQuestions = mysqlTable("quiz_bank_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  bankId: int("bank_id").notNull(),
+  questionType: mysqlEnum("question_type", [
+    "mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"
+  ]).notNull().default("mc"),
+  questionText: text("question_text").notNull(),
+  questionHtml: text("question_html"),
+  mediaType: mysqlEnum("q_media_type", ["none","image","video"]).default("none"),
+  mediaUrl: varchar("media_url", { length: 1024 }),
+  mediaAlt: varchar("media_alt", { length: 255 }),
+  hotspotZones: json("hotspot_zones"),
+  puzzleConfig: json("puzzle_config"),
+  numericMin: decimal("numeric_min", { precision: 15, scale: 4 }),
+  numericMax: decimal("numeric_max", { precision: 15, scale: 4 }),
+  points: int("points").default(1).notNull(),
+  partialCredit: boolean("partial_credit").default(false),
+  penaltyPoints: int("penalty_points").default(0),
+  difficulty: mysqlEnum("difficulty", ["easy","medium","hard"]).default("medium"),
+  explanationText: text("explanation_text"),
+  explanationHtml: text("explanation_html"),
+  explanationMediaType: mysqlEnum("exp_media_type", ["none","image","video"]).default("none"),
+  explanationMediaUrl: varchar("explanation_media_url", { length: 1024 }),
+  importSource: varchar("import_source", { length: 50 }),
+  importJobId: int("import_job_id"),
+  isArchived: boolean("is_archived").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type QuizBankQuestion = typeof quizBankQuestions.$inferSelect;
+export type InsertQuizBankQuestion = typeof quizBankQuestions.$inferInsert;
+
+// ─── Question ↔ Tag Junction ──────────────────────────────────────────────────
+export const quizQuestionTags = mysqlTable("quiz_question_tags", {
+  questionId: int("question_id").notNull(),
+  tagId: int("tag_id").notNull(),
+});
+
+// ─── Answer Choices ───────────────────────────────────────────────────────────
+export const quizAnswerChoices = mysqlTable("quiz_answer_choices", {
+  id: int("id").autoincrement().primaryKey(),
+  questionId: int("question_id").notNull(),
+  choiceText: text("choice_text"),
+  choiceHtml: text("choice_html"),
+  mediaType: mysqlEnum("choice_media_type", ["none","image","video"]).default("none"),
+  mediaUrl: varchar("media_url", { length: 1024 }),
+  mediaAlt: varchar("media_alt", { length: 255 }),
+  isCorrect: boolean("is_correct").default(false).notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+  matchPairId: varchar("match_pair_id", { length: 50 }),
+  matchSide: mysqlEnum("match_side", ["left","right"]),
+  feedbackText: text("feedback_text"),
+  feedbackMediaUrl: varchar("feedback_media_url", { length: 1024 }),
+});
+export type QuizAnswerChoice = typeof quizAnswerChoices.$inferSelect;
+export type InsertQuizAnswerChoice = typeof quizAnswerChoices.$inferInsert;
+
+// ─── Quizzes ──────────────────────────────────────────────────────────────────
+export const quizzes = mysqlTable("quizzes", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  coverImageUrl: varchar("cover_image_url", { length: 1024 }),
+  timeLimitSeconds: int("time_limit_seconds"),
+  maxAttempts: int("max_attempts"),
+  passScorePercent: int("pass_score_percent").default(70).notNull(),
+  randomizeQuestions: boolean("randomize_questions").default(false).notNull(),
+  randomizeAnswers: boolean("randomize_answers").default(false).notNull(),
+  feedbackMode: mysqlEnum("feedback_mode", ["immediate","end","never"]).default("end").notNull(),
+  showCorrectAnswers: boolean("show_correct_answers").default(true).notNull(),
+  showExplanations: boolean("show_explanations").default(true).notNull(),
+  allowPartialCredit: boolean("allow_partial_credit").default(true).notNull(),
+  penaltyForWrong: boolean("penalty_for_wrong").default(false).notNull(),
+  status: mysqlEnum("quiz_status", ["draft","published","archived"]).default("draft").notNull(),
+  themeConfig: json("theme_config"),
+  priceAmountCents: int("price_amount_cents").default(0),
+  currency: varchar("currency", { length: 8 }).default("usd"),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type Quiz = typeof quizzes.$inferSelect;
+export type InsertQuiz = typeof quizzes.$inferInsert;
+
+// ─── Quiz Question Pools (from bank tags) ─────────────────────────────────────
+export const quizQuestionPools = mysqlTable("quiz_question_pools", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quiz_id").notNull(),
+  bankId: int("bank_id").notNull(),
+  tagId: int("tag_id"),
+  drawCount: int("draw_count").notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+});
+export type QuizQuestionPool = typeof quizQuestionPools.$inferSelect;
+
+// ─── Quiz Question Overrides (manually pinned) ────────────────────────────────
+export const quizQuestionOverrides = mysqlTable("quiz_question_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quiz_id").notNull(),
+  questionId: int("question_id").notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+  alwaysInclude: boolean("always_include").default(true).notNull(),
+});
+export type QuizQuestionOverride = typeof quizQuestionOverrides.$inferSelect;
+
+// ─── Quiz Attempts ────────────────────────────────────────────────────────────
+export const quizAttempts = mysqlTable("quiz_attempts", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quiz_id").notNull(),
+  userId: int("user_id"),
+  guestEmail: varchar("guest_email", { length: 255 }),
+  attemptNumber: int("attempt_number").default(1).notNull(),
+  status: mysqlEnum("attempt_status", ["in_progress","completed","abandoned","timed_out"]).default("in_progress").notNull(),
+  questionSnapshot: json("question_snapshot"),
+  totalPoints: int("total_points").default(0).notNull(),
+  earnedPoints: int("earned_points").default(0).notNull(),
+  scorePercent: decimal("score_percent", { precision: 5, scale: 2 }),
+  passed: boolean("passed"),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  timeSpentSeconds: int("time_spent_seconds"),
+  sourceType: mysqlEnum("source_type", ["standalone","lesson","funnel","landing_page"]).default("standalone"),
+  sourceLessonId: int("source_lesson_id"),
+  sourceFunnelPageId: int("source_funnel_page_id"),
+});
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type InsertQuizAttempt = typeof quizAttempts.$inferInsert;
+
+// ─── Quiz Attempt Responses ───────────────────────────────────────────────────
+export const quizAttemptResponses = mysqlTable("quiz_attempt_responses", {
+  id: int("id").autoincrement().primaryKey(),
+  attemptId: int("attempt_id").notNull(),
+  questionId: int("question_id").notNull(),
+  questionType: varchar("question_type", { length: 30 }).notNull(),
+  selectedChoiceIds: json("selected_choice_ids"),
+  hotspotClickX: decimal("hotspot_click_x", { precision: 6, scale: 2 }),
+  hotspotClickY: decimal("hotspot_click_y", { precision: 6, scale: 2 }),
+  textAnswer: text("text_answer"),
+  numericAnswer: decimal("numeric_answer", { precision: 15, scale: 4 }),
+  isCorrect: boolean("is_correct"),
+  isPartiallyCorrect: boolean("is_partially_correct").default(false),
+  pointsEarned: int("points_earned").default(0).notNull(),
+  timeSpentSeconds: int("time_spent_seconds"),
+  answeredAt: timestamp("answered_at").defaultNow().notNull(),
+});
+export type QuizAttemptResponse = typeof quizAttemptResponses.$inferSelect;
+export type InsertQuizAttemptResponse = typeof quizAttemptResponses.$inferInsert;
+
+// ─── Quiz Import Jobs ─────────────────────────────────────────────────────────
+export const quizImportJobs = mysqlTable("quiz_import_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  bankId: int("bank_id"),
+  importedById: int("imported_by_id").notNull(),
+  source: mysqlEnum("import_source", ["scorm","csv","xls"]).notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  fileUrl: varchar("file_url", { length: 1024 }),
+  status: mysqlEnum("import_status", ["pending","parsing","preview_ready","importing","completed","failed"]).default("pending").notNull(),
+  parsedQuestions: json("parsed_questions"),
+  importedCount: int("imported_count").default(0),
+  skippedCount: int("skipped_count").default(0),
+  errorLog: json("error_log"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+export type QuizImportJob = typeof quizImportJobs.$inferSelect;
+export type InsertQuizImportJob = typeof quizImportJobs.$inferInsert;
+
+// ─── Quiz Access Grants ───────────────────────────────────────────────────────
+export const quizAccessGrants = mysqlTable("quiz_access_grants", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quiz_id").notNull(),
+  userId: int("user_id").notNull(),
+  grantedAt: timestamp("granted_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+  source: mysqlEnum("grant_source", ["purchase","manual","org_member","course_enrollment"]).default("manual"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+});
+export type QuizAccessGrant = typeof quizAccessGrants.$inferSelect;
