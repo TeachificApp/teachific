@@ -136,6 +136,15 @@ import {
   dashboardRouter,
   flashcardsRouter,
 } from "./stubRouters";
+import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
+import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
+import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
+import { formBuilderRouter } from "./formBuilderRouter";
+import { generalFormRouter } from "./generalFormRouter";
+import { mediaRepoRouter } from "./mediaRepoRouter";
+import { funnelRouter } from "./funnelRouter";
+import { downloadsRouter } from "./downloadsRouter";
+import { adminUserRouter } from "./adminUserRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -204,6 +213,15 @@ export const appRouter = router({
   quizMaker: quizMakerRouter,
   questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
+  lmsCourseBuilder: lmsCourseBuilderRouter,
+  lmsEnrollmentAdmin: lmsEnrollmentAdminRouter,
+  lmsCohortAdmin: lmsCohortAdminRouter,
+  formBuilder: formBuilderRouter,
+  generalForm: generalFormRouter,
+  mediaRepo: mediaRepoRouter,
+  funnel: funnelRouter,
+  downloads: downloadsRouter,
+  adminUser: adminUserRouter,
   downloads: downloadsRouter,
   pages: pagesRouter,
   themes: themesRouter,

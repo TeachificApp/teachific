@@ -60,22 +60,16 @@ export const membershipRouter = router({
         
         await db.insert(membershipPlans).values({
           orgId: input.orgId,
-          planId,
           name: input.name,
           description: input.description ?? null,
           price: input.price,
-          billingCycle: input.billingCycle,
-          trialDays: input.trialDays,
-          maxMembers: input.maxMembers ?? null,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          billingInterval: input.billingCycle,
         });
         
         const created = await db
           .select()
           .from(membershipPlans)
-          .where(eq(membershipPlans.planId, planId))
+          .where(eq(membershipPlans.id, parseInt(planId, 36)))
           .limit(1);
         
         return created[0];
