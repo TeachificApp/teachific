@@ -123,6 +123,14 @@ import { quizMakerRouter } from "./quizMakerRouter";
 import { questionBankRouter } from "./questionBankRouter";
 import { teachificPayRouter } from "./teachificPayRouter";
 import { embeddedCheckoutRouter } from "./embeddedCheckoutRouter";
+import { funnelRouter, funnelPublicRouter, funnelAdminRouter } from "./routers/funnelRouter";
+import { lmsAdminRouter } from "./routers/lmsAdminRouter";
+import { blockTemplatesRouter } from "./routers/blockTemplatesRouter";
+import { pageScraperRouter } from "./routers/pageScraperRouter";
+import { generalFormRouter } from "./routers/generalFormRouter";
+import { orderBumpsAdminRouter, orderBumpsPublicRouter } from "./routers/orderBumpsRouter";
+import { downloadsPublicRouter, downloadsLearnerRouter, downloadsAdminRouter } from "./routers/downloadsRouter";
+import { productsPublicRouter, productsLearnerRouter, productsAdminRouter } from "./routers/productsRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -190,6 +198,22 @@ export const appRouter = router({
   questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
   embeddedCheckout: embeddedCheckoutRouter,
+  funnel: funnelRouter,
+  funnelPublic: funnelPublicRouter,
+  funnelAdmin: funnelAdminRouter,
+  lmsAdmin: lmsAdminRouter,
+  lmsGroup: lmsAdminRouter, // alias for pricing options used by page editors
+  blockTemplates: blockTemplatesRouter,
+  pageScraper: pageScraperRouter,
+  generalForm: generalFormRouter,
+  orderBumpsAdmin: orderBumpsAdminRouter,
+  orderBumpsPublic: orderBumpsPublicRouter,
+  downloadsAdmin: downloadsAdminRouter,
+  downloadsLearner: downloadsLearnerRouter,
+  downloadsPublic: downloadsPublicRouter,
+  productsAdmin: productsAdminRouter,
+  productsLearner: productsLearnerRouter,
+  productsPublic: productsPublicRouter,
 
   // ─── Embed Token (cookie-free iframe auth) ─────────────────────────────────
   embed: router({

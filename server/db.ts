@@ -819,3 +819,44 @@ export async function updateSupportTicketStatus(id: number, status: "open" | "in
   const { eq: eqOp } = await import("drizzle-orm");
   await db.update(supportTickets).set({ status, ...(staffNotes !== undefined ? { staffNotes } : {}) }).where(eqOp(supportTickets.id, id));
 }
+
+export async function getOrCreateUserByEmail(opts: {
+  email: string;
+  name?: string;
+}): Promise<{ user: { id: number; email: string | null; name: string | null }; isNew: boolean; resetToken: string | null }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const existing = await getUserByEmail(opts.email);
+  if (existing) {
+    return { user: existing as any, isNew: false, resetToken: null };
+  }
+  const { randomBytes } = await import("crypto");
+  const resetToken = randomBytes(32).toString("hex");
+  const resetExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const displayName = opts.name || opts.email.split("@")[0];
+  const openId = `email_${opts.email.replace(/[^a-z0-9]/gi, "_")}_${Date.now()}`;
+  await db.insert(users).values({
+    openId,
+    email: opts.email,
+    name: displayName,
+    loginMethod: "email",
+    emailVerified: true,
+    resetToken,
+    resetTokenExpiry: resetExpiry,
+    lastSignedIn: new Date(),
+  });
+  const [newUser] = await db.select().from(users).where(eq(users.email, opts.email)).limit(1);
+  return { user: newUser as any, isNew: true, resetToken };
+}
+
+export async function getOrCreateAccessToken(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const result = await db.select({ accessToken: users.accessToken }).from(users).where(eq(users.id, userId)).limit(1);
+  const existing = result[0]?.accessToken;
+  if (existing) return existing;
+  const { randomBytes } = await import("crypto");
+  const token = randomBytes(32).toString("hex");
+  await db.update(users).set({ accessToken: token } as any).where(eq(users.id, userId));
+  return token;
+}

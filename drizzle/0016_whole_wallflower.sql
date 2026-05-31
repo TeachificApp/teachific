@@ -1,0 +1,40 @@
+CREATE TABLE `physical_product_orders` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`user_id` int NOT NULL,
+	`product_id` int NOT NULL,
+	`pricing_option_id` int,
+	`amount_paid` int NOT NULL DEFAULT 0,
+	`currency` varchar(8) NOT NULL DEFAULT 'usd',
+	`stripe_payment_intent_id` varchar(255),
+	`stripe_checkout_session_id` varchar(255),
+	`shipping_name` varchar(255),
+	`shipping_line1` varchar(255),
+	`shipping_line2` varchar(255),
+	`shipping_city` varchar(100),
+	`shipping_state` varchar(100),
+	`shipping_postal_code` varchar(20),
+	`shipping_country` varchar(10),
+	`physical_fulfillment_status` enum('pending','processing','shipped','delivered','cancelled','refunded') NOT NULL DEFAULT 'pending',
+	`tracking_number` varchar(255),
+	`tracking_carrier` varchar(100),
+	`notes` text,
+	`ordered_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `physical_product_orders_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `physical_product_pricing_options` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`product_id` int NOT NULL,
+	`label` varchar(255) NOT NULL,
+	`sublabel` varchar(500),
+	`physical_pricing_type` enum('one_time','free') NOT NULL DEFAULT 'one_time',
+	`price` int NOT NULL DEFAULT 0,
+	`compare_at_price` int,
+	`stripe_price_id` varchar(255),
+	`cta_label` varchar(100),
+	`sort_order` int NOT NULL DEFAULT 0,
+	`is_active` boolean NOT NULL DEFAULT true,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `physical_product_pricing_options_id` PRIMARY KEY(`id`)
+);

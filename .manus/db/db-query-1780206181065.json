@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `lms_page_templates` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`description` text,\n\t`template_type` enum('page','block') NOT NULL DEFAULT 'page',\n\t`block_type` varchar(64),\n\t`blocks` longtext NOT NULL,\n\t`thumbnail_url` text,\n\t`org_id` int,\n\t`created_by` int,\n\t`created_at` bigint NOT NULL,\n\t`updated_at` bigint NOT NULL,\n\tCONSTRAINT `lms_page_templates_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute CREATE TABLE `lms_page_templates` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`description` text,\n\t`template_type` enum('page','block') NOT NULL DEFAULT 'page',\n\t`block_type` varchar(64),\n\t`blocks` longtext NOT NULL,\n\t`thumbnail_url` text,\n\t`org_id` int,\n\t`created_by` int,\n\t`created_at` bigint NOT NULL,\n\t`updated_at` bigint NOT NULL,\n\tCONSTRAINT `lms_page_templates_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 330
+}

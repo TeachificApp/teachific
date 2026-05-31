@@ -217,12 +217,19 @@
 - [x] Create Stripe webhook handler for embedded checkout fulfillment (courses, downloads, quizzes, memberships)
 - [x] Register webhook handler in server (_core/index.ts)
 - [x] Implement fulfillment logic: course enrollment, download/quiz access grants, membership subscriptions
-- [ ] Add embedded_checkout content block type to page builder (funnels, landing pages, product pages)
-- [ ] Extend funnel CTA actions to support Stripe checkout (not just external links)
-- [ ] Extend email campaign CTA actions to support Stripe checkout
+- [x] Add embedded_checkout content block type to page builder (InlineCheckoutBlock, EmbeddedCheckoutBlock, CheckoutFormBlock ported from source)
+- [x] Extend funnel CTA actions to support Stripe checkout (FunnelPageEditor ported with CTA checkout actions)
+- [x] Extend email campaign CTA actions to support Stripe checkout (EmailCampaignEditor ported)
+- [x] Port all page builders: LandingPageBuilder, DownloadLandingPageBuilder, ProductLandingPageBuilder, FunnelPageEditor, EmailCampaignEditor
+- [x] Wire all page builder routes into App.tsx
+- [x] Port all block components: BlockPreview, AudioBlockPlayer, CarouselBlock, FunnelBlocks, InlineCheckoutBlock, CheckoutFormBlock, RelatedProductsBlock, BlockTemplateLibrary, PromoCodeInput, OrderBumpOffer
+- [x] Port shared infrastructure: ctaSubtext, funnelTemplates, DebouncedInput, userUrlParams, UserParamTagsHelper, AffiliateRedirect
+- [x] Port server routers: funnelRouter, funnelPublicRouter, funnelAdminRouter, blockTemplatesRouter, pageScraperRouter, generalFormRouter, orderBumpsRouter, downloadsRouter, productsRouter, lmsAdminRouter
+- [x] Add missing schema tables: funnelTemplates, funnelBranchConditions, digitalPurchases, digitalBundles, digitalBundleItems, digitalBundlePurchases, brandMemberships, physicalProducts, physicalProductOrders, physicalProductPricingOptions, blockTemplates, lmsPageTemplates, globalFormTheme, googleFormIntegrations, lmsPricingOptions, emailLists, emailListSubscribers, lmsLandingPages, ipAccessLogs, sharingAbuseFlags, digitalProductFiles, digitalDownloadEvents, lmsArchive, ssoTokens
+- [x] Install dependencies: @dnd-kit/core, @dnd-kit/sortable, @dnd-kit/utilities, @dnd-kit/modifiers, @stripe/stripe-js, @stripe/react-stripe-js, cheerio
+- [x] Integrate quiz/download/product purchase flows with existing Stripe checkout (via InlineCheckoutBlock + embeddedCheckoutRouter)
 - [ ] Add org admin UI to OrgSettingsPage for Stripe Connect onboarding and gateway selection
 - [ ] Add org admin UI to configure own Stripe keys (publishable + secret) for Pro+ plans
-- [ ] Integrate quiz/download/product purchase flows with existing Stripe checkout
 - [ ] Test end-to-end: funnel lead capture → CTA with Stripe checkout → fulfillment
 - [ ] Test end-to-end: course/quiz/download purchase with own Stripe gateway
 

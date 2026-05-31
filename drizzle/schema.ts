@@ -3185,3 +3185,413 @@ export const generalFormWebhooks = mysqlTable("general_form_webhooks", {
 });
 export type GeneralFormWebhook = typeof generalFormWebhooks.$inferSelect;
 export type InsertGeneralFormWebhook = typeof generalFormWebhooks.$inferInsert;
+
+// ─── Funnel Templates ────────────────────────────────────────────────────────
+export const funnelTemplates = mysqlTable("funnel_templates", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  pagesJson: longtext("pages_json").notNull(),
+  accentColor: varchar("accent_color", { length: 20 }).default("#0d9488"),
+  bgColor: varchar("bg_color", { length: 20 }).default("#f8fafc"),
+  logoUrl: text("logo_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+export type FunnelTemplate = typeof funnelTemplates.$inferSelect;
+
+// ─── Funnel Branch Conditions ─────────────────────────────────────────────────
+export const funnelBranchConditions = mysqlTable("funnel_branch_conditions", {
+  id: int("id").autoincrement().primaryKey(),
+  ruleId: int("rule_id").notNull(),
+  variable: mysqlEnum("variable", [
+    "product_purchased",
+    "order_bump_selected",
+    "email_contains",
+    "email_domain",
+    "purchase_price",
+    "source_url",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "date_range",
+    "day_of_week",
+    "hour_of_day",
+    "country",
+    "device_type",
+    "custom_field",
+  ]).notNull(),
+  operator: mysqlEnum("operator", [
+    "equals",
+    "not_equals",
+    "contains",
+    "not_contains",
+    "starts_with",
+    "ends_with",
+    "greater_than",
+    "less_than",
+    "between",
+    "in_list",
+    "not_in_list",
+    "is_set",
+    "is_not_set",
+  ]).notNull(),
+  value: varchar("value", { length: 1024 }).notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type FunnelBranchCondition = typeof funnelBranchConditions.$inferSelect;
+export type InsertFunnelBranchCondition = typeof funnelBranchConditions.$inferInsert;
+
+// ─── Digital Purchases ────────────────────────────────────────────────────────
+export const digitalPurchases = mysqlTable("digital_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  productId: int("product_id").notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+});
+export type DigitalPurchase = typeof digitalPurchases.$inferSelect;
+
+// ─── Digital Bundle Items ─────────────────────────────────────────────────────
+export const digitalBundleItems = mysqlTable("digital_bundle_items", {
+  id: int("id").autoincrement().primaryKey(),
+  bundleId: int("bundle_id").notNull(),
+  productId: int("product_id").notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+});
+export type DigitalBundleItem = typeof digitalBundleItems.$inferSelect;
+
+// ─── Digital Bundle Purchases ─────────────────────────────────────────────────
+export const digitalBundlePurchases = mysqlTable("digital_bundle_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  bundleId: int("bundle_id").notNull(),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+});
+export type DigitalBundlePurchase = typeof digitalBundlePurchases.$inferSelect;
+
+// ─── Brand Memberships ────────────────────────────────────────────────────────
+export const brandMemberships = mysqlTable("brandMemberships", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  brand: varchar("brand", { length: 32 }).notNull(),
+  tier: varchar("tier", { length: 32 }).notNull().default("free"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  source: varchar("source", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BrandMembership = typeof brandMemberships.$inferSelect;
+export type InsertBrandMembership = typeof brandMemberships.$inferInsert;
+
+// ─── Physical Products ────────────────────────────────────────────────────────
+export const physicalProducts = mysqlTable("physical_products", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  subtitle: varchar("subtitle", { length: 500 }),
+  description: longtext("description"),
+  details: longtext("details"),
+  thumbnailUrl: text("thumbnail_url"),
+  price: int("price").default(0).notNull(),
+  compareAtPrice: int("compare_at_price"),
+  isFree: boolean("is_free").default(false).notNull(),
+  currency: varchar("currency", { length: 8 }).default("usd").notNull(),
+  checkoutMode: mysqlEnum("checkout_mode", ["native", "shopify", "external"]).default("native").notNull(),
+  shopifyProductUrl: text("shopify_product_url"),
+  shopifyEmbedCode: longtext("shopify_embed_code"),
+  shopifyProductId: varchar("shopify_product_id", { length: 255 }),
+  externalCheckoutUrl: text("external_checkout_url"),
+  requiresShipping: boolean("requires_shipping").default(true).notNull(),
+  shippingCountries: text("shipping_countries"),
+  status: mysqlEnum("status", ["draft", "published", "hidden", "private", "archived"]).default("draft").notNull(),
+  landingHeadline: varchar("landing_headline", { length: 500 }),
+  landingBody: longtext("landing_body"),
+  landingFeatures: longtext("landing_features"),
+  landingBlocks: longtext("landing_blocks"),
+  orgId: int("org_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type PhysicalProduct = typeof physicalProducts.$inferSelect;
+export type InsertPhysicalProduct = typeof physicalProducts.$inferInsert;
+
+// ─── LMS Landing Pages ────────────────────────────────────────────────────────
+export const lmsLandingPages = mysqlTable("lms_landing_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("course_id").notNull().unique(),
+  heroTitle: varchar("hero_title", { length: 255 }),
+  heroSubtitle: text("hero_subtitle"),
+  heroImageUrl: text("hero_image_url"),
+  bodyContent: longtext("body_content"),
+  ctaText: varchar("cta_text", { length: 128 }).default("Enroll Now"),
+  whatYouLearn: longtext("what_you_learn"),
+  requirements: longtext("requirements"),
+  isCustom: boolean("is_custom").default(false).notNull(),
+  blocks: longtext("blocks"),
+  seoTitle: varchar("seo_title", { length: 255 }),
+  seoDescription: text("seo_description"),
+  seoImage: varchar("seo_image", { length: 512 }),
+  publishDomain: varchar("publish_domain", { length: 255 }),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LmsLandingPage = typeof lmsLandingPages.$inferSelect;
+
+// ─── Digital Bundles ──────────────────────────────────────────────────────────
+export const digitalBundles = mysqlTable("digital_bundles", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  subtitle: varchar("subtitle", { length: 500 }),
+  description: longtext("description"),
+  thumbnailUrl: text("thumbnail_url"),
+  originalPrice: int("original_price").default(0).notNull(),
+  discountPrice: int("discount_price").default(0).notNull(),
+  currency: varchar("currency", { length: 8 }).default("usd").notNull(),
+  status: mysqlEnum("status", ["draft", "published", "hidden", "private", "archived"]).default("draft").notNull(),
+  orgId: int("org_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type DigitalBundle = typeof digitalBundles.$inferSelect;
+
+// ─── Block Templates ──────────────────────────────────────────────────────────
+export const blockTemplates = mysqlTable("blockTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  blockType: varchar("blockType", { length: 80 }).notNull(),
+  blockData: longtext("blockData").notNull(),
+  tags: varchar("tags", { length: 500 }),
+  orgId: int("orgId"),
+  createdByUserId: int("createdByUserId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type BlockTemplate = typeof blockTemplates.$inferSelect;
+export type InsertBlockTemplate = typeof blockTemplates.$inferInsert;
+
+// ─── LMS Page Templates ───────────────────────────────────────────────────────
+export const lmsPageTemplates = mysqlTable("lms_page_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  templateType: mysqlEnum("template_type", ["page", "block"]).notNull().default("page"),
+  blockType: varchar("block_type", { length: 64 }),
+  blocks: longtext("blocks").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  orgId: int("org_id"),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+export type LmsPageTemplate = typeof lmsPageTemplates.$inferSelect;
+export type NewLmsPageTemplate = typeof lmsPageTemplates.$inferInsert;
+
+// ─── Global Form Theme ────────────────────────────────────────────────────────
+export const globalFormTheme = mysqlTable("global_form_theme", {
+  id: int("id").autoincrement().primaryKey(),
+  themeSettings: text("theme_settings"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GlobalFormTheme = typeof globalFormTheme.$inferSelect;
+
+// ─── Google Form Integrations ─────────────────────────────────────────────────
+export const googleFormIntegrations = mysqlTable("googleFormIntegrations", {
+  id: int("id").autoincrement().primaryKey(),
+  formId: int("formId").notNull().unique(),
+  googleClientId: varchar("googleClientId", { length: 500 }),
+  googleClientSecret: varchar("googleClientSecret", { length: 500 }),
+  accessToken: text("accessToken"),
+  refreshToken: text("refreshToken"),
+  tokenExpiresAt: bigint("tokenExpiresAt", { mode: "number" }),
+  connectedEmail: varchar("connectedEmail", { length: 255 }),
+  spreadsheetId: varchar("spreadsheetId", { length: 255 }),
+  spreadsheetName: varchar("spreadsheetName", { length: 500 }),
+  sheetTabName: varchar("sheetTabName", { length: 255 }).default("Form Responses"),
+  headersInitialised: boolean("headersInitialised").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type GoogleFormIntegration = typeof googleFormIntegrations.$inferSelect;
+
+// ─── LMS Pricing Options ──────────────────────────────────────────────────────
+export const lmsPricingOptions = mysqlTable("lms_pricing_options", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("course_id").notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  sublabel: varchar("sublabel", { length: 500 }),
+  pricingType: mysqlEnum("pricing_type", ["one_time", "subscription", "payment_plan", "free"]).default("one_time").notNull(),
+  price: int("price").default(0).notNull(),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  subscriptionInterval: mysqlEnum("subscription_interval", ["monthly", "quarterly", "annual"]),
+  downPayment: int("down_payment").default(0),
+  installmentCount: int("installment_count").default(0),
+  installmentAmount: int("installment_amount").default(0),
+  installmentIntervalDays: int("installment_interval_days").default(30),
+  ctaLabel: varchar("cta_label", { length: 100 }),
+  ctaUrl: varchar("cta_url", { length: 2048 }),
+  sortOrder: int("sort_order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LmsPricingOption = typeof lmsPricingOptions.$inferSelect;
+
+// ─── Email Lists ──────────────────────────────────────────────────────────────
+export const emailLists = mysqlTable("emailLists", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  isActive: boolean("isActive").default(true).notNull(),
+  subscriberCount: int("subscriberCount").default(0).notNull(),
+  webhookToken: varchar("webhookToken", { length: 64 }),
+  orgId: int("orgId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type EmailList = typeof emailLists.$inferSelect;
+export type InsertEmailList = typeof emailLists.$inferInsert;
+
+// ─── Email List Subscribers ───────────────────────────────────────────────────
+export const emailListSubscribers = mysqlTable("emailListSubscribers", {
+  id: int("id").autoincrement().primaryKey(),
+  listId: int("listId").notNull(),
+  email: varchar("email", { length: 300 }).notNull(),
+  name: varchar("name", { length: 300 }),
+  userId: int("userId"),
+  source: varchar("source", { length: 100 }),
+  sourceId: varchar("sourceId", { length: 100 }),
+  status: varchar("status", { length: 50 }).default("subscribed").notNull(),
+  subscribedAt: timestamp("subscribedAt").defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribedAt"),
+  metadata: text("metadata"),
+});
+export type EmailListSubscriber = typeof emailListSubscribers.$inferSelect;
+export type InsertEmailListSubscriber = typeof emailListSubscribers.$inferInsert;
+
+// ─── Digital Product Files ────────────────────────────────────────────────────
+export const digitalProductFiles = mysqlTable("digital_product_files", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("product_id").notNull(),
+  fileName: varchar("file_name", { length: 500 }).notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileKey: varchar("file_key", { length: 500 }).notNull(),
+  fileSize: int("file_size").default(0).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }),
+  sortOrder: int("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type DigitalProductFile = typeof digitalProductFiles.$inferSelect;
+
+// ─── Digital Download Events ──────────────────────────────────────────────────
+export const digitalDownloadEvents = mysqlTable("digital_download_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  productId: int("product_id").notNull(),
+  fileId: int("file_id").notNull(),
+  downloadedAt: timestamp("downloaded_at").defaultNow().notNull(),
+});
+export type DigitalDownloadEvent = typeof digitalDownloadEvents.$inferSelect;
+
+// ─── LMS Archive ─────────────────────────────────────────────────────────────
+export const lmsArchive = mysqlTable("lms_archive", {
+  id: int("id").autoincrement().primaryKey(),
+  itemType: mysqlEnum("item_type", ["course", "quiz", "download", "product", "bundle"]).notNull(),
+  originalId: int("original_id").notNull(),
+  title: varchar("title", { length: 500 }).notNull(),
+  snapshot: longtext("snapshot").notNull(),
+  deletedByUserId: int("deleted_by_user_id").notNull(),
+  deletedAt: timestamp("deleted_at").defaultNow().notNull(),
+  purgeAt: timestamp("purge_at").notNull(),
+});
+export type LmsArchiveItem = typeof lmsArchive.$inferSelect;
+
+// ─── SSO Tokens ───────────────────────────────────────────────────────────────
+export const ssoTokens = mysqlTable("sso_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  userId: int("user_id").notNull(),
+  usedAt: timestamp("used_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type SsoToken = typeof ssoTokens.$inferSelect;
+
+// ─── IP Access Logs ───────────────────────────────────────────────────────────
+export const ipAccessLogs = mysqlTable("ip_access_logs", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }).notNull(),
+  userAgent: text("user_agent"),
+  contentType: mysqlEnum("content_type", ["course", "download", "paid_content"]).notNull(),
+  contentId: int("content_id"),
+  accessedAt: timestamp("accessed_at").defaultNow().notNull(),
+});
+export type IpAccessLog = typeof ipAccessLogs.$inferSelect;
+
+// ─── Sharing Abuse Flags ──────────────────────────────────────────────────────
+export const sharingAbuseFlags = mysqlTable("sharing_abuse_flags", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  status: mysqlEnum("status", ["flagged", "confirmed", "dismissed", "warned"]).default("flagged").notNull(),
+  distinctIpCount: int("distinct_ip_count").default(0).notNull(),
+  ipAddresses: longtext("ip_addresses"),
+  detectionReason: text("detection_reason"),
+  alertSentAt: timestamp("alert_sent_at"),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: int("reviewed_by"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type SharingAbuseFlag = typeof sharingAbuseFlags.$inferSelect;
+
+// ─── Physical Product Pricing Options ────────────────────────────────────────
+export const physicalProductPricingOptions = mysqlTable("physical_product_pricing_options", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("product_id").notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  sublabel: varchar("sublabel", { length: 500 }),
+  pricingType: mysqlEnum("physical_pricing_type", ["one_time", "free"]).default("one_time").notNull(),
+  price: int("price").default(0).notNull(),
+  compareAtPrice: int("compare_at_price"),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  ctaLabel: varchar("cta_label", { length: 100 }),
+  sortOrder: int("sort_order").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type PhysicalProductPricingOption = typeof physicalProductPricingOptions.$inferSelect;
+
+// ─── Physical Product Orders ──────────────────────────────────────────────────
+export const physicalProductOrders = mysqlTable("physical_product_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  productId: int("product_id").notNull(),
+  pricingOptionId: int("pricing_option_id"),
+  amountPaid: int("amount_paid").default(0).notNull(),
+  currency: varchar("currency", { length: 8 }).default("usd").notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }),
+  shippingName: varchar("shipping_name", { length: 255 }),
+  shippingLine1: varchar("shipping_line1", { length: 255 }),
+  shippingLine2: varchar("shipping_line2", { length: 255 }),
+  shippingCity: varchar("shipping_city", { length: 100 }),
+  shippingState: varchar("shipping_state", { length: 100 }),
+  shippingPostalCode: varchar("shipping_postal_code", { length: 20 }),
+  shippingCountry: varchar("shipping_country", { length: 10 }),
+  fulfillmentStatus: mysqlEnum("physical_fulfillment_status", ["pending", "processing", "shipped", "delivered", "cancelled", "refunded"]).default("pending").notNull(),
+  trackingNumber: varchar("tracking_number", { length: 255 }),
+  trackingCarrier: varchar("tracking_carrier", { length: 100 }),
+  notes: text("notes"),
+  orderedAt: timestamp("ordered_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type PhysicalProductOrder = typeof physicalProductOrders.$inferSelect;
+export type InsertPhysicalProductOrder = typeof physicalProductOrders.$inferInsert;

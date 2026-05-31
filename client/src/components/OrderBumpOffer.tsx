@@ -244,3 +244,5 @@ export function OrderBumpInterstitial({
     />
   );
 }
+
+export default OrderBumpOffer;

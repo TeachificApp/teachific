@@ -86,7 +86,12 @@ import WebsitePage from "./pages/marketing/WebsitePage";
 import EmailCampaignsPage from "./pages/marketing/EmailCampaignsPage";
 import FunnelsPage from "./pages/marketing/FunnelsPage";
 import FunnelBuilderPage from "./pages/marketing/FunnelBuilderPage";
+import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
+import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
+import DownloadLandingPageBuilder from "./pages/admin/DownloadLandingPageBuilder";
+import ProductLandingPageBuilder from "./pages/admin/ProductLandingPageBuilder";
+import EmailCampaignEditor from "./pages/EmailCampaignEditor";
 
 // Sales section
 import OrdersPage from "./pages/sales/OrdersPage";
@@ -268,6 +273,8 @@ function AdminRouter() {
           {/* ── Marketing ── */}
           <Route path="/marketing/website" component={WebsitePage} />
           <Route path="/marketing/email" component={EmailCampaignsPage} />
+          <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
+          <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
           <Route path="/marketing/funnels" component={FunnelsPage} />
           <Route path="/marketing/affiliates" component={AffiliatesPage} />
           {/* Legacy email marketing redirect */}
@@ -327,7 +334,10 @@ function AdminRouter() {
           <Route path="/lms/page-builder/:pageId" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
+          <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
           <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
+          <Route path="/admin/downloads/:productId/landing-builder">{() => <DownloadLandingPageBuilder />}</Route>
+          <Route path="/admin/products/:productId/landing-builder">{() => <ProductLandingPageBuilder />}</Route>
           <Route path="/lms/webinars/:webinarId/page-builder" component={PageBuilderPage} />
           <Route path="/lms/custom-pages" component={CustomPagesPage} />
           <Route path="/lms/settings" component={OrgSettingsPage} />
