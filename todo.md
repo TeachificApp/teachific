@@ -3827,3 +3827,20 @@
 - [x] Add plan gating to QuizzesPage (SCORM/CSV import-export behind fullQuizMaker)
 - [x] Update tierLimits.ts with basicQuizBuilder and fullQuizMaker flags
 - [x] Add LessonCommentSection to CoursePlayerPage after bottom navigation
+
+## Routing Fix: All Routes on teachific.app (Main App)
+- [x] Add instructor-portal route to AdminRouter (main teachific.app)
+- [x] Confirm all quiz routes (/quizzes/new, /quizzes/:id/edit, /quizzes/:id/play) are in AdminRouter
+- [x] Confirm question-bank routes are in AdminRouter
+- [x] SubdomainSchoolRouter: add question-bank, quizzes, lms/instructors routes for org subdomains
+
+## Quiz Builder Improvements
+- [x] Add Rotation tab with shuffle questions / shuffle answers toggles (gated behind fullQuizMaker)
+- [x] Add Scoring tab with immediate feedback / show correct answers toggles (gated behind fullQuizMaker)
+- [x] Add plan upgrade banner when user is on free/starter plan
+- [x] Gate Import (Excel/ZIP) behind fullQuizMaker with upgrade prompt
+- [x] Gate Export XLS behind fullQuizMaker with upgrade prompt
+- [x] Add SCORM export button (gated behind fullQuizMaker)
+- [x] Load existing quiz data when editing (populate all fields from server)
+- [x] Update save handler to call update mutation when editing existing quiz
+- [x] Lock icons on gated buttons to visually indicate plan requirement

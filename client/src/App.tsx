@@ -349,7 +349,8 @@ function AdminRouter() {
           <Route path="/lms/settings" component={OrgSettingsPage} />
           <Route path="/learn/:courseId" component={CoursePlayerPage} />
           <Route path="/learn/:courseId/lesson/:lessonId" component={CoursePlayerPage} />
-
+          {/* ── Instructor Portal ── */}
+          <Route path="/instructor-portal" component={InstructorPortal} />
           {/* 404 */}
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
@@ -410,6 +411,14 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/products/community/:hubId/manage">{() => <DashboardLayout><CommunityManagePage /></DashboardLayout>}</Route>
         <Route path="/products/categories">{() => <DashboardLayout><CategoriesPage /></DashboardLayout>}</Route>
         <Route path="/media-library">{() => <DashboardLayout><MediaLibraryPage /></DashboardLayout>}</Route>
+        <Route path="/question-bank">{() => <DashboardLayout><QuestionBankPage /></DashboardLayout>}</Route>
+        <Route path="/question-bank/import">{() => <DashboardLayout><QuestionBankImportPage /></DashboardLayout>}</Route>
+        <Route path="/quizzes">{() => { window.location.replace("/media-library#quizzes"); return null; }}</Route>
+        <Route path="/quizzes/new">{() => <DashboardLayout><QuizBuilderPage /></DashboardLayout>}</Route>
+        <Route path="/quizzes/:id/edit">{() => <DashboardLayout><QuizBuilderPage /></DashboardLayout>}</Route>
+        <Route path="/quizzes/:id/play" component={QuizPlayerPage} />
+        <Route path="/quizzes/:id/results/:attemptId" component={QuizResultsPage} />
+        <Route path="/lms/instructors">{() => <DashboardLayout><InstructorsPage /></DashboardLayout>}</Route>
         <Route path="/marketing/website">{() => <DashboardLayout><WebsitePage /></DashboardLayout>}</Route>
         <Route path="/marketing/email">{() => <DashboardLayout><EmailCampaignsPage /></DashboardLayout>}</Route>
         <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
