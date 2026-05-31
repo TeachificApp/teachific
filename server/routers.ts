@@ -114,9 +114,6 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { lmsRouter } from "./lmsRouter";
 import { emailCampaignsRouter } from "./emailCampaignsRouter";
-import { funnelsRouter } from "./funnelsRouter";
-import { mediaRouter } from "./mediaRouter";
-import { membershipRouter } from "./membershipRouter";
 import { formsRouter } from "./formsRouter";
 import { customAuthRouter } from "./customAuthRouter";
 import { communityRouter } from "./communityRouter";
@@ -125,26 +122,6 @@ import { authoringRouter } from "./authoringRouter";
 import { quizMakerRouter } from "./quizMakerRouter";
 import { questionBankRouter } from "./questionBankRouter";
 import { teachificPayRouter } from "./teachificPayRouter";
-import {
-  downloadsRouter,
-  pagesRouter,
-  themesRouter,
-  emailMarketingRouter,
-  curriculumRouter,
-  groupsRouter,
-  orderBumpsRouter,
-  dashboardRouter,
-  flashcardsRouter,
-} from "./stubRouters";
-import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
-import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
-import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
-import { formBuilderRouter } from "./formBuilderRouter";
-import { generalFormRouter } from "./generalFormRouter";
-import { mediaRepoRouter } from "./mediaRepoRouter";
-import { funnelRouter } from "./funnelRouter";
-import { downloadsRouter } from "./downloadsRouter";
-import { adminUserRouter } from "./adminUserRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -202,9 +179,6 @@ export const appRouter = router({
   system: systemRouter,
   lms: lmsRouter,
   emailCampaigns: emailCampaignsRouter,
-  funnels: funnelsRouter,
-  media: mediaRouter,
-  membership: membershipRouter,
   customAuth: customAuthRouter,
   forms: formsRouter,
   community: communityRouter,
@@ -213,24 +187,6 @@ export const appRouter = router({
   quizMaker: quizMakerRouter,
   questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
-  lmsCourseBuilder: lmsCourseBuilderRouter,
-  lmsEnrollmentAdmin: lmsEnrollmentAdminRouter,
-  lmsCohortAdmin: lmsCohortAdminRouter,
-  formBuilder: formBuilderRouter,
-  generalForm: generalFormRouter,
-  mediaRepo: mediaRepoRouter,
-  funnel: funnelRouter,
-  downloads: downloadsRouter,
-  adminUser: adminUserRouter,
-  downloads: downloadsRouter,
-  pages: pagesRouter,
-  themes: themesRouter,
-  emailMarketing: emailMarketingRouter,
-  curriculum: curriculumRouter,
-  groups: groupsRouter,
-  orderBumps: orderBumpsRouter,
-  dashboard: dashboardRouter,
-  flashcards: flashcardsRouter,
 
   // ── Embed Token (cookie-free iframe auth) ─────────────────────────────────
   embed: router({
