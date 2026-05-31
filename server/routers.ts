@@ -125,6 +125,17 @@ import { authoringRouter } from "./authoringRouter";
 import { quizMakerRouter } from "./quizMakerRouter";
 import { questionBankRouter } from "./questionBankRouter";
 import { teachificPayRouter } from "./teachificPayRouter";
+import {
+  downloadsRouter,
+  pagesRouter,
+  themesRouter,
+  emailMarketingRouter,
+  curriculumRouter,
+  groupsRouter,
+  orderBumpsRouter,
+  dashboardRouter,
+  flashcardsRouter,
+} from "./stubRouters";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -193,6 +204,15 @@ export const appRouter = router({
   quizMaker: quizMakerRouter,
   questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
+  downloads: downloadsRouter,
+  pages: pagesRouter,
+  themes: themesRouter,
+  emailMarketing: emailMarketingRouter,
+  curriculum: curriculumRouter,
+  groups: groupsRouter,
+  orderBumps: orderBumpsRouter,
+  dashboard: dashboardRouter,
+  flashcards: flashcardsRouter,
 
   // ── Embed Token (cookie-free iframe auth) ─────────────────────────────────
   embed: router({
