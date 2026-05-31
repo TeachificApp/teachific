@@ -1,0 +1,13 @@
+{
+  "query": "SELECT GROUP_CONCAT(TABLE_NAME ORDER BY TABLE_NAME SEPARATOR ',') as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute SELECT GROUP_CONCAT(TABLE_NAME ORDER BY TABLE_NAME SEPARATOR ',') as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();",
+  "rows": [
+    {
+      "tables": "__drizzle_migrations,affiliates,analytics_events,app_versions,assignment_submissions,assignments,authoringProjects,authoringSlides,blockTemplates,brandMemberships,bundles,categories,certificate_templates,certificates,community_dms,community_hubs,community_invites,community_members,community_post_reactions,community_post_replies,community_posts,community_spaces,content_folders,content_packages,content_versions,coupons,course_categories,course_enrollments,course_lessons,course_orders,course_pricing,course_reviews,course_sections,courses,digital_bundle_items,digital_bundle_purchases,digital_bundles,digital_download_events,digital_download_logs,digital_orders,digital_product_files,digital_product_prices,digital_products,digital_purchases,discussion_replies,discussions,emailListSubscribers,emailLists,email_campaign_recipients,email_campaigns,email_templates,email_unsubscribes,file_assets,flashcard_cards,flashcard_decks,form_analytics_events,form_branching_rules,form_docs,form_fields,form_filters,form_integrations,"
+    }
+  ],
+  "messages": [],
+  "stdout": "tables\n__drizzle_migrations,affiliates,analytics_events,app_versions,assignment_submissions,assignments,authoringProjects,authoringSlides,blockTemplates,brandMemberships,bundles,categories,certificate_templates,certificates,community_dms,community_hubs,community_invites,community_members,community_post_reactions,community_post_replies,community_posts,community_spaces,content_folders,content_packages,content_versions,coupons,course_categories,course_enrollments,course_lessons,course_orders,course_pricing,course_reviews,course_sections,courses,digital_bundle_items,digital_bundle_purchases,digital_bundles,digital_download_events,digital_download_logs,digital_orders,digital_product_files,digital_product_prices,digital_products,digital_purchases,discussion_replies,discussions,emailListSubscribers,emailLists,email_campaign_recipients,email_campaigns,email_templates,email_unsubscribes,file_assets,flashcard_cards,flashcard_decks,form_analytics_events,form_branching_rules,form_docs,form_fields,form_filters,form_integrations,\n",
+  "stderr": "",
+  "execution_time_ms": 262
+}
