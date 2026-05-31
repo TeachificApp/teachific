@@ -209,6 +209,21 @@
 - [ ] Ensure embed page itself has no frame-blocking headers
 - [ ] Test embed loads on boutultrasound.com mobile
 
+## Stripe Checkout Integration for Products & Funnels
+- [x] Create embeddedCheckoutRouter.ts for funnel/landing page inline Stripe checkout with PaymentElement
+- [x] Extended funnelPurchases schema with Stripe payment tracking and fulfillment fields
+- [x] Add order bump support to checkout flows (additional products at discounted rates)
+- [x] Add promo code validation and discount application to checkout
+- [ ] Add embedded_checkout content block type to page builder (funnels, landing pages, product pages)
+- [ ] Extend funnel CTA actions to support Stripe checkout (not just external links)
+- [ ] Extend email campaign CTA actions to support Stripe checkout
+- [ ] Add org admin UI to OrgSettingsPage for Stripe Connect onboarding and gateway selection
+- [ ] Add org admin UI to configure own Stripe keys (publishable + secret) for Pro+ plans
+- [ ] Create Stripe webhook handler for embedded checkout fulfillment (courses, downloads, quizzes, memberships)
+- [ ] Integrate quiz/download/product purchase flows with existing Stripe checkout
+- [ ] Test end-to-end: funnel lead capture → CTA with Stripe checkout → fulfillment
+- [ ] Test end-to-end: course/quiz/download purchase with own Stripe gateway
+
 ## Bug Fix: Embed Requires Login (Critical)
 - [ ] Make sessions.start a publicProcedure (no auth required)
 - [ ] Make sessions.end a publicProcedure

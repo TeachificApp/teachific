@@ -3014,10 +3014,49 @@ export type InsertFunnelLead = typeof funnelLeads.$inferInsert;
 export const funnelPurchases = mysqlTable("funnel_purchases", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  leadId: int("lead_id").notNull(),
+  userId: int("user_id"),
+  leadId: int("lead_id"),
+  email: varchar("email", { length: 320 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  phone: varchar("phone", { length: 20 }),
+  // Product details
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  productType: mysqlEnum("product_type", ["course", "download", "quiz", "physical", "membership", "bundle", "other"]).default("other").notNull(),
+  productId: int("product_id"),
+  // Pricing
   amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  status: mysqlEnum("status", ["pending", "completed", "failed"]).default("pending").notNull(),
+  currency: varchar("currency", { length: 10 }).default("USD").notNull(),
+  // Order bumps (JSON array of {title, price})
+  orderBumps: longtext("order_bumps"),
+  // Stripe payment tracking
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeSessionId: varchar("stripe_session_id", { length: 255 }),
+  // Source attribution
+  sourceType: mysqlEnum("source_type", ["funnel", "landing_page", "product_page", "lms_lesson", "email", "other"]).default("other").notNull(),
+  sourceFunnelId: int("source_funnel_id"),
+  sourceFunnelPageId: int("source_funnel_page_id"),
+  sourceLandingPageId: int("source_landing_page_id"),
+  sourceLmsLessonId: int("source_lms_lesson_id"),
+  // Fulfillment
+  fulfillmentCourseId: int("fulfillment_course_id"),
+  fulfillmentDownloadId: int("fulfillment_download_id"),
+  fulfillmentQuizId: int("fulfillment_quiz_id"),
+  fulfillmentMembershipId: int("fulfillment_membership_id"),
+  // Shipping (for physical products)
+  shippingName: varchar("shipping_name", { length: 255 }),
+  shippingLine1: varchar("shipping_line1", { length: 255 }),
+  shippingLine2: varchar("shipping_line2", { length: 255 }),
+  shippingCity: varchar("shipping_city", { length: 100 }),
+  shippingState: varchar("shipping_state", { length: 100 }),
+  shippingPostalCode: varchar("shipping_postal_code", { length: 20 }),
+  shippingCountry: varchar("shipping_country", { length: 10 }),
+  // Promo code
+  promoCode: varchar("promo_code", { length: 100 }),
+  discountApplied: decimal("discount_applied", { precision: 12, scale: 2 }),
+  // Status
+  status: mysqlEnum("status", ["pending", "paid", "completed", "failed", "refunded"]).default("pending").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 export type FunnelPurchase = typeof funnelPurchases.$inferSelect;
 export type InsertFunnelPurchase = typeof funnelPurchases.$inferInsert;

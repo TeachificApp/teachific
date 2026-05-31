@@ -122,6 +122,7 @@ import { authoringRouter } from "./authoringRouter";
 import { quizMakerRouter } from "./quizMakerRouter";
 import { questionBankRouter } from "./questionBankRouter";
 import { teachificPayRouter } from "./teachificPayRouter";
+import { embeddedCheckoutRouter } from "./embeddedCheckoutRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -174,21 +175,24 @@ const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-// ─── App Router ───────────────────────────────────────────────────────────────
+// ─── App Router ────────────────────────────────────────────────────────────
+
 export const appRouter = router({
+  auth: authRouter,
   system: systemRouter,
   lms: lmsRouter,
   emailCampaigns: emailCampaignsRouter,
-  customAuth: customAuthRouter,
   forms: formsRouter,
+  customAuth: customAuthRouter,
   community: communityRouter,
-  billing: stripeRouter,
+  stripe: stripeRouter,
   authoring: authoringRouter,
   quizMaker: quizMakerRouter,
   questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
+  embeddedCheckout: embeddedCheckoutRouter,
 
-  // ── Embed Token (cookie-free iframe auth) ─────────────────────────────────
+  // ─── Embed Token (cookie-free iframe auth) ─────────────────────────────────
   embed: router({
     /**
      * Issue a short-lived embed token for a package.
