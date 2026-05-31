@@ -113,6 +113,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { lmsRouter } from "./lmsRouter";
+import { emailCampaignsRouter } from "./emailCampaignsRouter";
 import { formsRouter } from "./formsRouter";
 import { customAuthRouter } from "./customAuthRouter";
 import { communityRouter } from "./communityRouter";
@@ -177,6 +178,7 @@ const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
 export const appRouter = router({
   system: systemRouter,
   lms: lmsRouter,
+  emailCampaigns: emailCampaignsRouter,
   customAuth: customAuthRouter,
   forms: formsRouter,
   community: communityRouter,
