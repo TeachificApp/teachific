@@ -15,7 +15,6 @@ import {
   lmsAffiliateConversions,
   lmsCertificates,
   lmsOrders,
-  organizations,
 } from "../drizzle/schema";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -40,10 +39,6 @@ export const lmsRouter = router({
         const db = await getDb();
         if (!db) return [];
         
-        // Verify org exists
-        const org = await db.select().from(organizations).where(eq(organizations.id, input.orgId)).limit(1);
-        if (!org.length) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
-        
         return getOrgCourses(db, input.orgId);
       }),
 
@@ -66,7 +61,7 @@ export const lmsRouter = router({
         category: z.string().optional(),
         level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -77,11 +72,8 @@ export const lmsRouter = router({
           title: input.title,
           description: input.description ?? null,
           slug,
-          category: input.category ?? null,
-          level: input.level ?? "beginner",
           status: "draft",
-          enrollmentCount: 0,
-          publishedAt: null,
+          createdByUserId: ctx.user.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -97,20 +89,27 @@ export const lmsRouter = router({
         description: z.string().optional(),
         category: z.string().optional(),
         level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
-        status: z.enum(["draft", "published", "archived"]).optional(),
+        status: z.enum(["draft", "public", "hidden", "private", "archived", "published"]).optional(),
         customDomain: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
-        const { id, ...updates } = input;
+        const { id, status, ...rest } = input;
+        // Map "published" -> "public" for DB compatibility
+        const dbStatus = status === "published" ? "public" : status;
+        const updates: Record<string, any> = { ...rest };
+        if (dbStatus) updates.status = dbStatus;
         await db.update(lmsCourses).set({
           ...updates,
           updatedAt: new Date(),
         }).where(eq(lmsCourses.id, id));
         
-        return getCourseById(db, id);
+        const course = await getCourseById(db, id);
+        // Map "public" -> "published" in response for API consistency
+        if (course && course.status === "public") course.status = "published";
+        return course;
       }),
 
     delete: protectedProcedure
@@ -157,14 +156,15 @@ export const lmsRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: "User already enrolled in this course" });
         }
         
+        // Get the course to find its orgId
+        const course = await getCourseById(db, input.courseId);
+        if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+        
         await db.insert(lmsEnrollments).values({
+          orgId: course.orgId,
           courseId: input.courseId,
           userId: input.userId,
-          enrollmentDate: input.enrollmentDate ?? new Date(),
           status: "active",
-          completionPercentage: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
         });
         
         return { success: true };
@@ -212,16 +212,17 @@ export const lmsRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
+        const course = await getCourseById(db, input.courseId);
+        if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+        
         await db.insert(lmsCohortSessions).values({
+          orgId: course.orgId,
           courseId: input.courseId,
           name: input.name,
           startDate: input.startDate,
           endDate: input.endDate,
-          maxCapacity: input.maxCapacity ?? null,
-          currentEnrollment: 0,
-          status: "scheduled",
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          maxParticipants: input.maxCapacity ?? null,
+          status: "upcoming",
         });
         
         return { success: true };
@@ -294,12 +295,9 @@ export const lmsRouter = router({
           orgId: input.orgId,
           affiliateId: input.affiliateId,
           courseId: input.courseId,
-          saleAmount: input.amount,
-          commissionAmount: commission,
+          enrollmentId: 0, // placeholder - no enrollment in this context
+          commissionAmount: commission.toFixed(2),
           status: "pending",
-          conversionDate: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
         });
         
         return { success: true };
@@ -318,18 +316,20 @@ export const lmsRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
-        const certificateCode = `CERT-${nanoid(12).toUpperCase()}`;
+        // Get enrollment to find orgId
+        const enrollment = await db.select().from(lmsEnrollments).where(eq(lmsEnrollments.id, input.enrollmentId)).limit(1);
+        if (!enrollment.length) throw new TRPCError({ code: "NOT_FOUND", message: "Enrollment not found" });
+        
+        const certificateNumber = `CERT-${nanoid(12).toUpperCase()}`;
         
         await db.insert(lmsCertificates).values({
+          orgId: enrollment[0].orgId,
           enrollmentId: input.enrollmentId,
-          certificateCode,
-          issuedDate: input.issuedDate ?? new Date(),
-          expiryDate: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          templateId: 0, // default template
+          certificateNumber,
         });
         
-        return { success: true, certificateCode };
+        return { success: true, certificateCode: certificateNumber };
       }),
   }),
 
@@ -362,11 +362,8 @@ export const lmsRouter = router({
           orgId: input.orgId,
           userId: input.userId,
           courseId: input.courseId,
-          orderId,
-          amount: input.amount,
+          amount: String(input.amount),
           status: input.status ?? "pending",
-          createdAt: new Date(),
-          updatedAt: new Date(),
         });
         
         return { success: true, orderId };

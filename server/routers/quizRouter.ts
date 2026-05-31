@@ -96,7 +96,7 @@ export const quizRouter = router({
         themeConfig: settings.themeConfig,
         priceAmountCents: settings.priceAmountCents,
         currency: settings.currency,
-        quizStatus: "draft",
+        status: "draft",
       });
       return { id: result.insertId };
     }),
@@ -111,7 +111,7 @@ export const quizRouter = router({
   publishQuiz: protectedProcedure
     .input(z.object({ id: z.number(), publish: z.boolean() }))
     .mutation(async ({ input }) => {
-      await (await db()).update(quizzes).set({ quizStatus: input.publish ? "published" : "draft" }).where(eq(quizzes.id, input.id));
+      await (await db()).update(quizzes).set({ status: input.publish ? "published" : "draft" }).where(eq(quizzes.id, input.id));
     }),
 
   deleteQuiz: protectedProcedure
@@ -132,7 +132,7 @@ export const quizRouter = router({
         ...original,
         id: undefined as any,
         title: `${original.title} (Copy)`,
-        quizStatus: "draft",
+        status: "draft",
         createdAt: undefined as any,
         updatedAt: undefined as any,
       });
@@ -201,7 +201,7 @@ export const quizRouter = router({
           .where(and(
             eq(quizAttempts.quizId, input.quizId),
             eq(quizAttempts.userId, ctx.user.id),
-            eq(quizAttempts.attemptStatus, "completed"),
+            eq(quizAttempts.status, "completed"),
           ));
         if (count >= quiz.maxAttempts) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Maximum attempts reached" });
@@ -219,7 +219,7 @@ export const quizRouter = router({
         quizId: input.quizId,
         userId: ctx.user.id,
         attemptNumber: (attemptNumber ?? 0) + 1,
-        attemptStatus: "in_progress",
+        status: "in_progress",
         questionSnapshot,
         totalPoints: questionSnapshot.reduce((sum: number, q: any) => sum + (q.points ?? 1), 0),
         sourceType: input.sourceType,
@@ -245,7 +245,7 @@ export const quizRouter = router({
     .mutation(async ({ input, ctx }) => {
       const [attempt] = await (await db()).select().from(quizAttempts).where(eq(quizAttempts.id, input.attemptId));
       if (!attempt || attempt.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      if (attempt.attemptStatus !== "in_progress") throw new TRPCError({ code: "BAD_REQUEST", message: "Attempt is not in progress" });
+      if (attempt.status !== "in_progress") throw new TRPCError({ code: "BAD_REQUEST", message: "Attempt is not in progress" });
 
       // Get question and choices to grade
       const choices = await (await db()).select().from(quizAnswerChoices)
@@ -326,7 +326,7 @@ export const quizRouter = router({
       const passed = scorePercent >= (quiz.passScorePercent ?? 70);
 
       await (await db()).update(quizAttempts).set({
-        attemptStatus: "completed",
+        status: "completed",
         earnedPoints,
         scorePercent: scorePercent.toString(),
         passed,
@@ -382,7 +382,7 @@ export const quizRouter = router({
     .input(z.object({ quizId: z.number() }))
     .query(async ({ input }) => {
       const attempts = await (await db()).select().from(quizAttempts)
-        .where(and(eq(quizAttempts.quizId, input.quizId), eq(quizAttempts.attemptStatus, "completed")));
+        .where(and(eq(quizAttempts.quizId, input.quizId), eq(quizAttempts.status, "completed")));
 
       const totalAttempts = attempts.length;
       if (totalAttempts === 0) return { totalAttempts: 0, avgScore: 0, passRate: 0, avgTimeSeconds: 0 };

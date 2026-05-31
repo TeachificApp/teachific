@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { toast } from "sonner";
 import {
   FolderOpen, FolderPlus, Plus, Search, Trash2, Edit2, ChevronRight,
   ChevronDown, FileText, Copy, MoveRight, MoreHorizontal, Library,
-  Filter, Tag,
+  Filter, Tag, Upload,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -48,6 +49,7 @@ const FOLDER_COLORS = [
 ];
 
 export default function QuestionBankPage() {
+  const [, setLocation] = useLocation();
   const { orgId, ready } = useOrgScope();
   const [selectedFolderId, setSelectedFolderId] = useState<number | null | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -151,6 +153,9 @@ export default function QuestionBankPage() {
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setShowCreateFolder(true)}>
             <FolderPlus className="h-4 w-4 mr-1" /> New Folder
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/question-bank/import")}>
+            <Upload className="h-4 w-4 mr-1" /> Import
           </Button>
           <Button size="sm" onClick={() => setShowCreateQuestion(true)}>
             <Plus className="h-4 w-4 mr-1" /> New Question

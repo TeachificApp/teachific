@@ -16,6 +16,7 @@ import FilesPage from "./pages/FilesPage";
 import UploadPage from "./pages/UploadPage";
 import MediaLibraryPage from "./pages/MediaLibraryPage";
 import QuestionBankPage from "./pages/QuestionBankPage";
+import QuestionBankImportPage from "./pages/QuestionBankImportPage";
 import OrgAnalyticsPage from "./pages/analytics/OrgAnalyticsPage";
 import FileDetailPage from "./pages/FileDetailPage";
 import PlayerPage from "./pages/PlayerPage";
@@ -268,6 +269,7 @@ function AdminRouter() {
           <Route path="/products/categories" component={CategoriesPage} />
           <Route path="/media-library" component={MediaLibraryPage} />
           <Route path="/question-bank" component={QuestionBankPage} />
+          <Route path="/question-bank/import" component={QuestionBankImportPage} />
           <Route path="/record">{() => { window.location.replace("/media-library#record-edit"); return null; }}</Route>
 
           {/* ── Marketing ── */}

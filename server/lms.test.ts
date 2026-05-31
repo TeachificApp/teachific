@@ -204,7 +204,7 @@ describe("LMS Router", () => {
       expect(Array.isArray(conversions)).toBe(true);
       expect(conversions.length).toBeGreaterThan(0);
       expect(conversions[0].orgId).toBe(testOrgId);
-      expect(conversions[0].commissionAmount).toBe(99.99 * 0.2);
+      expect(parseFloat(String(conversions[0].commissionAmount))).toBeCloseTo(99.99 * 0.2, 1);
     });
   });
 

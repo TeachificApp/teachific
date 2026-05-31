@@ -193,6 +193,47 @@ export const questionBankRouter = router({
       return { success: true };
     }),
 
+  // ── Bulk Import (from CSV/SCORM parse) ────────────────────────────────────
+  bulkImport: protectedProcedure
+    .input(z.object({
+      orgId: z.number(),
+      folderId: z.number().nullable().optional(),
+      questions: z.array(z.object({
+        questionType: z.string(),
+        stem: z.string(),
+        dataJson: z.string(),
+        points: z.number().optional(),
+        difficulty: z.enum(["easy","medium","hard"]).optional(),
+        explanation: z.string().optional(),
+        tags: z.string().optional(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      let imported = 0;
+      const errors: string[] = [];
+      for (const q of input.questions) {
+        try {
+          await createQuestion({
+            orgId: input.orgId,
+            folderId: input.folderId ?? null,
+            questionType: q.questionType as any,
+            stem: q.stem,
+            dataJson: q.dataJson,
+            points: q.points ?? 1,
+            difficulty: (q.difficulty ?? "medium") as any,
+            tags: q.tags ?? null,
+            explanation: q.explanation ?? null,
+            createdBy: ctx.user.id,
+          });
+          imported++;
+        } catch (err: any) {
+          errors.push(err.message ?? "Unknown error");
+        }
+      }
+      return { imported, skipped: errors.length, errors };
+    }),
+
   // Import questions from bank into a quiz (returns question data for the quiz creator to use)
   exportForQuiz: protectedProcedure
     .input(z.object({

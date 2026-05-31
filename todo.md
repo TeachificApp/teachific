@@ -3698,3 +3698,15 @@
 - [ ] Quiz completion triggers course progress update and certificate eligibility check
 - [ ] Quiz purchase flow: quiz can be sold standalone via Stripe checkout
 
+
+## SCORM & CSV Import to Question Bank (New Feature)
+- [x] Add bulkImport procedure to questionBankRouter (accepts parsed questions array)
+- [x] Add CSV import preview endpoint to quizImportRoutes (/api/quiz/bank-import/preview)
+- [x] Add SCORM QTI XML import preview endpoint to quizImportRoutes (/api/quiz/bank-import/scorm-preview)
+- [x] Add CSV template download endpoint (/api/quiz/bank-import/csv-template)
+- [x] Build QuestionBankImportPage with CSV and SCORM import flows
+- [x] Add Import button to QuestionBankPage header linking to /question-bank/import
+- [x] Register /question-bank/import route in App.tsx
+- [x] Add visibility column to quizzes table in schema and DB
+- [x] Fix lmsRouter field name mismatches (createdByUserId, orgId, etc.)
+- [x] All 177 tests passing

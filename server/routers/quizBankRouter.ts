@@ -290,10 +290,10 @@ export const quizBankRouter = router({
         orgId: input.orgId,
         bankId: input.bankId,
         importedById: ctx.user.id,
-        importSource: input.source,
+        source: input.source,
         filename: input.filename,
         fileUrl: input.fileUrl,
-        importStatus: "pending",
+        status: "pending",
       });
       return { id: result.insertId };
     }),
@@ -323,7 +323,7 @@ export const quizBankRouter = router({
     }))
     .mutation(async ({ input }) => {
       // Mark as parsing
-      await (await db()).update(quizImportJobs).set({ importStatus: "parsing" }).where(eq(quizImportJobs.id, input.jobId));
+      await (await db()).update(quizImportJobs).set({ status: "parsing" }).where(eq(quizImportJobs.id, input.jobId));
 
       try {
         let parsedQuestions: any[] = [];
@@ -341,14 +341,14 @@ export const quizBankRouter = router({
         }
 
         await (await db()).update(quizImportJobs).set({
-          importStatus: "preview_ready",
+          status: "preview_ready",
           parsedQuestions: parsedQuestions,
         }).where(eq(quizImportJobs.id, input.jobId));
 
         return { count: parsedQuestions.length, questions: parsedQuestions.slice(0, 5) };
       } catch (err: any) {
         await (await db()).update(quizImportJobs).set({
-          importStatus: "failed",
+          status: "failed",
           errorLog: [{ message: err.message }],
         }).where(eq(quizImportJobs.id, input.jobId));
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
@@ -366,7 +366,7 @@ export const quizBankRouter = router({
       const [job] = await (await db()).select().from(quizImportJobs).where(eq(quizImportJobs.id, input.jobId));
       if (!job || !job.parsedQuestions) throw new TRPCError({ code: "NOT_FOUND" });
 
-      await (await db()).update(quizImportJobs).set({ importStatus: "importing", bankId: input.bankId }).where(eq(quizImportJobs.id, input.jobId));
+      await (await db()).update(quizImportJobs).set({ status: "importing", bankId: input.bankId }).where(eq(quizImportJobs.id, input.jobId));
 
       const allQuestions = job.parsedQuestions as any[];
       const toImport = input.selectedIndices
@@ -390,7 +390,7 @@ export const quizBankRouter = router({
             points: q.points ?? 1,
             difficulty: q.difficulty ?? "medium",
             explanationText: q.explanationText,
-            importSource: job.importSource,
+            importSource: job.source,
             importJobId: input.jobId,
           });
 
@@ -417,7 +417,7 @@ export const quizBankRouter = router({
       await (await db()).update(quizBanks).set({ questionCount: sql`question_count + ${importedCount}` }).where(eq(quizBanks.id, input.bankId));
 
       await (await db()).update(quizImportJobs).set({
-        importStatus: "completed",
+        status: "completed",
         importedCount,
         skippedCount,
         errorLog: errors.length > 0 ? errors : null,

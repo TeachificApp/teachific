@@ -3627,6 +3627,7 @@ export const quizzes = mysqlTable("quizzes", {
   allowPartialCredit: boolean("allow_partial_credit").default(true).notNull(),
   penaltyForWrong: boolean("penalty_for_wrong").default(false).notNull(),
   status: mysqlEnum("quiz_status", ["draft","published","archived"]).default("draft").notNull(),
+  visibility: mysqlEnum("visibility", ["public","private","org_only"]).default("private").notNull(),
   themeConfig: json("theme_config"),
   priceAmountCents: int("price_amount_cents").default(0),
   currency: varchar("currency", { length: 8 }).default("usd"),
