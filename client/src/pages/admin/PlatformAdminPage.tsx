@@ -505,7 +505,7 @@ function SettingsTab() {
         <Button
           onClick={() => update.mutate(form)}
           disabled={update.isPending || Object.keys(form).length === 0}
-          className="bg-teal-600 hover:bg-gray-500 text-slate-900"
+          className=""
         >
           {update.isPending ? "Saving..." : "Save Settings"}
         </Button>
@@ -615,7 +615,7 @@ function OrgsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-700">{orgs.length} organizations</p>
-        <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700" onClick={() => setCreateOrgOpen(true)}>
+        <Button size="sm" className="gap-1.5 hover:" onClick={() => setCreateOrgOpen(true)}>
           <Plus className="w-3.5 h-3.5" /> New Organization
         </Button>
       </div>
@@ -835,7 +835,7 @@ function OrgsTab() {
                   </Select>
                   <Button
                     size="sm"
-                    className="h-8 text-xs bg-teal-600 hover:bg-teal-700 shrink-0"
+                    className="h-8 text-xs shrink-0"
                     disabled={setOrgPlan.isPending}
                     onClick={async () => {
                       if (!editOrg) return;
@@ -893,7 +893,7 @@ function OrgsTab() {
                   </Select>
                   <Button
                     size="sm"
-                    className="h-8 text-xs bg-teal-600 hover:bg-teal-700 shrink-0"
+                    className="h-8 text-xs shrink-0"
                     disabled={addUserToOrgByEmail.isPending || !addMemberEmail.trim()}
                     onClick={() => {
                       if (!editOrg || !addMemberEmail.trim()) return;
@@ -992,7 +992,7 @@ function OrgsTab() {
                 }
               }}
               disabled={updateOrg.isPending || setOrgPlan.isPending}
-              className="bg-teal-600 hover:bg-gray-500 text-slate-900"
+              className=""
             >
               {(updateOrg.isPending || setOrgPlan.isPending) ? "Saving..." : "Save Changes"}
             </Button>
@@ -1042,7 +1042,7 @@ function OrgsTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOrgOpen(false)} className="text-slate-700">Cancel</Button>
-            <Button onClick={() => createOrgWithAdmin.mutate(createOrgForm)} disabled={createOrgWithAdmin.isPending || !createOrgForm.orgName || !createOrgForm.orgSlug || !createOrgForm.adminName || !createOrgForm.adminEmail} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={() => createOrgWithAdmin.mutate(createOrgForm)} disabled={createOrgWithAdmin.isPending || !createOrgForm.orgName || !createOrgForm.orgSlug || !createOrgForm.adminName || !createOrgForm.adminEmail} className=" hover:">
               {createOrgWithAdmin.isPending ? "Creating..." : "Create Organization"}
             </Button>
           </DialogFooter>
@@ -1102,7 +1102,7 @@ function OrgsTab() {
                             className="w-20 h-7 text-xs"
                             autoFocus
                           />
-                          <Button size="icon" className="h-7 w-7 bg-teal-600 hover:bg-teal-700" onClick={() => {
+                          <Button size="icon" className="h-7 w-7 hover:" onClick={() => {
                             if (!editOrg) return;
                             upsertOrgLimit.mutate({ orgId: editOrg.id, featureKey: key, limitValue: parseInt(editingLimit.value) || 0 });
                             setEditingLimit(null);
@@ -1198,7 +1198,7 @@ function OrgLimitsInlinePanel({
                   }}
                   autoFocus
                 />
-                <Button size="icon" className="h-7 w-7 bg-teal-600 hover:bg-teal-700" onClick={() => {
+                <Button size="icon" className="h-7 w-7 hover:" onClick={() => {
                   upsertOrgLimit.mutate({ orgId, featureKey: row.featureKey, limitValue: parseInt(editingLimit.value) || 0 });
                   setEditingLimit(null);
                 }}><Check className="w-3 h-3" /></Button>
@@ -1401,7 +1401,7 @@ function UsersTab() {
             <Button
               onClick={() => editUser && updateUser.mutate({ userId: editUser.id, ...editForm })}
               disabled={updateUser.isPending}
-              className="bg-teal-600 hover:bg-gray-500 text-slate-900"
+              className=""
             >
               Save
             </Button>
@@ -1457,7 +1457,7 @@ function UsersTab() {
                 bulkAdd.mutate({ orgId: bulkOrgId, users: parseBulkUsers() });
               }}
               disabled={bulkAdd.isPending || parseBulkUsers().length === 0 || !bulkOrgId}
-              className="bg-teal-600 hover:bg-gray-500 text-slate-900"
+              className=""
             >
               {bulkAdd.isPending ? "Importing..." : `Import ${parseBulkUsers().length} Users`}
             </Button>
@@ -1597,7 +1597,7 @@ function PageCreatorTab() {
           <SelectTrigger className="w-64 bg-white border-gray-300 text-slate-900"><SelectValue placeholder="Select organization..."/></SelectTrigger>
           <SelectContent className="bg-white border-gray-200">{orgs.map(o=><SelectItem key={o.id} value={o.id.toString()} className="text-slate-900 focus:bg-gray-100">{o.name}</SelectItem>)}</SelectContent>
         </Select>
-        {selectedOrgId && <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700 ml-auto" onClick={()=>setCreateOpen(true)}><Plus className="w-3.5 h-3.5"/> New Page</Button>}
+        {selectedOrgId && <Button size="sm" className="gap-1.5 hover: ml-auto" onClick={()=>setCreateOpen(true)}><Plus className="w-3.5 h-3.5"/> New Page</Button>}
       </div>
       {!selectedOrgId ? (
         <Card className="bg-gray-50 border-gray-200"><CardContent className="py-12 text-center"><Layout className="w-8 h-8 text-slate-500 mx-auto mb-3"/><p className="text-slate-700">Select an organization to manage its pages</p></CardContent></Card>
@@ -1639,7 +1639,7 @@ function PageCreatorTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={()=>setCreateOpen(false)} className="border-gray-300 text-slate-800">Cancel</Button>
-            <Button onClick={()=>selectedOrgId&&createPage.mutate({orgId:selectedOrgId,title:newPage.title,slug:newPage.slug})} disabled={createPage.isPending||!newPage.title||!newPage.slug} className="bg-teal-600 hover:bg-teal-700">{createPage.isPending?"Creating...":"Create Page"}</Button>
+            <Button onClick={()=>selectedOrgId&&createPage.mutate({orgId:selectedOrgId,title:newPage.title,slug:newPage.slug})} disabled={createPage.isPending||!newPage.title||!newPage.slug} className=" hover:">{createPage.isPending?"Creating...":"Create Page"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2164,7 +2164,7 @@ function BrandingTab() {
         </CardContent>
       </Card>
       <div className="flex justify-end">
-        <Button onClick={() => updateBranding.mutate(form)} disabled={updateBranding.isPending || Object.keys(form).length === 0} className="bg-teal-600 hover:bg-teal-700">
+        <Button onClick={() => updateBranding.mutate(form)} disabled={updateBranding.isPending || Object.keys(form).length === 0} className=" hover:">
           {updateBranding.isPending ? "Saving..." : "Save Branding"}
         </Button>
       </div>
@@ -2247,7 +2247,7 @@ function PlatformFormsTab() {
                     className="pl-8 bg-gray-50 border-gray-300 text-slate-900 w-56"
                   />
                 </div>
-                <Button size="sm" className="gap-1.5 bg-teal-600 hover:bg-teal-700 ml-auto" onClick={() => setCreateFormOpen(true)}>
+                <Button size="sm" className="gap-1.5 hover: ml-auto" onClick={() => setCreateFormOpen(true)}>
                   <Plus className="w-3.5 h-3.5" /> New Form
                 </Button>
               </>
@@ -2332,7 +2332,7 @@ function PlatformFormsTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateFormOpen(false)} className="text-slate-700">Cancel</Button>
-            <Button onClick={() => selectedOrgId && createForm.mutate({ orgId: selectedOrgId, title: newFormTitle })} disabled={createForm.isPending || !newFormTitle.trim() || !selectedOrgId} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={() => selectedOrgId && createForm.mutate({ orgId: selectedOrgId, title: newFormTitle })} disabled={createForm.isPending || !newFormTitle.trim() || !selectedOrgId} className=" hover:">
               {createForm.isPending ? "Creating..." : "Create Form"}
             </Button>
           </DialogFooter>
@@ -2416,7 +2416,7 @@ function SubscriptionPlansTab() {
                             autoFocus
                             onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(null); }}
                           />
-                          <Button size="icon" className="h-7 w-7 bg-teal-600 hover:bg-teal-700" onClick={handleSave} disabled={upsert.isPending}>
+                          <Button size="icon" className="h-7 w-7 hover:" onClick={handleSave} disabled={upsert.isPending}>
                             <CheckCircle className="w-3.5 h-3.5" />
                           </Button>
                         </div>
@@ -3578,7 +3578,7 @@ function AppVersionsTab() {
           <h2 className="text-lg font-semibold text-slate-900">Desktop App Versions</h2>
           <p className="text-sm text-slate-600 mt-0.5">Manage installer download URLs for Windows (.exe) and macOS (.dmg) builds.</p>
         </div>
-        <Button onClick={openNew} className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5">
+        <Button onClick={openNew} className=" hover: gap-1.5">
           <Plus className="w-4 h-4" /> Add Version
         </Button>
       </div>

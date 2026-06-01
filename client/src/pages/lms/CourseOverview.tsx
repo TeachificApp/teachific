@@ -138,7 +138,7 @@ export default function CourseOverview() {
         <div className="text-center">
           <Lock className="w-12 h-12 mx-auto mb-3 text-teal-500" />
           <p className="text-lg font-medium text-gray-800">You are not enrolled in this course</p>
-          <Button className="mt-4 bg-teal-600 hover:bg-teal-700 text-white" onClick={() => navigate(`/courses/${slug}`)}>
+          <Button className="mt-4 hover:" onClick={() => navigate(`/courses/${slug}`)}>
             View Course Details
           </Button>
         </div>
@@ -1039,7 +1039,7 @@ function CohortSessionCard({ session, isUpcoming }: { session: any; isUpcoming: 
             </div>
             <div className="flex gap-2 mt-3 flex-wrap">
               {isUpcoming && session.meetingUrl && (
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-7 text-xs gap-1.5" asChild>
+                <Button size="sm" className=" hover: h-7 text-xs gap-1.5" asChild>
                   <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="w-3 h-3" /> Join Live Session
                   </a>

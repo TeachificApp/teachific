@@ -322,7 +322,7 @@ export default function OrderBumpsAdmin() {
           <h3 className="text-lg font-semibold text-gray-800">Order Bumps</h3>
           <p className="text-xs text-gray-500">Show upsell offers before or after checkout to increase average order value.</p>
         </div>
-        <Button size="sm" onClick={() => setIsCreating(true)} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button size="sm" onClick={() => setIsCreating(true)} className=" hover:">
           <Plus size={14} className="mr-1" /> New Order Bump
         </Button>
       </div>
@@ -705,7 +705,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
       {/* Save */}
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className=" hover:">
           {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : isNew ? "Create Order Bump" : "Save Changes"}
         </Button>
       </div>

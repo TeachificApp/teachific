@@ -3736,3 +3736,10 @@
 - [x] Fix course editor "Course not found": assertAdmin in lmsHelpers.ts now allows site_owner, site_admin, org_super_admin, org_admin roles (was only 'admin')
 - [x] Fix Digital Downloads analytics tab error: add productAnalytics.getProductPurchasers stub router to routers.ts
 - [x] Fix LMSSalesTab.tsx TypeScript errors: price string comparisons, status 'paid' -> 'completed', stripeSubscriptionId cast
+
+## Bug Fixes: Section Insert & Button Colors (June 2026)
+- [x] Fix lms_sections orgId NOT NULL error: ALTER TABLE lms_sections MODIFY COLUMN orgId INT NULL DEFAULT NULL
+- [x] Fix lms_lessons orgId NOT NULL error: ALTER TABLE lms_lessons MODIFY COLUMN orgId INT NULL DEFAULT NULL
+- [x] Update schema.ts: make orgId nullable in lmsSections and lmsLessons
+- [x] Fix button colors: remove hardcoded bg-teal-*/bg-purple-* from 28+ files, use default variant
+- [x] Fix PlatformAdminPage.tsx: remove hardcoded bg-teal-600 from Save Settings and other action buttons

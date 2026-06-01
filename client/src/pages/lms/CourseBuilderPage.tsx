@@ -228,11 +228,11 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
           {reorderMode && <span className="text-xs text-teal-600 font-medium">Drag rows to set library display order</span>}
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant={reorderMode ? "default" : "outline"} className={reorderMode ? "h-8 bg-teal-600 hover:bg-teal-700 text-white" : "h-8"} onClick={() => setReorderMode(r => !r)}>
+          <Button size="sm" variant={reorderMode ? "default" : "outline"} className={reorderMode ? "h-8 hover:" : "h-8"} onClick={() => setReorderMode(r => !r)}>
             <GripVertical className="w-3 h-3 mr-1" /> {reorderMode ? "Done Reordering" : "Reorder"}
           </Button>
           {!reorderMode && (
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" className=" hover: h-8" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4 mr-1" /> New {typeLabel}
             </Button>
           )}
@@ -375,10 +375,10 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
         <DialogHeader>
           <DialogTitle>Create New {productLabel}</DialogTitle>
           <div className="flex gap-2 mt-3">
-            <Button size="sm" variant={mode === "manual" ? "default" : "outline"} onClick={() => setMode("manual")} className={mode === "manual" ? "bg-teal-600 hover:bg-teal-700 text-white" : ""}>
+            <Button size="sm" variant={mode === "manual" ? "default" : "outline"} onClick={() => setMode("manual")} className={mode === "manual" ? " hover:" : ""}>
               Manual
             </Button>
-            <Button size="sm" variant={mode === "ai" ? "default" : "outline"} onClick={() => setMode("ai")} className={mode === "ai" ? "bg-teal-600 hover:bg-teal-700 text-white" : ""}>
+            <Button size="sm" variant={mode === "ai" ? "default" : "outline"} onClick={() => setMode("ai")} className={mode === "ai" ? " hover:" : ""}>
               <Sparkles className="w-4 h-4 mr-1" /> AI Generate
             </Button>
           </div>
@@ -2548,11 +2548,11 @@ function CourseOverviewEditor({
             {previewMode ? "Edit" : "Preview"}
           </Button>
           {!previewMode && (
-            <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
+            <Button size="sm" className=" hover: text-xs h-7" onClick={() => setAddMenuOpen(true)}>
               <Plus className="w-3 h-3 mr-1" /> Add Block
             </Button>
           )}
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-7 font-semibold" onClick={handleSave} disabled={saving}>
+          <Button size="sm" className=" hover: text-xs h-7 font-semibold" onClick={handleSave} disabled={saving}>
             <Save className="w-3 h-3 mr-1" />{saving ? "Saving..." : "Save"}
           </Button>
         </div>
@@ -2964,7 +2964,7 @@ function CourseInstructorsEditor({ courseId, courseInstructors, onSaved }: { cou
             <Plus className="w-4 h-4 mr-1" /> Create New Profile
           </Button>
         )}
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={setCourseInstructors.isPending} onClick={() => setCourseInstructors.mutate({ courseId, instructors: assignments })}>
+        <Button size="sm" className=" hover:" disabled={setCourseInstructors.isPending} onClick={() => setCourseInstructors.mutate({ courseId, instructors: assignments })}>
           {setCourseInstructors.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
@@ -3127,7 +3127,7 @@ function SectionDripDialog({ section, onClose, onSave }: { section: any; onClose
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={saving} onClick={handleSave}>
+          <Button className=" hover:" disabled={saving} onClick={handleSave}>
             Save Drip
           </Button>
         </DialogFooter>
@@ -3160,7 +3160,7 @@ function SaveSectionTemplateDialog({ section, onClose }: { section: { id: number
         </div>
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!name.trim() || save.isPending}
+          <Button className=" hover:" disabled={!name.trim() || save.isPending}
             onClick={() => save.mutate({ sectionId: section.id, name: name.trim(), description: description.trim() || undefined })}>
             {save.isPending ? "Saving…" : "Save Template"}
           </Button>
@@ -3319,7 +3319,7 @@ function AddSectionDialog({ open, courseId, onClose, onCreated }: { open: boolea
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!canSubmit || isPending} onClick={handleSubmit}>
+          <Button className=" hover:" disabled={!canSubmit || isPending} onClick={handleSubmit}>
             {isPending ? "Adding…" : "Add Section"}
           </Button>
         </DialogFooter>
@@ -3571,7 +3571,7 @@ function CopyLessonDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => onCopy(selectedCourseId, selectedSectionId)}>
+          <Button className=" hover:" onClick={() => onCopy(selectedCourseId, selectedSectionId)}>
             <Copy className="w-4 h-4 mr-2" /> Copy Lesson
           </Button>
         </DialogFooter>
@@ -3625,7 +3625,7 @@ function CopyModuleDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => onCopy(selectedCourseId)}>
+          <Button className=" hover:" onClick={() => onCopy(selectedCourseId)}>
             <Copy className="w-4 h-4 mr-2" /> Copy Module
           </Button>
         </DialogFooter>
@@ -4169,7 +4169,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <div className="flex gap-2 justify-end pt-2">
             <Button variant="outline" size="sm" onClick={() => setShowDiscardDialog(false)}>Keep Editing</Button>
             <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50" onClick={() => { setShowDiscardDialog(false); setIsDirty(false); onClose(); }}>Discard &amp; Close</Button>
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => { setShowDiscardDialog(false); handleHeaderSave(true); }}>Save &amp; Close</Button>
+            <Button size="sm" className=" hover:" onClick={() => { setShowDiscardDialog(false); handleHeaderSave(true); }}>Save &amp; Close</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -4468,7 +4468,7 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => setAddingQuestion(false)}>Cancel</Button>
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!newQ.question.trim() || !newQ.correctAnswer.trim() || addQuestion.isPending}
+            <Button size="sm" className=" hover:" disabled={!newQ.question.trim() || !newQ.correctAnswer.trim() || addQuestion.isPending}
               onClick={() => addQuestion.mutate({
                 quizId: quiz.id, question: newQ.question.trim(), type: newQ.type,
                 options: newQ.type === "mcq" ? newQ.options.filter(o => o.trim()) : undefined,
@@ -4644,7 +4644,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setAddingQuestion(false)}>Cancel</Button>
-                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!newQ.question.trim() || !newQ.correctAnswer.trim() || addQuestion.isPending}
+                  <Button size="sm" className=" hover:" disabled={!newQ.question.trim() || !newQ.correctAnswer.trim() || addQuestion.isPending}
                     onClick={() => addQuestion.mutate({
                       quizId: quiz.id, question: newQ.question.trim(), type: newQ.type,
                       options: newQ.type === "mcq" ? newQ.options.filter(o => o.trim()) : undefined,
@@ -4987,7 +4987,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
                 <p className="text-xs text-gray-500 truncate">{selectedStudent.email}</p>
               </div>
               <button onClick={() => { setSelectedStudent(null); setSearchQuery(""); }} className="text-gray-400 hover:text-gray-700"><X className="w-3.5 h-3.5" /></button>
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-7 text-xs" disabled={moveStudent.isPending}
+              <Button size="sm" className=" hover: h-7 text-xs" disabled={moveStudent.isPending}
                 onClick={() => moveStudent.mutate({ groupId: group.id, userId: selectedStudent.userId })}>
                 {moveStudent.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Move into Group"}
               </Button>
@@ -4997,7 +4997,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
       ) : (
         <div className="flex gap-2">
           <Input placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="h-8 text-sm flex-1" type="email" />
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" disabled={assignSeat.isPending || !newEmail.trim()}
+          <Button size="sm" className=" hover: h-8" disabled={assignSeat.isPending || !newEmail.trim()}
             onClick={() => assignSeat.mutate({ groupId: group.id, email: newEmail })}>
             {assignSeat.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send Invite"}
           </Button>
@@ -5032,7 +5032,7 @@ function GroupsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className=" hover: h-8" onClick={() => setCreateOpen(true)}>
           <Plus className="w-4 h-4 mr-1" /> New Team
         </Button>
       </div>
@@ -5191,7 +5191,7 @@ function AddCourseToTeamInline({ groupId, onAdded }: { groupId: number; onAdded:
         </SelectContent>
       </Select>
       <Input value={seats} onChange={e => setSeats(e.target.value)} type="number" min="1" className="h-8 text-xs w-20 bg-white" placeholder="Seats" />
-      <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8 text-xs" disabled={!courseId || addCourse.isPending}
+      <Button size="sm" className=" hover: h-8 text-xs" disabled={!courseId || addCourse.isPending}
         onClick={() => addCourse.mutate({ groupId, courseId: parseInt(courseId), seats: parseInt(seats) || 1 })}>
         {addCourse.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Add"}
       </Button>
@@ -5347,7 +5347,7 @@ function InstructorsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className=" hover: h-8" onClick={() => setCreateOpen(true)}>
           <Plus className="w-4 h-4 mr-1" /> New Instructor
         </Button>
       </div>
@@ -5431,7 +5431,7 @@ function InstructorFormDialog({ title, instructor, onClose, onSave, saving }: { 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!name.trim() || saving}
+          <Button className=" hover:" disabled={!name.trim() || saving}
             onClick={() => onSave({ name: name.trim(), title: instrTitle.trim() || undefined, bio: bio || undefined, avatarUrl: avatarUrl.trim() || undefined, website: website.trim() || undefined, isActive })}>
             {saving ? "Saving..." : "Save"}
           </Button>
@@ -5558,7 +5558,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!destUrl.trim() || create.isPending}
+            <Button className=" hover:" disabled={!destUrl.trim() || create.isPending}
               onClick={() => create.mutate({ affiliateId, destinationUrl: destUrl.trim(), slug: slug.trim() || undefined, courseId: courseId ? parseInt(courseId) : undefined })}>
               {create.isPending ? "Creating..." : "Create"}
             </Button>
@@ -5640,7 +5640,7 @@ function PayoutRequestsPanel() {
                 )}
                 {r.status === "approved" && (
                   <div className="pt-1 border-t border-gray-100">
-                    <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white" onClick={() => review.mutate({ id: r.id, decision: "paid" })}>
+                    <Button size="sm" className="h-7 text-xs hover:" onClick={() => review.mutate({ id: r.id, decision: "paid" })}>
                       Mark as Paid
                     </Button>
                   </div>
@@ -5693,7 +5693,7 @@ function InstructorRevenueSharePanel() {
                         <div className="flex items-center gap-1">
                           <Input type="number" min="0" max="100" value={editing.pct} onChange={e => setEditing(v => v ? { ...v, pct: e.target.value } : v)} className="w-16 h-6 text-xs" />
                           <span className="text-gray-500">%</span>
-                          <Button size="sm" className="h-6 text-xs bg-teal-600 hover:bg-teal-700 text-white" onClick={() => { setShare.mutate({ instructorId: instr.userId, courseId: cs.courseId, revenueSharePct: parseInt(editing.pct) || 0 }); setEditing(null); }}>Save</Button>
+                          <Button size="sm" className="h-6 text-xs hover:" onClick={() => { setShare.mutate({ instructorId: instr.userId, courseId: cs.courseId, revenueSharePct: parseInt(editing.pct) || 0 }); setEditing(null); }}>Save</Button>
                           <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditing(null)}>Cancel</Button>
                         </div>
                       ) : (
@@ -5751,7 +5751,7 @@ function AffiliatesTab() {
       {subTab === "affiliates" && (
         <>
           <div className="flex justify-end">
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" className=" hover: h-8" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4 mr-1" /> New Affiliate
             </Button>
           </div>
@@ -5810,7 +5810,7 @@ function AffiliatesTab() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!name.trim() || create.isPending}
+                <Button className=" hover:" disabled={!name.trim() || create.isPending}
                   onClick={() => create.mutate({ name: name.trim(), email: email.trim() || undefined, commissionPct: parseInt(commission) || 10 })}>
                   {create.isPending ? "Creating..." : "Create"}
                 </Button>
@@ -6037,7 +6037,7 @@ function EnrollmentExportTab() {
             <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 text-sm" />
           </div>
         </div>
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8"
+        <Button size="sm" className=" hover: h-8"
           onClick={() => { setEnabled(true); }}
           disabled={exportLoading}>
           {exportLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Loading...</> : <><RefreshCw className="w-3.5 h-3.5 mr-1.5" />Generate Export</>}
@@ -6056,7 +6056,7 @@ function EnrollmentExportTab() {
               <Button size="sm" variant="outline" className="h-8" onClick={handleDownloadCSV}>
                 <Download className="w-3.5 h-3.5 mr-1.5" /> Download CSV
               </Button>
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={handleExportToEmailCampaign}
+              <Button size="sm" className=" hover: h-8" onClick={handleExportToEmailCampaign}
                 disabled={!exportData.emails.length}>
                 <Megaphone className="w-3.5 h-3.5 mr-1.5" /> Export to Email Campaign
               </Button>
@@ -6476,7 +6476,7 @@ function CommunityFormInline({
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSubmit} disabled={isCreating || isUpdating}>
+        <Button className=" hover:" onClick={handleSubmit} disabled={isCreating || isUpdating}>
           {community ? "Save Changes" : "Create Community"}
         </Button>
       </div>
@@ -6518,7 +6518,7 @@ function ChannelFormInline({
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSubmit} disabled={isAdding}>
+        <Button className=" hover:" onClick={handleSubmit} disabled={isAdding}>
           Add Channel
         </Button>
       </div>
@@ -6625,7 +6625,7 @@ function CommunitiesTab() {
           <h2 className="text-xl font-bold text-gray-900">Community Management</h2>
           <p className="text-sm text-gray-500 mt-0.5">Manage communities, channels, moderation, and announcements</p>
         </div>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => { setEditCommunity(null); setShowCommunityForm(true); }}>
+        <Button className=" hover:" onClick={() => { setEditCommunity(null); setShowCommunityForm(true); }}>
           <Plus className="w-4 h-4 mr-2" /> New Community
         </Button>
       </div>
@@ -6728,7 +6728,7 @@ function CommunitiesTab() {
                 ))}
               </SelectContent>
             </Select>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!activeCommunityId}
+            <Button className=" hover:" disabled={!activeCommunityId}
               onClick={() => setShowChannelForm(true)}>
               <Plus className="w-4 h-4 mr-2" /> Add Channel
             </Button>
@@ -6849,7 +6849,7 @@ function CommunitiesTab() {
                 />
               </div>
               <div className="flex justify-end">
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+                <Button className=" hover:"
                   disabled={!activeCommunityId || !announcementTitle.trim() || !announcementBody.trim() || postAnnouncement.isPending}
                   onClick={() => postAnnouncement.mutate({ communityId: activeCommunityId!, title: announcementTitle, body: announcementBody })}>
                   <Megaphone className="w-4 h-4 mr-2" /> Post Announcement
@@ -6865,7 +6865,7 @@ function CommunitiesTab() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Award className="w-4 h-4 text-teal-600" /> Badge Management</h3>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" size="sm" onClick={() => setShowBadgeForm(v => !v)}>
+            <Button className=" hover:" size="sm" onClick={() => setShowBadgeForm(v => !v)}>
               <Plus className="w-4 h-4 mr-1" /> New Badge
             </Button>
           </div>
@@ -6896,7 +6896,7 @@ function CommunitiesTab() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowBadgeForm(false)}>Cancel</Button>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white"
+                <Button size="sm" className=" hover:"
                   disabled={!badgeName.trim() || !badgeSlug.trim() || createBadge.isPending}
                   onClick={() => createBadge.mutate({ name: badgeName, slug: badgeSlug, iconEmoji: badgeEmoji, xpRequired: badgeXP, description: badgeDesc || undefined })}>
                   Create Badge
@@ -7475,7 +7475,7 @@ function CollectionsTab() {
           <h3 className="font-semibold text-gray-800">Collections</h3>
           <p className="text-xs text-gray-500 mt-0.5">Group courses by custom labels — shown as filter tabs on the Education Library. Drag to reorder.</p>
         </div>
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className=" hover:" onClick={() => setCreateOpen(true)}>
           <Plus className="w-3.5 h-3.5 mr-1" /> New Collection
         </Button>
       </div>
@@ -7667,7 +7667,7 @@ function CollectionFormDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSave} disabled={saving || !colTitle.trim()}>
+          <Button className=" hover:" onClick={handleSave} disabled={saving || !colTitle.trim()}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
             Save Collection
           </Button>
@@ -7750,7 +7750,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
         />
         <div className="flex items-center gap-2">
           {data && <span className="text-sm text-gray-500">{data.total} student{data.total !== 1 ? "s" : ""}</span>}
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setEnrollDialogOpen(true)}>
+          <Button size="sm" className=" hover: h-8" onClick={() => setEnrollDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-1" /> Enroll Student
           </Button>
         </div>
@@ -8681,7 +8681,7 @@ function QuestionBankAdmin() {
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowTagManager(p => !p)} className="gap-1.5"><Tag className="w-3.5 h-3.5" /> Tags</Button>
           <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50 gap-1.5" onClick={() => setShowAIPanel(p => !p)}><Sparkles className="w-3.5 h-3.5" /> AI Generate</Button>
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" /> Add Question</Button>
+          <Button size="sm" className=" hover: gap-1.5" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" /> Add Question</Button>
         </div>
       </div>
 
@@ -8702,7 +8702,7 @@ function QuestionBankAdmin() {
           </div>
           <div className="flex gap-2">
             <Input id="new-tag-name" placeholder="New tag name..." className="h-8 text-sm flex-1" />
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => {
+            <Button size="sm" className=" hover:" onClick={() => {
               const val = (document.getElementById("new-tag-name") as HTMLInputElement)?.value?.trim();
               if (val) createTag.mutate({ name: val });
             }}>Add</Button>
@@ -8758,7 +8758,7 @@ function QuestionBankAdmin() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5" disabled={!aiTopic.trim() || aiGenerate.isPending}
+            <Button className=" hover: gap-1.5" disabled={!aiTopic.trim() || aiGenerate.isPending}
               onClick={() => aiGenerate.mutate({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, questionType: aiType, tagIds: aiTagIds.length > 0 ? aiTagIds : undefined })}>
               {aiGenerate.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</> : <><Sparkles className="w-3.5 h-3.5" /> Generate & Add to Bank</>}
             </Button>
@@ -9005,7 +9005,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
         </div>
         <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!qText.trim() || !correctAnswer.trim() || isPending} onClick={handleSave}>
+          <Button className=" hover:" disabled={!qText.trim() || !correctAnswer.trim() || isPending} onClick={handleSave}>
             {isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Saving...</> : isEdit ? "Save Changes" : "Add to Bank"}
           </Button>
         </div>
@@ -9120,7 +9120,7 @@ function GlobalUnassignedPanel({ unassignedStudents, cohortGroups, courseId, onA
                 {cohortGroups.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white" disabled={bulkSelected.length === 0 || !bulkGroupId || bulkAssign.isPending}
+            <Button size="sm" className="h-7 text-xs hover:" disabled={bulkSelected.length === 0 || !bulkGroupId || bulkAssign.isPending}
               onClick={() => bulkAssign.mutate({ cohortGroupId: parseInt(bulkGroupId), courseId, userIds: bulkSelected })}>
               {bulkAssign.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : `Assign ${bulkSelected.length} selected`}
             </Button>
@@ -9659,7 +9659,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   <Repeat className="w-3.5 h-3.5 mr-1" /> Expand All Recurring
                 </Button>
               )}
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => openSessionDialog()}>
+              <Button size="sm" className=" hover:" onClick={() => openSessionDialog()}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add Session
               </Button>
             </div>
@@ -9815,7 +9815,7 @@ function CohortTab({ courseId }: { courseId: number }) {
           )}
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">Manage assignments, homework, and projects for cohort participants.</p>
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => openAssignDialog()}>
+            <Button size="sm" className=" hover:" onClick={() => openAssignDialog()}>
               <Plus className="w-3.5 h-3.5 mr-1" /> Add Assignment
             </Button>
           </div>
@@ -9885,7 +9885,7 @@ function CohortTab({ courseId }: { courseId: number }) {
           )}
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">Upload and manage recorded session replays for enrolled students.</p>
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => openRecordingDialog()}>
+            <Button size="sm" className=" hover:" onClick={() => openRecordingDialog()}>
               <Plus className="w-3.5 h-3.5 mr-1" /> Add Recording
             </Button>
           </div>
@@ -9989,7 +9989,7 @@ function CohortTab({ courseId }: { courseId: number }) {
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
               <Button variant="outline" onClick={() => setRecordingDialog({ open: false })}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+              <Button className=" hover:"
                 disabled={createRecording.isPending || updateRecording.isPending}
                 onClick={handleSaveRecording}>
                 {(createRecording.isPending || updateRecording.isPending) ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />Saving...</> : recordingDialog.recording ? "Save Changes" : "Add Recording"}
@@ -10140,7 +10140,7 @@ function CohortTab({ courseId }: { courseId: number }) {
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
               <Button variant="outline" onClick={() => setSessionDialog({ open: false })}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+              <Button className=" hover:"
                 disabled={createSession.isPending || updateSession.isPending}
                 onClick={handleSaveSession}>
                 {(createSession.isPending || updateSession.isPending) ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />Saving...</> : sessionDialog.session ? "Save Changes" : "Create Session"}
@@ -10159,7 +10159,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <Button size="sm" variant="ghost" onClick={() => setAssignDialog({ open: false })}><X className="w-4 h-4" /></Button>
               <h3 className="font-bold text-gray-900 text-base">{assignDialog.assignment ? "Edit Assignment" : "New Assignment"}</h3>
             </div>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+            <Button className=" hover:"
               disabled={createAssignment.isPending || updateAssignment.isPending}
               onClick={handleSaveAssignment}>
               {(createAssignment.isPending || updateAssignment.isPending) ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />Saving...</> : assignDialog.assignment ? "Save Changes" : "Create Assignment"}
@@ -10238,7 +10238,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <h3 className="text-base font-semibold text-gray-900">Cohort Groups</h3>
               <p className="text-sm text-gray-500 mt-0.5">Create separate cohort groups (e.g. June 2026, January 2027). Each group has its own page and student list. Students only see their assigned group.</p>
             </div>
-            <Button size="sm" onClick={() => openGroupDialog()} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Button size="sm" onClick={() => openGroupDialog()} className=" hover:">
               <Plus className="w-3.5 h-3.5 mr-1" /> New Group
             </Button>
           </div>
@@ -10250,7 +10250,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <div className="text-4xl mb-3">👥</div>
               <p className="text-gray-500 font-medium">No cohort groups yet</p>
               <p className="text-sm text-gray-400 mt-1">Create groups like "June 2026 Cohort" or "January 2027 Cohort"</p>
-              <Button size="sm" onClick={() => openGroupDialog()} className="mt-4 bg-teal-600 hover:bg-teal-700 text-white">
+              <Button size="sm" onClick={() => openGroupDialog()} className="mt-4 hover:">
                 <Plus className="w-3.5 h-3.5 mr-1" /> Create First Group
               </Button>
             </div>
@@ -10404,7 +10404,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                                 {uploadingMedia ? "Uploading..." : "📎 Attach"}
                                 <input type="file" accept="image/*,video/*" className="hidden" disabled={uploadingMedia} onChange={e => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f); e.target.value = ""; }} />
                               </label>
-                              <Button size="sm" onClick={() => postMessage.mutate({ cohortGroupId: group.id, courseId, body: messageBody || undefined, mediaUrls: messageMedia.length > 0 ? messageMedia : undefined })} disabled={postMessage.isPending || (!messageBody.trim() && messageMedia.length === 0)} className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-7 px-3 ml-auto">
+                              <Button size="sm" onClick={() => postMessage.mutate({ cohortGroupId: group.id, courseId, body: messageBody || undefined, mediaUrls: messageMedia.length > 0 ? messageMedia : undefined })} disabled={postMessage.isPending || (!messageBody.trim() && messageMedia.length === 0)} className=" hover: text-xs h-7 px-3 ml-auto">
                                 {postMessage.isPending ? "Posting..." : "Post"}
                               </Button>
                             </div>
@@ -10418,7 +10418,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700">Unassigned students ({unassignedStudents.length})</span>
                             {bulkSelected.length > 0 && (
-                              <Button size="sm" onClick={() => bulkAssign.mutate({ cohortGroupId: group.id, courseId, userIds: bulkSelected })} className="text-xs bg-teal-600 hover:bg-teal-700 text-white h-7">
+                              <Button size="sm" onClick={() => bulkAssign.mutate({ cohortGroupId: group.id, courseId, userIds: bulkSelected })} className="text-xs hover: h-7">
                                 Assign {bulkSelected.length} selected
                               </Button>
                             )}
@@ -10613,7 +10613,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 </div>
                 <div className="flex justify-end gap-2 px-5 py-4 border-t bg-gray-50 rounded-b-2xl">
                   <Button variant="outline" onClick={() => setGroupDialog({ open: false })}>Cancel</Button>
-                  <Button onClick={handleSaveGroup} disabled={createCohortGroup.isPending || updateCohortGroup.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+                  <Button onClick={handleSaveGroup} disabled={createCohortGroup.isPending || updateCohortGroup.isPending} className=" hover:">
                     {createCohortGroup.isPending || updateCohortGroup.isPending ? "Saving..." : groupDialog.group ? "Save Changes" : "Create Group"}
                   </Button>
                 </div>

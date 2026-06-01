@@ -291,7 +291,7 @@ export default function CommunityPage() {
               {plan === "starter" ? "Builder" : plan === "builder" ? "Pro" : "Enterprise"} plan. Upgrade today to access.
             </p>
           </div>
-          <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 flex-shrink-0" onClick={() => toast.info("Contact your platform admin to upgrade your plan.")}>
+          <Button size="sm" className=" hover: gap-1.5 flex-shrink-0" onClick={() => toast.info("Contact your platform admin to upgrade your plan.")}>
             Upgrade <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>

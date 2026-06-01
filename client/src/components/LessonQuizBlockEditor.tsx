@@ -224,7 +224,7 @@ function QuestionEditor({
       </div>
 
       <div className="flex gap-2 pt-1">
-        <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={() => onSave(q)}>
+        <Button size="sm" className="h-8 hover: text-xs" onClick={() => onSave(q)}>
           {isNew ? "Add Question" : "Save Changes"}
         </Button>
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onCancel}>Cancel</Button>
@@ -537,7 +537,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                   <p className="text-xs text-gray-400 mt-0.5 text-right">{aiCustomPrompt.length}/500</p>
                 </div>
               )}
-              <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs w-full"
+              <Button size="sm" className="h-8 hover: text-xs w-full"
                 disabled={!canGenerate || generateMutation.isPending}
                 onClick={handleGenerate}>
                 {generateMutation.isPending ? "Generating…" : "Generate Questions"}
@@ -582,7 +582,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={applyAiPreview}>
+                  <Button size="sm" className="h-8 hover: text-xs" onClick={applyAiPreview}>
                     Add All to Quiz
                   </Button>
                   <Button size="sm" variant="outline" className="h-8 text-xs"

@@ -141,7 +141,7 @@ function FunnelListView({ onSelect, onCreate }: { onSelect: (id: number) => void
           <h1 className="text-2xl font-bold text-gray-900">Funnel Builder</h1>
           <p className="text-gray-500 mt-1">Create multi-step sales funnels to convert visitors into customers</p>
         </div>
-        <Button onClick={onCreate} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+        <Button onClick={onCreate} className=" hover: gap-2">
           <Plus size={16} /> New Funnel
         </Button>
       </div>
@@ -152,7 +152,7 @@ function FunnelListView({ onSelect, onCreate }: { onSelect: (id: number) => void
           <Layers size={48} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">No funnels yet</h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">Create your first sales funnel to start converting visitors into customers. Choose from templates or build from scratch.</p>
-          <Button onClick={onCreate} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+          <Button onClick={onCreate} className=" hover: gap-2">
             <Plus size={16} /> Create Your First Funnel
           </Button>
         </div>
@@ -392,7 +392,7 @@ function CreateFunnelDialog({ onClose, onCreated }: { onClose: () => void; onCre
           {step === "details" ? (
             <>
               <button onClick={() => setStep("template")} className="text-sm text-gray-500 hover:text-gray-700">← Back to templates</button>
-              <Button onClick={handleCreate} disabled={createFunnel.isPending || !name.trim()} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+              <Button onClick={handleCreate} disabled={createFunnel.isPending || !name.trim()} className=" hover: gap-2">
                 {createFunnel.isPending ? "Creating..." : "Create Funnel"}
               </Button>
             </>

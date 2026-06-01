@@ -54,7 +54,7 @@ export default function WebhooksPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Send real-time event notifications to external services</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button onClick={() => setShowAdd(true)} className=" hover:">
           <Plus className="w-4 h-4 mr-2" /> Add Webhook
         </Button>
       </div>
@@ -114,7 +114,7 @@ export default function WebhooksPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={handleAdd} className="bg-teal-600 hover:bg-teal-700 text-white">Add Webhook</Button>
+            <Button onClick={handleAdd} className=" hover:">Add Webhook</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

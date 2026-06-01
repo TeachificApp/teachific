@@ -701,7 +701,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
           {embedded && (
             <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
               <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide mr-1">{editorLabel ?? "Content Editor"}</span>
-              <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
+              <Button size="sm" className=" hover: text-xs h-7" onClick={() => setAddMenuOpen(true)}>
                 <Plus className="w-3 h-3 mr-1" /> Add Block
               </Button>
               <Button

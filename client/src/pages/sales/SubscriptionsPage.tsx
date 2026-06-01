@@ -115,7 +115,7 @@ export default function SubscriptionsPage() {
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAction(null); setSelected(null); }}>Cancel</Button>
-            <Button className={action === "cancel" ? "bg-red-600 hover:bg-red-700 text-white" : "bg-teal-600 hover:bg-teal-700 text-white"} onClick={action === "cancel" ? handleCancel : handleRefund}>
+            <Button className={action === "cancel" ? "bg-red-600 hover:bg-red-700" : " hover:"} onClick={action === "cancel" ? handleCancel : handleRefund}>
               {action === "cancel" ? "Confirm Cancel" : "Issue Refund"}
             </Button>
           </DialogFooter>

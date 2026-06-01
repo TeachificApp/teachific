@@ -74,7 +74,7 @@ export default function QuizCreatorDashboard() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/quiz-creator-pro">
-              <Button className="bg-teal-500 hover:bg-teal-400 text-white font-semibold px-8 py-3 rounded-xl w-full sm:w-auto">
+              <Button className=" font-semibold px-8 py-3 rounded-xl w-full sm:w-auto">
                 View Plans
               </Button>
             </Link>
@@ -161,7 +161,7 @@ export default function QuizCreatorDashboard() {
             <strong>Lite plan:</strong> Up to 10 quizzes, 20 questions per quiz. Encrypted export requires Premium.
           </p>
           <Link href="/quiz-creator-pro">
-            <Button size="sm" className="bg-teal-500 hover:bg-teal-400 text-white text-xs h-7 px-3 rounded-lg">
+            <Button size="sm" className=" text-xs h-7 px-3 rounded-lg">
               Upgrade to Premium
             </Button>
           </Link>

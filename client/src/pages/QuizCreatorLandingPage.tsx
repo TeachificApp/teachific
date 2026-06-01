@@ -210,7 +210,7 @@ export default function QuizCreatorLandingPage() {
               </Button>
             </Link>
             <Link href="/register">
-              <Button size="sm" className="bg-teal-500 hover:bg-teal-400 text-white font-semibold rounded-lg px-4">
+              <Button size="sm" className=" font-semibold rounded-lg px-4">
                 Start Free Trial
               </Button>
             </Link>
@@ -244,7 +244,7 @@ export default function QuizCreatorLandingPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">
-              <Button className="bg-teal-500 hover:bg-teal-400 text-white font-bold text-lg px-10 py-4 rounded-xl h-auto">
+              <Button className=" font-bold text-lg px-10 py-4 rounded-xl h-auto">
                 Start Free Trial — No Card Required
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -367,7 +367,7 @@ export default function QuizCreatorLandingPage() {
                 standalone tool that makes them this easy to build.
               </p>
               <Link href="/register">
-                <Button className="bg-teal-500 hover:bg-teal-400 text-white font-bold px-8 py-3 rounded-xl h-auto">
+                <Button className=" font-bold px-8 py-3 rounded-xl h-auto">
                   Try the Hotspot Editor Free
                 </Button>
               </Link>
@@ -570,7 +570,7 @@ export default function QuizCreatorLandingPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/register">
-                  <Button className="bg-teal-500 hover:bg-teal-400 text-white font-bold text-lg px-10 py-4 rounded-xl h-auto">
+                  <Button className=" font-bold text-lg px-10 py-4 rounded-xl h-auto">
                     Start Your Free Trial
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>

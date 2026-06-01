@@ -52,7 +52,7 @@ export default function InvoicesPage() {
               <div><Label>Payment Terms (days)</Label><Input type="number" defaultValue="14" className="mt-1" /></div>
             </div>
             <div><Label>Footer Note</Label><Input defaultValue="Thank you for your business!" className="mt-1" /></div>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => toast.success("Invoice settings saved")}>Save Settings</Button>
+            <Button className=" hover:" onClick={() => toast.success("Invoice settings saved")}>Save Settings</Button>
           </CardContent>
         </Card>
       )}

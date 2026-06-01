@@ -2420,7 +2420,7 @@ export type InsertLmsCourse = typeof lmsCourses.$inferInsert;
 
 export const lmsSections = mysqlTable("lms_sections", {
   id: int("id").autoincrement().primaryKey(),
-  orgId: int("orgId").notNull(),
+  orgId: int("orgId"),
   courseId: int("course_id").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   position: int("position").default(0).notNull(),
@@ -2433,7 +2433,7 @@ export type InsertLmsSection = typeof lmsSections.$inferInsert;
 
 export const lmsLessons = mysqlTable("lms_lessons", {
   id: int("id").autoincrement().primaryKey(),
-  orgId: int("orgId").notNull(),
+  orgId: int("orgId"),
   courseId: int("course_id"),
   sectionId: int("section_id"),
   title: varchar("title", { length: 255 }).notNull(),

@@ -217,7 +217,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
                 </div>
               ))}
               <div className="flex gap-2">
-                <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={applyAiPreview}>
+                <Button size="sm" className="h-8 hover: text-xs" onClick={applyAiPreview}>
                   Add All to Deck
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAiPreview(null)}>
@@ -325,7 +325,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
                 </div>
               )}
               <div className="flex gap-2 pt-1">
-                <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={saveCard}>
+                <Button size="sm" className="h-8 hover: text-xs" onClick={saveCard}>
                   {editingIndex === null ? "Add Card" : "Save Changes"}
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setEditingIndex(null); setEditingCard(null); }}>

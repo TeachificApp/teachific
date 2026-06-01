@@ -79,7 +79,7 @@ function QuizCreatorUpgradeWall() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/quiz-creator-pro">
-            <Button className="bg-teal-500 hover:bg-teal-400 text-white font-semibold px-8 py-3 rounded-xl w-full sm:w-auto">
+            <Button className=" font-semibold px-8 py-3 rounded-xl w-full sm:w-auto">
               View Plans & Pricing
             </Button>
           </Link>

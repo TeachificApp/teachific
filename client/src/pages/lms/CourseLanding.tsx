@@ -1330,7 +1330,7 @@ export default function CourseLanding() {
               )}
               {pricingType === "free" && <p className="text-xs text-gray-500">No payment required</p>}
             </div>
-            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold" size="lg" onClick={handleEnroll} disabled={enrolling || enrollFree.isPending || createCheckout.isPending}>
+            <Button className="w-full hover: font-semibold" size="lg" onClick={handleEnroll} disabled={enrolling || enrollFree.isPending || createCheckout.isPending}>
               {enrolling ? "Processing..." : ctaText}<ChevronRight className="w-4 h-4 ml-1" />
             </Button>
             {enrollment && (
@@ -1464,7 +1464,7 @@ export default function CourseLanding() {
                 onApply={(code, _discount) => setPromoCode(code)}
               />
             )}
-            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold" size="lg" onClick={handleEnroll} disabled={enrolling || enrollFree.isPending || createCheckout.isPending}>
+            <Button className="w-full hover: font-semibold" size="lg" onClick={handleEnroll} disabled={enrolling || enrollFree.isPending || createCheckout.isPending}>
               {enrolling ? "Processing..." : (selectedPricingOptionId ? (course.pricingOptions?.find((o: any) => o.id === selectedPricingOptionId)?.ctaLabel ?? ctaText) : ctaText)}
             </Button>
             <ul className="space-y-2 text-sm text-gray-600">
@@ -1549,7 +1549,7 @@ export default function CourseLanding() {
             <Input id="fp-email" type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="jane@example.com" required />
           </div>
           <p className="text-xs text-gray-500">Your preview access link will be valid for 7 days. We may send you a follow-up email about this course.</p>
-          <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white" disabled={fpSubmitting}>
+          <Button type="submit" className="w-full hover:" disabled={fpSubmitting}>
             {fpSubmitting ? "Granting Access..." : "Watch Free Preview"}
           </Button>
         </form>

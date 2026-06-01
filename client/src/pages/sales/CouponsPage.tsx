@@ -46,7 +46,7 @@ export default function CouponsPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Tag className="w-6 h-6 text-teal-600" /> Coupons</h1>
           <p className="text-muted-foreground mt-1">Create and manage discount codes for your products</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="bg-teal-600 hover:bg-teal-700 text-white"><Plus className="w-4 h-4 mr-2" /> Create Coupon</Button>
+        <Button onClick={() => setShowAdd(true)} className=" hover:"><Plus className="w-4 h-4 mr-2" /> Create Coupon</Button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.filter(c => c.active).length}</p><p className="text-sm text-muted-foreground">Active Coupons</p></CardContent></Card>
@@ -120,7 +120,7 @@ export default function CouponsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={handleCreate} className="bg-teal-600 hover:bg-teal-700 text-white">Create Coupon</Button>
+            <Button onClick={handleCreate} className=" hover:">Create Coupon</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -576,7 +576,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
       {/* Top Save Button */}
       <div className="flex justify-end pb-2 border-b border-gray-100">
-        <Button onClick={handleSave} disabled={updateMut.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button onClick={handleSave} disabled={updateMut.isPending} className=" hover:">
           {updateMut.isPending ? "Saving..." : "Save Settings"}
         </Button>
       </div>

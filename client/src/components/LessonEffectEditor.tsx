@@ -448,7 +448,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
         </>
       )}
 
-      <Button onClick={handleSave} disabled={updateEffect.isPending} className="w-full gap-2 bg-teal-600 hover:bg-teal-700">
+      <Button onClick={handleSave} disabled={updateEffect.isPending} className="w-full gap-2 hover:">
         <Save className="h-4 w-4" />
         {updateEffect.isPending ? "Saving…" : "Save Effect Settings"}
       </Button>

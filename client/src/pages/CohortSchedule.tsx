@@ -433,7 +433,7 @@ function CalEventChip({ session, now, compact }: { session: any; now: number; co
         )}
         <div className="flex gap-2 mt-2 flex-wrap">
           {joinable && session.meetingUrl ? (
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-7 text-xs gap-1" asChild>
+            <Button size="sm" className=" hover: h-7 text-xs gap-1" asChild>
               <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="w-3 h-3" /> Join Now
               </a>
@@ -495,7 +495,7 @@ export default function CohortSchedule() {
           <BookOpen className="w-12 h-12 text-teal-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Sign in to view your cohort</h2>
           <p className="text-gray-500 mb-6">You need to be signed in and enrolled to access this cohort schedule.</p>
-          <Button asChild className="bg-teal-600 hover:bg-teal-700">
+          <Button asChild className=" hover:">
             <a href={getLoginUrl()}>Sign In</a>
           </Button>
         </Card>
@@ -802,7 +802,7 @@ function SessionCard({ session, isUpcoming: isUpcomingProp, now }: { session: an
             )}
             <div className="flex gap-2 mt-3 flex-wrap">
               {isUpcomingProp && hasMeetingLink && joinable && (
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-8 text-xs gap-1.5" asChild>
+                <Button size="sm" className=" hover: h-8 text-xs gap-1.5" asChild>
                   <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="w-3.5 h-3.5" />
                     Join Live Session

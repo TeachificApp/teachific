@@ -896,13 +896,13 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
               Cancel
             </Button>
             {aiStep === 1 && (
-              <Button disabled={!aiTopic.trim() || aiGenerating || !orgId} onClick={handleAiStep1} className="gap-2 bg-purple-600 hover:bg-purple-700">
+              <Button disabled={!aiTopic.trim() || aiGenerating || !orgId} onClick={handleAiStep1} className="gap-2 hover:">
                 {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {aiGenerating ? "Generating Outline..." : "Generate Outline"}
               </Button>
             )}
             {aiStep === 2 && (
-              <Button disabled={aiGenerating} onClick={handleAiStep2} className="gap-2 bg-purple-600 hover:bg-purple-700">
+              <Button disabled={aiGenerating} onClick={handleAiStep2} className="gap-2 hover:">
                 {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 {aiGenerating ? "Generating Landing Page..." : "Generate Landing Page"}
               </Button>
@@ -914,7 +914,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
               </Button>
             )}
             {aiStep === 4 && (
-              <Button disabled={aiGenerating} onClick={handleAiFinish} className="gap-2 bg-purple-600 hover:bg-purple-700">
+              <Button disabled={aiGenerating} onClick={handleAiFinish} className="gap-2 hover:">
                 {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 {aiGenerating ? "Creating Course..." : "Create Course"}
               </Button>

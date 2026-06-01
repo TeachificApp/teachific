@@ -37,7 +37,7 @@ export default function GroupOrdersPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="w-6 h-6 text-teal-600" /> Group Orders</h1>
           <p className="text-muted-foreground mt-1">Manage bulk registrations and seat allocations for organizations</p>
         </div>
-        <Button onClick={() => setShowNew(true)} className="bg-teal-600 hover:bg-teal-700 text-white"><Plus className="w-4 h-4 mr-2" /> New Group Order</Button>
+        <Button onClick={() => setShowNew(true)} className=" hover:"><Plus className="w-4 h-4 mr-2" /> New Group Order</Button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{orders.filter(o => o.status === "active").length}</p><p className="text-sm text-muted-foreground">Active Orders</p></CardContent></Card>
@@ -88,7 +88,7 @@ export default function GroupOrdersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancel</Button>
-            <Button onClick={handleCreate} className="bg-teal-600 hover:bg-teal-700 text-white">Create Order</Button>
+            <Button onClick={handleCreate} className=" hover:">Create Order</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

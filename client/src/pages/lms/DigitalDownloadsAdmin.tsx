@@ -494,7 +494,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onBack}>Cancel</Button>
-            <Button onClick={handleSave} disabled={updateMut.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Button onClick={handleSave} disabled={updateMut.isPending} className=" hover:">
               {updateMut.isPending ? "Saving..." : "Save Settings"}
             </Button>
           </div>
