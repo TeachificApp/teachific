@@ -26,7 +26,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { type Block, type BlockType, BlockPreview } from "@/components/BlockPreview";
-import { uid, BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock } from "@/pages/lms/LandingPageBuilder";
+import { uid, BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, TemplateLibrary } from "@/pages/lms/LandingPageBuilder";
 import {
   ArrowLeft, Save, Eye, Plus, Palette, X, FolderOpen, Layers, Settings, GitBranch, Trash2, ChevronDown, ChevronUp, GripVertical, Bookmark, BookOpen, Copy, Search, Globe, Loader2,
 } from "lucide-react";
@@ -477,6 +477,7 @@ export default function FunnelPageEditor() {
   // Branch rules state
   const [showBranchRules, setShowBranchRules] = useState(false);
   const [editingRule, setEditingRule] = useState<any | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [saveTemplateName, setSaveTemplateName] = useState("");
   const [saveTemplateDesc, setSaveTemplateDesc] = useState("");
@@ -605,6 +606,12 @@ export default function FunnelPageEditor() {
             </a>
           )}
           <button
+            onClick={() => setShowTemplates(true)}
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-primary border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            <FolderOpen size={14} /> Page Templates
+          </button>
+          <button
             onClick={() => { setSaveTemplateName(currentPage?.title ? `${currentPage.title} Template` : ""); setShowSaveTemplate(true); }}
             className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-1.5 transition-colors"
             title="Save current page as a reusable template"
@@ -614,7 +621,7 @@ export default function FunnelPageEditor() {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-1.5 h-8"
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-1.5 h-8"
           >
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>
@@ -1476,11 +1483,18 @@ export default function FunnelPageEditor() {
         </div>
       </DialogContent>
     </Dialog>
+    {showTemplates && (
+      <TemplateLibrary
+        blocks={blocks}
+        onInsert={(tplBlocks) => { setBlocks(prev => [...prev, ...tplBlocks]); }}
+        onClose={() => setShowTemplates(false)}
+        initialTab="page"
+      />
+    )}
     </>
   );
 }
-
-// ─── Block Templates Tab (reused from LessonBlockEditor pattern) ─────────────────
+// ─── Block Templates Tab (reused from LessonBlockEditor pattern) ──────────────────
 
 function FunnelBlockTemplatesTab({ onInsert }: { onInsert: (block: Block) => void }) {
   const [search, setSearch] = useState("");

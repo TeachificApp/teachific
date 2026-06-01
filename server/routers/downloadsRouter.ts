@@ -23,7 +23,12 @@ import { sendDownloadAccessEmail, sendBundleAccessEmail } from "../lib/enrollmen
 import { addToAllContacts } from "../lib/emailListHelper";
 
 function assertAdmin(ctx: any) {
-  if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  const adminRoles = ["site_owner", "site_admin", "org_super_admin", "org_admin", "admin"];
+  if (!adminRoles.includes(ctx.user?.role)) throw new TRPCError({ code: "FORBIDDEN" });
+}
+
+function isAdminRole(role: string | undefined): boolean {
+  return ["site_owner", "site_admin", "org_super_admin", "org_admin", "admin"].includes(role ?? "");
 }
 
 // ─── Public Router ──────────────────────────────────────────────────────────
@@ -69,7 +74,7 @@ export const downloadsPublicRouter = router({
         .where(eq(digitalProducts.slug, input.slug)).limit(1);
       // 'published' and 'hidden' are accessible by direct URL; draft/archived/private are not
       // Admins can always see any product regardless of status
-      const isAdmin = ctx.user?.role === "admin";
+      const isAdmin = isAdminRole(ctx.user?.role);
       if (!product || (!isAdmin && (product.status === "draft" || product.status === "archived" || product.status === "private"))) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
       }
@@ -127,7 +132,7 @@ export const downloadsLearnerRouter = router({
       if (!product) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Admin preview mode bypasses purchase check
-      const isAdminPreview = input.preview && ctx.user.role === "admin";
+      const isAdminPreview = input.preview && isAdminRole(ctx.user.role);
       if (!product.isFree && !isAdminPreview) {
         const [purchase] = await db.select().from(digitalPurchases)
           .where(and(
@@ -437,7 +442,7 @@ export const downloadsLearnerRouter = router({
 export const downloadsAdminRouter = router({
   /** List all digital products (admin) */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     if (!db) return [];
     return db.select().from(digitalProducts).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
@@ -449,7 +454,7 @@ export const downloadsAdminRouter = router({
       products: z.array(z.object({ id: z.number(), libraryOrder: z.number() })),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(
@@ -464,7 +469,7 @@ export const downloadsAdminRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(digitalProducts)
@@ -492,7 +497,7 @@ export const downloadsAdminRouter = router({
       landingFeatures: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -530,7 +535,7 @@ export const downloadsAdminRouter = router({
       showInLibrary: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
@@ -542,7 +547,7 @@ export const downloadsAdminRouter = router({
   getLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select({
@@ -580,7 +585,7 @@ export const downloadsAdminRouter = router({
       seoImage: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(digitalProducts)
@@ -600,7 +605,7 @@ export const downloadsAdminRouter = router({
       blocks: z.array(z.any()),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const blocksJson = JSON.stringify(input.blocks);
@@ -614,7 +619,7 @@ export const downloadsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(digitalProducts).where(eq(digitalProducts.id, input.id)).limit(1);
@@ -643,7 +648,7 @@ export const downloadsAdminRouter = router({
       fileSize: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -674,7 +679,7 @@ export const downloadsAdminRouter = router({
   removeFile: protectedProcedure
     .input(z.object({ fileId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(digitalProductFiles).where(eq(digitalProductFiles.id, input.fileId));
@@ -688,7 +693,7 @@ export const downloadsAdminRouter = router({
       fileIds: z.array(z.number()),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       for (let i = 0; i < input.fileIds.length; i++) {
@@ -701,7 +706,7 @@ export const downloadsAdminRouter = router({
 
   /** Get download analytics for all products (admin) */
   getAnalytics: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     if (!db) return { products: [], recentDownloads: [] };
 
@@ -734,7 +739,7 @@ export const downloadsAdminRouter = router({
   // ─── Bundle Admin CRUD ─────────────────────────────────────────────────────
   /** List all bundles (admin) */
   listBundles: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     if (!db) return [];
     const bundles = await db.select().from(digitalBundles).orderBy(desc(digitalBundles.createdAt));
@@ -764,7 +769,7 @@ export const downloadsAdminRouter = router({
       productIds: z.array(z.number()).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -798,7 +803,7 @@ export const downloadsAdminRouter = router({
       productIds: z.array(z.number()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, productIds, ...data } = input;
@@ -819,7 +824,7 @@ export const downloadsAdminRouter = router({
   deleteBundle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [bundle] = await db.select().from(digitalBundles).where(eq(digitalBundles.id, input.id)).limit(1);
@@ -842,7 +847,7 @@ export const downloadsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -880,7 +885,7 @@ export const downloadsAdminRouter = router({
   duplicateBundle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -924,7 +929,7 @@ export const downloadsAdminRouter = router({
       publishDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [existing] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
@@ -942,7 +947,7 @@ export const downloadsAdminRouter = router({
       slug: z.string().min(1).max(255).regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [existing] = await db.select({ id: digitalBundles.id }).from(digitalBundles)
@@ -960,7 +965,7 @@ export const downloadsAdminRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Find or create user
@@ -1026,7 +1031,7 @@ export const downloadsAdminRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Find or create user
@@ -1088,7 +1093,7 @@ export const downloadsAdminRouter = router({
   aiGenerateLandingPage: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 

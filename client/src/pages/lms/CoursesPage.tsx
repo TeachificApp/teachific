@@ -132,7 +132,7 @@ function StepIndicator({ step, total }: { step: number; total: number }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-export default function CoursesPage() {
+export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter?: "course" | "cohort" } = {}) {
   const [, setLocation] = useLocation();
   const { orgId, ready } = useOrgScope();
   const utils = trpc.useUtils();
@@ -140,6 +140,8 @@ export default function CoursesPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published" | "archived">("all");
   const [createOpen, setCreateOpen] = useState(false);
   const urlSearch = useSearch();
+  // Determine type filter from prop or URL param
+  const typeFilter: "course" | "cohort" | undefined = typeFilterProp ?? (urlSearch.includes('type=cohort') ? 'cohort' : undefined);
   // Auto-open create dialog when ?create=1 is in the URL
   const [autoOpened, setAutoOpened] = useState(false);
   if (!autoOpened && urlSearch.includes('create=1') && !createOpen) {
@@ -280,7 +282,10 @@ export default function CoursesPage() {
   const filtered = orderedCourses.filter((c) => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    // Filter by course type: cohort view shows only cohorts, default course view hides cohorts
+    const cType = (c as any).type ?? 'course';
+    const matchesType = typeFilter === 'cohort' ? cType === 'cohort' : cType !== 'cohort';
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -377,9 +382,9 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Courses</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{typeFilter === 'cohort' ? 'Cohorts' : 'Courses'}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Create and manage your online courses
+            {typeFilter === 'cohort' ? 'Create and manage live cohort programs' : 'Create and manage your online courses'}
           </p>
         </div>
         <div className="flex items-center gap-2">

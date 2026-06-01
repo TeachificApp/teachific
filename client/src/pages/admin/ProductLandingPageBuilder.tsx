@@ -29,9 +29,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { type Block, type BlockType } from "@/components/BlockPreview";
-import { uid, BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock } from "./LandingPageBuilder";
+import { uid, BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, TemplateLibrary } from "./LandingPageBuilder";
 import {
-  ArrowLeft, Save, Eye, Plus, Palette, X, Layers, BookOpen, Copy, Search, BookmarkPlus, Bookmark,
+  ArrowLeft, Save, Eye, Plus, Palette, X, Layers, BookOpen, Copy, Search, BookmarkPlus, Bookmark, FolderOpen,
 } from "lucide-react";
 
 export default function ProductLandingPageBuilder() {
@@ -82,6 +82,8 @@ export default function ProductLandingPageBuilder() {
     window.addEventListener("mouseup", onUp);
   };
 
+  // Page template library state
+  const [showTemplates, setShowTemplates] = useState(false);
   // Save-as-template dialog state
   const [saveTemplateDialogBlock, setSaveTemplateDialogBlock] = useState<Block | null>(null);
   const [saveTemplateName, setSaveTemplateName] = useState("");
@@ -288,16 +290,21 @@ export default function ProductLandingPageBuilder() {
               <Eye size={14} /> Preview
             </a>
           )}
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-primary border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            <FolderOpen size={14} /> Page Templates
+          </button>
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-1.5 h-8"
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-1.5 h-8"
           >
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>
         </div>
       </div>
-
       {/* Main Editor Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel: Add Block button */}
@@ -621,6 +628,14 @@ export default function ProductLandingPageBuilder() {
         </div>
       </DialogContent>
     </Dialog>
+      {showTemplates && (
+        <TemplateLibrary
+          blocks={blocks}
+          onInsert={(tplBlocks) => { setBlocks(prev => [...prev, ...tplBlocks]); }}
+          onClose={() => setShowTemplates(false)}
+          initialTab="page"
+        />
+      )}
     </>
   );
 }

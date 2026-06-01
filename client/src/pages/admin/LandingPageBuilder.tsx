@@ -5076,7 +5076,7 @@ export function SortableBlock({ block, isSelected, onSelect, onDelete, onDuplica
 
 // ─── Template Library Panel ───────────────────────────────────────────────────
 
-function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
+export function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
   blocks: Block[];
   onInsert: (tplBlocks: Block[]) => void;
   onClose: () => void;

@@ -117,7 +117,7 @@ export default function CommunityPage() {
             }
             setCreateOpen(true);
           }}
-          className="bg-teal-600 hover:bg-teal-700 text-white gap-2"
+          className="bg-primary hover:bg-primary/90 text-white gap-2"
         >
           <Plus className="h-4 w-4" />
           New community
@@ -162,7 +162,7 @@ export default function CommunityPage() {
           <h3 className="text-lg font-semibold text-slate-700 mb-1">No communities yet</h3>
           <p className="text-slate-500 text-sm mb-4">Create your first community to connect with your learners.</p>
           {canCreate && (
-            <Button onClick={() => setCreateOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+            <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-white gap-2">
               <Plus className="h-4 w-4" /> Create community
             </Button>
           )}
@@ -172,10 +172,10 @@ export default function CommunityPage() {
           {filtered.map((hub) => (
             <div
               key={hub.id}
-              className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-3 hover:border-teal-300 transition-colors"
+              className="flex items-center gap-4 bg-white border border-gray-200 rounded-lg p-3 hover:border-primary/30 transition-colors"
             >
               <div
-                className="w-16 h-16 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex-shrink-0 overflow-hidden"
+                className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex-shrink-0 overflow-hidden"
                 style={hub.coverImageUrl ? { backgroundImage: `url(${hub.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
               >
                 {!hub.coverImageUrl && (
@@ -231,9 +231,9 @@ export default function CommunityPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((hub) => (
-            <div key={hub.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-teal-300 hover:shadow-sm transition-all">
+            <div key={hub.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-primary/30 hover:shadow-sm transition-all">
               <div
-                className="h-28 bg-gradient-to-br from-teal-500 to-cyan-600"
+                className="h-28 bg-gradient-to-br from-primary to-primary/80"
                 style={hub.coverImageUrl ? { backgroundImage: `url(${hub.coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" } : {}}
               />
               <div className="p-4">
@@ -247,7 +247,7 @@ export default function CommunityPage() {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 mt-3">
-                  <Button size="sm" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white gap-1.5" onClick={() => navigate(`/products/community/${hub.id}/manage`)}>
+                  <Button size="sm" className="flex-1 bg-primary hover:bg-primary/90 text-white gap-1.5" onClick={() => navigate(`/products/community/${hub.id}/manage`)}>
                     <Settings className="h-3.5 w-3.5" /> Manage
                   </Button>
                   <Button variant="outline" size="icon" className="h-8 w-8 border-gray-300 text-slate-600" onClick={() => handleShare(hub)} title="Copy link">
@@ -332,7 +332,7 @@ export default function CommunityPage() {
                 createHub.mutate({ orgId, name: newName.trim(), tagline: newTagline || undefined, description: newDesc || undefined });
               }}
               disabled={createHub.isPending || !newName.trim()}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {createHub.isPending ? "Creating..." : "Create Community"}
             </Button>
