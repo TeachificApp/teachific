@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `accessDurationType` enum('lifetime','days','date') DEFAULT 'lifetime' NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `accessDurationDays` int;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `accessExpiryDate` timestamp;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `sortOrder` int DEFAULT 0 NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `totalEnrollments` int DEFAULT 0 NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `totalCompletions` int DEFAULT 0 NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `totalRevenue` float DEFAULT 0 NOT NULL",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute ALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `accessDurationType` enum('lifetime','days','date') DEFAULT 'lifetime' NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `accessDurationDays` int;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `accessExpiryDate` timestamp;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `sortOrder` int DEFAULT 0 NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `totalEnrollments` int DEFAULT 0 NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `totalCompletions` int DEFAULT 0 NOT NULL;\nALTER TABLE `courses` ADD COLUMN IF NOT EXISTS `totalRevenue` float DEFAULT 0 NOT NULL",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 907
+}

@@ -1,0 +1,37 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'courses' AND COLUMN_NAME IN ('completionPercentage','thankYouPageBlocks','notificationOverrides','preStartPageEnabled','accessDurationType','enableCertificate','copiedFromId','playerThemeColor','requireSequential','trackProgress') ORDER BY COLUMN_NAME",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'courses' AND COLUMN_NAME IN ('completionPercentage','thankYouPageBlocks','notificationOverrides','preStartPageEnabled','accessDurationType','enableCertificate','copiedFromId','playerThemeColor','requireSequential','trackProgress') ORDER BY COLUMN_NAME",
+  "rows": [
+    {
+      "COLUMN_NAME": "completionPercentage"
+    },
+    {
+      "COLUMN_NAME": "copiedFromId"
+    },
+    {
+      "COLUMN_NAME": "enableCertificate"
+    },
+    {
+      "COLUMN_NAME": "notificationOverrides"
+    },
+    {
+      "COLUMN_NAME": "playerThemeColor"
+    },
+    {
+      "COLUMN_NAME": "preStartPageEnabled"
+    },
+    {
+      "COLUMN_NAME": "requireSequential"
+    },
+    {
+      "COLUMN_NAME": "thankYouPageBlocks"
+    },
+    {
+      "COLUMN_NAME": "trackProgress"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\ncompletionPercentage\ncopiedFromId\nenableCertificate\nnotificationOverrides\nplayerThemeColor\npreStartPageEnabled\nrequireSequential\nthankYouPageBlocks\ntrackProgress\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

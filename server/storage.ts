@@ -257,3 +257,38 @@ export async function storageGet(
   const key = normalizeKey(relKey);
   return { key, url: await buildManusDownloadUrl(baseUrl, key, apiKey) };
 }
+
+/**
+ * Generate a presigned PUT URL for direct browser-to-storage uploads.
+ * Returns { uploadUrl, fileUrl, key } where:
+ *   - uploadUrl: the URL the browser should PUT the file to (presigned S3 URL or server proxy)
+ *   - fileUrl: the public URL of the file after upload
+ *   - key: the storage key
+ */
+export async function storagePresignedPut(
+  relKey: string,
+  contentType = "application/octet-stream",
+  expiresIn = 3600
+): Promise<{ uploadUrl: string; fileUrl: string; key: string }> {
+  const key = normalizeKey(relKey);
+  if (isAwsConfigured()) {
+    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+    const client = new S3Client({
+      region: process.env.AWS_REGION!,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      },
+    });
+    const uploadUrl = await getSignedUrl(
+      client,
+      new PutObjectCommand({ Bucket: process.env.AWS_S3_BUCKET!, Key: key, ContentType: contentType }),
+      { expiresIn }
+    );
+    return { uploadUrl, fileUrl: buildS3PublicUrl(key), key };
+  }
+  // Manus storage: return the server-side upload endpoint as proxy
+  // The browser will POST multipart/form-data to /api/media-upload
+  return { uploadUrl: "/api/media-upload", fileUrl: "", key };
+}

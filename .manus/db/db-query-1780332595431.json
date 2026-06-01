@@ -1,0 +1,22 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'organizations' AND COLUMN_NAME IN ('isPrimary','customDomain','domainVerificationStatus','slug') ORDER BY COLUMN_NAME",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'organizations' AND COLUMN_NAME IN ('isPrimary','customDomain','domainVerificationStatus','slug') ORDER BY COLUMN_NAME",
+  "rows": [
+    {
+      "COLUMN_NAME": "customDomain"
+    },
+    {
+      "COLUMN_NAME": "domainVerificationStatus"
+    },
+    {
+      "COLUMN_NAME": "isPrimary"
+    },
+    {
+      "COLUMN_NAME": "slug"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\ncustomDomain\ndomainVerificationStatus\nisPrimary\nslug\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

@@ -1,0 +1,442 @@
+{
+  "query": "SHOW COLUMNS FROM `courses`",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute SHOW COLUMNS FROM `courses`",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "orgId",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "instructorId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "title",
+      "Type": "varchar(500)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "slug",
+      "Type": "varchar(200)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "description",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "shortDescription",
+      "Type": "varchar(500)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "thumbnailUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "promoVideoUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('draft','published','hidden','private','archived')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "draft",
+      "Extra": ""
+    },
+    {
+      "Field": "isPrivate",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "isHidden",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "disableTextCopy",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "seoTitle",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "seoDescription",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "enableChapterShare",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "enableCompletionShare",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "socialShareText",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "playerThemeColor",
+      "Type": "varchar(32)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "playerSidebarStyle",
+      "Type": "enum('full','minimal','hidden')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "full",
+      "Extra": ""
+    },
+    {
+      "Field": "playerShowProgress",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "playerAllowNotes",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "completionType",
+      "Type": "enum('all_lessons','percentage','quiz_pass')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "all_lessons",
+      "Extra": ""
+    },
+    {
+      "Field": "completionPercentage",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "100",
+      "Extra": ""
+    },
+    {
+      "Field": "welcomeEmailEnabled",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "welcomeEmailSubject",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "welcomeEmailBody",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "afterPurchaseRedirectUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "upsellCourseId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "headerCode",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "footerCode",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "designTemplate",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "colossal",
+      "Extra": ""
+    },
+    {
+      "Field": "totalEnrollments",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "totalCompletions",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "totalRevenue",
+      "Type": "float",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    },
+    {
+      "Field": "playerShowLessonIcons",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "showCompleteButton",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "enableCertificate",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "trackProgress",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "requireSequential",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "language",
+      "Type": "varchar(16)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "en",
+      "Extra": ""
+    },
+    {
+      "Field": "copiedFromId",
+      "Type": "int",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "notificationOverrides",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "playerShowProgressPercent",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "sortOrder",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "whatYouLearn",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "requirements",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "targetAudience",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "instructorBio",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "preStartPageEnabled",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "thankYouPageEnabled",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "thankYouPageBlocks",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\norgId\tint\tNO\t\tNULL\t\ninstructorId\tint\tYES\t\tNULL\t\ntitle\tvarchar(500)\tNO\t\tNULL\t\nslug\tvarchar(200)\tNO\t\tNULL\t\ndescription\ttext\tYES\t\tNULL\t\nshortDescription\tvarchar(500)\tYES\t\tNULL\t\nthumbnailUrl\ttext\tYES\t\tNULL\t\npromoVideoUrl\ttext\tYES\t\tNULL\t\nstatus\tenum('draft','published','hidden','private','archived')\tNO\t\tdraft\t\nisPrivate\ttinyint(1)\tNO\t\t0\t\nisHidden\ttinyint(1)\tNO\t\t0\t\ndisableTextCopy\ttinyint(1)\tNO\t\t0\t\nseoTitle\tvarchar(255)\tYES\t\tNULL\t\nseoDescription\ttext\tYES\t\tNULL\t\nenableChapterShare\ttinyint(1)\tNO\t\t1\t\nenableCompletionShare\ttinyint(1)\tNO\t\t1\t\nsocialShareText\ttext\tYES\t\tNULL\t\nplayerThemeColor\tvarchar(32)\tYES\t\tNULL\t\nplayerSidebarStyle\tenum('full','minimal','hidden')\tNO\t\tfull\t\nplayerShowProgress\ttinyint(1)\tNO\t\t1\t\nplayerAllowNotes\ttinyint(1)\tNO\t\t0\t\ncompletionType\tenum('all_lessons','percentage','quiz_pass')\tNO\t\tall_lessons\t\ncompletionPercentage\tint\tYES\t\t100\t\nwelcomeEmailEnabled\ttinyint(1)\tNO\t\t1\t\nwelcomeEmailSubject\tvarchar(255)\tYES\t\tNULL\t\nwelcomeEmailBody\ttext\tYES\t\tNULL\t\nafterPurchaseRedirectUrl\ttext\tYES\t\tNULL\t\nupsellCourseId\tint\tYES\t\tNULL\t\nheaderCode\ttext\tYES\t\tNULL\t\nfooterCode\ttext\tYES\t\tNULL\t\ndesignTemplate\tvarchar(64)\tYES\t\tcolossal\t\ntotalEnrollments\tint\tNO\t\t0\t\ntotalCompletions\tint\tNO\t\t0\t\ntotalRevenue\tfloat\tNO\t\t0\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\nplayerShowLessonIcons\ttinyint(1)\tNO\t\t1\t\nshowCompleteButton\ttinyint(1)\tNO\t\t1\t\nenableCertificate\ttinyint(1)\tNO\t\t0\t\ntrackProgress\ttinyint(1)\tNO\t\t1\t\nrequireSequential\ttinyint(1)\tNO\t\t0\t\nlanguage\tvarchar(16)\tYES\t\ten\t\ncopiedFromId\tint\tYES\t\tNULL\t\nnotificationOverrides\ttext\tYES\t\tNULL\t\nplayerShowProgressPercent\ttinyint(1)\tNO\t\t1\t\nsortOrder\tint\tNO\t\t0\t\nwhatYouLearn\ttext\tYES\t\tNULL\t\nrequirements\ttext\tYES\t\tNULL\t\ntargetAudience\ttext\tYES\t\tNULL\t\ninstructorBio\ttext\tYES\t\tNULL\t\npreStartPageEnabled\ttinyint(1)\tNO\t\t1\t\nthankYouPageEnabled\ttinyint(1)\tNO\t\t0\t\nthankYouPageBlocks\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 266
+}

@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember } from "./db";
 import { invokeLLM } from "./_core/llm";
-import { storagePut } from "./storage";
+import { storagePut, storagePresignedPut } from "./storage";
 import { nanoid } from "nanoid";
 import {
   getCoursesByOrg,
@@ -196,9 +196,9 @@ export const lmsRouter = router({
         return getCoursesByOrg(orgId);
       }),
     get: protectedProcedure
-      .input(z.object({ courseId: z.number() }))
+      .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        const course = await getCourseById(input.courseId);
+        const course = await getCourseById(input.id);
         if (!course) throw new TRPCError({ code: "NOT_FOUND" });
         return course;
       }),
@@ -216,14 +216,15 @@ export const lmsRouter = router({
         return createCourse({ ...input, orgId, slug });
       }),
     update: protectedProcedure
-      .input(z.object({ courseId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number() }).passthrough())
       .mutation(async ({ input }) => {
-        return updateCourse(input.courseId, input.data as any);
+        const { id, ...data } = input;
+        return updateCourse(id, data as any);
       }),
     delete: protectedProcedure
-      .input(z.object({ courseId: z.number() }))
+      .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await deleteCourse(input.courseId);
+        await deleteCourse(input.id);
         return { ok: true };
       }),
     reorder: protectedProcedure
@@ -233,9 +234,11 @@ export const lmsRouter = router({
         return { ok: true };
       }),
     getThankYouPage: protectedProcedure
-      .input(z.object({ courseId: z.number() }))
+      .input(z.object({ courseId: z.number().optional(), id: z.number().optional() }))
       .query(async ({ input }) => {
-        const course = await getCourseById(input.courseId);
+        const id = input.id ?? input.courseId;
+        if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        const course = await getCourseById(id);
         return { blocks: (course as any)?.thankYouPageBlocks ?? null };
       }),
   }),
@@ -248,9 +251,11 @@ export const lmsRouter = router({
         return getFullCurriculum(input.courseId);
       }),
     getLesson: protectedProcedure
-      .input(z.object({ lessonId: z.number() }))
+      .input(z.object({ id: z.number().optional(), lessonId: z.number().optional() }))
       .query(async ({ input }) => {
-        const lesson = await getLessonById(input.lessonId);
+        const id = input.id ?? input.lessonId;
+        if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        const lesson = await getLessonById(id);
         if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
         return lesson;
       }),
@@ -260,14 +265,17 @@ export const lmsRouter = router({
         return createSection({ courseId: input.courseId, title: input.title, sortOrder: input.sortOrder ?? 0 });
       }),
     updateSection: protectedProcedure
-      .input(z.object({ sectionId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number() }).passthrough())
       .mutation(async ({ input }) => {
-        return updateSection(input.sectionId, input.data as any);
+        const { id, ...data } = input;
+        return updateSection(id, data as any);
       }),
     deleteSection: protectedProcedure
-      .input(z.object({ sectionId: z.number() }))
+      .input(z.object({ id: z.number().optional(), sectionId: z.number().optional() }))
       .mutation(async ({ input }) => {
-        await deleteSection(input.sectionId);
+        const id = input.id ?? input.sectionId;
+        if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await deleteSection(id);
         return { ok: true };
       }),
     createLesson: protectedProcedure
@@ -288,14 +296,17 @@ export const lmsRouter = router({
         });
       }),
     updateLesson: protectedProcedure
-      .input(z.object({ lessonId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number() }).passthrough())
       .mutation(async ({ input }) => {
-        return updateLesson(input.lessonId, input.data as any);
+        const { id, ...data } = input;
+        return updateLesson(id, data as any);
       }),
     deleteLesson: protectedProcedure
-      .input(z.object({ lessonId: z.number() }))
+      .input(z.object({ id: z.number().optional(), lessonId: z.number().optional() }))
       .mutation(async ({ input }) => {
-        await deleteLesson(input.lessonId);
+        const id = input.id ?? input.lessonId;
+        if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await deleteLesson(id);
         return { ok: true };
       }),
     reorderLessons: protectedProcedure
@@ -314,19 +325,22 @@ export const lmsRouter = router({
         return getPricingByCourse(input.courseId);
       }),
     create: protectedProcedure
-      .input(z.object({ courseId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ courseId: z.number(), orgId: z.number().optional() }).passthrough())
       .mutation(async ({ input }) => {
-        return createPricing({ courseId: input.courseId, ...(input.data as any) });
+        return createPricing(input as any);
       }),
     update: protectedProcedure
-      .input(z.object({ pricingId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number() }).passthrough())
       .mutation(async ({ input }) => {
-        return updatePricing(input.pricingId, input.data as any);
+        const { id, ...data } = input;
+        return updatePricing(id, data as any);
       }),
     delete: protectedProcedure
-      .input(z.object({ pricingId: z.number() }))
+      .input(z.object({ id: z.number().optional(), pricingId: z.number().optional() }))
       .mutation(async ({ input }) => {
-        await deletePricing(input.pricingId);
+        const id = input.id ?? input.pricingId;
+        if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await deletePricing(id);
         return { ok: true };
       }),
   }),
@@ -1371,10 +1385,15 @@ export const lmsRouter = router({
   // ── Media ──────────────────────────────────────────────────────────────────
   media: router({
     getUploadUrl: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), fileName: z.string(), mimeType: z.string(), folder: z.string().optional() }))
+      .input(z.object({ orgId: z.number().optional(), fileName: z.string(), mimeType: z.string().optional(), contentType: z.string().optional(), folder: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        return { uploadUrl: `/api/media-upload`, orgId, folder: input.folder ?? "media" };
+        const mimeType = input.mimeType ?? input.contentType ?? "application/octet-stream";
+        const folder = input.folder ?? "media";
+        const ext = input.fileName.split(".").pop() ?? "bin";
+        const key = `org-${orgId}/${folder}/${nanoid(12)}.${ext}`;
+        const result = await storagePresignedPut(key, mimeType);
+        return { ...result, fileUrl: result.fileUrl || result.uploadUrl, orgId, folder };
       }),
     listOrgMedia: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), folderId: z.number().optional(), mimeType: z.string().optional() }).optional())
