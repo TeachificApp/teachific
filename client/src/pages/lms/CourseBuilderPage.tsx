@@ -11002,3 +11002,6 @@ function LMSPublishDomainSettings() {
     </div>
   );
 }
+
+// Named export so CourseEditorPage can import and render it directly
+export { CourseEditor };

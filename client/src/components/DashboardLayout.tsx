@@ -156,7 +156,7 @@ const navGroups: NavGroup[] = [
         path: "/products",
         subItems: [
           { label: "Courses", path: "/lms/courses" },
-          { label: "Digital Downloads", path: "/admin/downloads" },
+          { label: "Digital Downloads", path: "/lms/downloads" },
           { label: "Webinars", path: "/lms/webinars" },
           { label: "Memberships", path: "/products/memberships" },
           { label: "Bundles", path: "/products/bundles" },

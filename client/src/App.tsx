@@ -34,6 +34,7 @@ import PlatformAdminPage from "./pages/admin/PlatformAdminPage";
 
 import CoursesPage from "./pages/lms/CoursesPage";
 import CourseBuilderPage from "./pages/lms/CourseBuilderPage";
+import CourseEditorPage from "./pages/lms/CourseEditorPage";
 import BrandingPage from "./pages/lms/BrandingPage";
 import MembersPage from "./pages/lms/MembersPage";
 import LmsAnalyticsPage from "./pages/lms/LmsAnalyticsPage";
@@ -55,6 +56,7 @@ import DigitalProductsPage from "./pages/admin/DigitalProductsPage";
 import DigitalProductEditorPage from "./pages/admin/DigitalProductEditorPage";
 import DigitalProductSalesPage from "./pages/DigitalProductSalesPage";
 import DigitalDownloadsReportsPage from "./pages/admin/DigitalDownloadsReportsPage";
+import DigitalDownloadsAdminPage from "./pages/lms/DigitalDownloadsAdminPage";
 import WebinarsPage from "./pages/admin/WebinarsPage";
 import WebinarEditorPage from "./pages/admin/WebinarEditorPage";
 import WebinarReportsPage from "./pages/admin/WebinarReportsPage";
@@ -242,15 +244,16 @@ function AdminRouter() {
 
           {/* ── Products ── */}
           <Route path="/lms/courses" component={CoursesPage} />
-          <Route path="/lms/courses/new" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id/curriculum" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id/settings" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id/pricing" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id/sales_page" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id/drip" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id/after_purchase" component={CourseBuilderPage} />
-          <Route path="/lms/courses/:id" component={CourseBuilderPage} />
+          <Route path="/lms/courses/new" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id/curriculum" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id/settings" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id/pricing" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id/sales_page" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id/drip" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id/after_purchase" component={CourseEditorPage} />
+          <Route path="/lms/courses/:id" component={CourseEditorPage} />
           <Route path="/admin/downloads" component={DigitalProductsPage} />
+          <Route path="/lms/downloads" component={DigitalDownloadsAdminPage} />
           <Route path="/admin/downloads/reports" component={DigitalDownloadsReportsPage} />
           <Route path="/admin/downloads/new">{() => <DigitalProductEditorPage />}</Route>
           <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>
@@ -375,14 +378,14 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms">{() => <DashboardLayout><LmsDashboardPage /></DashboardLayout>}</Route>
         <Route path="/lms/dashboard">{() => <DashboardLayout><LmsDashboardPage /></DashboardLayout>}</Route>
         <Route path="/lms/courses">{() => <DashboardLayout><CoursesPage /></DashboardLayout>}</Route>
-        <Route path="/lms/courses/new" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id/curriculum" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id/settings" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id/pricing" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id/sales_page" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id/drip" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id/after_purchase" component={CourseBuilderPage} />
-        <Route path="/lms/courses/:id" component={CourseBuilderPage} />
+        <Route path="/lms/courses/new" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id/curriculum" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id/settings" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id/pricing" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id/sales_page" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id/drip" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id/after_purchase" component={CourseEditorPage} />
+        <Route path="/lms/courses/:id" component={CourseEditorPage} />
         <Route path="/members/users">{() => <DashboardLayout><MembersPage /></DashboardLayout>}</Route>
         <Route path="/members/groups">{() => <DashboardLayout><GroupsPage /></DashboardLayout>}</Route>
         <Route path="/members/certificates">{() => <DashboardLayout><MemberCertificatesPage /></DashboardLayout>}</Route>
@@ -469,16 +472,16 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
 function FullScreenEditorRouter() {
   return (
     <Switch>
-      <Route path="/lms/courses/new" component={CourseBuilderPage} />
-      <Route path="/lms/courses/:id/curriculum" component={CourseBuilderPage} />
-      <Route path="/lms/courses/:id/settings" component={CourseBuilderPage} />
-      <Route path="/lms/courses/:id/pricing" component={CourseBuilderPage} />
-      <Route path="/lms/courses/:id/sales_page" component={CourseBuilderPage} />
-      <Route path="/lms/courses/:id/drip" component={CourseBuilderPage} />
-      <Route path="/lms/courses/:id/after_purchase" component={CourseBuilderPage} />
+      <Route path="/lms/courses/new" component={CourseEditorPage} />
+      <Route path="/lms/courses/:id/curriculum" component={CourseEditorPage} />
+      <Route path="/lms/courses/:id/settings" component={CourseEditorPage} />
+      <Route path="/lms/courses/:id/pricing" component={CourseEditorPage} />
+      <Route path="/lms/courses/:id/sales_page" component={CourseEditorPage} />
+      <Route path="/lms/courses/:id/drip" component={CourseEditorPage} />
+      <Route path="/lms/courses/:id/after_purchase" component={CourseEditorPage} />
       <Route path="/lms/courses/:id/thank-you-builder" component={PageBuilderPage} />
       <Route path="/lms/courses/:id/page-builder" component={PageBuilderPage} />
-      <Route path="/lms/courses/:id" component={CourseBuilderPage} />
+      <Route path="/lms/courses/:id" component={CourseEditorPage} />
       <Route path="/admin/downloads/new">{() => <DigitalProductEditorPage />}</Route>
       <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>
       <Route path="/lms/webinars/:id/edit">{() => <WebinarEditorPage />}</Route>
