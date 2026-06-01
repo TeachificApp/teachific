@@ -944,14 +944,14 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
   const subject = `Your purchase is confirmed — ${opts.productName}`;
   const previewText = `Thank you for your purchase! Your access to ${opts.productName} is now active.`;
   const totalCents = opts.amountPaid;
-  const totalDisplay = `$${(totalCents / 100).toFixed(2)}`;
+  const totalDisplay = `$${Number(totalCents).toFixed(2)}`;
 
   const bumpRows = (opts.orderBumps ?? []).length > 0
     ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0 0;">
         ${(opts.orderBumps ?? []).map(b => `
           <tr>
             <td style="font-size:13px;color:#475569;padding:4px 0;">${b.title}</td>
-            <td style="font-size:13px;color:#475569;text-align:right;padding:4px 0;">$${(b.price / 100).toFixed(2)}</td>
+            <td style="font-size:13px;color:#475569;text-align:right;padding:4px 0;">$${Number(b.price).toFixed(2)}</td>
           </tr>`).join("")}
       </table>`
     : "";

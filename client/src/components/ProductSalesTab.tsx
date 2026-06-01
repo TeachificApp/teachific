@@ -15,8 +15,8 @@ import { toast } from "sonner";
 import { DollarSign, Users, TrendingUp, RefreshCw, XCircle, ChevronLeft, ChevronRight, ShieldOff } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmtMoney(cents: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
+function fmtMoney(amount: number, currency = "usd") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(amount));
 }
 function fmtDate(d: Date | string | null | undefined) {
   if (!d) return "—";

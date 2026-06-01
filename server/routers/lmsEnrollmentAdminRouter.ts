@@ -2326,7 +2326,7 @@ CRITICAL REQUIREMENTS:
         requestorType: payoutRequests.requestorType,
         affiliateId: payoutRequests.affiliateId,
         instructorUserId: payoutRequests.instructorUserId,
-        amountCents: payoutRequests.amountCents,
+        amount: payoutRequests.amount,
         currency: payoutRequests.currency,
         paymentMethod: payoutRequests.paymentMethod,
         paymentDetails: payoutRequests.paymentDetails,
@@ -2374,7 +2374,7 @@ CRITICAL REQUIREMENTS:
         const [aff] = await db.select().from(lmsAffiliates).where(eq(lmsAffiliates.id, req.affiliateId)).limit(1);
         if (aff) {
           await db.update(lmsAffiliates)
-            .set({ totalPaid: aff.totalPaid + req.amountCents })
+            .set({ totalPaid: aff.totalPaid + req.amount })
             .where(eq(lmsAffiliates.id, req.affiliateId));
         }
       }
@@ -2502,7 +2502,7 @@ CRITICAL REQUIREMENTS:
   requestPayout: protectedProcedure
     .input(z.object({
       requestorType: z.enum(["affiliate", "instructor"]),
-      amountCents: z.number().int().min(100),
+      amount: z.number().min(0),
       paymentMethod: z.enum(["stripe", "paypal", "ach"]),
       paymentDetails: z.object({
         paypal_email: z.string().email().optional(),
@@ -2525,7 +2525,7 @@ CRITICAL REQUIREMENTS:
         requestorType: input.requestorType,
         affiliateId,
         instructorUserId: input.requestorType === "instructor" ? ctx.user.id : null,
-        amountCents: input.amountCents,
+        amount: input.amount,
         paymentMethod: input.paymentMethod,
         paymentDetails: JSON.stringify(input.paymentDetails),
       });

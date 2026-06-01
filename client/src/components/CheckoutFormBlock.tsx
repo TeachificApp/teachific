@@ -293,7 +293,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
           {selectedProduct && (
             <div className="flex justify-between">
               <span className="font-medium">{selectedProduct.name}</span>
-              <span className="font-medium">${(selectedProduct.price / 100).toFixed(2)}</span>
+              <span className="font-medium">${Number(selectedProduct.price).toFixed(2)}</span>
             </div>
           )}
           {Array.from(addedBumps).map((idx) => {
@@ -302,7 +302,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             return (
               <div key={idx} className="flex justify-between text-gray-600">
                 <span>{bump.title}</span>
-                <span>${(bump.price / 100).toFixed(2)}</span>
+                <span>${Number(bump.price).toFixed(2)}</span>
               </div>
             );
           })}
@@ -443,7 +443,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
                   {(product as any).strikethroughPrice && (
                     <span className="text-xs font-medium text-red-500 line-through leading-none">{(product as any).strikethroughPrice}</span>
                   )}
-                  <span className="font-medium text-sm">${(product.price / 100).toFixed(2)}</span>
+                  <span className="font-medium text-sm">${Number(product.price).toFixed(2)}</span>
                 </div>
               </label>
             ))}
@@ -539,7 +539,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-sm font-bold" style={{ color: accent }}>
-                  ${(bump.price / 100).toFixed(2)}
+                  ${Number(bump.price).toFixed(2)}
                 </p>
                 <button
                   type="button"
@@ -583,7 +583,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             {selectedProduct && (
               <div className="flex justify-between">
                 <span>{selectedProduct.name}</span>
-                <span className="font-medium">${(selectedProduct.price / 100).toFixed(2)}</span>
+                <span className="font-medium">${Number(selectedProduct.price).toFixed(2)}</span>
               </div>
             )}
             {Array.from(addedBumps).map((idx) => {
@@ -592,7 +592,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               return (
                 <div key={idx} className="flex justify-between text-gray-600">
                   <span>{bump.title}</span>
-                  <span>${(bump.price / 100).toFixed(2)}</span>
+                  <span>${Number(bump.price).toFixed(2)}</span>
                 </div>
               );
             })}

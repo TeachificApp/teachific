@@ -5612,7 +5612,7 @@ function PayoutRequestsPanel() {
                     <p className="text-xs text-gray-500">{r.affiliateEmail ?? r.instructorEmail}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">${(r.amountCents / 100).toFixed(2)}</p>
+                    <p className="text-sm font-semibold text-gray-900">${Number(r.amount).toFixed(2)}</p>
                     <span className={`text-xs px-1.5 py-0.5 rounded border ${statusColors[r.status] ?? ""}`}>{r.status}</span>
                   </div>
                 </div>

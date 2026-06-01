@@ -3710,3 +3710,22 @@
 - [x] Add visibility column to quizzes table in schema and DB
 - [x] Fix lmsRouter field name mismatches (createdByUserId, orgId, etc.)
 - [x] All 177 tests passing
+
+## Price Display & Schema Fixes
+- [x] Fix BlockPreview.tsx: remove /100 from price display (lines 692, 725, 2187, 2190)
+- [x] Fix CheckoutFormBlock.tsx: remove /100 from price display (lines 296, 305, 446, 542, 586, 595)
+- [x] Fix LMSSalesTab.tsx: rename fmtMoney param from 'cents' to 'amount', remove /100
+- [x] Fix ProductSalesTab.tsx: rename fmtMoney param from 'cents' to 'amount', remove /100
+- [x] Fix server/_core/email.ts: remove /100 from price display (lines 947, 954)
+- [x] Fix CourseBuilderPage.tsx: fix r.amountCents/100 -> Number(r.amount) (payout requests display)
+- [x] Migrate schema: community_spaces.price int -> decimal(10,2)
+- [x] Migrate schema: lms_courses.price, downPayment, installmentAmount int -> decimal(10,2)
+- [x] Migrate schema: lms_pricing_options.price, downPayment, installmentAmount int -> decimal(10,2)
+- [x] Migrate schema: physical_products.price, compareAtPrice int -> decimal(10,2)
+- [x] Migrate schema: digital_bundles.originalPrice, discountPrice int -> decimal(10,2)
+- [x] Migrate schema: physical_product_pricing_options.price, compareAtPrice int -> decimal(10,2)
+- [x] Migrate schema: physical_product_orders.amountPaid int -> decimal(10,2)
+- [x] Migrate schema: payout_requests.amountCents int -> amount decimal(10,2) (rename + type change)
+- [x] Migrate schema: org_subscriptions.customPriceUsd int -> decimal(10,2)
+- [x] Apply all schema migrations to database via ALTER TABLE
+- [x] Fix lmsEnrollmentAdminRouter.ts: update amountCents references to amount
