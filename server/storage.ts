@@ -292,3 +292,31 @@ export async function storagePresignedPut(
   // The browser will POST multipart/form-data to /api/media-upload
   return { uploadUrl: "/api/media-upload", fileUrl: "", key };
 }
+
+export async function storageDelete(relKey: string): Promise<void> {
+  const key = normalizeKey(relKey);
+  try {
+    if (isAwsConfigured()) {
+      const { S3Client, DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+      const client = new S3Client({
+        region: process.env.AWS_REGION!,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        },
+      });
+      await client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET!, Key: key }));
+      return;
+    }
+    // Manus storage delete
+    const { baseUrl, apiKey } = getManusStorageConfig();
+    const deleteUrl = new URL("v1/storage/delete", baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
+    deleteUrl.searchParams.set("path", key);
+    await fetch(deleteUrl, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  } catch {
+    // Ignore delete errors — file may already be gone
+  }
+}

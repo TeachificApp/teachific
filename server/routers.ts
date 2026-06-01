@@ -125,6 +125,10 @@ import { teachificPayRouter } from "./teachificPayRouter";
 import { embeddedCheckoutRouter } from "./embeddedCheckoutRouter";
 import { funnelRouter, funnelPublicRouter, funnelAdminRouter } from "./routers/funnelRouter";
 import { lmsAdminRouter } from "./routers/lmsAdminRouter";
+import { lmsLearnerRouter, lmsGroupRouter } from "./routers/lmsRouter";
+import { lmsEnrollmentAdminRouter } from "./routers/lmsEnrollmentAdminRouter";
+import { mediaRepoRouter } from "./routers/mediaRepoRouter";
+import { thinkificImportRouter } from "./routers/thinkificImportRouter";
 import { blockTemplatesRouter } from "./routers/blockTemplatesRouter";
 import { pageScraperRouter } from "./routers/pageScraperRouter";
 import { generalFormRouter } from "./routers/generalFormRouter";
@@ -204,7 +208,11 @@ export const appRouter = router({
   funnelPublic: funnelPublicRouter,
   funnelAdmin: funnelAdminRouter,
   lmsAdmin: lmsAdminRouter,
-  lmsGroup: lmsAdminRouter, // alias for pricing options used by page editors
+  lmsGroup: lmsGroupRouter,
+  lmsLearner: lmsLearnerRouter,
+  lmsEnrollmentAdmin: lmsEnrollmentAdminRouter,
+  mediaRepo: mediaRepoRouter,
+  thinkificImport: thinkificImportRouter,
   blockTemplates: blockTemplatesRouter,
   pageScraper: pageScraperRouter,
   generalForm: generalFormRouter,

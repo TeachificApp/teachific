@@ -3,6 +3,9 @@ import { eq, asc, like, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
+import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
+import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
 import {
   lmsCourses,
   lmsLandingPages,
@@ -20,7 +23,7 @@ function assertAdmin(ctx: { user: { role: string } }) {
   }
 }
 
-export const lmsAdminRouter = router({
+const _lmsAdminBaseRouter = router({
   /** Get all courses with their landing page blocks for the block picker */
   getCoursesWithLandingBlocks: protectedProcedure
     .query(async ({ ctx }) => {
@@ -288,4 +291,12 @@ export const lmsAdminRouter = router({
         .orderBy(asc(courseLessons.sortOrder));
       return rows;
     }),
+});
+
+// Merge all sub-routers into lmsAdminRouter (matching ultrasound-app structure)
+export const lmsAdminRouter = router({
+  ..._lmsAdminBaseRouter._def.procedures,
+  ...lmsCourseBuilderRouter._def.procedures,
+  ...lmsEnrollmentAdminRouter._def.procedures,
+  ...lmsCohortAdminRouter._def.procedures,
 });

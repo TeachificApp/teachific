@@ -93,3 +93,11 @@ export function getOrgSubdomainUrl(slug: string, path = ""): string {
   // On root domain (teachific.app or www.teachific.app), build the subdomain URL
   return `${protocol}//${slug}.teachific.app${path}`;
 }
+
+/**
+ * Returns the correct absolute admin URL for a given path.
+ * On Teachific, all admin paths stay relative (no subdomain routing needed).
+ */
+export function getAdminUrl(path: string): string {
+  return path;
+}

@@ -3734,3 +3734,259 @@ export const quizAccessGrants = mysqlTable("quiz_access_grants", {
   stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
 });
 export type QuizAccessGrant = typeof quizAccessGrants.$inferSelect;
+
+// ─── Missing tables ported from ultrasound-app ────────────────────────────────
+
+export const lmsAffiliates = mysqlTable("lms_affiliates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  code: varchar("code", { length: 64 }).notNull(),
+  commissionPct: int("commission_pct").default(10).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  totalEarned: int("total_earned").default(0).notNull(),
+  totalPaid: int("total_paid").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type LmsAffiliate = typeof lmsAffiliates.$inferSelect;
+
+export const freePreviewEnrollments = mysqlTable("free_preview_enrollments", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("course_id").notNull(),
+  userId: int("user_id"),
+  email: varchar("email", { length: 320 }).notNull(),
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  source: varchar("source", { length: 128 }),
+  utmSource: varchar("utm_source", { length: 128 }),
+  utmMedium: varchar("utm_medium", { length: 128 }),
+  utmCampaign: varchar("utm_campaign", { length: 128 }),
+  accessToken: varchar("access_token", { length: 128 }).notNull(),
+  accessExpiresAt: timestamp("access_expires_at").notNull(),
+  followUpSentAt: timestamp("follow_up_sent_at"),
+  tags: text("tags"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type FreePreviewEnrollment = typeof freePreviewEnrollments.$inferSelect;
+
+export const sonoQuizzes = mysqlTable("sonoQuizzes", {
+  id: int("id").autoincrement().primaryKey(),
+  createdByUserId: int("createdByUserId").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  timeLimitSeconds: int("timeLimitSeconds").default(20).notNull(),
+  musicTrack: varchar("musicTrack", { length: 100 }),
+  theme: varchar("theme", { length: 50 }).default("teal").notNull(),
+  coverImageUrl: text("coverImageUrl"),
+  category: mysqlEnum("sono_category", ["Abdominal", "Small Parts", "Pelvic/Gyn", "OB 1st Trimester", "OB 2nd/3rd Trimester", "Fetal Echo", "Breast", "Vascular", "MSK", "POCUS", "Physics", "General"]).default("General").notNull(),
+  questionCount: int("questionCount").default(0).notNull(),
+  status: mysqlEnum("sono_status", ["draft", "published", "archived"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SonoQuiz = typeof sonoQuizzes.$inferSelect;
+
+export const instructorCoursePermissions = mysqlTable("instructor_course_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  instructorId: int("instructor_id").notNull(),
+  courseId: int("course_id").notNull(),
+  canSelfPublish: boolean("can_self_publish").default(false).notNull(),
+  grantedByAdminId: int("granted_by_admin_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type InstructorCoursePermission = typeof instructorCoursePermissions.$inferSelect;
+
+export const instructorPublishRequests = mysqlTable("instructor_publish_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("course_id").notNull(),
+  instructorId: int("instructor_id").notNull(),
+  status: mysqlEnum("ipr_status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  note: text("note"),
+  reviewNote: text("review_note"),
+  reviewedByAdminId: int("reviewed_by_admin_id"),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+export type InstructorPublishRequest = typeof instructorPublishRequests.$inferSelect;
+
+export const lmsThinkificImports = mysqlTable("lms_thinkific_imports", {
+  id: int("id").autoincrement().primaryKey(),
+  thinkificCourseId: int("thinkific_course_id").notNull(),
+  thinkificCourseName: varchar("thinkific_course_name", { length: 255 }).notNull(),
+  thinkificSlug: varchar("thinkific_slug", { length: 255 }),
+  lmsCourseId: int("lms_course_id"),
+  status: mysqlEnum("thinkific_status", ["pending", "running", "complete", "failed"]).default("pending").notNull(),
+  importedByUserId: int("imported_by_user_id").notNull(),
+  sectionsImported: int("sections_imported").default(0).notNull(),
+  lessonsImported: int("lessons_imported").default(0).notNull(),
+  enrollmentsPending: int("enrollments_pending").default(0).notNull(),
+  enrollmentsActivated: int("enrollments_activated").default(0).notNull(),
+  errorMessage: text("error_message"),
+  importLog: longtext("import_log"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LmsThinkificImport = typeof lmsThinkificImports.$inferSelect;
+
+export const lmsSectionTemplates = mysqlTable("lms_section_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  sectionTitle: varchar("section_title", { length: 255 }).notNull(),
+  lessonsJson: longtext("lessons_json").notNull(),
+  lessonCount: int("lesson_count").default(0).notNull(),
+  createdByUserId: int("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LmsSectionTemplate = typeof lmsSectionTemplates.$inferSelect;
+
+export const lessonTemplates = mysqlTable("lesson_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  lessonType: varchar("lesson_type", { length: 64 }).default("video").notNull(),
+  blocks: longtext("blocks"),
+  coverImage: text("cover_image"),
+  tags: text("tags"),
+  createdByAdminId: int("created_by_admin_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LessonTemplate = typeof lessonTemplates.$inferSelect;
+
+export const userRoles = mysqlTable("user_roles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  role: mysqlEnum("user_role_type", ["diy_user", "platform_admin", "accreditation_manager", "education_manager", "education_admin", "education_student", "platform_owner", "platform_moderator", "instructor", "team_admin", "affiliate"]).notNull(),
+  grantedByLabId: int("grantedByLabId"),
+  assignedByUserId: int("assignedByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UserRole = typeof userRoles.$inferSelect;
+
+export const userActivityLogs = mysqlTable("user_activity_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  description: varchar("description", { length: 512 }).notNull(),
+  path: varchar("path", { length: 512 }),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  userAgent: text("user_agent"),
+  metadata: json("metadata"),
+  courseId: int("course_id"),
+  lessonId: int("lesson_id"),
+  contentTitle: varchar("content_title", { length: 512 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type UserActivityLog = typeof userActivityLogs.$inferSelect;
+
+// ─── Affiliate tracking tables ─────────────────────────────────────────────
+export const affiliateLinks = mysqlTable("affiliate_links", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliate_id").notNull(),
+  courseId: int("course_id"),
+  slug: varchar("slug", { length: 128 }).notNull(),
+  destinationUrl: text("destination_url").notNull(),
+  clicks: int("clicks").default(0).notNull(),
+  conversions: int("conversions").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type AffiliateLink = typeof affiliateLinks.$inferSelect;
+
+export const affiliateClicks = mysqlTable("affiliate_clicks", {
+  id: int("id").autoincrement().primaryKey(),
+  linkId: int("link_id").notNull(),
+  affiliateId: int("affiliate_id").notNull(),
+  ip: varchar("ip", { length: 64 }),
+  userAgent: varchar("user_agent", { length: 512 }),
+  referrer: varchar("referrer", { length: 512 }),
+  clickedAt: timestamp("clicked_at").defaultNow().notNull(),
+});
+export type AffiliateClick = typeof affiliateClicks.$inferSelect;
+
+export const payoutRequests = mysqlTable("payout_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  requestorType: mysqlEnum("requestor_type", ["affiliate", "instructor"]).notNull(),
+  affiliateId: int("affiliate_id"),
+  instructorUserId: int("instructor_user_id"),
+  amountCents: int("amount_cents").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
+  status: mysqlEnum("payout_status", ["pending", "approved", "paid", "rejected"]).default("pending").notNull(),
+  paymentMethod: varchar("payment_method", { length: 64 }),
+  paymentReference: varchar("payment_reference", { length: 255 }),
+  notes: text("notes"),
+  reviewedByAdminId: int("reviewed_by_admin_id"),
+  requestedAt: timestamp("requested_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+  paidAt: timestamp("paid_at"),
+});
+export type PayoutRequest = typeof payoutRequests.$inferSelect;
+
+// ─── Media upload tables ──────────────────────────────────────────────────
+export const mediaUploadFolders = mysqlTable("media_upload_folders", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  createdBy: int("created_by"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type MediaUploadFolder = typeof mediaUploadFolders.$inferSelect;
+
+export const mediaUploadResponses = mysqlTable("media_upload_responses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  blockId: varchar("block_id", { length: 128 }),
+  pageId: varchar("page_id", { length: 128 }),
+  pageType: varchar("page_type", { length: 64 }),
+  folderId: int("folder_id"),
+  fileUrl: varchar("file_url", { length: 1024 }).notNull(),
+  fileKey: varchar("file_key", { length: 512 }).notNull(),
+  fileName: varchar("file_name", { length: 512 }),
+  mimeType: varchar("mime_type", { length: 128 }),
+  fileSize: int("file_size"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+export type MediaUploadResponse = typeof mediaUploadResponses.$inferSelect;
+
+// ─── Affiliate course settings ────────────────────────────────────────────
+export const affiliateCourseSettings = mysqlTable("affiliate_course_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  courseId: int("course_id").notNull(),
+  affiliateEnabled: boolean("affiliate_enabled").default(false).notNull(),
+  commissionPctOverride: int("commission_pct_override"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type AffiliateCourseSettings = typeof affiliateCourseSettings.$inferSelect;
+
+export const affiliateCourseAccess = mysqlTable("affiliate_course_access", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliate_id").notNull(),
+  courseId: int("course_id").notNull(),
+  commissionPctOverride: int("commission_pct_override"),
+  grantedByAdminId: int("granted_by_admin_id"),
+  grantedAt: timestamp("granted_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+});
+export type AffiliateCourseAccess = typeof affiliateCourseAccess.$inferSelect;
+
+// ─── Thinkific import tables ──────────────────────────────────────────────
+export const lmsPendingEnrollments = mysqlTable("lms_pending_enrollments", {
+  id: int("id").autoincrement().primaryKey(),
+  importId: int("import_id").notNull(),
+  lmsCourseId: int("lms_course_id").notNull(),
+  thinkificUserId: int("thinkific_user_id"),
+  thinkificEmail: varchar("thinkific_email", { length: 255 }).notNull(),
+  thinkificName: varchar("thinkific_name", { length: 255 }),
+  lmsUserId: int("lms_user_id"),
+  thinkificEnrolledAt: timestamp("thinkific_enrolled_at"),
+  thinkificCompletedAt: timestamp("thinkific_completed_at"),
+  thinkificProgressPct: int("thinkific_progress_pct").default(0),
+  status: mysqlEnum("lms_pending_enrollment_status", ["pending", "activated", "skipped"]).default("pending").notNull(),
+  activatedAt: timestamp("activated_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type LmsPendingEnrollment = typeof lmsPendingEnrollments.$inferSelect;
