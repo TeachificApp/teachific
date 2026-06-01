@@ -12,6 +12,7 @@ import { nanoid } from "nanoid";
 import {
   getCoursesByOrg,
   getCourseById,
+  getCourseBySlug,
   createCourse,
   updateCourse,
   deleteCourse,
@@ -1640,6 +1641,35 @@ export const lmsRouter = router({
       return { checkoutUrl: null, message: "Please upgrade via the billing page." };
     }),
 
+  // ── Top-level convenience procedures (legacy compat) ────────────────────
+  getCourse: publicProcedure
+    .input(z.object({ slug: z.string(), orgId: z.number().optional(), preview: z.boolean().optional() }))
+    .query(async ({ input }) => {
+      if (!input.orgId) {
+        // Try to find by slug across all orgs
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return null;
+        const { courses } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const rows = await db.select().from(courses).where(eq(courses.slug, input.slug)).limit(1);
+        return rows[0] ?? null;
+      }
+      return getCourseBySlug(input.orgId, input.slug);
+    }),
+  listCourses: protectedProcedure
+    .input(z.object({ orgId: z.number().optional(), pageSize: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+      const all = await getCoursesByOrg(orgId);
+      return { courses: all, total: (all as any[]).length };
+    }),
+  listInstructors: protectedProcedure
+    .input(z.object({ orgId: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+      return getInstructorsByOrg(orgId);
+    }),
   // ── Aliased sub-routers ────────────────────────────────────────────────────
   funnels: funnelRouter,
   downloads: downloadsAdminRouter,
