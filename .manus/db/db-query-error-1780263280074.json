@@ -1,8 +1,0 @@
-{
-  "query": "\nALTER TABLE media_assets\n  ADD COLUMN slug VARCHAR(255) NULL UNIQUE,\n  ADD COLUMN title VARCHAR(255) NULL,\n  ADD COLUMN mediaType VARCHAR(50) NULL COMMENT 'image, video, audio, document, other',\n  ADD COLUMN description TEXT NULL;\n",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute \nALTER TABLE media_assets\n  ADD COLUMN slug VARCHAR(255) NULL UNIQUE,\n  ADD COLUMN title VARCHAR(255) NULL,\n  ADD COLUMN mediaType VARCHAR(50) NULL COMMENT 'image, video, audio, document, other',\n  ADD COLUMN description TEXT NULL;\n",
-  "returncode": 1,
-  "logs": [
-    "ERROR 8200 (HY000) at line 2: unsupported add column 'slug' constraint UNIQUE KEY when altering 'fJXMsdmk8vcb8V4GDt37f6.media_assets'"
-  ]
-}

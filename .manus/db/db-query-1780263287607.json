@@ -1,9 +1,0 @@
-{
-  "query": "\nALTER TABLE media_assets\n  ADD COLUMN slug VARCHAR(255) NULL,\n  ADD COLUMN title VARCHAR(255) NULL,\n  ADD COLUMN mediaType VARCHAR(50) NULL,\n  ADD COLUMN description TEXT NULL;\n\nCREATE UNIQUE INDEX idx_media_assets_slug ON media_assets(slug);\n",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute \nALTER TABLE media_assets\n  ADD COLUMN slug VARCHAR(255) NULL,\n  ADD COLUMN title VARCHAR(255) NULL,\n  ADD COLUMN mediaType VARCHAR(50) NULL,\n  ADD COLUMN description TEXT NULL;\n\nCREATE UNIQUE INDEX idx_media_assets_slug ON media_assets(slug);\n",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 1816
-}

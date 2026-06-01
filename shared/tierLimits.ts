@@ -55,31 +55,6 @@ export interface TierLimits {
   affiliates: boolean;
   /** Priority support */
   prioritySupport: boolean;
-  // ── Quiz feature flags ─────────────────────────────────────────────────────
-  /**
-   * Basic quiz builder: MCQ, True/False, short answer.
-   * No import/export. Available on Free and above.
-   */
-  basicQuizBuilder: boolean;
-  /**
-   * Full QuizMaker: all question types, question bank with folders/tags,
-   * AI question generation, SCORM import/export, CSV/Excel import/export,
-   * HTML export, answer rotation, media in questions/feedback, custom domain publish.
-   * Available on Builder and above.
-   */
-  fullQuizMaker: boolean;
-  /**
-   * Question bank: create and manage a reusable question bank with folders and tags.
-   * Basic version (no AI gen, no bulk import) on Starter.
-   * Full version (AI gen + bulk import) on Builder+.
-   */
-  questionBank: boolean;
-  /** AI question generation from topic/text (requires fullQuizMaker) */
-  aiQuizGeneration: boolean;
-  /** SCORM import/export for quizzes (requires fullQuizMaker) */
-  quizScormExport: boolean;
-  /** CSV/Excel import/export for quizzes (requires fullQuizMaker) */
-  quizCsvExport: boolean;
 }
 
 export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
@@ -106,12 +81,6 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     coupons: false,
     affiliates: false,
     prioritySupport: false,
-    basicQuizBuilder: true,
-    fullQuizMaker: false,
-    questionBank: false,
-    aiQuizGeneration: false,
-    quizScormExport: false,
-    quizCsvExport: false,
   },
   starter: {
     maxCourses: 10,
@@ -136,12 +105,6 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     coupons: true,
     affiliates: false,
     prioritySupport: false,
-    basicQuizBuilder: true,
-    fullQuizMaker: false,
-    questionBank: true,
-    aiQuizGeneration: false,
-    quizScormExport: false,
-    quizCsvExport: false,
   },
   builder: {
     maxCourses: 25,
@@ -166,12 +129,6 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     coupons: true,
     affiliates: false,
     prioritySupport: false,
-    basicQuizBuilder: true,
-    fullQuizMaker: true,
-    questionBank: true,
-    aiQuizGeneration: true,
-    quizScormExport: true,
-    quizCsvExport: true,
   },
   pro: {
     maxCourses: null,
@@ -196,12 +153,6 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     coupons: true,
     affiliates: true,
     prioritySupport: true,
-    basicQuizBuilder: true,
-    fullQuizMaker: true,
-    questionBank: true,
-    aiQuizGeneration: true,
-    quizScormExport: true,
-    quizCsvExport: true,
   },
   enterprise: {
     maxCourses: null,
@@ -226,12 +177,6 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     coupons: true,
     affiliates: true,
     prioritySupport: true,
-    basicQuizBuilder: true,
-    fullQuizMaker: true,
-    questionBank: true,
-    aiQuizGeneration: true,
-    quizScormExport: true,
-    quizCsvExport: true,
   },
 };
 

@@ -3,10 +3,8 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { membershipRouter } from "./routers/membershipRouter";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { randomBytes } from "crypto";
 import { protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import {
@@ -17,10 +15,6 @@ import {
   lmsAffiliateConversions,
   lmsCertificates,
   lmsOrders,
-  lmsGroups,
-  lmsGroupCourses,
-  lmsGroupSeats,
-  users,
 } from "../drizzle/schema";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -373,114 +367,6 @@ export const lmsRouter = router({
         });
         
         return { success: true, orderId };
-      }),
-  }),
-
-  // ─── Groups / Teams ───────────────────────────────────────────────────────
-  memberships: membershipRouter,
-  groups: router({
-    /** List all groups with member counts */
-    list: protectedProcedure
-      .input(z.object({ orgId: z.number().optional() }).optional())
-      .query(async () => {
-        const db = await getDb();
-        if (!db) return [];
-        const groups = await db.select().from(lmsGroups).orderBy(desc(lmsGroups.createdAt));
-        return Promise.all(groups.map(async (g: any) => {
-          const seats = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, g.id));
-          return {
-            ...g,
-            memberCount: seats.filter((s: any) => s.status === "active").length,
-            pendingCount: seats.filter((s: any) => s.status === "pending").length,
-            members: seats.map((s: any) => ({ id: s.id, email: s.email, name: s.memberName, status: s.status })),
-          };
-        }));
-      }),
-
-    create: protectedProcedure
-      .input(z.object({ name: z.string().min(1), description: z.string().optional() }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const [result] = await db.insert(lmsGroups).values({ name: input.name, seats: 0, courseId: null }).$returningId();
-        return { id: result.id };
-      }),
-
-    update: protectedProcedure
-      .input(z.object({ id: z.number(), name: z.string().optional(), description: z.string().optional() }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { id, ...updates } = input;
-        await db.update(lmsGroups).set(updates).where(eq(lmsGroups.id, id));
-        return { success: true };
-      }),
-
-    delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        await db.delete(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, input.id));
-        await db.delete(lmsGroupCourses).where(eq(lmsGroupCourses.groupId, input.id));
-        await db.delete(lmsGroups).where(eq(lmsGroups.id, input.id));
-        return { success: true };
-      }),
-
-    addMember: protectedProcedure
-      .input(z.object({ groupId: z.number(), email: z.string().email(), name: z.string().optional() }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const existing = await db.select().from(lmsGroupSeats)
-          .where(and(eq(lmsGroupSeats.groupId, input.groupId), eq(lmsGroupSeats.email, input.email))).limit(1);
-        if (existing.length > 0 && existing[0].status !== "revoked") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Email already in group" });
-        }
-        const token = randomBytes(32).toString("hex");
-        const [result] = await db.insert(lmsGroupSeats).values({
-          groupId: input.groupId,
-          email: input.email,
-          memberName: input.name ?? null,
-          status: "pending",
-          inviteToken: token,
-        }).$returningId();
-        return { id: result.id };
-      }),
-
-    removeMember: protectedProcedure
-      .input(z.object({ memberId: z.number() }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        await db.update(lmsGroupSeats).set({ status: "revoked" }).where(eq(lmsGroupSeats.id, input.memberId));
-        return { success: true };
-      }),
-
-    bulkEnroll: protectedProcedure
-      .input(z.object({ groupId: z.number(), courseId: z.number() }))
-      .mutation(async ({ input }) => {
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const seats = await db.select().from(lmsGroupSeats)
-          .where(and(eq(lmsGroupSeats.groupId, input.groupId), eq(lmsGroupSeats.status, "active")));
-        let enrolled = 0;
-        for (const seat of seats) {
-          const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, seat.email)).limit(1);
-          if (!user) continue;
-          const [existing] = await db.select().from(lmsEnrollments)
-            .where(and(eq(lmsEnrollments.userId, user.id), eq(lmsEnrollments.courseId, input.courseId))).limit(1);
-          if (existing) continue;
-          const course = await getCourseById(db, input.courseId);
-          await db.insert(lmsEnrollments).values({
-            userId: user.id,
-            courseId: input.courseId,
-            orgId: course?.orgId ?? 0,
-            status: "active",
-          });
-          enrolled++;
-        }
-        return { enrolled };
       }),
   }),
 });

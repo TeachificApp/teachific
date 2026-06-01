@@ -2,8 +2,6 @@ import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useOrgScope } from "@/hooks/useOrgScope";
-import { useOrgPlan } from "@/hooks/useOrgPlan";
-import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +16,7 @@ import { toast } from "sonner";
 import {
   FolderOpen, FolderPlus, Plus, Search, Trash2, Edit2, ChevronRight,
   ChevronDown, FileText, Copy, MoveRight, MoreHorizontal, Library,
-  Filter, Tag, Upload, Lock, Sparkles,
+  Filter, Tag, Upload,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -53,9 +51,6 @@ const FOLDER_COLORS = [
 export default function QuestionBankPage() {
   const [, setLocation] = useLocation();
   const { orgId, ready } = useOrgScope();
-  const { can } = useOrgPlan(orgId ?? null);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [upgradeFeatureName, setUpgradeFeatureName] = useState("Question Bank Import");
   const [selectedFolderId, setSelectedFolderId] = useState<number | null | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
@@ -159,18 +154,7 @@ export default function QuestionBankPage() {
           <Button variant="outline" size="sm" onClick={() => setShowCreateFolder(true)}>
             <FolderPlus className="h-4 w-4 mr-1" /> New Folder
           </Button>
-          <Button
-            variant="outline" size="sm"
-            onClick={() => {
-              if (!can("questionBank")) {
-                setUpgradeFeatureName("Question Bank Import");
-                setUpgradeOpen(true);
-                return;
-              }
-              setLocation("/question-bank/import");
-            }}
-          >
-            {!can("questionBank") && <Lock className="h-3.5 w-3.5 mr-1 text-amber-500" />}
+          <Button variant="outline" size="sm" onClick={() => setLocation("/question-bank/import")}>
             <Upload className="h-4 w-4 mr-1" /> Import
           </Button>
           <Button size="sm" onClick={() => setShowCreateQuestion(true)}>
@@ -416,14 +400,6 @@ export default function QuestionBankPage() {
           isLoading={updateQuestionMut.isPending}
         />
       )}
-
-      {/* Upgrade Prompt */}
-      <UpgradePromptDialog
-        open={upgradeOpen}
-        onClose={() => setUpgradeOpen(false)}
-        featureName={upgradeFeatureName}
-        requiredPlan="starter"
-      />
     </div>
   );
 }

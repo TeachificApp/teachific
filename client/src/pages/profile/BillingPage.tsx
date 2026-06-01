@@ -47,7 +47,6 @@ const PLAN_META: Record<PlanTier, {
       "100 MB file storage",
       "Admin is the only instructor",
       "No community",
-      "Basic quiz builder (MCQ & True/False)",
     ],
   },
   starter: {
@@ -65,8 +64,6 @@ const PLAN_META: Record<PlanTier, {
       "1 instructor role",
       "1 membership tier",
       "3% transaction fee",
-      "Basic quiz builder (MCQ & True/False)",
-      "Question bank (manual entry)",
     ],
   },
   builder: {
@@ -87,12 +84,6 @@ const PLAN_META: Record<PlanTier, {
       "3 membership tiers",
       "Custom domain",
       "1% transaction fee",
-      "Full QuizMaker (all question types)",
-      "Question bank with folders & tags",
-      "AI question generation",
-      "SCORM & CSV import/export",
-      "Question rotation & answer shuffling",
-      "Advanced feedback & scoring settings",
     ],
   },
   pro: {
@@ -115,10 +106,6 @@ const PLAN_META: Record<PlanTier, {
       "Affiliate platform",
       "SSO + Revenue Share",
       "Custom CSS + domain",
-      "Full QuizMaker + advanced analytics",
-      "SCORM/CSV/HTML export",
-      "AI quiz & question generation",
-      "Question rotation & randomization",
     ],
   },
   enterprise: {
@@ -137,9 +124,6 @@ const PLAN_META: Record<PlanTier, {
       "All Pro features included",
       "Custom onboarding team",
       "Dedicated support",
-      "Full QuizMaker + white-label",
-      "SCORM/CSV/HTML export",
-      "Question rotation & randomization",
     ],
   },
 };

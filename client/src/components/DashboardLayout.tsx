@@ -64,7 +64,6 @@ import {
   Webhook,
   Zap,
   Library,
-  Presentation,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -138,7 +137,7 @@ const navGroups: NavGroup[] = [
         path: "/members",
         subItems: [
           { label: "All Users", path: "/members/users" },
-          { label: "Teams", path: "/members/teams" },
+          { label: "Groups", path: "/members/groups" },
           { label: "Certificates", path: "/members/certificates" },
           { label: "Discussions", path: "/members/discussions" },
           { label: "Assignments", path: "/members/assignments" },
@@ -157,7 +156,6 @@ const navGroups: NavGroup[] = [
         path: "/products",
         subItems: [
           { label: "Courses", path: "/lms/courses" },
-          { label: "Instructors", path: "/lms/instructors" },
           { label: "Digital Downloads", path: "/admin/downloads" },
           { label: "Webinars", path: "/lms/webinars" },
           { label: "Memberships", path: "/products/memberships" },
@@ -643,10 +641,6 @@ function DashboardLayoutContent({
               <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 My Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setLocation("/instructor-portal")} className="cursor-pointer">
-                <Presentation className="mr-2 h-4 w-4" />
-                Instructor Portal
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setLocation("/billing")} className="cursor-pointer">
                 <CreditCard className="mr-2 h-4 w-4" />

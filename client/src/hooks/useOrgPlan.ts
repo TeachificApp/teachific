@@ -27,12 +27,6 @@ const UNLIMITED_LIMITS: TierLimits = {
   coupons: true,
   affiliates: true,
   prioritySupport: true,
-  basicQuizBuilder: true,
-  fullQuizMaker: true,
-  questionBank: true,
-  aiQuizGeneration: true,
-  quizScormExport: true,
-  quizCsvExport: true,
 };
 
 /**
