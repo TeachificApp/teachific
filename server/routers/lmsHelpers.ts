@@ -74,12 +74,13 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Shared helpers (used by all LMS sub-routers) ────────────────────────────
 
+const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin"];
 export async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  if (ctx.user.role !== "admin") {
+  if (!ADMIN_ROLES.includes(ctx.user.role)) {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    if (!u || u.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+    if (!u || !ADMIN_ROLES.includes(u.role ?? "")) throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
 }
 

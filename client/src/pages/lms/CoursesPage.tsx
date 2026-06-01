@@ -137,7 +137,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
   const { orgId, ready } = useOrgScope();
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published" | "archived">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "public" | "archived">("all");
   const [createOpen, setCreateOpen] = useState(false);
   const urlSearch = useSearch();
   // Determine type filter from prop or URL param
@@ -184,26 +184,27 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
   };
 
   // ── Mutations ────────────────────────────────────────────────────────────
-  const reorderMutation = trpc.lms.courses.reorder.useMutation({
-    onSuccess: () => utils.lms.courses.list.invalidate(),
+  const reorderMutation = trpc.lmsAdmin.reorderCourses.useMutation({
+    onSuccess: () => utils.lmsAdmin.listCourses.invalidate(),
     onError: () => {
       setLocalOrder(null);
-      utils.lms.courses.list.invalidate();
+      utils.lmsAdmin.listCourses.invalidate();
     },
   });
-  const { data: courses, isLoading } = trpc.lms.courses.list.useQuery(
-    { orgId: orgId! },
+  const { data: coursesData, isLoading } = trpc.lmsAdmin.listCourses.useQuery(
+    { type: "all", status: "all", pageSize: 500 },
     { enabled: ready }
   );
+  const courses = coursesData?.courses ?? [];
   const { canCreateCourse, plan, limits } = usePlanLimits();
   const atCourseLimit = !canCreateCourse(courses?.length ?? 0);
 
-  const createMutation = trpc.lms.courses.create.useMutation({
+  const createMutation = trpc.lmsAdmin.createCourse.useMutation({
     onSuccess: (course) => {
-      utils.lms.courses.list.invalidate();
+      utils.lmsAdmin.listCourses.invalidate();
       setCreateOpen(false);
       setNewTitle("");
-      toast.success("Course created");
+      toast.success(typeFilter === 'cohort' ? "Cohort created" : "Course created");
       if (course?.id) setLocation(`/lms/courses/${course.id}/curriculum`);
     },
     onError: (e) => toast.error(e.message),
@@ -230,7 +231,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
 
   const aiCreateCourseMutation = trpc.lms.ai.createCourseFromOutline.useMutation({
     onSuccess: (course) => {
-      utils.lms.courses.list.invalidate();
+      utils.lmsAdmin.listCourses.invalidate();
       toast.success(`Course "${course?.title}" created with all modules and lessons!`);
       setAiOpen(false);
       resetAiWizard();
@@ -241,50 +242,52 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
 
   const copyMutation = trpc.lms.copy.course.useMutation({
     onSuccess: (course) => {
-      utils.lms.courses.list.invalidate();
+      utils.lmsAdmin.listCourses.invalidate();
       toast.success("Course copied");
       if (course?.id) setLocation(`/lms/courses/${course.id}/curriculum`);
     },
     onError: (e) => toast.error(e.message),
   });
 
-  const updateMutation = trpc.lms.courses.update.useMutation({
+  const updateMutation = trpc.lmsAdmin.updateCourse.useMutation({
     onSuccess: () => {
-      utils.lms.courses.list.invalidate();
+      utils.lmsAdmin.listCourses.invalidate();
       toast.success("Course updated");
     },
     onError: (e) => toast.error(e.message),
   });
-
-  const deleteMutation = trpc.lms.courses.delete.useMutation({
+  const deleteMutation = trpc.lmsAdmin.deleteCourse.useMutation({
     onSuccess: () => {
-      utils.lms.courses.list.invalidate();
+      utils.lmsAdmin.listCourses.invalidate();
       toast.success("Course deleted");
     },
     onError: (e) => toast.error(e.message),
-  });
+  });;
 
   const handleCreate = async () => {
-    if (!newTitle.trim() || !orgId) return;
+    if (!newTitle.trim()) return;
     setCreating(true);
     try {
-      await createMutation.mutateAsync({ orgId, title: newTitle.trim() });
+      await createMutation.mutateAsync({
+        title: newTitle.trim(),
+        type: typeFilter === 'cohort' ? 'cohort' : 'course',
+      });
     } finally {
       setCreating(false);
     }
   };
 
   // Derive ordered list: use localOrder for optimistic reordering
-  const orderedCourses = localOrder && courses
+  const orderedCourses = localOrder && courses.length
     ? localOrder.map(id => courses.find(c => c.id === id)).filter(Boolean) as typeof courses
-    : courses ?? [];
+    : courses;
 
   const filtered = orderedCourses.filter((c) => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || c.status === statusFilter;
     // Filter by course type: cohort view shows only cohorts, default course view hides cohorts
     const cType = (c as any).type ?? 'course';
-    const matchesType = typeFilter === 'cohort' ? cType === 'cohort' : cType !== 'cohort';
+    const matchesType = typeFilter === 'cohort' ? cType === 'cohort' : (cType === 'course' || cType === 'quiz' || cType === 'download');
     return matchesSearch && matchesStatus && matchesType;
   });
 
@@ -297,7 +300,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
     if (oldIndex === -1 || newIndex === -1) return;
     const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
     setLocalOrder(newOrder);
-    reorderMutation.mutate({ orgId, courseIds: newOrder });
+    reorderMutation.mutate({ courses: newOrder.map((id, idx) => ({ id, libraryOrder: idx })) });
   }, [localOrder, orderedCourses, orgId, reorderMutation]);
 
   const statusColor: Record<string, string> = {
@@ -424,7 +427,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
       </div>
 
       {/* Stats row */}
-      {courses && (
+      {courses.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardContent className="flex items-center gap-3 p-4">
@@ -432,8 +435,8 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{courses.length}</p>
-                <p className="text-xs text-muted-foreground">Total Courses</p>
+                <p className="text-2xl font-bold">{filtered.length}</p>
+                <p className="text-xs text-muted-foreground">{typeFilter === 'cohort' ? 'Total Cohorts' : 'Total Courses'}</p>
               </div>
             </CardContent>
           </Card>
@@ -444,7 +447,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {courses.filter((c) => c.status === "published").length}
+                  {filtered.filter((c) => c.status === "public").length}
                 </p>
                 <p className="text-xs text-muted-foreground">Published</p>
               </div>
@@ -456,9 +459,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
                 <GraduationCap className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {courses.reduce((acc, c) => acc + (c.totalEnrollments ?? 0), 0)}
-                </p>
+                <p className="text-2xl font-bold">0</p>
                 <p className="text-xs text-muted-foreground">Total Enrollments</p>
               </div>
             </CardContent>

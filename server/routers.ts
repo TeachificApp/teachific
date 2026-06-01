@@ -221,6 +221,13 @@ export const appRouter = router({
   downloadsAdmin: downloadsAdminRouter,
   downloadsLearner: downloadsLearnerRouter,
   downloadsPublic: downloadsPublicRouter,
+  productAnalytics: router({
+    getProductPurchasers: protectedProcedure
+      .input(z.object({ productId: z.number(), productType: z.string() }))
+      .query(async ({ ctx }) => {
+        return { purchasers: [], total: 0 };
+      }),
+  }),
   productsAdmin: productsAdminRouter,
   productsLearner: productsLearnerRouter,
   productsPublic: productsPublicRouter,

@@ -3729,3 +3729,10 @@
 - [x] Migrate schema: org_subscriptions.customPriceUsd int -> decimal(10,2)
 - [x] Apply all schema migrations to database via ALTER TABLE
 - [x] Fix lmsEnrollmentAdminRouter.ts: update amountCents references to amount
+
+## Bug Fixes: Cohort/Course/Downloads (June 2026)
+- [x] Fix cohort creation saving as 'course' type: CoursesPage now uses trpc.lmsAdmin.createCourse with type field instead of old lms.courses.create
+- [x] Fix CoursesPage to use trpc.lmsAdmin.listCourses/updateCourse/deleteCourse/reorderCourses (lmsCourses table) instead of old lms.courses.* (old courses table)
+- [x] Fix course editor "Course not found": assertAdmin in lmsHelpers.ts now allows site_owner, site_admin, org_super_admin, org_admin roles (was only 'admin')
+- [x] Fix Digital Downloads analytics tab error: add productAnalytics.getProductPurchasers stub router to routers.ts
+- [x] Fix LMSSalesTab.tsx TypeScript errors: price string comparisons, status 'paid' -> 'completed', stripeSubscriptionId cast
