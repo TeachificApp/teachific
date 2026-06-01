@@ -3743,3 +3743,10 @@
 - [x] Update schema.ts: make orgId nullable in lmsSections and lmsLessons
 - [x] Fix button colors: remove hardcoded bg-teal-*/bg-purple-* from 28+ files, use default variant
 - [x] Fix PlatformAdminPage.tsx: remove hardcoded bg-teal-600 from Save Settings and other action buttons
+
+## Email Campaign Editor: Drag-and-Drop Blocks
+- [x] Add @dnd-kit/sortable drag-and-drop to email campaign block editor
+- [x] Add SortableEmailBlock component with drag handle, toolbar, and block preview
+- [x] Add DragOverlay for visual feedback during drag
+- [x] Remove up/down arrow buttons in favor of drag-and-drop reordering
+- [x] Keep block settings panel on right side unchanged

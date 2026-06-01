@@ -11,12 +11,31 @@
  *  - Automatic unsubscribe footer injected on send
  */
 import { useState, useCallback, useMemo } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useLocation } from "wouter";
 import {
   ArrowLeft, Eye, EyeOff, Send, Save, Clock, Plus, Trash2,
   Type, Image, Square, Minus, AlignLeft, Quote, Users, Mail,
   Monitor, Smartphone, ChevronDown, ChevronUp, Check, RefreshCw,
-  Copy, Heading1, Heading2, LayoutTemplate, X, UserCircle,
+  Copy, Heading1, Heading2, LayoutTemplate, X, UserCircle, GripVertical,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -259,11 +278,103 @@ function LeadCaptureListSelector({ listId, onChange }: { listId: number | null; 
   );
 }
 
+// ─── Sortable block row ───────────────────────────────────────────────────────
+function SortableEmailBlock({
+  block, isSelected, onSelect, onDuplicate, onRemove,
+}: {
+  block: Block;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 };
+  const catalogEntry = BLOCK_CATALOG.find((c) => c.type === block.type);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      onClick={onSelect}
+      className={`group relative border rounded-lg overflow-hidden cursor-pointer transition-all ${
+        isSelected ? "border-[#189aa1] shadow-sm" : "border-gray-200 hover:border-gray-300 bg-white"
+      }`}
+    >
+      {/* Toolbar */}
+      <div className={`flex items-center gap-2 px-3 py-2 select-none ${
+        isSelected ? "bg-[#f0fbfc] border-b border-[#189aa1]/20" : "bg-gray-50 hover:bg-gray-100"
+      }`}>
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 shrink-0"
+        >
+          <GripVertical className="w-4 h-4" />
+        </div>
+        <span className="text-gray-400 shrink-0">{catalogEntry?.icon}</span>
+        <span className="text-xs font-medium text-gray-700 flex-1 truncate">{catalogEntry?.label ?? block.type}</span>
+        {/* Action buttons */}
+        <div className="hidden group-hover:flex items-center gap-0.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+            className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-700"
+            title="Duplicate"
+          >
+            <Copy className="w-3 h-3" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"
+            title="Delete"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+      {/* Block preview */}
+      <div className="px-3 py-2 text-sm text-gray-700 truncate bg-white">
+        {block.type === "divider" && <hr className="border-gray-300" />}
+        {block.type === "spacer" && <div className="text-gray-400 text-xs italic">Spacer — {block.spacerHeight || 24}px</div>}
+        {block.type === "image" && (block.content
+          ? <div className="text-xs text-gray-500">🖼 {block.content.slice(0, 60)}</div>
+          : <div className="text-xs text-gray-400 italic">Image — no URL set</div>)}
+        {block.type === "button" && (
+          <div className="inline-block px-3 py-1 rounded text-xs font-bold text-white" style={{ background: block.buttonColor || "#189aa1" }}>
+            {block.content || "Button"}
+          </div>
+        )}
+        {block.type === "lead_capture" && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded" style={{ background: block.leadCaptureButtonColor || "#189aa1", color: block.leadCaptureButtonTextColor || "#fff" }}>
+              <Mail className="w-3 h-3" /> {block.leadCaptureTitle || "Lead Capture"}
+            </span>
+            <span className="text-gray-400">{block.leadCaptureListId ? `→ List #${block.leadCaptureListId}` : "(no list)"}</span>
+          </div>
+        )}
+        {!["divider", "spacer", "image", "button", "lead_capture"].includes(block.type) && (
+          <span className={block.type === "heading1" ? "font-bold text-base" : block.type === "heading2" ? "font-semibold" : ""}>
+            {block.content.slice(0, 90) || <span className="italic text-gray-400">(empty {block.type})</span>}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Block editor component ───────────────────────────────────────────────────
 function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Block[]) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeBlock, setActiveBlock] = useState<Block | null>(null);
 
   const selected = blocks.find((b) => b.id === selectedId) ?? null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   function addBlock(type: BlockType) {
     const nb = defaultBlock(type);
@@ -280,16 +391,6 @@ function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Bloc
     if (selectedId === id) setSelectedId(null);
   }
 
-  function moveBlock(id: string, dir: -1 | 1) {
-    const idx = blocks.findIndex((b) => b.id === id);
-    if (idx < 0) return;
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= blocks.length) return;
-    const arr = [...blocks];
-    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-    onChange(arr);
-  }
-
   function duplicateBlock(id: string) {
     const idx = blocks.findIndex((b) => b.id === id);
     if (idx < 0) return;
@@ -300,50 +401,64 @@ function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Bloc
     setSelectedId(copy.id);
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    const block = blocks.find((b) => b.id === event.active.id);
+    setActiveBlock(block ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveBlock(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = blocks.findIndex((b) => b.id === active.id);
+    const newIdx = blocks.findIndex((b) => b.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    onChange(arrayMove(blocks, oldIdx, newIdx));
+  }
+
   return (
     <div className="flex gap-4">
-      {/* Block list */}
-      <div className="flex-1 space-y-2">
-        {blocks.length === 0 && (
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-sm">
-            Add blocks from the panel on the right to start building your email
-          </div>
-        )}
-        {blocks.map((block, idx) => (
-          <div
-            key={block.id}
-            onClick={() => setSelectedId(block.id)}
-            className={`group relative border rounded-lg p-3 cursor-pointer transition-all ${selectedId === block.id ? "border-[#189aa1] bg-[#f0fbfc]" : "border-gray-200 hover:border-gray-300 bg-white"}`}
-          >
-            {/* Block preview */}
-            <div className="text-sm text-gray-700 truncate">
-              {block.type === "divider" && <hr className="border-gray-300" />}
-              {block.type === "spacer" && <div className="text-gray-400 text-xs">Spacer ({block.spacerHeight || 24}px)</div>}
-              {block.type === "image" && (block.content ? <div className="text-xs text-gray-500">🖼 {block.content.slice(0, 50)}</div> : <div className="text-xs text-gray-400">Image (no URL set)</div>)}
-              {block.type === "button" && <div className="inline-block px-3 py-1 rounded text-xs font-bold text-white" style={{ background: block.buttonColor || "#189aa1" }}>{block.content || "Button"}</div>}
-              {block.type === "lead_capture" && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded" style={{ background: block.leadCaptureButtonColor || "#189aa1", color: block.leadCaptureButtonTextColor || "#fff" }}>
-                    <Mail className="w-3 h-3" /> {block.leadCaptureTitle || "Lead Capture"}
-                  </span>
-                  <span className="text-gray-400">{block.leadCaptureListId ? `→ List #${block.leadCaptureListId}` : "(no list selected)"}</span>
+      {/* Block canvas with drag-and-drop */}
+      <div className="flex-1">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {blocks.length === 0 && (
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-10 text-center text-gray-400 text-sm">
+                  <Plus className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  Add blocks from the panel on the right to start building your email
                 </div>
               )}
-              {!["divider", "spacer", "image", "button", "lead_capture"].includes(block.type) && (
-                <span className={`${block.type === "heading1" ? "font-bold text-base" : block.type === "heading2" ? "font-semibold" : ""}`}>
-                  {block.content.slice(0, 80) || `(empty ${block.type})`}
-                </span>
-              )}
+              {blocks.map((block) => (
+                <SortableEmailBlock
+                  key={block.id}
+                  block={block}
+                  isSelected={selectedId === block.id}
+                  onSelect={() => setSelectedId(selectedId === block.id ? null : block.id)}
+                  onDuplicate={() => duplicateBlock(block.id)}
+                  onRemove={() => removeBlock(block.id)}
+                />
+              ))}
             </div>
-            {/* Actions */}
-            <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-1">
-              <button onClick={(e) => { e.stopPropagation(); moveBlock(block.id, -1); }} disabled={idx === 0} className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
-              <button onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 1); }} disabled={idx === blocks.length - 1} className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
-              <button onClick={(e) => { e.stopPropagation(); duplicateBlock(block.id); }} className="p-1 rounded hover:bg-gray-100"><Copy className="w-3 h-3" /></button>
-              <button onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }} className="p-1 rounded hover:bg-red-50 text-red-500"><Trash2 className="w-3 h-3" /></button>
-            </div>
-          </div>
-        ))}
+          </SortableContext>
+          <DragOverlay>
+            {activeBlock && (
+              <div className="border-2 border-[#189aa1] rounded-lg bg-white shadow-xl opacity-90 overflow-hidden" style={{ minWidth: 320 }}>
+                <div className="flex items-center gap-2 px-3 py-2 bg-[#f0fbfc] border-b border-[#189aa1]/20">
+                  <GripVertical className="w-4 h-4 text-[#189aa1]" />
+                  <span className="text-xs font-medium text-[#189aa1]">
+                    {BLOCK_CATALOG.find((c) => c.type === activeBlock.type)?.label ?? activeBlock.type}
+                  </span>
+                </div>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {/* Right panel: block catalog + selected block editor */}
