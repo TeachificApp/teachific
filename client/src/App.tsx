@@ -90,6 +90,8 @@ import EmailCampaignsPage from "./pages/marketing/EmailCampaignsPage";
 import FunnelsPage from "./pages/marketing/FunnelsPage";
 import FunnelBuilderPage from "./pages/marketing/FunnelBuilderPage";
 import FunnelBuilder from "./pages/marketing/FunnelBuilder";
+import CohortSchedule from "./pages/CohortSchedule";
+import AssignmentDetail from "./pages/AssignmentDetail";
 import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
 import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
@@ -174,6 +176,9 @@ function BareRouter() {
         <Route path="/school/:orgSlug/my-courses" component={SchoolMyCoursesPage} />
         <Route path="/school/my-courses" component={SchoolMyCoursesPage} />
         <Route path="/community/:hubId" component={CommunityLearnerPage} />
+        {/* Cohort learner routes */}
+        <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
+        <Route path="/cohort/:courseId" component={CohortSchedule} />
         {/* Platform-level legal policies — independent of any org */}
         <Route path="/help" component={HelpPage} />
         <Route path="/policies" component={PlatformPoliciesPage} />
@@ -244,6 +249,7 @@ function AdminRouter() {
           <Route path="/admin">{() => { window.location.replace("/platform-admin"); return null; }}</Route>
 
           {/* ── Products ── */}
+          <Route path="/lms/manage" component={CourseBuilderPage} />
           <Route path="/lms/courses" component={CoursesPage} />
           <Route path="/lms/courses/new" component={CourseEditorPage} />
           <Route path="/lms/courses/:id/curriculum" component={CourseEditorPage} />
@@ -326,6 +332,10 @@ function AdminRouter() {
           <Route path="/admin/permissions" component={AdminPermissionsPage} />
           <Route path="/admin/settings" component={AdminSettingsPage} />
           <Route path="/platform-admin" component={PlatformAdminPage} />
+
+          {/* ── Cohort learner routes (accessible from admin shell too) ── */}
+          <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
+          <Route path="/cohort/:courseId" component={CohortSchedule} />
 
           {/* ── Misc / Legacy ── */}
           <Route path="/upload">{() => { window.location.replace("/media-library#library"); return null; }}</Route>
