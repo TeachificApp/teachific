@@ -89,6 +89,7 @@ import WebsitePage from "./pages/marketing/WebsitePage";
 import EmailCampaignsPage from "./pages/marketing/EmailCampaignsPage";
 import FunnelsPage from "./pages/marketing/FunnelsPage";
 import FunnelBuilderPage from "./pages/marketing/FunnelBuilderPage";
+import FunnelBuilder from "./pages/marketing/FunnelBuilder";
 import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
 import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
@@ -281,6 +282,9 @@ function AdminRouter() {
           <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
           <Route path="/marketing/funnels" component={FunnelsPage} />
+          <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
+          <Route path="/admin/funnels/:funnelId">{() => <FunnelBuilder />}</Route>
+          <Route path="/admin/funnels">{() => <FunnelBuilder />}</Route>
           <Route path="/marketing/affiliates" component={AffiliatesPage} />
           {/* Legacy email marketing redirect */}
           <Route path="/lms/email-marketing">{() => { window.location.replace("/marketing/email"); return null; }}</Route>

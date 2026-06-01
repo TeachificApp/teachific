@@ -182,7 +182,7 @@ const navGroups: NavGroup[] = [
         subItems: [
           { label: "Website", path: "/marketing/website" },
           { label: "Email Campaigns", path: "/marketing/email" },
-          { label: "Funnels", path: "/marketing/funnels" },
+          { label: "Funnels", path: "/admin/funnels" },
           { label: "Affiliates", path: "/marketing/affiliates" },
         ],
       },
