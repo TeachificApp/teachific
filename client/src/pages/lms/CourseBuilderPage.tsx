@@ -2279,7 +2279,7 @@ function FreePreviewLinkPanel({ courseId }: { courseId: number }) {
   const [copied, setCopied] = useState(false);
   if (isLoading) return null;
   if (!data || data.lessons.length === 0) return null;
-  const previewUrl = `https://learn.allaboutultrasound.com/courses/${data.courseSlug}/player?preview=1`;
+  const previewUrl = `${window.location.origin}/courses/${data.courseSlug}?free_preview=1`;
   const handleCopy = () => {
     navigator.clipboard.writeText(previewUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };

@@ -27,6 +27,7 @@ import type { Block } from "@/components/BlockPreview";
 import { CountdownV2Block, ImageLinkWrapper, FormEmbedBlockPreview } from "@/components/BlockPreview";
 import { injectUserParams, injectUserParamsIntoHtml, type UserParamSource } from "@/lib/userUrlParams";
 import { getStoredAffiliateCode } from "@/pages/AffiliateRedirect";
+import { getLoginUrl } from "@/const";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -950,6 +951,7 @@ export default function CourseLanding() {
   const [promoCode, setPromoCode] = useState<string | null>(null);
   const isPreview = _urlSearchParams.get("preview") === "admin";
   const autoCheckout = _urlSearchParams.get("checkout") === "1";
+  const autoFreePreview = _urlSearchParams.get("free_preview") === "1";
   // Guest checkout modal state (for unauthenticated users clicking CTA)
   const [guestModalOpen, setGuestModalOpen] = useState(false);
   const [guestPricingOptionId, setGuestPricingOptionId] = useState<number | undefined>();
@@ -978,6 +980,13 @@ export default function CourseLanding() {
     onError: (e) => toast.error(`Checkout failed: ${e.message}`),
   });
   const registerFreePreview = trpc.lms.registerFreePreview.useMutation();
+  const enrollFreePreviewMut = trpc.lmsLearner.enrollFreePreview.useMutation({
+    onSuccess: () => {
+      toast.success("You've been enrolled in the free preview!");
+      navigate(`/courses/${slug}/player`);
+    },
+    onError: (e) => toast.error(`Enrollment error: ${e.message}`),
+  });
   const utils = trpc.useUtils();
   const guestCheckoutRegister = trpc.lmsLearner.guestCheckoutRegister.useMutation({
     onSuccess: async (data) => {
@@ -1109,6 +1118,21 @@ export default function CourseLanding() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoCheckout, course?.id, isLoading]);
+
+  // Auto-enroll as free_preview when ?free_preview=1 is in the URL
+  // MUST be before early returns to comply with React Rules of Hooks
+  useEffect(() => {
+    if (!autoFreePreview || !course || isLoading) return;
+    if (!user) {
+      // Not logged in — redirect to login, then return to this page
+      window.location.href = getLoginUrl(window.location.href);
+      return;
+    }
+    if (!enrollFreePreviewMut.isPending) {
+      enrollFreePreviewMut.mutate({ courseSlug: slug! });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFreePreview, course?.id, isLoading, user]);
 
   if (isLoading) {
     return (

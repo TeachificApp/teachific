@@ -49,6 +49,8 @@ import FormAnalyticsPage from "./pages/lms/FormAnalyticsPage";
 import FormPlayerPage from "./pages/FormPlayerPage";
 import CourseSalesPage from "./pages/lms/CourseSalesPage";
 import CoursePlayerPage from "./pages/lms/CoursePlayerPage";
+import CourseLanding from "./pages/lms/CourseLanding";
+import CoursePlayer from "./pages/lms/CoursePlayer";
 import CourseOverviewPage from "./pages/lms/CourseOverviewPage";
 import OrgPoliciesPage from "./pages/OrgPoliciesPage";
 import CustomPagesPage from "./pages/admin/CustomPagesPage";
@@ -463,7 +465,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/my-courses" component={SchoolMyCoursesPage} />
         <Route path="/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>
         <Route path="/courses/:courseId/thank-you" component={ThankYouPage} />
-        <Route path="/courses/:courseId" component={CourseSalesPage} />
+        <Route path="/courses/:slug/player" component={CoursePlayer} />
+        <Route path="/courses/:slug" component={CourseLanding} />
         <Route path="/community/:hubId" component={CommunityLearnerPage} />
         <Route path="/embed/:id" component={EmbedPage} />
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />

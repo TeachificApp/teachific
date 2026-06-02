@@ -1988,6 +1988,40 @@ export const lmsLearnerRouter = router({
       await db.update(users).set({ notificationPrefs: JSON.stringify(prefs) }).where(eq(users.id, ctx.user.id));
       return { success: true, cohortDiscussions: input.cohortDiscussions };
     }),
+
+  /**
+   * Enroll the current user as a free_preview learner for a course (slug-based).
+   * Called from CourseLanding when ?free_preview=1 is in the URL.
+   */
+  enrollFreePreview: protectedProcedure
+    .input(z.object({ courseSlug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({ id: lmsCourses.id, orgId: lmsCourses.orgId, title: lmsCourses.title })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.slug, input.courseSlug))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      // Check if already enrolled (any type)
+      const [existing] = await db
+        .select({ id: lmsEnrollments.id, enrollmentType: lmsEnrollments.enrollmentType })
+        .from(lmsEnrollments)
+        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id)))
+        .limit(1);
+      if (existing) {
+        return { enrollmentId: existing.id, enrollmentType: existing.enrollmentType, created: false };
+      }
+      const [result] = await db.insert(lmsEnrollments).values({
+        orgId: course.orgId,
+        userId: ctx.user.id,
+        courseId: course.id,
+        enrollmentType: "free_preview",
+        progressPct: 0,
+      }).$returningId();
+      return { enrollmentId: result.id, enrollmentType: "free_preview", created: true };
+    }),
 });
 // ─── Group Manager Router ─────────────────────────────────────────────────
 

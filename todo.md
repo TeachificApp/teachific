@@ -3772,3 +3772,10 @@
 - [x] Fix ENV import bug in stripePaymentLinks.ts (was 'env', now 'ENV')
 - [x] Add stripePaymentLinkUrl and stripePaymentLinkId to PricingOption type in CourseBuilderPage.tsx
 - [x] Add purple ExternalLink "Copy Stripe Payment Link" button to PricingOptionRow in CourseBuilderPage.tsx
+## Free Preview Link Fix (June 2026)
+- [x] Register /courses/:slug route → CourseLanding in App.tsx
+- [x] Register /courses/:slug/player route → CoursePlayer in App.tsx
+- [x] Add enrollFreePreview procedure to lmsLearnerRouter (slug-based, protectedProcedure)
+- [x] Add ?free_preview=1 auto-enrollment handler to CourseLanding.tsx (redirects to login if unauthenticated, then enrolls and navigates to player)
+- [x] Fix FreePreviewLinkPanel in CourseBuilderPage.tsx to use window.location.origin instead of hardcoded learn.allaboutultrasound.com
+- [x] Add vitest tests for lmsLearner.enrollFreePreview (UNAUTHORIZED, NOT_FOUND, already enrolled, new enrollment)
