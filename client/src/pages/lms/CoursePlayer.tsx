@@ -7,6 +7,7 @@
  * Admin extras: WYSIWYG lesson content block editor + student preview toggle.
  */
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
+import { CustomVideoPlayer } from "@/components/CustomVideoPlayer";
 import { useParams, useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -1736,10 +1737,13 @@ export default function CoursePlayer() {
                   {(lessonData.type === "video" || lessonData.type === "video_text") && lessonData.content && contentBlocks.length === 0 && (
                     <div className="mb-5">
                       <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-lg ring-1 ring-gray-200">
-                        <video
-                          ref={videoRef}
+                        <CustomVideoPlayer
                           src={lessonData.content}
-                          controls
+                          playerColor={course.playerColor ?? primaryColor}
+                          autoPlay={false}
+                          muted={false}
+                          loop={false}
+                          startTime={0}
                           className="w-full h-full"
                           onEnded={() => setVideoWatched(true)}
                         />
@@ -1829,7 +1833,7 @@ export default function CoursePlayer() {
                           <InlineLiveSession key={block.id} data={block.data as any} />
                         ) : (
                           <div key={block.id} className="bg-white rounded-xl overflow-hidden shadow-lg">
-                            <BlockPreview block={block} />
+                            <BlockPreview block={block} playerColor={course.playerColor ?? primaryColor} />
                           </div>
                         )
                       ))}

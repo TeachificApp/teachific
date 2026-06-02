@@ -2424,6 +2424,7 @@ export const lmsCourses = mysqlTable("lms_courses", {
   customLabels: longtext("custom_labels"),
   defaultMarkComplete: int("default_mark_complete").default(1).notNull(),
   playerTheme: mysqlEnum("player_theme", ["light", "dark"]).default("light").notNull(),
+  playerColor: varchar("player_color", { length: 20 }).default("#00b4b4"),
   allowGroupPurchase: boolean("allow_group_purchase").default(true).notNull(),
   createdByUserId: int("created_by_user_id").notNull(),
   libraryOrder: int("library_order").default(0).notNull(),

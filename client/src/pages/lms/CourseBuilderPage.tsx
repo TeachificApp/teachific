@@ -1553,6 +1553,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
   const [sendEnrollmentEmail, setSendEnrollmentEmail] = useState(course.sendEnrollmentEmail ?? true);
   const [defaultMarkComplete, setDefaultMarkComplete] = useState<boolean>(course.defaultMarkComplete !== 0);
   const [playerTheme, setPlayerTheme] = useState<"light" | "dark">(course.playerTheme ?? "light");
+  const [playerColor, setPlayerColor] = useState(course.playerColor ?? "#00b4b4");
   // Custom labels — parse from JSON string stored in DB
   const initLabels = (() => { try { return course.customLabels ? JSON.parse(course.customLabels) : {}; } catch { return {}; } })();
   const [labelLesson, setLabelLesson] = useState<string>(initLabels.lesson ?? "");
@@ -1646,6 +1647,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
             sendEnrollmentEmail,
             defaultMarkComplete,
             playerTheme,
+            playerColor: playerColor || null,
             customLabels: buildCustomLabels(),
           })}
         >
@@ -2091,6 +2093,21 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           </div>
         </div>
       </div>
+      {/* Video Player Color */}
+      <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <span className="text-base">🎨</span> Video Player Color
+          </h3>
+          <p className="text-xs text-gray-400 mt-0.5">Sets the controls bar and play button color for media repository videos in the course player.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="color" value={playerColor} onChange={e => setPlayerColor(e.target.value)} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5" />
+          <Input value={playerColor} onChange={e => setPlayerColor(e.target.value)} placeholder="#00b4b4" className="flex-1 font-mono text-xs" maxLength={20} />
+          <button onClick={() => setPlayerColor(primaryColor)} className="text-xs text-teal-600 hover:underline whitespace-nowrap px-2">Use primary</button>
+        </div>
+        <div className="rounded overflow-hidden h-8 flex items-center justify-center text-white text-xs font-semibold shadow" style={{ backgroundColor: playerColor }}>▶ Player Preview</div>
+      </div>
       {/* Custom Labels */}
       <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
         <div>
@@ -2222,6 +2239,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           gradientTo: useGradient ? (gradientEnd || null) : null,
           gradientDirection: gradientDirection || null,
           sendEnrollmentEmail,
+          playerColor: playerColor || null,
           customLabels: buildCustomLabels(),
         })}
       >

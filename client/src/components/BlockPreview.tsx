@@ -4,6 +4,7 @@
  * Extracted into its own file to break the circular dependency between CoursePlayer and LandingPageBuilder.
  */
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { CustomVideoPlayer } from "@/components/CustomVideoPlayer";
 import { ChevronDown, Globe, Image, Package, Upload, Video } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CarouselBlock from "@/components/CarouselBlock";
@@ -88,7 +89,7 @@ export interface Block {
   data: Record<string, any>;
 }
 
-export function BlockPreview({ block, coursePrice, courseTitle }: { block: Block; coursePrice?: number; courseTitle?: string }) {
+export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: { block: Block; coursePrice?: number; courseTitle?: string; playerColor?: string }) {
   const { user } = useAuth();
   const d = block.data ?? {};
   // Pre-compute pass-through URL for url_embed blocks (hooks must be at top level, not inside switch)
@@ -210,13 +211,29 @@ export function BlockPreview({ block, coursePrice, courseTitle }: { block: Block
     }
     case "video": {
       const isDirectVideo = d.embedUrl && /\.(mp4|webm|ogg|mov)([?#]|$)/i.test(d.embedUrl);
+      const isMediaRepo = d.source === "media_repo" && isDirectVideo;
       const videoAccent = d.accentColor ?? "#189aa1";
+      const effectivePlayerColor = playerColor ?? d.accentColor ?? "#00b4b4";
       const containerStyle: React.CSSProperties = { maxWidth: d.maxWidth ?? "100%", height: d.height || undefined, paddingBottom: d.height ? undefined : (isDirectVideo ? undefined : "56.25%"), borderRadius: d.borderRadius ? `${d.borderRadius}px` : "0.5rem", border: d.borderWidth ? `${d.borderWidth}px ${d.borderStyle || "solid"} ${d.borderColor || "#e5e7eb"}` : undefined };
       const videoId = `aaus-vid-${block.id ?? 'v'}`;
       return (
-        <div className="px-8 py-6">
+        <div className={isMediaRepo ? "w-full" : "px-8 py-6"}>
           {d.embedUrl ? (
             isDirectVideo ? (
+              isMediaRepo ? (
+                // Media repository video: full-width CustomVideoPlayer with course playerColor
+                <div className="w-full" style={{ aspectRatio: d.height ? undefined : "16/9", height: d.height || undefined }}>
+                  <CustomVideoPlayer
+                    src={d.embedUrl}
+                    playerColor={effectivePlayerColor}
+                    autoPlay={d.autoplay ?? false}
+                    muted={d.muted ?? false}
+                    loop={d.loop ?? false}
+                    startTime={d.trimStart ?? 0}
+                    className="w-full h-full"
+                  />
+                </div>
+              ) : (
               <div className="mx-auto overflow-hidden shadow" style={containerStyle}>
                 <style>{`.${videoId} { accent-color: ${videoAccent}; } .${videoId}::-webkit-media-controls-play-button { filter: none; } .${videoId}::-webkit-media-controls-timeline { accent-color: ${videoAccent}; }`}</style>
                 <video
@@ -230,6 +247,7 @@ export function BlockPreview({ block, coursePrice, courseTitle }: { block: Block
                   style={{ height: d.height || undefined, accentColor: videoAccent }}
                 />
               </div>
+              )
             ) : (
               <div className="relative w-full overflow-hidden shadow mx-auto" style={containerStyle}>
                 <iframe

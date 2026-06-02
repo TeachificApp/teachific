@@ -3877,3 +3877,12 @@
 - [x] Extend createHostedCheckoutSession to handle seat count and multi-item bump line items
 - [x] Rewrite HostedCheckoutPage with pricing tier cards, team seat stepper, order bump checkboxes, and live order summary
 - [x] Add vitest tests for order bump tier filtering, team pricing seat count, and order total calculation
+
+## Custom Video Player (Thinkific-style)
+- [x] Add playerColor field to lmsCourses schema (migration applied)
+- [x] Build CustomVideoPlayer.tsx — Thinkific-style player with solid color controls bar, white icons, progress scrubber, volume, speed, fullscreen, auto-hide, big play button overlay
+- [x] Wire CustomVideoPlayer into BlockPreview for media_repo video blocks (full 100% w/h)
+- [x] Wire CustomVideoPlayer into CoursePlayer legacy video lesson path
+- [x] Pass playerColor to BlockPreview in CoursePlayer for content block videos
+- [x] Add playerColor picker to CourseBuilderPage settings panel with live preview swatch
+- [x] Write 27 vitest tests for player logic (color resolution, source detection, speed options, time formatting)

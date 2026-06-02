@@ -1,0 +1,1 @@
+ALTER TABLE `lms_courses` ADD `player_color` varchar(20) DEFAULT '#00b4b4';
