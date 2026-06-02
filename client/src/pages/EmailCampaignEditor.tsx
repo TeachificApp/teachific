@@ -280,13 +280,17 @@ function LeadCaptureListSelector({ listId, onChange }: { listId: number | null; 
 
 // ─── Sortable block row ───────────────────────────────────────────────────────
 function SortableEmailBlock({
-  block, isSelected, onSelect, onDuplicate, onRemove,
+  block, isSelected, onSelect, onDuplicate, onRemove, onMoveUp, onMoveDown, isFirst, isLast,
 }: {
   block: Block;
   isSelected: boolean;
   onSelect: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1 };
@@ -318,6 +322,22 @@ function SortableEmailBlock({
         <span className="text-xs font-medium text-gray-700 flex-1 truncate">{catalogEntry?.label ?? block.type}</span>
         {/* Action buttons */}
         <div className="hidden group-hover:flex items-center gap-0.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
+            disabled={isFirst}
+            className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-700 disabled:opacity-30"
+            title="Move up"
+          >
+            <ChevronUp className="w-3 h-3" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
+            disabled={isLast}
+            className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-700 disabled:opacity-30"
+            title="Move down"
+          >
+            <ChevronDown className="w-3 h-3" />
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
             className="p-1 rounded hover:bg-white text-gray-400 hover:text-gray-700"
@@ -391,6 +411,14 @@ function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Bloc
     if (selectedId === id) setSelectedId(null);
   }
 
+  function moveBlock(id: string, dir: -1 | 1) {
+    const idx = blocks.findIndex((b) => b.id === id);
+    if (idx < 0) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= blocks.length) return;
+    onChange(arrayMove(blocks, idx, newIdx));
+  }
+
   function duplicateBlock(id: string) {
     const idx = blocks.findIndex((b) => b.id === id);
     if (idx < 0) return;
@@ -434,7 +462,7 @@ function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Bloc
                   Add blocks from the panel on the right to start building your email
                 </div>
               )}
-              {blocks.map((block) => (
+              {blocks.map((block, idx) => (
                 <SortableEmailBlock
                   key={block.id}
                   block={block}
@@ -442,6 +470,10 @@ function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Bloc
                   onSelect={() => setSelectedId(selectedId === block.id ? null : block.id)}
                   onDuplicate={() => duplicateBlock(block.id)}
                   onRemove={() => removeBlock(block.id)}
+                  onMoveUp={() => moveBlock(block.id, -1)}
+                  onMoveDown={() => moveBlock(block.id, 1)}
+                  isFirst={idx === 0}
+                  isLast={idx === blocks.length - 1}
                 />
               ))}
             </div>
