@@ -86,10 +86,12 @@ import {
   instructorPublishRequests,
   userRoles,
   userActivityLogs,
+  organizations,
 } from "../../drizzle/schema";
 import { getEnrollmentsForCourse, getThinkificCourse } from "../thinkific";
 import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
+import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripePaymentLinks";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -2086,7 +2088,31 @@ export const lmsGroupRouter = router({
         sortOrder: input.sortOrder,
         isActive: input.isActive,
       }).$returningId();
-      return { id: result.id };
+      const newId = result.id;
+      // Generate Stripe Payment Link asynchronously
+      try {
+        const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+        if (course) {
+          const [org] = await db.select().from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+          if (org && input.pricingType !== "free" && input.price > 0) {
+            const orgStripeKey = org.paymentGateway === "own_gateway" && org.ownStripeSecretKeyEncrypted ? org.ownStripeSecretKeyEncrypted : null;
+            const linkResult = await createStripePaymentLink({
+              productName: `${course.title} — ${input.label}`,
+              priceAmount: input.price,
+              currency: course.currency ?? "usd",
+              pricingType: input.pricingType as any,
+              subscriptionInterval: input.subscriptionInterval ?? null,
+              orgStripeSecretKey: orgStripeKey,
+              stripeConnectAccountId: org.stripeConnectAccountId ?? null,
+              metadata: { courseId: String(course.id), orgId: String(org.id), pricingOptionId: String(newId) },
+            });
+            if (linkResult) {
+              await db.update(lmsPricingOptions).set({ stripePaymentLinkUrl: linkResult.url, stripePaymentLinkId: linkResult.id }).where(eq(lmsPricingOptions.id, newId));
+            }
+          }
+        }
+      } catch (e) { console.error("[PaymentLink] create failed:", e); }
+      return { id: newId };
     }),
 
   /** Update an existing pricing option */
@@ -2118,6 +2144,36 @@ export const lmsGroupRouter = router({
       if (Object.keys(updates).length > 0) {
         await db.update(lmsPricingOptions).set(updates).where(eq(lmsPricingOptions.id, id));
       }
+      // Regenerate Payment Link if price or type changed
+      if (input.price !== undefined || input.pricingType !== undefined || input.subscriptionInterval !== undefined) {
+        try {
+          const [opt] = await db.select().from(lmsPricingOptions).where(eq(lmsPricingOptions.id, id)).limit(1);
+          if (opt) {
+            const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, opt.courseId)).limit(1);
+            if (course) {
+              const [org] = await db.select().from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+              if (org && opt.pricingType !== "free" && Number(opt.price) > 0) {
+                // Deactivate old link if exists
+                if (opt.stripePaymentLinkId) { deactivateStripePaymentLink(opt.stripePaymentLinkId, org.paymentGateway === "own_gateway" ? (org.ownStripeSecretKeyEncrypted ?? null) : null).catch(() => {}); }
+                const orgStripeKey = org.paymentGateway === "own_gateway" && org.ownStripeSecretKeyEncrypted ? org.ownStripeSecretKeyEncrypted : null;
+                const linkResult = await createStripePaymentLink({
+                  productName: `${course.title} — ${opt.label}`,
+                  priceAmount: Number(opt.price),
+                  currency: course.currency ?? "usd",
+                  pricingType: opt.pricingType as any,
+                  subscriptionInterval: opt.subscriptionInterval ?? null,
+                  orgStripeSecretKey: orgStripeKey,
+                  stripeConnectAccountId: org.stripeConnectAccountId ?? null,
+                  metadata: { courseId: String(course.id), orgId: String(org.id), pricingOptionId: String(id) },
+                });
+                if (linkResult) {
+                  await db.update(lmsPricingOptions).set({ stripePaymentLinkUrl: linkResult.url, stripePaymentLinkId: linkResult.id }).where(eq(lmsPricingOptions.id, id));
+                }
+              }
+            }
+          }
+        } catch (e) { console.error("[PaymentLink] update failed:", e); }
+      }
       return { success: true };
     }),
 
@@ -2128,6 +2184,13 @@ export const lmsGroupRouter = router({
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Deactivate Stripe Payment Link if exists
+      try {
+        const [opt] = await db.select().from(lmsPricingOptions).where(eq(lmsPricingOptions.id, input.id)).limit(1);
+        if (opt?.stripePaymentLinkId) {
+          deactivateStripePaymentLink(opt.stripePaymentLinkId).catch(() => {});
+        }
+      } catch (e) { /* ignore */ }
       await db.delete(lmsPricingOptions).where(eq(lmsPricingOptions.id, input.id));
       return { success: true };
     }),

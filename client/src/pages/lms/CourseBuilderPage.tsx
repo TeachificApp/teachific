@@ -8290,6 +8290,8 @@ type PricingOption = {
   ctaUrl: string | null;
   sortOrder: number;
   isActive: boolean;
+  stripePaymentLinkUrl?: string | null;
+  stripePaymentLinkId?: string | null;
 };
 
 function PricingOptionForm({
@@ -8492,6 +8494,17 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
           title={`Copy direct checkout link\n${window.location.origin}/courses/${courseSlug}?pricingOptionId=${opt.id}&checkout=1`}
         >
           <Link2 className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {opt.stripePaymentLinkUrl && (
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(opt.stripePaymentLinkUrl as string).then(() => toast.success("Stripe Payment Link copied!"));
+          }}
+          className="text-xs text-purple-400 hover:text-purple-600 p-1 flex-shrink-0"
+          title={`Copy Stripe Payment Link\n${opt.stripePaymentLinkUrl}`}
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
         </button>
       )}
       <button onClick={() => { if (confirm("Delete this pricing option?")) deleteOption.mutate({ id: opt.id }); }} className="text-xs text-red-400 hover:text-red-600 p-1 flex-shrink-0">

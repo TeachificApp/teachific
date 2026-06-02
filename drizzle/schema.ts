@@ -978,6 +978,8 @@ export const digitalProductPrices = mysqlTable("digital_product_prices", {
   installmentAmount: varchar("installmentAmount", { length: 20 }), // amount per installment
   intervalDays: int("intervalDays"), // days between installments
   isActive: boolean("isActive").default(true),
+  stripePaymentLinkUrl: varchar("stripePaymentLinkUrl", { length: 2048 }),
+  stripePaymentLinkId: varchar("stripePaymentLinkId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow(),
 });
 
@@ -3369,6 +3371,8 @@ export const lmsPricingOptions = mysqlTable("lms_pricing_options", {
   ctaUrl: varchar("cta_url", { length: 2048 }),
   sortOrder: int("sort_order").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
+  stripePaymentLinkId: varchar("stripe_payment_link_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -3496,6 +3500,8 @@ export const physicalProductPricingOptions = mysqlTable("physical_product_pricin
   ctaLabel: varchar("cta_label", { length: 100 }),
   sortOrder: int("sort_order").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
+  stripePaymentLinkId: varchar("stripe_payment_link_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type PhysicalProductPricingOption = typeof physicalProductPricingOptions.$inferSelect;

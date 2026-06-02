@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE lms_pricing_options \n  ADD COLUMN stripe_payment_link_url VARCHAR(2048),\n  ADD COLUMN stripe_payment_link_id VARCHAR(255);\n\nALTER TABLE digital_product_prices \n  ADD COLUMN stripePaymentLinkUrl VARCHAR(2048),\n  ADD COLUMN stripePaymentLinkId VARCHAR(255);\n\nALTER TABLE physical_product_pricing_options \n  ADD COLUMN stripe_payment_link_url VARCHAR(2048),\n  ADD COLUMN stripe_payment_link_id VARCHAR(255);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2mhhtxpXA9Esras.7d3251b537d6 --database fJXMsdmk8vcb8V4GDt37f6 --execute \nALTER TABLE lms_pricing_options \n  ADD COLUMN stripe_payment_link_url VARCHAR(2048),\n  ADD COLUMN stripe_payment_link_id VARCHAR(255);\n\nALTER TABLE digital_product_prices \n  ADD COLUMN stripePaymentLinkUrl VARCHAR(2048),\n  ADD COLUMN stripePaymentLinkId VARCHAR(255);\n\nALTER TABLE physical_product_pricing_options \n  ADD COLUMN stripe_payment_link_url VARCHAR(2048),\n  ADD COLUMN stripe_payment_link_id VARCHAR(255);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1656
+}

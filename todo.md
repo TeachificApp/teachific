@@ -3760,3 +3760,15 @@
 - [ ] Add "Email Settings" tab in OrgSettingsPage with From Name, From Email fields
 - [ ] Add "Bring Your Own SendGrid Key" field gated behind Builder+ plan in Email Settings
 - [ ] Wire campaign send to use org's own SendGrid key if Builder+ and configured
+
+## Stripe Payment Links (June 2026)
+- [x] Add stripePaymentLinkUrl and stripePaymentLinkId columns to lms_pricing_options table
+- [x] Add stripePaymentLinkUrl and stripePaymentLinkId columns to digital_product_prices table
+- [x] Add stripePaymentLinkUrl and stripePaymentLinkId columns to physical_product_pricing_options table
+- [x] Create server/stripePaymentLinks.ts helper with createStripePaymentLink and deactivateStripePaymentLink
+- [x] Update lmsRouter.ts createPricingOption to generate Stripe Payment Link after insert
+- [x] Update lmsRouter.ts updatePricingOption to regenerate Stripe Payment Link when price/type changes
+- [x] Update lmsRouter.ts deletePricingOption to deactivate Stripe Payment Link
+- [x] Fix ENV import bug in stripePaymentLinks.ts (was 'env', now 'ENV')
+- [x] Add stripePaymentLinkUrl and stripePaymentLinkId to PricingOption type in CourseBuilderPage.tsx
+- [x] Add purple ExternalLink "Copy Stripe Payment Link" button to PricingOptionRow in CourseBuilderPage.tsx
