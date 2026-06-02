@@ -3859,3 +3859,21 @@
 - [x] Add /checkout/complete route (CheckoutCompletePage)
 - [x] Polymorphic lmsCheckoutRouter backend (getCheckoutPageDetails, createHostedCheckoutSession, confirmHostedCheckout) for all content types
 - [x] Vitest tests for lmsCheckoutRouter CONTENT_TYPES enum and editor props contract
+
+## Block Library & Checkout Enhancements
+
+- [x] Add "Saved" as 7th category tab to LandingPageBuilder (lms) block picker
+- [x] Add "Saved" as 7th category tab to LandingPageBuilder (admin) block picker
+- [x] Add "Saved" as 7th category tab to LessonBlockEditor block picker
+- [x] Add "Saved" as 7th category tab to FunnelPageEditor block picker
+- [x] Add "Saved" as 7th category tab to DownloadLandingPageBuilder block picker
+- [x] Add "Saved" as 7th category tab to ProductLandingPageBuilder block picker
+- [x] Upgrade AssignmentBlockEditor to use full BLOCK_CATALOG with category tabs and saved templates
+- [x] Add "Saved" templates tab to EmailCampaignEditor block picker
+- [x] Add team pricing fields (isTeamPricing, minSeats, maxSeats, perSeatPrice, teamStripePriceId) to lmsPricingOptions schema
+- [x] Add pricingOptionId (per-tier targeting) to orderBumps schema
+- [x] Apply DB migration for new schema fields
+- [x] Rewrite lmsCheckoutRouter to return order bumps with per-tier filtering and team pricing metadata
+- [x] Extend createHostedCheckoutSession to handle seat count and multi-item bump line items
+- [x] Rewrite HostedCheckoutPage with pricing tier cards, team seat stepper, order bump checkboxes, and live order summary
+- [x] Add vitest tests for order bump tier filtering, team pricing seat count, and order total calculation

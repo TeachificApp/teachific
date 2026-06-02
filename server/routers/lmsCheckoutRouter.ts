@@ -4,15 +4,16 @@
  *   course | download | physical_product | webinar | membership | membership_plan
  *
  * Routers:
- *   lmsCheckoutPublicRouter  — getCheckoutPageDetails
- *   lmsCheckoutLearnerRouter — createHostedCheckoutSession, confirmHostedCheckout
+ *   lmsCheckoutPublicRouter  — getCheckoutPageDetails (includes order bumps + team pricing)
+ *   lmsCheckoutLearnerRouter — createHostedCheckoutSession (seat count + bump line items),
+ *                              confirmHostedCheckout
  *   lmsCheckoutAdminRouter   — getCheckoutPageConfig, saveCheckoutPageConfig,
  *                              listCheckoutTemplates, saveCheckoutTemplate,
  *                              deleteCheckoutTemplate, importCheckoutTemplate
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, or, isNull } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { ENV } from "../_core/env";
@@ -34,6 +35,7 @@ import {
   physicalProducts,
   physicalProductPricingOptions,
   physicalProductOrders,
+  orderBumps,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
 
@@ -250,7 +252,6 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
 }
 
 async function getCheckoutPageRow(db: any, contentType: ContentType, contentId: number) {
-  // Try new polymorphic lookup first
   const [row] = await db.select().from(lmsCheckoutPages)
     .where(and(
       eq(lmsCheckoutPages.contentType, contentType),
@@ -266,10 +267,51 @@ async function getCheckoutPageRow(db: any, contentType: ContentType, contentId: 
   return null;
 }
 
+/**
+ * Fetch active order bumps for a content item.
+ * Returns bumps where pricingOptionId IS NULL (global) OR matches the given pricingOptionId.
+ * The frontend filters further based on the selected tier.
+ */
+async function fetchOrderBumps(db: any, contentType: ContentType, contentId: number) {
+  // Map content type to orderBumps triggerProductType enum values
+  const triggerType = contentType === "course" ? "course"
+    : contentType === "download" ? "download"
+    : null; // physical_product, webinar, membership, membership_plan not yet in enum
+  if (!triggerType) return [];
+
+  const bumps = await db.select().from(orderBumps)
+    .where(and(
+      eq(orderBumps.triggerProductType, triggerType as any),
+      eq(orderBumps.triggerProductId, contentId),
+      eq(orderBumps.isActive, true),
+    ))
+    .orderBy(orderBumps.sortOrder);
+
+  return bumps.map((b: any) => ({
+    id: b.id,
+    name: b.name,
+    headline: b.headline ?? null,
+    description: b.description ?? null,
+    imageUrl: b.imageUrl ?? null,
+    bumpProductType: b.bumpProductType,
+    bumpProductId: b.bumpProductId,
+    placement: b.placement,
+    discountPercent: b.discountPercent ?? 0,
+    discountedPrice: b.discountedPrice ?? null,
+    buttonText: b.buttonText ?? "Add to Order",
+    declineText: b.declineText ?? "No thanks",
+    // Per-tier targeting: null = show for all tiers
+    pricingOptionId: b.pricingOptionId ?? null,
+  }));
+}
+
 // ─── Public Router ────────────────────────────────────────────────────────────
 
 export const lmsCheckoutPublicRouter = router({
-  /** Returns all data needed to render the hosted checkout page for any content type */
+  /** Returns all data needed to render the hosted checkout page for any content type.
+   *  Includes: pricing tiers (with team pricing fields), order bumps (with per-tier targeting),
+   *  checkout page config, and org info.
+   */
   getCheckoutPageDetails: publicProcedure
     .input(z.object({
       contentType: z.enum(CONTENT_TYPES),
@@ -294,6 +336,9 @@ export const lmsCheckoutPublicRouter = router({
       const checkoutPageRow = await getCheckoutPageRow(db, input.contentType, content.id);
       const checkoutConfig = parseConfig(checkoutPageRow ?? null);
 
+      // Order bumps (placement: during_checkout)
+      const bumps = await fetchOrderBumps(db, input.contentType, content.id);
+
       // Check if user already has access
       let hasAccess = false;
       if (ctx.user && input.contentType === "course") {
@@ -303,6 +348,16 @@ export const lmsCheckoutPublicRouter = router({
           .limit(1);
         hasAccess = !!existing;
       }
+
+      // Enrich pricing options with team pricing fields (already in DB columns)
+      const enrichedPricingOptions = (content.pricingOptions as any[]).map((opt: any) => ({
+        ...opt,
+        isTeamPricing: opt.isTeamPricing ?? false,
+        minSeats: opt.minSeats ?? 2,
+        maxSeats: opt.maxSeats ?? 100,
+        perSeatPrice: opt.perSeatPrice ?? null,
+        teamStripePriceId: opt.teamStripePriceId ?? null,
+      }));
 
       return {
         content: {
@@ -322,7 +377,8 @@ export const lmsCheckoutPublicRouter = router({
           trialDays: content.trialDays ?? null,
           orgId: content.orgId,
         },
-        pricingOptions: content.pricingOptions,
+        pricingOptions: enrichedPricingOptions,
+        orderBumps: bumps,
         org: org ? {
           id: org.id,
           name: org.name,
@@ -342,7 +398,9 @@ export const lmsCheckoutPublicRouter = router({
 // ─── Learner Router ───────────────────────────────────────────────────────────
 
 export const lmsCheckoutLearnerRouter = router({
-  /** Create a Stripe Checkout Session for any content type */
+  /** Create a Stripe Checkout Session for any content type.
+   *  Supports: seat count (team pricing), order bump add-ons (multi-line-item).
+   */
   createHostedCheckoutSession: protectedProcedure
     .input(z.object({
       contentType: z.enum(CONTENT_TYPES),
@@ -350,6 +408,10 @@ export const lmsCheckoutLearnerRouter = router({
       pricingOptionId: z.number().optional(),
       origin: z.string(),
       promoCode: z.string().optional(),
+      // Team / group purchase
+      seatCount: z.number().min(1).max(500).optional(),
+      // Order bump add-ons: array of bump IDs the user opted into
+      selectedBumpIds: z.array(z.number()).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -364,20 +426,35 @@ export const lmsCheckoutLearnerRouter = router({
       let effectiveStripePriceId = content.stripePriceId;
       let effectiveSubscriptionInterval = content.subscriptionInterval;
       let effectiveTrialDays = content.trialDays;
+      let isTeamPricing = false;
+      let minSeats = 2;
+      let maxSeats = 100;
+      let perSeatPrice: number | null = null;
+      let teamStripePriceId: string | null = null;
 
       if (input.pricingOptionId && content.pricingOptions.length > 0) {
-        const opt = content.pricingOptions.find((o: any) => o.id === input.pricingOptionId);
+        const opt = content.pricingOptions.find((o: any) => o.id === input.pricingOptionId) as any;
         if (opt) {
           effectivePrice = Number(opt.price ?? opt.amount ?? 0);
           pricingType = (opt.pricingType ?? opt.type) as string;
           effectiveStripePriceId = opt.stripePriceId ?? null;
           effectiveSubscriptionInterval = opt.subscriptionInterval ?? opt.billingInterval ?? null;
+          isTeamPricing = opt.isTeamPricing ?? false;
+          minSeats = opt.minSeats ?? 2;
+          maxSeats = opt.maxSeats ?? 100;
+          perSeatPrice = opt.perSeatPrice ? Number(opt.perSeatPrice) : null;
+          teamStripePriceId = opt.teamStripePriceId ?? null;
         }
       }
 
+      // Determine seat count for team pricing
+      const seatCount = isTeamPricing ? Math.max(minSeats, Math.min(maxSeats, input.seatCount ?? minSeats)) : 1;
+      // Per-seat price overrides base price for team tiers
+      const unitPrice = isTeamPricing && perSeatPrice ? perSeatPrice : effectivePrice;
+
       // Free path
-      if (pricingType === "free" || effectivePrice === 0) {
-        await grantAccess(db, input.contentType, content, ctx.user.id, null);
+      if (pricingType === "free" || (unitPrice === 0 && !isTeamPricing)) {
+        await grantAccess(db, input.contentType, content, ctx.user.id, null, seatCount);
         return { type: "free" as const, slug: content.slug, contentType: input.contentType };
       }
 
@@ -393,8 +470,10 @@ export const lmsCheckoutLearnerRouter = router({
         content_id:   content.id.toString(),
         content_slug: content.slug,
         pricing_type: pricingType,
+        seat_count:   seatCount.toString(),
         trigger_order_type: "lms_hosted_checkout",
         ...(input.pricingOptionId ? { pricing_option_id: input.pricingOptionId.toString() } : {}),
+        ...(input.selectedBumpIds?.length ? { selected_bump_ids: input.selectedBumpIds.join(",") } : {}),
       };
 
       // Promo code
@@ -407,28 +486,26 @@ export const lmsCheckoutLearnerRouter = router({
       }
       const promoOpts = discounts ? { discounts } : { allow_promotion_codes: true };
 
-      let session: any;
+      // ── Build line items ──────────────────────────────────────────────────
+      const lineItems: any[] = [];
 
       if (pricingType === "one_time" || pricingType === "payment_plan") {
-        session = await stripe.checkout.sessions.create({
-          mode: "payment",
-          customer_email: ctx.user.email ?? undefined,
-          ...promoOpts,
-          line_items: [{
-            price_data: {
-              currency: content.currency,
-              product_data: { name: content.title, description: content.subtitle ?? undefined },
-              unit_amount: Math.round(effectivePrice * 100),
+        lineItems.push({
+          price_data: {
+            currency: content.currency,
+            product_data: {
+              name: isTeamPricing
+                ? `${content.title} — Team License (${seatCount} seats)`
+                : content.title,
+              description: content.subtitle ?? undefined,
             },
-            quantity: 1,
-          }],
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-          client_reference_id: ctx.user.id.toString(),
-          metadata: commonMeta,
+            unit_amount: Math.round(unitPrice * 100),
+          },
+          quantity: isTeamPricing ? seatCount : 1,
         });
       } else if (pricingType === "subscription") {
-        let stripePriceId = effectiveStripePriceId;
+        // For team subscriptions we bill per-seat as quantity
+        let stripePriceId = isTeamPricing ? (teamStripePriceId ?? effectiveStripePriceId) : effectiveStripePriceId;
         if (!stripePriceId) {
           const intervalMap: Record<string, "month" | "year"> = { monthly: "month", quarterly: "month", annual: "year" };
           const intervalCountMap: Record<string, number> = { monthly: 1, quarterly: 3, annual: 1 };
@@ -439,14 +516,62 @@ export const lmsCheckoutLearnerRouter = router({
           });
           const stripePrice = await stripe.prices.create({
             product: stripeProduct.id,
-            unit_amount: Math.round(effectivePrice * 100),
+            unit_amount: Math.round(unitPrice * 100),
             currency: content.currency,
             recurring: { interval: intervalMap[interval] ?? "month", interval_count: intervalCountMap[interval] ?? 1 },
           });
           stripePriceId = stripePrice.id;
-          // Persist the new price ID back to the content row
-          await persistStripePriceId(db, input.contentType, content.id, input.pricingOptionId ?? null, stripePriceId);
+          await persistStripePriceId(db, input.contentType, content.id, input.pricingOptionId ?? null, stripePriceId, isTeamPricing);
         }
+        lineItems.push({ price: stripePriceId!, quantity: isTeamPricing ? seatCount : 1 });
+      } else {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported pricing type: " + pricingType });
+      }
+
+      // ── Order bump add-ons ────────────────────────────────────────────────
+      if (input.selectedBumpIds?.length) {
+        const allBumps = await fetchOrderBumps(db, input.contentType, content.id);
+        for (const bumpId of input.selectedBumpIds) {
+          const bump = allBumps.find((b: any) => b.id === bumpId);
+          if (!bump) continue;
+
+          // Resolve bump product title + price
+          let bumpTitle = bump.headline ?? bump.name;
+          let bumpPrice = bump.discountedPrice ? Number(bump.discountedPrice) : 0;
+
+          // Fetch bump product info for a better name
+          try {
+            if (bump.bumpProductType === "course") {
+              const [bumpCourse] = await db.select({ title: lmsCourses.title, price: lmsCourses.price })
+                .from(lmsCourses).where(eq(lmsCourses.id, bump.bumpProductId)).limit(1);
+              if (bumpCourse) {
+                bumpTitle = bumpTitle || bumpCourse.title;
+                if (!bumpPrice) bumpPrice = Number(bumpCourse.price ?? 0);
+              }
+            } else if (bump.bumpProductType === "download") {
+              const [bumpDl] = await db.select({ title: digitalProducts.title })
+                .from(digitalProducts).where(eq(digitalProducts.id, bump.bumpProductId)).limit(1);
+              if (bumpDl) bumpTitle = bumpTitle || bumpDl.title;
+            }
+          } catch {}
+
+          if (bumpPrice > 0) {
+            lineItems.push({
+              price_data: {
+                currency: content.currency,
+                product_data: { name: bumpTitle },
+                unit_amount: Math.round(bumpPrice * 100),
+              },
+              quantity: 1,
+            });
+          }
+        }
+      }
+
+      // ── Create Stripe session ─────────────────────────────────────────────
+      let session: any;
+
+      if (pricingType === "subscription") {
         const trialOpts = effectiveTrialDays && effectiveTrialDays > 0
           ? { subscription_data: { trial_period_days: effectiveTrialDays } }
           : {};
@@ -455,14 +580,23 @@ export const lmsCheckoutLearnerRouter = router({
           customer_email: ctx.user.email ?? undefined,
           ...promoOpts,
           ...trialOpts,
-          line_items: [{ price: stripePriceId!, quantity: 1 }],
+          line_items: lineItems,
           success_url: successUrl,
           cancel_url: cancelUrl,
           client_reference_id: ctx.user.id.toString(),
           metadata: commonMeta,
         });
       } else {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported pricing type: " + pricingType });
+        session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: ctx.user.email ?? undefined,
+          ...promoOpts,
+          line_items: lineItems,
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          client_reference_id: ctx.user.id.toString(),
+          metadata: commonMeta,
+        });
       }
 
       if (!session) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create checkout session" });
@@ -495,7 +629,7 @@ export const lmsCheckoutLearnerRouter = router({
 
       const contentType = (session.metadata?.content_type ?? input.contentType) as ContentType;
       const contentId   = parseInt(session.metadata?.content_id ?? "0");
-      const pricingOptionId = session.metadata?.pricing_option_id ? parseInt(session.metadata.pricing_option_id) : null;
+      const seatCount   = parseInt(session.metadata?.seat_count ?? "1") || 1;
 
       if (!contentId) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid session metadata" });
 
@@ -508,8 +642,8 @@ export const lmsCheckoutLearnerRouter = router({
         return { success: true, alreadyGranted: true, slug: content.slug, contentType };
       }
 
-      // Grant access
-      await grantAccess(db, contentType, content, ctx.user.id, session);
+      // Grant access (with seat count for team purchases)
+      await grantAccess(db, contentType, content, ctx.user.id, session, seatCount);
 
       return { success: true, alreadyGranted: false, slug: content.slug, contentType };
     }),
@@ -525,11 +659,10 @@ async function checkExistingAccess(db: any, contentType: ContentType, contentId:
       .limit(1);
     return !!e;
   }
-  // For other types, check order tables
   return false;
 }
 
-async function grantAccess(db: any, contentType: ContentType, content: any, userId: number, session: any) {
+async function grantAccess(db: any, contentType: ContentType, content: any, userId: number, session: any, seatCount = 1) {
   const stripeSubscriptionId = session && typeof session.subscription === "object"
     ? (session.subscription as any)?.id
     : session?.subscription ?? null;
@@ -549,8 +682,10 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
         stripeSessionId: session?.id ?? null,
         stripeSubscriptionId: stripeSubscriptionId ?? null,
         stripePaymentIntentId: stripePaymentIntentId ?? null,
+        seats: seatCount,
         completedAt: new Date(),
       }).$returningId();
+      // Enroll the purchasing user
       await db.insert(lmsEnrollments).values({
         orgId: content.orgId,
         userId,
@@ -562,7 +697,6 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
       break;
     }
     case "download": {
-      // Create a digital order record for the download
       await db.insert(digitalOrders).values({
         productId: content.id,
         priceId: 0,
@@ -593,7 +727,6 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
     case "webinar":
     case "membership":
     case "membership_plan": {
-      // For these types, access is tracked via lmsOrders with content metadata
       await db.insert(lmsOrders).values({
         orgId: content.orgId,
         userId,
@@ -604,6 +737,7 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
         stripeSessionId: session?.id ?? null,
         stripeSubscriptionId: stripeSubscriptionId ?? null,
         stripePaymentIntentId: stripePaymentIntentId ?? null,
+        seats: seatCount,
         completedAt: new Date(),
       });
       break;
@@ -611,11 +745,19 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
   }
 }
 
-async function persistStripePriceId(db: any, contentType: ContentType, contentId: number, pricingOptionId: number | null, stripePriceId: string) {
+async function persistStripePriceId(
+  db: any,
+  contentType: ContentType,
+  contentId: number,
+  pricingOptionId: number | null,
+  stripePriceId: string,
+  isTeamPricing = false,
+) {
   switch (contentType) {
     case "course":
       if (pricingOptionId) {
-        await db.update(lmsPricingOptions).set({ stripePriceId }).where(eq(lmsPricingOptions.id, pricingOptionId));
+        const field = isTeamPricing ? { teamStripePriceId: stripePriceId } : { stripePriceId };
+        await db.update(lmsPricingOptions).set(field).where(eq(lmsPricingOptions.id, pricingOptionId));
       } else {
         await db.update(lmsCourses).set({ stripePriceId }).where(eq(lmsCourses.id, contentId));
       }
@@ -681,7 +823,6 @@ export const lmsCheckoutAdminRouter = router({
         orgId: input.orgId,
         contentType: input.contentType,
         contentId: input.contentId,
-        // Keep courseId in sync for courses (backward compat)
         courseId: input.contentType === "course" ? input.contentId : null,
         headerConfig:      input.header      ? JSON.stringify(input.header)      : null,
         courseInfoConfig:  input.contentInfo  ? JSON.stringify(input.contentInfo) : null,
@@ -700,7 +841,6 @@ export const lmsCheckoutAdminRouter = router({
       } else {
         await db.insert(lmsCheckoutPages).values(values);
       }
-
       return { success: true };
     }),
 

@@ -968,6 +968,7 @@ export default function EmailCampaignEditor({ campaignId, onClose }: EditorProps
   const [loadTemplateDialogOpen, setLoadTemplateDialogOpen] = useState(false);
   const [draftId, setDraftId] = useState<number | undefined>(campaignId);
   const [isSaving, setIsSaving] = useState(false);
+  const [emailPickerTab, setEmailPickerTab] = useState<"blocks" | "saved">("blocks");
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: senderProfiles } = trpc.emailCampaign.listSenderProfiles.useQuery(undefined, { enabled: !!user });

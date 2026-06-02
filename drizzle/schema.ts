@@ -2233,6 +2233,8 @@ export const orderBumps = mysqlTable("order_bumps", {
   imageUrl: text("imageUrl"),
   isActive: boolean("isActive").default(true).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
+  // Per-tier targeting: null = show for all tiers; set to a pricingOptionId to restrict to one tier
+  pricingOptionId: int("pricing_option_id"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -3438,6 +3440,12 @@ export const lmsPricingOptions = mysqlTable("lms_pricing_options", {
   isActive: boolean("is_active").default(true).notNull(),
   stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
   stripePaymentLinkId: varchar("stripe_payment_link_id", { length: 255 }),
+  // Team / group pricing
+  isTeamPricing: boolean("is_team_pricing").default(false).notNull(),
+  minSeats: int("min_seats").default(2),
+  maxSeats: int("max_seats").default(100),
+  perSeatPrice: decimal("per_seat_price", { precision: 10, scale: 2 }),
+  teamStripePriceId: varchar("team_stripe_price_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

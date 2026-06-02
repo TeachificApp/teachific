@@ -500,14 +500,20 @@ export default function DownloadLandingPageBuilder() {
                 <button key={cat} onClick={() => setActiveCat(cat)} className={cn("px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0", activeCat === cat ? "text-teal-700 border-b-2 border-teal-500 bg-white" : "text-gray-500 hover:text-gray-700")}>{cat}</button>
               ))}
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
-              {catalogByCat.map(b => (
-                <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
-                  <span className="text-teal-600 text-2xl">{b.icon}</span>
-                  <span className="text-xs leading-tight font-medium">{b.label}</span>
-                </button>
-              ))}
-            </div>
+            {activeCat === "Saved" ? (
+              <div className="flex-1 overflow-hidden p-1">
+                <DownloadBlockTemplatesTab onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
+                {catalogByCat.map(b => (
+                  <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
+                    <span className="text-teal-600 text-2xl">{b.icon}</span>
+                    <span className="text-xs leading-tight font-medium">{b.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {/* ── Copy from Other Pages tab ── */}

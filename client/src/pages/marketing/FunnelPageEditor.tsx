@@ -1194,19 +1194,25 @@ export default function FunnelPageEditor() {
                 </button>
               ))}
             </div>
-            {/* Block grid */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
-              {catalogByCat.map(b => (
-                <button
-                  key={b.type}
-                  onClick={() => { addBlock(b.type); setAddMenuOpen(false); }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
-                >
-                  <span className="text-teal-600 text-2xl">{b.icon}</span>
-                  <span className="text-xs leading-tight font-medium">{b.label}</span>
-                </button>
-              ))}
-            </div>
+            {/* Block grid or Saved templates */}
+            {activeCat === "Saved" ? (
+              <div className="flex-1 overflow-hidden p-1">
+                <FunnelBlockTemplatesTab onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
+                {catalogByCat.map(b => (
+                  <button
+                    key={b.type}
+                    onClick={() => { addBlock(b.type); setAddMenuOpen(false); }}
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
+                  >
+                    <span className="text-teal-600 text-2xl">{b.icon}</span>
+                    <span className="text-xs leading-tight font-medium">{b.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
