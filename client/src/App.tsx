@@ -145,6 +145,8 @@ import CreatorLandingPage from "./pages/CreatorLandingPage";
 import DesktopDownloadPage from "./pages/DesktopDownloadPage";
 
 import ThankYouPage from "./pages/ThankYouPage";
+import HostedCheckoutPage from "./pages/lms/HostedCheckoutPage";
+import CheckoutCompletePage from "./pages/lms/CheckoutCompletePage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
@@ -167,6 +169,8 @@ function BareRouter() {
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />
         <Route path="/webinar/:slug/watch" component={WebinarWatchPage} />
         <Route path="/shop/:slug" component={DigitalProductSalesPage} />
+        <Route path="/checkout/complete" component={CheckoutCompletePage} />
+        <Route path="/checkout/:contentType/:slug" component={HostedCheckoutPage} />
         <Route path="/forms/:orgSlug/:slug" component={FormPlayerPage} />
         <Route path="/forms/:slug" component={FormPlayerPage} />
         <Route path="/school">{() => <SchoolPage />}</Route>

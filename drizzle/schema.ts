@@ -802,6 +802,9 @@ export const platformSettings = mysqlTable("platform_settings", {
   // Platform-level legal policies (independent of any org)
   termsOfService: text("termsOfService"),
   privacyPolicy: text("privacyPolicy"),
+  // External URLs for Terms of Service and Privacy Policy (used on checkout pages)
+  termsUrl: varchar("terms_url", { length: 2048 }),
+  privacyUrl: varchar("privacy_url", { length: 2048 }),
   // Platform-wide video watermark
   watermarkImageUrl: text("watermarkImageUrl"),
   watermarkOpacity: int("watermarkOpacity").default(30),
@@ -980,9 +983,10 @@ export const digitalProductPrices = mysqlTable("digital_product_prices", {
   isActive: boolean("isActive").default(true),
   stripePaymentLinkUrl: varchar("stripePaymentLinkUrl", { length: 2048 }),
   stripePaymentLinkId: varchar("stripePaymentLinkId", { length: 255 }),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow(),
 });
-
 export const digitalOrders = mysqlTable("digital_orders", {
   id: int("id").primaryKey().autoincrement(),
   productId: int("productId").notNull(),
@@ -1058,11 +1062,17 @@ export const webinars = mysqlTable("webinars", {
   postWebinarMessage: text("postWebinarMessage"),
   postWebinarDelaySeconds: int("postWebinarDelaySeconds").default(0),
   // Status
+  // Pricing & Stripe
+  price: decimal("price", { precision: 10, scale: 2 }).default("0"),
+  currency: varchar("currency", { length: 8 }).default("usd"),
+  pricingType: mysqlEnum("pricing_type", ["free", "one_time", "subscription"]).default("free"),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
+  stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
   isPublished: boolean("isPublished").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
-
 export const webinarRegistrations = mysqlTable("webinar_registrations", {
   id: int("id").autoincrement().primaryKey(),
   webinarId: int("webinarId").notNull(),
@@ -1337,6 +1347,9 @@ export const memberships = mysqlTable("memberships", {
   courseIds: text("courseIds"),
   isActive: boolean("isActive").default(true).notNull(),
   memberCount: int("memberCount").default(0).notNull(),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
+  stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Membership = typeof memberships.$inferSelect;
@@ -2492,6 +2505,8 @@ export const lmsEnrollments = mysqlTable("lms_enrollments", {
   expiresAt: timestamp("expires_at"),
   progressPercent: decimal("progress_percent", { precision: 5, scale: 2 }).default("0.00").notNull(),
   lastAccessedAt: timestamp("last_accessed_at"),
+  enrollmentType: mysqlEnum("enrollment_type", ["full", "free_preview"]).default("full").notNull(),
+  orderId: int("order_id"),
 });
 export type LmsEnrollment = typeof lmsEnrollments.$inferSelect;
 export type InsertLmsEnrollment = typeof lmsEnrollments.$inferInsert;
@@ -2732,11 +2747,56 @@ export const lmsOrders = mysqlTable("lms_orders", {
   currency: varchar("currency", { length: 8 }).default("usd").notNull(),
   status: mysqlEnum("status", ["pending", "completed", "failed", "refunded"]).default("pending").notNull(),
   stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeSessionId: varchar("stripe_session_id", { length: 255 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  affiliateId: int("affiliate_id"),
+  seats: int("seats").default(1).notNull(),
+  pricingOptionId: int("pricing_option_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 export type LmsOrder = typeof lmsOrders.$inferSelect;
 export type InsertLmsOrder = typeof lmsOrders.$inferInsert;
+
+// ─── LMS: Checkout Pages ─────────────────────────────────────────────────────
+export const lmsCheckoutPages = mysqlTable("lms_checkout_pages", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  // Polymorphic: courseId kept for backward compat; use contentType+contentId for all types
+  courseId: int("course_id"),
+  contentType: mysqlEnum("content_type", ["course", "download", "physical_product", "webinar", "membership", "membership_plan"]).default("course").notNull(),
+  contentId: int("content_id").notNull().default(0),
+  headerConfig: longtext("header_config"),
+  courseInfoConfig: longtext("course_info_config"),
+  trustBadgesConfig: longtext("trust_badges_config"),
+  paymentFormConfig: longtext("payment_form_config"),
+  footerConfig: longtext("footer_config"),
+  sectionsOrder: text("sections_order"),
+  primaryColor: varchar("primary_color", { length: 20 }),
+  accentColor: varchar("accent_color", { length: 20 }),
+  bgColor: varchar("bg_color", { length: 20 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LmsCheckoutPage = typeof lmsCheckoutPages.$inferSelect;
+export type InsertLmsCheckoutPage = typeof lmsCheckoutPages.$inferInsert;
+
+export const lmsCheckoutPageTemplates = mysqlTable("lms_checkout_page_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  headerConfig: longtext("header_config"),
+  courseInfoConfig: longtext("course_info_config"),
+  trustBadgesConfig: longtext("trust_badges_config"),
+  paymentFormConfig: longtext("payment_form_config"),
+  footerConfig: longtext("footer_config"),
+  sectionsOrder: text("sections_order"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LmsCheckoutPageTemplate = typeof lmsCheckoutPageTemplates.$inferSelect;
+export type InsertLmsCheckoutPageTemplate = typeof lmsCheckoutPageTemplates.$inferInsert;
 
 // ─── LMS: Support Features ────────────────────────────────────────────────────────
 export const lmsLessonNotes = mysqlTable("lms_lesson_notes", {
@@ -3003,6 +3063,9 @@ export const membershipPlans = mysqlTable("membership_plans", {
   description: longtext("description"),
   price: decimal("price", { precision: 12, scale: 2 }).notNull(),
   billingInterval: mysqlEnum("billing_interval", ["monthly", "quarterly", "annual"]).notNull(),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
+  stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type MembershipPlan = typeof membershipPlans.$inferSelect;
@@ -3240,6 +3303,8 @@ export const physicalProducts = mysqlTable("physical_products", {
   shopifyEmbedCode: longtext("shopify_embed_code"),
   shopifyProductId: varchar("shopify_product_id", { length: 255 }),
   externalCheckoutUrl: text("external_checkout_url"),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
   requiresShipping: boolean("requires_shipping").default(true).notNull(),
   shippingCountries: text("shipping_countries"),
   status: mysqlEnum("status", ["draft", "published", "hidden", "private", "archived"]).default("draft").notNull(),

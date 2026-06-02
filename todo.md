@@ -3779,3 +3779,83 @@
 - [x] Add ?free_preview=1 auto-enrollment handler to CourseLanding.tsx (redirects to login if unauthenticated, then enrolls and navigates to player)
 - [x] Fix FreePreviewLinkPanel in CourseBuilderPage.tsx to use window.location.origin instead of hardcoded learn.allaboutultrasound.com
 - [x] Add vitest tests for lmsLearner.enrollFreePreview (UNAUTHORIZED, NOT_FOUND, already enrolled, new enrollment)
+## Platform-Hosted Checkout Page (June 2026)
+- [ ] Add getCheckoutDetails query to lmsLearnerRouter (returns course info + pricing option + org info for /checkout/:pricingOptionId)
+- [ ] Add createHostedCheckoutSession mutation to lmsLearnerRouter (creates Stripe PaymentIntent or Subscription, returns clientSecret + order details)
+- [ ] Add confirmHostedCheckout mutation to lmsLearnerRouter (verifies payment, creates lmsEnrollment + lmsOrder, returns enrollment)
+- [ ] Add stripeWebhookRoutes.ts handler for lms_hosted_checkout type (payment_intent.succeeded + invoice.paid for subscriptions)
+- [ ] Build /checkout/:pricingOptionId page with two-column layout: left = course cover image + title + description + pricing summary; right = Stripe Elements payment form
+- [ ] Checkout page: terms + subscription disclosure checkbox (required before pay button is enabled)
+- [ ] Checkout page: subscription auto-renewal disclosure text shown when pricingType = subscription or payment_plan
+- [ ] Checkout page: all buttons use course primaryColor/accentColor
+- [ ] Build /checkout/:pricingOptionId/success completion page with course branding, enrollment confirmation, and link to course player
+- [ ] Register /checkout/:pricingOptionId and /checkout/:pricingOptionId/success routes in App.tsx
+- [ ] Update CourseLanding.tsx: replace window.open(checkoutUrl) with navigate to /checkout/:pricingOptionId
+- [ ] Update CourseSalesPage.tsx: replace direct Stripe checkout links with /checkout/:pricingOptionId links
+- [ ] Update CourseBuilderPage.tsx: replace stripePaymentLinkUrl copy with /checkout/:pricingOptionId URL
+- [ ] Write vitest tests for getCheckoutDetails, createHostedCheckoutSession, confirmHostedCheckout
+## Configurable Checkout Page Editor (June 2026)
+- [ ] Add lmsCheckoutPages table to schema.ts (courseId, sectionsJson, trustBadgesJson, headerConfig, footerConfig, primaryColor, accentColor, bgColor, createdAt, updatedAt)
+- [ ] Run DB migration for lmsCheckoutPages table
+- [ ] Backend: getCheckoutPageConfig procedure (admin) — returns checkout page config for a course
+- [ ] Backend: saveCheckoutPageConfig procedure (admin) — saves checkout page config JSON
+- [ ] Checkout page editor tab in CourseBuilderPage — "Checkout Page" tab
+- [ ] Section types: header, course-info, trust-badges, testimonials, payment-form, footer
+- [ ] Per-section: toggle visibility, edit content, drag-to-reorder
+- [ ] Trust badge editor: add/remove/reorder badges with icon picker (shield, lock, star, check, award) and label
+- [ ] Header section editor: headline, subheadline, background color/image
+- [ ] Course-info section: auto-populated from course data, toggle show/hide fields (cover image, description, instructor, lesson count)
+- [ ] Payment form section: configure submit button text, show/hide promo code field
+- [ ] Footer section: custom text, links
+- [ ] Live preview of checkout page sections in editor
+- [ ] Checkout page uses lmsCheckoutPages config if exists, else falls back to course defaults
+- [ ] Checkout page editor: save current layout as a named reusable template (lmsCheckoutPageTemplates table)
+- [ ] Checkout page editor: list saved templates and import/apply one to current course
+- [ ] Add lmsCheckoutPageTemplates table: id, orgId, name, sectionsJson, trustBadgesJson, headerConfig, footerConfig, createdAt
+- [ ] Backend: saveCheckoutTemplate, listCheckoutTemplates, importCheckoutTemplate procedures (admin)
+- [ ] Build CheckoutPageEditor component (section toggles, trust badge editor, color pickers, save/import templates)
+- [ ] Wire CheckoutPageEditor as "Checkout Page" tab in CourseEditorPage (and CourseBuilderPage)
+- [ ] Wire CheckoutPageEditor as "Checkout Page" tab in quiz editor
+- [ ] Wire CheckoutPageEditor as "Checkout Page" tab in download editor
+- [ ] Wire CheckoutPageEditor as "Checkout Page" tab in product editor
+- [ ] Wire CheckoutPageEditor as "Checkout Page" tab in webinar editor
+- [ ] Build /checkout/complete return page (success/processing/failure states, auto-redirect to player)
+- [ ] Register /checkout/:courseSlug and /checkout/complete in App.tsx
+
+## Universal Hosted Checkout System (All Content Types)
+- [ ] Audit schema for digital downloads, physical products, webinars, membership plans
+- [ ] Add checkoutSlug, stripeProductId, stripePriceId to digitalProducts/digitalDownloads schema
+- [ ] Add checkoutSlug, stripeProductId, stripePriceId to physicalProducts schema
+- [ ] Add checkoutSlug, stripeProductId, stripePriceId to webinars schema
+- [ ] Add checkoutSlug, stripeProductId, stripePriceId to brandMemberships schema
+- [ ] Add contentType field to lmsCheckoutPages (course|download|product|webinar|membership)
+- [ ] Run DB migrations for all schema changes
+- [ ] Backend: extend lmsCheckoutRouter getCheckoutPageDetails to handle all content types
+- [ ] Backend: extend createHostedCheckoutSession to handle all content types
+- [ ] Backend: extend confirmHostedCheckout to handle all content types (grant access per type)
+- [ ] Backend: Stripe product/price creation helpers for each content type
+- [ ] Build unified HostedCheckoutPage (/checkout/:contentType/:slug)
+- [ ] Build CheckoutCompletePage (/checkout/complete) for all content types
+- [ ] Build CheckoutPageEditor component (section toggles, trust badges, colors, save/import templates)
+- [ ] Wire CheckoutPageEditor tab into CourseBuilderPage (courses, quizzes, downloads)
+- [ ] Wire CheckoutPageEditor tab into DigitalDownloadsAdmin
+- [ ] Wire CheckoutPageEditor tab into PhysicalProductsAdmin
+- [ ] Wire CheckoutPageEditor tab into webinar editor (CourseBuilderPage webinar type)
+- [ ] Wire CheckoutPageEditor tab into membership plan editor
+- [ ] Register /checkout/:contentType/:slug and /checkout/complete routes in App.tsx
+- [ ] Wire all Buy Now / Enroll Now CTAs to /checkout/:contentType/:slug
+- [ ] Wire Copy Checkout Link buttons in all admin editors
+- [ ] Write vitest tests for all new procedures
+- [ ] Remove "All About Ultrasound™" and "iHeartEcho™" brand options and the Brand selector from CourseBuilderPage.tsx CourseSettingsForm
+- [ ] CheckoutPageEditor must be fully generic: props contentType + contentId + orgId, works for courses/downloads/products/webinars/memberships
+
+## Generic CheckoutPageEditor (All Content Types)
+- [x] Make CheckoutPageEditor generic — works across course, download, webinar, membership, physical_product, membership_plan content types
+- [x] Add Checkout Page tab to CourseBuilderPage
+- [x] Add Checkout Page tab to DigitalProductEditorPage
+- [x] Add Checkout Page tab to WebinarEditorPage
+- [x] Add Checkout Page tab to MembershipEditorPage
+- [x] Add /checkout/:contentType/:slug route (HostedCheckoutPage) for all content types
+- [x] Add /checkout/complete route (CheckoutCompletePage)
+- [x] Polymorphic lmsCheckoutRouter backend (getCheckoutPageDetails, createHostedCheckoutSession, confirmHostedCheckout) for all content types
+- [x] Vitest tests for lmsCheckoutRouter CONTENT_TYPES enum and editor props contract

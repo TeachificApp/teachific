@@ -32,8 +32,10 @@ import {
   Video,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Globe } from "lucide-react";
+import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 
-type TabId = "details" | "content" | "members" | "rules" | "pricing";
+type TabId = "details" | "content" | "members" | "rules" | "pricing" | "checkout_page";
 
 const tabs = [
   { id: "details" as const, label: "Details", icon: FileText },
@@ -41,6 +43,7 @@ const tabs = [
   { id: "members" as const, label: "Members", icon: Users },
   { id: "rules" as const, label: "Rules", icon: Zap },
   { id: "pricing" as const, label: "Pricing", icon: DollarSign },
+  { id: "checkout_page" as const, label: "Checkout Page", icon: Globe },
 ];
 
 const CONTENT_TYPE_ICONS: Record<string, any> = {
@@ -734,6 +737,16 @@ export default function MembershipEditorPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+        {activeTab === "checkout_page" && currentMembership && (
+          <div className="max-w-3xl mx-auto">
+            <CheckoutPageEditor
+              contentType="membership"
+              contentId={currentMembership.id}
+              orgId={currentMembership.orgId ?? orgId ?? 1}
+              contentSlug={String(currentMembership.id)}
+            />
           </div>
         )}
       </div>

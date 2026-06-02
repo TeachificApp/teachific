@@ -127,6 +127,7 @@ import { funnelRouter, funnelPublicRouter, funnelAdminRouter } from "./routers/f
 import { lmsAdminRouter } from "./routers/lmsAdminRouter";
 import { lmsLearnerRouter, lmsGroupRouter } from "./routers/lmsRouter";
 import { lmsEnrollmentAdminRouter } from "./routers/lmsEnrollmentAdminRouter";
+import { lmsCheckoutPublicRouter, lmsCheckoutLearnerRouter, lmsCheckoutAdminRouter } from "./routers/lmsCheckoutRouter";
 import { mediaRepoRouter } from "./routers/mediaRepoRouter";
 import { thinkificImportRouter } from "./routers/thinkificImportRouter";
 import { blockTemplatesRouter } from "./routers/blockTemplatesRouter";
@@ -211,6 +212,9 @@ export const appRouter = router({
   lmsGroup: lmsGroupRouter,
   lmsLearner: lmsLearnerRouter,
   lmsEnrollmentAdmin: lmsEnrollmentAdminRouter,
+  lmsCheckout: lmsCheckoutPublicRouter,
+  lmsCheckoutLearner: lmsCheckoutLearnerRouter,
+  lmsCheckoutAdmin: lmsCheckoutAdminRouter,
   mediaRepo: mediaRepoRouter,
   thinkificImport: thinkificImportRouter,
   blockTemplates: blockTemplatesRouter,

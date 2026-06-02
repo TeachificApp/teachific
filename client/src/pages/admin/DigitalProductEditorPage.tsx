@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Block } from "@/components/WysiwygPageBuilder";
+import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 import {
   ChevronLeft,
   Upload,
@@ -148,13 +149,14 @@ function PriceEditor({
 }
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
-type TabId = "details" | "pricing" | "sales_page" | "access";
+type TabId = "details" | "pricing" | "sales_page" | "access" | "checkout_page";
 
 const tabs = [
   { id: "details" as const, label: "Details & File", icon: Package },
   { id: "pricing" as const, label: "Pricing", icon: DollarSign },
   { id: "sales_page" as const, label: "Sales Page", icon: Globe },
   { id: "access" as const, label: "Access Controls", icon: Shield },
+  { id: "checkout_page" as const, label: "Checkout Page", icon: Globe },
 ];
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -743,6 +745,16 @@ export default function DigitalProductEditorPage() {
                 <li>Admins can manually revoke or extend access from the Orders report.</li>
               </ul>
             </div>
+          </div>
+        )}
+        {activeTab === "checkout_page" && product && (
+          <div className="max-w-3xl mx-auto">
+            <CheckoutPageEditor
+              contentType="download"
+              contentId={product.id}
+              orgId={product.orgId ?? 1}
+              contentSlug={product.slug}
+            />
           </div>
         )}
       </div>

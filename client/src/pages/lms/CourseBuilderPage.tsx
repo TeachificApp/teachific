@@ -49,6 +49,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import LessonEffectEditor from "@/components/LessonEffectEditor";
 import ThinkificImporter from "@/pages/admin/ThinkificImporter";
 import { LMSSalesTab } from "@/components/LMSSalesTab";
+import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 import DigitalDownloadsAdmin from "./DigitalDownloadsAdmin";
 import PhysicalProductsAdmin from "./PhysicalProductsAdmin";
 import OrderBumpsAdmin from "./OrderBumpsAdmin";
@@ -1171,6 +1172,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
           <TabsTrigger value="users" className="text-xs">Students</TabsTrigger>
           <TabsTrigger value="analytics" className="text-xs">Analytics</TabsTrigger>
           <TabsTrigger value="sales" className="text-xs">Sales</TabsTrigger>
+          <TabsTrigger value="checkout_page" className="text-xs">Checkout Page</TabsTrigger>
         </TabsList>
 
         {/* Settings Tab */}
@@ -1328,6 +1330,18 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
         </TabsContent>
         <TabsContent value="sales" className="mt-4">
           <LMSSalesTab courseId={courseId} />
+        </TabsContent>
+        <TabsContent value="checkout_page" className="mt-4">
+          {visitedTabs.has("checkout_page") && (
+            <CheckoutPageEditor
+              contentType="course"
+              contentId={courseId}
+              orgId={course.orgId ?? 1}
+              primaryColor={course.primaryColor ?? "#179ca3"}
+              accentColor={course.accentColor ?? "#0d9488"}
+              contentSlug={course.slug}
+            />
+          )}
         </TabsContent>
         {/* Cohort Tab — only visible for cohort type */}
         <TabsContent value="cohort" className="mt-4">
