@@ -29,13 +29,28 @@ import {
   emailTemplates,
   emailCampaigns,
   emailCampaignRecipients,
+  emailUnsubscribes,
   lmsEnrollments,
   lmsCourses,
   organizations,
 } from "../drizzle/schema";
 import { sendEmail } from "./sendgrid";
-import { randomBytes } from "crypto";
+import sgMail from "@sendgrid/mail";
+import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from "crypto";
 import { nanoid } from "nanoid";
+
+// ─── Encryption helpers for per-org SendGrid keys ─────────────────────────────
+const ENC_KEY = scryptSync(process.env.JWT_SECRET ?? "teachific-default", "salt", 32);
+function encryptKey(plain: string): string {
+  const iv = randomBytes(16);
+  const cipher = createCipheriv("aes-256-cbc", ENC_KEY, iv);
+  return iv.toString("hex") + ":" + cipher.update(plain, "utf8", "hex") + cipher.final("hex");
+}
+function decryptKey(enc: string): string {
+  const [ivHex, data] = enc.split(":");
+  const decipher = createDecipheriv("aes-256-cbc", ENC_KEY, Buffer.from(ivHex, "hex"));
+  return decipher.update(data, "hex", "utf8") + decipher.final("utf8");
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -324,11 +339,39 @@ export const emailCampaignsRouter = router({
         }
         
         const recipients = await resolveOrgRecipients(db, input.orgId, {});
-        
-        // Send emails
+
+        // Build unsubscribe set — include org-specific AND platform-wide (orgId IS NULL) unsubscribes
+        const unsubRows = await db
+          .select({ email: emailUnsubscribes.email })
+          .from(emailUnsubscribes)
+          .where(
+            sql`(${emailUnsubscribes.orgId} = ${input.orgId} OR ${emailUnsubscribes.orgId} IS NULL)`
+          );
+        const unsubEmails = new Set(unsubRows.map((r: { email: string }) => r.email.toLowerCase()));
+
+        // Determine sender identity (org custom > platform default)
+        const fromName = org[0].customSenderName || undefined;
+        const fromEmail = org[0].customSenderEmail || undefined;
+
+        // If org has their own SendGrid key (Builder+ plan), use it for this batch
+        let orgSgClient: typeof sgMail | null = null;
+        if (org[0].ownSendGridKeyEncrypted) {
+          try {
+            const ownKey = decryptKey(org[0].ownSendGridKeyEncrypted);
+            orgSgClient = Object.create(sgMail) as typeof sgMail;
+            orgSgClient.setApiKey(ownKey);
+          } catch {
+            console.warn("[Campaign] Failed to decrypt org SendGrid key, falling back to platform key");
+          }
+        }
+
+        // Send emails (skip unsubscribed recipients)
         let sentCount = 0;
         for (const recipient of recipients) {
           try {
+            // Skip unsubscribed recipients
+            if (unsubEmails.has(recipient.email.toLowerCase())) continue;
+
             const unsubscribeToken = await ensureUnsubscribeToken(db, recipient.id);
             const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken, "https://teachific.app");
             const htmlWithFooter = injectUnsubscribeFooter(
@@ -336,14 +379,27 @@ export const emailCampaignsRouter = router({
               unsubscribeUrl,
               org[0].name,
             );
-            
-            await sendEmail({
-              to: recipient.email,
-              subject: campaign[0].subject,
-              html: htmlWithFooter,
-              text: campaign[0].textBody || undefined,
-            });
-            
+
+            if (orgSgClient) {
+              // Use org's own SendGrid key
+              await orgSgClient.send({
+                to: recipient.email,
+                from: { email: fromEmail ?? "hello@teachific.net", name: fromName ?? "Teachific" },
+                subject: campaign[0].subject,
+                html: htmlWithFooter,
+                text: campaign[0].textBody || htmlWithFooter.replace(/<[^>]+>/g, ""),
+              });
+            } else {
+              await sendEmail({
+                to: recipient.email,
+                subject: campaign[0].subject,
+                html: htmlWithFooter,
+                text: campaign[0].textBody || undefined,
+                fromName,
+                fromEmail,
+              });
+            }
+
             sentCount++;
           } catch (err) {
             console.error(`Failed to send email to ${recipient.email}:`, err);
@@ -415,6 +471,132 @@ export const emailCampaignsRouter = router({
           .from(emailCampaignRecipients)
           .where(eq(emailCampaignRecipients.campaignId, input.campaignId))
           .orderBy(desc(emailCampaignRecipients.sentAt));
+      }),
+  }),
+
+  // ── Unsubscribe (public — no auth required) ──────────────────────────────────
+
+  unsubscribe: router({
+    /** Process an unsubscribe token click from an email link */
+    confirm: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        // Find the user by their unsubscribe token
+        const [user] = await db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .where(eq(users.unsubscribeToken, input.token))
+          .limit(1);
+
+        if (!user || !user.email) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid or expired unsubscribe link." });
+        }
+
+        // Record the unsubscribe (org-level — null orgId means all orgs)
+        const existing = await db
+          .select({ id: emailUnsubscribes.id })
+          .from(emailUnsubscribes)
+          .where(and(
+            eq(emailUnsubscribes.email, user.email),
+            isNull(emailUnsubscribes.orgId),
+          ))
+          .limit(1);
+
+        if (!existing.length) {
+          await db.insert(emailUnsubscribes).values({
+            userId: user.id,
+            email: user.email,
+            orgId: null,
+            reason: "user_clicked_link",
+          });
+        }
+
+        return { success: true, email: user.email };
+      }),
+
+    /** Re-subscribe (undo unsubscribe) */
+    resubscribe: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const [user] = await db
+          .select({ id: users.id, email: users.email })
+          .from(users)
+          .where(eq(users.unsubscribeToken, input.token))
+          .limit(1);
+
+        if (!user || !user.email) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid unsubscribe link." });
+        }
+
+        await db
+          .delete(emailUnsubscribes)
+          .where(and(
+            eq(emailUnsubscribes.email, user.email),
+            isNull(emailUnsubscribes.orgId),
+          ));
+
+        return { success: true, email: user.email };
+      }),
+  }),
+
+  // ── Org Email Settings ────────────────────────────────────────────────────────
+
+  emailSettings: router({
+    /** Get org email settings */
+    get: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const [org] = await db
+          .select({
+            customSenderName: organizations.customSenderName,
+            customSenderEmail: organizations.customSenderEmail,
+            hasOwnSendGridKey: organizations.ownSendGridKeyEncrypted,
+          })
+          .from(organizations)
+          .where(eq(organizations.id, input.orgId))
+          .limit(1);
+
+        if (!org) throw new TRPCError({ code: "NOT_FOUND" });
+
+        return {
+          customSenderName: org.customSenderName ?? "",
+          customSenderEmail: org.customSenderEmail ?? "",
+          hasOwnSendGridKey: !!org.hasOwnSendGridKey,
+        };
+      }),
+
+    /** Update org email settings */
+    update: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        customSenderName: z.string().max(255).optional(),
+        customSenderEmail: z.string().email().max(320).optional().or(z.literal("")),
+        ownSendGridKey: z.string().optional(), // plain text key — will be encrypted on save
+        clearOwnSendGridKey: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const updates: Record<string, unknown> = { updatedAt: new Date() };
+
+        if (input.customSenderName !== undefined) updates.customSenderName = input.customSenderName || null;
+        if (input.customSenderEmail !== undefined) updates.customSenderEmail = input.customSenderEmail || null;
+        if (input.clearOwnSendGridKey) updates.ownSendGridKeyEncrypted = null;
+        if (input.ownSendGridKey) updates.ownSendGridKeyEncrypted = encryptKey(input.ownSendGridKey);
+
+        await db.update(organizations).set(updates).where(eq(organizations.id, input.orgId));
+
+        return { success: true };
       }),
   }),
 });

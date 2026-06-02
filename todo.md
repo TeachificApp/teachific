@@ -3750,3 +3750,13 @@
 - [x] Add DragOverlay for visual feedback during drag
 - [x] Remove up/down arrow buttons in favor of drag-and-drop reordering
 - [x] Keep block settings panel on right side unchanged
+
+## Email Unsubscribe & Per-Org Sender Settings
+- [ ] Add unsubscribe suppression check in campaign send (skip emailUnsubscribes recipients)
+- [ ] Pass org customSenderName/customSenderEmail to sendEmail() in campaign send
+- [ ] Add public unsubscribe procedure (publicProcedure) to handle token clicks
+- [ ] Add /unsubscribe page in frontend that calls the public procedure
+- [ ] Register /unsubscribe route in App.tsx
+- [ ] Add "Email Settings" tab in OrgSettingsPage with From Name, From Email fields
+- [ ] Add "Bring Your Own SendGrid Key" field gated behind Builder+ plan in Email Settings
+- [ ] Wire campaign send to use org's own SendGrid key if Builder+ and configured

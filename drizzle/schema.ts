@@ -44,6 +44,8 @@ export const users = mysqlTable("users", {
   creatorAccess: mysqlEnum("creatorAccess", ["none", "web", "desktop", "bundle"]).default("none").notNull(),
   // Creator 14-day trial end date (null = no trial started, past date = trial expired)
   creatorTrialEndsAt: timestamp("creatorTrialEndsAt"),
+  // Unsubscribe token for email campaign opt-outs (unique per user, generated on first campaign send)
+  unsubscribeToken: varchar("unsubscribeToken", { length: 128 }),
 });
 
 export type User = typeof users.$inferSelect;
@@ -98,6 +100,8 @@ export const organizations = mysqlTable("organizations", {
   seoRobotsIndex: boolean("seoRobotsIndex").default(true).notNull(),
   // Custom CSS injected into subdomain/custom domain pages (org admin use only)
   customCss: longtext("customCss"),
+  // Bring-Your-Own SendGrid key (Builder+ plan only, stored encrypted)
+  ownSendGridKeyEncrypted: text("ownSendGridKeyEncrypted"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

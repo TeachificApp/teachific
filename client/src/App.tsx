@@ -128,6 +128,7 @@ import LandingPage from "./pages/LandingPage";
 import SupportPage from "./pages/SupportPage";
 import PlatformPoliciesPage from "./pages/PlatformPoliciesPage";
 import HelpPage from "./pages/HelpPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 
 import QuizCreatorPage from "./pages/QuizCreatorPage";
 import PublicQuizPlayerPage from "./pages/PublicQuizPlayerPage";
@@ -181,6 +182,7 @@ function BareRouter() {
         <Route path="/cohort/:courseId" component={CohortSchedule} />
         {/* Platform-level legal policies — independent of any org */}
         <Route path="/help" component={HelpPage} />
+        <Route path="/unsubscribe" component={UnsubscribePage} />
         <Route path="/policies" component={PlatformPoliciesPage} />
         <Route path="/terms" component={PlatformPoliciesPage} />
         <Route path="/privacy" component={PlatformPoliciesPage} />

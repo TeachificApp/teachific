@@ -17,7 +17,7 @@ import {
   Settings, Building2, Palette, Globe, CreditCard,
   Check, AlertCircle, Crown, Zap, Rocket, Bell, Upload, ImageIcon, X, FileText, Video,
   UserCircle, Plus, Trash2, Edit2, Link as LinkIcon, Link2,
-  Wand2, Sparkles, Loader2, ExternalLink, Copy,
+  Wand2, Sparkles, Loader2, ExternalLink, Copy, Mail, Key, Eye, EyeOff,
   AlertTriangle, RefreshCw, DollarSign, ArrowDownCircle, History, ShieldAlert, ReceiptText, Award,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -459,6 +459,9 @@ export default function OrgSettingsPage() {
             </TabsTrigger>
             <TabsTrigger value="certificates" className="gap-1.5 whitespace-nowrap">
               <Award className="h-4 w-4" /> Certificates
+            </TabsTrigger>
+            <TabsTrigger value="email" className="gap-1.5 whitespace-nowrap">
+              <Mail className="h-4 w-4" /> Email
             </TabsTrigger>
            </TabsList>
         {/* General Tab */}
@@ -1461,6 +1464,7 @@ export default function OrgSettingsPage() {
         {/* Members Tab */}
         <OrgMembersTab orgId={orgCtx?.org?.id} orgName={orgCtx?.org?.name ?? ""} />
         <OrgCertificatesTabContent orgId={orgCtx?.org?.id} />
+        <OrgEmailSettingsTab orgId={orgCtx?.org?.id} plan={plan} />
       </Tabs>
     </div>
   );
@@ -3068,6 +3072,199 @@ function OrgCertificatesTabContent({ orgId }: { orgId?: number }) {
   return (
     <TabsContent value="certificates" className="space-y-4">
       <CertificateSettingsTab orgId={orgId} />
+    </TabsContent>
+  );
+}
+
+
+// ─── OrgEmailSettingsTab ─────────────────────────────────────────────────────
+function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: string }) {
+  const [fromName, setFromName] = useState("");
+  const [fromEmail, setFromEmail] = useState("");
+  const [ownKey, setOwnKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  const isBuilderOrHigher = ["builder", "professional", "enterprise"].includes(plan);
+
+  const { data: settings } = trpc.emailCampaigns.emailSettings.get.useQuery(
+    { orgId: orgId! },
+    { enabled: !!orgId }
+  );
+
+  useEffect(() => {
+    if (settings && !initialized) {
+      setFromName(settings.customSenderName ?? "");
+      setFromEmail(settings.customSenderEmail ?? "");
+      setInitialized(true);
+    }
+  }, [settings, initialized]);
+
+  const updateMutation = trpc.emailCampaigns.emailSettings.update.useMutation({
+    onSuccess: () => toast.success("Email settings saved"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSave = () => {
+    if (!orgId) return;
+    updateMutation.mutate({
+      orgId,
+      customSenderName: fromName,
+      customSenderEmail: fromEmail,
+      ...(ownKey ? { ownSendGridKey: ownKey } : {}),
+    });
+  };
+
+  const handleClearKey = () => {
+    if (!orgId) return;
+    updateMutation.mutate({ orgId, clearOwnSendGridKey: true });
+    toast.success("SendGrid key removed");
+  };
+
+  if (!orgId) {
+    return (
+      <TabsContent value="email" className="space-y-4">
+        <div className="text-muted-foreground text-sm">Loading organisation...</div>
+      </TabsContent>
+    );
+  }
+
+  return (
+    <TabsContent value="email" className="space-y-6">
+      {/* Sender Identity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" /> Sender Identity
+          </CardTitle>
+          <CardDescription>
+            Customise how your name and email address appear in campaign emails sent to your students.
+            All emails are delivered through the Teachific platform.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="fromName">From Name</Label>
+              <Input
+                id="fromName"
+                placeholder="e.g. Lara Williams"
+                value={fromName}
+                onChange={(e) => setFromName(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Displayed as the sender name in your students' inboxes.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fromEmail">From Email</Label>
+              <Input
+                id="fromEmail"
+                type="email"
+                placeholder="e.g. hello@yourdomain.com"
+                value={fromEmail}
+                onChange={(e) => setFromEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Must be a verified sender address. Contact support if you need help verifying.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+            <span>
+              Transactional emails (receipts, course access, password resets) always use the platform sender
+              and are not affected by these settings.
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bring Your Own SendGrid Key — Builder+ only */}
+      <Card className={!isBuilderOrHigher ? "opacity-70" : ""}>
+        <CardHeader>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" /> Custom SendGrid Account
+                {!isBuilderOrHigher && (
+                  <Badge variant="secondary" className="ml-1 gap-1">
+                    <Crown className="h-3 w-3" /> Builder+
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Use your own SendGrid API key for full control over sending reputation and analytics.
+                Available on Builder and higher plans.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!isBuilderOrHigher ? (
+            <div className="flex items-center gap-3 p-4 rounded-lg border border-dashed border-border bg-muted/30">
+              <Crown className="h-5 w-5 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Upgrade to Builder or higher</p>
+                <p className="text-xs text-muted-foreground">
+                  Connect your own SendGrid account to send from your own domain with full deliverability control.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {settings?.hasOwnSendGridKey && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-sm text-green-700 dark:text-green-400">
+                  <Check className="h-4 w-4 shrink-0" />
+                  <span>A custom SendGrid key is configured. Enter a new key below to replace it.</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto text-red-500 hover:text-red-600"
+                    onClick={handleClearKey}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="ownKey">SendGrid API Key</Label>
+                <div className="relative">
+                  <Input
+                    id="ownKey"
+                    type={showKey ? "text" : "password"}
+                    placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={ownKey}
+                    onChange={(e) => setOwnKey(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Your key is encrypted at rest. We never display it again after saving.
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={updateMutation.isPending}>
+          {updateMutation.isPending ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
+          ) : (
+            "Save Email Settings"
+          )}
+        </Button>
+      </div>
     </TabsContent>
   );
 }
