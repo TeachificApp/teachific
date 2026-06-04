@@ -59,6 +59,14 @@ export type TranscribeOptions = {
   audioUrl: string; // URL to the audio file (e.g., S3 URL)
   language?: string; // Optional: specify language code (e.g., "en", "es", "zh")
   prompt?: string; // Optional: custom prompt for the transcription
+  wordTimestamps?: boolean; // Optional: request word-level timestamps
+};
+
+// Word-level timestamp from Whisper API
+export type WhisperWord = {
+  word: string;
+  start: number;
+  end: number;
 };
 
 // Native Whisper API segment format
@@ -82,6 +90,7 @@ export type WhisperResponse = {
   duration: number;
   text: string;
   segments: WhisperSegment[];
+  words?: WhisperWord[]; // Present when wordTimestamps option is used
 };
 
 export type TranscriptionResponse = WhisperResponse; // Return native Whisper API response directly
@@ -240,6 +249,10 @@ export async function transcribeAudio(
 
     if (options.language) {
       formData.append("language", options.language);
+    }
+    if (options.wordTimestamps) {
+      formData.append("timestamp_granularities[]", "word");
+      formData.append("timestamp_granularities[]", "segment");
     }
 
     // Step 6: Call the transcription service

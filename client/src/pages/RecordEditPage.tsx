@@ -148,37 +148,76 @@ function hexToRgba(hex: string, alpha: number): string {
 
 function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number; onSaved?: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const trackRef = useRef<HTMLTrackElement>(null);
+  const transcriptPanelRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(item.durationSeconds ?? 0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showCaptions, setShowCaptions] = useState(true);
   const [ccStyle, setCCStyle] = useState<CCStyle>(CC_DEFAULT_STYLE);
   const [showStylePanel, setShowStylePanel] = useState(false);
-  const [segments, setSegments] = useState<TranscriptSegment[]>(() => {
+  // Word-level transcript (Opus Clip style)
+  interface TranscriptWord { id: number; word: string; start: number; end: number; deleted?: boolean; }
+  const [words, setWords] = useState<TranscriptWord[]>(() => {
     if (item.transcriptJson) {
-      try { return JSON.parse(item.transcriptJson); } catch { return []; }
+      try {
+        const parsed = JSON.parse(item.transcriptJson);
+        if (parsed.words && Array.isArray(parsed.words)) return parsed.words;
+        // Fallback: convert segments to pseudo-words
+        if (parsed.segments || Array.isArray(parsed)) {
+          const segs = parsed.segments ?? parsed;
+          const ws: TranscriptWord[] = [];
+          let id = 0;
+          for (const seg of segs) {
+            const tokens = (seg.text || "").split(/\s+/).filter(Boolean);
+            const segDur = (seg.end - seg.start) / Math.max(tokens.length, 1);
+            for (let i = 0; i < tokens.length; i++) {
+              ws.push({ id: id++, word: tokens[i], start: seg.start + i * segDur, end: seg.start + (i + 1) * segDur });
+            }
+          }
+          return ws;
+        }
+      } catch {}
     }
     return [];
   });
-  const [selectedSegIds, setSelectedSegIds] = useState<Set<number>>(new Set());
+  const [segments, setSegments] = useState<TranscriptSegment[]>(() => {
+    if (item.transcriptJson) {
+      try {
+        const parsed = JSON.parse(item.transcriptJson);
+        return parsed.segments ?? (Array.isArray(parsed) ? parsed : []);
+      } catch { return []; }
+    }
+    return [];
+  });
   const [captionsUrl, setCaptionsUrl] = useState(item.captionsUrl ?? null);
   const [clips, setClips] = useState<ClipSelection[]>([]);
   const [clipStart, setClipStart] = useState<number | null>(null);
   const [clipEnd, setClipEnd] = useState<number | null>(null);
   const [clipLabel, setClipLabel] = useState("Highlight");
-  const [editingSegId, setEditingSegId] = useState<number | null>(null);
-  const [editingText, setEditingText] = useState("");
   const [generatingCaptions, setGeneratingCaptions] = useState(false);
   const [savingCaptions, setSavingCaptions] = useState(false);
   const [savingClip, setSavingClip] = useState(false);
   const [downloadingFull, setDownloadingFull] = useState(false);
   const [autoGeneratingClips, setAutoGeneratingClips] = useState(false);
   const [downloadingClipId, setDownloadingClipId] = useState<string | null>(null);
+  // Find & Replace state
+  const [showFindReplace, setShowFindReplace] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [findResults, setFindResults] = useState<number[]>([]);
+  const [findIndex, setFindIndex] = useState(0);
+  // Filler words
+  const FILLER_WORDS = ["uh", "um", "uhm", "hmm", "like", "you know", "so", "right", "basically", "actually", "literally", "i mean"];
+  const [fillerCount, setFillerCount] = useState(0);
+  // Video source mode
+  const [videoSourceMode, setVideoSourceMode] = useState<"current" | "upload" | "url" | "record">("current");
+  const [urlInput, setUrlInput] = useState("");
+  const [downloadingUrl, setDownloadingUrl] = useState(false);
 
   const generateCaptionsMutation = trpc.lms.media.generateCaptions.useMutation();
   const updateCaptionsMutation = trpc.lms.media.updateCaptions.useMutation();
   const saveClipMutation = trpc.lms.media.saveClip.useMutation();
+  const saveRecordingMutation = trpc.lms.media.saveRecording.useMutation();
   const listClipsQuery = trpc.lms.media.listClips.useQuery(
     { orgId, mediaItemId: item.id },
     { enabled: !!item.id }
@@ -188,28 +227,21 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
 
   // Prevent double-firing in React StrictMode
   const hasAutoTriggeredRef = useRef(false);
-
   // Auto-generate transcript when Edit tab opens and no transcript exists
-  useEffect(() => {
-    hasAutoTriggeredRef.current = false;
-  }, [item.id]);
-
+  useEffect(() => { hasAutoTriggeredRef.current = false; }, [item.id]);
   useEffect(() => {
     if (!item.transcriptJson && item.url && item.id && !hasAutoTriggeredRef.current) {
       hasAutoTriggeredRef.current = true;
       setGeneratingCaptions(true);
-      generateCaptionsMutation.mutateAsync({
-        orgId,
-        mediaItemId: item.id,
-        fileUrl: item.url,
-      }).then((result) => {
-        setSegments(result.segments as TranscriptSegment[]);
-        setCaptionsUrl(result.captionsUrl);
-        onSaved?.(); // Refresh parent media list so item.transcriptJson is updated
-      }).catch((err: any) => {
-        console.error("[generateCaptions auto] Failed:", err?.message, err?.data);
-        toast.error("Auto-transcription failed: " + (err?.message ?? "Unknown error"));
-      }).finally(() => setGeneratingCaptions(false));
+      generateCaptionsMutation.mutateAsync({ orgId, mediaItemId: item.id, fileUrl: item.url })
+        .then((result) => {
+          if (result.words) setWords(result.words as TranscriptWord[]);
+          if (result.segments) setSegments(result.segments as TranscriptSegment[]);
+          setCaptionsUrl(result.captionsUrl);
+          onSaved?.();
+        })
+        .catch((err: any) => toast.error("Auto-transcription failed: " + (err?.message ?? "Unknown error")))
+        .finally(() => setGeneratingCaptions(false));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
@@ -218,64 +250,83 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
   useEffect(() => {
     if (listClipsQuery.data) {
       setClips(listClipsQuery.data.map((c: any) => ({
-        id: `db-${c.id}`,
-        label: c.label,
-        startSec: c.startSec,
-        endSec: c.endSec,
-        savedId: c.id,
+        id: `db-${c.id}`, label: c.label, startSec: c.startSec, endSec: c.endSec, savedId: c.id,
       })));
     }
   }, [listClipsQuery.data]);
 
+  // Count filler words
+  useEffect(() => {
+    const count = words.filter((w) => !w.deleted && FILLER_WORDS.includes(w.word.toLowerCase().replace(/[.,!?;:]/g, ""))).length;
+    setFillerCount(count);
+  }, [words]);
+
   // Video event handlers
   const handleTimeUpdate = () => {
-    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-  };
-  const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
+    if (!videoRef.current) return;
+    const t = videoRef.current.currentTime;
+    setCurrentTime(t);
+    // Skip deleted word regions during playback
+    if (isPlaying && words.length > 0) {
+      const deletedRegions = getDeletedRegions();
+      for (const region of deletedRegions) {
+        if (t >= region.start && t < region.end) {
+          videoRef.current.currentTime = region.end;
+          return;
+        }
+      }
     }
   };
+  const handleLoadedMetadata = () => { if (videoRef.current) setDuration(videoRef.current.duration); };
   const handlePlayPause = () => {
     if (!videoRef.current) return;
-    if (videoRef.current.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
-    } else {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    }
+    if (videoRef.current.paused) { videoRef.current.play(); setIsPlaying(true); }
+    else { videoRef.current.pause(); setIsPlaying(false); }
   };
-  const seekTo = (sec: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = sec;
-      setCurrentTime(sec);
-    }
-  };
+  const seekTo = (sec: number) => { if (videoRef.current) { videoRef.current.currentTime = sec; setCurrentTime(sec); } };
 
-  // Caption track reload when captionsUrl changes
-  useEffect(() => {
-    if (videoRef.current && captionsUrl) {
-      const video = videoRef.current;
-      Array.from(video.textTracks).forEach((t) => {
-        t.mode = showCaptions ? "showing" : "hidden";
-      });
+  // Get merged deleted regions for skip logic
+  const getDeletedRegions = useCallback(() => {
+    const deleted = words.filter((w) => w.deleted);
+    if (deleted.length === 0) return [];
+    // Merge adjacent deleted words into contiguous regions
+    const regions: { start: number; end: number }[] = [];
+    let current = { start: deleted[0].start, end: deleted[0].end };
+    for (let i = 1; i < deleted.length; i++) {
+      if (deleted[i].start - current.end < 0.1) {
+        current.end = deleted[i].end;
+      } else {
+        regions.push(current);
+        current = { start: deleted[i].start, end: deleted[i].end };
+      }
     }
-  }, [captionsUrl, showCaptions]);
+    regions.push(current);
+    return regions;
+  }, [words]);
+
+  // Active word for CC overlay
+  const activeWord = words.find((w) => !w.deleted && currentTime >= w.start && currentTime <= w.end);
+  // Get current caption line (group of ~5 words around active word)
+  const getCaptionLine = useCallback(() => {
+    if (!activeWord) return "";
+    const visibleWords = words.filter((w) => !w.deleted);
+    const idx = visibleWords.findIndex((w) => w.id === activeWord.id);
+    if (idx === -1) return activeWord.word;
+    const start = Math.max(0, idx - 2);
+    const end = Math.min(visibleWords.length, idx + 3);
+    return visibleWords.slice(start, end).map((w) => w.word).join(" ");
+  }, [activeWord, words]);
 
   // Generate captions via Whisper
   const handleGenerateCaptions = async () => {
     setGeneratingCaptions(true);
     try {
-      const result = await generateCaptionsMutation.mutateAsync({
-        orgId,
-        mediaItemId: item.id,
-        fileUrl: item.url,
-      });
-      setSegments(result.segments as TranscriptSegment[]);
+      const result = await generateCaptionsMutation.mutateAsync({ orgId, mediaItemId: item.id, fileUrl: item.url });
+      if (result.words) setWords(result.words as TranscriptWord[]);
+      if (result.segments) setSegments(result.segments as TranscriptSegment[]);
       setCaptionsUrl(result.captionsUrl);
       toast.success("Captions generated successfully");
-      onSaved?.(); // Refresh parent media list
+      onSaved?.();
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to generate captions");
     } finally {
@@ -283,17 +334,34 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
     }
   };
 
-  // Save edited captions
+  // Save edited captions (words → VTT + JSON)
   const handleSaveCaptions = async () => {
-    if (segments.length === 0) { toast.error("No captions to save"); return; }
+    if (words.length === 0) { toast.error("No captions to save"); return; }
     setSavingCaptions(true);
     try {
+      // Build segments from non-deleted words (group into ~8 word chunks)
+      const visibleWords = words.filter((w) => !w.deleted);
+      const newSegments: TranscriptSegment[] = [];
+      const chunkSize = 8;
+      for (let i = 0; i < visibleWords.length; i += chunkSize) {
+        const chunk = visibleWords.slice(i, i + chunkSize);
+        newSegments.push({
+          id: Math.floor(i / chunkSize),
+          start: chunk[0].start,
+          end: chunk[chunk.length - 1].end,
+          text: chunk.map((w) => w.word).join(" "),
+        });
+      }
       const result = await updateCaptionsMutation.mutateAsync({
-        orgId,
         mediaItemId: item.id,
-        segments,
+        orgId,
+        segments: newSegments,
+        words: words,
+        language: "en",
+        duration,
       });
       setCaptionsUrl(result.captionsUrl);
+      setSegments(newSegments);
       toast.success("Captions saved");
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to save captions");
@@ -302,756 +370,567 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
     }
   };
 
-  // Edit a segment text
-  const startEditSegment = (seg: TranscriptSegment) => {
-    setEditingSegId(seg.id);
-    setEditingText(seg.text);
+  // Word-level operations
+  const toggleWordDeleted = (wordId: number) => {
+    setWords((prev) => prev.map((w) => w.id === wordId ? { ...w, deleted: !w.deleted } : w));
   };
-  const saveEditSegment = () => {
-    if (editingSegId === null) return;
-    setSegments((prev) => prev.map((s) => s.id === editingSegId ? { ...s, text: editingText } : s));
-    setEditingSegId(null);
+  const deleteWordRange = (startId: number, endId: number) => {
+    const startIdx = words.findIndex((w) => w.id === startId);
+    const endIdx = words.findIndex((w) => w.id === endId);
+    if (startIdx === -1 || endIdx === -1) return;
+    const [lo, hi] = startIdx <= endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+    setWords((prev) => prev.map((w, i) => i >= lo && i <= hi ? { ...w, deleted: true } : w));
   };
-
-  // Click on transcript segment to seek; shift-click to multi-select
-  const handleSegmentClick = (seg: TranscriptSegment, e: React.MouseEvent) => {
-    if (editingSegId === seg.id) return;
-    if (e.shiftKey) {
-      e.preventDefault();
-      setSelectedSegIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(seg.id)) next.delete(seg.id);
-        else next.add(seg.id);
-        return next;
-      });
-      return;
-    }
-    setSelectedSegIds(new Set());
-    seekTo(seg.start);
-    if (videoRef.current?.paused) {
-      videoRef.current.play();
-      setIsPlaying(true);
-    }
+  const restoreAllDeleted = () => {
+    setWords((prev) => prev.map((w) => ({ ...w, deleted: false })));
+    toast.success("All deleted words restored");
   };
 
-  // Delete selected segments
-  const handleDeleteSelected = () => {
-    if (selectedSegIds.size === 0) return;
-    setSegments((prev) => prev.filter((s) => !selectedSegIds.has(s.id)));
-    setSelectedSegIds(new Set());
-    toast.success(`Deleted ${selectedSegIds.size} segment${selectedSegIds.size > 1 ? "s" : ""}`);
+  // Find & Replace
+  const handleFind = () => {
+    if (!findText.trim()) { setFindResults([]); return; }
+    const results = words
+      .filter((w) => !w.deleted && w.word.toLowerCase().includes(findText.toLowerCase()))
+      .map((w) => w.id);
+    setFindResults(results);
+    setFindIndex(0);
+    if (results.length === 0) toast.info("No matches found");
+  };
+  const handleReplaceOne = () => {
+    if (findResults.length === 0) return;
+    const targetId = findResults[findIndex];
+    setWords((prev) => prev.map((w) => w.id === targetId ? { ...w, word: w.word.replace(new RegExp(findText, "i"), replaceText) } : w));
+    // Move to next result
+    const newResults = findResults.filter((id) => id !== targetId);
+    setFindResults(newResults);
+    if (findIndex >= newResults.length) setFindIndex(Math.max(0, newResults.length - 1));
+    toast.success("Replaced 1 occurrence");
+  };
+  const handleReplaceAll = () => {
+    if (!findText.trim()) return;
+    let count = 0;
+    setWords((prev) => prev.map((w) => {
+      if (!w.deleted && w.word.toLowerCase().includes(findText.toLowerCase())) {
+        count++;
+        return { ...w, word: w.word.replace(new RegExp(findText, "gi"), replaceText) };
+      }
+      return w;
+    }));
+    setFindResults([]);
+    toast.success(`Replaced ${count} occurrence${count !== 1 ? "s" : ""}`);
+  };
+  const handleDeleteAllOccurrences = () => {
+    if (!findText.trim()) return;
+    let count = 0;
+    setWords((prev) => prev.map((w) => {
+      if (!w.deleted && w.word.toLowerCase().includes(findText.toLowerCase())) {
+        count++;
+        return { ...w, deleted: true };
+      }
+      return w;
+    }));
+    setFindResults([]);
+    toast.success(`Deleted ${count} occurrence${count !== 1 ? "s" : ""}`);
   };
 
-  // Create clip from selected segments
-  const handleClipFromSelected = () => {
-    if (selectedSegIds.size === 0) return;
-    const selected = segments.filter((s) => selectedSegIds.has(s.id));
-    if (selected.length === 0) return;
-    const start = Math.min(...selected.map((s) => s.start));
-    const end = Math.max(...selected.map((s) => s.end));
-    const newClip: ClipSelection = {
-      id: `local-${Date.now()}`,
-      label: `Clip ${clips.length + 1}`,
-      startSec: parseFloat(start.toFixed(2)),
-      endSec: parseFloat(end.toFixed(2)),
-    };
-    setClips((prev) => [...prev, newClip]);
-    setSelectedSegIds(new Set());
-    toast.success("Clip created from selection");
+  // Filler word cleanup
+  const handleRemoveFillers = () => {
+    let count = 0;
+    setWords((prev) => prev.map((w) => {
+      const clean = w.word.toLowerCase().replace(/[.,!?;:]/g, "");
+      if (!w.deleted && FILLER_WORDS.includes(clean)) {
+        count++;
+        return { ...w, deleted: true };
+      }
+      return w;
+    }));
+    toast.success(`Removed ${count} filler word${count !== 1 ? "s" : ""}`);
   };
 
-  // Auto-generate 10 highlight clips from transcript using LLM
+  // Clip handlers (preserved from original)
   const handleAutoGenerateClips = async () => {
-    if (segments.length < 3) { toast.error("Need at least 3 transcript segments to auto-generate clips"); return; }
+    if (words.length < 20) { toast.error("Need more transcript words to auto-generate clips"); return; }
     setAutoGeneratingClips(true);
     try {
-      const transcriptText = segments.map((s) => `[${formatTime(s.start)}-${formatTime(s.end)}] ${s.text}`).join("\n");
+      const visibleWords = words.filter((w) => !w.deleted);
       const totalDur = duration;
-      // Build 10 evenly-spaced highlight windows from the transcript
       const windowSize = Math.max(15, totalDur / 12);
       const step = totalDur / 10;
       const generated: ClipSelection[] = [];
       for (let i = 0; i < 10; i++) {
         const windowStart = parseFloat((i * step).toFixed(2));
         const windowEnd = parseFloat(Math.min(windowStart + windowSize, totalDur).toFixed(2));
-        // Find segments that overlap this window
-        const windowSegs = segments.filter((s) => s.end >= windowStart && s.start <= windowEnd);
-        if (windowSegs.length === 0) continue;
-        const clipStart = parseFloat(windowSegs[0].start.toFixed(2));
-        const clipEnd = parseFloat(windowSegs[windowSegs.length - 1].end.toFixed(2));
-        // Use first few words as label
-        const labelWords = windowSegs[0].text.trim().split(/\s+/).slice(0, 4).join(" ");
-        generated.push({
-          id: `auto-${Date.now()}-${i}`,
-          label: `Highlight ${i + 1}: ${labelWords}...`,
-          startSec: clipStart,
-          endSec: Math.min(clipEnd, clipStart + windowSize),
-        });
+        const windowWords = visibleWords.filter((w) => w.end >= windowStart && w.start <= windowEnd);
+        if (windowWords.length === 0) continue;
+        const clipStart = parseFloat(windowWords[0].start.toFixed(2));
+        const clipEnd = parseFloat(windowWords[windowWords.length - 1].end.toFixed(2));
+        const labelWords = windowWords.slice(0, 4).map((w) => w.word).join(" ");
+        generated.push({ id: `auto-${Date.now()}-${i}`, label: `Highlight ${i + 1}: ${labelWords}...`, startSec: clipStart, endSec: Math.min(clipEnd, clipStart + windowSize) });
       }
-      if (generated.length === 0) { toast.error("Could not generate clips from transcript"); return; }
+      if (generated.length === 0) { toast.error("Could not generate clips"); return; }
       setClips((prev) => [...prev, ...generated]);
-      toast.success(`Generated ${generated.length} highlight clips from transcript`);
+      toast.success(`Generated ${generated.length} highlight clips`);
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to auto-generate clips");
     } finally {
       setAutoGeneratingClips(false);
     }
   };
-
-  // Add a clip selection
   const handleAddClip = () => {
     const start = clipStart ?? 0;
     const end = clipEnd ?? duration;
-    if (end <= start) { toast.error("End time must be after start time"); return; }
-    const newClip: ClipSelection = {
-      id: `local-${Date.now()}`,
-      label: clipLabel || "Highlight",
-      startSec: start,
-      endSec: end,
-    };
-    setClips((prev) => [...prev, newClip]);
-    setClipStart(null);
-    setClipEnd(null);
-    setClipLabel("Highlight");
+    if (end <= start) { toast.error("End must be after start"); return; }
+    setClips((prev) => [...prev, { id: `local-${Date.now()}`, label: clipLabel || "Highlight", startSec: start, endSec: end }]);
+    setClipStart(null); setClipEnd(null); setClipLabel("Highlight");
   };
-
-  // Save clip to DB
   const handleSaveClip = async (clip: ClipSelection) => {
-    if (clip.savedId) { toast.info("Clip already saved"); return; }
+    if (clip.savedId) { toast.info("Already saved"); return; }
     setSavingClip(true);
     try {
-      const saved = await saveClipMutation.mutateAsync({
-        orgId,
-        mediaItemId: item.id,
-        label: clip.label,
-        startSec: clip.startSec,
-        endSec: clip.endSec,
-      });
+      const saved = await saveClipMutation.mutateAsync({ orgId, mediaItemId: item.id, label: clip.label, startSec: clip.startSec, endSec: clip.endSec });
       setClips((prev) => prev.map((c) => c.id === clip.id ? { ...c, savedId: (saved as any)?.id } : c));
-      toast.success("Clip saved to Media Library");
-      onSaved?.();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to save clip");
-    } finally {
-      setSavingClip(false);
-    }
+      toast.success("Clip saved"); onSaved?.();
+    } catch (err: any) { toast.error(err?.message ?? "Failed to save clip"); }
+    finally { setSavingClip(false); }
   };
-
-  // Delete a clip
   const handleDeleteClip = async (clip: ClipSelection) => {
-    if (clip.savedId) {
-      try {
-        await deleteClipMutation.mutateAsync({ id: clip.savedId, orgId });
-      } catch {}
-    }
+    if (clip.savedId) { try { await deleteClipMutation.mutateAsync({ id: clip.savedId, orgId }); } catch {} }
     setClips((prev) => prev.filter((c) => c.id !== clip.id));
   };
-
-  // Download a clip by seeking and capturing (client-side, no FFmpeg needed)
   const handleDownloadClip = async (clip: ClipSelection) => {
     setDownloadingClipId(clip.id);
     try {
-      toast.info(`Exporting "${clip.label}" as MP4… this may take a moment`);
-      const result = await extractClipMutation.mutateAsync({
-        orgId,
-        mediaItemId: item.id,
-        clipId: clip.savedId,
-        label: clip.label,
-        startSec: clip.startSec,
-        endSec: clip.endSec,
-        sourceUrl: item.url,
-      });
-      // Trigger browser download from the S3 URL returned by the server
-      const a = document.createElement("a");
-      a.href = (result as any).url;
-      a.download = `${clip.label.replace(/[^a-z0-9]/gi, "-")}.mp4`;
-      a.target = "_blank";
-      a.click();
-      toast.success(`Clip "${clip.label}" exported as MP4`);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to export clip — " + (err?.message ?? "unknown error"));
-    } finally {
-      setDownloadingClipId(null);
-    }
+      toast.info(`Exporting "${clip.label}"…`);
+      const result = await extractClipMutation.mutateAsync({ orgId, mediaItemId: item.id, clipId: clip.savedId, label: clip.label, startSec: clip.startSec, endSec: clip.endSec, sourceUrl: item.url });
+      const a = document.createElement("a"); a.href = (result as any).url; a.download = `${clip.label.replace(/[^a-z0-9]/gi, "-")}.mp4`; a.target = "_blank"; a.click();
+      toast.success(`Clip exported`);
+    } catch (err: any) { toast.error(err?.message ?? "Failed to export clip"); }
+    finally { setDownloadingClipId(null); }
   };
-
-  // Download full video
-  const handleDownloadFull = () => {
-    setDownloadingFull(true);
-    const a = document.createElement("a");
-    a.href = item.url;
-    a.download = item.filename;
-    a.click();
-    setTimeout(() => setDownloadingFull(false), 1000);
-  };
-
-  // Download VTT captions
+  const handleDownloadFull = () => { setDownloadingFull(true); const a = document.createElement("a"); a.href = item.url; a.download = item.filename; a.click(); setTimeout(() => setDownloadingFull(false), 1000); };
   const handleDownloadCaptions = () => {
     if (!captionsUrl) { toast.error("No captions available"); return; }
-    const a = document.createElement("a");
-    a.href = captionsUrl;
-    a.download = item.filename.replace(/\.[^.]+$/, "") + ".vtt";
-    a.click();
+    const a = document.createElement("a"); a.href = captionsUrl; a.download = item.filename.replace(/\.[^.]+$/, "") + ".vtt"; a.click();
   };
-
-  // Set clip start/end to current time
   const setClipStartToCurrent = () => setClipStart(parseFloat(currentTime.toFixed(2)));
   const setClipEndToCurrent = () => setClipEnd(parseFloat(currentTime.toFixed(2)));
 
-  const activeSegment = segments.find((s) => currentTime >= s.start && currentTime <= s.end);
-
-  // Compute CC overlay inline styles from ccStyle
-  const ccOverlayStyle: React.CSSProperties = {
-    fontSize: ccStyle.fontSize,
-    fontWeight: ccStyle.bold ? "bold" : "normal",
-    fontStyle: ccStyle.italic ? "italic" : "normal",
-    color: ccStyle.textColor,
-    backgroundColor: hexToRgba(ccStyle.bgColor, ccStyle.bgOpacity),
-    textShadow: ccStyle.shadow ? "0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)" : "none",
-    padding: "4px 14px",
-    borderRadius: "6px",
-    maxWidth: "90%",
-    textAlign: "center" as const,
-    lineHeight: 1.3,
-    letterSpacing: "0.01em",
-    transition: "all 0.15s ease",
+  // URL download handler
+  const handleDownloadFromUrl = async () => {
+    if (!urlInput.trim()) { toast.error("Enter a video URL"); return; }
+    setDownloadingUrl(true);
+    try {
+      // Use the saveRecording mutation to download and save the URL
+      await saveRecordingMutation.mutateAsync({
+        orgId,
+        url: urlInput.trim(),
+        filename: urlInput.split("/").pop()?.split("?")[0] || "video.mp4",
+        mimeType: "video/mp4",
+      });
+      toast.success("Video downloaded and saved to media library");
+      setVideoSourceMode("current");
+      onSaved?.();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to download video from URL");
+    } finally {
+      setDownloadingUrl(false);
+    }
   };
 
+  // CC overlay style
+  const ccOverlayStyle: React.CSSProperties = {
+    fontSize: ccStyle.fontSize, fontWeight: ccStyle.bold ? "bold" : "normal", fontStyle: ccStyle.italic ? "italic" : "normal",
+    color: ccStyle.textColor, backgroundColor: hexToRgba(ccStyle.bgColor, ccStyle.bgOpacity),
+    textShadow: ccStyle.shadow ? "0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)" : "none",
+    padding: "4px 14px", borderRadius: "6px", maxWidth: "90%", textAlign: "center" as const, lineHeight: 1.3, letterSpacing: "0.01em", transition: "all 0.15s ease",
+  };
   const patchCCStyle = (patch: Partial<CCStyle>) => setCCStyle((prev) => ({ ...prev, ...patch }));
+
+  // Deleted word count
+  const deletedCount = words.filter((w) => w.deleted).length;
+  const totalWords = words.length;
 
   return (
     <div className="flex flex-col gap-4 h-full overflow-y-auto">
-      {/* Video player */}
-      <div className="relative bg-black rounded-xl overflow-hidden aspect-video w-full">
-        <video
-          ref={videoRef}
-          src={item.url}
-          className="w-full h-full object-contain"
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleLoadedMetadata}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => setIsPlaying(false)}
-        />
-
-        {/* Custom CC overlay — replaces native <track> for full style control */}
-        {showCaptions && activeSegment && (
-          <div className="absolute bottom-12 left-0 right-0 flex justify-center pointer-events-none px-4">
-            <span style={ccOverlayStyle}>
-              {ccStyle.emojiEnabled ? applyEmojiMap(activeSegment.text) : activeSegment.text}
-            </span>
-          </div>
-        )}
-
-        {/* CC On/Off toggle */}
-        {segments.length > 0 && (
-          <button
-            onClick={() => setShowCaptions((v) => !v)}
-            className={cn(
-              "absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all",
-              showCaptions
-                ? "bg-primary text-primary-foreground"
-                : "bg-black/60 text-white/70 hover:bg-black/80"
-            )}
-          >
-            <Subtitles className="h-3 w-3" />
-            {showCaptions ? "CC On" : "CC Off"}
+      {/* Video Source Selector */}
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-xs font-medium text-muted-foreground">Source:</span>
+        <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-0.5">
+          <button onClick={() => setVideoSourceMode("current")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all", videoSourceMode === "current" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            Current
           </button>
-        )}
-
-        {/* CC Style button */}
-        {segments.length > 0 && (
-          <button
-            onClick={() => setShowStylePanel((v) => !v)}
-            className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/60 text-white/70 hover:bg-black/80 transition-all"
-          >
-            <Type className="h-3 w-3" /> CC Style
+          <button onClick={() => setVideoSourceMode("upload")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all", videoSourceMode === "upload" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            <Upload className="h-3 w-3 inline mr-1" />Upload
           </button>
-        )}
+          <button onClick={() => setVideoSourceMode("url")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all", videoSourceMode === "url" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            🔗 URL
+          </button>
+          <button onClick={() => setVideoSourceMode("record")} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-all", videoSourceMode === "record" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            <Circle className="h-3 w-3 inline mr-1 text-red-500" />Record
+          </button>
+        </div>
       </div>
 
-      {/* CC Style Panel */}
-      {showStylePanel && (
-        <div className="border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Type className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Caption Style</span>
-            </div>
-            <button onClick={() => setShowStylePanel(false)} className="text-muted-foreground hover:text-foreground">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="p-4 flex flex-col gap-5">
-            {/* Preset schemes */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Presets</p>
-              <div className="flex flex-wrap gap-2">
-                {CC_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => patchCCStyle(preset.style)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:border-primary hover:bg-primary/5 transition-all"
-                    style={{
-                      color: preset.style.textColor,
-                      backgroundColor: hexToRgba(preset.style.bgColor ?? "#000000", preset.style.bgOpacity ?? 0.8),
-                    }}
-                  >
-                    <span>{preset.emoji}</span>
-                    <span>{preset.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Colors row */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Text color */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Text Color</p>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {["#ffffff","#000000","#ffee00","#00ffcc","#ff6b00","#fe2c55","#a78bfa","#34d399"].map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => patchCCStyle({ textColor: c })}
-                      className={cn("h-6 w-6 rounded-full border-2 transition-all", ccStyle.textColor === c ? "border-primary scale-110" : "border-transparent hover:scale-105")}
-                      style={{ backgroundColor: c }}
-                      title={c}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={ccStyle.textColor}
-                    onChange={(e) => patchCCStyle({ textColor: e.target.value })}
-                    className="h-7 w-10 rounded cursor-pointer border border-border"
-                    title="Custom text color"
-                  />
-                  <span className="text-xs text-muted-foreground font-mono">{ccStyle.textColor}</span>
-                </div>
-              </div>
-
-              {/* Background color */}
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Background</p>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {["#000000","#1a0050","#fe2c55","#1a0000","#6d28d9","#ffffff","#0f172a","#065f46"].map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => patchCCStyle({ bgColor: c })}
-                      className={cn("h-6 w-6 rounded-full border-2 transition-all", ccStyle.bgColor === c ? "border-primary scale-110" : "border-border hover:scale-105")}
-                      style={{ backgroundColor: c }}
-                      title={c}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={ccStyle.bgColor}
-                    onChange={(e) => patchCCStyle({ bgColor: e.target.value })}
-                    className="h-7 w-10 rounded cursor-pointer border border-border"
-                    title="Custom background color"
-                  />
-                  <span className="text-xs text-muted-foreground font-mono">{ccStyle.bgColor}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sliders row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">BG Opacity</p>
-                  <span className="text-xs font-mono text-muted-foreground">{Math.round(ccStyle.bgOpacity * 100)}%</span>
-                </div>
-                <Slider
-                  min={0} max={1} step={0.05}
-                  value={[ccStyle.bgOpacity]}
-                  onValueChange={([v]) => patchCCStyle({ bgOpacity: v })}
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Font Size</p>
-                  <span className="text-xs font-mono text-muted-foreground">{ccStyle.fontSize}px</span>
-                </div>
-                <Slider
-                  min={14} max={40} step={1}
-                  value={[ccStyle.fontSize]}
-                  onValueChange={([v]) => patchCCStyle({ fontSize: v })}
-                />
-              </div>
-            </div>
-
-            {/* Toggles row */}
-            <div className="flex flex-wrap gap-2">
-              {([
-                { key: "bold" as const,    label: "Bold",    icon: "B" },
-                { key: "italic" as const,  label: "Italic",  icon: "I" },
-                { key: "shadow" as const,  label: "Shadow",  icon: "S" },
-              ] as const).map(({ key, label, icon }) => (
-                <button
-                  key={key}
-                  onClick={() => patchCCStyle({ [key]: !ccStyle[key] })}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all",
-                    ccStyle[key]
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary/50"
-                  )}
-                >
-                  <span className={cn(key === "italic" && "italic", key === "bold" && "font-black")}>{icon}</span>
-                  {label}
-                </button>
-              ))}
-
-              {/* Emoji toggle */}
-              <button
-                onClick={() => patchCCStyle({ emojiEnabled: !ccStyle.emojiEnabled })}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all",
-                  ccStyle.emojiEnabled
-                    ? "border-amber-400 bg-amber-400/10 text-amber-600"
-                    : "border-border text-muted-foreground hover:border-amber-400/50"
-                )}
-              >
-                <span>😊</span> Auto Emoji {ccStyle.emojiEnabled ? "On" : "Off"}
-              </button>
-            </div>
-
-            {/* Live preview */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Preview</p>
-              <div className="rounded-lg bg-neutral-800 flex items-end justify-center py-6 px-4">
-                <span style={ccOverlayStyle}>
-                  {ccStyle.emojiEnabled ? applyEmojiMap("I feel like a little bit like my...") : "I feel like a little bit like my..."}
-                </span>
-              </div>
-            </div>
-
-            {/* Reset */}
-            <div className="flex justify-end">
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setCCStyle(CC_DEFAULT_STYLE)}>
-                Reset to Default
-              </Button>
-            </div>
-          </div>
+      {/* URL Input */}
+      {videoSourceMode === "url" && (
+        <div className="flex items-center gap-2 px-1">
+          <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Paste video URL (mp4, webm, etc.)" className="flex-1 h-8 text-xs" />
+          <Button size="sm" className="h-8 text-xs" onClick={handleDownloadFromUrl} disabled={downloadingUrl}>
+            {downloadingUrl ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Download className="h-3 w-3 mr-1" />}
+            Download & Import
+          </Button>
         </div>
       )}
 
-      {/* Playback controls */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={handlePlayPause}>
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      {/* Upload prompt */}
+      {videoSourceMode === "upload" && (
+        <div className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-3 text-center">
+          <Upload className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium">Upload a video file</p>
+          <p className="text-xs text-muted-foreground">Use the Upload tab to add a video to your media library, then select it here</p>
+          <Button size="sm" variant="outline" onClick={() => setVideoSourceMode("current")}>
+            <ArrowLeft className="h-3 w-3 mr-1" /> Back to current video
           </Button>
-          <div className="flex-1">
-            <input
-              type="range"
-              min={0}
-              max={duration || 1}
-              step={0.1}
-              value={currentTime}
-              onChange={(e) => seekTo(parseFloat(e.target.value))}
-              className="w-full h-2 accent-primary cursor-pointer"
+        </div>
+      )}
+
+      {/* Record prompt */}
+      {videoSourceMode === "record" && (
+        <div className="border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-3 text-center">
+          <Video className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium">Record a new video</p>
+          <p className="text-xs text-muted-foreground">Switch to the Record tab to capture a new video, then come back to edit it</p>
+          <Button size="sm" variant="outline" onClick={() => setVideoSourceMode("current")}>
+            <ArrowLeft className="h-3 w-3 mr-1" /> Back to current video
+          </Button>
+        </div>
+      )}
+
+      {/* Main editor (shown when current video is loaded) */}
+      {videoSourceMode === "current" && (
+        <>
+          {/* Video player */}
+          <div className="relative bg-black rounded-xl overflow-hidden aspect-video w-full">
+            <video
+              ref={videoRef}
+              src={item.url}
+              className="w-full h-full object-contain"
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
             />
-          </div>
-          <span className="text-xs text-muted-foreground font-mono shrink-0">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
-        </div>
-      </div>
-
-      {/* Two-column layout: Transcript + Clips */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Transcript / Captions panel */}
-        <div className="border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Transcript & Captions</span>
-              {segments.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{segments.length} segments</Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
-              {selectedSegIds.size > 0 && (
-                <>
-                  <Button size="sm" variant="outline" className="h-7 text-xs text-primary border-primary/30" onClick={handleClipFromSelected}>
-                    <Scissors className="h-3 w-3 mr-1" /> Clip ({selectedSegIds.size})
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30" onClick={handleDeleteSelected}>
-                    <Trash2 className="h-3 w-3 mr-1" /> Delete ({selectedSegIds.size})
-                  </Button>
-                </>
-              )}
-              {segments.length > 0 && selectedSegIds.size === 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={handleSaveCaptions}
-                  disabled={savingCaptions}
-                >
-                  {savingCaptions ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
-                  Save
-                </Button>
-              )}
-              {captionsUrl && selectedSegIds.size === 0 && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDownloadCaptions}>
-                  <Download className="h-3 w-3 mr-1" /> VTT
-                </Button>
-              )}
-              <Button
-                size="sm"
-                className="h-7 text-xs"
-                onClick={handleGenerateCaptions}
-                disabled={generatingCaptions}
-              >
-                {generatingCaptions
-                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating...</>
-                  : <><Wand2 className="h-3 w-3 mr-1" /> {segments.length > 0 ? "Regenerate" : "Generate Captions"}</>
-                }
-              </Button>
-            </div>
-          </div>
-
-          {selectedSegIds.size > 0 && (
-            <div className="px-4 py-2 bg-primary/5 border-b border-border flex items-center gap-2">
-              <span className="text-xs text-primary font-medium">{selectedSegIds.size} segment{selectedSegIds.size > 1 ? "s" : ""} selected</span>
-              <span className="text-xs text-muted-foreground">— Shift+click to select more</span>
-              <button className="ml-auto text-xs text-muted-foreground hover:text-foreground" onClick={() => setSelectedSegIds(new Set())}>
-                <X className="h-3 w-3" />
+            {/* CC overlay */}
+            {showCaptions && activeWord && (
+              <div className="absolute bottom-12 left-0 right-0 flex justify-center pointer-events-none px-4">
+                <span style={ccOverlayStyle}>
+                  {ccStyle.emojiEnabled ? applyEmojiMap(getCaptionLine()) : getCaptionLine()}
+                </span>
+              </div>
+            )}
+            {/* CC toggle */}
+            {words.length > 0 && (
+              <button onClick={() => setShowCaptions((v) => !v)} className={cn("absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all", showCaptions ? "bg-primary text-primary-foreground" : "bg-black/60 text-white/70 hover:bg-black/80")}>
+                <Subtitles className="h-3 w-3" /> {showCaptions ? "CC On" : "CC Off"}
               </button>
-            </div>
-          )}
+            )}
+            {/* CC Style button */}
+            {words.length > 0 && (
+              <button onClick={() => setShowStylePanel((v) => !v)} className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/60 text-white/70 hover:bg-black/80 transition-all">
+                <Type className="h-3 w-3" /> CC Style
+              </button>
+            )}
+          </div>
 
-          <div className="max-h-72 overflow-y-auto">
-            {segments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
-                <Subtitles className="h-8 w-8 opacity-30" />
-                <p className="text-sm">No transcript yet</p>
-                <p className="text-xs text-center max-w-48">Click "Generate Captions" to auto-transcribe this video using AI</p>
+          {/* Playback controls */}
+          <div className="flex items-center gap-3 px-1">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handlePlayPause}>
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
+            <div className="flex-1 relative h-2 bg-muted rounded-full cursor-pointer group" onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pct = (e.clientX - rect.left) / rect.width;
+              seekTo(pct * duration);
+            }}>
+              {/* Deleted regions shown as red */}
+              {getDeletedRegions().map((r, i) => (
+                <div key={i} className="absolute top-0 h-full bg-red-400/40 rounded-full" style={{ left: `${(r.start / duration) * 100}%`, width: `${((r.end - r.start) / duration) * 100}%` }} />
+              ))}
+              <div className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all" style={{ width: `${(currentTime / Math.max(duration, 1)) * 100}%` }} />
+              <div className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 bg-primary rounded-full border-2 border-background shadow-sm transition-all" style={{ left: `${(currentTime / Math.max(duration, 1)) * 100}%`, transform: "translate(-50%, -50%)" }} />
+            </div>
+            <span className="text-xs font-mono text-muted-foreground shrink-0">{formatTime(currentTime)} / {formatTime(duration)}</span>
+          </div>
+
+          {/* CC Style Panel */}
+          {showStylePanel && (
+            <div className="border border-border rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <Type className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">Caption Style</span>
+                </div>
+                <button onClick={() => setShowStylePanel(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
               </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {segments.map((seg) => (
-                  <div
-                    key={seg.id}
-                    className={cn(
-                      "flex items-start gap-2 px-4 py-2 group cursor-pointer transition-colors select-none",
-                      selectedSegIds.has(seg.id) ? "bg-primary/15 border-l-2 border-primary" :
-                      activeSegment?.id === seg.id ? "bg-primary/10" : "hover:bg-muted/40"
-                    )}
-                    onClick={(e) => editingSegId !== seg.id && handleSegmentClick(seg, e)}
-                  >
-                    <button
-                      className="text-xs text-primary font-mono shrink-0 mt-0.5 hover:underline"
-                      onClick={(e) => { e.stopPropagation(); seekTo(seg.start); }}
-                    >
-                      {formatTime(seg.start)}
-                    </button>
-                    {editingSegId === seg.id ? (
-                      <div className="flex-1 flex items-start gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <Textarea
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          className="text-xs min-h-[3rem] flex-1 resize-none"
-                          autoFocus
-                        />
-                        <div className="flex flex-col gap-1">
-                          <Button size="icon" className="h-6 w-6" onClick={saveEditSegment}>
-                            <CheckCircle className="h-3 w-3" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingSegId(null)}>
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="flex-1 text-xs leading-relaxed">{seg.text}</p>
-                        <button
-                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          onClick={(e) => { e.stopPropagation(); startEditSegment(seg); }}
-                        >
-                          <Edit2 className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                        </button>
-                      </>
-                    )}
+              <div className="p-4 flex flex-col gap-5">
+                {/* Presets */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Presets</p>
+                  <div className="flex flex-wrap gap-2">
+                    {CC_PRESETS.map((preset) => (
+                      <button key={preset.id} onClick={() => patchCCStyle(preset.style)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:border-primary hover:bg-primary/5 transition-all" style={{ color: preset.style.textColor, backgroundColor: hexToRgba(preset.style.bgColor ?? "#000000", preset.style.bgOpacity ?? 0.8) }}>
+                        <span>{preset.emoji}</span><span>{preset.label}</span>
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {segments.length > 0 && (
-            <div className="px-4 py-2 border-t border-border bg-muted/10">
-              <p className="text-xs text-muted-foreground">Shift+click segments to multi-select · then Clip or Delete them</p>
-            </div>
-          )}
-        </div>
-
-        {/* Clips panel */}
-        <div className="border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Scissors className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Highlight Clips</span>
-              {clips.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{clips.length} clips</Badge>
-              )}
-            </div>
-            {segments.length >= 3 && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={handleAutoGenerateClips}
-                disabled={autoGeneratingClips}
-                title="Auto-generate 10 highlight clips from transcript"
-              >
-                {autoGeneratingClips
-                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating...</>
-                  : <><Zap className="h-3 w-3 mr-1" /> Auto-generate 10</>
-                }
-              </Button>
-            )}
-          </div>
-
-          {/* Clip creator */}
-          <div className="p-4 border-b border-border bg-muted/10">
-            <p className="text-xs text-muted-foreground mb-3">Mark start/end at current playhead position, then add a clip</p>
-            <div className="flex items-center gap-2 mb-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs flex-1"
-                onClick={setClipStartToCurrent}
-              >
-                <ChevronRight className="h-3 w-3 mr-1 rotate-180" />
-                Start: {clipStart !== null ? formatTime(clipStart) : "—"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs flex-1"
-                onClick={setClipEndToCurrent}
-              >
-                End: {clipEnd !== null ? formatTime(clipEnd) : "—"}
-                <ChevronRight className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={clipLabel}
-                onChange={(e) => setClipLabel(e.target.value)}
-                placeholder="Clip label"
-                className="h-7 text-xs flex-1"
-              />
-              <Button
-                size="sm"
-                className="h-7 text-xs shrink-0"
-                onClick={handleAddClip}
-                disabled={clipStart === null && clipEnd === null}
-              >
-                <Plus className="h-3 w-3 mr-1" /> Add Clip
-              </Button>
-            </div>
-          </div>
-
-          {/* Clips list */}
-          <div className="max-h-52 overflow-y-auto">
-            {clips.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
-                <Film className="h-7 w-7 opacity-30" />
-                <p className="text-sm">No clips yet</p>
-                <p className="text-xs text-center max-w-44">Use the controls above to mark highlights from this video</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {clips.map((clip) => (
-                  <div key={clip.id} className="flex items-center gap-2 px-4 py-2.5 group hover:bg-muted/30 transition-colors">
-                    <button
-                      className="flex-1 text-left"
-                      onClick={() => seekTo(clip.startSec)}
-                    >
-                      <p className="text-xs font-medium truncate max-w-[140px]">{clip.label}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {formatTime(clip.startSec)} → {formatTime(clip.endSec)}
-                        <span className="ml-1.5 text-muted-foreground/60">({formatTime(clip.endSec - clip.startSec)})</span>
-                      </p>
-                    </button>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6"
-                        onClick={() => handleDownloadClip(clip)}
-                        disabled={downloadingClipId === clip.id}
-                        title="Download this clip"
-                      >
-                        {downloadingClipId === clip.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                      </Button>
-                      {!clip.savedId && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-primary"
-                          onClick={() => handleSaveClip(clip)}
-                          disabled={savingClip}
-                          title="Save clip to Media Library"
-                        >
-                          {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Library className="h-3 w-3" />}
-                        </Button>
-                      )}
-                      {clip.savedId && (
-                        <CheckCircle className="h-4 w-4 text-teal-500" aria-label="Saved to Media Library" />
-                      )}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 text-destructive"
-                        onClick={() => handleDeleteClip(clip)}
-                        title="Delete clip"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                </div>
+                {/* Colors */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Text Color</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["#ffffff","#000000","#ffee00","#00ffcc","#ff6b00","#fe2c55","#a78bfa","#34d399"].map((c) => (
+                        <button key={c} onClick={() => patchCCStyle({ textColor: c })} className={cn("h-6 w-6 rounded-full border-2 transition-all", ccStyle.textColor === c ? "border-primary scale-110" : "border-transparent hover:scale-105")} style={{ backgroundColor: c }} />
+                      ))}
                     </div>
                   </div>
-                ))}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Background</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["#000000","#1a0050","#1a0000","#0a2540","#ffffff","#6d28d9","#fe2c55","#065f46"].map((c) => (
+                        <button key={c} onClick={() => patchCCStyle({ bgColor: c })} className={cn("h-6 w-6 rounded-full border-2 transition-all", ccStyle.bgColor === c ? "border-primary scale-110" : "border-transparent hover:scale-105")} style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Size & opacity */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Font Size: {ccStyle.fontSize}px</p>
+                    <Slider value={[ccStyle.fontSize]} onValueChange={([v]) => patchCCStyle({ fontSize: v })} min={14} max={40} step={1} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">BG Opacity: {Math.round(ccStyle.bgOpacity * 100)}%</p>
+                    <Slider value={[ccStyle.bgOpacity * 100]} onValueChange={([v]) => patchCCStyle({ bgOpacity: v / 100 })} min={0} max={100} step={5} />
+                  </div>
+                </div>
+                {/* Toggles */}
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => patchCCStyle({ bold: !ccStyle.bold })} className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium transition-all", ccStyle.bold ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50")}>Bold</button>
+                  <button onClick={() => patchCCStyle({ italic: !ccStyle.italic })} className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium transition-all", ccStyle.italic ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50")}>Italic</button>
+                  <button onClick={() => patchCCStyle({ shadow: !ccStyle.shadow })} className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium transition-all", ccStyle.shadow ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50")}>Shadow</button>
+                  <button onClick={() => patchCCStyle({ emojiEnabled: !ccStyle.emojiEnabled })} className={cn("px-3 py-1.5 rounded-lg border text-xs font-medium transition-all", ccStyle.emojiEnabled ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50")}>Auto Emoji</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Script Panel (Opus Clip style) */}
+          <div className="border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Script Editor</span>
+                {words.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{totalWords - deletedCount} / {totalWords} words</Badge>
+                )}
+                {deletedCount > 0 && (
+                  <Badge variant="destructive" className="text-xs">{deletedCount} cut</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                {fillerCount > 0 && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs text-orange-600 border-orange-300" onClick={handleRemoveFillers} title="Remove filler words (uh, um, like, you know...)">
+                    <Sparkles className="h-3 w-3 mr-1" /> Clean Fillers ({fillerCount})
+                  </Button>
+                )}
+                {deletedCount > 0 && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={restoreAllDeleted} title="Restore all deleted words">
+                    Restore All
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowFindReplace((v) => !v)} title="Find & Replace">
+                  <Edit2 className="h-3 w-3 mr-1" /> Find
+                </Button>
+                {words.length > 0 && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleSaveCaptions} disabled={savingCaptions}>
+                    {savingCaptions ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />} Save
+                  </Button>
+                )}
+                {captionsUrl && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDownloadCaptions}>
+                    <Download className="h-3 w-3 mr-1" /> VTT
+                  </Button>
+                )}
+                <Button size="sm" className="h-7 text-xs" onClick={handleGenerateCaptions} disabled={generatingCaptions}>
+                  {generatingCaptions ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating...</> : <><Wand2 className="h-3 w-3 mr-1" /> {words.length > 0 ? "Regenerate" : "Generate Script"}</>}
+                </Button>
+              </div>
+            </div>
+
+            {/* Find & Replace bar */}
+            {showFindReplace && (
+              <div className="px-4 py-2.5 bg-muted/20 border-b border-border flex flex-wrap items-center gap-2">
+                <Input value={findText} onChange={(e) => setFindText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleFind()} placeholder="Find word..." className="h-7 text-xs w-32" />
+                <Input value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="Replace with..." className="h-7 text-xs w-32" />
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleFind}>Find</Button>
+                {findResults.length > 0 && (
+                  <>
+                    <span className="text-xs text-muted-foreground">{findIndex + 1}/{findResults.length}</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleReplaceOne}>Replace</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleReplaceAll}>Replace All</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30" onClick={handleDeleteAllOccurrences}>Delete All</Button>
+                  </>
+                )}
+                <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => { setShowFindReplace(false); setFindResults([]); }}>
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+
+            {/* Word-level transcript (Opus Clip style) */}
+            <div ref={transcriptPanelRef} className="max-h-80 overflow-y-auto p-4">
+              {words.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+                  <Subtitles className="h-8 w-8 opacity-30" />
+                  <p className="text-sm">No script yet</p>
+                  <p className="text-xs text-center max-w-48">Click "Generate Script" to auto-transcribe this video using AI</p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-x-1 gap-y-1.5 leading-relaxed">
+                  {words.map((w) => {
+                    const isActive = !w.deleted && currentTime >= w.start && currentTime <= w.end;
+                    const isFiller = FILLER_WORDS.includes(w.word.toLowerCase().replace(/[.,!?;:]/g, ""));
+                    const isFound = findResults.includes(w.id);
+                    const isCurrentFind = findResults[findIndex] === w.id;
+                    return (
+                      <button
+                        key={w.id}
+                        onClick={() => {
+                          if (w.deleted) { toggleWordDeleted(w.id); }
+                          else { seekTo(w.start); if (videoRef.current?.paused) { videoRef.current.play(); setIsPlaying(true); } }
+                        }}
+                        onContextMenu={(e) => { e.preventDefault(); toggleWordDeleted(w.id); }}
+                        className={cn(
+                          "px-1 py-0.5 rounded text-sm transition-all cursor-pointer select-none",
+                          w.deleted
+                            ? "line-through text-muted-foreground/40 bg-red-100/50 dark:bg-red-900/20 hover:bg-red-200/60"
+                            : isActive
+                              ? "bg-primary/20 text-primary font-semibold ring-1 ring-primary/40"
+                              : isCurrentFind
+                                ? "bg-yellow-300/80 text-yellow-900 font-medium"
+                                : isFound
+                                  ? "bg-yellow-200/50 text-yellow-800"
+                                  : isFiller
+                                    ? "text-orange-500/80 hover:bg-orange-100/50 dark:hover:bg-orange-900/20"
+                                    : "hover:bg-muted/60 text-foreground"
+                        )}
+                        title={w.deleted ? "Click to restore" : `${formatTime(w.start)} — Right-click to cut`}
+                      >
+                        {w.word}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {words.length > 0 && (
+              <div className="px-4 py-2 border-t border-border bg-muted/10 flex items-center gap-3">
+                <p className="text-xs text-muted-foreground">Click word to seek · Right-click to cut · Cut words are skipped during playback</p>
+                {fillerCount > 0 && <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">{fillerCount} fillers detected</Badge>}
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Download actions */}
-      <div className="flex items-center gap-3 pt-2 border-t border-border">
-        <Button
-          variant="outline"
-          onClick={handleDownloadFull}
-          disabled={downloadingFull}
-          className="flex items-center gap-2"
-        >
-          <Download className="h-4 w-4" />
-          Download Full Video
-        </Button>
-        {captionsUrl && (
-          <Button variant="outline" onClick={handleDownloadCaptions} className="flex items-center gap-2">
-            <Subtitles className="h-4 w-4" />
-            Download Captions (.vtt)
-          </Button>
-        )}
-        <span className="text-xs text-muted-foreground ml-auto">
-          {formatFileSize(item.fileSize)} · {item.mimeType}
-        </span>
-      </div>
+          {/* Clips panel */}
+          <div className="border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Scissors className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Highlight Clips</span>
+                {clips.length > 0 && <Badge variant="secondary" className="text-xs">{clips.length} clips</Badge>}
+              </div>
+              {words.length >= 20 && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleAutoGenerateClips} disabled={autoGeneratingClips}>
+                  {autoGeneratingClips ? <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Generating...</> : <><Zap className="h-3 w-3 mr-1" /> Auto-generate 10</>}
+                </Button>
+              )}
+            </div>
+            {/* Clip creator */}
+            <div className="p-4 border-b border-border bg-muted/10">
+              <p className="text-xs text-muted-foreground mb-3">Mark start/end at current playhead, then add a clip</p>
+              <div className="flex items-center gap-2 mb-2">
+                <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={setClipStartToCurrent}>
+                  Start: {clipStart !== null ? formatTime(clipStart) : "—"} <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={setClipEndToCurrent}>
+                  End: {clipEnd !== null ? formatTime(clipEnd) : "—"} <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input value={clipLabel} onChange={(e) => setClipLabel(e.target.value)} placeholder="Clip label" className="h-7 text-xs flex-1" />
+                <Button size="sm" className="h-7 text-xs shrink-0" onClick={handleAddClip} disabled={clipStart === null && clipEnd === null}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Clip
+                </Button>
+              </div>
+            </div>
+            {/* Clips list */}
+            <div className="max-h-52 overflow-y-auto">
+              {clips.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                  <Film className="h-7 w-7 opacity-30" />
+                  <p className="text-sm">No clips yet</p>
+                  <p className="text-xs text-center max-w-44">Use the controls above to mark highlights</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {clips.map((clip) => (
+                    <div key={clip.id} className="flex items-center gap-2 px-4 py-2.5 group hover:bg-muted/30 transition-colors">
+                      <button className="flex-1 text-left" onClick={() => seekTo(clip.startSec)}>
+                        <p className="text-xs font-medium truncate max-w-[140px]">{clip.label}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{formatTime(clip.startSec)} → {formatTime(clip.endSec)} <span className="ml-1.5 text-muted-foreground/60">({formatTime(clip.endSec - clip.startSec)})</span></p>
+                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDownloadClip(clip)} disabled={downloadingClipId === clip.id} title="Download clip">
+                          {downloadingClipId === clip.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                        </Button>
+                        {!clip.savedId && (
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-primary" onClick={() => handleSaveClip(clip)} disabled={savingClip} title="Save to Library">
+                            {savingClip ? <Loader2 className="h-3 w-3 animate-spin" /> : <Library className="h-3 w-3" />}
+                          </Button>
+                        )}
+                        {clip.savedId && <CheckCircle className="h-4 w-4 text-teal-500" />}
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteClip(clip)} title="Delete clip">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Download actions */}
+          <div className="flex items-center gap-3 pt-2 border-t border-border">
+            <Button variant="outline" onClick={handleDownloadFull} disabled={downloadingFull} className="flex items-center gap-2">
+              <Download className="h-4 w-4" /> Download Full Video
+            </Button>
+            {captionsUrl && (
+              <Button variant="outline" onClick={handleDownloadCaptions} className="flex items-center gap-2">
+                <Subtitles className="h-4 w-4" /> Download Captions (.vtt)
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground ml-auto">{formatFileSize(item.fileSize)} · {item.mimeType}</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
 
 // ─── RecordTab Sub-component ─────────────────────────────────────────────────
 

@@ -1520,19 +1520,100 @@ export const lmsRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async () => ({ ok: true })),
     generateCaptions: protectedProcedure
-      .input(z.object({ mediaItemId: z.number() }))
-      .mutation(async () => ({ ok: true, captionsUrl: null })),
-    updateCaptions: protectedProcedure
-      .input(z.object({ mediaItemId: z.number(), captionsVtt: z.string() }))
+      .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional(), fileUrl: z.string().optional() }))
       .mutation(async ({ input }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        // Get the media item URL
+        let audioUrl = input.fileUrl;
+        if (!audioUrl) {
+          const [item] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+          if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+          audioUrl = item.url;
+        }
+        if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL available" });
+        // Transcribe with word-level timestamps
+        const { transcribeAudio } = await import("./_core/voiceTranscription");
+        const result = await transcribeAudio({ audioUrl, wordTimestamps: true, prompt: "Transcribe accurately with proper punctuation" });
+        if ("error" in result) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error, cause: result.details });
+        }
+        // Build word-level transcript JSON
+        const words = (result.words ?? []).map((w, i) => ({ id: i, word: w.word.trim(), start: w.start, end: w.end }));
+        // Build segment-level transcript from Whisper segments
+        const segments = result.segments.map((s) => ({ id: s.id, start: s.start, end: s.end, text: s.text.trim() }));
+        // Generate VTT from segments
+        const vttLines = ["WEBVTT", ""];
+        const fmtVtt = (sec: number) => {
+          const h = Math.floor(sec / 3600);
+          const m = Math.floor((sec % 3600) / 60);
+          const s = sec % 60;
+          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
+        };
+        for (const seg of segments) {
+          vttLines.push(`${fmtVtt(seg.start)} --> ${fmtVtt(seg.end)}`);
+          vttLines.push(seg.text);
+          vttLines.push("");
+        }
+        const vttContent = vttLines.join("\n");
         const key = `captions/${input.mediaItemId}-${nanoid(8)}.vtt`;
-        const { url } = await storagePut(key, Buffer.from(input.captionsVtt), "text/vtt");
-        await db.update(orgMediaLibrary).set({ captionsUrl: url }).where(eq(orgMediaLibrary.id, input.mediaItemId));
+        const { url: captionsUrl } = await storagePut(key, Buffer.from(vttContent), "text/vtt");
+        // Store transcript JSON and captions URL on the media item
+        const transcriptJson = JSON.stringify({ words, segments, language: result.language, duration: result.duration });
+        await db.update(orgMediaLibrary).set({ captionsUrl, transcriptJson }).where(eq(orgMediaLibrary.id, input.mediaItemId));
+        return { ok: true, captionsUrl, segments, words, language: result.language, duration: result.duration };
+      }),
+    updateCaptions: protectedProcedure
+      .input(z.object({
+        mediaItemId: z.number(),
+        orgId: z.number().optional(),
+        captionsVtt: z.string().optional(),
+        segments: z.array(z.object({ id: z.number(), start: z.number(), end: z.number(), text: z.string() })).optional(),
+        words: z.array(z.object({ id: z.number(), word: z.string(), start: z.number(), end: z.number(), deleted: z.boolean().optional() })).optional(),
+        language: z.string().optional(),
+        duration: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const fmtVtt = (sec: number) => {
+          const h = Math.floor(sec / 3600);
+          const m = Math.floor((sec % 3600) / 60);
+          const s = sec % 60;
+          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
+        };
+        let vttContent = input.captionsVtt;
+        // If segments provided, generate VTT from them (only non-deleted words)
+        if (!vttContent && input.segments) {
+          const vttLines = ["WEBVTT", ""];
+          for (const seg of input.segments) {
+            if (!seg.text.trim()) continue;
+            vttLines.push(`${fmtVtt(seg.start)} --> ${fmtVtt(seg.end)}`);
+            vttLines.push(seg.text);
+            vttLines.push("");
+          }
+          vttContent = vttLines.join("\n");
+        }
+        if (!vttContent) throw new TRPCError({ code: "BAD_REQUEST", message: "No captions content provided" });
+        const key = `captions/${input.mediaItemId}-${nanoid(8)}.vtt`;
+        const { url } = await storagePut(key, Buffer.from(vttContent), "text/vtt");
+        // Also store transcriptJson if words/segments provided
+        const updateData: any = { captionsUrl: url };
+        if (input.words || input.segments) {
+          updateData.transcriptJson = JSON.stringify({
+            words: input.words ?? [],
+            segments: input.segments ?? [],
+            language: input.language ?? "en",
+            duration: input.duration ?? 0,
+          });
+        }
+        await db.update(orgMediaLibrary).set(updateData).where(eq(orgMediaLibrary.id, input.mediaItemId));
         return { ok: true, captionsUrl: url };
       }),
     transcribe: protectedProcedure

@@ -3886,3 +3886,20 @@
 - [x] Pass playerColor to BlockPreview in CoursePlayer for content block videos
 - [x] Add playerColor picker to CourseBuilderPage settings panel with live preview swatch
 - [x] Write 27 vitest tests for player logic (color resolution, source detection, speed options, time formatting)
+
+## Video Editor Enhancement (Opus Clip-style)
+- [x] Implement real generateCaptions backend with word-level timestamps via Whisper
+- [x] Add wordTimestamps option to transcribeAudio helper
+- [x] Update updateCaptions backend to accept words JSON + generate VTT
+- [x] Rewrite VideoEditor with word-level script panel (click-to-seek, strikethrough-to-delete)
+- [x] Add playback skip for deleted word regions
+- [x] Add Find & Replace (one occurrence or all occurrences)
+- [x] Add Delete All Occurrences of a word
+- [x] Add filler word auto-cleanup (uh, um, like, basically, actually, etc.)
+- [x] Add caption generation from edited script (non-deleted words → VTT)
+- [x] Add video source modes: current, upload, URL+download, record
+- [x] Add saveRecordingMutation for URL download to media library
+- [x] Preserve CC style editor with 8 presets + custom color/size/opacity
+- [x] Preserve clip creation, auto-generate 10 highlights, clip export
+- [x] Write vitest tests (20 tests passing)
+- [ ] Custom video player (Thinkific-style) - already built in previous task
