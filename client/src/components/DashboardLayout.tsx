@@ -232,6 +232,23 @@ const navGroups: NavGroup[] = [
     ],
   },
 
+  // ── Integrations ──
+  {
+    dividerBefore: true,
+    items: [
+      {
+        icon: Webhook,
+        label: "Integrations",
+        path: "/integrations",
+        adminOnly: true,
+        subItems: [
+          { label: "Webhooks / Zapier", path: "/integrations/webhooks" },
+          { label: "API Keys", path: "/integrations/api" },
+          { label: "All Integrations", path: "/integrations" },
+        ],
+      },
+    ],
+  },
   // ── Settings ──
   {
     dividerBefore: true,

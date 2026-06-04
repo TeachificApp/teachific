@@ -285,6 +285,16 @@ export async function addOrgMember(orgId: number, userId: number, role: "org_sup
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   await db.insert(orgMembers).values({ orgId, userId, role, invitedBy, memberSubRole: memberSubRole ?? "basic_member" }).onDuplicateKeyUpdate({ set: { role, memberSubRole: memberSubRole ?? "basic_member" } });
+  // Dispatch Zapier new_member event (non-blocking)
+  import("./zapierRouter").then(({ dispatchZapierEvent }) => {
+    dispatchZapierEvent(orgId, "new_member", {
+      user_id: userId,
+      org_id: orgId,
+      role,
+      member_sub_role: memberSubRole ?? "basic_member",
+      joined_at: new Date().toISOString(),
+    });
+  }).catch(() => {});
 }
 
 export async function getOrgMembers(orgId: number) {

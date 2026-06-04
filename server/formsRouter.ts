@@ -560,6 +560,20 @@ export const formsRouter = router({
         });
       }
 
+      // Dispatch Zapier form_submitted event (non-blocking)
+      if (form.orgId) {
+        import("./zapierRouter").then(({ dispatchZapierEvent }) => {
+          dispatchZapierEvent(form.orgId!, "form_submitted", {
+            form_id: form.id,
+            form_title: form.title,
+            respondent_email: input.respondentEmail ?? null,
+            respondent_name: input.respondentName ?? null,
+            submitted_at: new Date().toISOString(),
+            answers: input.answers,
+          });
+        }).catch(() => {});
+      }
+
       return { success: true, message: form.successMessage ?? "Thank you for your response!" };
     }),
 

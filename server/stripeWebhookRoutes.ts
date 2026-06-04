@@ -77,6 +77,21 @@ router.post(
                         amountPaid,
                       }),
                     });
+                    // Dispatch Zapier new_order event (non-blocking)
+                    import("./zapierRouter").then(({ dispatchZapierEvent }) => {
+                      dispatchZapierEvent(orgId, "new_order", {
+                        order_type: "course_purchase",
+                        user_id: user.id,
+                        user_email: buyerEmail,
+                        user_name: user.name ?? "",
+                        course_id: courseId,
+                        course_title: course?.title ?? "",
+                        amount: amountPaid,
+                        currency: session.currency ?? "usd",
+                        ordered_at: new Date().toISOString(),
+                        stripe_session_id: session.id,
+                      });
+                    }).catch(() => {});
                   }
                 } else {
                   console.warn(`[Stripe Webhook] No user for email ${buyerEmail} — enrollment deferred`);

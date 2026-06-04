@@ -3920,3 +3920,27 @@
 - [x] Add RichTextDisplay named export to RichTextEditor component
 - [x] Add maxHeight prop to RichTextEditor component
 - [x] Update NON_INPUT_TYPES constant and all filter arrays to include richtext/info
+
+## Stripe Integration Audit (June 2026)
+- [x] Verify webhook signature verification matches ultrasound-assist pattern (raw body before express.json)
+- [x] Verify test event detection (evt_test_ prefix → return { verified: true })
+- [x] Verify multi-tenant sub-user Stripe integrations preserved (TeachificPay Connect)
+- [x] Verify embedded checkout webhook handles order bumps correctly
+- [x] Ensure all checkout types are handled: course purchase, org subscription, studio/creator/quiz subscriptions
+- [x] Verify dispute handling (created, updated, closed) with notifications
+
+## Zapier Integration for Org Admins (Builder+ tier)
+- [x] Create zapier_webhooks table (orgId, event type, webhook URL, secret, isActive, createdAt)
+- [x] Create zapierRouter with CRUD procedures for managing webhook URLs
+- [x] Implement webhook dispatch helper (fires events to registered Zapier URLs)
+- [x] Support events: new_enrollment, course_completed, form_submitted, new_order, new_member
+- [x] Add tier gate (Builder plan and above only)
+- [x] Build Zapier settings UI in org settings/integrations page (Builder+ tier gate)
+- [x] Add Integrations nav section to DashboardLayout sidebar
+- [x] Integrate dispatchZapierEvent into enrollment, completion, form submission, order, and new member flows
+- [x] Add HMAC-SHA256 signature header (X-Teachific-Signature) for webhook verification
+- [x] Add webhook delivery logs with status tracking
+- [x] Add test webhook functionality (sends sample payload)
+- [x] Vitest: 12 passing tests for Zapier integration
+- [x] Add webhook test/ping functionality
+- [x] Integrate dispatch calls into existing event flows (enrollment, form submission, orders)

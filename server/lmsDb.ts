@@ -283,7 +283,20 @@ export async function createEnrollment(data: typeof courseEnrollments.$inferInse
     .select()
     .from(courseEnrollments)
     .where(eq(courseEnrollments.id, Number(id)));
-  return rows[0];
+  const enrollment = rows[0];
+  // Dispatch Zapier event (non-blocking)
+  if (enrollment && data.orgId) {
+    import("./zapierRouter").then(({ dispatchZapierEvent }) => {
+      dispatchZapierEvent(data.orgId!, "new_enrollment", {
+        enrollment_id: enrollment.id,
+        user_id: data.userId,
+        course_id: data.courseId,
+        org_id: data.orgId,
+        enrolled_at: enrollment.enrolledAt?.toISOString() ?? new Date().toISOString(),
+      });
+    }).catch(() => {});
+  }
+  return enrollment;
 }
 
 export async function updateEnrollmentProgress(
@@ -300,6 +313,24 @@ export async function updateEnrollmentProgress(
       completedAt: progressPct >= 100 ? new Date() : undefined,
     })
     .where(eq(courseEnrollments.id, enrollmentId));
+  // Dispatch Zapier course_completed event (non-blocking)
+  if (progressPct >= 100) {
+    db.select().from(courseEnrollments).where(eq(courseEnrollments.id, enrollmentId)).then((rows) => {
+      const enrollment = rows[0];
+      if (enrollment?.orgId) {
+        import("./zapierRouter").then(({ dispatchZapierEvent }) => {
+          dispatchZapierEvent(enrollment.orgId!, "course_completed", {
+            enrollment_id: enrollment.id,
+            user_id: enrollment.userId,
+            course_id: enrollment.courseId,
+            org_id: enrollment.orgId,
+            progress_pct: 100,
+            completed_at: new Date().toISOString(),
+          });
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }
 }
 
 // ─── Lesson Progress ─────────────────────────────────────────────────────────

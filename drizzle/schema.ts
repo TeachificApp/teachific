@@ -4085,3 +4085,36 @@ export const lmsPendingEnrollments = mysqlTable("lms_pending_enrollments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsPendingEnrollment = typeof lmsPendingEnrollments.$inferSelect;
+
+// ─── Zapier Integration Webhooks ──────────────────────────────────────────────
+export const zapierWebhooks = mysqlTable("zapier_webhooks", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  webhookUrl: text("webhook_url").notNull(),
+  secret: varchar("secret", { length: 128 }),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  lastStatus: varchar("last_status", { length: 20 }),
+  triggerCount: int("trigger_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ZapierWebhook = typeof zapierWebhooks.$inferSelect;
+export type InsertZapierWebhook = typeof zapierWebhooks.$inferInsert;
+
+// ─── Zapier Webhook Logs ──────────────────────────────────────────────────────
+export const zapierWebhookLogs = mysqlTable("zapier_webhook_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  webhookId: int("webhook_id").notNull(),
+  orgId: int("org_id").notNull(),
+  eventType: varchar("event_type", { length: 100 }).notNull(),
+  payload: text("payload"),
+  responseStatus: int("response_status"),
+  responseBody: text("response_body"),
+  success: boolean("success").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type ZapierWebhookLog = typeof zapierWebhookLogs.$inferSelect;
+export type InsertZapierWebhookLog = typeof zapierWebhookLogs.$inferInsert;

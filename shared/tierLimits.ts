@@ -122,7 +122,7 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     liveSessions: false,
     hiddenPrivateCourses: false,
     customCode: false,
-    zapierIntegrations: false,
+    zapierIntegrations: true,
     customDomain: false,
     whiteLabel: false,
     upsellFunnels: true,

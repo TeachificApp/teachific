@@ -122,6 +122,7 @@ import { authoringRouter } from "./authoringRouter";
 import { quizMakerRouter } from "./quizMakerRouter";
 import { questionBankRouter } from "./questionBankRouter";
 import { teachificPayRouter } from "./teachificPayRouter";
+import { zapierRouter } from "./zapierRouter";
 import { embeddedCheckoutRouter } from "./embeddedCheckoutRouter";
 import { funnelRouter, funnelPublicRouter, funnelAdminRouter } from "./routers/funnelRouter";
 import { lmsAdminRouter } from "./routers/lmsAdminRouter";
@@ -204,6 +205,7 @@ export const appRouter = router({
   quizMaker: quizMakerRouter,
   questionBank: questionBankRouter,
   teachificPay: teachificPayRouter,
+  zapier: zapierRouter,
   embeddedCheckout: embeddedCheckoutRouter,
   funnel: funnelRouter,
   funnelPublic: funnelPublicRouter,
