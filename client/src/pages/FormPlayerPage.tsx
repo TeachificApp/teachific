@@ -35,6 +35,13 @@ interface FormField {
   isBranchingSource: boolean;
   isHidden?: boolean;
   memberVarName?: string | null;
+  scaleMin?: number | null;
+  scaleMax?: number | null;
+  scaleMinLabel?: string | null;
+  scaleMaxLabel?: string | null;
+  richTextContent?: string | null;
+  emailRoutingRules?: string | null;
+  scoreWeight?: number | null;
 }
 interface BranchingRule {
   id: number;
@@ -138,6 +145,17 @@ function FieldRenderer({
     );
   }
 
+  if (field.type === "richtext" || field.type === "info") {
+    return (
+      <div className="py-3">
+        {field.label && field.type === "info" && <h4 className="text-sm font-semibold mb-1">{field.label}</h4>}
+        {field.richTextContent && (
+          <div className="prose prose-sm max-w-none dark:prose-invert text-sm" dangerouslySetInnerHTML={{ __html: field.richTextContent }} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-1.5">
       <Label className="text-sm font-medium">
@@ -229,6 +247,40 @@ function FieldRenderer({
           })}
         </div>
       )}
+
+      {field.type === "scale" && (() => {
+        const min = field.scaleMin ?? 1;
+        const max = field.scaleMax ?? 5;
+        const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1 justify-center flex-wrap">
+              {values.map((v) => {
+                const selected = Number(value) === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onChange(String(v))}
+                    className={`w-10 h-10 rounded-lg border-2 text-sm font-medium transition-all ${
+                      selected ? "text-white shadow-md scale-110" : "border-border text-foreground hover:border-primary/50"
+                    }`}
+                    style={selected ? { borderColor: primaryColor, backgroundColor: primaryColor } : {}}
+                  >
+                    {v}
+                  </button>
+                );
+              })}
+            </div>
+            {(field.scaleMinLabel || field.scaleMaxLabel) && (
+              <div className="flex justify-between text-xs text-muted-foreground px-1">
+                <span>{field.scaleMinLabel}</span>
+                <span>{field.scaleMaxLabel}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {error && (
         <p className="text-xs text-red-500 flex items-center gap-1">
@@ -409,7 +461,7 @@ export default function FormPlayerPage() {
     const newErrors: Record<number, string> = {};
     for (const field of fields) {
       if (!field.required) continue;
-      if (["section_break", "statement", "page_break"].includes(field.type)) continue;
+      if (["section_break", "statement", "page_break", "richtext", "info"].includes(field.type)) continue;
       const val = answers[field.id];
       if (!val || (Array.isArray(val) && val.length === 0) || String(val).trim() === "") {
         newErrors[field.id] = "This field is required.";
@@ -423,7 +475,7 @@ export default function FormPlayerPage() {
     const newErrors: Record<number, string> = {};
     for (const field of visibleFields) {
       if (!field.required) continue;
-      if (["section_break", "statement", "page_break"].includes(field.type)) continue;
+      if (["section_break", "statement", "page_break", "richtext", "info"].includes(field.type)) continue;
       const val = answers[field.id];
       if (!val || (Array.isArray(val) && val.length === 0) || String(val).trim() === "") {
         newErrors[field.id] = "This field is required.";

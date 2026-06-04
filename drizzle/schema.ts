@@ -1424,14 +1424,14 @@ export type InsertForm = typeof forms.$inferInsert;
 export const formFields = mysqlTable("form_fields", {
   id: int("id").autoincrement().primaryKey(),
   formId: int("formId").notNull(),
-  // Field type: short_answer, long_answer, dropdown, radio, checkbox, email, number, date, section_break, statement
+  // Field type: short_answer, long_answer, dropdown, radio, checkbox, email, number, date, section_break, statement, page_break, scale, richtext, info
   type: varchar("type", { length: 50 }).notNull(),
   label: text("label").notNull(),
   placeholder: text("placeholder"),
   helpText: text("helpText"),
   required: boolean("required").default(false).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
-  // Options for choice fields (JSON array of {value, label})
+  // Options for choice fields (JSON array of {value, label, scoreValue?})
   options: text("options"),
   // Validation
   minLength: int("minLength"),
@@ -1442,6 +1442,17 @@ export const formFields = mysqlTable("form_fields", {
   isHidden: boolean("isHidden").default(false).notNull(),
   // Member variable name to auto-populate (e.g. 'name', 'email', 'org', custom attr key)
   memberVarName: varchar("memberVarName", { length: 100 }),
+  // Scale field settings
+  scaleMin: int("scaleMin"),
+  scaleMax: int("scaleMax"),
+  scaleMinLabel: varchar("scaleMinLabel", { length: 100 }),
+  scaleMaxLabel: varchar("scaleMaxLabel", { length: 100 }),
+  // Rich text / info field content (HTML)
+  richTextContent: text("richTextContent"),
+  // Email routing rules (JSON array)
+  emailRoutingRules: text("emailRoutingRules"),
+  // Score weight for this field (0-10)
+  scoreWeight: int("scoreWeight").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type FormField = typeof formFields.$inferSelect;

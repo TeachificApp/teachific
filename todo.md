@@ -3903,3 +3903,20 @@
 - [x] Preserve clip creation, auto-generate 10 highlights, clip export
 - [x] Write vitest tests (20 tests passing)
 - [ ] Custom video player (Thinkific-style) - already built in previous task
+
+## Form Editor Enhancements (from ultrasound-assist)
+- [x] Add scale/rating field type to form builder (scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel)
+- [x] Add richtext field type to form builder (rich text content block via RichTextEditor)
+- [x] Add info field type to form builder (informational text block)
+- [x] Add scoreValue per option for choice fields (dropdown, radio, checkbox)
+- [x] Add scoreWeight per field (0-10 relative importance)
+- [x] Add email routing rules JSON editor for email fields
+- [x] Update formFields DB schema with new columns (scaleMin, scaleMax, scaleMinLabel, scaleMaxLabel, richTextContent, emailRoutingRules, scoreWeight)
+- [x] Update formsRouter fields.upsert to accept new properties
+- [x] Update formsRouter publicGet to return new field properties
+- [x] Update FormPlayerPage to render scale fields (clickable number buttons)
+- [x] Update FormPlayerPage to render richtext/info fields (HTML content display)
+- [x] Update FormPlayerPage validation to skip richtext/info fields
+- [x] Add RichTextDisplay named export to RichTextEditor component
+- [x] Add maxHeight prop to RichTextEditor component
+- [x] Update NON_INPUT_TYPES constant and all filter arrays to include richtext/info

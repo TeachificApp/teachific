@@ -96,7 +96,7 @@ import { EditorState } from "@codemirror/state";
 import { basicSetup } from "@codemirror/basic-setup";
 import { css } from "@codemirror/lang-css";
 import { oneDark } from "@codemirror/theme-one-dark";
-
+import RichTextEditor from "@/components/RichTextEditor";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type FieldType =
@@ -108,6 +108,9 @@ type FieldType =
   | "email"
   | "number"
   | "date"
+  | "scale"
+  | "richtext"
+  | "info"
   | "section_break"
   | "statement"
   | "page_break";
@@ -115,6 +118,7 @@ type FieldType =
 interface FieldOption {
   value: string;
   label: string;
+  scoreValue?: number;
 }
 
 interface FormField {
@@ -131,6 +135,13 @@ interface FormField {
   isBranchingSource: boolean;
   isHidden?: boolean;
   memberVarName?: string;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMaxLabel?: string;
+  richTextContent?: string;
+  emailRoutingRules?: string;
+  scoreWeight?: number;
 }
 
 interface BranchingRule {
@@ -154,13 +165,17 @@ const FIELD_TYPES: Array<{ type: FieldType; label: string; icon: React.ReactNode
   { type: "dropdown", label: "Dropdown", icon: <ChevronDown className="h-4 w-4" />, group: "Choice" },
   { type: "radio", label: "Multiple Choice", icon: <Circle className="h-4 w-4" />, group: "Choice" },
   { type: "checkbox", label: "Checkboxes", icon: <CheckSquare className="h-4 w-4" />, group: "Choice" },
+  { type: "scale", label: "Scale / Rating", icon: <BarChart2 className="h-4 w-4" />, group: "Choice" },
+  { type: "richtext", label: "Rich Text", icon: <Code className="h-4 w-4" />, group: "Layout" },
+  { type: "info", label: "Info Text", icon: <FileText className="h-4 w-4" />, group: "Layout" },
   { type: "section_break", label: "Section Break", icon: <Minus className="h-4 w-4" />, group: "Layout" },
   { type: "statement", label: "Statement", icon: <MessageSquare className="h-4 w-4" />, group: "Layout" },
   { type: "page_break", label: "Page Break", icon: <Columns className="h-4 w-4" />, group: "Layout" },
 ];
 
 const CHOICE_TYPES: FieldType[] = ["dropdown", "radio", "checkbox"];
-const BRANCHABLE_TYPES: FieldType[] = ["dropdown", "radio", "checkbox", "short_answer", "email"];
+const NON_INPUT_TYPES: FieldType[] = ["section_break", "statement", "page_break", "richtext", "info"];
+const BRANCHABLE_TYPES: FieldType[] = ["dropdown", "radio", "checkbox", "short_answer", "email", "scale"];
 
 let tempIdCounter = -1;
 function newTempId() {
@@ -250,15 +265,20 @@ function FieldEditor({
 }) {
   const isChoice = CHOICE_TYPES.includes(field.type);
   const isBranchable = BRANCHABLE_TYPES.includes(field.type);
+  const isNonInput = NON_INPUT_TYPES.includes(field.type);
 
   const addOption = () => {
     const idx = field.options.length + 1;
-    onChange({ options: [...field.options, { value: `option_${idx}`, label: `Option ${idx}` }] });
+    onChange({ options: [...field.options, { value: `option_${idx}`, label: `Option ${idx}`, scoreValue: 0 }] });
   };
 
-  const updateOption = (i: number, label: string) => {
+  const updateOption = (i: number, patch: Partial<FieldOption>) => {
     const opts = [...field.options];
-    opts[i] = { value: label.toLowerCase().replace(/\s+/g, "_"), label };
+    const updated = { ...opts[i], ...patch };
+    if (patch.label !== undefined) {
+      updated.value = patch.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    }
+    opts[i] = updated;
     onChange({ options: opts });
   };
 
@@ -269,15 +289,15 @@ function FieldEditor({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Label *</Label>
+        <Label>{field.type === "info" ? "Info Text" : field.type === "richtext" ? "Rich Text Label" : "Label *"}</Label>
         <Input
           value={field.label}
           onChange={(e) => onChange({ label: e.target.value })}
-          placeholder="Question or field label"
+          placeholder={field.type === "info" ? "Informational text" : field.type === "richtext" ? "Rich text label" : "Question or field label"}
         />
       </div>
 
-      {field.type !== "section_break" && field.type !== "statement" && field.type !== "page_break" && (
+      {!isNonInput && field.type !== "scale" && (
         <div className="space-y-1.5">
           <Label>Placeholder</Label>
           <Input
@@ -288,30 +308,80 @@ function FieldEditor({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label>Help Text</Label>
-        <Input
-          value={field.helpText ?? ""}
-          onChange={(e) => onChange({ helpText: e.target.value })}
-          placeholder="Additional guidance shown below the field"
-        />
-      </div>
+      {!isNonInput && (
+        <div className="space-y-1.5">
+          <Label>Help Text</Label>
+          <Input
+            value={field.helpText ?? ""}
+            onChange={(e) => onChange({ helpText: e.target.value })}
+            placeholder="Additional guidance shown below the field"
+          />
+        </div>
+      )}
 
+      {/* Scale settings */}
+      {field.type === "scale" && (
+        <div className="space-y-3 p-3 bg-muted/40 rounded-lg">
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scale Settings</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Min Value</Label>
+              <Input type="number" value={field.scaleMin ?? 1} onChange={(e) => onChange({ scaleMin: parseInt(e.target.value) || 1 })} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Max Value</Label>
+              <Input type="number" value={field.scaleMax ?? 5} onChange={(e) => onChange({ scaleMax: parseInt(e.target.value) || 5 })} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Min Label</Label>
+              <Input placeholder="e.g. Poor" value={field.scaleMinLabel ?? ""} onChange={(e) => onChange({ scaleMinLabel: e.target.value })} className="h-8 text-sm" />
+            </div>
+            <div>
+              <Label className="text-xs">Max Label</Label>
+              <Input placeholder="e.g. Excellent" value={field.scaleMaxLabel ?? ""} onChange={(e) => onChange({ scaleMaxLabel: e.target.value })} className="h-8 text-sm" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rich text / Info content editor */}
+      {(field.type === "richtext" || field.type === "info") && (
+        <div className="space-y-1.5">
+          <Label>{field.type === "info" ? "Info Block Content" : "Rich Text Content"}</Label>
+          <RichTextEditor
+            value={field.richTextContent ?? ""}
+            onChange={(v) => onChange({ richTextContent: v })}
+            placeholder={field.type === "info" ? "Enter informational content…" : "Enter rich text content…"}
+            minHeight={150}
+          />
+        </div>
+      )}
+
+      {/* Choice options with score values */}
       {isChoice && (
         <div className="space-y-2">
           <Label>Options</Label>
           {field.options.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
               <Input
                 value={opt.label}
-                onChange={(e) => updateOption(i, e.target.value)}
+                onChange={(e) => updateOption(i, { label: e.target.value })}
                 placeholder={`Option ${i + 1}`}
-                className="flex-1"
+                className="flex-1 h-8 text-sm"
               />
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-xs text-muted-foreground">Score:</span>
+                <Input
+                  type="number" min={0} max={100}
+                  value={opt.scoreValue ?? 0}
+                  onChange={(e) => updateOption(i, { scoreValue: parseInt(e.target.value) || 0 })}
+                  className="h-8 text-xs w-14"
+                />
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                 onClick={() => removeOption(i)}
               >
                 <X className="h-3.5 w-3.5" />
@@ -322,21 +392,60 @@ function FieldEditor({
             <Plus className="h-3.5 w-3.5" />
             Add Option
           </Button>
+          {field.options.length > 0 && (
+            <p className="text-xs text-muted-foreground">Score (0–100): contribution to quality score when this option is selected.</p>
+          )}
+        </div>
+      )}
+
+      {/* Email routing rules */}
+      {field.type === "email" && (
+        <div className="space-y-1.5 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+          <Label className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5" /> Email Routing Rules (JSON)
+          </Label>
+          <p className="text-xs text-blue-600 dark:text-blue-400">
+            Define routing rules as a JSON array. Each rule specifies which email to route to based on a condition.
+          </p>
+          <textarea
+            className="w-full min-h-[80px] font-mono text-xs border border-blue-200 dark:border-blue-700 rounded-lg p-2 resize-y focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-blue-950/50"
+            placeholder={`[\n  {\n    "label": "Route to reviewer",\n    "conditionFieldId": 5,\n    "conditionValue": "yes",\n    "routeTo": "reviewer@example.com"\n  }\n]`}
+            value={field.emailRoutingRules ?? ""}
+            onChange={(e) => onChange({ emailRoutingRules: e.target.value })}
+          />
         </div>
       )}
 
       <Separator />
 
-      <div className="flex items-center justify-between">
-        <div>
-          <Label>Required</Label>
-          <p className="text-xs text-muted-foreground">Respondents must answer this field</p>
+      {/* Required + Score Weight (for non-layout fields) */}
+      {!isNonInput && (
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Required</Label>
+            <p className="text-xs text-muted-foreground">Respondents must answer this field</p>
+          </div>
+          <Switch
+            checked={field.required}
+            onCheckedChange={(v) => onChange({ required: v })}
+          />
         </div>
-        <Switch
-          checked={field.required}
-          onCheckedChange={(v) => onChange({ required: v })}
-        />
-      </div>
+      )}
+
+      {!isNonInput && (
+        <div className="flex items-center justify-between">
+          <div>
+            <Label>Score Weight</Label>
+            <p className="text-xs text-muted-foreground">Relative importance (0–10)</p>
+          </div>
+          <Input
+            type="number" min={0} max={10}
+            value={field.scoreWeight ?? 0}
+            onChange={(e) => onChange({ scoreWeight: parseInt(e.target.value) || 0 })}
+            className="h-8 w-16 text-sm"
+          />
+        </div>
+      )}
 
       {isBranchable && (
         <div className="flex items-center justify-between">
@@ -1196,7 +1305,7 @@ function MemberVarsPanel({
   onFieldChange: (id: string | number, patch: Partial<FormField>) => void;
 }) {
   const inputFields = fields.filter(
-    (f) => !["section_break", "statement", "page_break"].includes(f.type)
+    (f) => !NON_INPUT_TYPES.includes(f.type as FieldType)
   );
 
   return (
@@ -1447,7 +1556,7 @@ function FormResultsTable({ formId, fields }: { formId: number; fields: FormFiel
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const submissions = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const inputFields = fields.filter((f) => !["section_break", "statement", "page_break"].includes(f.type));
+  const inputFields = fields.filter((f) => !NON_INPUT_TYPES.includes(f.type as FieldType));
 
   const exportCsv = () => {
     const headers = ["#", "Submitted At", ...inputFields.map((f) => f.label || f.type)];
@@ -1616,7 +1725,7 @@ function FormFiltersManager({ formId, fields }: { formId: number; fields: FormFi
   const [newField, setNewField] = useState("");
   const [newOp, setNewOp] = useState("equals");
   const [newVal, setNewVal] = useState("");
-  const inputFields = fields.filter((f) => !["section_break", "statement", "page_break"].includes(f.type));
+  const inputFields = fields.filter((f) => !NON_INPUT_TYPES.includes(f.type as FieldType));
 
   const addFilter = () => {
     if (!newName.trim() || !newField) return;
@@ -1668,7 +1777,7 @@ function FormViewsManager({ formId, fields }: { formId: number; fields: FormFiel
   const deleteMutation = trpc.forms.views.delete.useMutation({ onSuccess: () => { refetch(); toast.success("View deleted"); } });
   const [newName, setNewName] = useState("");
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const inputFields = fields.filter((f) => !["section_break", "statement", "page_break"].includes(f.type));
+  const inputFields = fields.filter((f) => !NON_INPUT_TYPES.includes(f.type as FieldType));
 
   const toggleField = (id: string) => setSelectedFields((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
@@ -1716,7 +1825,7 @@ function FormLabelsManager({ formId, fields }: { formId: number; fields: FormFie
   const { data: labels = [], refetch } = trpc.forms.labels.list.useQuery({ formId }, { enabled: !!formId });
   const upsertMutation = trpc.forms.labels.save.useMutation({ onSuccess: () => { refetch(); toast.success("Labels saved"); } });
   const [localLabels, setLocalLabels] = useState<Record<string, string>>({});
-  const inputFields = fields.filter((f) => !["section_break", "statement", "page_break"].includes(f.type));
+  const inputFields = fields.filter((f) => !NON_INPUT_TYPES.includes(f.type as FieldType));
 
   useEffect(() => {
     const map: Record<string, string> = {};
@@ -1758,7 +1867,7 @@ function FormDocsManager({ formId, fields }: { formId: number; fields: FormField
   const deleteMutation = trpc.forms.docs.delete.useMutation({ onSuccess: () => { refetch(); toast.success("Doc deleted"); } });
   const [newName, setNewName] = useState("");
   const [newTemplate, setNewTemplate] = useState("");
-  const inputFields = fields.filter((f) =>!["section_break", "statement", "page_break"].includes(f.type));
+  const inputFields = fields.filter((f) => !NON_INPUT_TYPES.includes(f.type as FieldType));
 
   return (
     <div className="space-y-4">
@@ -1963,7 +2072,7 @@ function FormImportPanel({ formId, fields }: { formId: number; fields: FormField
     onSuccess: (d: any) => toast.success(`Imported ${d.count ?? 0} responses`),
     onError: (e: any) => toast.error(e.message),
   });
-  const inputFields = fields.filter((f) => !["section_break", "statement", "page_break"].includes(f.type));
+  const inputFields = fields.filter((f) => !NON_INPUT_TYPES.includes(f.type as FieldType));
 
   const handleImport = () => {
     if (!csvText.trim()) return;
@@ -2150,16 +2259,19 @@ export default function FormBuilderPage() {
     const newField: FormField = {
       id: newTempId(),
       type,
-      label: "",
+      label: type === "info" ? "Information" : type === "richtext" ? "Rich Text Block" : type === "scale" ? "Rating" : "",
       required: false,
       sortOrder: fields.length,
       options: CHOICE_TYPES.includes(type)
         ? [
-            { value: "option_1", label: "Option 1" },
-            { value: "option_2", label: "Option 2" },
+            { value: "option_1", label: "Option 1", scoreValue: 0 },
+            { value: "option_2", label: "Option 2", scoreValue: 0 },
           ]
         : [],
       isBranchingSource: false,
+      ...(type === "scale" ? { scaleMin: 1, scaleMax: 5, scaleMinLabel: "", scaleMaxLabel: "" } : {}),
+      ...(type === "richtext" || type === "info" ? { richTextContent: "" } : {}),
+      scoreWeight: 0,
     };
     setFields((prev) => [...prev, newField]);
     setSelectedFieldId(newField.id);
@@ -2210,6 +2322,13 @@ export default function FormBuilderPage() {
         minLength: f.minLength,
         maxLength: f.maxLength,
         isBranchingSource: f.isBranchingSource,
+        scaleMin: f.scaleMin,
+        scaleMax: f.scaleMax,
+        scaleMinLabel: f.scaleMinLabel,
+        scaleMaxLabel: f.scaleMaxLabel,
+        richTextContent: f.richTextContent,
+        emailRoutingRules: f.emailRoutingRules,
+        scoreWeight: f.scoreWeight,
       }));
       await upsertFieldsMutation.mutateAsync({ formId, fields: fieldPayload });
 

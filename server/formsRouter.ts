@@ -317,10 +317,17 @@ export const formsRouter = router({
           helpText: z.string().optional().nullable(),
           required: z.boolean().optional(),
           sortOrder: z.number(),
-          options: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
+          options: z.array(z.object({ value: z.string(), label: z.string(), scoreValue: z.number().optional() })).optional(),
           minLength: z.number().optional().nullable(),
           maxLength: z.number().optional().nullable(),
           isBranchingSource: z.boolean().optional(),
+          scaleMin: z.number().optional().nullable(),
+          scaleMax: z.number().optional().nullable(),
+          scaleMinLabel: z.string().optional().nullable(),
+          scaleMaxLabel: z.string().optional().nullable(),
+          richTextContent: z.string().optional().nullable(),
+          emailRoutingRules: z.string().optional().nullable(),
+          scoreWeight: z.number().optional().nullable(),
         })),
       }))
       .mutation(async ({ input }) => {
@@ -339,7 +346,7 @@ export const formsRouter = router({
         // Upsert each field
         const result: Array<{ tempId?: number; id: number }> = [];
         for (const f of input.fields) {
-          const data = {
+          const data: any = {
             formId: input.formId,
             type: f.type,
             label: f.label,
@@ -351,6 +358,13 @@ export const formsRouter = router({
             minLength: f.minLength ?? null,
             maxLength: f.maxLength ?? null,
             isBranchingSource: f.isBranchingSource ?? false,
+            scaleMin: f.scaleMin ?? null,
+            scaleMax: f.scaleMax ?? null,
+            scaleMinLabel: f.scaleMinLabel ?? null,
+            scaleMaxLabel: f.scaleMaxLabel ?? null,
+            richTextContent: f.richTextContent ?? null,
+            emailRoutingRules: f.emailRoutingRules ?? null,
+            scoreWeight: f.scoreWeight ?? 0,
           };
           if (f.id) {
             await db.update(formFields).set(data).where(eq(formFields.id, f.id));
@@ -478,6 +492,13 @@ export const formsRouter = router({
           isBranchingSource: f.isBranchingSource,
           isHidden: f.isHidden ?? false,
           memberVarName: f.memberVarName ?? null,
+          scaleMin: f.scaleMin ?? null,
+          scaleMax: f.scaleMax ?? null,
+          scaleMinLabel: f.scaleMinLabel ?? null,
+          scaleMaxLabel: f.scaleMaxLabel ?? null,
+          richTextContent: f.richTextContent ?? null,
+          emailRoutingRules: f.emailRoutingRules ?? null,
+          scoreWeight: f.scoreWeight ?? 0,
         })),
         rules: rules.map((r) => ({
           id: r.id,

@@ -289,11 +289,12 @@ function VideoEmbedDialog({ editor }: { editor: any }) {
 
 // ─── Main RichTextEditor ──────────────────────────────────────────────────────
 
-interface RichTextEditorProps {
+export interface RichTextEditorProps {
   value?: string;
   onChange?: (html: string) => void;
   placeholder?: string;
   minHeight?: number;
+  maxHeight?: number;
   readOnly?: boolean;
   className?: string;
   showCharCount?: boolean;
@@ -304,6 +305,7 @@ export function RichTextEditor({
   onChange,
   placeholder = "Start typing...",
   minHeight = 200,
+  maxHeight,
   readOnly = false,
   className,
   showCharCount = false,
@@ -476,7 +478,7 @@ export function RichTextEditor({
       <EditorContent
         editor={editor}
         className="prose prose-sm max-w-none dark:prose-invert px-4 py-3 focus-within:outline-none"
-        style={{ minHeight }}
+        style={{ minHeight, ...(maxHeight ? { maxHeight, overflowY: 'auto' as const } : {}) }}
       />
 
       {/* Character count */}
@@ -506,6 +508,10 @@ export function RichTextContent({ html, className }: { html: string; className?:
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
+}
+
+export function RichTextDisplay({ content, className }: { content: string; className?: string }) {
+  return <RichTextContent html={content} className={className} />;
 }
 
 export default RichTextEditor;
