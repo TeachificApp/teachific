@@ -57,6 +57,23 @@ async function getOrCreateOrgPaymentSettings(orgId: number) {
 export const stripeRouter = router({
   // ── Get current subscription ───────────────────────────────────────────────
   getSubscription: protectedProcedure.query(async ({ ctx }) => {
+    // Platform owners/admins always get enterprise-level access — no subscription needed
+    const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+    if (isPlatformAdmin) {
+      const orgCtx = await getOrgContext(ctx.user.id);
+      return {
+        orgId: orgCtx?.orgId ?? 0,
+        orgName: orgCtx?.orgName ?? "Platform",
+        plan: "enterprise" as PlanTier,
+        limits: PLAN_LIMITS["enterprise"],
+        status: "active",
+        stripeSubscriptionId: null,
+        stripeCustomerId: null,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        customPriceLabel: "Owner",
+      };
+    }
     const orgCtx = await getOrgContext(ctx.user.id);
     if (!orgCtx) return null;
     const sub = await getOrgSubscription(orgCtx.orgId);
@@ -419,6 +436,17 @@ export const stripeRouter = router({
 
   // ── Studio subscription status ────────────────────────────────────────────
   getStudioSubscription: protectedProcedure.query(async ({ ctx }) => {
+    // Platform owners/admins always get full Studio access
+    const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+    if (isPlatformAdmin) {
+      return {
+        tier: "bundle" as const,
+        isActive: true,
+        trialEndsAt: null,
+        isInTrial: false,
+        isPaid: true,
+      };
+    }
     const db = await getDb();
     const { users } = await import("../drizzle/schema");
     const rows = await db.select({

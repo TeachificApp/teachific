@@ -3188,6 +3188,11 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
   quizCreator: router({
     /** Get the current user's QuizMaker role */
     getMyRole: protectedProcedure.query(async ({ ctx }) => {
+      // Platform owners/admins always get full QuizMaker access
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      if (isPlatformAdmin) {
+        return { role: "bundle" as const, trialEndsAt: null, isInTrial: false, isPaid: true };
+      }
       const user = await getUserById(ctx.user.id);
       const role = (user?.quizCreatorAccess ?? "none") as "none" | "web" | "desktop" | "bundle";
       const trialEndsAt = (user as any)?.quizCreatorTrialEndsAt ?? null;

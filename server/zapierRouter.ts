@@ -33,9 +33,12 @@ export type ZapierEventType = (typeof ZAPIER_EVENT_TYPES)[number];
 // ─── Tier gate: Builder and above ─────────────────────────────────────────────
 const ALLOWED_TIERS: PlanTier[] = ["builder", "pro", "enterprise"];
 
-async function getOrgContextForZapier(userId: number) {
+async function getOrgContextForZapier(userId: number, userRole?: string) {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+  // Platform owners/admins bypass all tier checks
+  const isPlatformAdmin = userRole === "site_owner" || userRole === "site_admin";
 
   const rows = await db
     .select({
@@ -50,6 +53,11 @@ async function getOrgContextForZapier(userId: number) {
 
   const orgCtx = rows[0];
   if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
+
+  // Platform admins skip role and tier checks
+  if (isPlatformAdmin) {
+    return { ...orgCtx, tier: "enterprise" as PlanTier };
+  }
 
   // Must be org_admin or org_super_admin
   if (orgCtx.role !== "org_admin" && orgCtx.role !== "org_super_admin") {
@@ -188,7 +196,7 @@ export const zapierRouter = router({
   list: protectedProcedure
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -250,7 +258,7 @@ export const zapierRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -284,7 +292,7 @@ export const zapierRouter = router({
   toggle: protectedProcedure
     .input(z.object({ id: z.number(), orgId: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -312,7 +320,7 @@ export const zapierRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number(), orgId: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -344,7 +352,7 @@ export const zapierRouter = router({
   test: protectedProcedure
     .input(z.object({ id: z.number(), orgId: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -418,7 +426,7 @@ export const zapierRouter = router({
   logs: protectedProcedure
     .input(z.object({ orgId: z.number().optional(), webhookId: z.number().optional(), limit: z.number().min(1).max(100).default(20) }).optional())
     .query(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -473,7 +481,7 @@ export const zapierRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContextForZapier(ctx.user.id);
+      const orgCtx = await getOrgContextForZapier(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 

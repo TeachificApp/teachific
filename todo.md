@@ -3956,3 +3956,12 @@
 - [x] Port SCORM/QTI import for quiz questions (QTI 1.2 + 2.1, MCQ/TF/FillBlank/ShortAnswer/Matching/Essay)
 - [x] Keep all backend code intact for future desktop app use
 - [x] Update pricing/features copy to reflect web-only products
+
+## Owner Access Fix: Tier Gating Bypass (June 2026)
+- [x] billing.getSubscription: site_owner/site_admin bypass returns enterprise plan with "Owner" label
+- [x] billing.getStudioSubscription: site_owner/site_admin bypass returns bundle tier, isActive=true
+- [x] quizCreator.getMyRole: site_owner/site_admin bypass returns bundle role, isPaid=true
+- [x] zapierRouter: getOrgContextForZapier now accepts userRole param, skips tier+role checks for platform admins
+- [x] Frontend useOrgPlan hook: already has site_owner/site_admin bypass (returns enterprise unlimited)
+- [x] Frontend usePlanLimits hook: correctly reads from billing.getSubscription (which now returns enterprise for owner)
+- [x] All 257 non-LMS tests passing (14 lms.test.ts failures are pre-existing unrelated to this change)
