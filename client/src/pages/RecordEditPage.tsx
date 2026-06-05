@@ -988,7 +988,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
       formData.append("file", blob, rec.name);
       formData.append("orgId", String(orgId));
       formData.append("folder", "lms-media");
-      const uploadRes = await fetch("/api/media-upload", { method: "POST", body: formData });
+      const uploadRes = await fetch("/api/media-upload", { method: "POST", body: formData, credentials: "include" });
       if (!uploadRes.ok) throw new Error("Upload failed");
       const uploadData = await uploadRes.json();
       const saved = await saveMediaItemRef.current.mutateAsync({
@@ -1232,7 +1232,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
       formData.append("file", blob, rec.name);
       formData.append("orgId", String(orgId));
       formData.append("folder", "lms-media");
-      const uploadRes = await fetch("/api/media-upload", { method: "POST", body: formData });
+      const uploadRes = await fetch("/api/media-upload", { method: "POST", body: formData, credentials: "include" });
       if (!uploadRes.ok) {
         const errData = await uploadRes.json().catch(() => ({}));
         throw new Error(errData.error ?? "Upload failed");

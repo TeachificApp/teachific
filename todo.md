@@ -3965,3 +3965,8 @@
 - [x] Frontend useOrgPlan hook: already has site_owner/site_admin bypass (returns enterprise unlimited)
 - [x] Frontend usePlanLimits hook: correctly reads from billing.getSubscription (which now returns enterprise for owner)
 - [x] All 257 non-LMS tests passing (14 lms.test.ts failures are pre-existing unrelated to this change)
+
+## Bug Fix: Teachific Studio Video Upload Returns "Unauthorized" (June 2026)
+- [x] Investigate Studio video upload endpoint auth — owner account getting 401 on 503MB video upload
+- [x] Fix the authorization check so site_owner can upload videos (root cause: missing credentials:'include' on fetch calls)
+- [x] Test upload works for owner account (all 257 tests pass)

@@ -107,6 +107,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     const res = await fetch(`/api/chunked/media/chunk/${uploadId}`, {
       method: "POST",
       body: formData,
+      credentials: "include",
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
@@ -128,6 +129,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         const initiateRes = await fetch("/api/chunked/media/initiate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             totalChunks,
             filename: file.name,
@@ -158,6 +160,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         const finalizeRes = await fetch(`/api/chunked/media/finalize/${uploadId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({}),
         });
         if (!finalizeRes.ok) {
