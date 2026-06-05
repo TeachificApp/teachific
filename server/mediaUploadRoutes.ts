@@ -22,6 +22,7 @@ import { tmpdir } from "os";
 import { nanoid } from "nanoid";
 import { storagePutStream } from "./storage";
 import { sdk } from "./_core/sdk";
+import { authenticateRequest } from "./authHelper";
 import { getDb } from "./db";
 import { orgMediaLibrary } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -42,7 +43,7 @@ const upload = multer({
 // ── POST /api/media-upload — new file upload ──────────────────────────────────
 router.post("/", upload.single("file"), async (req: Request, res: Response) => {
   try {
-    const user = await sdk.authenticateRequest(req).catch(() => null);
+    const user = await authenticateRequest(req);
     if (!user) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -82,7 +83,7 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
 // ── POST /api/media-upload/replace — replace existing file, keep same URL ────
 router.post("/replace", upload.single("file"), async (req: Request, res: Response) => {
   try {
-    const user = await sdk.authenticateRequest(req).catch(() => null);
+    const user = await authenticateRequest(req);
     if (!user) {
       res.status(401).json({ error: "Unauthorized" });
       return;

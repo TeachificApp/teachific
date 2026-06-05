@@ -3972,3 +3972,4 @@
 - [x] Test upload works for owner account (all 257 tests pass)
 - [x] Fix "Builder Plan Required" gate: add frontend role bypass in usePlanLimits hook (site_owner/site_admin always get enterprise)
 - [x] Add direct role check in RecordEditPage condition as belt-and-suspenders bypass
+- [x] Fix root cause: chunked upload endpoints only checked Manus OAuth cookie (app_session_id), not Teachific email/password session cookie (teachific_session). Created shared authHelper.ts with dual-auth support and applied to all Express route handlers (chunkedUploadRoutes, mediaUploadRoutes, quizImportRoutes)

@@ -20,6 +20,7 @@ import { processZipVersion, processZip, emitProgress } from "./scormUploadRoutes
 import { storagePutStream } from "./storage";
 import { getPackageById, updatePackage, createPackage } from "./db";
 import { sdk } from "./_core/sdk";
+import { authenticateRequest } from "./authHelper";
 import { ENV } from "./_core/env";
 
 const LARGE_FILE_LIMIT = 3 * 1024 * 1024 * 1024; // 3 GB
@@ -58,7 +59,7 @@ const newPackageSessions = new Map<string, NewPackageSession>();
 
 // ── POST /api/chunked/package/initiate ────────────────────────────────────────
 router.post("/package/initiate", express.json(), async (req: Request, res: Response) => {
-  const user = await sdk.authenticateRequest(req).catch(() => null);
+  const user = await authenticateRequest(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
   const { totalChunks, filename, totalBytes, orgId, uploadedBy, title, displayMode, lmsShellConfig } = req.body;
   if (!totalChunks || !filename || !orgId || !uploadedBy) {
@@ -119,7 +120,7 @@ router.post("/package/finalize/:uploadId", express.json(), async (req: Request, 
       error: `Missing chunks: received ${session.receivedChunks.size} of ${session.totalChunks}`,
     });
   }
-  const user = await sdk.authenticateRequest(req).catch(() => null);
+  const user = await authenticateRequest(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
   const assembledPath = join(tmpdir(), `pkg-assembled-${uploadId}-${session.filename}`);
   try {
@@ -191,7 +192,7 @@ router.post("/version/:packageId/initiate", express.json(), async (req: Request,
   if (fileSizeBytes > LARGE_FILE_LIMIT) {
     let isOwner = false;
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateRequest(req);
       // site_owner and site_admin have unlimited upload access; fallback: openId match
       isOwner = !!(user && (user.role === "site_owner" || user.role === "site_admin" || user.openId === ENV.ownerOpenId));
     } catch {
@@ -381,7 +382,7 @@ router.post("/media/initiate", express.json(), async (req: Request, res: Respons
   if (!totalChunks || !filename || !orgId) {
     return res.status(400).json({ error: "totalChunks, filename, and orgId are required" });
   }
-  const user = await sdk.authenticateRequest(req).catch(() => null);
+  const user = await authenticateRequest(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
   const uploadId = nanoid(16);
@@ -437,7 +438,7 @@ router.post(
         error: `Missing chunks: received ${session.receivedChunks.size} of ${session.totalChunks}`,
       });
     }
-    const user = await sdk.authenticateRequest(req).catch(() => null);
+    const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
     const safeName = session.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);

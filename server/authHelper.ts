@@ -1,0 +1,51 @@
+/**
+ * Shared request authentication helper.
+ * Supports both Manus OAuth (app_session_id) and Teachific email/password (teachific_session) cookies.
+ * Use this instead of sdk.authenticateRequest directly for all Express route handlers.
+ */
+import type { Request } from "express";
+import type { User } from "../drizzle/schema";
+import { sdk } from "./_core/sdk";
+import { getUserById } from "./db";
+
+/** Parse a single named cookie from the Cookie header */
+function parseCookie(cookieHeader: string | undefined, name: string): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** Resolve a user from the custom Teachific email/password session cookie */
+async function resolveTeachificSession(cookieHeader: string | undefined): Promise<User | null> {
+  try {
+    const raw = parseCookie(cookieHeader, "teachific_session");
+    if (!raw) return null;
+    const payload = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (!payload?.userId || typeof payload.userId !== "number") return null;
+    const user = await getUserById(payload.userId);
+    return user ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Authenticate an Express request using both auth methods:
+ * 1. Primary: Manus OAuth (app_session_id cookie)
+ * 2. Fallback: Teachific email/password (teachific_session cookie)
+ *
+ * Returns the authenticated User or null if neither method succeeds.
+ */
+export async function authenticateRequest(req: Request): Promise<(User & { impersonatedBy?: string }) | null> {
+  // Try Manus OAuth first
+  try {
+    const user = await sdk.authenticateRequest(req);
+    return user;
+  } catch {
+    // Fall through to teachific_session
+  }
+
+  // Fallback: custom Teachific email/password session
+  const user = await resolveTeachificSession(req.headers.cookie);
+  return user;
+}

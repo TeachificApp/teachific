@@ -16,6 +16,7 @@ import { storagePut } from "./storage";
 import { parseQuizExcel, exportQuizToExcel, parsedToDbQuestions } from "./quizExcel";
 import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb";
 import { sdk } from "./_core/sdk";
+import { authenticateRequest } from "./authHelper";
 
 // CDN URLs for the pre-built Teachific templates
 const TEMPLATE_ZIP_URL =
@@ -207,7 +208,7 @@ router.get("/export/:quizId", async (req: Request, res: Response) => {
 // Accepts: .csv, .xml, .zip (SCORM package), .xlsx/.xls
 router.post("/bank-import/preview", upload.single("file"), async (req: Request, res: Response) => {
   try {
-    const user = await sdk.authenticateRequest(req).catch(() => null);
+    const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const originalName = req.file.originalname.toLowerCase();
