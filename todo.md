@@ -3970,3 +3970,5 @@
 - [x] Investigate Studio video upload endpoint auth — owner account getting 401 on 503MB video upload
 - [x] Fix the authorization check so site_owner can upload videos (root cause: missing credentials:'include' on fetch calls)
 - [x] Test upload works for owner account (all 257 tests pass)
+- [x] Fix "Builder Plan Required" gate: add frontend role bypass in usePlanLimits hook (site_owner/site_admin always get enterprise)
+- [x] Add direct role check in RecordEditPage condition as belt-and-suspenders bypass

@@ -2591,7 +2591,7 @@ export default function RecordEditPage() {
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {(activeTab === "record" || activeTab === "audio") && !planLoading && !isBuilder ? (
+        {(activeTab === "record" || activeTab === "audio") && !planLoading && !isBuilder && user?.role !== "site_owner" && user?.role !== "site_admin" ? (
           <div className="flex flex-col items-center justify-center h-full gap-6 p-10 text-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
               <Video className="h-8 w-8 text-white" />
