@@ -292,7 +292,7 @@ export default function CreatorLandingPage() {
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
             TeachificCreator™ is a powerful, web-based eLearning authoring tool. Build interactive
             slides, quizzes, branching scenarios, and publish to SCORM 1.2, SCORM 2004, or HTML5 —
-            no desktop software required.
+            all from your browser.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -425,7 +425,7 @@ export default function CreatorLandingPage() {
       <section className="py-16 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">
-            TeachificCreator™ vs. Desktop Authoring Tools
+            TeachificCreator™ vs. Traditional Authoring Tools
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -615,7 +615,7 @@ export default function CreatorLandingPage() {
               </h2>
               <p className="text-lg text-white/60 mb-8">
                 Join thousands of instructional designers who have switched to TeachificCreator™.
-                No desktop software. No PowerPoint plugins. Just pure eLearning authoring power.
+                No installs. No plugins. Just pure web-based eLearning authoring power.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button

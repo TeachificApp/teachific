@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import QuizCreatorPage from "./QuizCreatorPage";
 import { ProductSwitcher } from "@/components/ProductSwitcher";
-import { DownloadPage } from "@/components/DownloadPage";
-import { Download } from "lucide-react";
 
 /**
  * QuizCreatorDashboard
@@ -18,7 +16,6 @@ import { Download } from "lucide-react";
  */
 export default function QuizCreatorDashboard() {
   const { user, loading: authLoading } = useAuth();
-  const [showDownload, setShowDownload] = useState(false);
   const { data: roleData, isLoading: roleLoading } = trpc.quizCreator.getMyRole.useQuery(undefined, {
     enabled: !!user,
   });
@@ -60,7 +57,7 @@ export default function QuizCreatorDashboard() {
           <div className="mb-8">
             <span className="text-3xl font-black tracking-tight">
               <span className="text-white">Quiz</span>
-              <span className="text-teal-400">Creator</span>
+              <span className="text-teal-400">Maker</span>
             </span>
           </div>
           <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-6">
@@ -112,16 +109,16 @@ export default function QuizCreatorDashboard() {
         <div className="flex items-center gap-3">
           <span className="text-xl font-black tracking-tight">
             <span className="text-white">Quiz</span>
-            <span className="text-teal-400">Creator</span>
+            <span className="text-teal-400">Maker</span>
           </span>
           <Badge
             className={
-              qcRole === "desktop"
+              qcRole === "desktop" || qcRole === "bundle"
                 ? "bg-teal-500/20 text-teal-300 border-teal-500/30 text-xs"
                 : "bg-white/10 text-white/60 border-white/20 text-xs"
             }
           >
-            {qcRole === "desktop" ? "Premium" : "Lite"}
+            {qcRole === "desktop" || qcRole === "bundle" ? "Pro" : "Standard"}
           </Badge>
           {qcIsTrialing && qcTrialDaysLeft !== null && (
             <div className="flex items-center gap-1 text-xs bg-[#24abbc]/20 text-[#4ad9e0] border border-[#24abbc]/30 rounded-full px-2 py-0.5">
@@ -133,15 +130,6 @@ export default function QuizCreatorDashboard() {
 
         <div className="flex items-center gap-4">
           <ProductSwitcher current="quizCreator" variant="topbar" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`text-xs gap-1.5 ${showDownload ? "text-teal-400" : "text-white/60 hover:text-white"}`}
-            onClick={() => setShowDownload(!showDownload)}
-          >
-            <Download className="w-3.5 h-3.5" />
-            Download App
-          </Button>
           <span className="text-white/50 text-sm hidden sm:block">{user?.name ?? user?.email}</span>
           <Button
             variant="outline"
@@ -154,15 +142,15 @@ export default function QuizCreatorDashboard() {
         </div>
       </header>
 
-      {/* Lite tier banner */}
+      {/* Free tier banner */}
       {qcRole === "web" && (
         <div className="bg-teal-900/40 border-b border-teal-500/20 px-6 py-2 flex items-center justify-between">
           <p className="text-teal-300 text-xs">
-            <strong>Lite plan:</strong> Up to 10 quizzes, 20 questions per quiz. Encrypted export requires Premium.
+            <strong>Standard plan:</strong> Up to 10 quizzes, 20 questions per quiz. Encrypted export requires Pro.
           </p>
           <Link href="/quiz-creator-pro">
             <Button size="sm" className=" text-xs h-7 px-3 rounded-lg">
-              Upgrade to Premium
+              Upgrade to Pro
             </Button>
           </Link>
         </div>
@@ -170,7 +158,7 @@ export default function QuizCreatorDashboard() {
 
       {/* Full quiz creator tool */}
       <div className="flex-1 overflow-hidden">
-        {showDownload ? <DownloadPage product="quizcreator" /> : <QuizCreatorPage />}
+        <QuizCreatorPage />
       </div>
     </div>
   );

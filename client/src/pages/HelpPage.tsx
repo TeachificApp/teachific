@@ -27,23 +27,23 @@ const FAQS = [
     ],
   },
   {
-    category: "Desktop Apps",
+    category: "Creative Tools",
     items: [
       {
-        q: "Which desktop apps are included with my subscription?",
-        a: "TeachificCreator™, Teachific Studio™, and Teachific QuizMaker™ are each available as separate subscriptions. You can manage your access under My Apps in the dashboard sidebar.",
+        q: "What creative tools are included with my subscription?",
+        a: "Teachific Studio™ (video recording & editing), TeachificCreator™ (eLearning authoring), and Teachific QuizMaker™ (quiz builder) are all web-based tools available within your dashboard. Access depends on your plan tier.",
       },
       {
-        q: "The desktop app shows a blank screen or keeps returning to the login page.",
-        a: "This is usually caused by a session issue. Try signing out from the app menu (App Name → Sign Out), then sign back in. If the problem persists, uninstall and reinstall the latest version from the Downloads page.",
+        q: "Which plan do I need for Teachific Studio™?",
+        a: "Teachific Studio™ is available on the Builder plan and above. It includes browser-based video/audio recording, AI transcription, caption styling, and clip extraction.",
       },
       {
-        q: "How do I update the desktop app?",
-        a: "The app checks for updates automatically on launch. You can also trigger a manual check from the app menu: App Name → Check for Updates. Make sure you have the latest version installed from the Downloads page.",
+        q: "Can I use TeachificCreator™ to build interactive eLearning content?",
+        a: "Yes! TeachificCreator™ is a full web-based authoring tool for creating interactive slides, SCORM packages, and multimedia lessons. Access it from the Studio dashboard or the Creator section.",
       },
       {
-        q: "Where do I download the latest version?",
-        a: "Signed-in subscribers can download the latest installers from the My Apps section in the dashboard sidebar, or directly from the product pages: /creator/download, /studio/download, or /quiz-creator-app/download.",
+        q: "How do I access QuizMaker™?",
+        a: "QuizMaker™ is available from your dashboard under the Quizzes section, or as a standalone tool at /quizzes. You can create quizzes manually, import from SCORM packages, or use AI generation.",
       },
     ],
   },
@@ -149,7 +149,7 @@ export default function HelpPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {[
             { icon: BookOpen, label: "Courses & Content", href: "#Courses & Content" },
-            { icon: Layers, label: "Desktop Apps", href: "#Desktop Apps" },
+            { icon: Layers, label: "Creative Tools", href: "#Creative Tools" },
             { icon: HelpCircle, label: "Account & Billing", href: "#Account & Billing" },
             { icon: Video, label: "Technical", href: "#Technical" },
           ].map(({ icon: Icon, label, href }) => (

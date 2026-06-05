@@ -11,9 +11,9 @@ import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   BookOpen, Plus, Video, Brain, FileCode2, BarChart3,
-  Settings, LogOut, Layers, Zap, ArrowRight, Clock, Download,
+  Settings, LogOut, Layers, Zap, ArrowRight, Clock,
 } from "lucide-react";
-import { DownloadPage } from "@/components/DownloadPage";
+
 import RecordEditPage from "./RecordEditPage";
 
 // ── Tier badge colours ─────────────────────────────────────────────────────
@@ -72,15 +72,16 @@ const NAV_ITEMS = [
   { icon: Video, label: "Record & Upload", href: "#record" },
   { icon: BookOpen, label: "My Courses", href: "/lms/courses" },
   { icon: Brain, label: "Media Library", href: "/media-library" },
+  { icon: Layers, label: "Creator", href: "/creator" },
   { icon: FileCode2, label: "Quiz Builder", href: "/quizzes/new" },
   { icon: Settings, label: "Settings", href: "/profile" },
-  { icon: Download, label: "Download App", href: "#download" },
+
 ];
 
 export default function StudioDashboard() {
   const { user, loading: authLoading } = useAuth();
   const [, navigate] = useLocation();
-  const [activePage, setActivePage] = useState<"dashboard" | "download" | "record">("dashboard");
+  const [activePage, setActivePage] = useState<"dashboard" | "record">("dashboard");
 
   const { data: studioSub, isLoading: subLoading } = trpc.billing.getStudioSubscription.useQuery(undefined, {
     enabled: !!user,
@@ -113,7 +114,7 @@ export default function StudioDashboard() {
 
   // Site owners and admins always have full access — no subscription required
   const isPrivileged = (user as any)?.role === "site_owner" || (user as any)?.role === "site_admin";
-  const tier = isPrivileged ? "desktop" : (studioSub?.tier ?? "none");
+  const tier = isPrivileged ? "pro" : (studioSub?.tier ?? "none");
 
   // ── No active subscription ──────────────────────────────────────────────
   if (!isPrivileged && !studioSub?.isActive) {
@@ -204,12 +205,12 @@ export default function StudioDashboard() {
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {NAV_ITEMS.map((item) =>
-            (item.href === "#download" || item.href === "#record") ? (
+            (item.href === "#record") ? (
               <button
                 key={item.href}
-                onClick={() => setActivePage(item.href === "#download" ? "download" : "record")}
+                onClick={() => setActivePage("record")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer text-sm font-medium ${
-                  (item.href === "#download" && activePage === "download") || (item.href === "#record" && activePage === "record")
+                  activePage === "record"
                     ? "text-white bg-white/10"
                     : "text-white/60 hover:text-white hover:bg-white/10"
                 }`}
@@ -287,7 +288,7 @@ export default function StudioDashboard() {
         </div>
 
         <div className="p-6 max-w-6xl mx-auto space-y-8">
-          {activePage === "download" && <DownloadPage product="studio" />}
+
           {activePage === "record" && (
             <div className="-mx-6 -mt-6">
               <div className="flex items-center gap-2 px-6 py-3 border-b border-white/10">
@@ -300,7 +301,7 @@ export default function StudioDashboard() {
               </div>
             </div>
           )}
-          {activePage !== "download" && activePage !== "record" && <>
+          {activePage !== "record" && <>
           {/* Quick actions */}
           <section>
             <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Quick Actions</h2>
@@ -406,8 +407,8 @@ export default function StudioDashboard() {
                       {isPrivileged && "Full access — no limits"}
                       {!isPrivileged && tier === "none" && "Free tier — upgrade to unlock more"}
                       {!isPrivileged && tier === "web" && "Web app access · 5 GB storage"}
-                      {!isPrivileged && tier === "desktop" && "Desktop + Web · 50 GB storage"}
-                      {!isPrivileged && tier === "bundle" && "Desktop + Web · Unlimited storage · 5 seats"}
+                      {!isPrivileged && tier === "desktop" && "Pro · 50 GB storage"}
+                      {!isPrivileged && tier === "bundle" && "Team · Unlimited storage · 5 seats"}
                     </p>
                   </div>
                   {!isPrivileged && tier !== "desktop" && tier !== "bundle" && (
@@ -422,7 +423,7 @@ export default function StudioDashboard() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   {[
-                    { label: "Courses", value: courses?.length ?? 0, max: isPrivileged || tier === "desktop" || tier === "bundle" ? "∞" : tier === "web" ? 10 : 1 },
+                    { label: "Courses", value: courses?.length ?? 0, max: isPrivileged || tier === "desktop" || tier === "bundle" || tier === "pro" ? "∞" : tier === "web" ? 10 : 1 },
                     { label: "Storage Used", value: "—", max: isPrivileged ? "∞" : tier === "none" ? "100 MB" : tier === "web" ? "5 GB" : "50 GB" },
                     { label: "Team Seats", value: tier === "bundle" ? "5" : "1", max: tier === "bundle" ? "5" : "1" },
                   ].map((stat) => (

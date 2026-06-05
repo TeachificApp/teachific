@@ -3944,3 +3944,15 @@
 - [x] Vitest: 12 passing tests for Zapier integration
 - [x] Add webhook test/ping functionality
 - [x] Integrate dispatch calls into existing event flows (enrollment, form submission, orders)
+
+## Product Restructuring: Web-Only Focus (June 2026)
+- [x] Remove all desktop app download links and references from UI
+- [x] Remove "Lite" branding from TeachificStudio (no more "Studio Lite")
+- [x] Remove desktop app marketing copy from Home/landing pages
+- [x] Make TeachificStudio purely web-based in all copy and navigation
+- [x] Fold Creator tools into TeachificStudio (remove separate Creator app nav/access)
+- [x] Remove QuizMaker desktop app references
+- [x] Make QuizMaker web-only in all copy
+- [x] Port SCORM/QTI import for quiz questions (QTI 1.2 + 2.1, MCQ/TF/FillBlank/ShortAnswer/Matching/Essay)
+- [x] Keep all backend code intact for future desktop app use
+- [x] Update pricing/features copy to reflect web-only products

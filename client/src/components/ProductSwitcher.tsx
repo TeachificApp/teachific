@@ -56,17 +56,6 @@ const PRODUCTS = [
     bg: "bg-[#24abbc]/10 hover:bg-[#24abbc]/20",
     border: "border-[#24abbc]/30",
   },
-  {
-    key: "creator" as const,
-    label: "TeachificCreator™",
-    shortLabel: "Creator",
-    href: "/creator",
-    external: false,
-    iconUrl: PRODUCT_ICON_URLS.creator,
-    color: "text-[#4ad9e0]",
-    bg: "bg-[#24abbc]/10 hover:bg-[#24abbc]/20",
-    border: "border-[#24abbc]/30",
-  },
 ];
 
 export function ProductSwitcher({ current, variant = "topbar" }: ProductSwitcherProps) {
@@ -76,8 +65,7 @@ export function ProductSwitcher({ current, variant = "topbar" }: ProductSwitcher
 
   const subscriptionMap: Record<string, boolean> = {
     lms: subs.lms.isActive,
-    studio: subs.studio.isActive,
-    creator: subs.creator.isActive,
+    studio: subs.studio.isActive || subs.creator.isActive,
     quizCreator: subs.quizCreator.isActive,
   };
 

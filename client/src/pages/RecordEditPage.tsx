@@ -2554,9 +2554,8 @@ export default function RecordEditPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold">Teachific Studio™</h1>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-700">Lite</span>
           </div>
-          <p className="text-sm text-muted-foreground">Browser-based recording &amp; editing — for the full desktop experience, download Teachific Studio™</p>
+          <p className="text-sm text-muted-foreground">Record, edit, and publish professional video and audio content</p>
         </div>
         {lastSavedItem && (
           <div className="flex items-center gap-2 text-sm text-teal-600">
@@ -2566,41 +2565,7 @@ export default function RecordEditPage() {
         )}
       </div>
 
-      {/* Desktop App Upsell Banner */}
-      <div className="mx-6 mt-4 shrink-0 rounded-xl border border-teal-200 dark:border-teal-800 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 p-4 flex items-center gap-4">
-        <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#0e8a96] to-[#0a6e78] flex items-center justify-center shrink-0 shadow-sm">
-          <Video className="h-6 w-6 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-teal-900 dark:text-teal-100">Unlock the full Teachific Studio™ desktop app</p>
-            {studioVersion && (
-              <span className="text-xs font-mono text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/50 px-1.5 py-0.5 rounded">v{studioVersion.version}</span>
-            )}
-          </div>
-          <p className="text-xs text-teal-700 dark:text-teal-300 mt-0.5">
-            HD MP4 export &nbsp;·&nbsp; Multi-track editing &nbsp;·&nbsp; Auto-generate 10 highlight clips &nbsp;·&nbsp; Instant video sharing &nbsp;·&nbsp; AI transcription
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            className="gap-1.5 bg-[#0e8a96] hover:bg-[#0a6e78] text-white text-xs"
-            onClick={() => { window.location.href = isPro ? "/studio-pro" : "/apps"; }}
-          >
-            <Download className="h-3.5 w-3.5" />
-            {isPro ? "Download App" : "Get Desktop App"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-300 dark:hover:bg-teal-900/30 text-xs"
-            onClick={() => setLocation("/studio")}
-          >
-            Learn More
-          </Button>
-        </div>
-      </div>
+
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 px-6 border-b border-border bg-background shrink-0">
@@ -2646,16 +2611,7 @@ export default function RecordEditPage() {
                 <Zap className="h-4 w-4" />
                 Upgrade to Builder
               </Button>
-              <Button
-                variant="outline"
-                className="gap-2"
-                onClick={() => { window.location.href = isPro ? "/studio-pro" : "/apps"; }}
-              >
-                <Download className="h-4 w-4" />
-                {isPro ? "Download Desktop App" : "Get Desktop App"}
-              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">The Teachific Studio™ desktop app requires a <strong>Pro or Enterprise</strong> plan, or is available as a standalone purchase.</p>
           </div>
         ) : (
           <>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { downloadQuiz, openQuizFile } from "../lib/quizFile";
 import { importISpringQuiz, isISpringQuizFile } from "../lib/ispringImporter";
+import { importScormQuiz, isScormPackage } from "../lib/scormImporter";
 import {
   Save,
   FolderOpen,
@@ -137,6 +138,36 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
     setFileMenuOpen(false);
   };
 
+  const handleImportScorm = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".zip";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const result = await importScormQuiz(file, async (mediaFile) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(mediaFile);
+          });
+        });
+        loadQuiz(result.quiz, file.name);
+        const msg = `SCORM Import Complete!\n\n• ${result.questionCount} questions extracted\n• ${result.mediaCount} media files\n• SCORM Version: ${result.scormVersion}`;
+        if (result.warnings.length > 0) {
+          alert(msg + `\n\nWarnings:\n${result.warnings.join("\n")}`);
+        } else {
+          alert(msg);
+        }
+      } catch (err) {
+        alert("SCORM Import failed: " + (err as Error).message);
+      }
+    };
+    input.click();
+    setFileMenuOpen(false);
+  };
+
   const tierBadge = {
     free: { label: "Free", color: "bg-gray-100 text-gray-600" },
     pro: { label: "Pro", color: "bg-teal-100 text-teal-700" },
@@ -202,6 +233,12 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
               >
                 <FileArchive className="w-4 h-4 text-orange-400" /> Import iSpring .quiz
+              </button>
+              <button
+                onClick={handleImportScorm}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
+              >
+                <FileArchive className="w-4 h-4 text-teal-500" /> Import SCORM Package
               </button>
               <div className="border-t border-gray-100" />
               <button

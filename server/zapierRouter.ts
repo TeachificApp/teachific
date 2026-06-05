@@ -442,7 +442,7 @@ export const zapierRouter = router({
         .limit(input?.limit ?? 20);
 
       // Join webhook URL for display
-      const webhookIds = [...new Set(logs.map(l => l.webhookId))];
+      const webhookIds = Array.from(new Set(logs.map(l => l.webhookId)));
       const webhookMap = new Map<number, string>();
       if (webhookIds.length > 0) {
         const webhookRows = await db
