@@ -3973,3 +3973,11 @@
 - [x] Fix "Builder Plan Required" gate: add frontend role bypass in usePlanLimits hook (site_owner/site_admin always get enterprise)
 - [x] Add direct role check in RecordEditPage condition as belt-and-suspenders bypass
 - [x] Fix root cause: chunked upload endpoints only checked Manus OAuth cookie (app_session_id), not Teachific email/password session cookie (teachific_session). Created shared authHelper.ts with dual-auth support and applied to all Express route handlers (chunkedUploadRoutes, mediaUploadRoutes, quizImportRoutes)
+
+## Video URL Import Feature (PR #7 Sync)
+- [x] Sync PR #7 changes from GitHub (reviewed diff, applied manually)
+- [x] Adapt server/videoScraper.ts to use Node.js-native libraries (replaced yt-dlp with @distube/ytdl-core for YouTube, kept meta-tag scraping for other sites, removed ffmpeg/python deps)
+- [x] Verify lmsRouter.ts importFromUrl endpoint works with Node.js approach
+- [x] Verify RecordEditPage.tsx "Import from URL" UI (Globe icon, URL input, Import button with loading state)
+- [x] Test video import from direct URLs (.mp4) — supported via Node.js fetch + stream
+- [x] Test video import from YouTube URLs — supported via @distube/ytdl-core npm package

@@ -7,7 +7,8 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember } from "./db";
 import { invokeLLM } from "./_core/llm";
-import { storagePut, storagePresignedPut } from "./storage";
+import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
+import { scrapeVideoFromUrl, cleanupScrapedVideo } from "./videoScraper";
 import { nanoid } from "nanoid";
 import {
   getCoursesByOrg,
@@ -1418,6 +1419,60 @@ export const lmsRouter = router({
         const { orgMediaLibrary } = await import("../drizzle/schema");
         await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id, filename: input.filename, mimeType: input.mimeType, fileSize: input.fileSize, fileKey: input.fileKey, url: input.url, folderId: input.folderId ?? null, altText: input.altText ?? null, source: input.source ?? "direct" });
         return { ok: true };
+      }),
+    // Import a video from an external URL (YouTube, Facebook, LinkedIn, direct .mp4)
+    importFromUrl: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        url: z.string().url(),
+        folderId: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await (await import("./db")).getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+        console.log(`[importFromUrl] User ${ctx.user.id} importing from: ${input.url}`);
+        let scraped;
+        try {
+          scraped = await scrapeVideoFromUrl(input.url);
+        } catch (err: any) {
+          console.error(`[importFromUrl] Scrape failed:`, err.message);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: err.message || "Failed to extract video from URL",
+          });
+        }
+
+        try {
+          const suffix = `${Date.now()}-${nanoid(6)}`;
+          const safeFileName = scraped.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const fileKey = `lms-media/${input.orgId}/${suffix}-${safeFileName}`;
+
+          const { url: s3Url } = await storagePutStream(fileKey, scraped.filePath, scraped.mimeType);
+
+          const { orgMediaLibrary } = await import("../drizzle/schema");
+          const { eq } = await import("drizzle-orm");
+          const [result] = await db.insert(orgMediaLibrary).values({
+            orgId: input.orgId,
+            uploadedBy: ctx.user.id,
+            filename: scraped.title || scraped.fileName,
+            mimeType: scraped.mimeType,
+            fileSize: scraped.fileSize,
+            fileKey,
+            url: s3Url,
+            durationSeconds: scraped.durationSeconds ?? null,
+            source: "direct",
+            tags: JSON.stringify(["import", "url-import"]),
+            folderId: input.folderId ?? null,
+          });
+
+          const id = (result as any).insertId as number;
+          const rows = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, id)).limit(1);
+          console.log(`[importFromUrl] Success — mediaId=${id}, size=${(scraped.fileSize / 1024 / 1024).toFixed(1)}MB`);
+          return rows[0];
+        } finally {
+          await cleanupScrapedVideo(scraped.filePath);
+        }
       }),
     deleteOrgMedia: protectedProcedure
       .input(z.object({ id: z.number() }))
