@@ -3981,3 +3981,10 @@
 - [x] Verify RecordEditPage.tsx "Import from URL" UI (Globe icon, URL input, Import button with loading state)
 - [x] Test video import from direct URLs (.mp4) — supported via Node.js fetch + stream
 - [x] Test video import from YouTube URLs — supported via @distube/ytdl-core npm package
+
+## Sync from ultrasound-app (Stripe, Admin UI, User UI)
+- [x] Wire up fulfillOrderBumpPurchase in confirmHostedCheckout (order bumps are charged but access never granted) — CRITICAL BUG FIX
+- [x] Wire up fulfillOrderBumpPurchase in stripeWebhookRoutes for course purchases
+- [x] Update FunnelBlocks InlineOrderBumpBlock — already more comprehensive than ultrasound-app (strikethrough, +Add/Added, physical support already present)
+- [x] Add Funnel Builder card to PlatformAdmin tools grid — already present in Marketing nav (Teachific PlatformAdmin is 3720 lines vs ultrasound-app's 1510)
+- [x] Verify order bump fulfillment works for all product types — fulfillOrderBumpPurchase now called in both confirmHostedCheckout and stripeWebhookRoutes

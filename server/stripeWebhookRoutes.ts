@@ -15,6 +15,7 @@ import { getCourseById } from "./lmsDb";
 import { teachificPayDisputes, teachificPayCharges, organizations, users } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
+import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 
 const router = express.Router();
 
@@ -77,6 +78,16 @@ router.post(
                         amountPaid,
                       }),
                     });
+                    // Fulfill order bump purchases (non-blocking)
+                    const db2 = await getDb();
+                    if (db2) {
+                      const meta = (session.metadata ?? {}) as Record<string, string>;
+                      await fulfillOrderBumpPurchase(db2, meta, {
+                        userId: user.id,
+                        sessionId: session.id as string,
+                        triggerOrderType: "course",
+                      }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
+                    }
                     // Dispatch Zapier new_order event (non-blocking)
                     import("./zapierRouter").then(({ dispatchZapierEvent }) => {
                       dispatchZapierEvent(orgId, "new_order", {

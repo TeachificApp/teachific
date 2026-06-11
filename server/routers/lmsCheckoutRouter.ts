@@ -38,6 +38,7 @@ import {
   orderBumps,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
+import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
@@ -644,6 +645,27 @@ export const lmsCheckoutLearnerRouter = router({
 
       // Grant access (with seat count for team purchases)
       await grantAccess(db, contentType, content, ctx.user.id, session, seatCount);
+
+      // Fulfill order bump purchases (grant access to bump products)
+      const meta = (session.metadata ?? {}) as Record<string, string>;
+      await fulfillOrderBumpPurchase(db, meta, {
+        userId: ctx.user.id,
+        sessionId: session.id,
+        triggerOrderType: contentType as any,
+      }).catch((err: any) => console.error("[Checkout] Order bump fulfillment error:", err.message));
+
+      // Also handle multiple bumps stored as selected_bump_ids in metadata
+      if (meta.selected_bump_ids) {
+        const bumpIds = meta.selected_bump_ids.split(",").map(Number).filter(Boolean);
+        for (const bumpId of bumpIds) {
+          const bumpMeta = { ...meta, order_bump_id: String(bumpId) };
+          await fulfillOrderBumpPurchase(db, bumpMeta, {
+            userId: ctx.user.id,
+            sessionId: session.id,
+            triggerOrderType: contentType as any,
+          }).catch((err: any) => console.error(`[Checkout] Bump ${bumpId} fulfillment error:`, err.message));
+        }
+      }
 
       return { success: true, alreadyGranted: false, slug: content.slug, contentType };
     }),
