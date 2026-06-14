@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   CheckCircle2,
   XCircle,
@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 export default function ThinkificImportPage() {
-  const { toast } = useToast();
   const { data: orgs } = trpc.orgs.myOrgs.useQuery();
   const orgId = orgs?.[0]?.id ?? 0;
 
@@ -38,7 +37,7 @@ export default function ThinkificImportPage() {
 
   const connectMut = trpc.platformImport.thinkific.connect.useMutation({
     onSuccess: (data) => {
-      toast({ title: "Connected!", description: `Successfully connected to ${data.siteName}.` });
+      toast.success(`Successfully connected to ${data.siteName}.`);
       setSubdomain("");
       setApiKey("");
       setConnectError(null);
@@ -51,42 +50,33 @@ export default function ThinkificImportPage() {
 
   const disconnectMut = trpc.platformImport.thinkific.disconnect.useMutation({
     onSuccess: () => {
-      toast({ title: "Disconnected", description: "Thinkific integration removed." });
+      toast.success("Thinkific integration removed.");
       refetchStatus();
     },
   });
 
   const syncUsersMut = trpc.platformImport.thinkific.syncUsers.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: "Users synced",
-        description: `Imported ${data.imported} new users, ${data.skipped} already existed, ${data.errors} errors.`,
-      });
+      toast.success(`Imported ${data.imported} new users, ${data.skipped} already existed, ${data.errors} errors.`);
       refetchStatus();
     },
-    onError: (err) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error(err.message),
   });
 
   const syncCoursesMut = trpc.platformImport.thinkific.syncCourses.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: "Courses synced",
-        description: `Imported ${data.imported} new courses, ${data.skipped} already existed, ${data.errors} errors.`,
-      });
+      toast.success(`Imported ${data.imported} new courses, ${data.skipped} already existed, ${data.errors} errors.`);
       refetchStatus();
     },
-    onError: (err) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error(err.message),
   });
 
   const syncEnrollmentsMut = trpc.platformImport.thinkific.syncEnrollments.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: "Enrollments synced",
-        description: `Imported ${data.imported} new enrollments, ${data.skipped} skipped, ${data.errors} errors.`,
-      });
+      toast.success(`Imported ${data.imported} new enrollments, ${data.skipped} skipped, ${data.errors} errors.`);
       refetchStatus();
     },
-    onError: (err) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error(err.message),
   });
 
   const isAnySyncing =

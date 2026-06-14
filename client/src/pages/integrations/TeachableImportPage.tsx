@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
   CheckCircle2,
   XCircle,
@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 export default function TeachableImportPage() {
-  const { toast } = useToast();
   const { data: orgs } = trpc.orgs.myOrgs.useQuery();
   const orgId = orgs?.[0]?.id ?? 0;
 
@@ -37,7 +36,7 @@ export default function TeachableImportPage() {
 
   const connectMut = trpc.platformImport.teachable.connect.useMutation({
     onSuccess: (data) => {
-      toast({ title: "Connected!", description: `Successfully connected to ${data.schoolName}.` });
+      toast.success(`Successfully connected to ${data.schoolName}.`);
       setApiKey("");
       setConnectError(null);
       refetchStatus();
@@ -49,42 +48,33 @@ export default function TeachableImportPage() {
 
   const disconnectMut = trpc.platformImport.teachable.disconnect.useMutation({
     onSuccess: () => {
-      toast({ title: "Disconnected", description: "Teachable integration removed." });
+      toast.success("Teachable integration removed.");
       refetchStatus();
     },
   });
 
   const syncUsersMut = trpc.platformImport.teachable.syncUsers.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: "Users synced",
-        description: `Imported ${data.imported} new users, ${data.skipped} already existed, ${data.errors} errors.`,
-      });
+      toast.success(`Imported ${data.imported} new users, ${data.skipped} already existed, ${data.errors} errors.`);
       refetchStatus();
     },
-    onError: (err) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error(err.message),
   });
 
   const syncCoursesMut = trpc.platformImport.teachable.syncCourses.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: "Courses synced",
-        description: `Imported ${data.imported} new courses, ${data.skipped} already existed, ${data.errors} errors.`,
-      });
+      toast.success(`Imported ${data.imported} new courses, ${data.skipped} already existed, ${data.errors} errors.`);
       refetchStatus();
     },
-    onError: (err) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error(err.message),
   });
 
   const syncEnrollmentsMut = trpc.platformImport.teachable.syncEnrollments.useMutation({
     onSuccess: (data) => {
-      toast({
-        title: "Enrollments synced",
-        description: `Imported ${data.imported} new enrollments, ${data.skipped} skipped, ${data.errors} errors.`,
-      });
+      toast.success(`Imported ${data.imported} new enrollments, ${data.skipped} skipped, ${data.errors} errors.`);
       refetchStatus();
     },
-    onError: (err) => toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+    onError: (err) => toast.error(err.message),
   });
 
   const isAnySyncing =
