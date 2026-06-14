@@ -12,10 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import {
   ArrowLeft, Settings, Layers, Users, Shield, Mail, ExternalLink,
-  Plus, Trash2, Edit2, Eye, EyeOff, GripVertical, X, Check, Ban, ImageIcon
+  Plus, Trash2, Edit2, GripVertical, X, Check, Ban, ImageIcon,
+  Clock, UserCheck, UserX, ChevronUp, ChevronDown
 } from "lucide-react";
 
 export default function CommunityManagePage() {
@@ -31,7 +33,7 @@ export default function CommunityManagePage() {
     { enabled: !!hubId }
   );
 
-  // Spaces
+  // Spaces (Channels)
   const { data: spaces = [] } = trpc.community.listSpacesByHubId.useQuery(
     { hubId },
     { enabled: !!hubId }
@@ -39,6 +41,18 @@ export default function CommunityManagePage() {
 
   // Members
   const { data: members = [] } = trpc.community.listAllMembersByHub.useQuery(
+    { hubId },
+    { enabled: !!hubId }
+  );
+
+  // Pending Members
+  const { data: pendingMembers = [] } = trpc.community.listPendingMembers.useQuery(
+    { hubId },
+    { enabled: !!hubId }
+  );
+
+  // Admin Profiles
+  const { data: adminProfiles = [] } = trpc.community.listAdminProfiles.useQuery(
     { hubId },
     { enabled: !!hubId }
   );
@@ -67,7 +81,7 @@ export default function CommunityManagePage() {
   const createSpace = trpc.community.createSpaceForHub.useMutation({
     onSuccess: () => {
       utils.community.listSpacesByHubId.invalidate({ hubId });
-      toast.success("Space created");
+      toast.success("Channel created");
       setSpaceDialog(false);
     },
     onError: (e) => toast.error(e.message),
@@ -76,7 +90,7 @@ export default function CommunityManagePage() {
   const updateSpace = trpc.community.updateSpace.useMutation({
     onSuccess: () => {
       utils.community.listSpacesByHubId.invalidate({ hubId });
-      toast.success("Space updated");
+      toast.success("Channel updated");
       setSpaceDialog(false);
       setEditingSpace(null);
     },
@@ -86,7 +100,15 @@ export default function CommunityManagePage() {
   const deleteSpace = trpc.community.deleteSpace.useMutation({
     onSuccess: () => {
       utils.community.listSpacesByHubId.invalidate({ hubId });
-      toast.success("Space archived");
+      toast.success("Channel archived");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const reorderSpaces = trpc.community.reorderSpaces.useMutation({
+    onSuccess: () => {
+      utils.community.listSpacesByHubId.invalidate({ hubId });
+      toast.success("Order saved");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -95,6 +117,42 @@ export default function CommunityManagePage() {
     onSuccess: () => {
       utils.community.listAllMembersByHub.invalidate({ hubId });
       toast.success("Member banned");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const approveMember = trpc.community.approveMember.useMutation({
+    onSuccess: () => {
+      utils.community.listPendingMembers.invalidate({ hubId });
+      utils.community.listAllMembersByHub.invalidate({ hubId });
+      toast.success("Member updated");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const createAdminProfile = trpc.community.createAdminProfile.useMutation({
+    onSuccess: () => {
+      utils.community.listAdminProfiles.invalidate({ hubId });
+      toast.success("Admin profile created");
+      setProfileDialog(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateAdminProfile = trpc.community.updateAdminProfile.useMutation({
+    onSuccess: () => {
+      utils.community.listAdminProfiles.invalidate({ hubId });
+      toast.success("Admin profile updated");
+      setProfileDialog(false);
+      setEditingProfile(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteAdminProfile = trpc.community.deleteAdminProfile.useMutation({
+    onSuccess: () => {
+      utils.community.listAdminProfiles.invalidate({ hubId });
+      toast.success("Admin profile deleted");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -148,7 +206,7 @@ export default function CommunityManagePage() {
     setHubSettingsInit(true);
   }
 
-  // Space dialog state
+  // Space/Channel dialog state
   const [spaceDialog, setSpaceDialog] = useState(false);
   const [editingSpace, setEditingSpace] = useState<any>(null);
   const [spaceName, setSpaceName] = useState("");
@@ -158,9 +216,24 @@ export default function CommunityManagePage() {
   const [spaceCoverImageUrl, setSpaceCoverImageUrl] = useState("");
   const [spaceCoverUploading, setSpaceCoverUploading] = useState(false);
 
+  // Admin Profile dialog state
+  const [profileDialog, setProfileDialog] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<any>(null);
+  const [profileName, setProfileName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState("");
+
   // Invite state
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteSpaceId, setInviteSpaceId] = useState<number | null>(null);
+
+  // Sort order state
+  const [sortOrderList, setSortOrderList] = useState<any[]>([]);
+  const [sortInitialized, setSortInitialized] = useState(false);
+  if (spaces.length > 0 && !sortInitialized) {
+    setSortOrderList([...spaces]);
+    setSortInitialized(true);
+  }
 
   const openNewSpace = () => {
     setEditingSpace(null);
@@ -182,6 +255,22 @@ export default function CommunityManagePage() {
     setSpaceDialog(true);
   };
 
+  const openNewProfile = () => {
+    setEditingProfile(null);
+    setProfileName("");
+    setProfileBio("");
+    setProfileAvatarUrl("");
+    setProfileDialog(true);
+  };
+
+  const openEditProfile = (profile: any) => {
+    setEditingProfile(profile);
+    setProfileName(profile.name ?? "");
+    setProfileBio(profile.bio ?? "");
+    setProfileAvatarUrl(profile.avatarUrl ?? "");
+    setProfileDialog(true);
+  };
+
   const handleSpaceCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -200,7 +289,7 @@ export default function CommunityManagePage() {
   };
 
   const handleSaveSpace = () => {
-    if (!spaceName.trim()) return toast.error("Space name is required");
+    if (!spaceName.trim()) return toast.error("Channel name is required");
     if (editingSpace) {
       updateSpace.mutate({
         spaceId: editingSpace.id,
@@ -221,6 +310,43 @@ export default function CommunityManagePage() {
         coverImageUrl: spaceCoverImageUrl || undefined,
       });
     }
+  };
+
+  const handleSaveProfile = () => {
+    if (!profileName.trim()) return toast.error("Profile name is required");
+    if (editingProfile) {
+      updateAdminProfile.mutate({
+        id: editingProfile.id,
+        name: profileName,
+        bio: profileBio || undefined,
+        avatarUrl: profileAvatarUrl || undefined,
+      });
+    } else {
+      createAdminProfile.mutate({
+        hubId,
+        name: profileName,
+        bio: profileBio || undefined,
+        avatarUrl: profileAvatarUrl || undefined,
+      });
+    }
+  };
+
+  const moveSpaceUp = (index: number) => {
+    if (index === 0) return;
+    const newList = [...sortOrderList];
+    [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]];
+    setSortOrderList(newList);
+  };
+
+  const moveSpaceDown = (index: number) => {
+    if (index >= sortOrderList.length - 1) return;
+    const newList = [...sortOrderList];
+    [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+    setSortOrderList(newList);
+  };
+
+  const saveSortOrder = () => {
+    reorderSpaces.mutate({ spaceIds: sortOrderList.map((s) => s.id) });
   };
 
   if (hubLoading) {
@@ -266,21 +392,32 @@ export default function CommunityManagePage() {
       </div>
 
       <Tabs defaultValue="settings">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="flex w-full overflow-x-auto">
           <TabsTrigger value="settings" className="gap-1.5">
             <Settings className="h-3.5 w-3.5" /> Settings
           </TabsTrigger>
-          <TabsTrigger value="spaces" className="gap-1.5">
-            <Layers className="h-3.5 w-3.5" /> Spaces
+          <TabsTrigger value="channels" className="gap-1.5">
+            <Layers className="h-3.5 w-3.5" /> Channels
+          </TabsTrigger>
+          <TabsTrigger value="sort-order" className="gap-1.5">
+            <GripVertical className="h-3.5 w-3.5" /> Sort Order
           </TabsTrigger>
           <TabsTrigger value="members" className="gap-1.5">
             <Users className="h-3.5 w-3.5" /> Members
           </TabsTrigger>
+          <TabsTrigger value="pending" className="gap-1.5">
+            <Clock className="h-3.5 w-3.5" /> Pending
+            {pendingMembers.length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 min-w-5 text-xs px-1">
+                {pendingMembers.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="admin-profiles" className="gap-1.5">
+            <UserCheck className="h-3.5 w-3.5" /> Admin Profiles
+          </TabsTrigger>
           <TabsTrigger value="moderation" className="gap-1.5">
             <Shield className="h-3.5 w-3.5" /> Moderation
-          </TabsTrigger>
-          <TabsTrigger value="invites" className="gap-1.5">
-            <Mail className="h-3.5 w-3.5" /> Invites
           </TabsTrigger>
         </TabsList>
 
@@ -336,15 +473,15 @@ export default function CommunityManagePage() {
           </Card>
         </TabsContent>
 
-        {/* ── Spaces ── */}
-        <TabsContent value="spaces" className="space-y-4 mt-4">
+        {/* ── Channels (formerly Spaces) ── */}
+        <TabsContent value="channels" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold">Spaces</h3>
-              <p className="text-sm text-muted-foreground">Organize your community into topic-based spaces</p>
+              <h3 className="font-semibold">Channels</h3>
+              <p className="text-sm text-muted-foreground">Organize your community into topic-based channels</p>
             </div>
             <Button onClick={openNewSpace} className="gap-2">
-              <Plus className="h-4 w-4" /> New Space
+              <Plus className="h-4 w-4" /> New Channel
             </Button>
           </div>
 
@@ -352,9 +489,9 @@ export default function CommunityManagePage() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Layers className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No spaces yet</p>
-                <p className="text-sm">Create your first space to organize community discussions</p>
-                <Button className="mt-4" onClick={openNewSpace}>Create Space</Button>
+                <p className="font-medium">No channels yet</p>
+                <p className="text-sm">Create your first channel to organize community discussions</p>
+                <Button className="mt-4" onClick={openNewSpace}>Create Channel</Button>
               </CardContent>
             </Card>
           ) : (
@@ -362,7 +499,6 @@ export default function CommunityManagePage() {
               {spaces.map((space) => (
                 <Card key={space.id} className="hover:shadow-sm transition-shadow">
                   <CardContent className="py-3 px-4 flex items-center gap-3">
-                    <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
                     <span className="text-xl">{space.emoji}</span>
                     {(space as any).coverImageUrl && (
                       <img src={(space as any).coverImageUrl} alt="" className="h-8 w-12 object-cover rounded" />
@@ -385,7 +521,7 @@ export default function CommunityManagePage() {
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         onClick={() => {
-                          if (confirm("Archive this space?")) deleteSpace.mutate({ spaceId: space.id });
+                          if (confirm("Archive this channel?")) deleteSpace.mutate({ spaceId: space.id });
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -398,11 +534,72 @@ export default function CommunityManagePage() {
           )}
         </TabsContent>
 
+        {/* ── Sort Order ── */}
+        <TabsContent value="sort-order" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">Channel Sort Order</h3>
+              <p className="text-sm text-muted-foreground">Drag channels to reorder how they appear to members</p>
+            </div>
+            <Button
+              onClick={saveSortOrder}
+              disabled={reorderSpaces.isPending}
+            >
+              {reorderSpaces.isPending ? "Saving…" : "Save Order"}
+            </Button>
+          </div>
+
+          {sortOrderList.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <GripVertical className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No channels to reorder</p>
+                <p className="text-sm">Create channels first, then come back to arrange them</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-1">
+              {sortOrderList.map((space, index) => (
+                <Card key={space.id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="py-2.5 px-4 flex items-center gap-3">
+                    <div className="flex flex-col gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => moveSpaceUp(index)}
+                        disabled={index === 0}
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => moveSpaceDown(index)}
+                        disabled={index >= sortOrderList.length - 1}
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-lg">{space.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{space.name}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">#{index + 1}</span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
         {/* ── Members ── */}
         <TabsContent value="members" className="space-y-4 mt-4">
           <div>
             <h3 className="font-semibold">Members</h3>
-            <p className="text-sm text-muted-foreground">{members.length} total members across all spaces</p>
+            <p className="text-sm text-muted-foreground">{members.length} total members across all channels</p>
           </div>
 
           {members.length === 0 ? (
@@ -410,7 +607,7 @@ export default function CommunityManagePage() {
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p className="font-medium">No members yet</p>
-                <p className="text-sm">Members will appear here once they join your community spaces</p>
+                <p className="text-sm">Members will appear here once they join your community channels</p>
               </CardContent>
             </Card>
           ) : (
@@ -446,6 +643,129 @@ export default function CommunityManagePage() {
                     {member.isBanned && (
                       <Badge variant="destructive" className="text-xs">Banned</Badge>
                     )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Pending ── */}
+        <TabsContent value="pending" className="space-y-4 mt-4">
+          <div>
+            <h3 className="font-semibold">Pending Approvals</h3>
+            <p className="text-sm text-muted-foreground">
+              {pendingMembers.length} member{pendingMembers.length !== 1 ? "s" : ""} awaiting approval
+            </p>
+          </div>
+
+          {pendingMembers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <Clock className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No pending requests</p>
+                <p className="text-sm">All membership requests have been processed</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {pendingMembers.map((member: any) => (
+                <Card key={member.id} className="border-amber-200 bg-amber-50/30">
+                  <CardContent className="py-3 px-4 flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      {member.userAvatar && <AvatarImage src={member.userAvatar} />}
+                      <AvatarFallback className="text-xs">
+                        {(member.userName ?? "U").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{member.userName ?? "Unknown"}</p>
+                      <p className="text-xs text-muted-foreground">{member.userEmail}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Requested {new Date(member.joinedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-green-700 border-green-300 hover:bg-green-50"
+                        onClick={() => approveMember.mutate({ memberId: member.id, action: "approve" })}
+                        disabled={approveMember.isPending}
+                      >
+                        <UserCheck className="h-3.5 w-3.5" /> Approve
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/5"
+                        onClick={() => approveMember.mutate({ memberId: member.id, action: "reject" })}
+                        disabled={approveMember.isPending}
+                      >
+                        <UserX className="h-3.5 w-3.5" /> Reject
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Admin Profiles ── */}
+        <TabsContent value="admin-profiles" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">Admin Profiles</h3>
+              <p className="text-sm text-muted-foreground">Manage admin and moderator profiles that appear in the community</p>
+            </div>
+            <Button onClick={openNewProfile} className="gap-2">
+              <Plus className="h-4 w-4" /> New Profile
+            </Button>
+          </div>
+
+          {adminProfiles.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <UserCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No admin profiles yet</p>
+                <p className="text-sm">Create admin profiles to identify moderators and admins in the community</p>
+                <Button className="mt-4" onClick={openNewProfile}>Create Profile</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {adminProfiles.map((profile: any) => (
+                <Card key={profile.id} className="hover:shadow-sm transition-shadow">
+                  <CardContent className="py-3 px-4 flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      {profile.avatarUrl && <AvatarImage src={profile.avatarUrl} />}
+                      <AvatarFallback className="text-sm font-medium">
+                        {profile.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{profile.name}</p>
+                      {profile.bio && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{profile.bio}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEditProfile(profile)}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          if (confirm("Delete this admin profile?"))
+                            deleteAdminProfile.mutate({ id: profile.id });
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -511,107 +831,13 @@ export default function CommunityManagePage() {
             </div>
           )}
         </TabsContent>
-
-        {/* ── Invites ── */}
-        <TabsContent value="invites" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Send Invite</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Email Address</Label>
-                  <Input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="learner@example.com"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Space</Label>
-                  <Select
-                    value={inviteSpaceId?.toString() ?? ""}
-                    onValueChange={(v) => setInviteSpaceId(parseInt(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a space" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {spaces.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.emoji} {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button
-                onClick={() => {
-                  if (!inviteEmail || !inviteSpaceId) return toast.error("Email and space are required");
-                  createInvite.mutate({
-                    spaceId: inviteSpaceId,
-                    email: inviteEmail,
-                  });
-                }}
-                disabled={createInvite.isPending}
-                className="gap-2"
-              >
-                <Mail className="h-4 w-4" />
-                {createInvite.isPending ? "Sending…" : "Send Invite"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {invites.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Pending Invites</h4>
-              {invites.map((invite) => (
-                <Card key={invite.id}>
-                  <CardContent className="py-3 px-4 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{invite.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Space #{invite.spaceId} · Sent {new Date(invite.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        invite.status === "accepted"
-                          ? "default"
-                          : invite.status === "revoked"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                      className="text-xs capitalize"
-                    >
-                      {invite.status}
-                    </Badge>
-                    {invite.status === "pending" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => revokeInvite.mutate({ inviteId: invite.id })}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
 
-      {/* Space Dialog */}
+      {/* Channel Dialog */}
       <Dialog open={spaceDialog} onOpenChange={setSpaceDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingSpace ? "Edit Space" : "Create Space"}</DialogTitle>
+            <DialogTitle>{editingSpace ? "Edit Channel" : "Create Channel"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-4 gap-3">
@@ -625,7 +851,7 @@ export default function CommunityManagePage() {
                 />
               </div>
               <div className="col-span-3 space-y-1.5">
-                <Label>Space Name</Label>
+                <Label>Channel Name</Label>
                 <Input
                   value={spaceName}
                   onChange={(e) => setSpaceName(e.target.value)}
@@ -638,7 +864,7 @@ export default function CommunityManagePage() {
               <Textarea
                 value={spaceDescription}
                 onChange={(e) => setSpaceDescription(e.target.value)}
-                placeholder="What is this space for?"
+                placeholder="What is this channel for?"
                 rows={2}
               />
             </div>
@@ -688,7 +914,58 @@ export default function CommunityManagePage() {
               onClick={handleSaveSpace}
               disabled={createSpace.isPending || updateSpace.isPending}
             >
-              {editingSpace ? "Save Changes" : "Create Space"}
+              {editingSpace ? "Save Changes" : "Create Channel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Profile Dialog */}
+      <Dialog open={profileDialog} onOpenChange={setProfileDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingProfile ? "Edit Admin Profile" : "Create Admin Profile"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Display Name</Label>
+              <Input
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="e.g. Community Manager"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Bio</Label>
+              <Textarea
+                value={profileBio}
+                onChange={(e) => setProfileBio(e.target.value)}
+                placeholder="Short description of this admin role..."
+                rows={2}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Avatar URL</Label>
+              <Input
+                value={profileAvatarUrl}
+                onChange={(e) => setProfileAvatarUrl(e.target.value)}
+                placeholder="https://..."
+              />
+              {profileAvatarUrl && (
+                <Avatar className="h-12 w-12 mt-2">
+                  <AvatarImage src={profileAvatarUrl} />
+                  <AvatarFallback>{profileName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProfileDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={createAdminProfile.isPending || updateAdminProfile.isPending}
+            >
+              {editingProfile ? "Save Changes" : "Create Profile"}
             </Button>
           </DialogFooter>
         </DialogContent>

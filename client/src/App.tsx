@@ -96,6 +96,7 @@ import CohortSchedule from "./pages/CohortSchedule";
 import AssignmentDetail from "./pages/AssignmentDetail";
 import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
+import WidgetsPage from "./pages/marketing/WidgetsPage";
 import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
 import DownloadLandingPageBuilder from "./pages/admin/DownloadLandingPageBuilder";
 import ProductLandingPageBuilder from "./pages/admin/ProductLandingPageBuilder";
@@ -299,6 +300,9 @@ function AdminRouter() {
           <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
           <Route path="/admin/funnels/:funnelId">{() => <FunnelBuilder />}</Route>
           <Route path="/admin/funnels">{() => <FunnelBuilder />}</Route>
+          <Route path="/marketing/widgets" component={WidgetsPage} />
+          <Route path="/admin/widgets">{() => { window.location.replace("/marketing/widgets"); return null; }}</Route>
+          <Route path="/admin/community">{() => { window.location.replace("/products/community"); return null; }}</Route>
           <Route path="/marketing/affiliates" component={AffiliatesPage} />
           {/* Legacy email marketing redirect */}
           <Route path="/lms/email-marketing">{() => { window.location.replace("/marketing/email"); return null; }}</Route>

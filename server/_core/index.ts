@@ -15,6 +15,7 @@ import chunkedUploadRouter from "../chunkedUploadRoutes";
 import contentRouter from "../contentRoutes";
 import digitalDownloadRouter from "../digitalDownloadRoutes";
 import mediaUploadRouter from "../mediaUploadRoutes";
+import widgetRouter from "../widgetRoutes";
 import stripeWebhookRouter from "../stripeWebhookRoutes";
 import { embeddedCheckoutWebhookRouter } from "../embeddedCheckoutWebhook";
 
@@ -122,7 +123,7 @@ async function startServer() {
   // Override helmet's frameguard and add CORS headers for these routes only.
   app.use((req, res, next) => {
     const path = req.path;
-    if (path.startsWith("/embed/") || path.startsWith("/api/content/")) {
+    if (path.startsWith("/embed/") || path.startsWith("/api/content/") || path.startsWith("/api/widget/")) {
       // Allow framing from any origin (required for LMS embedding)
       res.removeHeader("X-Frame-Options");
       res.setHeader("Content-Security-Policy",
@@ -169,6 +170,9 @@ async function startServer() {
 
   // Media upload — server-side proxy for browser file uploads (digital downloads, forms, media library)
   app.use("/api/media-upload", mediaUploadRouter);
+
+  // Embeddable course widgets (card, curriculum) — served as JS for external sites
+  app.use("/api/widget", widgetRouter);
 
   // tRPC API
   app.use(

@@ -22,11 +22,13 @@ import {
   lmsPendingEnrollments,
   lmsEnrollments,
   users,
+  orgMembers,
   type LmsPendingEnrollment,
 } from "../../drizzle/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import {
   getAllThinkificCourses,
+  getAllThinkificUsers,
   getThinkificCourse,
   getChaptersForCourse,
   getContentsForChapter,
@@ -44,7 +46,8 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function adminOnly(role: string) {
-  if (role !== "admin") {
+  const adminRoles = ["site_owner", "site_admin", "org_super_admin", "org_admin", "admin"];
+  if (!adminRoles.includes(role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
   }
 }
@@ -1497,6 +1500,150 @@ export const thinkificImportRouter = router({
         blocks: result.blocks,
         price: result.price,
         blocksJson: JSON.stringify(result.blocks, null, 2).substring(0, 8000),
+      };
+    }),
+
+  /**
+   * Sync All Thinkific Users — fetches all users from Thinkific API,
+   * creates them in the local users table (upsert by email),
+   * adds them as org_members, and optionally adds them to community spaces.
+   */
+  syncAllUsers: protectedProcedure
+    .input(z.object({
+      orgId: z.number().int(),
+      addToCommunity: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      adminOnly(ctx.user.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const log: string[] = [];
+      log.push("Fetching all users from Thinkific API...");
+
+      let thinkificUsers;
+      try {
+        thinkificUsers = await getAllThinkificUsers();
+      } catch (err: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Thinkific API error: ${err.message}` });
+      }
+      log.push(`Fetched ${thinkificUsers.length} users from Thinkific.`);
+
+      let created = 0;
+      let existing = 0;
+      let orgMembersAdded = 0;
+      let communityMembersAdded = 0;
+
+      // Process in batches of 100
+      const batchSize = 100;
+      for (let i = 0; i < thinkificUsers.length; i += batchSize) {
+        const batch = thinkificUsers.slice(i, i + batchSize);
+        for (const tu of batch) {
+          if (!tu.email) continue;
+          const email = tu.email.toLowerCase().trim();
+          const name = tu.full_name || `${tu.first_name || ""} ${tu.last_name || ""}`.trim() || email.split("@")[0];
+
+          // Check if user already exists by email
+          const [existingUser] = await db.select({ id: users.id })
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+
+          let userId: number;
+          if (existingUser) {
+            userId = existingUser.id;
+            existing++;
+          } else {
+            // Create user with a unique openId based on Thinkific ID
+            const openId = `thinkific_${tu.id}`;
+            const [result] = await db.insert(users).values({
+              openId,
+              name,
+              email,
+              loginMethod: "thinkific_import",
+              role: "member",
+              emailVerified: true,
+            });
+            userId = result.insertId;
+            created++;
+          }
+
+          // Add to org_members if not already a member
+          const [existingOrgMember] = await db.select({ id: orgMembers.id })
+            .from(orgMembers)
+            .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, userId)))
+            .limit(1);
+          if (!existingOrgMember) {
+            await db.insert(orgMembers).values({
+              orgId: input.orgId,
+              userId,
+              role: "member",
+            });
+            orgMembersAdded++;
+          }
+        }
+      }
+
+      log.push(`Users: ${created} created, ${existing} already existed.`);
+      log.push(`Org members: ${orgMembersAdded} added.`);
+
+      // Optionally add all org members to community spaces
+      if (input.addToCommunity) {
+        // Find all community spaces for this org
+        const { communityHubs, communitySpaces, communityMembers } = await import("../../drizzle/schema");
+        const hubs = await db.select({ id: communityHubs.id })
+          .from(communityHubs)
+          .where(eq(communityHubs.orgId, input.orgId));
+
+        if (hubs.length === 0) {
+          log.push("No community hubs found for this org. Skipping community sync.");
+        } else {
+          // Get all spaces for these hubs
+          const hubIds = hubs.map(h => h.id);
+          const spaces = await db.select({ id: communitySpaces.id, accessType: communitySpaces.accessType })
+            .from(communitySpaces)
+            .where(sql`${communitySpaces.hubId} IN (${sql.join(hubIds.map(id => sql`${id}`), sql`, `)})`);
+
+          // Only auto-add to "open" spaces
+          const openSpaces = spaces.filter(s => s.accessType === "open");
+          if (openSpaces.length === 0) {
+            log.push("No open community spaces found. Skipping community sync.");
+          } else {
+            // Get all org members
+            const allOrgMembers = await db.select({ userId: orgMembers.userId })
+              .from(orgMembers)
+              .where(eq(orgMembers.orgId, input.orgId));
+            const allUserIds = allOrgMembers.map(m => m.userId);
+
+            for (const space of openSpaces) {
+              // Get existing community members for this space
+              const existingMembers = await db.select({ userId: communityMembers.userId })
+                .from(communityMembers)
+                .where(eq(communityMembers.spaceId, space.id));
+              const existingUserIds = new Set(existingMembers.map(m => m.userId));
+
+              // Add missing users
+              const toAdd = allUserIds.filter(uid => !existingUserIds.has(uid));
+              if (toAdd.length > 0) {
+                // Batch insert in chunks of 500
+                for (let j = 0; j < toAdd.length; j += 500) {
+                  const chunk = toAdd.slice(j, j + 500);
+                  await db.insert(communityMembers).values(
+                    chunk.map(uid => ({ spaceId: space.id, userId: uid, role: "member" as const }))
+                  );
+                }
+                communityMembersAdded += toAdd.length;
+              }
+            }
+            log.push(`Community members: ${communityMembersAdded} added across ${openSpaces.length} open space(s).`);
+          }
+        }
+      }
+
+      return {
+        success: true,
+        log,
+        stats: { totalThinkificUsers: thinkificUsers.length, created, existing, orgMembersAdded, communityMembersAdded },
       };
     }),
 });

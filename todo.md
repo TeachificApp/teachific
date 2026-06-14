@@ -3988,3 +3988,29 @@
 - [x] Update FunnelBlocks InlineOrderBumpBlock — already more comprehensive than ultrasound-app (strikethrough, +Add/Added, physical support already present)
 - [x] Add Funnel Builder card to PlatformAdmin tools grid — already present in Marketing nav (Teachific PlatformAdmin is 3720 lines vs ultrasound-app's 1510)
 - [x] Verify order bump fulfillment works for all product types — fulfillOrderBumpPurchase now called in both confirmHostedCheckout and stripeWebhookRoutes
+
+## Bug Fixes & Features (June 13, 2026)
+- [x] Fix Buy Now button color in existing course card embed widget to use teal (#179ca3)
+- [x] Curriculum embed widget on embed page for each course — add toggle to include course card (thumbnail, title, description)
+- [x] Community page editor not showing — need to be able to customize the community (added Sort Order, Pending, Admin Profiles tabs)
+- [x] Community members not showing — built syncAllUsers procedure to bulk import Thinkific users
+
+## Embeddable Widget System (June 2026)
+- [x] Server-side widget rendering endpoint (/api/widget/:courseSlug) that serves HTML/JS/CSS for embeddable widgets
+- [x] Course Card widget type: thumbnail, title, description, Buy Now button (default theme colors)
+- [x] Curriculum widget type: course outline/sections/lessons list
+- [x] Curriculum widget: toggle to include course card (thumbnail, title, description) above curriculum
+- [x] Widget styles served from server so already-embedded widgets auto-update without code changes
+- [x] Admin Widgets page (/marketing/widgets) with course selector and embed code generator
+- [x] Widget embed code uses lightweight script tag (not iframe) for seamless integration
+- [x] Buy Now button uses default theme button colors (dynamic from course primaryColor)
+- [x] Register /marketing/widgets route in App.tsx and add to sidebar navigation
+
+## Community Admin Enhancement (June 2026)
+- [x] Add "Sort Order" tab - drag-and-reorder communities/spaces
+- [x] Add "Pending" tab - approve or reject pending membership requests
+- [x] Add "Admin Profiles" tab - manage admin/moderator profiles for community
+- [x] Rename "Spaces" tab to "Channels" for consistency with screenshot spec
+- [x] Ensure /admin/community route exists and redirects to /products/community
+- [x] Build syncAllThinkificUsers procedure to import all 14k+ Thinkific users into local DB
+- [x] Auto-add synced users as community members in open spaces

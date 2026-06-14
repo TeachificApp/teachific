@@ -1776,9 +1776,24 @@ export const communityMembers = mysqlTable("community_members", {
   role: mysqlEnum("role", ["member", "moderator", "admin"]).default("member").notNull(),
   joinedAt: timestamp("joinedAt").defaultNow().notNull(),
   isBanned: boolean("isBanned").default(false).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("approved").notNull(),
 });
 export type CommunityMember = typeof communityMembers.$inferSelect;
 export type InsertCommunityMember = typeof communityMembers.$inferInsert;
+
+// ─── Community Admin Profiles ─────────────────────────────────────────────────
+export const communityAdminProfiles = mysqlTable("community_admin_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  hubId: int("hubId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  bio: text("bio"),
+  avatarUrl: text("avatarUrl"),
+  createdByUserId: int("createdByUserId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CommunityAdminProfile = typeof communityAdminProfiles.$inferSelect;
+export type InsertCommunityAdminProfile = typeof communityAdminProfiles.$inferInsert;
 
 // ─── Community Invites ────────────────────────────────────────────────────────
 export const communityInvites = mysqlTable("community_invites", {

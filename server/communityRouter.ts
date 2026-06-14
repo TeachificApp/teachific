@@ -12,6 +12,8 @@ import {
   communityPostReactions,
   communityDms,
   orgSubscriptions,
+  communityAdminProfiles,
+  users,
 } from "../drizzle/schema";
 import { eq, and, desc, asc, sql, or } from "drizzle-orm";
 import crypto from "crypto";
@@ -889,5 +891,103 @@ export const communityRouter = router({
         .orderBy(desc(communityPosts.createdAt))
         .limit(50);
       return posts;
+    }),
+
+  // ── Pending Members ──────────────────────────────────────────────────────
+
+  listPendingMembers: protectedProcedure
+    .input(z.object({ hubId: z.number() }))
+    .query(async ({ input }) => {
+      const spaces = await db
+        .select({ id: communitySpaces.id })
+        .from(communitySpaces)
+        .where(eq(communitySpaces.hubId, input.hubId));
+      if (!spaces.length) return [];
+      const spaceIds = spaces.map((s) => s.id);
+      const rows = await db
+        .select({
+          id: communityMembers.id,
+          spaceId: communityMembers.spaceId,
+          userId: communityMembers.userId,
+          joinedAt: communityMembers.joinedAt,
+          status: communityMembers.status,
+          userName: users.name,
+          userEmail: users.email,
+          userAvatar: users.avatarUrl,
+        })
+        .from(communityMembers)
+        .innerJoin(users, eq(users.id, communityMembers.userId))
+        .where(
+          and(
+            sql`${communityMembers.spaceId} IN (${sql.join(spaceIds.map((id) => sql`${id}`), sql`, `)})`,
+            eq(communityMembers.status, "pending")
+          )
+        )
+        .orderBy(asc(communityMembers.joinedAt));
+      return rows;
+    }),
+
+  approveMember: protectedProcedure
+    .input(z.object({
+      memberId: z.number(),
+      action: z.enum(["approve", "reject"]),
+    }))
+    .mutation(async ({ input }) => {
+      const newStatus = input.action === "approve" ? "approved" : "rejected";
+      await db
+        .update(communityMembers)
+        .set({ status: newStatus })
+        .where(eq(communityMembers.id, input.memberId));
+      return { success: true };
+    }),
+
+  // ── Admin Profiles ───────────────────────────────────────────────────────
+
+  listAdminProfiles: protectedProcedure
+    .input(z.object({ hubId: z.number() }))
+    .query(async ({ input }) => {
+      return db
+        .select()
+        .from(communityAdminProfiles)
+        .where(eq(communityAdminProfiles.hubId, input.hubId))
+        .orderBy(asc(communityAdminProfiles.createdAt));
+    }),
+
+  createAdminProfile: protectedProcedure
+    .input(z.object({
+      hubId: z.number(),
+      name: z.string().min(1).max(100),
+      bio: z.string().optional(),
+      avatarUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const [result] = await db.insert(communityAdminProfiles).values({
+        hubId: input.hubId,
+        name: input.name,
+        bio: input.bio ?? null,
+        avatarUrl: input.avatarUrl ?? null,
+        createdByUserId: ctx.user.id,
+      });
+      return { id: (result as any).insertId };
+    }),
+
+  updateAdminProfile: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).max(100).optional(),
+      bio: z.string().optional(),
+      avatarUrl: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      await db.update(communityAdminProfiles).set(data).where(eq(communityAdminProfiles.id, id));
+      return { success: true };
+    }),
+
+  deleteAdminProfile: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await db.delete(communityAdminProfiles).where(eq(communityAdminProfiles.id, input.id));
+      return { success: true };
     }),
 });
