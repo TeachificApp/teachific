@@ -4163,3 +4163,16 @@ export const teachableIntegrations = mysqlTable("teachable_integrations", {
 });
 export type TeachableIntegration = typeof teachableIntegrations.$inferSelect;
 export type InsertTeachableIntegration = typeof teachableIntegrations.$inferInsert;
+
+// Kajabi Integration
+export const kajabiIntegrations = mysqlTable("kajabi_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  apiKey: text("api_key").notNull(),
+  schoolName: varchar("school_name", { length: 255 }),
+  status: varchar("status", { length: 50 }).notNull().default("active"),
+  lastSyncAt: bigint("last_sync_at", { mode: "number" }),
+  lastSyncStats: json("last_sync_stats"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});

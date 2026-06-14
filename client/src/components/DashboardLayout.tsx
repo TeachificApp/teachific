@@ -246,6 +246,7 @@ const navGroups: NavGroup[] = [
           { label: "All Integrations", path: "/integrations" },
           { label: "Import from Thinkific", path: "/integrations/thinkific" },
           { label: "Import from Teachable", path: "/integrations/teachable" },
+          { label: "Import from Kajabi", path: "/integrations/kajabi" },
           { label: "Webhooks / Zapier", path: "/integrations/webhooks" },
           { label: "API Keys", path: "/integrations/api" },
         ],

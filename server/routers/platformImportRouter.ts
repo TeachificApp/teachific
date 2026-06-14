@@ -17,6 +17,7 @@ import { getDb } from "../db";
 import {
   thinkificIntegrations,
   teachableIntegrations,
+  kajabiIntegrations,
   users,
   orgMembers,
   lmsCourses,
@@ -26,6 +27,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { createTeachableClient } from "../teachable";
+import { createKajabiClient } from "../kajabi";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -830,6 +832,325 @@ export const platformImportRouter = router({
         }
 
         return { success: true, imported, skipped, errors };
+      }),
+  }),
+
+  // ─── Kajabi ────────────────────────────────────────────────────────────────
+
+  kajabi: router({
+    /**
+     * Get current Kajabi integration status for this org.
+     */
+    getStatus: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        assertOrgAdmin(ctx.user.role);
+        const db = getDb();
+        const [integration] = await db
+          .select()
+          .from(kajabiIntegrations)
+          .where(eq(kajabiIntegrations.orgId, input.orgId))
+          .limit(1);
+        if (!integration) return { connected: false };
+        const stats = integration.lastSyncStats
+          ? JSON.parse(integration.lastSyncStats as string) as Record<string, number>
+          : null;
+        return {
+          connected: true,
+          schoolName: integration.schoolName,
+          status: integration.status,
+          lastSyncAt: integration.lastSyncAt,
+          stats,
+        };
+      }),
+
+    /**
+     * Connect a Kajabi account by validating and storing the API key.
+     */
+    connect: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        apiKey: z.string().min(10),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertOrgAdmin(ctx.user.role);
+        const client = createKajabiClient(input.apiKey);
+        let schoolName: string;
+        try {
+          const site = await client.validateAndGetSite();
+          schoolName = site.schoolName;
+        } catch (err) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Could not connect to Kajabi: ${(err as Error).message}`,
+          });
+        }
+        const db = getDb();
+        const now = Date.now();
+        await db
+          .insert(kajabiIntegrations)
+          .values({
+            orgId: input.orgId,
+            apiKey: input.apiKey,
+            schoolName,
+            status: "connected",
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              apiKey: input.apiKey,
+              schoolName,
+              status: "connected",
+              updatedAt: now,
+            },
+          });
+        return { success: true, schoolName };
+      }),
+
+    /**
+     * Disconnect Kajabi integration for this org.
+     */
+    disconnect: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertOrgAdmin(ctx.user.role);
+        const db = getDb();
+        await db
+          .delete(kajabiIntegrations)
+          .where(eq(kajabiIntegrations.orgId, input.orgId));
+        return { success: true };
+      }),
+
+    /**
+     * Sync Kajabi members into the local users + org_members tables.
+     */
+    syncUsers: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertOrgAdmin(ctx.user.role);
+        const db = getDb();
+        const [integration] = await db
+          .select()
+          .from(kajabiIntegrations)
+          .where(eq(kajabiIntegrations.orgId, input.orgId))
+          .limit(1);
+        if (!integration) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Kajabi not connected. Please connect first." });
+        }
+        const client = createKajabiClient(integration.apiKey);
+        const members = await client.getAllMembers();
+
+        let imported = 0;
+        let skipped = 0;
+        let errors = 0;
+
+        for (const member of members) {
+          try {
+            const email = member.email?.toLowerCase().trim();
+            if (!email) { skipped++; continue; }
+            const fullName = `${member.first_name ?? ""} ${member.last_name ?? ""}`.trim() || email;
+
+            const [existing] = await db
+              .select({ id: users.id })
+              .from(users)
+              .where(eq(users.email, email))
+              .limit(1);
+
+            let userId: number;
+            if (existing) {
+              userId = existing.id;
+              skipped++;
+            } else {
+              const openId = `kajabi_${member.id}_${Date.now()}`;
+              const result = await db.insert(users).values({
+                openId,
+                name: fullName,
+                email,
+                loginMethod: "kajabi_import",
+                role: "member",
+                emailVerified: true,
+              });
+              userId = (result as unknown as { insertId: number }).insertId;
+              imported++;
+            }
+
+            const [existingMember] = await db
+              .select({ id: orgMembers.id })
+              .from(orgMembers)
+              .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, userId)))
+              .limit(1);
+
+            if (!existingMember) {
+              await db.insert(orgMembers).values({
+                orgId: input.orgId,
+                userId,
+                role: "member",
+              });
+            }
+          } catch {
+            errors++;
+          }
+        }
+
+        const now = Date.now();
+        const stats = { users: imported, skipped, errors };
+        await db
+          .update(kajabiIntegrations)
+          .set({ lastSyncAt: now, lastSyncStats: JSON.stringify(stats), updatedAt: now })
+          .where(eq(kajabiIntegrations.orgId, input.orgId));
+
+        return { success: true, imported, skipped, errors, total: members.length };
+      }),
+
+    /**
+     * Sync Kajabi products (courses) into the local LMS.
+     */
+    syncCourses: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertOrgAdmin(ctx.user.role);
+        const db = getDb();
+        const [integration] = await db
+          .select()
+          .from(kajabiIntegrations)
+          .where(eq(kajabiIntegrations.orgId, input.orgId))
+          .limit(1);
+        if (!integration) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Kajabi not connected. Please connect first." });
+        }
+        const client = createKajabiClient(integration.apiKey);
+        const products = await client.getAllProducts();
+
+        let imported = 0;
+        let skipped = 0;
+        let errors = 0;
+
+        const [orgRow] = await db
+          .select({ ownerId: orgMembers.userId })
+          .from(orgMembers)
+          .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.role, "org_super_admin")))
+          .limit(1);
+        const createdByUserId = orgRow?.ownerId ?? ctx.user.id;
+
+        for (const product of products) {
+          try {
+            const baseSlug = slugify(product.slug ?? product.title);
+            const [existing] = await db
+              .select({ id: lmsCourses.id })
+              .from(lmsCourses)
+              .where(and(eq(lmsCourses.orgId, input.orgId), eq(lmsCourses.slug, baseSlug)))
+              .limit(1);
+            if (existing) { skipped++; continue; }
+
+            const slug = await makeUniqueSlug(db, product.slug ?? product.title, input.orgId);
+            await db.insert(lmsCourses).values({
+              orgId: input.orgId,
+              slug,
+              title: product.title,
+              description: product.description ?? null,
+              thumbnailUrl: product.thumbnail_url ?? null,
+              status: product.published ? "public" : "draft",
+              isFree: false,
+              price: product.price ? String(product.price / 100) : "0",
+              pricingType: "one_time",
+              createdByUserId,
+            });
+            imported++;
+          } catch {
+            errors++;
+          }
+        }
+
+        const now = Date.now();
+        const stats = { courses: imported, skipped, errors };
+        await db
+          .update(kajabiIntegrations)
+          .set({ lastSyncAt: now, lastSyncStats: JSON.stringify(stats), updatedAt: now })
+          .where(eq(kajabiIntegrations.orgId, input.orgId));
+
+        return { success: true, imported, skipped, errors, total: products.length };
+      }),
+
+    /**
+     * Sync Kajabi memberships (product access grants) as LMS enrollments.
+     */
+    syncMemberships: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        assertOrgAdmin(ctx.user.role);
+        const db = getDb();
+        const [integration] = await db
+          .select()
+          .from(kajabiIntegrations)
+          .where(eq(kajabiIntegrations.orgId, input.orgId))
+          .limit(1);
+        if (!integration) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Kajabi not connected. Please connect first." });
+        }
+        const client = createKajabiClient(integration.apiKey);
+        const memberships = await client.getAllMemberships();
+        const products = await client.getAllProducts();
+
+        let imported = 0;
+        let skipped = 0;
+        let errors = 0;
+
+        for (const membership of memberships) {
+          try {
+            if (membership.state !== "active") { skipped++; continue; }
+
+            // Find local user by Kajabi member id pattern
+            const [localUser] = await db
+              .select({ id: users.id, email: users.email })
+              .from(users)
+              .where(sql`${users.openId} LIKE ${`kajabi_${membership.member_id}_%`}`)
+              .limit(1);
+            if (!localUser) { skipped++; continue; }
+
+            const product = products.find(p => p.id === membership.product_id);
+            if (!product) { skipped++; continue; }
+
+            const productSlug = slugify(product.slug ?? product.title);
+            const [localCourse] = await db
+              .select({ id: lmsCourses.id })
+              .from(lmsCourses)
+              .where(and(eq(lmsCourses.orgId, input.orgId), eq(lmsCourses.slug, productSlug)))
+              .limit(1);
+            if (!localCourse) { skipped++; continue; }
+
+            const [existing] = await db
+              .select({ id: lmsEnrollments.id })
+              .from(lmsEnrollments)
+              .where(and(
+                eq(lmsEnrollments.orgId, input.orgId),
+                eq(lmsEnrollments.userId, localUser.id),
+                eq(lmsEnrollments.courseId, localCourse.id)
+              ))
+              .limit(1);
+            if (existing) { skipped++; continue; }
+
+            await db.insert(lmsEnrollments).values({
+              orgId: input.orgId,
+              userId: localUser.id,
+              courseId: localCourse.id,
+              status: "active",
+              enrolledAt: new Date(membership.created_at),
+            });
+            imported++;
+          } catch {
+            errors++;
+          }
+        }
+
+        const now = Date.now();
+        const stats = { memberships: imported, skipped, errors };
+        await db
+          .update(kajabiIntegrations)
+          .set({ lastSyncAt: now, lastSyncStats: JSON.stringify(stats), updatedAt: now })
+          .where(eq(kajabiIntegrations.orgId, input.orgId));
+
+        return { success: true, imported, skipped, errors, total: memberships.length };
       }),
   }),
 });

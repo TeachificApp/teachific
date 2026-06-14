@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createTeachableClient } from "./teachable";
+import { createKajabiClient } from "./kajabi";
 
 describe("Teachable client", () => {
   it("creates a client with the correct API key", () => {
@@ -26,6 +27,17 @@ describe("Thinkific integration schema", () => {
       const isInvalid = trimmed.length === 0 || /[\s.]/.test(trimmed);
       expect(isInvalid).toBe(true);
     }
+  });
+});
+
+describe("Kajabi client", () => {
+  it("creates a client with the correct API key", () => {
+    const client = createKajabiClient("test-api-key");
+    expect(client).toBeDefined();
+    expect(typeof client.validateAndGetSite).toBe("function");
+    expect(typeof client.getAllMembers).toBe("function");
+    expect(typeof client.getAllProducts).toBe("function");
+    expect(typeof client.getAllMemberships).toBe("function");
   });
 });
 

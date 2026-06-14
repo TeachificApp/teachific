@@ -4042,3 +4042,16 @@
 - [x] Build syncTeachableEnrollments procedure (imports enrollments into lms_enrollments)
 - [x] Show Teachable integration card on Integrations settings page (/integrations/teachable)
 - [x] Show sync status, last sync time, and counts for Teachable
+
+## Kajabi Self-Service Integration
+- [ ] Create kajabi_integrations table (orgId, apiKey, status, lastSyncAt, lastSyncStats)
+- [ ] Build Kajabi API helper (kajabi.ts) with fetchAllPages, getMembers, getProducts, getMemberships
+- [ ] Build connectKajabi procedure (validates API key, stores credentials)
+- [ ] Build disconnectKajabi procedure
+- [ ] Build getKajabiStatus procedure
+- [ ] Build syncKajabiUsers procedure (imports members into local DB + org_members)
+- [ ] Build syncKajabiCourses procedure (imports products/courses into lms_courses)
+- [ ] Build syncKajabiMemberships procedure (imports membership enrollments)
+- [ ] Add Kajabi import page (/integrations/kajabi) with connect form and sync controls
+- [ ] Add Kajabi Import to sidebar under Integrations
+- [ ] Register /integrations/kajabi route in App.tsx
