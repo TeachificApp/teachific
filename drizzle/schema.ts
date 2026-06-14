@@ -4133,3 +4133,33 @@ export const zapierWebhookLogs = mysqlTable("zapier_webhook_logs", {
 });
 export type ZapierWebhookLog = typeof zapierWebhookLogs.$inferSelect;
 export type InsertZapierWebhookLog = typeof zapierWebhookLogs.$inferInsert;
+
+// ─── Thinkific Integration (per-org) ─────────────────────────────────────────
+export const thinkificIntegrations = mysqlTable("thinkific_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull().unique(),
+  subdomain: varchar("subdomain", { length: 255 }).notNull(),
+  apiKey: varchar("api_key", { length: 512 }).notNull(),
+  status: varchar("status", { length: 20 }).default("connected").notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStats: text("last_sync_stats"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type ThinkificIntegration = typeof thinkificIntegrations.$inferSelect;
+export type InsertThinkificIntegration = typeof thinkificIntegrations.$inferInsert;
+
+// ─── Teachable Integration (per-org) ─────────────────────────────────────────
+export const teachableIntegrations = mysqlTable("teachable_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull().unique(),
+  apiKey: varchar("api_key", { length: 512 }).notNull(),
+  schoolName: varchar("school_name", { length: 255 }),
+  status: varchar("status", { length: 20 }).default("connected").notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStats: text("last_sync_stats"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type TeachableIntegration = typeof teachableIntegrations.$inferSelect;
+export type InsertTeachableIntegration = typeof teachableIntegrations.$inferInsert;

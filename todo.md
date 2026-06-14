@@ -4014,3 +4014,31 @@
 - [x] Ensure /admin/community route exists and redirects to /products/community
 - [x] Build syncAllThinkificUsers procedure to import all 14k+ Thinkific users into local DB
 - [x] Auto-add synced users as community members in open spaces
+
+## Thinkific Self-Service Integration (June 2026)
+- [x] Remove hardcoded Thinkific admin credentials (thinkificAdminEmail, thinkificAdminPassword, thinkificSubdomain) from server env and thinkific.ts
+- [x] Create thinkific_integrations table (orgId, subdomain, apiKey, status, lastSyncAt, syncStats JSON)
+- [x] Build connectThinkific procedure (org admin saves their subdomain + API key, validates it works)
+- [x] Build disconnectThinkific procedure (removes stored credentials)
+- [x] Build getThinkificStatus procedure (returns connection status + last sync info)
+- [x] Refactor all Thinkific sync procedures to use per-org stored credentials instead of global env vars
+- [x] Build syncThinkificUsers procedure using org's own API key
+- [x] Build syncThinkificCourses procedure using org's own API key
+- [x] Build syncThinkificCommunities procedure using org's own API key
+- [x] Build Thinkific Integration settings page (/integrations/thinkific) with connect form
+- [x] Show sync status, last sync time, and counts on the integration page
+- [x] Add "Sync Now" buttons for each data type (users, courses, communities)
+- [x] Show progress/status during sync (how many imported, errors)
+- [x] Add Thinkific integration card to the integrations/settings area
+
+## Teachable Self-Service Integration (June 2026)
+- [x] Create teachable_integrations table (orgId, apiKey, status, lastSyncAt, lastSyncStats)
+- [x] Build Teachable API helper (teachable.ts) with fetchAllPages, getUsers, getCourses, getEnrollments
+- [x] Build connectTeachable procedure (validates API key, stores credentials)
+- [x] Build disconnectTeachable procedure
+- [x] Build getTeachableStatus procedure
+- [x] Build syncTeachableUsers procedure (imports users into local DB + org_members)
+- [x] Build syncTeachableCourses procedure (imports courses into lms_courses)
+- [x] Build syncTeachableEnrollments procedure (imports enrollments into lms_enrollments)
+- [x] Show Teachable integration card on Integrations settings page (/integrations/teachable)
+- [x] Show sync status, last sync time, and counts for Teachable

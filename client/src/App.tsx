@@ -122,6 +122,8 @@ import CustomReportsPage from "./pages/analytics/CustomReportsPage";
 import IntegrationsPage from "./pages/integrations/IntegrationsPage";
 import ApiPage from "./pages/integrations/ApiPage";
 import WebhooksPage from "./pages/integrations/WebhooksPage";
+import ThinkificImportPage from "./pages/integrations/ThinkificImportPage";
+import TeachableImportPage from "./pages/integrations/TeachableImportPage";
 
 // Profile section
 import ProfilePage from "./pages/profile/ProfilePage";
@@ -453,6 +455,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/integrations">{() => <DashboardLayout><IntegrationsPage /></DashboardLayout>}</Route>
         <Route path="/integrations/api">{() => <DashboardLayout><ApiPage /></DashboardLayout>}</Route>
         <Route path="/integrations/webhooks">{() => <DashboardLayout><WebhooksPage /></DashboardLayout>}</Route>
+        <Route path="/integrations/thinkific">{() => <DashboardLayout><ThinkificImportPage /></DashboardLayout>}</Route>
+        <Route path="/integrations/teachable">{() => <DashboardLayout><TeachableImportPage /></DashboardLayout>}</Route>
         <Route path="/profile">{() => <DashboardLayout><ProfilePage /></DashboardLayout>}</Route>
         <Route path="/billing">{() => <DashboardLayout><BillingPage /></DashboardLayout>}</Route>
         <Route path="/lms/branding">{() => <DashboardLayout><BrandingPage /></DashboardLayout>}</Route>
