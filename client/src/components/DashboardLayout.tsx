@@ -161,6 +161,8 @@ const navGroups: NavGroup[] = [
           { label: "Webinars", path: "/lms/webinars" },
           { label: "Memberships", path: "/products/memberships" },
           { label: "Bundles", path: "/products/bundles" },
+          { label: "Physical Products", path: "/products/physical" },
+          { label: "Workshops", path: "/products/workshops" },
           { label: "Forms", path: "/lms/forms" },
           { label: "Community", path: "/products/community" },
           { label: "Categories", path: "/products/categories" },

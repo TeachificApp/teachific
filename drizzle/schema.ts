@@ -4176,3 +4176,61 @@ export const kajabiIntegrations = mysqlTable("kajabi_integrations", {
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
+
+// ─── Workshops ────────────────────────────────────────────────────────────────
+export const workshops = mysqlTable("workshops", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull(),
+  description: text("description"),
+  shortDescription: varchar("short_description", { length: 500 }),
+  coverImageUrl: varchar("cover_image_url", { length: 1024 }),
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  format: varchar("format", { length: 20 }).default("in_person").notNull(),
+  location: varchar("location", { length: 255 }),
+  virtualUrl: varchar("virtual_url", { length: 1024 }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  timezone: varchar("timezone", { length: 100 }).default("UTC"),
+  maxAttendees: int("max_attendees"),
+  price: decimal("price", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  compareAtPrice: decimal("compare_at_price", { precision: 10, scale: 2 }),
+  currency: varchar("currency", { length: 10 }).default("usd").notNull(),
+  isFree: boolean("is_free").default(false).notNull(),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  checkoutSlug: varchar("checkout_slug", { length: 255 }),
+  landingPageBlocks: json("landing_page_blocks"),
+  checkoutPageBlocks: json("checkout_page_blocks"),
+  thankYouPageBlocks: json("thank_you_page_blocks"),
+  instructorName: varchar("instructor_name", { length: 255 }),
+  instructorBio: text("instructor_bio"),
+  instructorImageUrl: varchar("instructor_image_url", { length: 1024 }),
+  tags: json("tags"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type Workshop = typeof workshops.$inferSelect;
+export type InsertWorkshop = typeof workshops.$inferInsert;
+
+export const workshopRegistrations = mysqlTable("workshop_registrations", {
+  id: int("id").autoincrement().primaryKey(),
+  workshopId: int("workshop_id").notNull(),
+  userId: int("user_id"),
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  status: varchar("status", { length: 20 }).default("registered").notNull(),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default("0.00"),
+  currency: varchar("currency", { length: 10 }).default("usd"),
+  stripeSessionId: varchar("stripe_session_id", { length: 255 }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  checkInAt: timestamp("check_in_at"),
+  notes: text("notes"),
+  registeredAt: timestamp("registered_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type WorkshopRegistration = typeof workshopRegistrations.$inferSelect;
+export type InsertWorkshopRegistration = typeof workshopRegistrations.$inferInsert;

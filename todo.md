@@ -4055,3 +4055,17 @@
 - [ ] Add Kajabi import page (/integrations/kajabi) with connect form and sync controls
 - [ ] Add Kajabi Import to sidebar under Integrations
 - [ ] Register /integrations/kajabi route in App.tsx
+
+## LMS Full Feature Activation (June 2026)
+- [x] Kajabi integration complete (kajabi_integrations table, kajabi.ts helper, tRPC procedures, KajabiImportPage, sidebar, routes)
+- [x] Add Physical Products route (/products/physical) to AdminRouter and sidebar
+- [x] Add Workshops product type: schema (workshops, workshop_registrations tables)
+- [x] Add Workshops tRPC procedures (CRUD, registrations)
+- [x] Build WorkshopsPage admin list + WorkshopEditorPage
+- [x] Add Workshops to sidebar and routes
+- [ ] Add Workshops sales page editor (reuse LandingPageBuilder)
+- [ ] Fix Stripe webhook: handle lms_course, digital_download, physical_product metadata types
+- [x] Add Bundle editor page (BundleEditorPage with course assignment, pricing, analytics tabs)
+- [x] Build QuizResultsPage (student view: score, attempts, correct/incorrect breakdown)
+- [x] Build quiz admin analytics page (per-student results, pass rates, question difficulty)
+- [ ] Add quiz embed content block to lesson editor (embed a quiz within a lesson)

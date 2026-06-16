@@ -172,6 +172,15 @@ import {
   getActivityEventsByOrg,
   getOrgNotificationSettings,
   updateOrgNotificationSettings,
+  getWorkshopsByOrg,
+  getWorkshopById,
+  getWorkshopBySlug,
+  createWorkshop,
+  updateWorkshop,
+  deleteWorkshop,
+  getWorkshopRegistrations,
+  createWorkshopRegistration,
+  updateWorkshopRegistration,
 } from "./lmsDb";
 import { downloadsAdminRouter } from "./routers/downloadsRouter";
 import { orderBumpsAdminRouter } from "./routers/orderBumpsRouter";
@@ -1825,6 +1834,98 @@ export const lmsRouter = router({
       const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
       return getInstructorsByOrg(orgId);
     }),
+  // ── Workshops ─────────────────────────────────────────────────────────────
+  workshops: router({
+    list: protectedProcedure
+      .input(z.object({ orgId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        return getWorkshopsByOrg(orgId);
+      }),
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const w = await getWorkshopById(input.id);
+        if (!w) throw new TRPCError({ code: "NOT_FOUND" });
+        return w;
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        orgId: z.number().optional(),
+        title: z.string().min(1),
+        description: z.string().optional(),
+        shortDescription: z.string().optional(),
+        format: z.enum(["in_person", "virtual", "hybrid"]).optional(),
+        location: z.string().optional(),
+        virtualUrl: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        timezone: z.string().optional(),
+        maxAttendees: z.number().optional(),
+        price: z.string().optional(),
+        isFree: z.boolean().optional(),
+        instructorName: z.string().optional(),
+        instructorBio: z.string().optional(),
+        instructorImageUrl: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
+        return createWorkshop({
+          orgId,
+          title: input.title,
+          slug,
+          description: input.description,
+          shortDescription: input.shortDescription,
+          format: (input.format ?? "in_person") as any,
+          location: input.location,
+          virtualUrl: input.virtualUrl,
+          startDate: input.startDate ? new Date(input.startDate) : undefined,
+          endDate: input.endDate ? new Date(input.endDate) : undefined,
+          timezone: input.timezone ?? "UTC",
+          maxAttendees: input.maxAttendees,
+          price: input.price ?? "0.00",
+          isFree: input.isFree ?? false,
+          instructorName: input.instructorName,
+          instructorBio: input.instructorBio,
+          instructorImageUrl: input.instructorImageUrl,
+          status: "draft",
+        });
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number() }).passthrough())
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        const payload: any = { ...data };
+        if (payload.startDate) payload.startDate = new Date(payload.startDate);
+        if (payload.endDate) payload.endDate = new Date(payload.endDate);
+        return updateWorkshop(id, payload);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await deleteWorkshop(input.id);
+        return { ok: true };
+      }),
+    getRegistrations: protectedProcedure
+      .input(z.object({ workshopId: z.number() }))
+      .query(async ({ input }) => {
+        return getWorkshopRegistrations(input.workshopId);
+      }),
+    updateRegistration: protectedProcedure
+      .input(z.object({ id: z.number() }).passthrough())
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await updateWorkshopRegistration(id, data as any);
+        return { ok: true };
+      }),
+    getBySlug: publicProcedure
+      .input(z.object({ orgId: z.number(), slug: z.string() }))
+      .query(async ({ input }) => {
+        return getWorkshopBySlug(input.orgId, input.slug);
+      }),
+  }),
+
   // ── Aliased sub-routers ────────────────────────────────────────────────────
   funnels: funnelRouter,
   downloads: downloadsAdminRouter,

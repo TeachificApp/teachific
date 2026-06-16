@@ -49,6 +49,8 @@ import {
   lessonNotes,
   lessonBookmarks,
   quizAttempts,
+  workshops,
+  workshopRegistrations,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1932,4 +1934,43 @@ export async function getOrgQuizAnalytics(orgId: number, opts: {
     timeline,
     perQuiz,
   };
+}
+
+// ─── Workshops ────────────────────────────────────────────────────────────────
+
+export async function getWorkshopsByOrg(orgId: number) {
+  return db.select().from(workshops).where(eq(workshops.orgId, orgId)).orderBy(desc(workshops.createdAt));
+}
+export async function getWorkshopById(id: number) {
+  const rows = await db.select().from(workshops).where(eq(workshops.id, id));
+  return rows[0] ?? null;
+}
+export async function getWorkshopBySlug(orgId: number, slug: string) {
+  const rows = await db.select().from(workshops).where(and(eq(workshops.orgId, orgId), eq(workshops.slug, slug)));
+  return rows[0] ?? null;
+}
+export async function createWorkshop(data: typeof workshops.$inferInsert) {
+  const result = await db.insert(workshops).values(data);
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  return getWorkshopById(Number(id));
+}
+export async function updateWorkshop(id: number, data: Partial<typeof workshops.$inferInsert>) {
+  await db.update(workshops).set(data).where(eq(workshops.id, id));
+  return getWorkshopById(id);
+}
+export async function deleteWorkshop(id: number) {
+  await db.delete(workshopRegistrations).where(eq(workshopRegistrations.workshopId, id));
+  await db.delete(workshops).where(eq(workshops.id, id));
+}
+export async function getWorkshopRegistrations(workshopId: number) {
+  return db.select().from(workshopRegistrations).where(eq(workshopRegistrations.workshopId, workshopId)).orderBy(desc(workshopRegistrations.registeredAt));
+}
+export async function createWorkshopRegistration(data: typeof workshopRegistrations.$inferInsert) {
+  const result = await db.insert(workshopRegistrations).values(data);
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  const rows = await db.select().from(workshopRegistrations).where(eq(workshopRegistrations.id, Number(id)));
+  return rows[0] ?? null;
+}
+export async function updateWorkshopRegistration(id: number, data: Partial<typeof workshopRegistrations.$inferInsert>) {
+  await db.update(workshopRegistrations).set(data).where(eq(workshopRegistrations.id, id));
 }

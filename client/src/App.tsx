@@ -81,6 +81,9 @@ import AssignmentsPage from "./pages/members/AssignmentsPage";
 import MembershipsPage from "./pages/products/MembershipsPage";
 import MembershipEditorPage from "./pages/products/MembershipEditorPage";
 import BundlesPage from "./pages/products/BundlesPage";
+import BundleEditorPage from "./pages/products/BundleEditorPage";
+import PhysicalProductsAdmin from "./pages/lms/PhysicalProductsAdmin";
+import WorkshopsPage from "./pages/products/WorkshopsPage";
 import CommunityPage from "./pages/products/CommunityPage";
 import CommunityLearnerPage from "./pages/lms/CommunityLearnerPage";
 import CommunityManagePage from "./pages/products/CommunityManagePage";
@@ -282,6 +285,9 @@ function AdminRouter() {
           <Route path="/products/memberships" component={MembershipsPage} />
           <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
           <Route path="/products/bundles" component={BundlesPage} />
+          <Route path="/products/bundles/:id/edit">{() => <BundleEditorPage />}</Route>
+          <Route path="/products/physical" component={PhysicalProductsAdmin} />
+          <Route path="/products/workshops" component={WorkshopsPage} />
           <Route path="/lms/forms" component={FormsPage} />
           <Route path="/lms/forms/:id/responses" component={FormResponsesPage} />
           <Route path="/lms/forms/:id/analytics" component={FormAnalyticsPage} />
@@ -362,6 +368,7 @@ function AdminRouter() {
           <Route path="/quizzes/:id/edit" component={QuizBuilderPage} />
           <Route path="/quizzes/:id/play" component={QuizPlayerPage} />
           <Route path="/quizzes/:id/results/:attemptId" component={QuizResultsPage} />
+          <Route path="/quizzes/:id/analytics" component={QuizResultsPage} />
           <Route path="/lms/my-courses" component={MyCoursesPage} />
           <Route path="/lms/my-certificates" component={MyCertificatesPage} />
           <Route path="/lms/branding" component={BrandingPage} />
