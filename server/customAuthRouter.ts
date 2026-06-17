@@ -9,12 +9,12 @@ import crypto from "crypto";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { users, orgMembers, organizations } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { users, orgMembers, organizations, magicLinkTokens } from "../drizzle/schema";
+import { eq, and, lt } from "drizzle-orm";
 import { generateUniqueOrgSlug } from "../shared/slugUtils";
 import { sendEmail } from "./sendgrid";
 import * as dbHelpers from "./db";
-import { verifyEmailHtml, resetPasswordHtml } from "./emailTemplates";
+import { verifyEmailHtml, resetPasswordHtml, magicLinkEmailHtml } from "./emailTemplates";
 
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -271,6 +271,106 @@ export const customAuthRouter = router({
       const passwordHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS);
       await db.update(users).set({ passwordHash, resetToken: null, resetTokenExpiry: null, emailVerified: true }).where(eq(users.id, user.id));
       return { success: true, message: "Password updated! You can now log in." };
+    }),
+
+  /** Request a magic link (passwordless sign-in) */
+  requestMagicLink: publicProcedure
+    .input(z.object({ email: z.string().email(), redirectTo: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Clean up expired tokens for this email
+      await db.delete(magicLinkTokens)
+        .where(and(eq(magicLinkTokens.email, input.email.toLowerCase()), lt(magicLinkTokens.expiresAt, new Date())));
+      const [user] = await db.select().from(users).where(eq(users.email, input.email.toLowerCase())).limit(1);
+      const token = generateToken(48);
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await db.insert(magicLinkTokens).values({
+        token,
+        email: input.email.toLowerCase(),
+        userId: user?.id ?? null,
+        redirectTo: input.redirectTo ?? null,
+        expiresAt,
+      });
+      const magicUrl = `${SITE_URL}/magic-link/verify?token=${token}`;
+      await sendEmail({
+        to: input.email,
+        subject: "Your Teachific sign-in link",
+        html: magicLinkEmailHtml(user?.name ?? "", magicUrl, 15),
+      });
+      return { success: true, message: "Check your email for a sign-in link." };
+    }),
+
+  /** Verify a magic link token and create a session */
+  verifyMagicLink: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [record] = await db.select().from(magicLinkTokens)
+        .where(eq(magicLinkTokens.token, input.token)).limit(1);
+      if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid or expired sign-in link." });
+      if (record.usedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "This sign-in link has already been used." });
+      if (record.expiresAt < new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "This sign-in link has expired. Please request a new one." });
+      // Mark token as used immediately (prevent replay)
+      await db.update(magicLinkTokens).set({ usedAt: new Date() }).where(eq(magicLinkTokens.id, record.id));
+      let user: typeof users.$inferSelect | undefined;
+      if (record.userId) {
+        const [u] = await db.select().from(users).where(eq(users.id, record.userId)).limit(1);
+        user = u;
+      }
+      if (!user) {
+        // Find by email (handles case where userId was null or user was created after token)
+        const [u] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
+        if (u) {
+          user = u;
+        } else {
+          // Auto-register new user via magic link
+          const openId = generateOpenId();
+          const name = record.email.split("@")[0];
+          await db.insert(users).values({ openId, email: record.email, name, emailVerified: true, loginMethod: "magic_link", role: "user", lastSignedIn: new Date() });
+          const [newUser] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
+          user = newUser;
+          // Create default org for new user
+          if (user) {
+            try {
+              const { generateUniqueOrgSlug } = await import("../shared/slugUtils");
+              const orgName = `${name}'s School`;
+              const slug = await generateUniqueOrgSlug(orgName, async (s) => !!(await dbHelpers.getOrgBySlug(s)));
+              await dbHelpers.createOrg({ name: orgName, slug, description: "Default workspace", ownerId: user.id });
+              const org = await dbHelpers.getOrgBySlug(slug);
+              if (org) await dbHelpers.addOrgMember(org.id, user.id, "org_admin");
+            } catch {}
+          }
+        }
+      }
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User account not found." });
+      if (!user.emailVerified) {
+        await db.update(users).set({ emailVerified: true, lastSignedIn: new Date() }).where(eq(users.id, user.id));
+      } else {
+        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
+      }
+      const sessionToken = Buffer.from(JSON.stringify({ userId: user.id, ts: Date.now() })).toString("base64url");
+      ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
+      const ROLE_PRIORITY: Record<string, number> = {
+        org_super_admin: 100, org_admin: 90, sub_admin: 70,
+        instructor: 60, group_manager: 50, group_member: 40, member: 20, user: 10,
+      };
+      const memberships = await db
+        .select({ role: orgMembers.role, slug: organizations.slug })
+        .from(orgMembers)
+        .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+        .where(eq(orgMembers.userId, user.id));
+      const bestMembership = memberships.sort((a, b) =>
+        (ROLE_PRIORITY[b.role] ?? 0) - (ROLE_PRIORITY[a.role] ?? 0)
+      )[0];
+      return {
+        success: true,
+        redirectTo: record.redirectTo ?? null,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role, emailVerified: true },
+        orgSlug: bestMembership?.slug ?? null,
+        orgRole: bestMembership?.role ?? null,
+      };
     }),
 
   /** Change password (authenticated) */

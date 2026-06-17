@@ -4069,3 +4069,15 @@
 - [x] Build QuizResultsPage (student view: score, attempts, correct/incorrect breakdown)
 - [x] Build quiz admin analytics page (per-student results, pass rates, question difficulty)
 - [ ] Add quiz embed content block to lesson editor (embed a quiz within a lesson)
+
+## Magic Link Login
+- [x] magic_link_tokens DB table created and migrated
+- [x] requestMagicLink tRPC procedure (rate-limited, sends email with 15-min token)
+- [x] verifyMagicLink tRPC procedure (validates token, creates session, auto-registers new users)
+- [x] magicLinkEmailHtml email template with CTA button and fallback URL
+- [x] MagicLinkVerifyPage (/magic-link/verify) with loading/success/error states
+- [x] LoginPage updated with Password / Magic Link tab switcher
+- [x] Magic link sent confirmation screen with "Use a different email" escape
+- [x] Routes added to both BareRouter and SubdomainSchoolRouter in App.tsx
+- [x] AUTH_PATHS updated to include /magic-link
+- [x] 14 passing vitest tests for token generation, expiry, email template, session encoding

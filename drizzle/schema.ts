@@ -4234,3 +4234,17 @@ export const workshopRegistrations = mysqlTable("workshop_registrations", {
 });
 export type WorkshopRegistration = typeof workshopRegistrations.$inferSelect;
 export type InsertWorkshopRegistration = typeof workshopRegistrations.$inferInsert;
+
+// ─── Magic Link Tokens ────────────────────────────────────────────────────────
+export const magicLinkTokens = mysqlTable("magic_link_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  email: varchar("email", { length: 255 }).notNull(),
+  userId: int("user_id"),
+  redirectTo: varchar("redirect_to", { length: 512 }),
+  usedAt: timestamp("used_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type MagicLinkToken = typeof magicLinkTokens.$inferSelect;
+export type InsertMagicLinkToken = typeof magicLinkTokens.$inferInsert;

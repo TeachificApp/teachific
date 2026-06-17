@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Loader2, BookOpen, Users, TrendingUp, Award } from "lucide-react";
+import { Eye, EyeOff, Loader2, BookOpen, Users, TrendingUp, Award, Mail, CheckCircle2 } from "lucide-react";
 import { CACHE_KEY } from "@/lib/authCache";
 import { getOrgSubdomainUrl, getSubdomain } from "@/hooks/useSubdomain";
 import { useOrgAuthBranding } from "@/hooks/useOrgAuthBranding";
@@ -35,16 +35,28 @@ export default function LoginPage() {
     returnTo.startsWith(p)
   );
 
+  const [loginMode, setLoginMode] = useState<"password" | "magic">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [magicEmail, setMagicEmail] = useState("");
 
   // Org white-labeling
   const { branding, primary, buttonText, displayName } = useOrgAuthBranding();
   const isOrgSubdomain = !!branding;
 
   const utils = trpc.useUtils();
+  const requestMagicLink = trpc.customAuth.requestMagicLink.useMutation({
+    onSuccess: () => { setMagicLinkSent(true); },
+    onError: (err) => { setError(err.message); },
+  });
+  const handleMagicLinkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    requestMagicLink.mutate({ email: magicEmail, redirectTo: returnTo || undefined });
+  };
   const login = trpc.customAuth.login.useMutation({
     onSuccess: (data) => {
       // Seed the auth.me cache immediately so DashboardLayout doesn't flash
@@ -349,7 +361,7 @@ export default function LoginPage() {
         </div>
 
         <div className="w-full max-w-sm">
-          <div className="mb-8">
+          <div className="mb-6">
             <h2
               className="text-2xl font-bold mb-1"
               style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
@@ -361,13 +373,103 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Sign-in method tabs */}
+          <div className="flex rounded-lg border border-slate-200 p-1 mb-6 bg-slate-50">
+            <button
+              type="button"
+              onClick={() => { setLoginMode("password"); setError(""); setMagicLinkSent(false); }}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                loginMode === "password"
+                  ? "bg-white shadow-sm text-slate-800"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Password
+            </button>
+            <button
+              type="button"
+              onClick={() => { setLoginMode("magic"); setError(""); }}
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+                loginMode === "magic"
+                  ? "bg-white shadow-sm text-slate-800"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              Magic Link
+            </button>
+          </div>
+
           {error && (
             <Alert className="mb-5 border-red-200 bg-red-50">
               <AlertDescription className="text-red-700 text-sm">{error}</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Magic link panel */}
+          {loginMode === "magic" && (
+            magicLinkSent ? (
+              <div className="text-center space-y-4 py-4">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: `${TEAL}15` }}>
+                  <CheckCircle2 className="w-7 h-7" style={{ color: TEAL }} />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800 mb-1">Check your inbox</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">
+                    We sent a sign-in link to <strong>{magicEmail}</strong>.<br />
+                    It expires in 15 minutes.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setMagicLinkSent(false); setError(""); }}
+                  className="text-sm font-medium transition-colors hover:opacity-80"
+                  style={{ color: TEAL }}
+                >
+                  Use a different email
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleMagicLinkSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="magic-email" className="text-sm font-medium" style={{ color: NAVY }}>
+                    Email address
+                  </Label>
+                  <Input
+                    id="magic-email"
+                    type="email"
+                    value={magicEmail}
+                    onChange={(e) => setMagicEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    autoComplete="email"
+                    className="h-11 border-slate-200 focus:border-[#24abbc] focus:ring-[#24abbc]/20 text-slate-800 placeholder:text-slate-400"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={requestMagicLink.isPending}
+                  className="w-full h-11 font-semibold rounded-lg transition-all shadow-sm"
+                  style={{
+                    background: isOrgSubdomain ? primary : `linear-gradient(135deg, ${TEAL} 0%, #15b8c0 100%)`,
+                    color: buttonText,
+                  }}
+                >
+                  {requestMagicLink.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending link...</>
+                  ) : (
+                    <><Mail className="w-4 h-4 mr-2" />Send magic link</>
+                  )}
+                </Button>
+                <p className="text-xs text-slate-400 text-center">
+                  We'll email you a one-click sign-in link — no password needed.
+                </p>
+              </form>
+            )
+          )}
+
+          {/* Password panel */}
+          {loginMode === "password" && <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-sm font-medium" style={{ color: NAVY }}>
                 Email address
@@ -435,9 +537,8 @@ export default function LoginPage() {
               ) : (
                 "Sign in"
               )}
-            </Button>
-          </form>
-
+                        </Button>
+          </form>}
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-500">
               Don't have an account?{" "}

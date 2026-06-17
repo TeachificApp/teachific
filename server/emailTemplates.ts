@@ -351,3 +351,26 @@ export function dripUnlockHtml(opts: {
     footerNote: orgName ? `This email was sent on behalf of ${orgName}.` : undefined,
   });
 }
+
+export function magicLinkEmailHtml(name: string, magicUrl: string, expiryMinutes = 15): string {
+  return emailLayout({
+    title: "Your sign-in link",
+    preheader: "Click to sign in to Teachific — link expires in " + expiryMinutes + " minutes.",
+    body: `
+      <p style="margin:0 0 20px;font-size:16px;color:#374151;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+        Click the button below to sign in to your Teachific account. This link expires in
+        <strong>${expiryMinutes} minutes</strong> and can only be used once.
+      </p>
+      ${ctaButton("Sign in to Teachific", magicUrl)}
+      <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
+        If you didn't request this link, you can safely ignore this email — your account is secure.
+      </p>
+      ${divider()}
+      <p style="margin:0;font-size:12px;color:#9ca3af;">
+        Or copy and paste this URL into your browser:<br/>
+        <a href="${magicUrl}" style="color:#24abbc;word-break:break-all;">${magicUrl}</a>
+      </p>
+    `,
+  });
+}

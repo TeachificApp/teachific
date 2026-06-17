@@ -162,7 +162,7 @@ import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 
 
 
-const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
+const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/magic-link"];
 
 // Bare routes — no admin sidebar (share links, embeds, auth pages, student player)
 function BareRouter() {
@@ -206,6 +206,7 @@ function BareRouter() {
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />
+        <Route path="/magic-link/verify" component={MagicLinkVerifyPage} />
         {/* Marketing landing page — shown to logged-out visitors at root */}
         <Route path="/" component={LandingPage} />
         {/* Support page — publicly accessible */}
@@ -408,6 +409,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />
+        <Route path="/magic-link/verify" component={MagicLinkVerifyPage} />
 
         {/* ── Admin dashboard routes (org_admin / org_super_admin) ── */}
         {/* These are served inside DashboardLayout on the subdomain */}
