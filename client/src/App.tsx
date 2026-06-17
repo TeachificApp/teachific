@@ -159,6 +159,7 @@ import RegisterPage from "./pages/auth/RegisterPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
+import MagicLinkVerifyPage from "./pages/auth/MagicLinkVerifyPage";
 
 
 
