@@ -36,13 +36,15 @@ import {
   physicalProductPricingOptions,
   physicalProductOrders,
   orderBumps,
+  workshops,
+  workshopRegistrations,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
 import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
-export const CONTENT_TYPES = ["course", "download", "physical_product", "webinar", "membership", "membership_plan"] as const;
+export const CONTENT_TYPES = ["course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop"] as const;
 export type ContentType = typeof CONTENT_TYPES[number];
 
 export interface TrustBadge {
@@ -245,6 +247,29 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: row.stripeProductId ?? null,
         pricingOptions: [],
         isAvailable: true,
+      };
+    }
+    case "workshop": {
+      const [row] = await db.select().from(workshops).where(eq(workshops.slug, slug)).limit(1);
+      if (!row) return null;
+      return {
+        id: row.id, orgId: row.orgId, slug: row.slug, title: row.title,
+        subtitle: row.shortDescription ?? null, description: row.description,
+        coverImageUrl: row.coverImageUrl ?? null,
+        primaryColor: "#179ca3", accentColor: "#0d9488",
+        pricingType: row.isFree ? "free" : "one_time",
+        price: row.price ?? "0", currency: row.currency ?? "usd",
+        isFree: row.isFree || Number(row.price) === 0,
+        subscriptionInterval: null, trialDays: null,
+        stripePriceId: row.stripePriceId ?? null,
+        stripeProductId: row.stripeProductId ?? null,
+        pricingOptions: [],
+        isAvailable: row.status === "published",
+        startDate: row.startDate,
+        endDate: row.endDate,
+        location: row.location,
+        format: row.format,
+        maxAttendees: row.maxAttendees,
       };
     }
     default:
@@ -681,6 +706,13 @@ async function checkExistingAccess(db: any, contentType: ContentType, contentId:
       .limit(1);
     return !!e;
   }
+  if (contentType === "workshop") {
+    const [e] = await db.select({ id: workshopRegistrations.id })
+      .from(workshopRegistrations)
+      .where(and(eq(workshopRegistrations.userId, userId), eq(workshopRegistrations.workshopId, contentId)))
+      .limit(1);
+    return !!e;
+  }
   return false;
 }
 
@@ -764,6 +796,21 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
       });
       break;
     }
+    case "workshop": {
+      // Register the user for the workshop
+      await db.insert(workshopRegistrations).values({
+        workshopId: content.id,
+        userId,
+        email: "", // will be filled from user record if needed
+        status: "registered",
+        amountPaid: String(content.price),
+        currency: content.currency ?? "usd",
+        stripeSessionId: session?.id ?? null,
+        stripePaymentIntentId: stripePaymentIntentId ?? null,
+        registeredAt: new Date(),
+      });
+      break;
+    }
   }
 }
 
@@ -797,6 +844,9 @@ async function persistStripePriceId(
       break;
     case "membership_plan":
       await db.update(membershipPlans).set({ stripePriceId }).where(eq(membershipPlans.id, contentId));
+      break;
+    case "workshop":
+      await db.update(workshops).set({ stripePriceId }).where(eq(workshops.id, contentId));
       break;
   }
 }

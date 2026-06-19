@@ -13,9 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  MessageSquare, Heart, Reply, Send, Users, Hash, ChevronLeft,
-  MessageCircle, Home, Plus, ThumbsUp, MoreHorizontal, X,
-  ArrowLeft, Loader2,
+  MessageSquare, Heart, Reply, Send, Users, Hash,
+  MessageCircle, Home, ThumbsUp, MoreHorizontal, X,
+  ArrowLeft, Loader2, Search, Smile,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,6 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeAgo(date: Date | string | null | undefined): string {
@@ -57,6 +60,7 @@ function PostCard({
   const [showReplies, setShowReplies] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [reacting, setReacting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const { data: replies } = trpc.community.listReplies.useQuery(
     { postId: post.id },
@@ -73,7 +77,7 @@ function PostCard({
 
   const toggleReaction = trpc.community.toggleReaction.useMutation({
     onMutate: () => setReacting(true),
-    onSettled: () => setReacting(false),
+    onSettled: () => { setReacting(false); setShowEmojiPicker(false); },
     onSuccess: () => utils.community.listPosts.invalidate(),
     onError: (e) => toast.error(e.message),
   });
@@ -124,16 +128,32 @@ function PostCard({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4 pl-12">
-        <button
-          className={cn("flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors", reacting && "opacity-50")}
-          onClick={() => toggleReaction.mutate({ postId: post.id, emoji: "👍" })}
-          disabled={reacting}
-        >
-          <ThumbsUp className="h-3.5 w-3.5" />
-          {post.reactionCount > 0 && <span>{post.reactionCount}</span>}
-          Like
-        </button>
+      <div className="flex items-center gap-4 pl-12 relative">
+        {/* Emoji reaction picker */}
+        <div className="relative">
+          <button
+            className={cn("flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors", reacting && "opacity-50")}
+            onClick={() => setShowEmojiPicker((s) => !s)}
+            disabled={reacting}
+          >
+            <Smile className="h-3.5 w-3.5" />
+            {post.reactionCount > 0 && <span>{post.reactionCount}</span>}
+            React
+          </button>
+          {showEmojiPicker && (
+            <div className="absolute bottom-7 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1">
+              {REACTION_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  className="text-lg hover:scale-125 transition-transform px-1 py-0.5 rounded hover:bg-muted"
+                  onClick={() => toggleReaction.mutate({ postId: post.id, emoji })}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setShowReplies((s) => !s)}
@@ -329,6 +349,8 @@ export default function CommunityLearnerPage() {
   const [postText, setPostText] = useState("");
   const [showDms, setShowDms] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showMembers, setShowMembers] = useState(false);
+  const [postSearch, setPostSearch] = useState("");
   const utils = trpc.useUtils();
 
   const { data: hub, isLoading: hubLoading } = trpc.community.getHubById.useQuery({ hubId });
@@ -373,6 +395,9 @@ export default function CommunityLearnerPage() {
   const primaryColor = hub?.primaryColor || "#24abbc";
   const selectedSpace = spaces?.find((s: any) => s.id === selectedSpaceId);
   const isMember = members?.some((m: any) => m.userId === user?.id);
+  const filteredPosts = postSearch.trim()
+    ? posts?.filter((p: any) => p.content?.toLowerCase().includes(postSearch.toLowerCase()) || p.authorName?.toLowerCase().includes(postSearch.toLowerCase()))
+    : posts;
 
   if (hubLoading) {
     return (
@@ -431,8 +456,17 @@ export default function CommunityLearnerPage() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
-            onClick={() => setShowDms((s) => !s)}
+            className={cn("gap-2", showMembers && "bg-muted")}
+            onClick={() => { setShowMembers((s) => !s); setShowDms(false); }}
+          >
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Members</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn("gap-2", showDms && "bg-muted")}
+            onClick={() => { setShowDms((s) => !s); setShowMembers(false); }}
           >
             <MessageCircle className="h-4 w-4" />
             <span className="hidden sm:inline">Messages</span>
@@ -517,6 +551,18 @@ export default function CommunityLearnerPage() {
             </div>
           ) : (
             <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4">
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search posts..."
+                  value={postSearch}
+                  onChange={(e) => setPostSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-sm bg-muted/40 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
               {/* Space header */}
               <div className="flex items-center justify-between">
                 <div>
@@ -586,14 +632,14 @@ export default function CommunityLearnerPage() {
                 <div className="flex flex-col gap-4">
                   {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
                 </div>
-              ) : posts?.length === 0 ? (
+              ) : filteredPosts?.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <MessageSquare className="h-12 w-12 text-muted-foreground/40 mb-3" />
-                  <p className="font-semibold text-muted-foreground">No posts yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">Be the first to start a conversation!</p>
+                  <p className="font-semibold text-muted-foreground">{postSearch ? "No posts match your search" : "No posts yet"}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{postSearch ? "Try a different search term" : "Be the first to start a conversation!"}</p>
                 </div>
               ) : (
-                posts?.map((post: any) => (
+                filteredPosts?.map((post: any) => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -606,6 +652,54 @@ export default function CommunityLearnerPage() {
             </div>
           )}
         </main>
+
+        {/* Members Panel */}
+        {showMembers && (
+          <aside className="w-72 border-l border-border bg-background flex flex-col shrink-0 overflow-hidden">
+            <div className="flex items-center justify-between p-3 border-b border-border shrink-0">
+              <h3 className="font-semibold text-sm flex items-center gap-2">
+                <Users className="h-4 w-4" /> Members
+                {members && <span className="text-muted-foreground font-normal">({members.length})</span>}
+              </h3>
+              <button className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted" onClick={() => setShowMembers(false)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {!members?.length ? (
+                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm">
+                  <Users className="h-8 w-8 mb-2 opacity-40" />
+                  No members yet
+                </div>
+              ) : (
+                members.map((m: any) => (
+                  <div key={m.userId} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: primaryColor + "30", color: primaryColor }}>
+                        {initials(m.displayName || m.userName || "?")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{m.displayName || m.userName || `User #${m.userId}`}</p>
+                      {m.role && m.role !== "member" && (
+                        <span className="text-[10px] text-muted-foreground capitalize">{m.role}</span>
+                      )}
+                    </div>
+                    {m.userId !== user?.id && (
+                      <button
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => { setShowMembers(false); setShowDms(true); }}
+                        title="Send message"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+        )}
 
         {/* DM Panel */}
         {showDms && user && orgId && (

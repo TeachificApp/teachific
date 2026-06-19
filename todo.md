@@ -4081,3 +4081,53 @@
 - [x] Routes added to both BareRouter and SubdomainSchoolRouter in App.tsx
 - [x] AUTH_PATHS updated to include /magic-link
 - [x] 14 passing vitest tests for token generation, expiry, email template, session encoding
+
+## Sprint: Feature Alignment & LMS Enhancements (June 2026)
+
+### Groups Enhancements
+- [x] Add seats, managerId, managerEmail, managerPhone, notes, inviteToken columns to lmsGroups (migration 0006)
+- [x] generateInviteLink procedure: creates a shareable /join-group?token=... URL
+- [x] joinByInvite procedure: validates token and adds user to group
+- [x] bulkImportCSV procedure: parses CSV rows and batch-adds members to group
+- [x] CSV import dialog in GroupsPage with paste/upload UI and preview
+- [x] Invite link dialog in GroupsPage with copy-to-clipboard
+- [x] JoinGroupPage (/join-group?token=...) for token-based group enrollment
+
+### Course Announcements & Resources
+- [x] course_announcements table (migration 0007): title, body, isPinned, sendEmail, authorId
+- [x] course_resources table (migration 0007): title, description, fileUrl, externalUrl, resourceType
+- [x] announcements tRPC router (list, create, update, delete)
+- [x] resources tRPC router (list, create, update, delete)
+- [x] Announcements tab in CourseOverviewPage (pinned first, date display)
+- [x] Discussions tab in CourseOverviewPage (threaded discussion UI)
+- [x] Resources tab in CourseOverviewPage (file/link list with download icons)
+- [x] Discussions sidebar panel in CoursePlayerPage
+
+### Community Enhancements
+- [x] Multi-emoji reaction picker in CommunityLearnerPage (👍❤️😂😮😢🔥🎉👏)
+- [x] Post search bar in CommunityLearnerPage
+- [x] Members panel in CommunityLearnerPage (member directory with online status)
+
+### Page Editor Enhancements (LandingPageBuilder)
+- [x] Mobile/Desktop preview toggle (Smartphone/Monitor icons, 390px/900px canvas)
+- [x] Undo/Redo with 50-entry history (Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts)
+- [x] New block type: lms_course_embed (embeds a course player inline)
+- [x] New block type: lms_quiz_embed (embeds a quiz inline)
+- [x] New block type: lms_course_card (course card with thumbnail, title, CTA)
+- [x] New block type: countdown_enrollment (countdown timer with enrollment CTA)
+- [x] New block type: social_proof_live (live enrollment/completion counter)
+
+### SCORM Quiz Import UI
+- [x] Replace alert()-based flow with ScormImportDialog.tsx (progress UI, warnings display)
+- [x] EditorToolbar updated to use ScormImportDialog
+
+### EnrollmentGate Component
+- [x] EnrollmentGate.tsx: blur-lock component for unauthenticated/unenrolled users
+- [x] Integrated into HostedCheckoutPage.tsx as login wall
+- [x] Supports preview mode bypass and free lesson bypass
+
+### Tests
+- [x] 33 passing tests in featureAlignment.test.ts covering all new features
+- [x] 353 total tests passing across 26 test files
+- [x] Updated lms.test.ts to match actual router API (was using old procedure names)
+- [x] Updated lmsCheckoutRouter.test.ts to reflect 7 content types (added workshop)

@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import {
   Users, Plus, MoreVertical, Edit, Trash2, UserPlus, GraduationCap,
   Mail, Phone, Briefcase, Package, Send, ChevronDown, ChevronUp,
-  UserCheck, AlertCircle
+  UserCheck, AlertCircle, Link, Upload, Copy, Check, Download
 } from "lucide-react";
 
 export default function GroupsPage() {
@@ -69,6 +69,14 @@ export default function GroupsPage() {
   const [bulkEnrollOpen, setBulkEnrollOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [csvImportGroupId, setCsvImportGroupId] = useState<number | null>(null);
+  const [csvText, setCsvText] = useState("");
+  const [csvResults, setCsvResults] = useState<any | null>(null);
+  const [inviteLinkOpen, setInviteLinkOpen] = useState(false);
+  const [inviteLinkGroupId, setInviteLinkGroupId] = useState<number | null>(null);
+  const [inviteLink, setInviteLink] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [addMemberGroupId, setAddMemberGroupId] = useState<number | null>(null);
   const [bulkEnrollGroupId, setBulkEnrollGroupId] = useState<number | null>(null);
@@ -139,6 +147,43 @@ export default function GroupsPage() {
 
   const toggleProduct = (id: number) =>
     setSelectedProductIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const csvImportMut = trpc.lms.groups.bulkImportCSV.useMutation({
+    onSuccess: (res) => {
+      setCsvResults(res);
+      utils.lms.groups.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const generateInviteMut = trpc.lms.groups.generateInviteLink.useMutation({
+    onSuccess: (res) => {
+      const link = `${window.location.origin}/join-group?token=${res.token}`;
+      setInviteLink(link);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const openCsvImport = (groupId: number) => {
+    setCsvImportGroupId(groupId); setCsvText(""); setCsvResults(null); setCsvImportOpen(true);
+  };
+  const handleCsvImport = () => {
+    if (!csvImportGroupId || !csvText.trim()) { toast.error("Paste CSV data first"); return; }
+    csvImportMut.mutate({ groupId: csvImportGroupId, csvData: csvText });
+  };
+  const openInviteLink = (groupId: number) => {
+    setInviteLinkGroupId(groupId); setInviteLink(""); setCopiedLink(false); setInviteLinkOpen(true);
+    generateInviteMut.mutate({ groupId });
+  };
+  const copyInviteLink = () => {
+    navigator.clipboard.writeText(inviteLink).then(() => { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); });
+  };
+  const downloadCsvTemplate = () => {
+    const csv = "name,email\nJane Doe,jane@example.com\nJohn Smith,john@example.com";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "group_import_template.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const totalSeats = groups?.reduce((s, g) => s + g.seats, 0) ?? 0;
   const usedSeats = groups?.reduce((s, g) => s + g.usedSeats, 0) ?? 0;
@@ -324,6 +369,12 @@ export default function GroupsPage() {
                       <DropdownMenuItem onClick={() => { setBulkEnrollGroupId(g.id); setBulkEnrollOpen(true); }}>
                         <GraduationCap className="h-4 w-4 mr-2" />Bulk Enroll
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openCsvImport(g.id)}>
+                        <Upload className="h-4 w-4 mr-2" />Import CSV
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openInviteLink(g.id)}>
+                        <Link className="h-4 w-4 mr-2" />Invite Link
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteConfirmId(g.id)}>
                         <Trash2 className="h-4 w-4 mr-2" />Delete Group
@@ -442,6 +493,110 @@ export default function GroupsPage() {
             <Button onClick={() => { if (!bulkEnrollGroupId || !bulkCourseId) { toast.error("Please select a course"); return; } bulkEnrollMut.mutate({ groupId: bulkEnrollGroupId, courseId: parseInt(bulkCourseId) }); }} disabled={bulkEnrollMut.isPending || !bulkCourseId}>
               {bulkEnrollMut.isPending ? "Enrolling..." : "Enroll All Members"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* CSV Import Dialog */}
+      <Dialog open={csvImportOpen} onOpenChange={(open) => { setCsvImportOpen(open); if (!open) { setCsvResults(null); setCsvText(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Upload className="h-5 w-5 text-primary" />Bulk Import Members via CSV</DialogTitle>
+            <DialogDescription>Paste CSV data with name and email columns. One member per row.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {!csvResults ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <Label>CSV Data (name, email)</Label>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={downloadCsvTemplate}>
+                    <Download className="h-3 w-3" />Download Template
+                  </Button>
+                </div>
+                <Textarea
+                  value={csvText}
+                  onChange={e => setCsvText(e.target.value)}
+                  placeholder={`name,email\nJane Doe,jane@example.com\nJohn Smith,john@example.com`}
+                  rows={8}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">Tip: Copy directly from Excel or Google Sheets. The first row is treated as a header and skipped automatically.</p>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-center">
+                    <p className="text-2xl font-bold text-green-700">{csvResults.added}</p>
+                    <p className="text-xs text-green-600 mt-0.5">Added</p>
+                  </div>
+                  <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-center">
+                    <p className="text-2xl font-bold text-yellow-700">{csvResults.skipped}</p>
+                    <p className="text-xs text-yellow-600 mt-0.5">Skipped (existing)</p>
+                  </div>
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-center">
+                    <p className="text-2xl font-bold text-red-700">{csvResults.errors?.length ?? 0}</p>
+                    <p className="text-xs text-red-600 mt-0.5">Errors</p>
+                  </div>
+                </div>
+                {csvResults.errors?.length > 0 && (
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                    <p className="text-xs font-semibold text-red-700 mb-1">Row errors:</p>
+                    <ul className="text-xs text-red-600 space-y-0.5">
+                      {csvResults.errors.map((e: string, i: number) => <li key={i}>• {e}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {!csvResults ? (
+              <>
+                <Button variant="outline" onClick={() => setCsvImportOpen(false)}>Cancel</Button>
+                <Button onClick={handleCsvImport} disabled={csvImportMut.isPending || !csvText.trim()}>
+                  {csvImportMut.isPending ? "Importing..." : "Import Members"}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setCsvImportOpen(false)}>Done</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Link Dialog */}
+      <Dialog open={inviteLinkOpen} onOpenChange={setInviteLinkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Link className="h-5 w-5 text-primary" />Group Invite Link</DialogTitle>
+            <DialogDescription>Share this link with members so they can self-register and join the group.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {generateInviteMut.isPending ? (
+              <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground">
+                <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Generating link...</span>
+              </div>
+            ) : inviteLink ? (
+              <>
+                <div className="flex gap-2">
+                  <Input value={inviteLink} readOnly className="font-mono text-xs flex-1" />
+                  <Button variant="outline" size="icon" onClick={copyInviteLink} className="shrink-0">
+                    {copiedLink ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">This link expires in 30 days. Generating a new link will invalidate the old one.</p>
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                  <p className="text-xs text-blue-700"><strong>How it works:</strong> When a user clicks this link, they will be prompted to log in or create an account, then automatically added to this group.</p>
+                </div>
+              </>
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => openInviteLink(inviteLinkGroupId!)} disabled={generateInviteMut.isPending}>
+              Regenerate Link
+            </Button>
+            <Button onClick={() => setInviteLinkOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -52,7 +52,7 @@ import {
   ChevronDown, ChevronUp, Copy, FolderOpen, BookMarked, Upload, Code,
   ShoppingCart, Package, Link, Mail, Phone, MapPin, Bookmark, BookmarkPlus, Music, UserPlus, Search,
   SlidersHorizontal, Radio, Clock, Loader2, ArrowLeftRight,
-  Table2, LayoutList, FileText,
+  Table2, LayoutList, FileText, Smartphone, Monitor, Undo2, Redo2,
 } from "lucide-react";
 import AudioBlockEditor from "@/components/AudioBlockEditor";
 import CarouselBlock from "@/components/CarouselBlock";
@@ -558,6 +558,48 @@ BLOCK_CATALOG.push(
       bgColor: "#f0fdf9",
       headlineColor: "#111827",
     },
+  },
+);
+// ─── LMS Embed + Social Proof blocks ─────────────────────────────────────────
+BLOCK_CATALOG.push(
+  {
+    type: "lms_course_embed",
+    label: "Course Embed Card",
+    icon: <BookOpen size={14} />,
+    category: "Content",
+    defaultData: { courseSlug: "", courseTitle: "", courseDescription: "", coursePrice: "Free", courseThumbnail: "", ctaText: "Enroll Now", accentColor: "#179ca3", bgColor: "#f8fafc" },
+  },
+  {
+    type: "lms_quiz_embed",
+    label: "Quiz Embed",
+    icon: <FileText size={14} />,
+    category: "Content",
+    defaultData: { quizId: null, quizTitle: "Quiz", description: "Test your knowledge.", questionCount: 0, passingScore: 70, ctaText: "Start Quiz", accentColor: "#179ca3", bgColor: "#f8fafc" },
+  },
+  {
+    type: "lms_course_card",
+    label: "Course Cards Grid",
+    icon: <LayoutGrid size={14} />,
+    category: "Content",
+    defaultData: { headline: "Featured Courses", subtext: "", cards: [], accentColor: "#179ca3", bgColor: "#ffffff" },
+  },
+  {
+    type: "countdown_enrollment",
+    label: "Enrollment Countdown",
+    icon: <Clock size={14} />,
+    category: "Marketing",
+    defaultData: { headline: "Enrollment Closes Soon!", subtext: "Don't miss your chance to join this cohort.", ctaText: "Enroll Before It's Too Late", ctaLink: "", targetDate: "", accentColor: "#ef4444", bgColor: "#fff1f2" },
+  },
+  {
+    type: "social_proof_live",
+    label: "Social Proof / Live Activity",
+    icon: <Users size={14} />,
+    category: "Marketing",
+    defaultData: { headline: "Join thousands of learners", enrollCount: "2,847", recentActivity: [
+      { name: "Sarah M.", action: "just enrolled", time: "2 min ago" },
+      { name: "James T.", action: "completed the course", time: "5 min ago" },
+      { name: "Priya K.", action: "just enrolled", time: "8 min ago" },
+    ], accentColor: "#179ca3", bgColor: "#f0fdfa" },
   },
 );
 
@@ -4740,6 +4782,107 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <BSColorField data={d} onSet={set} label="Headline Color" field="headlineColor" />
         </div>
       );
+    case "lms_course_embed": {
+      const { data: courses } = trpc.lmsAdmin.listCourses.useQuery();
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Link to Course</label>
+            <select value={d.courseSlug ?? ""} onChange={e => {
+              const c = (courses ?? []).find((x: any) => x.slug === e.target.value);
+              if (c) { set("courseSlug", c.slug); set("courseTitle", c.title); set("courseDescription", c.description ?? ""); set("courseThumbnail", c.thumbnailUrl ?? ""); }
+              else set("courseSlug", e.target.value);
+            }} className="w-full h-8 text-xs rounded border border-gray-200 px-2">
+              <option value="">-- Select a course --</option>
+              {(courses ?? []).map((c: any) => <option key={c.id} value={c.slug}>{c.title}</option>)}
+            </select>
+          </div>
+          <BSTextField data={d} onSet={set} label="CTA Button Text" field="ctaText" />
+          <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
+          <BSColorField data={d} onSet={set} label="Background Color" field="bgColor" />
+        </div>
+      );
+    }
+    case "lms_quiz_embed": {
+      const { data: quizzes } = trpc.quiz.list.useQuery();
+      return (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Link to Quiz</label>
+            <select value={d.quizId ?? ""} onChange={e => {
+              const q = (quizzes ?? []).find((x: any) => String(x.id) === e.target.value);
+              if (q) { set("quizId", q.id); set("quizTitle", q.title); set("questionCount", q.questionCount ?? 0); set("passingScore", q.passingScore ?? 70); }
+              else set("quizId", e.target.value ? Number(e.target.value) : null);
+            }} className="w-full h-8 text-xs rounded border border-gray-200 px-2">
+              <option value="">-- Select a quiz --</option>
+              {(quizzes ?? []).map((q: any) => <option key={q.id} value={q.id}>{q.title}</option>)}
+            </select>
+          </div>
+          <BSTextField data={d} onSet={set} label="Description" field="description" />
+          <BSTextField data={d} onSet={set} label="CTA Button Text" field="ctaText" />
+          <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
+          <BSColorField data={d} onSet={set} label="Background Color" field="bgColor" />
+        </div>
+      );
+    }
+    case "lms_course_card": {
+      const { data: courses } = trpc.lmsAdmin.listCourses.useQuery();
+      const selectedIds: number[] = (d.cards ?? []).map((c: any) => c.id).filter(Boolean);
+      return (
+        <div className="space-y-3">
+          <BSTextField data={d} onSet={set} label="Section Headline" field="headline" />
+          <BSTextField data={d} onSet={set} label="Section Subtext" field="subtext" />
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Courses to Display</label>
+            <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-200 rounded p-2">
+              {(courses ?? []).map((c: any) => (
+                <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input type="checkbox" checked={selectedIds.includes(c.id)} onChange={e => {
+                    const existing = d.cards ?? [];
+                    if (e.target.checked) set("cards", [...existing, { id: c.id, title: c.title, description: c.description ?? "", price: c.price ? `$${(c.price / 100).toFixed(0)}` : "Free", thumbnail: c.thumbnailUrl ?? "", slug: c.slug }]);
+                    else set("cards", existing.filter((x: any) => x.id !== c.id));
+                  }} />
+                  {c.title}
+                </label>
+              ))}
+            </div>
+          </div>
+          <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
+          <BSColorField data={d} onSet={set} label="Background Color" field="bgColor" />
+        </div>
+      );
+    }
+    case "countdown_enrollment":
+      return (
+        <div className="space-y-3">
+          <BSTextField data={d} onSet={set} label="Headline" field="headline" />
+          <BSTextField data={d} onSet={set} label="Subtext" field="subtext" />
+          <BSTextField data={d} onSet={set} label="CTA Button Text" field="ctaText" />
+          <BSTextField data={d} onSet={set} label="CTA Link (URL)" field="ctaLink" />
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Enrollment Close Date</label>
+            <input type="datetime-local" value={d.targetDate ?? ""} onChange={e => set("targetDate", e.target.value)} className="w-full h-8 text-xs rounded border border-gray-200 px-2" />
+          </div>
+          <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
+          <BSColorField data={d} onSet={set} label="Background Color" field="bgColor" />
+        </div>
+      );
+    case "social_proof_live":
+      return (
+        <div className="space-y-3">
+          <BSTextField data={d} onSet={set} label="Headline" field="headline" />
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Enrollment Count Display</label>
+            <input type="text" value={d.enrollCount ?? ""} onChange={e => set("enrollCount", e.target.value)} placeholder="e.g. 2,847" className="w-full h-8 text-xs rounded border border-gray-200 px-2" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Recent Activity (JSON array)</label>
+            <textarea rows={4} value={JSON.stringify(d.recentActivity ?? [], null, 2)} onChange={e => { try { set("recentActivity", JSON.parse(e.target.value)); } catch {} }} className="w-full text-xs rounded border border-gray-200 px-2 py-1.5 resize-none font-mono" />
+          </div>
+          <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
+          <BSColorField data={d} onSet={set} label="Background Color" field="bgColor" />
+        </div>
+      );
      default:
       return <p className="text-xs text-gray-400">No settings for this block type.</p>;
   } })();
@@ -5255,6 +5398,42 @@ export default function LandingPageBuilder() {
   const [saveTemplateDesc, setSaveTemplateDesc] = useState("");
   // Ref to the scrollable canvas container for scoped scrollIntoView
   const canvasRef = useRef<HTMLDivElement>(null);
+  // Mobile / desktop preview toggle
+  const [previewWidth, setPreviewWidth] = useState<"desktop" | "mobile">("desktop");
+  // Undo / redo history
+  const [undoHistory, setUndoHistory] = useState<Block[][]>([]);
+  const [redoStack, setRedoStack] = useState<Block[][]>([]);
+  const pushUndo = useCallback((snapshot: Block[]) => {
+    setUndoHistory((h) => [...h.slice(-49), snapshot]);
+    setRedoStack([]);
+  }, []);
+  const handleUndo = useCallback(() => {
+    setUndoHistory((h) => {
+      if (!h.length) return h;
+      const prev = h[h.length - 1];
+      setRedoStack((f) => [blocks, ...f.slice(0, 49)]);
+      setBlocks(prev);
+      return h.slice(0, -1);
+    });
+  }, [blocks]);
+  const handleRedo = useCallback(() => {
+    setRedoStack((f) => {
+      if (!f.length) return f;
+      const next = f[0];
+      setUndoHistory((h) => [...h.slice(-49), blocks]);
+      setBlocks(next);
+      return f.slice(1);
+    });
+  }, [blocks]);
+  // Keyboard shortcut: Ctrl+Z / Ctrl+Shift+Z
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); handleRedo(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
   // Track whether the last selectedId change came from a move action (not a click)
   const movedBlockRef = useRef<string | null>(null);
 
@@ -5671,6 +5850,26 @@ export default function LandingPageBuilder() {
           <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Page Editor</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Undo / Redo */}
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <button onClick={handleUndo} disabled={!undoHistory.length} title="Undo (Ctrl+Z)" className="flex items-center justify-center px-2.5 py-1.5 text-gray-500 hover:text-teal-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <Undo2 size={14} />
+            </button>
+            <div className="w-px h-5 bg-gray-200" />
+            <button onClick={handleRedo} disabled={!redoStack.length} title="Redo (Ctrl+Shift+Z)" className="flex items-center justify-center px-2.5 py-1.5 text-gray-500 hover:text-teal-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <Redo2 size={14} />
+            </button>
+          </div>
+          {/* Mobile / Desktop preview toggle */}
+          <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            <button onClick={() => setPreviewWidth("desktop")} title="Desktop preview" className={`flex items-center justify-center px-2.5 py-1.5 transition-colors ${previewWidth === "desktop" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:text-teal-700 hover:bg-gray-50"}`}>
+              <Monitor size={14} />
+            </button>
+            <div className="w-px h-5 bg-gray-200" />
+            <button onClick={() => setPreviewWidth("mobile")} title="Mobile preview (390px)" className={`flex items-center justify-center px-2.5 py-1.5 transition-colors ${previewWidth === "mobile" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:text-teal-700 hover:bg-gray-50"}`}>
+              <Smartphone size={14} />
+            </button>
+          </div>
           <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
             <FolderOpen size={14} /> Page Templates
           </button>
@@ -5723,7 +5922,7 @@ export default function LandingPageBuilder() {
               <button onClick={() => setShowTemplates(true)} className="text-sm text-teal-600 hover:text-teal-700 flex items-center gap-1.5"><FolderOpen size={16} /> Or start from a template</button>
             </div>
           ) : (
-            <div className="bg-white min-h-full shadow-sm mx-auto" style={{ maxWidth: "900px" }}>
+            <div className="bg-white min-h-full shadow-sm mx-auto transition-all duration-300" style={{ maxWidth: previewWidth === "mobile" ? "390px" : "900px", boxShadow: previewWidth === "mobile" ? "0 0 0 1px #e5e7eb, 0 4px 24px rgba(0,0,0,0.08)" : undefined }}>
               <DndContext sensors={sensors}
                 modifiers={[restrictToFirstScrollableAncestor]}
                 collisionDetection={(args) => {

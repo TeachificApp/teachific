@@ -921,6 +921,64 @@ export const lmsRouter = router({
         }
         return { enrolled: results.length };
       }),
+    generateInviteLink: protectedProcedure
+      .input(z.object({ groupId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { lmsGroups } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const crypto = await import("crypto");
+        const token = crypto.randomBytes(24).toString("hex");
+        await db.update(lmsGroups).set({ inviteToken: token } as any).where(eq(lmsGroups.id, input.groupId));
+        return { token };
+      }),
+    joinByInvite: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { lmsGroups, lmsGroupSeats } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [group] = await db.select().from(lmsGroups).where(eq((lmsGroups as any).inviteToken, input.token)).limit(1);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite link" });
+        const userId = (ctx as any).user?.id;
+        if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+        const existing = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, group.id)).then((rows: any[]) => rows.find((r: any) => r.userId === userId));
+        if (existing) return { ok: true, groupId: group.id, alreadyMember: true };
+        const usedSeats = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, group.id)).then((r: any[]) => r.length);
+        if (group.seats && usedSeats >= group.seats) throw new TRPCError({ code: "FORBIDDEN", message: "This group is full" });
+        await db.insert(lmsGroupSeats).values({ groupId: group.id, userId, email: null, name: null, role: "member" } as any);
+        return { ok: true, groupId: group.id, alreadyMember: false };
+      }),
+    bulkImportCSV: protectedProcedure
+      .input(z.object({
+        groupId: z.number(),
+        rows: z.array(z.object({ email: z.string().email(), name: z.string().optional() })),
+      }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { lmsGroupSeats, users } = await import("../drizzle/schema");
+        const { eq, inArray } = await import("drizzle-orm");
+        const emails = input.rows.map((r: any) => r.email.toLowerCase());
+        const existingUsers = await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, emails));
+        const userByEmail = Object.fromEntries(existingUsers.map((u: any) => [u.email.toLowerCase(), u.id]));
+        const existing = await db.select({ email: lmsGroupSeats.email }).from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, input.groupId));
+        const existingEmails = new Set(existing.map((r: any) => r.email?.toLowerCase()).filter(Boolean));
+        let added = 0; let skipped = 0;
+        for (const row of input.rows) {
+          const email = row.email.toLowerCase();
+          if (existingEmails.has(email)) { skipped++; continue; }
+          const userId = (userByEmail as any)[email] ?? null;
+          await db.insert(lmsGroupSeats).values({ groupId: input.groupId, userId, email: row.email, name: row.name ?? null, role: "member" } as any);
+          added++;
+        }
+        return { added, skipped };
+      }),
   }),
 
   // ── Discussions ────────────────────────────────────────────────────────────
@@ -1923,6 +1981,66 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number(), slug: z.string() }))
       .query(async ({ input }) => {
         return getWorkshopBySlug(input.orgId, input.slug);
+      }),
+  }),
+
+  // ── Course Announcements ────────────────────────────────────────────────────
+  announcements: router({
+    list: publicProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ input }) => {
+        const { getAnnouncementsByCourse } = await import("./lmsDb");
+        return getAnnouncementsByCourse(input.courseId);
+      }),
+    create: protectedProcedure
+      .input(z.object({ orgId: z.number(), courseId: z.number(), title: z.string(), body: z.string().optional(), isPinned: z.boolean().optional(), sendEmail: z.boolean().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const { createAnnouncement } = await import("./lmsDb");
+        return createAnnouncement({ ...input, authorId: ctx.user.id });
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number(), title: z.string().optional(), body: z.string().optional(), isPinned: z.boolean().optional() }))
+      .mutation(async ({ input }) => {
+        const { updateAnnouncement } = await import("./lmsDb");
+        const { id, ...data } = input;
+        return updateAnnouncement(id, data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteAnnouncement } = await import("./lmsDb");
+        await deleteAnnouncement(input.id);
+        return { ok: true };
+      }),
+  }),
+
+  // ── Course Resources ────────────────────────────────────────────────────────
+  resources: router({
+    list: publicProcedure
+      .input(z.object({ courseId: z.number(), lessonId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const { getResourcesByCourse } = await import("./lmsDb");
+        return getResourcesByCourse(input.courseId, input.lessonId);
+      }),
+    create: protectedProcedure
+      .input(z.object({ orgId: z.number(), courseId: z.number(), lessonId: z.number().optional(), title: z.string(), description: z.string().optional(), fileUrl: z.string().optional(), fileKey: z.string().optional(), fileName: z.string().optional(), fileSize: z.number().optional(), mimeType: z.string().optional(), externalUrl: z.string().optional(), resourceType: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        const { createResource } = await import("./lmsDb");
+        return createResource(input as any);
+      }),
+    update: protectedProcedure
+      .input(z.object({ id: z.number() }).passthrough())
+      .mutation(async ({ input }) => {
+        const { updateResource } = await import("./lmsDb");
+        const { id, ...data } = input;
+        return updateResource(id, data as any);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteResource } = await import("./lmsDb");
+        await deleteResource(input.id);
+        return { ok: true };
       }),
   }),
 

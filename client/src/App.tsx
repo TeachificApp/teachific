@@ -160,6 +160,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import MagicLinkVerifyPage from "./pages/auth/MagicLinkVerifyPage";
+import JoinGroupPage from "./pages/JoinGroupPage";
 
 
 
@@ -208,6 +209,7 @@ function BareRouter() {
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />
         <Route path="/magic-link/verify" component={MagicLinkVerifyPage} />
+        <Route path="/join-group" component={JoinGroupPage} />
         {/* Marketing landing page — shown to logged-out visitors at root */}
         <Route path="/" component={LandingPage} />
         {/* Support page — publicly accessible */}

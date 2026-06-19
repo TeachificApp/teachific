@@ -2888,6 +2888,12 @@ export const lmsGroups = mysqlTable("lms_groups", {
   orgId: int("orgId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: longtext("description"),
+  seats: int("seats").default(10),
+  managerId: int("manager_id"),
+  managerEmail: varchar("manager_email", { length: 255 }),
+  managerPhone: varchar("manager_phone", { length: 50 }),
+  notes: longtext("notes"),
+  inviteToken: varchar("invite_token", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsGroup = typeof lmsGroups.$inferSelect;
@@ -4248,3 +4254,36 @@ export const magicLinkTokens = mysqlTable("magic_link_tokens", {
 });
 export type MagicLinkToken = typeof magicLinkTokens.$inferSelect;
 export type InsertMagicLinkToken = typeof magicLinkTokens.$inferInsert;
+
+// ─── Course Announcements ────────────────────────────────────────────────────
+export const courseAnnouncements = mysqlTable("course_announcements", {
+  id: int("id").primaryKey().autoincrement(),
+  orgId: int("org_id").notNull(),
+  courseId: int("course_id").notNull(),
+  authorId: int("author_id").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: longtext("body"),
+  isPinned: boolean("is_pinned").default(false),
+  sendEmail: boolean("send_email").default(false),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+// ─── Course Resources ────────────────────────────────────────────────────────
+export const courseResources = mysqlTable("course_resources", {
+  id: int("id").primaryKey().autoincrement(),
+  orgId: int("org_id").notNull(),
+  courseId: int("course_id").notNull(),
+  lessonId: int("lesson_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  fileUrl: varchar("file_url", { length: 2048 }),
+  fileKey: varchar("file_key", { length: 1024 }),
+  fileName: varchar("file_name", { length: 255 }),
+  fileSize: int("file_size"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  externalUrl: varchar("external_url", { length: 2048 }),
+  resourceType: varchar("resource_type", { length: 50 }).default("file"),
+  sortOrder: int("sort_order").default(0),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});

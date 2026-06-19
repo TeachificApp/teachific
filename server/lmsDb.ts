@@ -51,6 +51,8 @@ import {
   quizAttempts,
   workshops,
   workshopRegistrations,
+  courseAnnouncements,
+  courseResources,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1973,4 +1975,65 @@ export async function createWorkshopRegistration(data: typeof workshopRegistrati
 }
 export async function updateWorkshopRegistration(id: number, data: Partial<typeof workshopRegistrations.$inferInsert>) {
   await db.update(workshopRegistrations).set(data).where(eq(workshopRegistrations.id, id));
+}
+
+// ─── Course Announcements ────────────────────────────────────────────────────
+export async function getAnnouncementsByCourse(courseId: number) {
+  return db
+    .select()
+    .from(courseAnnouncements)
+    .where(eq(courseAnnouncements.courseId, courseId))
+    .orderBy(desc(courseAnnouncements.isPinned), desc(courseAnnouncements.createdAt));
+}
+
+export async function getAnnouncementById(id: number) {
+  const rows = await db.select().from(courseAnnouncements).where(eq(courseAnnouncements.id, id));
+  return rows[0] ?? null;
+}
+
+export async function createAnnouncement(data: typeof courseAnnouncements.$inferInsert) {
+  const result = await db.insert(courseAnnouncements).values({ ...data, createdAt: Date.now(), updatedAt: Date.now() });
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  return getAnnouncementById(Number(id));
+}
+
+export async function updateAnnouncement(id: number, data: Partial<typeof courseAnnouncements.$inferInsert>) {
+  await db.update(courseAnnouncements).set({ ...data, updatedAt: Date.now() }).where(eq(courseAnnouncements.id, id));
+  return getAnnouncementById(id);
+}
+
+export async function deleteAnnouncement(id: number) {
+  await db.delete(courseAnnouncements).where(eq(courseAnnouncements.id, id));
+}
+
+// ─── Course Resources ────────────────────────────────────────────────────────
+export async function getResourcesByCourse(courseId: number, lessonId?: number) {
+  const conditions = lessonId != null
+    ? and(eq(courseResources.courseId, courseId), eq(courseResources.lessonId, lessonId))
+    : eq(courseResources.courseId, courseId);
+  return db
+    .select()
+    .from(courseResources)
+    .where(conditions)
+    .orderBy(asc(courseResources.sortOrder), asc(courseResources.createdAt));
+}
+
+export async function getResourceById(id: number) {
+  const rows = await db.select().from(courseResources).where(eq(courseResources.id, id));
+  return rows[0] ?? null;
+}
+
+export async function createResource(data: typeof courseResources.$inferInsert) {
+  const result = await db.insert(courseResources).values({ ...data, createdAt: Date.now() });
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  return getResourceById(Number(id));
+}
+
+export async function updateResource(id: number, data: Partial<typeof courseResources.$inferInsert>) {
+  await db.update(courseResources).set(data).where(eq(courseResources.id, id));
+  return getResourceById(id);
+}
+
+export async function deleteResource(id: number) {
+  await db.delete(courseResources).where(eq(courseResources.id, id));
 }

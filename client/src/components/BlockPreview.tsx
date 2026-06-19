@@ -81,7 +81,12 @@ export type BlockType =
   | "data_table"
   | "file_upload"
   | "cohort_sessions_auto"
-  | "affiliate_signup";
+  | "affiliate_signup"
+  | "lms_course_embed"
+  | "lms_quiz_embed"
+  | "lms_course_card"
+  | "countdown_enrollment"
+  | "social_proof_live";
 
 export interface Block {
   id: string;
@@ -1321,6 +1326,150 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               ))}
             </div>
             <button className="px-8 py-3 rounded-xl text-white font-semibold text-base" style={{ backgroundColor: accentColor }}>{ctaText}</button>
+          </div>
+        </div>
+      );
+    }
+    case "lms_course_embed": {
+      const accent = d.accentColor ?? "#179ca3";
+      const title = d.courseTitle ?? "Course Title";
+      const desc = d.courseDescription ?? "Enroll in this course to start learning.";
+      const price = d.coursePrice ?? "Free";
+      const thumb = d.courseThumbnail ?? "";
+      const ctaText = d.ctaText ?? "Enroll Now";
+      return (
+        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}>
+          <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+            {thumb ? (
+              <img src={thumb} alt={title} className="w-full h-48 object-cover" />
+            ) : (
+              <div className="w-full h-48 flex items-center justify-center" style={{ backgroundColor: `${accent}20` }}>
+                <span className="text-4xl">🎓</span>
+              </div>
+            )}
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
+              <p className="text-gray-600 text-sm mb-4 line-clamp-3">{desc}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold" style={{ color: accent }}>{price}</span>
+                <button className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: accent }}>{ctaText}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    case "lms_quiz_embed": {
+      const accent = d.accentColor ?? "#179ca3";
+      const quizTitle = d.quizTitle ?? "Quiz";
+      const questionCount = d.questionCount ?? 0;
+      const passingScore = d.passingScore ?? 70;
+      return (
+        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}>
+          <div className="max-w-2xl mx-auto rounded-2xl border-2 overflow-hidden bg-white" style={{ borderColor: accent }}>
+            <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: `${accent}15` }}>
+              <span className="text-2xl">📝</span>
+              <div>
+                <h3 className="font-bold text-gray-900">{quizTitle}</h3>
+                <p className="text-xs text-gray-500">{questionCount} questions · {passingScore}% to pass</p>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-600 mb-4">{d.description ?? "Test your knowledge with this quiz."}</p>
+              <button className="w-full py-2.5 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: accent }}>{d.ctaText ?? "Start Quiz"}</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    case "lms_course_card": {
+      const accent = d.accentColor ?? "#179ca3";
+      const cards: Array<{ id?: number; title: string; description?: string; price?: string; thumbnail?: string; rating?: number; students?: number; slug?: string }> = d.cards ?? [
+        { title: "Course One", description: "A great course", price: "$49", rating: 4.8, students: 120 },
+        { title: "Course Two", description: "Another course", price: "$79", rating: 4.5, students: 85 },
+      ];
+      return (
+        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
+          {d.headline && <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">{d.headline}</h2>}
+          {d.subtext && <p className="text-center text-gray-500 mb-8">{d.subtext}</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
+            {cards.map((c, i) => (
+              <div key={i} className="rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow bg-white">
+                {c.thumbnail ? (
+                  <img src={c.thumbnail} alt={c.title} className="w-full h-36 object-cover" />
+                ) : (
+                  <div className="w-full h-36 flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
+                    <span className="text-3xl">🎓</span>
+                  </div>
+                )}
+                <div className="p-4">
+                  <h4 className="font-semibold text-gray-900 mb-1 text-sm">{c.title}</h4>
+                  {c.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{c.description}</p>}
+                  <div className="flex items-center justify-between">
+                    {c.rating && <span className="text-xs text-amber-500 font-medium">★ {c.rating}</span>}
+                    {c.price && <span className="text-sm font-bold" style={{ color: accent }}>{c.price}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    case "countdown_enrollment": {
+      const accent = d.accentColor ?? "#ef4444";
+      const headline = d.headline ?? "Enrollment Closes Soon!";
+      const subtext = d.subtext ?? "Don't miss your chance to join this cohort.";
+      const ctaText = d.ctaText ?? "Enroll Before It's Too Late";
+      return (
+        <div className="px-8 py-10 text-center" style={{ backgroundColor: d.bgColor ?? "#fff1f2" }}>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4" style={{ backgroundColor: `${accent}20`, color: accent }}>
+            🔥 Limited Time
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{headline}</h2>
+          <p className="text-gray-600 mb-6">{subtext}</p>
+          <div className="flex justify-center gap-3 mb-6">
+            {[{v:"02",l:"Days"},{v:"14",l:"Hours"},{v:"37",l:"Minutes"},{v:"22",l:"Seconds"}].map(({v,l}) => (
+              <div key={l} className="w-16 h-16 rounded-xl flex flex-col items-center justify-center" style={{ backgroundColor: accent }}>
+                <span className="text-xl font-bold text-white">{v}</span>
+                <span className="text-[9px] text-white/80 uppercase tracking-wide">{l}</span>
+              </div>
+            ))}
+          </div>
+          <button className="px-8 py-3 rounded-xl text-white font-semibold" style={{ backgroundColor: accent }}>{ctaText}</button>
+        </div>
+      );
+    }
+    case "social_proof_live": {
+      const accent = d.accentColor ?? "#179ca3";
+      const headline = d.headline ?? "Join thousands of learners";
+      const enrollCount = d.enrollCount ?? "2,847";
+      const recentActivity: Array<{ name: string; action: string; time: string }> = d.recentActivity ?? [
+        { name: "Sarah M.", action: "just enrolled", time: "2 min ago" },
+        { name: "James T.", action: "completed the course", time: "5 min ago" },
+        { name: "Priya K.", action: "just enrolled", time: "8 min ago" },
+      ];
+      return (
+        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f0fdfa" }}>
+          <div className="max-w-xl mx-auto">
+            <div className="text-center mb-6">
+              <div className="text-4xl font-bold mb-1" style={{ color: accent }}>{enrollCount}</div>
+              <p className="text-gray-600 text-sm">{headline}</p>
+            </div>
+            <div className="space-y-2">
+              {recentActivity.map((a, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-gray-100 shadow-sm">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: accent }}>
+                    {a.name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm text-gray-900">{a.name}</span>
+                    <span className="text-sm text-gray-500"> {a.action}</span>
+                  </div>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{a.time}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       );

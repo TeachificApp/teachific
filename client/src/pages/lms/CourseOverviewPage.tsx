@@ -5,6 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ChevronDown,
   ChevronRight,
@@ -23,6 +24,12 @@ import {
   Globe,
   Twitter,
   Linkedin,
+  Megaphone,
+  MessageSquare,
+  Paperclip,
+  Pin,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 
 function getLessonIcon(type: string) {
@@ -70,6 +77,28 @@ export default function CourseOverviewPage() {
   );
 
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
+  const [activeTab, setActiveTab] = useState<"curriculum" | "announcements" | "discussions" | "resources">("curriculum");
+  const [newDiscussionText, setNewDiscussionText] = useState("");
+
+  const { data: announcements } = trpc.lms.announcements.list.useQuery(
+    { courseId },
+    { enabled: !!courseId && activeTab === "announcements" }
+  );
+  const { data: discussions } = trpc.lms.discussions.list.useQuery(
+    { courseId, orgId: course?.orgId ?? 0 },
+    { enabled: !!courseId && activeTab === "discussions" && !!course }
+  );
+  const { data: resources } = trpc.lms.resources.list.useQuery(
+    { courseId },
+    { enabled: !!courseId && activeTab === "resources" }
+  );
+  const utils = trpc.useUtils();
+  const createDiscussion = trpc.lms.discussions.create.useMutation({
+    onSuccess: () => {
+      setNewDiscussionText("");
+      utils.lms.discussions.list.invalidate({ courseId, orgId: course?.orgId ?? 0 });
+    },
+  });
 
   const enrollment = progressData?.enrollment;
   const lessonProgress = progressData?.lessonProgress ?? [];
@@ -164,6 +193,143 @@ export default function CourseOverviewPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: main content */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Tab navigation */}
+            <div className="flex gap-1 border-b border-border">
+              {(["curriculum", "announcements", "discussions", "resources"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+                    activeTab === tab
+                      ? "border-teal-500 text-teal-600"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab === "announcements" && <Megaphone className="w-3.5 h-3.5 inline mr-1.5" />}
+                  {tab === "discussions" && <MessageSquare className="w-3.5 h-3.5 inline mr-1.5" />}
+                  {tab === "resources" && <Paperclip className="w-3.5 h-3.5 inline mr-1.5" />}
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Announcements tab */}
+            {activeTab === "announcements" && (
+              <div className="space-y-4">
+                {!announcements || announcements.length === 0 ? (
+                  <div className="rounded-xl border border-border bg-card p-12 text-center">
+                    <Megaphone className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No announcements yet.</p>
+                  </div>
+                ) : (
+                  (announcements as any[]).map((a: any) => (
+                    <div key={a.id} className="rounded-xl border border-border bg-card p-5">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          {a.isPinned && <Pin className="w-3.5 h-3.5 text-teal-500" />}
+                          <h4 className="font-semibold">{a.title}</h4>
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(a.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {a.body && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{a.body}</p>}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Discussions tab */}
+            {activeTab === "discussions" && (
+              <div className="space-y-4">
+                {user && (
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <Textarea
+                      placeholder="Start a discussion or ask a question..."
+                      value={newDiscussionText}
+                      onChange={(e) => setNewDiscussionText(e.target.value)}
+                      rows={3}
+                      className="mb-3 resize-none"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!newDiscussionText.trim() || createDiscussion.isPending}
+                      onClick={() => {
+                        if (!newDiscussionText.trim() || !course) return;
+                        createDiscussion.mutate({
+                          courseId,
+                          orgId: course.orgId,
+                          title: newDiscussionText.slice(0, 80),
+                          body: newDiscussionText,
+                          authorId: user.id,
+                        });
+                      }}
+                    >
+                      Post
+                    </Button>
+                  </div>
+                )}
+                {!discussions || (discussions as any[]).length === 0 ? (
+                  <div className="rounded-xl border border-border bg-card p-12 text-center">
+                    <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No discussions yet. Be the first to start one!</p>
+                  </div>
+                ) : (
+                  (discussions as any[]).map((d: any) => (
+                    <div key={d.id} className="rounded-xl border border-border bg-card p-5">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className="font-semibold text-sm">{d.title}</h4>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(d.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {d.body && <p className="text-sm text-muted-foreground line-clamp-2">{d.body}</p>}
+                      <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                        <span>{d.replyCount ?? 0} replies</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Resources tab */}
+            {activeTab === "resources" && (
+              <div className="space-y-3">
+                {!resources || (resources as any[]).length === 0 ? (
+                  <div className="rounded-xl border border-border bg-card p-12 text-center">
+                    <Paperclip className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No resources have been added to this course yet.</p>
+                  </div>
+                ) : (
+                  (resources as any[]).map((r: any) => (
+                    <div key={r.id} className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center flex-shrink-0">
+                        {r.fileUrl ? <Download className="w-5 h-5 text-teal-600" /> : <ExternalLink className="w-5 h-5 text-teal-600" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{r.title}</p>
+                        {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                        {r.fileName && <p className="text-xs text-muted-foreground">{r.fileName}</p>}
+                      </div>
+                      <a
+                        href={r.fileUrl ?? r.externalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-teal-600 hover:text-teal-700 text-sm font-medium flex-shrink-0"
+                      >
+                        {r.fileUrl ? "Download" : "Open"}
+                      </a>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Curriculum tab (default) */}
+            {activeTab !== "curriculum" ? null : <>
+
             {/* Hero card */}
             <div className="rounded-xl border border-border overflow-hidden bg-card">
               {course.thumbnailUrl && (
@@ -401,10 +567,10 @@ export default function CourseOverviewPage() {
                   </div>
                 );
               }
-              return null;
+                            return null;
             })()}
+            </> /* end curriculum tab */}
           </div>
-
           {/* Right sidebar */}
           <div className="space-y-6">
             {/* Progress card */}

@@ -19,7 +19,7 @@ import {
   FileDown, Link2, Video, BookOpen, ClipboardList, Zap,
   Calendar, Home, Menu, X, Maximize2, Settings,
   RotateCcw, Lock, Clock, Search, StickyNote, Award, Download,
-  Bookmark, BookmarkCheck, PenLine, Trash2, Edit3,
+  Bookmark, BookmarkCheck, PenLine, Trash2, Edit3, MessageSquare,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -565,6 +565,8 @@ export default function CoursePlayerPage() {
   const [notesTab, setNotesTab] = useState<"current" | "all" | "bookmarks">("current");
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
+  const [discussionsOpen, setDiscussionsOpen] = useState(false);
+  const [newDiscussionText, setNewDiscussionText] = useState("");
 
   const [showCompletion, setShowCompletion] = useState(false);
   const [activeBanner, setActiveBanner] = useState<{
@@ -597,6 +599,15 @@ export default function CoursePlayerPage() {
   const currentIndex = allLessons.findIndex((l: any) => l.id === currentLesson?.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+  // Discussions for current lesson
+  const { data: lessonDiscussions, refetch: refetchDiscussions } = trpc.lms.discussions.list.useQuery(
+    { courseId, orgId: course?.orgId ?? 0, lessonId: currentLesson?.id },
+    { enabled: !!currentLesson && discussionsOpen && !!course }
+  );
+  const createDiscussion = trpc.lms.discussions.create.useMutation({
+    onSuccess: () => { setNewDiscussionText(""); refetchDiscussions(); },
+  });
 
   // DB-backed notes and bookmarks (declared after currentLesson to avoid TDZ error)
   const { data: currentLessonNotes, refetch: refetchLessonNotes } = trpc.lms.notes.byLesson.useQuery(
@@ -788,6 +799,7 @@ export default function CoursePlayerPage() {
   const showCompleteButton = course?.showCompleteButton !== false; // default true
   const showLessonIcons = course?.playerShowLessonIcons !== false; // default true
   const allowNotes = course?.playerAllowNotes === true;
+  const allowDiscussions = course?.playerAllowDiscussions !== false;
 
   // Filtered lessons for sidebar search
   const filteredCurriculum = sidebarSearch
@@ -886,10 +898,22 @@ export default function CoursePlayerPage() {
               Next <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           )}
+          {allowDiscussions && (
+            <button
+              onClick={() => { setDiscussionsOpen((d) => !d); if (notesOpen) setNotesOpen(false); }}
+              className={cn(
+                "h-8 w-8 flex items-center justify-center rounded transition-colors",
+                discussionsOpen ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
+              )}
+              title="Lesson Discussions"
+            >
+              <MessageSquare className="h-4 w-4" />
+            </button>
+          )}
           {allowNotes && (
             <>
               <button
-                onClick={() => { setNotesOpen((n) => !n); setNotesTab("current"); }}
+                onClick={() => { setNotesOpen((n) => !n); setNotesTab("current"); if (discussionsOpen) setDiscussionsOpen(false); }}
                 className={cn(
                   "h-8 w-8 flex items-center justify-center rounded transition-colors",
                   notesOpen ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground"
@@ -1167,6 +1191,69 @@ export default function CoursePlayerPage() {
           )}
         </main>
 
+        {/* Discussions panel */}
+        {allowDiscussions && discussionsOpen && (
+          <aside className="w-80 border-l border-border bg-background flex flex-col shrink-0 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">Discussions</span>
+              </div>
+              <button onClick={() => setDiscussionsOpen(false)} className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {user && (
+                <div className="rounded-lg border border-border p-3 bg-muted/30">
+                  <Textarea
+                    placeholder="Ask a question about this lesson..."
+                    value={newDiscussionText}
+                    onChange={(e) => setNewDiscussionText(e.target.value)}
+                    rows={2}
+                    className="mb-2 resize-none text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={!newDiscussionText.trim() || createDiscussion.isPending}
+                    onClick={() => {
+                      if (!newDiscussionText.trim() || !course || !currentLesson) return;
+                      createDiscussion.mutate({
+                        courseId,
+                        orgId: course.orgId,
+                        lessonId: currentLesson.id,
+                        title: newDiscussionText.slice(0, 80),
+                        body: newDiscussionText,
+                        authorId: user.id,
+                      });
+                    }}
+                  >
+                    Post
+                  </Button>
+                </div>
+              )}
+              {!lessonDiscussions || (lessonDiscussions as any[]).length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground">No discussions yet for this lesson.</p>
+                </div>
+              ) : (
+                (lessonDiscussions as any[]).map((d: any) => (
+                  <div key={d.id} className="rounded-lg border border-border p-3 bg-card">
+                    <p className="text-xs font-medium mb-1 line-clamp-2">{d.title}</p>
+                    {d.body && d.body !== d.title && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{d.body}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {new Date(d.createdAt).toLocaleDateString()} · {d.replyCount ?? 0} replies
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+        )}
         {/* Notes & Bookmarks panel */}
         {allowNotes && notesOpen && (
           <aside className="w-80 border-l border-border bg-background flex flex-col shrink-0 overflow-hidden">

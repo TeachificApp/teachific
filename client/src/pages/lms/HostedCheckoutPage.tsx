@@ -15,6 +15,7 @@ import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { EnrollmentGate } from "@/components/EnrollmentGate";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,7 +32,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 const CONTENT_TYPES = [
-  "course", "download", "physical_product", "webinar", "membership", "membership_plan",
+  "course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop",
 ] as const;
 type ContentType = typeof CONTENT_TYPES[number];
 
@@ -43,6 +44,7 @@ const BADGE_ICONS: Record<string, React.FC<{ className?: string; style?: React.C
 const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   course: "Course", download: "Digital Download", physical_product: "Physical Product",
   webinar: "Webinar", membership: "Membership", membership_plan: "Membership Plan",
+  workshop: "Workshop",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -656,13 +658,27 @@ export default function HostedCheckoutPage() {
 
             {/* CTA */}
             {!user ? (
-              <Button
-                className="w-full h-12 text-base font-semibold text-white"
-                style={{ backgroundColor: primaryColor }}
-                onClick={() => window.location.href = getLoginUrl(window.location.pathname)}
-              >
-                Sign In to Continue <ChevronRight className="w-4 h-4 ml-1.5" />
-              </Button>
+              <div className="space-y-3">
+                <EnrollmentGate
+                  isLoading={authLoading}
+                  isAuthenticated={false}
+                  isEnrolled={false}
+                  contentLabel={content?.title ?? "this content"}
+                  primaryColor={primaryColor}
+                  variant="full"
+                  enabled={true}
+                />
+                <p className="text-xs text-center text-muted-foreground">
+                  Already have an account?{" "}
+                  <button
+                    className="underline font-medium"
+                    style={{ color: primaryColor }}
+                    onClick={() => window.location.href = getLoginUrl(window.location.pathname)}
+                  >
+                    Sign in
+                  </button>
+                </p>
+              </div>
             ) : (
               <Button
                 className="w-full h-12 text-base font-semibold text-white"
