@@ -1493,6 +1493,11 @@ export const formSubmissions = mysqlTable("form_submissions", {
   ipAddress: varchar("ipAddress", { length: 50 }),
   userAgent: text("userAgent"),
   submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+  // Review workflow
+  status: mysqlEnum("status", ["pending", "reviewed", "approved", "rejected"]).default("pending").notNull(),
+  // Quality scoring (computed at submit time)
+  scoreTotal: int("scoreTotal"),
+  scoreMax: int("scoreMax"),
 });
 export type FormSubmission = typeof formSubmissions.$inferSelect;
 export type InsertFormSubmission = typeof formSubmissions.$inferInsert;

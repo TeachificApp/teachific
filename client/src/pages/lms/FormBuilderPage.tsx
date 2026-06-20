@@ -87,6 +87,7 @@ import {
   Edit,
   Save,
   Code,
+  Sparkles,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
@@ -1531,10 +1532,18 @@ function IntegrationsPanel({ formId, orgId }: { formId: number; orgId: number })
 
 // ── Results sub-panel components ────────────────────────────────────────────
 
+const STATUS_COLORS_INLINE: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-700",
+  reviewed: "bg-blue-100 text-blue-700",
+  approved: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-700",
+};
+
 function FormResultsTable({ formId, fields }: { formId: number; fields: FormField[] }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [activeFilterId, setActiveFilterId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
   const pageSize = 50;
 
   const { data: rawSubmissions, isLoading, refetch } = trpc.forms.submissions.list.useQuery(
@@ -1546,9 +1555,15 @@ function FormResultsTable({ formId, fields }: { formId: number; fields: FormFiel
     onSuccess: () => { refetch(); toast.success("Response deleted"); },
     onError: (e) => toast.error(e.message),
   });
+  const updateStatusMutation = trpc.forms.updateSubmissionStatus.useMutation({
+    onSuccess: () => refetch(),
+    onError: (e) => toast.error(e.message),
+  });
 
+  const hasScoring = fields.some((f) => (f as any).scoreWeight > 0);
   const allSubmissions: any[] = (rawSubmissions as any[]) ?? [];
   const filtered = allSubmissions.filter((s: any) => {
+    if (statusFilter !== "all" && (s.status ?? "pending") !== statusFilter) return false;
     if (!searchTerm) return true;
     const answers = s.answers ? JSON.parse(s.answers) : {};
     return Object.values(answers).some((v) => String(v).toLowerCase().includes(searchTerm.toLowerCase()));
@@ -1599,6 +1614,18 @@ function FormResultsTable({ formId, fields }: { formId: number; fields: FormFiel
             ))}
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="h-8 text-xs w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="reviewed">Reviewed</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
         <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={exportCsv}>
           <Download className="h-3.5 w-3.5" /> Export CSV
         </Button>
@@ -1621,7 +1648,9 @@ function FormResultsTable({ formId, fields }: { formId: number; fields: FormFiel
                 <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground w-8"></th>
                 <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Ref #</th>
                 <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Submitted</th>
-                {inputFields.slice(0, 5).map((f) => (
+                <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground w-24">Status</th>
+                {hasScoring && <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground w-20">Score</th>}
+                {inputFields.slice(0, 4).map((f) => (
                   <th key={f.id} className="text-left px-3 py-2 text-xs font-medium text-muted-foreground max-w-[150px]">
                     <span className="truncate block">{f.label || f.type}</span>
                   </th>
@@ -1639,9 +1668,32 @@ function FormResultsTable({ formId, fields }: { formId: number; fields: FormFiel
                     </td>
                     <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{(page - 1) * pageSize + i + 1}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(s.createdAt).toLocaleString()}
+                      {new Date(s.createdAt ?? s.submittedAt).toLocaleString()}
                     </td>
-                    {inputFields.slice(0, 5).map((f) => (
+                    <td className="px-3 py-2">
+                      <Select
+                        value={s.status ?? "pending"}
+                        onValueChange={(v) => updateStatusMutation.mutate({ submissionId: s.id, status: v as any })}
+                      >
+                        <SelectTrigger className={`h-6 text-xs border-0 px-2 rounded-full font-medium ${STATUS_COLORS_INLINE[s.status ?? "pending"] ?? ""}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    {hasScoring && (
+                      <td className="px-3 py-2 text-xs">
+                        {s.scoreMax > 0 ? (
+                          <span className="font-medium">{s.scoreTotal ?? 0}/{s.scoreMax} ({Math.round(((s.scoreTotal ?? 0) / s.scoreMax) * 100)}%)</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    )}
+                    {inputFields.slice(0, 4).map((f) => (
                       <td key={f.id} className="px-3 py-2 text-xs max-w-[150px]">
                         <span className="truncate block">{String(answers[String(f.id)] ?? "")}</span>
                       </td>
@@ -2161,6 +2213,39 @@ export default function FormBuilderPage() {
   const [importUrl, setImportUrl] = useState("");
   const [importPreview, setImportPreview] = useState<{ title: string; description: string; fields: any[] } | null>(null);
 
+  // AI Generate state
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiPreview, setAiPreview] = useState<{ title: string; description: string; fields: any[] } | null>(null);
+
+  const generateFromPromptMutation = trpc.forms.generateFromPrompt.useMutation({
+    onSuccess: (data) => { setAiPreview(data); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleApplyAiGenerate = () => {
+    if (!aiPreview) return;
+    if (!formSettings?.title || formSettings.title === "Untitled Form") {
+      setFormSettings((s: any) => ({ ...s, title: aiPreview.title, description: aiPreview.description }));
+    }
+    const newFields = aiPreview.fields.map((f: any, i: number) => ({
+      id: newTempId(),
+      type: f.type as FieldType,
+      label: f.label,
+      placeholder: f.placeholder ?? "",
+      required: f.required,
+      sortOrder: fields.length + i,
+      options: f.options ?? [],
+      isBranchingSource: false,
+    }));
+    setFields((prev) => [...prev, ...newFields]);
+    markDirty();
+    setAiGenerateOpen(false);
+    setAiPreview(null);
+    setAiPrompt("");
+    toast.success(`Added ${newFields.length} AI-generated field${newFields.length !== 1 ? "s" : ""} to form`);
+  };
+
   const importFromUrlMutation = trpc.forms.importFromUrl.useMutation({
     onSuccess: (data) => {
       setImportPreview(data);
@@ -2442,6 +2527,17 @@ export default function FormBuilderPage() {
           >
             {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
             {isSaving ? "Saving..." : isDirty ? "Save" : "Saved"}
+          </Button>
+
+          {/* AI Generate */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setAiGenerateOpen(true); setAiPreview(null); setAiPrompt(""); }}
+            className="gap-1.5 h-7 text-xs"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            AI Generate
           </Button>
 
           {/* Import from URL */}
@@ -3024,6 +3120,79 @@ export default function FormBuilderPage() {
           </main>
         </div>
       )}
+
+      {/* ── AI Generate Dialog ── */}
+      <Dialog open={aiGenerateOpen} onOpenChange={(o) => { setAiGenerateOpen(o); if (!o) { setAiPreview(null); setAiPrompt(""); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              AI Generate Fields
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!aiPreview ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Describe the form you want to build. AI will generate appropriate fields that you can add to your form.
+                </p>
+                <Textarea
+                  placeholder="e.g. A post-event feedback form asking about session quality, speaker effectiveness, venue, and what attendees would improve next time."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setAiGenerateOpen(false)}>Cancel</Button>
+                  <Button
+                    onClick={() => generateFromPromptMutation.mutate({ prompt: aiPrompt })}
+                    disabled={aiPrompt.trim().length < 10 || generateFromPromptMutation.isPending}
+                    className="gap-1.5"
+                  >
+                    {generateFromPromptMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Generating...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4" />Generate</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="border border-border rounded-lg p-4 space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Generated form</p>
+                    <p className="font-semibold text-sm">{aiPreview.title}</p>
+                    {aiPreview.description && <p className="text-xs text-muted-foreground mt-0.5">{aiPreview.description}</p>}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{aiPreview.fields.length} field{aiPreview.fields.length !== 1 ? "s" : ""} generated</p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {aiPreview.fields.map((f: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-xs bg-muted rounded px-2.5 py-1.5">
+                          <span className="font-mono text-muted-foreground w-20 shrink-0">{f.type}</span>
+                          <span className="font-medium truncate">{f.label}</span>
+                          {f.required && <span className="ml-auto text-red-500 shrink-0">required</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setAiPreview(null); }} className="flex-1">
+                    Regenerate
+                  </Button>
+                  <Button size="sm" onClick={handleApplyAiGenerate} className="flex-1 gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Add {aiPreview.fields.length} Field{aiPreview.fields.length !== 1 ? "s" : ""} to Form
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Import from URL Dialog ── */}
       <Dialog open={importUrlOpen} onOpenChange={(o) => { setImportUrlOpen(o); if (!o) { setImportPreview(null); setImportUrl(""); } }}>

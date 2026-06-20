@@ -157,6 +157,23 @@ export const formsRouter = router({
       orgId: z.number(),
       title: z.string().min(1),
       description: z.string().optional(),
+      initialFields: z.array(z.object({
+        type: z.string(),
+        label: z.string(),
+        placeholder: z.string().optional(),
+        helpText: z.string().optional(),
+        required: z.boolean().optional(),
+        options: z.array(z.object({
+          value: z.string(),
+          label: z.string(),
+          scoreValue: z.number().optional(),
+        })).optional(),
+        scaleMin: z.number().optional(),
+        scaleMax: z.number().optional(),
+        scaleMinLabel: z.string().optional(),
+        scaleMaxLabel: z.string().optional(),
+        scoreWeight: z.number().optional(),
+      })).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -184,6 +201,27 @@ export const formsRouter = router({
         submissionCount: 0,
       });
       const created = await getFormBySlug(slug);
+      // Insert initial fields if provided (from template or AI generation)
+      if (input.initialFields && input.initialFields.length > 0 && created) {
+        for (let i = 0; i < input.initialFields.length; i++) {
+          const f = input.initialFields[i];
+          await db.insert(formFields).values({
+            formId: created.id,
+            type: f.type,
+            label: f.label,
+            placeholder: f.placeholder ?? null,
+            helpText: f.helpText ?? null,
+            required: f.required ?? false,
+            sortOrder: i,
+            options: f.options ? JSON.stringify(f.options) : null,
+            scaleMin: f.scaleMin ?? null,
+            scaleMax: f.scaleMax ?? null,
+            scaleMinLabel: f.scaleMinLabel ?? null,
+            scaleMaxLabel: f.scaleMaxLabel ?? null,
+            scoreWeight: f.scoreWeight ?? 0,
+          });
+        }
+      }
       return created!;
     }),
 
@@ -543,10 +581,12 @@ export const formsRouter = router({
         .set({ submissionCount: (form.submissionCount ?? 0) + 1, updatedAt: new Date() })
         .where(eq(forms.id, input.formId));
 
+      // Fetch fields once for notifications + scoring
+      const fields = await getFieldsByForm(input.formId);
+
       // Email notifications (if configured)
       const notifyEmails: string[] = form.notifyEmails ? JSON.parse(form.notifyEmails) : [];
       if (notifyEmails.length > 0) {
-        const fields = await getFieldsByForm(input.formId);
         const answersRecord: Record<string, string> = {};
         for (const [k, v] of Object.entries(input.answers)) {
           answersRecord[k] = Array.isArray(v) ? v.join(", ") : String(v ?? "");
@@ -574,9 +614,37 @@ export const formsRouter = router({
         }).catch(() => {});
       }
 
+      // Compute quality score from field scoreWeight × option scoreValue
+      let scoreTotal = 0;
+      let scoreMax = 0;
+      for (const field of fields) {
+        if (!field.scoreWeight || field.scoreWeight <= 0) continue;
+        const optionsRaw = field.options ? JSON.parse(field.options as string) : [];
+        if (!Array.isArray(optionsRaw) || optionsRaw.length === 0) continue;
+        const maxOpt = Math.max(0, ...optionsRaw.map((o: any) => o.scoreValue ?? 0));
+        scoreMax += field.scoreWeight * maxOpt;
+        const answer = input.answers[String(field.id)];
+        const chosen = Array.isArray(answer) ? answer : answer != null ? [answer] : [];
+        for (const val of chosen) {
+          const opt = optionsRaw.find((o: any) => o.value === val);
+          if (opt) scoreTotal += field.scoreWeight * (opt.scoreValue ?? 0);
+        }
+      }
+      // Update the just-inserted submission with score
+      if (scoreMax > 0) {
+        // Use the most-recent submission for this form (just inserted)
+        const lastSubs = await db.select().from(formSubmissions)
+          .where(eq(formSubmissions.formId, input.formId))
+          .orderBy(sql`id DESC`)
+          .limit(1);
+        if (lastSubs[0]) {
+          await db.update(formSubmissions)
+            .set({ scoreTotal, scoreMax })
+            .where(eq(formSubmissions.id, lastSubs[0].id));
+        }
+      }
       return { success: true, message: form.successMessage ?? "Thank you for your response!" };
     }),
-
   // ── Check if org has email routing access ────────────────────────────────
   emailAccessCheck: protectedProcedure
     .input(z.object({ orgId: z.number() }))
@@ -1415,5 +1483,120 @@ Be thorough in extracting ALL fields and their properties.`,
           sortOrder: i,
         })),
       };
+    }),
+
+  // ── AI Generate form from a text description ──────────────────────────────
+  generateFromPrompt: protectedProcedure
+    .input(z.object({
+      prompt: z.string().min(10).max(2000),
+    }))
+    .mutation(async ({ input }) => {
+      const { invokeLLM } = await import("./_core/llm");
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert form designer. When given a description of a form's purpose, you generate a complete, well-structured form with appropriate fields, options, and optional branching logic. Always return valid JSON matching the schema exactly.`,
+          },
+          {
+            role: "user",
+            content: `Create a form for this purpose: ${input.prompt}`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "form_generation",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "A concise, descriptive form title" },
+                description: { type: "string", description: "A 1-2 sentence description of the form's purpose" },
+                fields: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", description: "Unique field identifier (e.g. field_1)" },
+                      type: { type: "string", enum: ["short_answer", "long_answer", "email", "phone", "number", "dropdown", "radio", "checkbox", "date", "rating", "scale", "section_break", "statement"] },
+                      label: { type: "string", description: "Field label or question text" },
+                      placeholder: { type: "string", description: "Placeholder text for input fields" },
+                      helpText: { type: "string", description: "Optional helper text shown below the field" },
+                      required: { type: "boolean", description: "Whether the field is required" },
+                      options: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            value: { type: "string" },
+                            label: { type: "string" },
+                          },
+                          required: ["value", "label"],
+                          additionalProperties: false,
+                        },
+                        description: "Options for dropdown/radio/checkbox fields",
+                      },
+                    },
+                    required: ["id", "type", "label", "required", "options"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["title", "description", "fields"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const content = result?.choices?.[0]?.message?.content;
+      if (!content) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "LLM returned no content" });
+      let parsed: any;
+      try {
+        parsed = typeof content === "string" ? JSON.parse(content) : content;
+      } catch (e) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not parse LLM response" });
+      }
+      if (!parsed.fields || parsed.fields.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "AI could not generate form fields. Please refine your description." });
+      }
+      return {
+        title: parsed.title ?? "Generated Form",
+        description: parsed.description ?? "",
+        fields: (parsed.fields ?? []).map((f: any, i: number) => ({
+          type: f.type ?? "short_answer",
+          label: f.label ?? `Field ${i + 1}`,
+          placeholder: f.placeholder ?? "",
+          helpText: f.helpText ?? "",
+          required: f.required ?? false,
+          options: (f.options ?? []).map((o: any) => ({ value: String(o.value || o.label).toLowerCase().replace(/\s+/g, "_"), label: String(o.label) })),
+          sortOrder: i,
+        })),
+      };
+    }),
+
+  // ── Update submission review status ──────────────────────────────────────
+  updateSubmissionStatus: protectedProcedure
+    .input(z.object({
+      submissionId: z.number(),
+      status: z.enum(["pending", "reviewed", "approved", "rejected"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Verify the submission belongs to a form owned by this user's org
+      const sub = await db.select().from(formSubmissions).where(eq(formSubmissions.id, input.submissionId)).limit(1);
+      if (!sub[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      const form = await getFormById(sub[0].formId);
+      if (!form) throw new TRPCError({ code: "NOT_FOUND" });
+      // Check ownership (org admin or site admin)
+      const orgId = (ctx.user as any)?.orgId;
+      if (form.orgId !== orgId && (ctx.user as any)?.role !== "site_owner" && (ctx.user as any)?.role !== "site_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await db.update(formSubmissions)
+        .set({ status: input.status })
+        .where(eq(formSubmissions.id, input.submissionId));
+      return { success: true };
     }),
 });

@@ -4131,3 +4131,37 @@
 - [x] 353 total tests passing across 26 test files
 - [x] Updated lms.test.ts to match actual router API (was using old procedure names)
 - [x] Updated lmsCheckoutRouter.test.ts to reflect 7 content types (added workshop)
+
+## Sprint: Form Builder Full Sync (ultrasound-app → Teachific)
+
+### DB Schema
+- [x] Add `status` column to `form_submissions` (enum: pending/reviewed/approved/rejected, default pending)
+- [x] Add `scoreTotal` and `scoreMax` columns to `form_submissions` for quality score tracking
+- [x] Run migration for form_submissions status + score columns
+
+### Server — formsRouter
+- [x] Add `generateFromPrompt` procedure: LLM generates full form JSON from a text description
+- [x] Add `updateSubmissionStatus` procedure: update status on a submission
+- [x] Compute and store scoreTotal/scoreMax on `publicSubmit` (sum scoreValue of chosen options × field scoreWeight)
+
+### UI — FormsPage (create dialog)
+- [x] Redesign create dialog into 3-tab mode: "Blank", "From Template", "AI Generate"
+- [x] "From Template" tab: grid of 6 starter templates (Contact, Feedback, Survey, Registration, Quiz, Lead Capture) — clicking one creates form pre-populated with fields
+- [x] "AI Generate" tab: textarea for description + Generate button → calls generateFromPrompt → preview → create
+
+### UI — FormBuilderPage
+- [x] Add "AI Generate" button in header toolbar (alongside "Import from URL") that opens AI generate dialog
+- [x] AI generate dialog: textarea prompt, optional context, Generate button, field preview, Apply to form
+
+### UI — FormResponsesPage
+- [x] Add search/filter bar: respondent search, date range picker, status filter dropdown
+- [x] Add status badge column to responses table (pending/reviewed/approved/rejected)
+- [x] Add score column to responses table (shows score/max with color tier badge when form has scoring)
+- [x] Add "Update Status" dropdown action per row (pending → reviewed → approved/rejected)
+- [x] Expand view-submission dialog to show status selector + score breakdown
+- [x] Show aggregate stats bar: total responses, avg score, % reviewed
+
+### Tests
+- [x] Test generateFromPrompt procedure (mock LLM)
+- [x] Test updateSubmissionStatus procedure
+- [x] Test score computation on publicSubmit
