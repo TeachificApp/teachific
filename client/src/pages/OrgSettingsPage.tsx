@@ -1473,7 +1473,7 @@ export default function OrgSettingsPage() {
         {/* Embed Settings Tab */}
         {orgCtx?.org?.id && (
           <TabsContent value="embed" className="space-y-6">
-            <EmbedSettingsPanel orgId={orgCtx.org.id} orgSlug={orgCtx.org.slug} />
+            <EmbedSettingsPanel orgId={orgCtx.org.id} orgSlug={orgCtx.org.slug} plan={plan} />
           </TabsContent>
         )}
       </Tabs>
@@ -3281,7 +3281,8 @@ function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: 
 }
 
 // ─── Embed Settings Panel ─────────────────────────────────────────────────────
-function EmbedSettingsPanel({ orgId, orgSlug }: { orgId: number; orgSlug: string }) {
+function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; orgSlug: string; plan?: string }) {
+  const isWhitelabel = ["whitelabel", "enterprise"].includes(plan);
   const utils = trpc.useUtils();
   const { data: config, isLoading } = trpc.orgs.getEmbedConfig.useQuery({ orgId });
   const saveMutation = trpc.orgs.saveEmbedConfig.useMutation({
@@ -3401,10 +3402,24 @@ function EmbedSettingsPanel({ orgId, orgSlug }: { orgId: number; orgSlug: string
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label className="font-medium">Hide Teachific Branding</Label>
-              <p className="text-xs text-muted-foreground">Remove the "Powered by Teachific" footer in embeds.</p>
+              <Label className={`font-medium ${!isWhitelabel ? "text-muted-foreground" : ""}`}>Hide Teachific Branding</Label>
+              <p className="text-xs text-muted-foreground">
+                {isWhitelabel
+                  ? 'Remove the "Powered by Teachific" footer in embeds.'
+                  : 'Remove the "Powered by Teachific" footer in embeds. Available on Whitelabel plans only.'}
+              </p>
+              {!isWhitelabel && (
+                <Badge variant="outline" className="mt-1 text-xs text-amber-600 border-amber-500/40 bg-amber-500/10">
+                  <Crown className="h-3 w-3 mr-1" /> Whitelabel plan required
+                </Badge>
+              )}
             </div>
-            <Switch checked={hideBranding} onCheckedChange={setHideBranding} />
+            <Switch
+              checked={isWhitelabel ? hideBranding : false}
+              onCheckedChange={isWhitelabel ? setHideBranding : undefined}
+              disabled={!isWhitelabel}
+              title={!isWhitelabel ? "Upgrade to a Whitelabel plan to hide Teachific branding" : undefined}
+            />
           </div>
           <div className="flex items-center justify-between">
             <div>
