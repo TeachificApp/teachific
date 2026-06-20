@@ -34,8 +34,9 @@ import {
 import { toast } from "sonner";
 import { Globe } from "lucide-react";
 import CheckoutPageEditor from "@/components/CheckoutPageEditor";
+import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 
-type TabId = "details" | "content" | "members" | "rules" | "pricing" | "checkout_page";
+type TabId = "details" | "content" | "members" | "rules" | "pricing" | "checkout_page" | "embed";
 
 const tabs = [
   { id: "details" as const, label: "Details", icon: FileText },
@@ -44,6 +45,7 @@ const tabs = [
   { id: "rules" as const, label: "Rules", icon: Zap },
   { id: "pricing" as const, label: "Pricing", icon: DollarSign },
   { id: "checkout_page" as const, label: "Checkout Page", icon: Globe },
+  { id: "embed" as const, label: "Embed", icon: Globe },
 ];
 
 const CONTENT_TYPE_ICONS: Record<string, any> = {
@@ -746,6 +748,19 @@ export default function MembershipEditorPage() {
               contentId={currentMembership.id}
               orgId={currentMembership.orgId ?? orgId ?? 1}
               contentSlug={String(currentMembership.id)}
+            />
+          </div>
+        )}
+        {activeTab === "embed" && currentMembership && (
+          <div className="max-w-2xl space-y-2">
+            <h3 className="text-base font-semibold">Embed this Membership</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Copy the snippet below to embed this membership on any external website.
+            </p>
+            <EmbedSnippetPanel
+              contentUrl={`/memberships/${currentMembership.id}`}
+              title={currentMembership.name ?? "Membership"}
+              defaultHeight={600}
             />
           </div>
         )}

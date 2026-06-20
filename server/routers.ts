@@ -1568,6 +1568,60 @@ export const appRouter = router({
           return { total: input.users.length, created, updated, failed, errors };
         }),
     }),
+
+    // ── Embed configuration ───────────────────────────────────────────────────
+    getEmbedConfig: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const rows = await db
+          .select({ org: organizations, role: orgMembers.role })
+          .from(orgMembers)
+          .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+          .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)))
+          .limit(1);
+        if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND" });
+        const org = rows[0].org;
+        return {
+          allowedDomains: org.embedAllowedDomains ? (JSON.parse(org.embedAllowedDomains) as string[]) : [],
+          defaultTheme: org.embedDefaultTheme ?? "auto",
+          analyticsEnabled: org.embedAnalyticsEnabled ?? true,
+          hideTeachificBranding: org.embedHideTeachificBranding ?? false,
+        };
+      }),
+
+    saveEmbedConfig: protectedProcedure
+      .input(z.object({
+        orgId: z.number(),
+        allowedDomains: z.array(z.string()).optional(),
+        defaultTheme: z.enum(["light", "dark", "auto"]).optional(),
+        analyticsEnabled: z.boolean().optional(),
+        hideTeachificBranding: z.boolean().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const rows = await db
+          .select({ role: orgMembers.role })
+          .from(orgMembers)
+          .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)))
+          .limit(1);
+        if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND" });
+        const role = rows[0].role;
+        if (role !== "org_admin" && role !== "org_super_admin" && ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const updates: Record<string, any> = {};
+        if (input.allowedDomains !== undefined) updates.embedAllowedDomains = JSON.stringify(input.allowedDomains);
+        if (input.defaultTheme !== undefined) updates.embedDefaultTheme = input.defaultTheme;
+        if (input.analyticsEnabled !== undefined) updates.embedAnalyticsEnabled = input.analyticsEnabled;
+        if (input.hideTeachificBranding !== undefined) updates.embedHideTeachificBranding = input.hideTeachificBranding;
+        if (Object.keys(updates).length > 0) {
+          await db.update(organizations).set(updates).where(eq(organizations.id, input.orgId));
+        }
+        return { ok: true };
+      }),
   }),
 
   // ── Content Packages ──────────────────────────────────────────────────────

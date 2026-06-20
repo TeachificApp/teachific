@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { toast } from "sonner";
 import {
   ChevronLeft, Save, Package, BookOpen, DollarSign, Settings,
@@ -132,6 +133,7 @@ export default function BundleEditorPage() {
           <TabsTrigger value="details"><Settings className="w-4 h-4 mr-2" />Details</TabsTrigger>
           <TabsTrigger value="pricing"><DollarSign className="w-4 h-4 mr-2" />Pricing</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart2 className="w-4 h-4 mr-2" />Analytics</TabsTrigger>
+          <TabsTrigger value="embed">Embed</TabsTrigger>
         </TabsList>
 
         {/* ── Courses Tab ── */}
@@ -315,6 +317,20 @@ export default function BundleEditorPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+        {/* ── Embed Tab ── */}
+        <TabsContent value="embed">
+          <div className="max-w-2xl space-y-2">
+            <h3 className="text-base font-semibold">Embed this Bundle</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Copy the snippet below to embed this bundle on any external website.
+            </p>
+            <EmbedSnippetPanel
+              contentUrl={`/bundles/${bundleId}`}
+              title={bundle.name ?? "Bundle"}
+              defaultHeight={600}
+            />
           </div>
         </TabsContent>
       </Tabs>

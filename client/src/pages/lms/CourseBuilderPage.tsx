@@ -45,6 +45,7 @@ import {
   Repeat, Film, CalendarRange, ExternalLink, Link2, Mail, Activity,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { useAuth } from "@/_core/hooks/useAuth";
 import LessonEffectEditor from "@/components/LessonEffectEditor";
 import ThinkificImporter from "@/pages/admin/ThinkificImporter";
@@ -1173,6 +1174,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
           <TabsTrigger value="analytics" className="text-xs">Analytics</TabsTrigger>
           <TabsTrigger value="sales" className="text-xs">Sales</TabsTrigger>
           <TabsTrigger value="checkout_page" className="text-xs">Checkout Page</TabsTrigger>
+          <TabsTrigger value="embed" className="text-xs">Embed</TabsTrigger>
         </TabsList>
 
         {/* Settings Tab */}
@@ -1346,6 +1348,20 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
         {/* Cohort Tab — only visible for cohort type */}
         <TabsContent value="cohort" className="mt-4">
           <CohortTab courseId={courseId} />
+        </TabsContent>
+        {/* Embed Tab */}
+        <TabsContent value="embed" className="mt-4">
+          <div className="max-w-2xl space-y-2">
+            <h3 className="text-base font-semibold">Embed this Course</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Copy the snippet below to embed this course on any external website, LMS, or intranet.
+            </p>
+            <EmbedSnippetPanel
+              contentUrl={`/school/courses/${course.slug}`}
+              title={course.title}
+              defaultHeight={700}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

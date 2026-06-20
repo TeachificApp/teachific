@@ -102,6 +102,11 @@ export const organizations = mysqlTable("organizations", {
   customCss: longtext("customCss"),
   // Bring-Your-Own SendGrid key (Builder+ plan only, stored encrypted)
   ownSendGridKeyEncrypted: text("ownSendGridKeyEncrypted"),
+  // Embed configuration
+  embedAllowedDomains: text("embedAllowedDomains"), // JSON array of allowed domains
+  embedDefaultTheme: mysqlEnum("embedDefaultTheme", ["light", "dark", "auto"]).default("auto").notNull(),
+  embedAnalyticsEnabled: boolean("embedAnalyticsEnabled").default(true).notNull(),
+  embedHideTeachificBranding: boolean("embedHideTeachificBranding").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

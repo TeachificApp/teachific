@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { toast } from "sonner";
 import {
   Plus, Pencil, Trash2, Users, Loader2, Calendar, MapPin, Video,
@@ -274,6 +275,7 @@ function WorkshopEditor({ workshopId, onBack }: { workshopId: number; onBack: ()
             {regCount > 0 && <Badge className="ml-2 h-5 px-1.5 text-xs">{regCount}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="analytics"><BarChart2 className="w-4 h-4 mr-2" />Analytics</TabsTrigger>
+          <TabsTrigger value="embed">Embed</TabsTrigger>
         </TabsList>
 
         {/* ── Details Tab ── */}
@@ -506,6 +508,20 @@ function WorkshopEditor({ workshopId, onBack }: { workshopId: number; onBack: ()
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+        {/* ── Embed Tab ── */}
+        <TabsContent value="embed">
+          <div className="max-w-2xl space-y-2">
+            <h3 className="text-base font-semibold">Embed this Workshop</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Copy the snippet below to embed this workshop registration page on any external website.
+            </p>
+            <EmbedSnippetPanel
+              contentUrl={`/workshops/${workshopId}`}
+              title={workshop.title}
+              defaultHeight={600}
+            />
           </div>
         </TabsContent>
       </Tabs>

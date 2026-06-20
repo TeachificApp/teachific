@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import UpgradePromptDialog from "@/components/UpgradePromptDialog";
+import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { useOrgPlan } from "@/hooks/useOrgPlan";
 import {
   ChevronLeft, Download, GripVertical, Plus, Save, Trash2, Upload, CheckCircle2, Sparkles, Loader2, Info, FileArchive, Eye,
@@ -299,7 +300,7 @@ export default function QuizBuilderPage() {
       </div>
 
       <Tabs defaultValue="settings">
-        <TabsList><TabsTrigger value="settings">Settings</TabsTrigger><TabsTrigger value="questions">Questions ({questions.length})</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="settings">Settings</TabsTrigger><TabsTrigger value="questions">Questions ({questions.length})</TabsTrigger>{!isNew && quizId && <TabsTrigger value="embed">Embed</TabsTrigger>}</TabsList>
 
         <TabsContent value="settings" className="mt-4">
           <Card className="shadow-sm border-border/60">
@@ -342,6 +343,21 @@ export default function QuizBuilderPage() {
             ))}
           </div>
         </TabsContent>
+        {!isNew && quizId && (
+          <TabsContent value="embed" className="mt-4">
+            <div className="max-w-2xl space-y-2">
+              <h3 className="text-base font-semibold">Embed this Quiz</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Copy the snippet below to embed this quiz on any external website.
+              </p>
+              <EmbedSnippetPanel
+                contentUrl={`/quizzes/${quizId}/play`}
+                title={title}
+                defaultHeight={600}
+              />
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* AI Generate Dialog */}

@@ -19,6 +19,7 @@ import {
   UserCircle, Plus, Trash2, Edit2, Link as LinkIcon, Link2,
   Wand2, Sparkles, Loader2, ExternalLink, Copy, Mail, Key, Eye, EyeOff,
   AlertTriangle, RefreshCw, DollarSign, ArrowDownCircle, History, ShieldAlert, ReceiptText, Award,
+  Code2,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { getSubdomain } from "@/hooks/useSubdomain";
@@ -28,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { WysiwygPageBuilder } from "@/components/WysiwygPageBuilder";
 import type { Block } from "@/components/WysiwygPageBuilder";
 import { CertificateSettingsTab } from "./lms/CertificateSettingsTab";
+import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { UserDetailPanel, type UserRow as DetailUserRow } from "@/components/UserDetailPanel";
 
 export default function OrgSettingsPage() {
@@ -462,6 +464,9 @@ export default function OrgSettingsPage() {
             </TabsTrigger>
             <TabsTrigger value="email" className="gap-1.5 whitespace-nowrap">
               <Mail className="h-4 w-4" /> Email
+            </TabsTrigger>
+            <TabsTrigger value="embed" className="gap-1.5 whitespace-nowrap">
+              <Code2 className="h-4 w-4" /> Embed
             </TabsTrigger>
            </TabsList>
         {/* General Tab */}
@@ -1465,6 +1470,12 @@ export default function OrgSettingsPage() {
         <OrgMembersTab orgId={orgCtx?.org?.id} orgName={orgCtx?.org?.name ?? ""} />
         <OrgCertificatesTabContent orgId={orgCtx?.org?.id} />
         <OrgEmailSettingsTab orgId={orgCtx?.org?.id} plan={plan} />
+        {/* Embed Settings Tab */}
+        {orgCtx?.org?.id && (
+          <TabsContent value="embed" className="space-y-6">
+            <EmbedSettingsPanel orgId={orgCtx.org.id} orgSlug={orgCtx.org.slug} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
@@ -3266,5 +3277,150 @@ function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: 
         </Button>
       </div>
     </TabsContent>
+  );
+}
+
+// ─── Embed Settings Panel ─────────────────────────────────────────────────────
+function EmbedSettingsPanel({ orgId, orgSlug }: { orgId: number; orgSlug: string }) {
+  const utils = trpc.useUtils();
+  const { data: config, isLoading } = trpc.orgs.getEmbedConfig.useQuery({ orgId });
+  const saveMutation = trpc.orgs.saveEmbedConfig.useMutation({
+    onSuccess: () => { toast.success("Embed settings saved"); utils.orgs.getEmbedConfig.invalidate({ orgId }); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [domains, setDomains] = useState<string[]>([]);
+  const [newDomain, setNewDomain] = useState("");
+  const [defaultTheme, setDefaultTheme] = useState<"light" | "dark" | "auto">("auto");
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+  const [hideBranding, setHideBranding] = useState(false);
+
+  useEffect(() => {
+    if (config) {
+      setDomains(config.allowedDomains ?? []);
+      setDefaultTheme((config.defaultTheme as "light" | "dark" | "auto") ?? "auto");
+      setAnalyticsEnabled(config.analyticsEnabled ?? true);
+      setHideBranding(config.hideTeachificBranding ?? false);
+    }
+  }, [config]);
+
+  const addDomain = () => {
+    const d = newDomain.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!d || domains.includes(d)) return;
+    setDomains([...domains, d]);
+    setNewDomain("");
+  };
+
+  const removeDomain = (d: string) => setDomains(domains.filter((x) => x !== d));
+
+  const handleSave = () => {
+    saveMutation.mutate({ orgId, allowedDomains: domains, defaultTheme, analyticsEnabled, hideTeachificBranding: hideBranding });
+  };
+
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground">Loading embed settings…</div>;
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      {/* Platform Embed Snippet */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Code2 className="h-4 w-4" /> Platform-Wide Embed
+          </CardTitle>
+          <CardDescription>
+            Embed your entire Teachific school (homepage + catalog) on any external website.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EmbedSnippetPanel
+            contentUrl="/school"
+            title="School Homepage"
+            defaultHeight={700}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Domain Allowlist */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Allowed Embed Domains</CardTitle>
+          <CardDescription>
+            Restrict which external domains can embed your content. Leave empty to allow all domains.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. example.com"
+              value={newDomain}
+              onChange={(e) => setNewDomain(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addDomain()}
+            />
+            <Button variant="outline" onClick={addDomain} disabled={!newDomain.trim()}>
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
+          </div>
+          {domains.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No restrictions — all domains allowed.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {domains.map((d) => (
+                <Badge key={d} variant="secondary" className="gap-1.5 pr-1">
+                  {d}
+                  <button onClick={() => removeDomain(d)} className="hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Embed Appearance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Embed Appearance</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="font-medium">Default Theme</Label>
+              <p className="text-xs text-muted-foreground">Controls the colour scheme of embedded content.</p>
+            </div>
+            <Select value={defaultTheme} onValueChange={(v) => setDefaultTheme(v as any)}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">Auto (system)</SelectItem>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="font-medium">Hide Teachific Branding</Label>
+              <p className="text-xs text-muted-foreground">Remove the "Powered by Teachific" footer in embeds.</p>
+            </div>
+            <Switch checked={hideBranding} onCheckedChange={setHideBranding} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="font-medium">Embed Analytics</Label>
+              <p className="text-xs text-muted-foreground">Track views and interactions from embedded content.</p>
+            </div>
+            <Switch checked={analyticsEnabled} onCheckedChange={setAnalyticsEnabled} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</> : "Save Embed Settings"}
+        </Button>
+      </div>
+    </div>
   );
 }

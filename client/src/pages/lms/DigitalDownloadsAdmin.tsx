@@ -372,6 +372,9 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
           <TabsTrigger value="sales" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
             <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Sales
           </TabsTrigger>
+          <TabsTrigger value="embed" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+            Embed
+          </TabsTrigger>
         </TabsList>
 
         {/* Settings Tab */}
@@ -587,6 +590,21 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
           </div>
           <DownloadSalesTab productId={productId} />
           <GrantDownloadAccessDialog open={showGrantDialog} productId={productId} onClose={() => setShowGrantDialog(false)} />
+        </TabsContent>
+        <TabsContent value="embed" className="mt-4">
+          <div className="max-w-2xl space-y-2">
+            <h3 className="text-base font-semibold">Embed this Download</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Copy the snippet below to embed this download page on any external website.
+            </p>
+            {product.slug && (
+              <EmbedSnippetPanel
+                contentUrl={`/downloads/${product.slug}`}
+                title={product.title}
+                defaultHeight={600}
+              />
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

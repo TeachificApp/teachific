@@ -4222,3 +4222,36 @@
 - [x] URL import tab: paste URL → LLM extracts all fields, options, branching rules, scoring → preview → create form
 - [x] URL import preview shows field count, branching rule count, scored fields, required fields
 - [x] `importFromUrl` procedure already extracts `scoreWeight` per field and `scoreValue` per option from the URL HTML
+
+## Sprint: Embed Tabs — All Products + Platform-Wide
+
+- [ ] Build shared `EmbedSnippetPanel` component: direct link, download link, embed URL, iframe snippet, JS snippet, URL param builder with placeholder tokens
+- [ ] Add `orgEmbedConfig` table to schema: allowedDomains (JSON), defaultTheme, embedAnalyticsEnabled, embedToken
+- [ ] Run migration for orgEmbedConfig table
+- [ ] Add `embed.getConfig`, `embed.saveConfig`, `embed.addDomain`, `embed.removeDomain` tRPC procedures
+- [ ] Add Embed tab to `CourseEditorPage` (course-level iframe/JS snippets + URL params)
+- [ ] Add Embed tab to `DigitalDownloadsAdmin` (download-level iframe/JS snippets)
+- [ ] Add Embed tab to `QuizCreatorPage` / `QuizBuilderPage` (quiz-level iframe/JS snippets)
+- [ ] Add Embed tab to `MembershipEditorPage` (membership checkout embed)
+- [ ] Add Embed tab to `BundlesAdmin` (bundle checkout embed)
+- [ ] Add Embed tab to `WorkshopsPage` (workshop registration embed)
+- [ ] Add Embed tab to `FormBuilderPage` (already has basic embed code — upgrade to full EmbedSnippetPanel)
+- [ ] Add "Embed" tab to `OrgSettingsPage` (platform-wide embed settings: domain allowlist, default theme, global JS snippet, analytics toggle)
+- [ ] Platform embed settings: copy-ready global JS loader snippet for embedding any Teachific content on external sites
+- [ ] Write embed.test.ts covering getConfig and saveConfig procedures
+
+## Sprint: Embed Tabs — All Products + Platform
+
+- [x] Add `embedAllowedDomains`, `embedDefaultTheme`, `embedAnalyticsEnabled`, `embedHideTeachificBranding` columns to `organizations` table
+- [x] Run migration for embed config columns
+- [x] Add `getEmbedConfig` and `saveEmbedConfig` procedures to `orgs` router
+- [x] Build shared `EmbedSnippetPanel` component (iframe snippet, popup snippet, JS widget snippet, height/width controls, copy buttons)
+- [x] Add Embed tab to `CourseBuilderPage`
+- [x] Add Embed tab to `DigitalDownloadsAdmin`
+- [x] Add Embed tab to `QuizBuilderPage`
+- [x] Add Embed tab to `BundleEditorPage`
+- [x] Add Embed tab to `WorkshopsPage`
+- [x] Add Embed tab to `MembershipEditorPage`
+- [x] Add Embed tab to `OrgSettingsPage` (platform-wide embed settings)
+- [x] Platform Embed Settings: domain allowlist (add/remove), default theme selector, hide branding toggle, analytics toggle
+- [x] Platform Embed Settings: platform-wide snippet for embedding the full school homepage
