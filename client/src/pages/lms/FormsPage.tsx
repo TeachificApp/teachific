@@ -46,6 +46,7 @@ import {
   ClipboardCheck,
   UserPlus,
   Zap,
+  Link2,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -179,7 +180,7 @@ const STARTER_TEMPLATES = [
   },
 ];
 
-type CreateMode = "blank" | "template" | "ai";
+type CreateMode = "blank" | "template" | "ai" | "url";
 
 export default function FormsPage() {
   const [, setLocation] = useLocation();
@@ -198,6 +199,11 @@ export default function FormsPage() {
   const [aiPreview, setAiPreview] = useState<{ title: string; description: string; fields: any[] } | null>(null);
   const [aiTitle, setAiTitle] = useState("");
 
+  // URL import mode state
+  const [urlInput, setUrlInput] = useState("");
+  const [urlPreview, setUrlPreview] = useState<{ title: string; description: string; fields: any[]; branchingRules: any[] } | null>(null);
+  const [urlTitle, setUrlTitle] = useState("");
+
   const { data: orgCtx } = trpc.orgs.myContext.useQuery();
   const orgId = orgCtx?.org?.id;
   const orgSlug = orgCtx?.org?.slug;
@@ -211,6 +217,14 @@ export default function FormsPage() {
     onSuccess: (form) => {
       closeDialog();
       setLocation(`/lms/forms/${form.id}`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const importUrlMutation = trpc.forms.importFromUrl.useMutation({
+    onSuccess: (data) => {
+      setUrlPreview(data);
+      setUrlTitle(data.title);
     },
     onError: (e) => toast.error(e.message),
   });
@@ -248,6 +262,19 @@ export default function FormsPage() {
     setAiPrompt("");
     setAiPreview(null);
     setAiTitle("");
+    setUrlInput("");
+    setUrlPreview(null);
+    setUrlTitle("");
+  };
+
+  const handleApplyUrlForm = () => {
+    if (!urlPreview || !orgId || !urlTitle.trim()) return;
+    createMutation.mutate({
+      orgId,
+      title: urlTitle.trim(),
+      description: urlPreview.description,
+      initialFields: urlPreview.fields as any,
+    });
   };
 
   const handleCreateBlank = () => {
@@ -444,9 +471,10 @@ export default function FormsPage() {
           {/* Mode tabs */}
           <div className="flex gap-1 border border-border rounded-lg p-1 bg-muted/40 mb-4">
             {([
-              { id: "blank" as CreateMode, label: "Blank Form", icon: FileText },
-              { id: "template" as CreateMode, label: "From Template", icon: LayoutTemplate },
+              { id: "blank" as CreateMode, label: "Blank", icon: FileText },
+              { id: "template" as CreateMode, label: "Template", icon: LayoutTemplate },
               { id: "ai" as CreateMode, label: "AI Generate", icon: Sparkles },
+              { id: "url" as CreateMode, label: "Import URL", icon: Link2 },
             ]).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -528,6 +556,95 @@ export default function FormsPage() {
               <div className="flex justify-end pt-2">
                 <Button variant="outline" onClick={closeDialog}>Cancel</Button>
               </div>
+            </div>
+          )}
+
+          {/* ── Import from URL mode ── */}
+          {createMode === "url" && (
+            <div className="space-y-4">
+              {!urlPreview ? (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Form URL *</label>
+                    <Input
+                      placeholder="https://example.com/contact-form"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && importUrlMutation.mutate({ url: urlInput.trim() })}
+                      autoFocus
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Paste any form URL — we'll extract all fields, options, branching logic, and scoring automatically.
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+                    <Button
+                      onClick={() => importUrlMutation.mutate({ url: urlInput.trim() })}
+                      disabled={!urlInput.trim().startsWith("http") || importUrlMutation.isPending}
+                      className="gap-1.5"
+                    >
+                      {importUrlMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" />Scanning...</>
+                      ) : (
+                        <><Link2 className="h-4 w-4" />Import Form</>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Form Title</label>
+                    <Input
+                      value={urlTitle}
+                      onChange={(e) => setUrlTitle(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  {urlPreview.description && (
+                    <p className="text-xs text-muted-foreground italic">{urlPreview.description}</p>
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      {urlPreview.fields.length} field{urlPreview.fields.length !== 1 ? "s" : ""} extracted
+                      {urlPreview.branchingRules?.length > 0 && ` · ${urlPreview.branchingRules.length} branching rule${urlPreview.branchingRules.length !== 1 ? "s" : ""}`}
+                    </p>
+                    <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                      {urlPreview.fields.map((f: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-xs bg-muted rounded px-2.5 py-1.5">
+                          <span className="font-mono text-muted-foreground w-20 shrink-0">{f.type}</span>
+                          <span className="font-medium truncate">{f.label}</span>
+                          {f.scoreWeight > 0 && <span className="ml-auto text-amber-600 shrink-0">scored</span>}
+                          {f.required && <span className="ml-auto text-red-500 shrink-0">required</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setUrlPreview(null); setUrlTitle(""); }}
+                      className="flex-1"
+                    >
+                      Try Another URL
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleApplyUrlForm}
+                      disabled={!urlTitle.trim() || createMutation.isPending}
+                      className="flex-1 gap-1.5"
+                    >
+                      {createMutation.isPending ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" />Creating...</>
+                      ) : (
+                        <>Create Form <ChevronRight className="h-3.5 w-3.5" /></>
+                      )}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

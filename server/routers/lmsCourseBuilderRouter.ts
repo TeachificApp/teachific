@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -103,7 +103,12 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Scope to the user's own org — platform admins (site_owner/site_admin) see all
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
       const conditions: any[] = [];
+      // Always filter by orgId unless the user is a platform admin
+      if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as "draft" | "public" | "hidden" | "private"));
       if (input.type !== "all") conditions.push(eq(lmsCourses.type, input.type as "course" | "quiz" | "download" | "cohort"));
       const offset = (input.page - 1) * input.pageSize;
@@ -133,10 +138,14 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Resolve the org this course belongs to
+      const courseOrgId = await getOrgIdForUser(ctx.user.id);
+      if (!courseOrgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organisation found for user" });
       const base = generateSlug(input.title);
       const slug = await uniqueSlug(db, base);
       const isFree = input.pricingType === "free" || input.isFree;
       const [result] = await db.insert(lmsCourses).values({
+        orgId: courseOrgId,
         slug, title: input.title, subtitle: input.subtitle ?? null,
         type: input.type, brand: input.brand, price: input.price,
         isFree, pricingType: input.pricingType,

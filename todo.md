@@ -4165,3 +4165,60 @@
 - [x] Test generateFromPrompt procedure (mock LLM)
 - [x] Test updateSubmissionStatus procedure
 - [x] Test score computation on publicSubmit
+
+## Sprint: Embed Tab — All Products & Platform Level
+
+### Shared Component
+- [ ] Create `client/src/components/EmbedTab.tsx` — shared embed panel with: iframe snippet, JS snippet, URL param builder (learner name/email/id, custom data), copy-to-clipboard buttons, domain allowlist manager
+- [ ] EmbedTab accepts `embedUrl`, `title`, `contentType` props and renders all snippet variants
+
+### Course Embed Tab
+- [ ] Add "Embed" tab to `CourseBuilderPage.tsx` tab bar
+- [ ] Render `<EmbedTab>` with the course's public checkout/player URL
+
+### Download Embed Tab
+- [ ] Add "Embed" tab to `DigitalDownloadsAdmin.tsx` tab bar
+- [ ] Render `<EmbedTab>` with the download's public URL
+
+### Quiz Embed Tab
+- [ ] Add "Embed" tab to `QuizBuilderPage.tsx` tab bar
+- [ ] Render `<EmbedTab>` with the quiz's public player URL
+
+### Membership Embed Tab
+- [ ] Add "Embed" tab to `MembershipEditorPage.tsx` tab bar
+- [ ] Render `<EmbedTab>` with the membership's public checkout URL
+
+### Bundle Embed Tab
+- [ ] Add "Embed" tab to `BundlesAdmin.tsx` tab bar
+- [ ] Render `<EmbedTab>` with the bundle's public URL
+
+### Workshop Embed Tab
+- [ ] Add "Embed" tab to `WorkshopsPage.tsx` workshop detail/editor
+- [ ] Render `<EmbedTab>` with the workshop's public registration URL
+
+### Platform-Level Embed Settings (OrgSettingsPage)
+- [ ] Add "Embed" tab to `OrgSettingsPage.tsx`
+- [ ] Show org-level embed snippet (embed entire school/catalog as iframe)
+- [ ] Domain allowlist: add/remove allowed domains for embedding
+- [ ] Global embed appearance settings: hide header, hide footer, custom CSS class
+- [ ] Save org embed config via tRPC procedure
+
+### Server
+- [ ] Add `orgs.getEmbedConfig` and `orgs.saveEmbedConfig` procedures
+- [ ] Embed config stores: allowedDomains (JSON array), hideHeader, hideFooter, customCssClass
+- [ ] Add `embedConfig` JSON column to `organizations` table (or separate `org_embed_config` table)
+- [ ] Run migration
+
+### Tests
+- [ ] Test `orgs.saveEmbedConfig` and `orgs.getEmbedConfig` procedures
+- [ ] Test EmbedTab renders correct iframe src for each content type
+
+## Sprint: Org Course Scoping + Form URL Import
+
+- [x] Fix `lmsCourseBuilderRouter.listCourses` to filter by user's orgId (non-platform-admin users only see their own org's courses)
+- [x] Fix `lmsAdminRouter.listCourses` to filter by user's orgId
+- [x] Fix `lmsCourseBuilderRouter.createCourse` to stamp the correct `orgId` on new courses
+- [x] Add "Import from URL" as 4th tab in FormsPage create dialog (Blank / Template / AI Generate / Import URL)
+- [x] URL import tab: paste URL → LLM extracts all fields, options, branching rules, scoring → preview → create form
+- [x] URL import preview shows field count, branching rule count, scored fields, required fields
+- [x] `importFromUrl` procedure already extracts `scoreWeight` per field and `scoreValue` per option from the URL HTML

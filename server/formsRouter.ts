@@ -1372,18 +1372,19 @@ export const formsRouter = router({
           {
             role: "system",
             content: `You are a form extraction assistant. Given HTML content of a web page containing a form, extract:
-1. All form fields (text, email, phone, number, textarea, select/dropdown, radio, checkbox, date, file, url, rating)
+1. All form fields (text, email, phone, number, textarea, select/dropdown, radio, checkbox, date, file, url, rating, scale, section_break, statement)
 2. Form title and description
 3. Conditional logic/branching patterns (e.g., "show field X if field Y equals Z")
 4. Field grouping and sections
+5. Scoring: if the form appears to be a quiz or scored assessment, assign scoreWeight (0-100) to each scored field and scoreValue (0-100) to each correct/scored option
 
-Return a complete JSON object with all fields, their properties, and any branching rules detected.
+Return a complete JSON object with all fields, their properties, scoring info, and any branching rules detected.
 Do NOT include submit buttons or hidden fields.
-Be thorough in extracting ALL fields and their properties.`,
+Be thorough in extracting ALL fields, their options, scoring, and branching logic.`,
           },
           {
             role: "user",
-            content: `Extract all form fields, structure, and branching logic from this HTML:\n\n${cleaned}`,
+            content: `Extract all form fields, structure, scoring, and branching logic from this HTML:\n\n${cleaned}`,
           },
         ],
         response_format: {
@@ -1407,18 +1408,23 @@ Be thorough in extracting ALL fields and their properties.`,
                       placeholder: { type: "string", description: "Placeholder text" },
                       helpText: { type: "string", description: "Help or description text" },
                       required: { type: "boolean", description: "Is this field required?" },
+                      scoreWeight: { type: "number", description: "Weight of this field in scoring (0-100). 0 means not scored." },
                       options: {
                         type: "array",
                         items: {
                           type: "object",
-                          properties: { value: { type: "string" }, label: { type: "string" } },
-                          required: ["value", "label"],
+                          properties: {
+                            value: { type: "string" },
+                            label: { type: "string" },
+                            scoreValue: { type: "number", description: "Score awarded when this option is selected (0-100)" },
+                          },
+                          required: ["value", "label", "scoreValue"],
                           additionalProperties: false,
                         },
                         description: "Options for select/radio/checkbox fields",
                       },
                     },
-                    required: ["id", "type", "label", "required", "options"],
+                    required: ["id", "type", "label", "required", "scoreWeight", "options"],
                     additionalProperties: false,
                   },
                 },
@@ -1471,7 +1477,12 @@ Be thorough in extracting ALL fields and their properties.`,
           placeholder: f.placeholder ?? "",
           helpText: f.helpText ?? "",
           required: f.required ?? false,
-          options: (f.options ?? []).map((o: any) => ({ value: String(o.value || o.label).toLowerCase().replace(/\s+/g, "_"), label: String(o.label) })),
+          scoreWeight: typeof f.scoreWeight === "number" ? f.scoreWeight : 0,
+          options: (f.options ?? []).map((o: any) => ({
+            value: String(o.value || o.label).toLowerCase().replace(/\s+/g, "_"),
+            label: String(o.label),
+            scoreValue: typeof o.scoreValue === "number" ? o.scoreValue : 0,
+          })),
           sortOrder: i,
         })),
         branchingRules: (parsed.branchingRules ?? []).map((r: any, i: number) => ({

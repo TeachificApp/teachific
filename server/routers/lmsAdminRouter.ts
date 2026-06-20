@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, asc, like, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUser } from "../db";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
@@ -264,7 +264,11 @@ const _lmsAdminBaseRouter = router({
       assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Scope to the user's own org — platform admins (site_owner/site_admin) see all
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
       const conditions: any[] = [];
+      if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as any));
       if (input.type !== "all") conditions.push(eq(lmsCourses.type, input.type as any));
       if (input.search) conditions.push(like(lmsCourses.title, `%${input.search}%`));
