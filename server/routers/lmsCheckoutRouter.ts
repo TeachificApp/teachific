@@ -38,13 +38,14 @@ import {
   orderBumps,
   workshops,
   workshopRegistrations,
+  bundles,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
 import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
-export const CONTENT_TYPES = ["course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop"] as const;
+export const CONTENT_TYPES = ["course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop", "bundle"] as const;
 export type ContentType = typeof CONTENT_TYPES[number];
 
 export interface TrustBadge {
@@ -270,6 +271,27 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         location: row.location,
         format: row.format,
         maxAttendees: row.maxAttendees,
+      };
+    }
+    case "bundle": {
+      // Bundles are looked up by numeric ID (no slug)
+      const bundleId = parseInt(slug);
+      if (isNaN(bundleId)) return null;
+      const [row] = await db.select().from(bundles).where(eq(bundles.id, bundleId)).limit(1);
+      if (!row) return null;
+      return {
+        id: row.id, orgId: row.orgId ?? 1, slug: String(row.id), title: row.name,
+        subtitle: null, description: row.description ?? null,
+        coverImageUrl: row.thumbnailUrl ?? null,
+        primaryColor: "#179ca3", accentColor: "#0d9488",
+        pricingType: "one_time",
+        price: String(row.price ?? "0"), currency: "usd",
+        isFree: Number(row.price) === 0,
+        subscriptionInterval: null, trialDays: null,
+        stripePriceId: null,
+        stripeProductId: null,
+        pricingOptions: [],
+        isAvailable: row.isActive === true,
       };
     }
     default:

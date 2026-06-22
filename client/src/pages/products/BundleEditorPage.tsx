@@ -12,10 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
+import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 import { toast } from "sonner";
 import {
   ChevronLeft, Save, Package, BookOpen, DollarSign, Settings,
-  Loader2, Tag, BarChart2, Users, Plus, Trash2, Image,
+  Loader2, Tag, BarChart2, Users, Plus, Trash2, Image, Globe,
 } from "lucide-react";
 
 export default function BundleEditorPage() {
@@ -133,6 +134,7 @@ export default function BundleEditorPage() {
           <TabsTrigger value="details"><Settings className="w-4 h-4 mr-2" />Details</TabsTrigger>
           <TabsTrigger value="pricing"><DollarSign className="w-4 h-4 mr-2" />Pricing</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart2 className="w-4 h-4 mr-2" />Analytics</TabsTrigger>
+          <TabsTrigger value="checkout_page"><Globe className="w-4 h-4 mr-2" />Checkout Page</TabsTrigger>
           <TabsTrigger value="embed">Embed</TabsTrigger>
         </TabsList>
 
@@ -317,6 +319,17 @@ export default function BundleEditorPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+        {/* ── Checkout Page Tab ── */}
+        <TabsContent value="checkout_page">
+          <div className="max-w-3xl mx-auto">
+            <CheckoutPageEditor
+              contentType="bundle"
+              contentId={bundle.id}
+              orgId={(bundle as any).orgId ?? 1}
+              contentSlug={String(bundle.id)}
+            />
           </div>
         </TabsContent>
         {/* ── Embed Tab ── */}

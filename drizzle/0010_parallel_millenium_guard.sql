@@ -1,0 +1,1 @@
+ALTER TABLE `lms_checkout_pages` MODIFY COLUMN `content_type` enum('course','download','physical_product','webinar','membership','membership_plan','bundle') NOT NULL DEFAULT 'course';

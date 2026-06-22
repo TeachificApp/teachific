@@ -63,7 +63,8 @@ export type ContentType =
   | "physical_product"
   | "webinar"
   | "membership"
-  | "membership_plan";
+  | "membership_plan"
+  | "bundle";
 
 export interface TrustBadge {
   id: string;
@@ -158,6 +159,7 @@ const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   webinar:          "Webinar",
   membership:       "Membership",
   membership_plan:  "Membership Plan",
+  bundle:           "Bundle",
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────

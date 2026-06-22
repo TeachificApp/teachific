@@ -4289,3 +4289,22 @@
 - [x] Add `membershipPlans` to `getProductsByIds` in `funnelRouter.ts` — membership cards resolve correctly in `related_products` block
 - [x] Add `membership` to `typeLabels` in `LandingPageBuilder.tsx` related_products block
 - [x] Add "Memberships Only" option to product type selector in `LandingPageBuilder.tsx` related_products block
+## Sprint: BundleEditorPage & RelatedProductsBlock Membership Support
+- [x] Add "Checkout Page" tab to `BundleEditorPage` using `CheckoutPageEditor` with `contentType="membership"` and `bundle.orgId`
+- [x] Add `membership` to `ProductItem.type` union in `RelatedProductsBlock.tsx`
+- [x] Add `membership` to `productType` union in `RelatedProductsBlockData` interface
+- [x] Add `needsMemberships` auto-query using `trpc.lms.memberships.list` in `RelatedProductsBlock.tsx`
+- [x] Add `membership` to `typeInfo()` function with `Users` icon in `RelatedProductsBlock.tsx`
+- [x] Add `membershipItems` to auto-mode item building in `RelatedProductsBlock.tsx`
+
+## Sprint: Bundle & Checkout Improvements (Jun 22, 2026)
+
+- [x] Add "Checkout Page" tab to BundleEditorPage using CheckoutPageEditor
+- [x] Add `bundle` to lmsCheckoutPages contentType enum in schema (DB migration applied)
+- [x] Add `bundle` to CONTENT_TYPES in lmsCheckoutRouter (server-side)
+- [x] Add `bundle` resolver in resolveContentBySlug (lmsCheckoutRouter)
+- [x] Add `bundle` to CheckoutPageEditor ContentType union (client-side)
+- [x] Add `bundle` to HostedCheckoutPage CONTENT_TYPES and CONTENT_TYPE_LABELS
+- [x] Add `membership` type support to RelatedProductsBlock (typeInfo, ProductItem.type, auto-query)
+- [x] Update lmsCheckoutRouter test to reflect 8 content types (added bundle test)
+- [x] All 360 tests passing

@@ -32,7 +32,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 const CONTENT_TYPES = [
-  "course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop",
+  "course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop", "bundle",
 ] as const;
 type ContentType = typeof CONTENT_TYPES[number];
 
@@ -44,7 +44,7 @@ const BADGE_ICONS: Record<string, React.FC<{ className?: string; style?: React.C
 const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   course: "Course", download: "Digital Download", physical_product: "Physical Product",
   webinar: "Webinar", membership: "Membership", membership_plan: "Membership Plan",
-  workshop: "Workshop",
+  workshop: "Workshop", bundle: "Bundle",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

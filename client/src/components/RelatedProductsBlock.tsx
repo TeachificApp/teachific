@@ -12,7 +12,7 @@
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, FileDown, Package, ExternalLink } from "lucide-react";
+import { BookOpen, FileDown, Package, ExternalLink, Users } from "lucide-react";
 
 interface ManualItem {
   type: string;
@@ -22,7 +22,7 @@ interface ManualItem {
 interface RelatedProductsBlockData {
   headline?: string;
   subtext?: string;
-  productType?: "course" | "download" | "both" | "bundle" | "physical" | "all";
+  productType?: "course" | "download" | "both" | "bundle" | "physical" | "membership" | "all";
   selectionMode?: "auto" | "manual";
   manualItems?: ManualItem[];
   maxItems?: number;
@@ -56,7 +56,7 @@ type ProductItem = {
   price: number;
   isFree: boolean;
   imageUrl: string;
-  type: "course" | "download" | "bundle" | "physical";
+  type: "course" | "download" | "bundle" | "physical" | "membership";
   href: string;
 };
 
@@ -74,19 +74,24 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
   const needsCourses =
     selectionMode === "auto" &&
     (productType === "course" || productType === "both" || productType === "all");
-  const needsDownloads =
+    const needsDownloads =
     selectionMode === "auto" &&
     (productType === "download" || productType === "both" || productType === "all");
-
+  const needsMemberships =
+    selectionMode === "auto" &&
+    (productType === "membership" || productType === "all");
   const { data: coursesData, isLoading: coursesLoading } = trpc.lms.listCourses.useQuery(
     { pageSize: maxItems + 4 },
     { enabled: needsCourses }
   );
-  const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloads.list.useQuery(
+    const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloads.list.useQuery(
     { limit: maxItems + 4 },
     { enabled: needsDownloads }
   );
-
+  const { data: membershipsData, isLoading: membershipsLoading } = trpc.lms.memberships.list.useQuery(
+    undefined,
+    { enabled: needsMemberships }
+  );
   // ── MANUAL mode query ──────────────────────────────────────────────────────
   const manualRefs = d.manualItems ?? [];
   const { data: manualData, isLoading: manualLoading } = trpc.funnel.getProductsByIds.useQuery(
@@ -97,7 +102,7 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
   const isLoading =
     selectionMode === "manual"
       ? manualLoading
-      : coursesLoading || downloadsLoading;
+      : coursesLoading || downloadsLoading || membershipsLoading;
 
   // ── Build items list ───────────────────────────────────────────────────────
   let items: ProductItem[] = [];
@@ -139,9 +144,22 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
       href: `/downloads/${p.slug}`,
     }));
 
+    const membershipItems: ProductItem[] = (membershipsData ?? []).map((m: any) => ({
+      id: `membership-${m.id}`,
+      slug: String(m.id),
+      title: m.name,
+      description: m.description ?? "",
+      price: Number(m.price ?? 0) * 100,
+      isFree: !m.price || Number(m.price) === 0,
+      imageUrl: "",
+      type: "membership" as const,
+      href: `/memberships/${m.id}`,
+    }));
+
     if (productType === "course") items = courseItems;
     else if (productType === "download") items = downloadItems;
-    else items = [...courseItems, ...downloadItems];
+    else if (productType === "membership") items = membershipItems;
+    else items = [...courseItems, ...downloadItems, ...membershipItems];
 
     // Exclude current product
     if (d.excludeCurrentSlug !== false && currentSlug) {
@@ -245,8 +263,9 @@ function typeInfo(type: string) {
   switch (type) {
     case "course":   return { Icon: BookOpen,  label: "Course" };
     case "download": return { Icon: FileDown,  label: "Digital Download" };
-    case "bundle":   return { Icon: Package,   label: "Bundle" };
-    case "physical": return { Icon: Package,   label: "Physical" };
+    case "bundle":     return { Icon: Package,   label: "Bundle" };
+    case "physical":   return { Icon: Package,   label: "Physical" };
+    case "membership": return { Icon: Users,     label: "Membership" };
     default:         return { Icon: Package,   label: type };
   }
 }

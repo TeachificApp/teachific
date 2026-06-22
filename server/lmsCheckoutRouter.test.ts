@@ -47,12 +47,16 @@ describe("CONTENT_TYPES enum", () => {
     }
   });
 
-  it("has exactly 7 content types (includes workshop)", () => {
-    expect(CONTENT_TYPES).toHaveLength(7);
+  it("has exactly 8 content types (includes workshop and bundle)", () => {
+    expect(CONTENT_TYPES).toHaveLength(8);
   });
 
   it("includes workshop content type", () => {
     expect(CONTENT_TYPES).toContain("workshop");
+  });
+
+  it("includes bundle content type", () => {
+    expect(CONTENT_TYPES).toContain("bundle");
   });
 });
 

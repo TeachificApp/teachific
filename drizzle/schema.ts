@@ -2804,7 +2804,7 @@ export const lmsCheckoutPages = mysqlTable("lms_checkout_pages", {
   orgId: int("org_id").notNull(),
   // Polymorphic: courseId kept for backward compat; use contentType+contentId for all types
   courseId: int("course_id"),
-  contentType: mysqlEnum("content_type", ["course", "download", "physical_product", "webinar", "membership", "membership_plan"]).default("course").notNull(),
+  contentType: mysqlEnum("content_type", ["course", "download", "physical_product", "webinar", "membership", "membership_plan", "bundle"]).default("course").notNull(),
   contentId: int("content_id").notNull().default(0),
   headerConfig: longtext("header_config"),
   courseInfoConfig: longtext("course_info_config"),
