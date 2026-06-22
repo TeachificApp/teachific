@@ -3911,7 +3911,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       const filteredCatalog = (productCatalog ?? []).filter(p =>
         !rpSearch || p.name.toLowerCase().includes(rpSearch.toLowerCase())
       );
-      const typeLabels: Record<string, string> = { course: "Course", download: "Download", bundle: "Bundle", physical: "Physical" };
+      const typeLabels: Record<string, string> = { course: "Course", download: "Download", bundle: "Bundle", physical: "Physical", membership: "Membership", quiz: "Quiz", cohort: "Cohort" };
       return (
         <div className="space-y-3">
           <BSTextField data={d} onSet={set} label="Headline" field="headline" />
@@ -3936,6 +3936,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   <SelectItem value="download">Downloads Only</SelectItem>
                   <SelectItem value="bundle">Bundles Only</SelectItem>
                   <SelectItem value="physical">Physical Products Only</SelectItem>
+                  <SelectItem value="membership">Memberships Only</SelectItem>
                   <SelectItem value="all">All Products</SelectItem>
                 </SelectContent>
               </Select>

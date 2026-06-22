@@ -3080,6 +3080,7 @@ export const funnelPurchases = mysqlTable("funnel_purchases", {
   fulfillmentDownloadId: int("fulfillment_download_id"),
   fulfillmentQuizId: int("fulfillment_quiz_id"),
   fulfillmentMembershipId: int("fulfillment_membership_id"),
+  fulfillmentBundleId: int("fulfillment_bundle_id"),
   // Shipping (for physical products)
   shippingName: varchar("shipping_name", { length: 255 }),
   shippingLine1: varchar("shipping_line1", { length: 255 }),

@@ -17,7 +17,7 @@ import type Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getStripe } from "./stripePlans";
 import { getDb, getUserByEmail, upsertUser } from "./db";
-import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions } from "../drizzle/schema";
+import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions, digitalBundlePurchases, digitalBundleItems, digitalPurchases } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { sendEmail } from "./sendgrid";
 
@@ -182,8 +182,58 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
       }
 
       case "bundle": {
-        // Handle bundle fulfillment (multiple products)
-        // TODO: Implement bundle fulfillment logic
+        if (!purchase.fulfillmentBundleId) break;
+        // Check if bundle purchase already exists (idempotent)
+        const existingBundlePurchase = await db
+          .select()
+          .from(digitalBundlePurchases)
+          .where(
+            and(
+              eq(digitalBundlePurchases.userId, userId),
+              eq(digitalBundlePurchases.bundleId, purchase.fulfillmentBundleId)
+            )
+          )
+          .limit(1);
+
+        if (!existingBundlePurchase.length) {
+          // Record the bundle-level purchase
+          await db.insert(digitalBundlePurchases).values({
+            userId,
+            bundleId: purchase.fulfillmentBundleId,
+            stripeCheckoutSessionId: purchase.stripeSessionId ?? undefined,
+          });
+
+          // Grant access to each item in the bundle
+          const bundleItems = await db
+            .select()
+            .from(digitalBundleItems)
+            .where(eq(digitalBundleItems.bundleId, purchase.fulfillmentBundleId));
+
+          for (const item of bundleItems) {
+            // Check if individual product access already granted
+            const existingItemAccess = await db
+              .select()
+              .from(digitalPurchases)
+              .where(
+                and(
+                  eq(digitalPurchases.userId, userId),
+                  eq(digitalPurchases.productId, item.productId)
+                )
+              )
+              .limit(1);
+
+            if (!existingItemAccess.length) {
+              await db.insert(digitalPurchases).values({
+                userId,
+                productId: item.productId,
+                stripeCheckoutSessionId: purchase.stripeSessionId ?? undefined,
+              });
+            }
+          }
+          console.log(`[Embedded Checkout Webhook] User ${userId} granted bundle ${purchase.fulfillmentBundleId} (${bundleItems.length} items)`);
+        } else {
+          console.log(`[Embedded Checkout Webhook] User ${userId} already has bundle ${purchase.fulfillmentBundleId}`);
+        }
         break;
       }
     }

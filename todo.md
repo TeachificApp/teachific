@@ -4255,3 +4255,37 @@
 - [x] Add Embed tab to `OrgSettingsPage` (platform-wide embed settings)
 - [x] Platform Embed Settings: domain allowlist (add/remove), default theme selector, hide branding toggle, analytics toggle
 - [x] Platform Embed Settings: platform-wide snippet for embedding the full school homepage
+
+## Sprint: Bundle / Membership / Checkout / Stripe / Page Editor Sync
+
+### Bundle Fulfillment
+- [ ] Fix `embeddedCheckoutWebhook.ts` bundle case: insert `digitalBundlePurchases`, grant access to each `digitalBundleItem`, send confirmation email
+- [ ] Add `digital_bundle` handler to `stripeWebhookRoutes.ts` `checkout.session.completed`
+- [ ] Add `membership` checkout handler to `stripeWebhookRoutes.ts`
+
+### Membership Fulfillment
+- [ ] Fix `embeddedCheckoutWebhook.ts` membership case: insert `membershipSubscriptions` row (not just `lmsOrders`)
+
+### Page Editor — Membership & Bundle in Product Picker
+- [ ] Add `membership` type to `listAllProducts` in `funnelRouter.ts`
+- [ ] Add `membership` to `getProductsByIds` in `funnelRouter.ts`
+- [ ] Add `membership` option to `related_products` block type filter in LandingPageBuilder
+- [ ] Add `membership` URL mapping in `PricingCtaSettings` (`/memberships/{slug}`)
+- [ ] Add `membership` to `inline_checkout` product type select options
+
+### Tests
+- [ ] Test bundle fulfillment in embeddedCheckoutWebhook
+- [ ] Test membership fulfillment in embeddedCheckoutWebhook
+- [ ] Test digital_bundle handler in stripeWebhookRoutes
+
+## Sprint: Bundle / Membership / Stripe / Page Editor Sync
+
+- [x] Add `digital_bundle` checkout.session.completed handler to `stripeWebhookRoutes.ts` — grants `digitalBundlePurchases` + individual `digitalPurchases` for each bundle item, fulfills order bumps
+- [x] Add `membership` checkout.session.completed handler to `stripeWebhookRoutes.ts` — creates `membershipSubscriptions` row on successful payment
+- [x] Import `digitalBundlePurchases`, `digitalBundleItems`, `digitalPurchases`, `membershipSubscriptions` into `stripeWebhookRoutes.ts`
+- [x] Fix `embeddedCheckoutWebhook.ts` bundle case — import bundle tables and grant individual product access for each bundle item
+- [x] Add `fulfillmentBundleId` column to `funnelPurchases` table in schema + migration applied
+- [x] Add `membershipPlans` to `listAllProducts` in `funnelRouter.ts` — memberships now appear in page editor product picker
+- [x] Add `membershipPlans` to `getProductsByIds` in `funnelRouter.ts` — membership cards resolve correctly in `related_products` block
+- [x] Add `membership` to `typeLabels` in `LandingPageBuilder.tsx` related_products block
+- [x] Add "Memberships Only" option to product type selector in `LandingPageBuilder.tsx` related_products block

@@ -12,7 +12,7 @@ import { getUserByEmail, getDb } from "./db";
 import { sendEmail } from "./sendgrid";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users } from "../drizzle/schema";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
@@ -110,6 +110,74 @@ router.post(
               } catch (enrollErr: any) {
                 console.error("[Stripe Webhook] Course enrollment failed:", enrollErr.message);
               }
+            }
+            break;
+          }
+
+          // ── Digital bundle purchase (one-time payment) ─────────────────────────────
+          if (session.mode === "payment" && session.metadata?.type === "digital_bundle") {
+            const bundleId = parseInt(session.metadata?.bundle_id ?? "0");
+            const orgId2 = parseInt(session.metadata?.org_id ?? "0");
+            const buyerEmail2 = session.customer_details?.email ?? session.metadata?.customer_email ?? "";
+            if (bundleId && buyerEmail2) {
+              try {
+                const user = await getUserByEmail(buyerEmail2);
+                if (user) {
+                  const db = await getDb();
+                  if (db) {
+                    const existing = await db.select().from(digitalBundlePurchases)
+                      .where(and(eq(digitalBundlePurchases.userId, user.id), eq(digitalBundlePurchases.bundleId, bundleId)))
+                      .limit(1);
+                    if (!existing.length) {
+                      await db.insert(digitalBundlePurchases).values({ userId: user.id, bundleId, stripeCheckoutSessionId: session.id });
+                      const items = await db.select().from(digitalBundleItems).where(eq(digitalBundleItems.bundleId, bundleId));
+                      for (const item of items) {
+                        const hasAccess = await db.select().from(digitalPurchases)
+                          .where(and(eq(digitalPurchases.userId, user.id), eq(digitalPurchases.productId, item.productId))).limit(1);
+                        if (!hasAccess.length) {
+                          await db.insert(digitalPurchases).values({ userId: user.id, productId: item.productId, stripeCheckoutSessionId: session.id });
+                        }
+                      }
+                      console.log(`[Stripe Webhook] User ${user.id} granted bundle ${bundleId} (${items.length} items)`);
+                    }
+                    // Fulfill order bumps
+                    const meta = (session.metadata ?? {}) as Record<string, string>;
+                    await fulfillOrderBumpPurchase(db, meta, { userId: user.id, sessionId: session.id, triggerOrderType: "bundle" }).catch(() => {});
+                  }
+                }
+              } catch (e: any) { console.error("[Stripe Webhook] Bundle fulfillment failed:", e.message); }
+            }
+            break;
+          }
+
+          // ── Membership subscription checkout ──────────────────────────────────────────
+          if (session.mode === "subscription" && session.metadata?.type === "membership") {
+            const membershipPlanId = parseInt(session.metadata?.membership_plan_id ?? "0");
+            const orgId2 = parseInt(session.metadata?.org_id ?? "0");
+            const buyerEmail2 = session.customer_details?.email ?? session.metadata?.customer_email ?? "";
+            if (membershipPlanId && buyerEmail2) {
+              try {
+                const user = await getUserByEmail(buyerEmail2);
+                if (user) {
+                  const db = await getDb();
+                  if (db) {
+                    const existing = await db.select().from(membershipSubscriptions)
+                      .where(and(eq(membershipSubscriptions.userId, user.id), eq(membershipSubscriptions.planId, membershipPlanId)))
+                      .limit(1);
+                    if (!existing.length) {
+                      await db.insert(membershipSubscriptions).values({
+                        orgId: orgId2,
+                        userId: user.id,
+                        planId: membershipPlanId,
+                        status: "active",
+                        startDate: new Date(),
+                        endDate: null,
+                      });
+                      console.log(`[Stripe Webhook] User ${user.id} granted membership plan ${membershipPlanId}`);
+                    }
+                  }
+                }
+              } catch (e: any) { console.error("[Stripe Webhook] Membership fulfillment failed:", e.message); }
             }
             break;
           }

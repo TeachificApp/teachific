@@ -1,0 +1,1 @@
+ALTER TABLE `funnel_purchases` ADD `fulfillment_bundle_id` int;
