@@ -5,6 +5,13 @@
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
 
+// ─── Teachific Pay feature flag ─────────────────────────────────────────────
+// Set to true only when Teachific Pay has completed testing and is ready for
+// public launch. While false, all orgs use their own Stripe gateway and no
+// platform fee is applied. This flag gates UI visibility only — the server
+// router and DB tables remain intact for internal testing.
+export const TEACHIFIC_PAY_ENABLED = false;
+
 // ─── Plan Limits ─────────────────────────────────────────────────────────────
 export type PlanTier = "free" | "starter" | "builder" | "pro" | "enterprise";
 // App access tiers: none = no access, web = web app only, desktop = desktop app only, bundle = web + desktop
@@ -57,8 +64,8 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whiteLabel: false,
     emailMarketing: false,
     transactionFeePercent: 0,
-    teachificPayFeePercent: 2, // 2% TeachificPay fee
-    customGateway: false, // must use TeachificPay
+    teachificPayFeePercent: 2, // 2% TeachificPay fee (internal test mode only)
+    customGateway: true, // all plans use own Stripe gateway while TEACHIFIC_PAY_ENABLED=false
     groupRegistrations: false,
     deepAnalytics: false,
     affiliatePlatform: false,
@@ -84,8 +91,8 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whiteLabel: false,
     emailMarketing: false,
     transactionFeePercent: 3,
-    teachificPayFeePercent: 1, // 1% TeachificPay fee
-    customGateway: false, // must use TeachificPay
+    teachificPayFeePercent: 1, // 1% TeachificPay fee (internal test mode only)
+    customGateway: true, // all plans use own Stripe gateway while TEACHIFIC_PAY_ENABLED=false
     groupRegistrations: false,
     deepAnalytics: false,
     affiliatePlatform: false,
@@ -111,8 +118,8 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whiteLabel: true,
     emailMarketing: false,
     transactionFeePercent: 1,
-    teachificPayFeePercent: 0.5, // 0.5% TeachificPay fee (required — no own gateway on Builder)
-    customGateway: false, // Builder must use TeachificPay
+    teachificPayFeePercent: 0.5, // 0.5% TeachificPay fee (internal test mode only)
+    customGateway: true, // all plans use own Stripe gateway while TEACHIFIC_PAY_ENABLED=false
     groupRegistrations: false,
     deepAnalytics: false, // basic analytics only
     affiliatePlatform: false,

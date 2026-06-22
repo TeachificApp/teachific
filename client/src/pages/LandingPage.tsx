@@ -604,7 +604,7 @@ const PRICING_TIERS: PricingTier[] = [
       "Video lessons",
       "Quiz builder",
       "Email support",
-      "TeachificPay™ built-in payments (2% fee)",
+      "Stripe payments — 0% platform fee",
     ],
   },
   {
@@ -620,7 +620,7 @@ const PRICING_TIERS: PricingTier[] = [
       "1 TB storage",
       "1 membership tier",
       "SCORM 1.2 & 2004 support",
-      "TeachificPay™ built-in payments (1% fee)",
+      "Stripe payments — 0% platform fee",
     ],
   },
   {
@@ -639,7 +639,7 @@ const PRICING_TIERS: PricingTier[] = [
       "Community access",
       "Custom domain",
       "White-label branding",
-      "TeachificPay™ built-in payments (0.5% fee)",
+      "Stripe payments — 0% platform fee",
     ],
   },
   {
@@ -658,7 +658,7 @@ const PRICING_TIERS: PricingTier[] = [
       "Deep analytics & exports",
       "Affiliate platform",
       "SSO / SAML",
-      "TeachificPay™ or your own payment gateway (0% fee)",
+      "Stripe payments — 0% platform fee",
     ],
   },
   {
@@ -676,11 +676,10 @@ const PRICING_TIERS: PricingTier[] = [
       "SLA uptime guarantee",
       "Custom integrations & API",
       "Audit logs & compliance reports",
-      "TeachificPay™ or your own payment gateway (0% fee)",
+            "Stripe payments — 0% platform fee",
     ],
   },
 ];
-
 type ComparisonRow = { feature: string; free: boolean | string; starter: boolean | string; builder: boolean | string; pro: boolean | string; enterprise: boolean | string };
 const COMPARISON_FEATURES: ComparisonRow[] = [
   { feature: "Courses", free: "1", starter: "5", builder: "20", pro: "50", enterprise: "Unlimited" },
@@ -699,8 +698,8 @@ const COMPARISON_FEATURES: ComparisonRow[] = [
   { feature: "Deep analytics", free: false, starter: false, builder: false, pro: true, enterprise: true },
   { feature: "Affiliate platform", free: false, starter: false, builder: false, pro: true, enterprise: true },
   { feature: "SSO / SAML", free: false, starter: false, builder: false, pro: true, enterprise: true },
-  { feature: "TeachificPay™ transaction fee", free: "2%", starter: "1%", builder: "0.5%", pro: "0%", enterprise: "0%" },
-  { feature: "Custom payment gateway", free: false, starter: false, builder: false, pro: true, enterprise: true },
+  { feature: "Platform transaction fee", free: "0%", starter: "0%", builder: "0%", pro: "0%", enterprise: "0%" },
+  { feature: "Stripe payment gateway", free: true, starter: true, builder: true, pro: true, enterprise: true },
   { feature: "Group registrations", free: false, starter: false, builder: false, pro: true, enterprise: true },
   { feature: "Dedicated support", free: false, starter: false, builder: false, pro: false, enterprise: true },
 ];

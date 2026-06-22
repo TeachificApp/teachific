@@ -4308,3 +4308,12 @@
 - [x] Add `membership` type support to RelatedProductsBlock (typeInfo, ProductItem.type, auto-query)
 - [x] Update lmsCheckoutRouter test to reflect 8 content types (added bundle test)
 - [x] All 360 tests passing
+
+## Sprint: Teachific Pay → Internal Test Mode
+- [x] Add TEACHIFIC_PAY_ENABLED = false flag in server/stripePlans.ts (internal test mode gate)
+- [x] LandingPage.tsx: Replace all "TeachificPay™ (X% fee)" plan features with "Stripe payments — 0% platform fee"
+- [x] LandingPage.tsx: Update comparison table — "Platform transaction fee" = 0% all plans, "Stripe payment gateway" = true all plans
+- [x] OrgSettingsPage.tsx: Remove TeachificPay card from payment settings tab; show Stripe/PayPal gateway for all plans
+- [x] OrgSettingsPage.tsx: Update payment card title to "Payment Gateway" with "No platform fees — you keep 100% of your revenue"
+- [x] CourseSalesPage.tsx: Route paid enrollments to /checkout/course/:slug (hosted checkout) instead of teachificPay.createCheckout
+- [x] TeachificPayConnectSection kept as dead code in OrgSettingsPage.tsx for future re-enablement

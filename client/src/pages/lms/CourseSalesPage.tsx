@@ -471,34 +471,18 @@ export default function CourseSalesPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  const checkoutMut = trpc.teachificPay.createCheckout.useMutation({
-    onSuccess: (data) => {
-      if (data.checkoutUrl) {
-        toast.info("Redirecting to secure checkout...");
-        window.open(data.checkoutUrl, "_blank");
-      }
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
   const handleEnroll = (pricingId?: number, price?: number) => {
     if (!user) { window.location.href = "/login"; return; }
     if (!course) return;
     if (price && price > 0) {
-      checkoutMut.mutate({
-        orgId: course.orgId,
-        courseId: course.id,
-        priceInCents: Math.round(price * 100),
-        courseName: course.title,
-        isGroupRegistration: false,
-        groupSize: 1,
-        successUrl: course.afterPurchaseRedirectUrl
-          ? course.afterPurchaseRedirectUrl
-          : course.thankYouPageEnabled
-            ? `${window.location.origin}/courses/${courseId}/thank-you`
-            : `${window.location.origin}/learn/${courseId}?enrolled=1`,
-        cancelUrl: window.location.href,
-      });
+      // Route paid enrollments through the hosted checkout (Stripe gateway)
+      // TeachificPay is in internal test mode — set TEACHIFIC_PAY_ENABLED in stripePlans.ts when ready
+      const slug = (course as any).slug;
+      if (slug) {
+        setLocation(`/checkout/course/${slug}${pricingId ? `?pricing_option_id=${pricingId}` : ""}`);
+      } else {
+        toast.error("Unable to start checkout — course not found.");
+      }
       return;
     }
     enrollMut.mutate({ courseId, orgId: course.orgId, pricingId, amountPaid: 0 });

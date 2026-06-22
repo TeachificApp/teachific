@@ -2136,8 +2136,9 @@ function TeachificPayConnectSection({ orgId }: { orgId?: number }) {
 }
 
 function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: string }) {
-  const canUseCustomGateway = ["pro", "enterprise"].includes(plan);
-  const teachificPayFee = plan === "free" ? "2%" : plan === "starter" ? "1%" : plan === "builder" ? "0.5%" : "0%";
+  // Teachific Pay is in internal test mode — all plans use their own Stripe gateway
+  // Set TEACHIFIC_PAY_ENABLED = true in server/stripePlans.ts when ready for public launch
+  const canUseCustomGateway = true; // all plans can use own gateway while TeachificPay is in test mode
   const utils = trpc.useUtils();
   const [stripePublishableKey, setStripePublishableKey] = useState("");
   const [stripeSecretKey, setStripeSecretKey] = useState("");
@@ -2205,55 +2206,20 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
 
   return (
     <TabsContent value="payment" className="space-y-4">
-      {/* TeachificPay Section */}
-      <Card className="border-2" style={{ borderColor: "#24abbc20" }}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "#24abbc15" }}>
-                <CreditCard className="h-5 w-5" style={{ color: "#24abbc" }} />
-              </div>
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  TeachificPay
-                  <Badge className="text-xs" style={{ background: "#24abbc20", color: "#24abbc" }}>Powered by Stripe</Badge>
-                </CardTitle>
-                <CardDescription>Teachific's built-in payment processor — no setup required</CardDescription>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-xs">{teachificPayFee} platform fee</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg p-4 space-y-3" style={{ background: "#24abbc08", border: "1px solid #24abbc20" }}>
-            <div className="flex items-start gap-2">
-              <Check className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "#24abbc" }} />
-              <p className="text-sm">
-                {canUseCustomGateway
-                  ? `Your ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan supports TeachificPay or your own Stripe gateway with no platform fee.`
-                  : teachificPayFee === "0%"
-                  ? `Your ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan uses TeachificPay with no platform fee.`
-                  : `Your ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan uses TeachificPay exclusively. A ${teachificPayFee} platform fee applies to each transaction. Upgrade to Pro or higher to use your own payment gateway.`
-                }
-              </p>
-            </div>
-            <div className="flex items-start gap-2">
-              <Check className="h-4 w-4 mt-0.5 shrink-0" style={{ color: "#24abbc" }} />
-              <p className="text-sm">Group registrations follow your plan's payment gateway setting.</p>
-            </div>
-          </div>
-          <TeachificPayConnectSection orgId={orgId} />
-        </CardContent>
-      </Card>
-
-      {/* Custom Gateway Section — Builder+ only */}
-      {canUseCustomGateway && (
+      {/* Payment Gateway Section — all plans use own Stripe gateway */}
       <Card>
         <CardHeader>
-          <CardTitle>Custom Payment Gateway</CardTitle>
-          <CardDescription>
-            Configure your own Stripe or PayPal accounts to collect payments directly. Available on Pro plan and above.
-          </CardDescription>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "#24abbc15" }}>
+              <CreditCard className="h-5 w-5" style={{ color: "#24abbc" }} />
+            </div>
+            <div>
+              <CardTitle>Payment Gateway</CardTitle>
+              <CardDescription>
+                Connect your Stripe or PayPal account to accept payments. No platform fees — you keep 100% of your revenue.
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {isLoading ? (
@@ -2404,7 +2370,6 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
           )}
         </CardContent>
       </Card>
-      )}
     </TabsContent>
   );
 }
