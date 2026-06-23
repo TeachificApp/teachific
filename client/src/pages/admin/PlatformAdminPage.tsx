@@ -931,7 +931,7 @@ function OrgsTab() {
                               value={m.role}
                               onValueChange={(v) => {
                                 if (!editOrg) return;
-                                updateOrgMemberRoleMut.mutate({ orgId: editOrg.id, userId: m.userId, role: v as "org_admin" | "user" });
+                                updateOrgMemberRoleMut.mutate({ orgId: editOrg.id, userId: m.userId, role: v as "org_super_admin" | "org_admin" | "member" | "user" });
                               }}
                             >
                               <SelectTrigger className="bg-gray-50 border-gray-300 text-slate-900 h-7 text-xs w-32">

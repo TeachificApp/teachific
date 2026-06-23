@@ -347,6 +347,14 @@ export async function addOrgMember(orgId: number, userId: number, role: "org_sup
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
   await db.insert(orgMembers).values({ orgId, userId, role, invitedBy, memberSubRole: memberSubRole ?? "basic_member" }).onDuplicateKeyUpdate({ set: { role, memberSubRole: memberSubRole ?? "basic_member" } });
+  // Sync users.role so ctx.user.role reflects the org role for middleware checks.
+  const [currentUser] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
+  const currentUserRole = currentUser?.role ?? "user";
+  const isPlatformLevel = ["site_owner", "site_admin"].includes(currentUserRole);
+  if (!isPlatformLevel) {
+    const newUserRole = role === "org_super_admin" ? "org_super_admin" : role === "org_admin" ? "org_admin" : "user";
+    await db.update(users).set({ role: newUserRole }).where(eq(users.id, userId));
+  }
   // Dispatch Zapier new_member event (non-blocking)
   import("./zapierRouter").then(({ dispatchZapierEvent }) => {
     dispatchZapierEvent(orgId, "new_member", {
@@ -388,6 +396,19 @@ export async function updateOrgMemberRole(orgId: number, userId: number, role: "
   const updateData: Record<string, unknown> = { role };
   if (memberSubRole) updateData.memberSubRole = memberSubRole;
   await db.update(orgMembers).set(updateData as any).where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, userId)));
+  // Sync users.role so ctx.user.role reflects the org role for middleware checks.
+  // Only elevate if the current users.role is a plain member/user (don't downgrade site admins).
+  const [currentUser] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
+  const currentUserRole = currentUser?.role ?? "user";
+  const isPlatformLevel = ["site_owner", "site_admin"].includes(currentUserRole);
+  if (!isPlatformLevel) {
+    // Map org_members role → users.role
+    let newUserRole: typeof currentUserRole;
+    if (role === "org_super_admin") newUserRole = "org_super_admin";
+    else if (role === "org_admin") newUserRole = "org_admin";
+    else newUserRole = "user";
+    await db.update(users).set({ role: newUserRole }).where(eq(users.id, userId));
+  }
 }
 
 // ─── Content Packages ──────────────────────────────────────────────────────────
