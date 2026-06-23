@@ -44,7 +44,7 @@ import {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function assertAdmin(ctx: any) {
-  if (ctx.user?.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  const _orgId = await requireOrgAdmin(ctx.user!.id, ctx.user!.role);
 }
 
 async function assertCommunityMember(db: any, communityId: number, userId: number) {
@@ -283,7 +283,7 @@ const communityMemberRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const member = await assertCommunityMember(db, input.communityId, ctx.user.id);
-    if (!member && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (!member) { await requireOrgAdmin(ctx.user.id, ctx.user.role); }
 
     const conditions = [
       eq(communityPosts.communityId, input.communityId),
@@ -319,9 +319,9 @@ const communityMemberRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const member = await assertCommunityMember(db, input.communityId, ctx.user.id);
-    if (!member && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (!member) { await requireOrgAdmin(ctx.user.id, ctx.user.role); }
     // Validate admin profile belongs to this community
-    if (input.adminProfileId && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (input.adminProfileId) { await requireOrgAdmin(ctx.user.id, ctx.user.role); }
 
     const [result] = await db.insert(communityPosts).values({
       communityId: input.communityId,
@@ -364,7 +364,7 @@ const communityMemberRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [post] = await db.select().from(communityPosts).where(eq(communityPosts.id, input.postId)).limit(1);
     if (!post) throw new TRPCError({ code: "NOT_FOUND" });
-    if (post.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (post.userId !== ctx.user.id) { await requireOrgAdmin(ctx.user.id, ctx.user.role); }
     await db.update(communityPosts).set({ body: input.body, title: input.title ?? null }).where(eq(communityPosts.id, input.postId));
     await syncHashtags(db, input.postId, input.body);
     return { success: true };
@@ -376,7 +376,7 @@ const communityMemberRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [post] = await db.select().from(communityPosts).where(eq(communityPosts.id, input.postId)).limit(1);
     if (!post) throw new TRPCError({ code: "NOT_FOUND" });
-    if (post.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (post.userId !== ctx.user.id) { await requireOrgAdmin(ctx.user.id, ctx.user.role); }
     await db.delete(communityPosts).where(eq(communityPosts.id, input.postId));
     return { success: true };
   }),
@@ -521,7 +521,7 @@ const communityMemberRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [c] = await db.select().from(communityPostComments).where(eq(communityPostComments.id, input.commentId)).limit(1);
     if (!c) throw new TRPCError({ code: "NOT_FOUND" });
-    if (c.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    if (c.userId !== ctx.user.id) { await requireOrgAdmin(ctx.user.id, ctx.user.role); }
     await db.delete(communityPostComments).where(eq(communityPostComments.id, input.commentId));
     await db.update(communityPosts).set({ commentCount: sql`GREATEST(0, comment_count - 1)` }).where(eq(communityPosts.id, c.postId));
     return { success: true };

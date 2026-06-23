@@ -680,7 +680,7 @@ export const lmsLearnerRouter = router({
       const effectiveEnrollment = enrollment ?? (isAdminPreview ? { id: -1, userId: ctx.user.id, courseId: course.id, enrolledAt: new Date(), progressPct: 0, completedAt: null, lastAccessedAt: new Date(), certificateIssuedAt: null } as any : null);
 
       // Track IP access for paid content monitoring (non-blocking)
-      if (enrollment && !course.isFree && ctx.user.role !== "admin") {
+      if (enrollment && !course.isFree && !["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) {
         const { logIpAccess } = await import("../jobs/sharingMonitor");
         const fwd = ctx.req?.headers?.["x-forwarded-for"];
         const ip = typeof fwd === "string" ? fwd.split(",")[0].trim() : ctx.req?.socket?.remoteAddress || "unknown";
@@ -1797,8 +1797,8 @@ export const lmsLearnerRouter = router({
         .from(lmsEnrollments)
         .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, assignment.courseId)))
         .limit(1);
-      if (!enrollment && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Not enrolled in this cohort" });
-      if (assignment.status !== "published" && ctx.user.role !== "admin") throw new TRPCError({ code: "NOT_FOUND" });
+      if (!enrollment && !["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Not enrolled in this cohort" });
+      if (assignment.status !== "published" && !["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) throw new TRPCError({ code: "NOT_FOUND" });
       const [mySubmission] = await db.select().from(lmsCohortSubmissions)
         .where(and(eq(lmsCohortSubmissions.assignmentId, input.assignmentId), eq(lmsCohortSubmissions.userId, ctx.user.id)))
         .limit(1);
@@ -1957,7 +1957,7 @@ export const lmsLearnerRouter = router({
         .where(eq(lmsCohortMessages.id, input.id))
         .limit(1);
       if (!msg) throw new TRPCError({ code: "NOT_FOUND" });
-      if (msg.userId !== ctx.user.id && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (msg.userId !== ctx.user.id && !["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
             await db.update(lmsCohortMessages).set({ deletedAt: new Date() }).where(eq(lmsCohortMessages.id, input.id));
       return { success: true };
     }),
@@ -2074,7 +2074,7 @@ export const lmsGroupRouter = router({
   listPricingOptions: protectedProcedure
     .input(z.object({ courseId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       return db.select().from(lmsPricingOptions)
@@ -2102,7 +2102,7 @@ export const lmsGroupRouter = router({
       isActive: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(lmsPricingOptions).values({
@@ -2169,7 +2169,7 @@ export const lmsGroupRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -2215,7 +2215,7 @@ export const lmsGroupRouter = router({
   deletePricingOption: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Deactivate Stripe Payment Link if exists
@@ -2233,7 +2233,7 @@ export const lmsGroupRouter = router({
   reorderPricingOptions: protectedProcedure
     .input(z.object({ orderedIds: z.array(z.number().int().positive()) }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.orderedIds.map((id, idx) =>
@@ -2246,7 +2246,7 @@ export const lmsGroupRouter = router({
 
   /** Get platform settings (admin) */
   getPlatformSettings: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [settings] = await db.select().from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
@@ -2270,7 +2270,7 @@ export const lmsGroupRouter = router({
       formPublishDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const updates: Record<string, any> = {};
@@ -2288,7 +2288,7 @@ export const lmsGroupRouter = router({
       sendEnrollmentEmail: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsCourses).set({ sendEnrollmentEmail: input.sendEnrollmentEmail }).where(eq(lmsCourses.id, input.courseId));
@@ -2311,7 +2311,7 @@ export const lmsGroupRouter = router({
       publishDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Check slug uniqueness (excluding current course)
@@ -2447,7 +2447,7 @@ export const lmsGroupRouter = router({
       customPrompt: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2554,7 +2554,7 @@ export const lmsGroupRouter = router({
       customPrompt: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select({

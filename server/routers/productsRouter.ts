@@ -262,9 +262,7 @@ export const productsAdminRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(physicalProducts)
@@ -280,9 +278,7 @@ export const productsAdminRouter = router({
   create: protectedProcedure
     .input(z.object({ title: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const slug = await uniqueSlug(db, slugify(input.title));
@@ -325,9 +321,7 @@ export const productsAdminRouter = router({
       publishDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -347,9 +341,7 @@ export const productsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(physicalProductPricingOptions)
@@ -362,9 +354,7 @@ export const productsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(physicalProducts)
@@ -396,9 +386,7 @@ export const productsAdminRouter = router({
   getLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select({
@@ -436,9 +424,7 @@ export const productsAdminRouter = router({
       seoImage: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(physicalProducts)
@@ -455,9 +441,7 @@ export const productsAdminRouter = router({
   saveLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number(), blocks: z.array(z.any()) }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const blocksJson = JSON.stringify(input.blocks);
@@ -478,9 +462,7 @@ export const productsAdminRouter = router({
       mimeType: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const buffer = Buffer.from(input.fileBase64, "base64");
@@ -507,9 +489,7 @@ export const productsAdminRouter = router({
       ctaLabel: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Get current max sortOrder
@@ -543,9 +523,7 @@ export const productsAdminRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -558,9 +536,7 @@ export const productsAdminRouter = router({
   deletePricingOption: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(physicalProductPricingOptions)
@@ -579,9 +555,7 @@ export const productsAdminRouter = router({
       limit: z.number().min(1).max(100).default(25),
     }).optional())
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) return { orders: [], total: 0 };
       const page = input?.page ?? 1;
@@ -618,9 +592,7 @@ export const productsAdminRouter = router({
       notes: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -637,9 +609,7 @@ export const productsAdminRouter = router({
       notes: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.insert(physicalProductOrders).values({
@@ -657,9 +627,7 @@ export const productsAdminRouter = router({
   getAnalytics: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) return { totalOrders: 0, totalRevenue: 0, byStatus: [] };
       const [totals] = await db.select({
@@ -684,9 +652,7 @@ export const productsAdminRouter = router({
   aiGenerateLandingPage: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 

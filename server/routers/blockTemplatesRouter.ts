@@ -63,7 +63,7 @@ export const blockTemplatesRouter = router({
 
       const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin" && ctx.user.role !== "org_admin" && ctx.user.role !== "org_super_admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -85,7 +85,7 @@ export const blockTemplatesRouter = router({
 
       const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin") {
+      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin" && ctx.user.role !== "org_admin" && ctx.user.role !== "org_super_admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 

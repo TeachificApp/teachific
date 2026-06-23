@@ -39,9 +39,7 @@ import { addToEmailList, addToAllContacts } from "../lib/emailListHelper";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
 async function requireAdmin(ctx: any) {
-  if (ctx.user?.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
+  const _orgId = await requireOrgAdmin(ctx.user!.id, ctx.user!.role);
 }
 
 // ─── Slug generator ───────────────────────────────────────────────────────────

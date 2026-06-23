@@ -6,10 +6,57 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb, getOrCreateUserByEmail } from "../db";
-import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, membershipPlans } from "../../drizzle/schema";
+import { getDb, getOrCreateUserByEmail, getOrgIdForUser } from "../db";
+import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, membershipPlans, orgMembers } from "../../drizzle/schema";
 import { eq, and, asc, desc, sql, inArray, or, like, isNotNull } from "drizzle-orm";
 import { evaluateBranchRules, type VisitorContext } from "../lib/funnelBranchEngine";
+
+/**
+ * Check that the current user has funnel admin access.
+ * Allows: platform admins (users.role = 'admin') OR org admins/super admins.
+ * Returns the orgId the user is acting on.
+ */
+const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin", "sub_admin"] as const;
+
+async function requireFunnelAccess(
+  userId: number,
+  platformRole: string,
+  orgIdHint?: number
+): Promise<number> {
+  const db = await getDb();
+  // Platform admins bypass org check
+  if (platformRole === "admin") {
+    if (orgIdHint) return orgIdHint;
+    const orgId = await getOrgIdForUser(userId);
+    if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+    return orgId;
+  }
+  if (orgIdHint) {
+    const [membership] = await db
+      .select({ role: orgMembers.role })
+      .from(orgMembers)
+      .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, orgIdHint)))
+      .limit(1);
+    if (!membership || !(ORG_ADMIN_ROLES as readonly string[]).includes(membership.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have admin access to this organisation" });
+    }
+    return orgIdHint;
+  }
+  // No orgId hint — find the user's highest-role org
+  const memberships = await db
+    .select({ orgId: orgMembers.orgId, role: orgMembers.role })
+    .from(orgMembers)
+    .where(eq(orgMembers.userId, userId));
+  const adminMemberships = memberships.filter(m =>
+    (ORG_ADMIN_ROLES as readonly string[]).includes(m.role)
+  );
+  if (adminMemberships.length === 0) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You need org admin access to use the Funnel Builder" });
+  }
+  const ROLE_PRIORITY: Record<string, number> = { org_super_admin: 100, org_admin: 90, sub_admin: 70 };
+  adminMemberships.sort((a, b) => (ROLE_PRIORITY[b.role] ?? 0) - (ROLE_PRIORITY[a.role] ?? 0));
+  return adminMemberships[0].orgId;
+}
 
 function slugify(text: string): string {
   return text
@@ -45,13 +92,13 @@ async function uniquePageSlug(
 export const funnelRouter = router({
   /** List all products (courses, downloads, bundles) for order bump picker */
   listAllProducts: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
     const db = await getDb();
     const [courses, downloads, bundles, physical, memberships] = await Promise.all([
-      db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, thumbnailUrl: lmsCourses.thumbnailUrl, courseType: lmsCourses.type }).from(lmsCourses).orderBy(asc(lmsCourses.title)),
-      db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price, thumbnailUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).orderBy(asc(digitalProducts.title)),
+      db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, thumbnailUrl: lmsCourses.thumbnailUrl, courseType: lmsCourses.type }).from(lmsCourses).where(eq(lmsCourses.orgId, _orgId)).orderBy(asc(lmsCourses.title)),
+      db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price, thumbnailUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).where(eq(digitalProducts.orgId, _orgId)).orderBy(asc(digitalProducts.title)),
       db.select({ id: digitalBundles.id, title: digitalBundles.title, price: digitalBundles.discountPrice, thumbnailUrl: digitalBundles.thumbnailUrl }).from(digitalBundles).orderBy(asc(digitalBundles.title)),
-      db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price, thumbnailUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).orderBy(asc(physicalProducts.title)),
+      db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price, thumbnailUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).where(eq(physicalProducts.orgId, _orgId)).orderBy(asc(physicalProducts.title)),
       db.select({ id: membershipPlans.id, name: membershipPlans.name, price: membershipPlans.price }).from(membershipPlans).orderBy(asc(membershipPlans.name)),
     ]);
     return [
@@ -144,11 +191,12 @@ export const funnelRouter = router({
 
   /** List all funnels */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
     const db = await getDb();
     const rows = await db
       .select()
       .from(funnels)
+      .where(eq(funnels.orgId, _orgId))
       .orderBy(asc(funnels.sortOrder), desc(funnels.updatedAt));
     if (rows.length === 0) return [];
     // Batch-fetch all pages in a single query instead of N+1 loop
@@ -169,7 +217,7 @@ export const funnelRouter = router({
   reorderFunnels: protectedProcedure
     .input(z.object({ funnelIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       for (let i = 0; i < input.funnelIds.length; i++) {
         await db
@@ -184,9 +232,9 @@ export const funnelRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
-      const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.id));
+      const [funnel] = await db.select().from(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
       const pages = await db
         .select()
@@ -208,7 +256,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const baseSlug = slugify(input.name);
       // Ensure unique slug
@@ -221,6 +269,7 @@ export const funnelRouter = router({
         slug = `${baseSlug}-${attempt}`;
       }
       const result = await db.insert(funnels).values({
+        orgId: _orgId,
         name: input.name,
         slug,
         description: input.description,
@@ -247,31 +296,29 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+            const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const { id, ...data } = input;
-      await db.update(funnels).set(data).where(eq(funnels.id, id));
+      await db.update(funnels).set(data).where(and(eq(funnels.id, id), eq(funnels.orgId, _orgId)));
       return { success: true };
     }),
-
   /** Delete a funnel and all its pages */
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       await db.delete(funnelPages).where(eq(funnelPages.funnelId, input.id));
-      await db.delete(funnels).where(eq(funnels.id, input.id));
+      await db.delete(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
       return { success: true };
     }),
-
   /** Duplicate a funnel */
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
-      const [original] = await db.select().from(funnels).where(eq(funnels.id, input.id));
+      const [original] = await db.select().from(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
       const baseSlug = slugify(original.name + " copy");
       let slug = baseSlug;
@@ -332,7 +379,7 @@ export const funnelRouter = router({
   saveAsTemplate: protectedProcedure
     .input(z.object({ id: z.number(), templateName: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.id));
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
@@ -350,7 +397,7 @@ export const funnelRouter = router({
     }),
   /** List user-saved templates */
   listTemplates: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
     const db = await getDb();
     return db.select().from(funnelTemplates).orderBy(desc(funnelTemplates.createdAt));
   }),
@@ -358,7 +405,7 @@ export const funnelRouter = router({
   deleteTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       await db.delete(funnelTemplates).where(eq(funnelTemplates.id, input.id));
       return { success: true };
@@ -383,7 +430,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       // Auto-generate slug from title if not provided, then ensure it is unique within this funnel
       const basePageSlug = input.slug || slugify(input.title);
@@ -435,7 +482,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
@@ -446,7 +493,7 @@ export const funnelRouter = router({
   duplicatePage: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [original] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.id));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
@@ -478,7 +525,7 @@ export const funnelRouter = router({
   copyPageToFunnel: protectedProcedure
     .input(z.object({ pageId: z.number(), targetFunnelId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [original] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.pageId));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
@@ -512,7 +559,7 @@ export const funnelRouter = router({
   copyPageAsStandalone: protectedProcedure
     .input(z.object({ pageId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [original] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.pageId));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
@@ -544,7 +591,7 @@ export const funnelRouter = router({
   deletePage: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       // Clear any nextPageId references to this page
       await db
@@ -564,7 +611,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       for (let i = 0; i < input.pageIds.length; i++) {
         await db
@@ -589,7 +636,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       await db
         .update(funnelPages)
@@ -674,7 +721,7 @@ export const funnelRouter = router({
   getPageById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [page] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.id));
       if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel page not found" });
@@ -701,7 +748,7 @@ export const funnelRouter = router({
       funnelId: z.number().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const offset = (input.page - 1) * input.limit;
 
@@ -737,7 +784,7 @@ export const funnelRouter = router({
   getLeadById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [lead] = await db.select().from(funnelLeads).where(eq(funnelLeads.id, input.id));
       if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
@@ -759,7 +806,7 @@ export const funnelRouter = router({
       tags: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const updates: any = {};
       if (input.name !== undefined) updates.name = input.name;
@@ -773,7 +820,7 @@ export const funnelRouter = router({
   deleteLeads: protectedProcedure
     .input(z.object({ ids: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       for (const id of input.ids) {
         await db.delete(funnelLeads).where(eq(funnelLeads.id, id));
@@ -787,7 +834,7 @@ export const funnelRouter = router({
   getFlowDiagram: protectedProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const pages = await db
         .select()
@@ -831,7 +878,7 @@ export const funnelRouter = router({
   listBranchRules: protectedProcedure
     .input(z.object({ pageId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const rules = await db
         .select()
@@ -878,7 +925,7 @@ export const funnelRouter = router({
       })).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       let ruleId: number;
       if (input.id) {
@@ -916,7 +963,7 @@ export const funnelRouter = router({
   deleteBranchRule: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       await db.delete(funnelBranchConditions).where(eq(funnelBranchConditions.ruleId, input.id));
       await db.delete(funnelBranchRules).where(eq(funnelBranchRules.id, input.id));
@@ -927,7 +974,7 @@ export const funnelRouter = router({
   reorderBranchRules: protectedProcedure
     .input(z.object({ ruleIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       for (let i = 0; i < input.ruleIds.length; i++) {
         await db.update(funnelBranchRules).set({ priority: i }).where(eq(funnelBranchRules.id, input.ruleIds[i]));
@@ -949,7 +996,7 @@ export const funnelRouter = router({
       customDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [existing] = await db.select({ id: funnels.id }).from(funnels)
@@ -1779,7 +1826,7 @@ export const funnelAdminRouter = router({
   listImportablePages: protectedProcedure
     .input(z.object({ excludeFunnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -1906,7 +1953,7 @@ export const funnelAdminRouter = router({
       sourceType: z.enum(["funnel", "standalone", "course", "download"]).default("funnel"),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -1990,7 +2037,7 @@ export const funnelAdminRouter = router({
   getFunnelAnalytics: protectedProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2078,7 +2125,7 @@ export const funnelAdminRouter = router({
   exportFunnelLeadsCSV: protectedProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2124,7 +2171,7 @@ export const funnelAdminRouter = router({
       conversionStatus: z.enum(["all", "lead", "registered", "purchaser"]).default("all"),
     }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2227,7 +2274,7 @@ export const funnelAdminRouter = router({
   conversionFunnel: protectedProcedure
     .input(z.object({ funnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2326,7 +2373,7 @@ export const funnelAdminRouter = router({
   exportAllContactsCSV: protectedProcedure
     .input(z.object({ funnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2380,7 +2427,7 @@ export const funnelAdminRouter = router({
   /** Get all funnels with their pages (including blocks) for the block picker "Copy from Other Pages" tab */
   getFunnelsWithPages: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const allFunnelsList = await db

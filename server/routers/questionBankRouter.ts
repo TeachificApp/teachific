@@ -23,7 +23,8 @@ async function assertAdmin(ctx: { user: { id: number; role: string } }) {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    if (!u || u.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+    if (!u) throw new TRPCError({ code: "FORBIDDEN", message: "User not found" });
+    await requireOrgAdmin(u.id, u.role);
   }
 }
 

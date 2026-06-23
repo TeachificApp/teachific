@@ -1530,7 +1530,7 @@ CRITICAL REQUIREMENTS:
     }),
   /** Get custom domains list */
   getCustomDomains: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [settings] = await db.select({ customDomains: platformSettings.customDomains }).from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
@@ -1540,7 +1540,7 @@ CRITICAL REQUIREMENTS:
   updateCustomDomains: protectedProcedure
     .input(z.object({ domains: z.array(z.string().min(1).max(255)) }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const json = JSON.stringify(input.domains);

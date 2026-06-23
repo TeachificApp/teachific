@@ -280,6 +280,63 @@ export async function getOrgIdForUser(userId: number): Promise<number | null> {
   return sorted[0].orgId;
 }
 
+/**
+ * Shared helper: verify the current user has org admin access.
+ * - Platform admins (users.role === 'admin') are always allowed.
+ * - Org admins/super admins are allowed for their own org.
+ * - If orgIdHint is provided, verifies the user is an admin of that specific org.
+ * - If no orgIdHint, resolves the user's highest-priority admin org.
+ * Returns the orgId the user is authorised to act on.
+ * Throws TRPCError FORBIDDEN if the user has no admin access.
+ */
+export async function requireOrgAdmin(
+  userId: number,
+  platformRole: string,
+  orgIdHint?: number
+): Promise<number> {
+  const db = await getDb();
+  const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin", "sub_admin"];
+  // Platform admins bypass org check
+  if (platformRole === "admin") {
+    if (orgIdHint) return orgIdHint;
+    const orgId = await getOrgIdForUser(userId);
+    if (!orgId) {
+      const { TRPCError } = await import("@trpc/server");
+      throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+    }
+    return orgId;
+  }
+  if (orgIdHint && db) {
+    const [membership] = await db
+      .select({ role: orgMembers.role })
+      .from(orgMembers)
+      .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, orgIdHint)))
+      .limit(1);
+    if (!membership || !ORG_ADMIN_ROLES.includes(membership.role)) {
+      const { TRPCError } = await import("@trpc/server");
+      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have admin access to this organisation" });
+    }
+    return orgIdHint;
+  }
+  // No orgId hint — find the user's highest-role admin org
+  if (!db) {
+    const { TRPCError } = await import("@trpc/server");
+    throw new TRPCError({ code: "FORBIDDEN", message: "Database unavailable" });
+  }
+  const memberships = await db
+    .select({ orgId: orgMembers.orgId, role: orgMembers.role })
+    .from(orgMembers)
+    .where(eq(orgMembers.userId, userId));
+  const adminMemberships = memberships.filter(m => ORG_ADMIN_ROLES.includes(m.role));
+  if (adminMemberships.length === 0) {
+    const { TRPCError } = await import("@trpc/server");
+    throw new TRPCError({ code: "FORBIDDEN", message: "You need org admin access to perform this action" });
+  }
+  const ROLE_PRIORITY: Record<string, number> = { org_super_admin: 100, org_admin: 90, sub_admin: 70 };
+  adminMemberships.sort((a, b) => (ROLE_PRIORITY[b.role] ?? 0) - (ROLE_PRIORITY[a.role] ?? 0));
+  return adminMemberships[0].orgId;
+}
+
 // ─── Org Members ───────────────────────────────────────────────────────────────
 export async function addOrgMember(orgId: number, userId: number, role: "org_super_admin" | "org_admin" | "member" | "user", invitedBy?: number, memberSubRole?: "basic_member" | "instructor" | "group_manager" | "group_member") {
   const db = await getDb();

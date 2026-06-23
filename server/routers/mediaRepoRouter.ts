@@ -46,7 +46,8 @@ async function assertPlatformAdmin(ctx: { user: { id: number; role: string } }) 
     .from((await import("../../drizzle/schema")).users)
     .where(eq((await import("../../drizzle/schema")).users.id, ctx.user.id))
     .limit(1);
-  if (!user || (user.role !== "admin" && user.openId !== ownerId)) {
+  const ORG_ADMIN_ROLES_MR = ["org_super_admin", "org_admin", "sub_admin", "admin", "site_owner", "site_admin"];
+  if (!user || (!ORG_ADMIN_ROLES_MR.includes(user.role) && user.openId !== ownerId)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required" });
   }
 }

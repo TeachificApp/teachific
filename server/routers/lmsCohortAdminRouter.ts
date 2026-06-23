@@ -681,8 +681,8 @@ export const lmsCohortAdminRouter = router({
       const [assignment] = await db.select().from(lmsCohortAssignments)
         .where(eq(lmsCohortAssignments.id, input.assignmentId)).limit(1);
       if (!assignment) throw new TRPCError({ code: "NOT_FOUND" });
-      // Verify access: admin or enrolled
-      if (ctx.user.role !== "admin") {
+      // Verify access: admin/org-admin or enrolled
+      if (!["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) {
         const [enrollment] = await db.select({ id: lmsEnrollments.id })
           .from(lmsEnrollments)
           .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, assignment.courseId)))
@@ -1118,7 +1118,7 @@ export const lmsCohortAdminRouter = router({
         userId: ctx.user.id,
         body: input.body ?? null,
         mediaUrls: input.mediaUrls ?? null,
-        isAdminPost: ctx.user.role === "admin",
+        isAdminPost: ["admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role),
       }).$returningId();
       return { id: result.id };
     }),

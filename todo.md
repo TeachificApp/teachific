@@ -4317,3 +4317,19 @@
 - [x] OrgSettingsPage.tsx: Update payment card title to "Payment Gateway" with "No platform fees — you keep 100% of your revenue"
 - [x] CourseSalesPage.tsx: Route paid enrollments to /checkout/course/:slug (hosted checkout) instead of teachificPay.createCheckout
 - [x] TeachificPayConnectSection kept as dead code in OrgSettingsPage.tsx for future re-enablement
+
+## Sprint: Org-Admin Permission Fix (Jun 22 2026)
+- [x] Add requireOrgAdmin shared helper to server/db.ts
+- [x] Fix funnelRouter - all 38 procedures now allow org admins (scoped to their org)
+- [x] Fix lmsRouter - all admin-only checks now allow org admins
+- [x] Fix lmsCheckoutRouter - all admin-only checks now allow org admins
+- [x] Fix downloadsRouter - all admin-only checks now allow org admins
+- [x] Fix productsRouter - all admin-only checks now allow org admins
+- [x] Fix communityRouter - all admin-only checks now allow org admins
+- [x] Fix generalFormRouter - all admin-only checks now allow org admins
+- [x] Fix blockTemplatesRouter - all admin-only checks now allow org admins
+- [x] Fix pageScraperRouter - all admin-only checks now allow org admins
+- [x] Fix mediaRepoRouter - all admin-only checks now allow org admins
+- [x] Fix questionBankRouter - assertAdmin now calls requireOrgAdmin
+- [x] Fix lmsCohortAdminRouter - learner-side bypass checks now include org admins
+- [x] Learner-side bypass checks in lmsRouter now include org admins (IP tracking, enrollment checks, message ownership)

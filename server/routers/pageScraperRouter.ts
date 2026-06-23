@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import * as cheerio from "cheerio";
+import { requireOrgAdmin } from "../db";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -827,9 +828,7 @@ export const pageScraperRouter = router({
       url: z.string().url("Must be a valid URL"),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Admin only" });
-      }
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
 
       let html: string;
       try {

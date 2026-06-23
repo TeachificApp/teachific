@@ -23,7 +23,7 @@ async function getDb() {
 export const orderBumpsAdminRouter = router({
   /** List all order bumps */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
     const db = await getDb();
     const rows = await db.select().from(orderBumps).orderBy(orderBumps.createdAt);
     return rows;
@@ -33,7 +33,7 @@ export const orderBumpsAdminRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [row] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.id));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
@@ -65,7 +65,7 @@ export const orderBumpsAdminRouter = router({
       slug: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [result] = await db.insert(orderBumps).values({
         triggerType: input.triggerType,
@@ -116,7 +116,7 @@ export const orderBumpsAdminRouter = router({
       slug: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const { id, ...data } = input;
       await db.update(orderBumps).set(data).where(eq(orderBumps.id, id));
@@ -127,7 +127,7 @@ export const orderBumpsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       await db.delete(orderBumps).where(eq(orderBumps.id, input.id));
       return { success: true };
@@ -137,7 +137,7 @@ export const orderBumpsAdminRouter = router({
   stats: protectedProcedure
     .input(z.object({ bumpId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [bump] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.bumpId));
       if (!bump) throw new TRPCError({ code: "NOT_FOUND" });
@@ -153,7 +153,7 @@ export const orderBumpsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const [src] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.id)).limit(1);
       if (!src) throw new TRPCError({ code: "NOT_FOUND" });
@@ -172,7 +172,7 @@ export const orderBumpsAdminRouter = router({
   getPricingOptionsForCourse: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const rows = await db
         .select()
