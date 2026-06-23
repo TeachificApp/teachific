@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,7 @@ function renderPublicBlock(block: any, webinar: any) {
           {block.content && (
             <div
               className="prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: block.content }}
+              dangerouslySetInnerHTML={{ __html: sanitize(block.content) }}
             />
           )}
         </div>

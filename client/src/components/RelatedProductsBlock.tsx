@@ -10,6 +10,7 @@
  *  - Price + CTA button always on the same row, pinned to the bottom of the card
  */
 import { Link } from "wouter";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, FileDown, Package, ExternalLink, Users } from "lucide-react";
@@ -181,7 +182,7 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
           <h2
             className="text-2xl md:text-3xl font-bold text-center mb-2"
             style={{ color: textColor }}
-            dangerouslySetInnerHTML={{ __html: d.headline }}
+            dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }}
           />
         )}
         {d.subtext && (

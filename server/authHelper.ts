@@ -7,6 +7,7 @@ import type { Request } from "express";
 import type { User } from "../drizzle/schema";
 import { sdk } from "./_core/sdk";
 import { getUserById } from "./db";
+import { verifySessionToken } from "./_core/context";
 
 /** Parse a single named cookie from the Cookie header */
 function parseCookie(cookieHeader: string | undefined, name: string): string | null {
@@ -20,8 +21,8 @@ async function resolveTeachificSession(cookieHeader: string | undefined): Promis
   try {
     const raw = parseCookie(cookieHeader, "teachific_session");
     if (!raw) return null;
-    const payload = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
-    if (!payload?.userId || typeof payload.userId !== "number") return null;
+    const payload = verifySessionToken(raw);
+    if (!payload) return null;
     const user = await getUserById(payload.userId);
     return user ?? null;
   } catch {
@@ -45,7 +46,7 @@ export async function authenticateRequest(req: Request): Promise<(User & { imper
     // Fall through to teachific_session
   }
 
-  // Fallback: custom Teachific email/password session
+  // Fallback: custom Teachific email/password session (HMAC-verified)
   const user = await resolveTeachificSession(req.headers.cookie);
   return user;
 }

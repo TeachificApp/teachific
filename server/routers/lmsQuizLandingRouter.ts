@@ -77,7 +77,7 @@ import { getEnrollmentsForCourse, getThinkificCourse } from "../thinkific";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
 export const lmsQuizLandingRouter = router({
   // ── Quizzes ──
@@ -367,6 +367,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, ...updates } = input;

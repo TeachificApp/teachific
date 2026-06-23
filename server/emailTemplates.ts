@@ -11,6 +11,17 @@
 const SITE_URL = process.env.VITE_SITE_URL ?? "https://teachific.app";
 const YEAR = new Date().getFullYear();
 
+/** Escape user-controlled strings before interpolating into HTML email templates. */
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 // ─── Base Layout ─────────────────────────────────────────────────────────────
 
 function emailLayout(opts: {
@@ -105,7 +116,7 @@ function divider(): string {
 export function verifyEmailHtml(name: string, verifyUrl: string): string {
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Verify your email address</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${name || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Thanks for signing up for Teachific™! Please verify your email address to activate your account and start building your online school.</p>
     ${ctaButton("Verify Email Address", verifyUrl)}
     ${infoBox("This link expires in <strong>24 hours</strong>. If you didn't create a Teachific account, you can safely ignore this email.")}
@@ -125,7 +136,7 @@ export function verifyEmailHtml(name: string, verifyUrl: string): string {
 export function resetPasswordHtml(name: string, resetUrl: string): string {
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Reset your password</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${name || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">We received a request to reset the password for your Teachific account. Click the button below to choose a new password.</p>
     ${ctaButton("Reset Password", resetUrl)}
     ${infoBox("This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password will not be changed.")}
@@ -145,7 +156,7 @@ export function resetPasswordHtml(name: string, resetUrl: string): string {
 export function welcomeEmailHtml(name: string, dashboardUrl: string = `${SITE_URL}/lms`): string {
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Welcome to Teachific™! 🎉</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${name || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your account is verified and ready to go. Teachific gives you everything you need to build, sell, and deliver world-class online courses — without the technical headaches.</p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
       <tr>
@@ -183,7 +194,7 @@ export function courseEnrollmentHtml(opts: {
   const plural = courseTitles.length > 1;
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">You've been enrolled!</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${userName || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(userName) || "there"},</p>
     ${orgName ? `<p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;"><strong>${orgName}</strong> has enrolled you in the following course${plural ? "s" : ""}:</p>` : `<p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">You have been enrolled in the following course${plural ? "s" : ""}:</p>`}
     <ul style="margin:16px 0;padding-left:20px;font-size:15px;line-height:1.7;">${courseListHtml}</ul>
     ${amountPaid ? `<p style="margin:0 0 16px;font-size:14px;color:#64748b;">Amount paid: <strong>$${amountPaid.toFixed(2)}</strong></p>` : ""}
@@ -211,7 +222,7 @@ export function purchaseConfirmationHtml(opts: {
   const { userName, courseTitle, amountPaid, loginUrl = `${SITE_URL}/login` } = opts;
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Payment confirmed! 🎓</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${userName || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(userName) || "there"},</p>
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your payment was successful and you now have full access to:</p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
       <tr>
@@ -244,7 +255,7 @@ export function groupManagerAssignmentHtml(opts: {
   const { managerName, groupName, orgName, seats, portalUrl = `${SITE_URL}/members/group-manager` } = opts;
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">You're now a Group Manager</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${managerName || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(managerName) || "there"},</p>
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">You have been assigned as the Group Manager for <strong>${groupName}</strong>${orgName ? ` at <strong>${orgName}</strong>` : ""}.</p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;">
       <tr>
@@ -299,7 +310,7 @@ export function certificateCompletionHtml(opts: {
   const { userName, courseTitle, orgName, issuedAt, verificationCode, certificateUrl, courseUrl } = opts;
   const dateStr = issuedAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const body = `
-    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Congratulations, ${userName || "there"}!</h2>
+    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Congratulations, ${escapeHtml(userName) || "there"}!</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">You have successfully completed:</p>
     <div style="background:#f0fafa;border:1px solid #b2e0e3;border-radius:8px;padding:16px 20px;margin:0 0 20px;text-align:center;">
       <p style="margin:0;font-size:18px;font-weight:700;color:#0e6b72;">${courseTitle}</p>
@@ -336,7 +347,7 @@ export function dripUnlockHtml(opts: {
     .join("");
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">New content is available!</h2>
-    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${userName || "there"},</p>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(userName) || "there"},</p>
     <p style="margin:0 0 8px;font-size:15px;color:#475569;line-height:1.7;">New lessons have just unlocked in <strong>${courseTitle}</strong>${orgName ? ` at ${orgName}` : ""}:</p>
     <ul style="margin:16px 0;padding-left:20px;font-size:15px;line-height:1.7;">${lessonListHtml}</ul>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Log in to continue your learning journey.</p>
@@ -357,7 +368,7 @@ export function magicLinkEmailHtml(name: string, magicUrl: string, expiryMinutes
     title: "Your sign-in link",
     preheader: "Click to sign in to Teachific — link expires in " + expiryMinutes + " minutes.",
     body: `
-      <p style="margin:0 0 20px;font-size:16px;color:#374151;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 20px;font-size:16px;color:#374151;">Hi ${escapeHtml(name) || "there"},</p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
         Click the button below to sign in to your Teachific account. This link expires in
         <strong>${expiryMinutes} minutes</strong> and can only be used once.

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { useParams } from "wouter";
 import { getSubdomain } from "@/hooks/useSubdomain";
 import { trpc } from "@/lib/trpc";
@@ -150,7 +151,7 @@ function FieldRenderer({
       <div className="py-3">
         {field.label && field.type === "info" && <h4 className="text-sm font-semibold mb-1">{field.label}</h4>}
         {field.richTextContent && (
-          <div className="prose prose-sm max-w-none dark:prose-invert text-sm" dangerouslySetInnerHTML={{ __html: field.richTextContent }} />
+          <div className="prose prose-sm max-w-none dark:prose-invert text-sm" dangerouslySetInnerHTML={{ __html: sanitize(field.richTextContent) }} />
         )}
       </div>
     );
@@ -578,7 +579,7 @@ export default function FormPlayerPage() {
     >
       {/* Inject custom CSS */}
       {form.customCss && (
-        <style dangerouslySetInnerHTML={{ __html: form.customCss }} />
+        <style dangerouslySetInnerHTML={{ __html: sanitizeCss(form.customCss) }} />
       )}
       {/* Header image */}
       {branding.headerImage && (

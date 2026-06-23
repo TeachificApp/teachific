@@ -4,6 +4,7 @@
  * Extracted into its own file to break the circular dependency between CoursePlayer and LandingPageBuilder.
  */
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import DOMPurify from "dompurify";
 import { CustomVideoPlayer } from "@/components/CustomVideoPlayer";
 import { ChevronDown, Globe, Image, Package, Upload, Video } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -15,6 +16,12 @@ import { trpc } from "@/lib/trpc";
 import { FunnelWorkflowBlock, InlineOrderBumpBlock, ProductOfferStackBlock } from "@/components/FunnelBlocks";
 import { ButtonSubtext } from "@/lib/ctaSubtext";
 import { handleCtaBtnClick } from "@/pages/lms/CourseLanding";
+
+/** Sanitize HTML strings before rendering with dangerouslySetInnerHTML */
+const sanitize = (html: string | null | undefined): string =>
+  typeof window !== "undefined" && html
+    ? DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
+    : (html ?? "");
 
 /**
  * Wraps an image element with the correct click action based on the CTAActionPicker behavior.
@@ -157,10 +164,10 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
           <div className={`relative max-w-5xl mx-auto ${hasInlineMedia && isHorizontal ? "flex items-center gap-8" : ""} ${hasInlineMedia && placement === "left" ? "flex-row-reverse" : ""}`}>
             <div className={hasInlineMedia && isHorizontal ? "flex-1" : "max-w-3xl"}>
               <h1 className="text-4xl font-bold mb-4 leading-tight">
-                <span style={d.headlineColor ? { color: d.headlineColor } : undefined} dangerouslySetInnerHTML={{ __html: d.headline ?? '' }} />
-                {d.headline2 && <><br /><span style={d.headline2Color ? { color: d.headline2Color } : undefined} dangerouslySetInnerHTML={{ __html: d.headline2 }} /></>}
+                <span style={d.headlineColor ? { color: d.headlineColor } : undefined} dangerouslySetInnerHTML={{ __html: sanitize(d.headline ?? '') }} />
+                {d.headline2 && <><br /><span style={d.headline2Color ? { color: d.headline2Color } : undefined} dangerouslySetInnerHTML={{ __html: sanitize(d.headline2) }} /></>}
               </h1>
-              {d.subheadline && <p className="text-xl opacity-90 mb-8" dangerouslySetInnerHTML={{ __html: d.subheadline }} />}
+              {d.subheadline && <p className="text-xl opacity-90 mb-8" dangerouslySetInnerHTML={{ __html: sanitize(d.subheadline) }} />}
               {!d.hideButtons && <div className="flex flex-wrap gap-3" style={{ justifyContent: d.align === "center" ? "center" : d.align === "right" ? "flex-end" : "flex-start" }}>
                 {heroButtons.map((btn, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
@@ -196,7 +203,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       return (
         <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff", color: d.textColor ?? "#1a1a1a", textAlign: d.align ?? "left" }}
           onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
-          <div className="max-w-3xl mx-auto prose" dangerouslySetInnerHTML={{ __html: d.html ?? "" }} />
+          <div className="max-w-3xl mx-auto prose" dangerouslySetInnerHTML={{ __html: sanitize(d.html ?? "") }} />
         </div>
       );
     case "image": {
@@ -331,7 +338,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       );
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-6 text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-6 text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl">
             {bulletItems.map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-3">
@@ -349,8 +356,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       );
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: d.subHeading }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(d.subHeading) }} />}
           {!d.subHeading && d.headline && <div className="mb-6" />}
           <div className="space-y-4 max-w-2xl">
             {numItems.map((item: string, i: number) => (
@@ -371,8 +378,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       );
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: d.subHeading }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(d.subHeading) }} />}
           {!d.subHeading && d.headline && <div className="mb-6" />}
           <div className="space-y-3 max-w-2xl">
             {clItems.map((item, i) => (
@@ -392,7 +399,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "icon_grid":
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${d.columns ?? 3}, 1fr)` }}>
             {(d.items ?? []).map((item: any, i: number) => (
               <div key={i} className="text-center p-4">
@@ -425,7 +432,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "reviews":
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {(d.reviews ?? []).map((r: any, i: number) => (
               <div key={i} className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: d.cardBgColor ?? "#f9fafb" }}>
@@ -442,7 +449,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "logos":
       return (
         <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          {d.headline && <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="flex flex-wrap items-center justify-center gap-8">
             {(d.logos ?? []).map((logo: any, i: number) => (
               logo.url ? <img key={i} src={logo.url} alt={logo.alt ?? ""} className="h-10 object-contain opacity-70 hover:opacity-100 transition-opacity" />
@@ -456,7 +463,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "faq":
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-8" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="max-w-3xl space-y-3">
             {(d.items ?? []).map((item: any, i: number) => (
               <details key={i} className="rounded-lg overflow-hidden group" style={{ border: `1px solid ${d.accentColor ?? "#e5e7eb"}`, backgroundColor: d.itemBgColor ?? "transparent" }}>
@@ -468,7 +475,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
                 >
                   {item.q}
                 </summary>
-                <div className="px-5 py-4 prose prose-sm max-w-none" style={{ color: d.answerColor ?? "#4b5563", borderTop: `1px solid ${d.dividerColor ?? "#f3f4f6"}` }} dangerouslySetInnerHTML={{ __html: item.a ?? "" }} />
+                <div className="px-5 py-4 prose prose-sm max-w-none" style={{ color: d.answerColor ?? "#4b5563", borderTop: `1px solid ${d.dividerColor ?? "#f3f4f6"}` }} dangerouslySetInnerHTML={{ __html: sanitize(item.a ?? "") }} />
               </details>
             ))}
           </div>
@@ -480,7 +487,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const placeholders = mode === "event" ? ["00", "00", "00", "00"] : [String(Math.floor((d.durationMinutes ?? 90) / 60)).padStart(2, "0"), String((d.durationMinutes ?? 90) % 60).padStart(2, "0"), "00"];
       return (
         <div className={`px-8 py-10 text-center ${d.showBorder ? "border-2 rounded-2xl mx-4 my-4" : ""}`} style={{ backgroundColor: d.bgColor ?? "#ffffff", color: d.textColor ?? "#0e1e2e", borderColor: d.showBorder ? (d.accentColor ?? "#179ca3") : undefined }}>
-          {d.headline && <h2 className="text-lg font-bold uppercase tracking-wide mb-4" style={{ color: d.accentColor ?? "#179ca3" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-lg font-bold uppercase tracking-wide mb-4" style={{ color: d.accentColor ?? "#179ca3" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="flex justify-center items-center gap-2">
             {units.map((unit, i) => (
               <div key={unit} className="flex items-center gap-2">
@@ -508,7 +515,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "flip_cards":
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
             {(d.cards ?? []).map((card: any, i: number) => (
               <div key={i} className="rounded-xl overflow-hidden shadow-sm border border-gray-200 group cursor-pointer">
@@ -545,8 +552,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       );
       return (
         <div className="px-8 py-12 text-center" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-3xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subtext && <p className="text-gray-600 mb-6 max-w-xl mx-auto" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+          {d.headline && <h2 className="text-3xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subtext && <p className="text-gray-600 mb-6 max-w-xl mx-auto" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
           {priceAbove && priceBlock}
           {ctaBtn}
           {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-teal-600 mt-1">→ Stripe Checkout</p>}
@@ -558,8 +565,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "cta_standalone":
       return (
         <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa", textAlign: d.align ?? "center" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
             <p className="text-lg text-gray-400 line-through mb-1">{d.strikethroughPrice}</p>
           )}
@@ -575,8 +582,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "lead_capture":
       return (
         <div className="px-8 py-12 text-center" style={{ backgroundColor: d.bgColor ?? "#179ca3", color: d.textColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subtext && <p className="opacity-90 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subtext && <p className="opacity-90 mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
           <div className="flex max-w-md mx-auto gap-2">
             <input type="email" placeholder="Your email address" className="flex-1 px-4 py-3 rounded-lg text-gray-900 border-0 focus:ring-2 focus:ring-white/50" />
             <button className="px-6 py-3 bg-white font-semibold rounded-lg" style={{ color: d.bgColor ?? "#179ca3" }}>{d.ctaText ?? "Send Me Access"}</button>
@@ -586,8 +593,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "cta_optin":
       return (
         <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa", textAlign: d.align ?? "center" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
             <p className="text-lg text-gray-400 line-through mb-1">{d.strikethroughPrice}</p>
           )}
@@ -611,7 +618,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       return (
         <div className={`px-8 py-10 text-center ${d.showBorder ? "border-2 rounded-2xl mx-4 my-4" : ""}`} style={{ backgroundColor: d.bgColor ?? "#ffffff", color: d.textColor ?? "#0e1e2e", borderColor: d.showBorder ? (d.borderColor ?? "#1a5f7a") : undefined }}>
           {d.imageUrl && <img src={d.imageUrl} alt="" className="w-full max-w-lg mx-auto rounded-lg mb-6 object-cover" />}
-          {d.headline && <h2 className="text-2xl md:text-3xl font-black uppercase mb-6 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl md:text-3xl font-black uppercase mb-6 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           {items.length > 0 && (
             <div className="space-y-2 mb-8 max-w-md mx-auto text-left">
               {items.map((item, i) => (
@@ -657,9 +664,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             </div>
           </div>
           {/* Content section */}
-          {d.headline && <h2 className="text-2xl md:text-3xl font-black text-center mb-4 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl md:text-3xl font-black text-center mb-4 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           {d.description && <p className="italic mb-4" style={{ color: d.accentColor ?? "#179ca3" }}>{d.description}</p>}
-          {d.bodyHtml && <div className="prose max-w-none mb-6" dangerouslySetInnerHTML={{ __html: d.bodyHtml }} />}
+          {d.bodyHtml && <div className="prose max-w-none mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.bodyHtml) }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
             <p className="text-xl text-gray-400 line-through text-center mt-4">{d.strikethroughPrice}</p>
           )}
@@ -761,7 +768,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const hAlign = d.headlineAlign ?? "left";
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className={`text-2xl font-bold mb-6 ${hAlign === "center" ? "text-center" : hAlign === "right" ? "text-right" : "text-left"}`} style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className={`text-2xl font-bold mb-6 ${hAlign === "center" ? "text-center" : hAlign === "right" ? "text-right" : "text-left"}`} style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="overflow-hidden max-w-3xl" style={{ border: `1px solid ${d.sectionBorderColor ?? "#e5e7eb"}`, borderRadius: `${cr}px` }}>
             {["Section 1", "Section 2", "Section 3"].map((s, i) => (
               <div key={i} style={{ borderBottom: `1px solid ${d.sectionBorderColor ?? "#e5e7eb"}` }} className="last:border-0">
@@ -789,7 +796,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const priceColor = d.priceColor ?? "#179ca3";
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="flex justify-center gap-6 max-w-3xl mx-auto">
             {pCards.map((card: any, i: number) => {
               const isFeatured = i === Math.floor(pCards.length / 2);
@@ -849,7 +856,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
           onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
           <div className="grid" style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)`, gap: `${d.gap ?? 32}px` }}>
             {cols.map((col: any, i: number) => (
-              <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: col.html ?? "" }} />
+              <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: sanitize(col.html ?? "") }} />
             ))}
           </div>
         </div>
@@ -861,9 +868,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
           onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
           <div className="grid grid-cols-3 gap-6 items-stretch">
-            <div className="prose prose-sm pr-4" style={divStyle} dangerouslySetInnerHTML={{ __html: d.col1Html ?? "" }} />
-            <div className="prose prose-sm px-4" style={divStyle} dangerouslySetInnerHTML={{ __html: d.col2Html ?? "" }} />
-            <div className="prose prose-sm pl-4" dangerouslySetInnerHTML={{ __html: d.col3Html ?? "" }} />
+            <div className="prose prose-sm pr-4" style={divStyle} dangerouslySetInnerHTML={{ __html: sanitize(d.col1Html ?? "") }} />
+            <div className="prose prose-sm px-4" style={divStyle} dangerouslySetInnerHTML={{ __html: sanitize(d.col2Html ?? "") }} />
+            <div className="prose prose-sm pl-4" dangerouslySetInnerHTML={{ __html: sanitize(d.col3Html ?? "") }} />
           </div>
         </div>
       );
@@ -926,7 +933,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       }));
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-center mb-2" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold text-center mb-2" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           {d.subtext && <p className="text-center text-sm mb-6 opacity-70" style={{ color: d.textColor ?? "#111827" }}>{d.subtext}</p>}
           <div className={layout === "grid" ? `grid grid-cols-${Math.min(maxItems, 3)} gap-4` : "space-y-3"}>
             {mockCards.map((card, i) => (
@@ -1184,8 +1191,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const accentCol = d.accentColor ?? "#179ca3";
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
           {!d.subtext && d.headline && <div className="mb-8" />}
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
@@ -1237,8 +1244,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       };
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
-          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
           {!d.subtext && d.headline && <div className="mb-8" />}
           <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${tiers.length || 1}, 1fr)`, maxWidth: "900px", margin: "0 auto" }}>
             {tiers.map((tier, ti) => (
@@ -1288,7 +1295,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       ];
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
           <div className="space-y-3 max-w-2xl mx-auto">
             {sampleSessions.map((s, i) => (
               <div key={i} className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}08` }}>
@@ -1503,7 +1510,7 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
             : <div className="w-28 h-28 rounded-full bg-teal-100 flex items-center justify-center mx-auto mb-4"><Users size={40} className="text-teal-600" /></div>}
           <h3 className="text-2xl font-bold mb-1" style={{ color: headlineColor }}>{name}</h3>
           {title && <p className="font-semibold mb-3" style={{ color: titleColor }}>{title}</p>}
-          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: bio }} />}
+          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(bio) }} />}
           {showWebsite && website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-sm font-medium" style={{ color: titleColor }}><Globe size={14} /> {website.replace(/^https?:\/\//, "")}</a>}
         </div>
       </div>
@@ -1519,7 +1526,7 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
         <div className="min-w-0">
           <h3 className="text-xl font-bold" style={{ color: headlineColor }}>{name}</h3>
           {title && <p className="font-semibold mb-2" style={{ color: titleColor }}>{title}</p>}
-          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: bio }} />}
+          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(bio) }} />}
           {showWebsite && website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-sm font-medium" style={{ color: titleColor }}><Globe size={14} /> {website.replace(/^https?:\/\//, "")}</a>}
         </div>
       </div>
@@ -1688,11 +1695,11 @@ export function CountdownV2Block({ data: d }: { data: Record<string, any> }) {
         <h2
           className="mb-2"
           style={{ color: textColor, fontSize: headlineSize, fontWeight: headlineWeight }}
-          dangerouslySetInnerHTML={{ __html: d.headline }}
+          dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }}
         />
       )}
       {d.subtext && (
-        <p className="mb-6 opacity-75 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />
+        <p className="mb-6 opacity-75 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />
       )}
       {expired ? (
         <p className="text-lg font-semibold" style={{ color: accentColor }}>
@@ -2009,7 +2016,7 @@ function LessonAssignmentBlockPreview({ d }: { d: Record<string, any> }) {
         {d.instructions && (
           <div className="bg-gray-50 rounded-xl p-4 mb-5 border border-gray-100">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Instructions</p>
-            <div className="text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: d.instructions }} />
+            <div className="text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitize(d.instructions) }} />
           </div>
         )}
         {/* Submission types */}
@@ -2158,8 +2165,8 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
   if (displayMode === "inline") {
     return (
       <div className="px-8 py-10" style={{ backgroundColor: bgColor }}>
-        {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
-        {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+        {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+        {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
         <div className="max-w-xl mx-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <FormBody />
         </div>
@@ -2172,8 +2179,8 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
 
   return (
     <div className="px-8 py-10" style={{ backgroundColor: bgColor }}>
-      {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
-      {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
+      {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+      {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
 
       {/* Trigger button for click mode */}
       {displayMode === "popup_click" && (
@@ -2344,8 +2351,8 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
           <img src={imageUrl} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0 shadow-sm" />
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1" dangerouslySetInnerHTML={{ __html: headline }} />
-          <p className="text-gray-500 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: subheadline }} />
+          <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1" dangerouslySetInnerHTML={{ __html: sanitize(headline) }} />
+          <p className="text-gray-500 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(subheadline) }} />
         </div>
       </div>
       {originalPrice > 0 && discountType !== "none" && (

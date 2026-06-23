@@ -77,7 +77,7 @@ import { getEnrollmentsForCourse, getThinkificCourse } from "../thinkific";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import { assertAdmin, assertCourseOwnership, assertSectionOwnership, assertLessonOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
 export const lmsCourseBuilderRouter = router({
   // ── Lesson fetch for editor ──
@@ -462,6 +462,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ courseId: z.number(), title: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Auto-append at end
@@ -478,6 +479,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ id: z.number(), title: z.string().min(1).optional(), position: z.number().int().optional(), isPreview: z.boolean().optional(), dripDays: z.number().int().min(0).nullable().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertSectionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...updates } = input;
@@ -500,6 +502,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertSectionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsLessons).where(eq(lmsLessons.sectionId, input.id));
@@ -766,6 +769,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Auto-calculate position: append at end of section (or course top-level)
@@ -851,6 +855,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, requireVideoCompletion, requireManualComplete, isPrerequisite, commentsEnabled, ...rest } = input;
@@ -878,6 +883,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsLessonProgress).where(eq(lmsLessonProgress.lessonId, input.id));

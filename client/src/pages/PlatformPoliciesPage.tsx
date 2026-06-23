@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -69,7 +70,7 @@ export default function PlatformPoliciesPage() {
               {policies?.termsOfService ? (
                 <div
                   className="prose prose-sm max-w-none text-foreground"
-                  dangerouslySetInnerHTML={{ __html: policies.termsOfService }}
+                  dangerouslySetInnerHTML={{ __html: sanitize(policies.termsOfService) }}
                 />
               ) : (
                 <div className="text-center py-16 text-muted-foreground">
@@ -92,7 +93,7 @@ export default function PlatformPoliciesPage() {
               {policies?.privacyPolicy ? (
                 <div
                   className="prose prose-sm max-w-none text-foreground"
-                  dangerouslySetInnerHTML={{ __html: policies.privacyPolicy }}
+                  dangerouslySetInnerHTML={{ __html: sanitize(policies.privacyPolicy) }}
                 />
               ) : (
                 <div className="text-center py-16 text-muted-foreground">

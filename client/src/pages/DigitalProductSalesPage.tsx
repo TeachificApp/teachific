@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ function renderBlock(block: any, idx: number) {
         <div key={block.id} className="max-w-4xl mx-auto px-6 py-12 grid md:grid-cols-2 gap-8 items-center">
           <div>
             {d.heading && <h2 className="text-2xl font-bold mb-3">{d.heading}</h2>}
-            {d.text && <div className="prose prose-sm" dangerouslySetInnerHTML={{ __html: d.text }} />}
+            {d.text && <div className="prose prose-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.text) }} />}
           </div>
           {d.imageUrl && (
             <img src={d.imageUrl} alt={d.heading || ""} className="rounded-lg w-full object-cover" />
@@ -184,7 +185,7 @@ function renderBlock(block: any, idx: number) {
     case "embed_html":
       return d.embedCode ? (
         <div key={block.id} style={{ backgroundColor: d.backgroundColor || "#fff", padding: "40px 24px" }}>
-          <div style={{ maxWidth: `${d.maxWidth || 800}px`, margin: "0 auto" }} dangerouslySetInnerHTML={{ __html: d.embedCode }} />
+          <div style={{ maxWidth: `${d.maxWidth || 800}px`, margin: "0 auto" }} dangerouslySetInnerHTML={{ __html: sanitize(d.embedCode) }} />
         </div>
       ) : null;
     case "columns": {
@@ -192,8 +193,8 @@ function renderBlock(block: any, idx: number) {
       return (
         <div key={block.id} style={{ backgroundColor: d.backgroundColor || "#fff", padding: `${d.paddingY || 40}px 24px` }}>
           <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: `${d.gap || 24}px`, maxWidth: "1100px", margin: "0 auto" }}>
-            {d.leftContent && <div dangerouslySetInnerHTML={{ __html: d.leftContent }} />}
-            {d.rightContent && <div dangerouslySetInnerHTML={{ __html: d.rightContent }} />}
+            {d.leftContent && <div dangerouslySetInnerHTML={{ __html: sanitize(d.leftContent) }} />}
+            {d.rightContent && <div dangerouslySetInnerHTML={{ __html: sanitize(d.rightContent) }} />}
           </div>
         </div>
       );

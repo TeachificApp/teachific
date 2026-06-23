@@ -18,7 +18,7 @@ import { organizations, teachificPayDisputes, teachificPayCharges } from "../dri
 import { protectedProcedure, router } from "./_core/trpc";
 import { getStripe, PLAN_LIMITS, PlanTier } from "./stripePlans";
 import { getOrgSubscription } from "./lmsDb";
-import { getDb } from "./db";
+import { getDb, requireOrgAdmin } from "./db";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -38,12 +38,16 @@ async function getOrgWithPlan(orgId: number) {
   return { org, tier, limits };
 }
 
-function requireOrgAccess(ctx: { user: { id: number; role: string } }, ownerId: number) {
+async function requireOrgAccess(
+  ctx: { user: { id: number; role: string } },
+  orgId: number,
+  ownerId: number
+) {
   const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
   const isOwner = ctx.user.id === ownerId;
-  if (!isSiteAdmin && !isOwner) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
-  }
+  if (isSiteAdmin || isOwner) return;
+  // Also allow org admins (org_super_admin, org_admin, sub_admin)
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -57,7 +61,7 @@ export const teachificPayRouter = router({
     .input(z.object({ orgId: z.number() }))
     .query(async ({ ctx, input }) => {
       const { org, tier, limits } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
 
       return {
         orgId: org.id,
@@ -86,7 +90,7 @@ export const teachificPayRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { org, tier } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
 
       const stripe = getStripe();
 
@@ -137,7 +141,7 @@ export const teachificPayRouter = router({
     .input(z.object({ orgId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const { org } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
 
       if (!org.stripeConnectAccountId) {
         return { status: "not_connected" as const };
@@ -178,7 +182,7 @@ export const teachificPayRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { org, limits } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
 
       if (input.gateway === "own_gateway" && !limits.customGateway) {
         throw new TRPCError({
@@ -278,10 +282,12 @@ export const teachificPayRouter = router({
         },
       };
 
-      // Add platform fee and transfer for TeachificPay
-      if (useTeachificPay && org.stripeConnectAccountId && platformFeeAmount > 0) {
+      // Add platform fee and transfer for TeachificPay.
+      // transfer_data MUST always be set so funds route to the connected account.
+      // application_fee_amount is only set when there is actually a fee to collect.
+      if (useTeachificPay && org.stripeConnectAccountId) {
         sessionParams.payment_intent_data = {
-          application_fee_amount: platformFeeAmount,
+          ...(platformFeeAmount > 0 ? { application_fee_amount: platformFeeAmount } : {}),
           transfer_data: {
             destination: org.stripeConnectAccountId,
           },
@@ -299,7 +305,7 @@ export const teachificPayRouter = router({
     .input(z.object({ orgId: z.number() }))
     .query(async ({ ctx, input }) => {
       const { org } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
 
       if (!org.stripeConnectAccountId) {
         return {
@@ -440,7 +446,7 @@ export const teachificPayRouter = router({
     .input(z.object({ orgId: z.number() }))
     .query(async ({ ctx, input }) => {
       const { org } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db.select()
@@ -465,7 +471,7 @@ export const teachificPayRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { org } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
       const stripe = getStripe();
       const evidence: Record<string, string> = {};
       if (input.productDescription) evidence.product_description = input.productDescription;
@@ -490,7 +496,7 @@ export const teachificPayRouter = router({
     .input(z.object({ orgId: z.number(), limit: z.number().min(1).max(200).default(50) }))
     .query(async ({ ctx, input }) => {
       const { org } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db.select()
@@ -513,7 +519,7 @@ export const teachificPayRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { org } = await getOrgWithPlan(input.orgId);
-      requireOrgAccess(ctx, org.ownerId);
+      requireOrgAccess(ctx, input.orgId, org.ownerId);
       // Verify the charge belongs to this org
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });

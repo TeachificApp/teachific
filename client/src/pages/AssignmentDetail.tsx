@@ -9,6 +9,7 @@
  *  - Current submission status and grade/feedback once graded
  */
 import React, { useState, useRef } from "react";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { useRoute, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -203,7 +204,7 @@ export default function AssignmentDetail() {
             <CardContent className="pt-5">
               <div
                 className="prose prose-sm max-w-none text-gray-700"
-                dangerouslySetInnerHTML={{ __html: assignment.description }}
+                dangerouslySetInnerHTML={{ __html: sanitize(assignment.description) }}
               />
             </CardContent>
           </Card>

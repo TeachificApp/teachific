@@ -6,6 +6,7 @@ import { getDb, getOrgIdForUser, requireOrgAdmin } from "../db";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
+import { assertCourseOwnership } from "./lmsHelpers";
 import {
   lmsCourses,
   lmsLandingPages,
@@ -27,9 +28,13 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
+      if (!isPlatformAdmin && orgId === null) return [];
       const courses = await db
         .select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type })
         .from(lmsCourses)
+        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
         .orderBy(asc(lmsCourses.title));
       const result = [];
       for (const course of courses) {
@@ -51,9 +56,13 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
+      if (!isPlatformAdmin && orgId === null) return [];
       const products = await db
         .select({ id: digitalProducts.id, title: digitalProducts.title, landingBlocks: digitalProducts.salesPageBlocksJson })
         .from(digitalProducts)
+        .where(orgId !== null ? eq(digitalProducts.orgId, orgId) : undefined)
         .orderBy(asc(digitalProducts.title));
       return products.filter(p => {
         const blocks = p.landingBlocks;
@@ -67,9 +76,13 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
+      if (!isPlatformAdmin && orgId === null) return [];
       const products = await db
         .select({ id: physicalProducts.id, title: physicalProducts.title, landingBlocks: physicalProducts.landingBlocks })
         .from(physicalProducts)
+        .where(orgId !== null ? eq(physicalProducts.orgId, orgId) : undefined)
         .orderBy(asc(physicalProducts.title));
       return products.filter(p => p.landingBlocks && p.landingBlocks.length > 2);
     }),
@@ -179,6 +192,7 @@ const _lmsAdminBaseRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const existing = await db

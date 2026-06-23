@@ -15,6 +15,7 @@ import { generateUniqueOrgSlug } from "../shared/slugUtils";
 import { sendEmail } from "./sendgrid";
 import * as dbHelpers from "./db";
 import { verifyEmailHtml, resetPasswordHtml, magicLinkEmailHtml } from "./emailTemplates";
+import { signSessionToken } from "./_core/context";
 
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -140,7 +141,7 @@ export const customAuthRouter = router({
 
       await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
 
-      const sessionToken = Buffer.from(JSON.stringify({ userId: user.id, ts: Date.now() })).toString("base64url");
+      const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
       ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
 
       // Resolve the user's primary org slug for immediate subdomain redirect
@@ -178,7 +179,8 @@ export const customAuthRouter = router({
       const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
       if (!match) return null;
 
-      const payload = JSON.parse(Buffer.from(decodeURIComponent(match[1]), "base64url").toString("utf8"));
+      const { verifySessionToken } = await import("./_core/context");
+      const payload = verifySessionToken(decodeURIComponent(match[1]));
       if (!payload?.userId) return null;
 
       const db = await getDb();
@@ -350,7 +352,7 @@ export const customAuthRouter = router({
       } else {
         await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
       }
-      const sessionToken = Buffer.from(JSON.stringify({ userId: user.id, ts: Date.now() })).toString("base64url");
+      const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
       ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
       const ROLE_PRIORITY: Record<string, number> = {
         org_super_admin: 100, org_admin: 90, sub_admin: 70,

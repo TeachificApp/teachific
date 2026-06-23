@@ -4400,3 +4400,26 @@
 - [ ] Build public OrgHomePage renderer at /home serving published blocks
 - [ ] Wire Header block to org privacy/terms links from org settings
 - [ ] Add /site-builder route to App.tsx
+
+## Security & Bug Fixes (PR #7, PR #8, Audit Round 2)
+- [x] Fix isVideoUrl() regex to only match file extensions, not URL paths (PR #7)
+- [x] Fix downloadDirectVideo() to stream to disk instead of loading into memory (PR #7)
+- [x] Add 3GB file size cap to video downloads (PR #7)
+- [x] HMAC-sign teachific_session cookies in context.ts (PR #8)
+- [x] Update customAuthRouter.ts to use signSessionToken for all session creation
+- [x] Update authHelper.ts to use verifySessionToken (HMAC-verified) for Express upload routes
+- [x] Enforce Stripe webhook signature verification in production (PR #8)
+- [x] Add normalizeStripeStatus helper to map canceled→cancelled (PR #8)
+- [x] TeachificPay: always set transfer_data for Connect payments (PR #8)
+- [x] Fix CourseOverviewPage lesson navigation to use path params /lesson/:id (PR #8)
+- [x] Quiz retake: reset attemptId, timeLeft, result state on retake (PR #8)
+- [x] Add auth to scormUploadRoutes.ts POST /package and POST /version
+- [x] Add auth to quizImportRoutes.ts /import/preview and /export routes
+- [x] Add DOMPurify XSS sanitization to all public-facing dangerouslySetInnerHTML usages
+- [x] Add escapeHtml to emailTemplates.ts to prevent HTML injection via user-controlled values
+- [x] Add assertCourseOwnership, assertSectionOwnership, assertLessonOwnership helpers to lmsHelpers.ts
+- [x] Apply ownership checks to section/lesson CRUD in lmsCourseBuilderRouter.ts (IDOR fix)
+- [x] Apply assertCourseOwnership to saveCourseLandingPage in lmsAdminRouter.ts (IDOR fix)
+- [x] Apply assertCourseOwnership to updateLandingPage in lmsQuizLandingRouter.ts (IDOR fix)
+- [x] Fix getCoursesWithLandingBlocks and getDownloadsWithLandingBlocks to filter by org for non-platform-admins
+- [x] Fix requireOrgAccess in teachificPayRouter.ts to allow org admins (not just org owners)

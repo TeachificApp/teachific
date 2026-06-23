@@ -16,6 +16,7 @@ import { nanoid } from "nanoid";
 import { storagePut, storagePutStream } from "./storage";
 import { parseScormManifest } from "./scormParser";
 import { createPackage, updatePackage, createVersion, createFileAsset, getPackageById } from "./db";
+import { authenticateRequest } from "./authHelper";
 
 const router = express.Router();
 
@@ -46,6 +47,11 @@ export function emitProgress(packageId: number, done: number, total: number, pha
 router.post("/package", upload.single("file"), async (req: Request, res: Response) => {
   const tmpPath = (req.file as Express.Multer.File & { path: string })?.path;
   try {
+    const authUser = await authenticateRequest(req);
+    if (!authUser) {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     if (!req.file || !tmpPath) return res.status(400).json({ error: "No file uploaded" });
 
     const orgId = parseInt(req.body.orgId ?? "0", 10);
@@ -125,6 +131,11 @@ router.post("/package", upload.single("file"), async (req: Request, res: Respons
 router.post("/version/:packageId", upload.single("file"), async (req: Request, res: Response) => {
   const tmpPath = (req.file as Express.Multer.File & { path: string })?.path;
   try {
+    const authUser = await authenticateRequest(req);
+    if (!authUser) {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     if (!req.file || !tmpPath) return res.status(400).json({ error: "No file uploaded" });
 
     const packageId = parseInt(req.params.packageId, 10);

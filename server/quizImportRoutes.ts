@@ -114,11 +114,12 @@ async function uploadMediaToS3(
 // Parse an XLS/XLSX or ZIP file and return parsed questions for preview (no DB write)
 router.post("/import/preview", upload.single("file"), async (req: Request, res: Response) => {
   try {
+    const authUser = await authenticateRequest(req);
+    if (!authUser) return res.status(401).json({ error: "Unauthorized" });
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-
-    const orgId = (req as any).user?.orgId?.toString() ?? "unknown";
+    const orgId = (authUser as any).orgId?.toString() ?? "unknown";
     const originalName = req.file.originalname.toLowerCase();
     let xlsxBuffer = req.file.buffer;
     let mediaUrlMap = new Map<string, string>();
@@ -166,6 +167,8 @@ router.post("/import/preview", upload.single("file"), async (req: Request, res: 
 // Export a quiz to XLSX in the Teachific Template format
 router.get("/export/:quizId", async (req: Request, res: Response) => {
   try {
+    const authUser = await authenticateRequest(req);
+    if (!authUser) return res.status(401).json({ error: "Unauthorized" });
     const quizId = parseInt(req.params.quizId, 10);
     if (isNaN(quizId)) return res.status(400).json({ error: "Invalid quiz ID" });
 

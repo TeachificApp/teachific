@@ -1,4 +1,5 @@
 import { useRoute } from "wouter";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { renderBlockPreview } from "@/components/PageBuilder";
 import type { Block } from "@/components/PageBuilder";
@@ -47,7 +48,7 @@ export default function PublicPagePage() {
     <div className="min-h-screen bg-white">
       {/* Custom CSS */}
       {page.customCss && (
-        <style dangerouslySetInnerHTML={{ __html: page.customCss }} />
+        <style dangerouslySetInnerHTML={{ __html: sanitizeCss(page.customCss) }} />
       )}
 
       {/* SEO meta (best effort via document.title) */}

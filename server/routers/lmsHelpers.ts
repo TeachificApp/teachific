@@ -16,7 +16,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -90,6 +90,89 @@ export async function assertAdmin(ctx: { user: { id: number; role: string } }) {
     .limit(1);
   if (membership && ORG_ADMIN_MEMBER_ROLES.includes(membership.role)) return;
   throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+}
+
+/**
+ * Verify that a course belongs to the calling admin's org.
+ * Platform admins (site_owner/site_admin/admin) bypass the check.
+ */
+export async function assertCourseOwnership(
+  ctx: { user: { id: number; role: string } },
+  courseId: number
+): Promise<void> {
+  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
+  if (isPlatformAdmin) return;
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const orgId = await getOrgIdForUser(ctx.user.id);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+  const [course] = await db
+    .select({ orgId: lmsCourses.orgId })
+    .from(lmsCourses)
+    .where(eq(lmsCourses.id, courseId))
+    .limit(1);
+  if (!course || course.orgId !== orgId)
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this course" });
+}
+
+/**
+ * Verify that a section belongs to the calling admin's org (via its course).
+ */
+export async function assertSectionOwnership(
+  ctx: { user: { id: number; role: string } },
+  sectionId: number
+): Promise<void> {
+  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
+  if (isPlatformAdmin) return;
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const orgId = await getOrgIdForUser(ctx.user.id);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+  const [section] = await db
+    .select({ courseId: lmsSections.courseId })
+    .from(lmsSections)
+    .where(eq(lmsSections.id, sectionId))
+    .limit(1);
+  if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
+  const [course] = await db
+    .select({ orgId: lmsCourses.orgId })
+    .from(lmsCourses)
+    .where(eq(lmsCourses.id, section.courseId))
+    .limit(1);
+  if (!course || course.orgId !== orgId)
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this section" });
+}
+
+/**
+ * Verify that a lesson belongs to the calling admin's org (via its section → course).
+ */
+export async function assertLessonOwnership(
+  ctx: { user: { id: number; role: string } },
+  lessonId: number
+): Promise<void> {
+  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
+  if (isPlatformAdmin) return;
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const orgId = await getOrgIdForUser(ctx.user.id);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+  const [lesson] = await db
+    .select({ sectionId: lmsLessons.sectionId, courseId: lmsLessons.courseId })
+    .from(lmsLessons)
+    .where(eq(lmsLessons.id, lessonId))
+    .limit(1);
+  if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+  const courseId = lesson.courseId ?? (lesson.sectionId
+    ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+    : undefined);
+  if (!courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found for lesson" });
+  const [course] = await db
+    .select({ orgId: lmsCourses.orgId })
+    .from(lmsCourses)
+    .where(eq(lmsCourses.id, courseId))
+    .limit(1);
+  if (!course || course.orgId !== orgId)
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this lesson" });
 }
 
 export function generateSlug(title: string): string {

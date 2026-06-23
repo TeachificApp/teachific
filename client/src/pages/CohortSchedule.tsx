@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -584,7 +585,7 @@ export default function CohortSchedule() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900 leading-tight">{course.title}</h1>
               {course.description && (
-                <div className="text-gray-500 text-sm mt-1 line-clamp-2" dangerouslySetInnerHTML={{ __html: course.description }} />
+                <div className="text-gray-500 text-sm mt-1 line-clamp-2" dangerouslySetInnerHTML={{ __html: sanitize(course.description) }} />
               )}
             </div>
           </div>
@@ -942,7 +943,7 @@ function RecordingCard({ recording }: { recording: any }) {
             )}
             {hasEmbed && (
               <div className="mt-3 rounded-lg overflow-hidden border border-gray-200"
-                dangerouslySetInnerHTML={{ __html: recording.embedCode }}
+                dangerouslySetInnerHTML={{ __html: sanitize(recording.embedCode) }}
               />
             )}
             {hasVideo && !hasEmbed && (

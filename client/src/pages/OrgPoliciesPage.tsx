@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, FileText, Shield } from "lucide-react";
@@ -69,7 +70,7 @@ export default function OrgPoliciesPage() {
               {legalDocs?.termsOfService ? (
                 <div
                   className="prose prose-sm max-w-none text-foreground"
-                  dangerouslySetInnerHTML={{ __html: legalDocs.termsOfService }}
+                  dangerouslySetInnerHTML={{ __html: sanitize(legalDocs.termsOfService) }}
                 />
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
@@ -85,7 +86,7 @@ export default function OrgPoliciesPage() {
               {legalDocs?.privacyPolicy ? (
                 <div
                   className="prose prose-sm max-w-none text-foreground"
-                  dangerouslySetInnerHTML={{ __html: legalDocs.privacyPolicy }}
+                  dangerouslySetInnerHTML={{ __html: sanitize(legalDocs.privacyPolicy) }}
                 />
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
