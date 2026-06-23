@@ -394,7 +394,7 @@ const communityMemberRouter = router({
     const [enriched] = await enrichPosts(db, [post], ctx.user.id);
 
     // Get comments — non-admins only see approved comments (or their own pending ones)
-    const isAdminUser = ctx.user.role === "admin";
+    const isAdminUser = ctx.user.role === "site_owner" || ctx.user.role === "site_admin" || ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role);
     const commentWhere = isAdminUser
       ? eq(communityPostComments.postId, input.postId)
       : and(
@@ -477,7 +477,7 @@ const communityMemberRouter = router({
     if (!post || post.isLocked) throw new TRPCError({ code: "FORBIDDEN", message: "Post is locked." });
 
     // Check if member requires moderation
-    const isAdminUser = ctx.user.role === "admin";
+    const isAdminUser = ctx.user.role === "site_owner" || ctx.user.role === "site_admin" || ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role);
     let commentStatus: "pending" | "approved" = "approved";
     if (!isAdminUser) {
       const [membership] = await db.select({ approvedToPost: communityMembers.approvedToPost })

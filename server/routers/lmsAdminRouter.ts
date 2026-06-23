@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, asc, like, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb, getOrgIdForUser } from "../db";
+import { getDb, getOrgIdForUser, requireOrgAdmin } from "../db";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
@@ -16,18 +16,15 @@ import {
   courseLessons,
 } from "../../drizzle/schema";
 
-function assertAdmin(ctx: { user: { role: string } }) {
-  const adminRoles = ["site_owner", "site_admin", "org_super_admin", "org_admin"];
-  if (!adminRoles.includes(ctx.user.role)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
+async function assertAdmin(ctx: { user: { id: number; role: string } }) {
+  await requireOrgAdmin(ctx.user.id, ctx.user.role);
 }
 
 const _lmsAdminBaseRouter = router({
   /** Get all courses with their landing page blocks for the block picker */
   getCoursesWithLandingBlocks: protectedProcedure
     .query(async ({ ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const courses = await db
@@ -51,7 +48,7 @@ const _lmsAdminBaseRouter = router({
   /** Get all digital download products with their landing page blocks */
   getDownloadsWithLandingBlocks: protectedProcedure
     .query(async ({ ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const products = await db
@@ -67,7 +64,7 @@ const _lmsAdminBaseRouter = router({
   /** Get all physical products with their landing page blocks */
   getProductsWithLandingBlocks: protectedProcedure
     .query(async ({ ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const products = await db
@@ -89,7 +86,7 @@ const _lmsAdminBaseRouter = router({
       thumbnailUrl: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const now = Date.now();
@@ -127,7 +124,7 @@ const _lmsAdminBaseRouter = router({
   deletePageTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsPageTemplates).where(eq(lmsPageTemplates.id, input.id));
@@ -141,7 +138,7 @@ const _lmsAdminBaseRouter = router({
       blockType: z.string().optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db.select().from(lmsPageTemplates).orderBy(asc(lmsPageTemplates.name));
@@ -156,7 +153,7 @@ const _lmsAdminBaseRouter = router({
   getCourseLandingPage: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lp] = await db
@@ -181,7 +178,7 @@ const _lmsAdminBaseRouter = router({
       seoImage: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const existing = await db
@@ -219,7 +216,7 @@ const _lmsAdminBaseRouter = router({
       duration: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
@@ -237,7 +234,7 @@ const _lmsAdminBaseRouter = router({
       thumbnailUrl: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [inserted] = await db.insert(blockTemplates).values({
@@ -261,7 +258,7 @@ const _lmsAdminBaseRouter = router({
       pageSize: z.number().int().min(1).max(200).default(100),
     }))
     .query(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Scope to the user's own org — platform admins (site_owner/site_admin) see all
@@ -286,7 +283,7 @@ const _lmsAdminBaseRouter = router({
   getLessonsWithBlocks: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db.select()

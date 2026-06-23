@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getUserById, getOrCreateAccessToken } from "../db";
+import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin } from "../db";
 import {
   digitalProducts,
   digitalProductFiles,
@@ -22,9 +22,8 @@ import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { sendDownloadAccessEmail, sendBundleAccessEmail } from "../lib/enrollmentEmail";
 import { addToAllContacts } from "../lib/emailListHelper";
 
-function assertAdmin(ctx: any) {
-  const adminRoles = ["site_owner", "site_admin", "org_super_admin", "org_admin", "admin"];
-  if (!adminRoles.includes(ctx.user?.role)) throw new TRPCError({ code: "FORBIDDEN" });
+async function assertAdmin(ctx: any) {
+  await requireOrgAdmin(ctx.user!.id, ctx.user!.role);
 }
 
 function isAdminRole(role: string | undefined): boolean {
@@ -442,7 +441,7 @@ export const downloadsLearnerRouter = router({
 export const downloadsAdminRouter = router({
   /** List all digital products (admin) */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+    await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return [];
     return db.select().from(digitalProducts).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
@@ -454,7 +453,7 @@ export const downloadsAdminRouter = router({
       products: z.array(z.object({ id: z.number(), libraryOrder: z.number() })),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(
@@ -469,7 +468,7 @@ export const downloadsAdminRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(digitalProducts)
@@ -497,7 +496,7 @@ export const downloadsAdminRouter = router({
       landingFeatures: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -535,7 +534,7 @@ export const downloadsAdminRouter = router({
       showInLibrary: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
@@ -547,7 +546,7 @@ export const downloadsAdminRouter = router({
   getLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select({
@@ -585,7 +584,7 @@ export const downloadsAdminRouter = router({
       seoImage: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(digitalProducts)
@@ -605,7 +604,7 @@ export const downloadsAdminRouter = router({
       blocks: z.array(z.any()),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const blocksJson = JSON.stringify(input.blocks);
@@ -619,7 +618,7 @@ export const downloadsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(digitalProducts).where(eq(digitalProducts.id, input.id)).limit(1);
@@ -648,7 +647,7 @@ export const downloadsAdminRouter = router({
       fileSize: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -679,7 +678,7 @@ export const downloadsAdminRouter = router({
   removeFile: protectedProcedure
     .input(z.object({ fileId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(digitalProductFiles).where(eq(digitalProductFiles.id, input.fileId));
@@ -693,7 +692,7 @@ export const downloadsAdminRouter = router({
       fileIds: z.array(z.number()),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       for (let i = 0; i < input.fileIds.length; i++) {
@@ -706,7 +705,7 @@ export const downloadsAdminRouter = router({
 
   /** Get download analytics for all products (admin) */
   getAnalytics: protectedProcedure.query(async ({ ctx }) => {
-    if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+    await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return { products: [], recentDownloads: [] };
 
@@ -739,7 +738,7 @@ export const downloadsAdminRouter = router({
   // ─── Bundle Admin CRUD ─────────────────────────────────────────────────────
   /** List all bundles (admin) */
   listBundles: protectedProcedure.query(async ({ ctx }) => {
-    if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+    await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return [];
     const bundles = await db.select().from(digitalBundles).orderBy(desc(digitalBundles.createdAt));
@@ -769,7 +768,7 @@ export const downloadsAdminRouter = router({
       productIds: z.array(z.number()).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -803,7 +802,7 @@ export const downloadsAdminRouter = router({
       productIds: z.array(z.number()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, productIds, ...data } = input;
@@ -824,7 +823,7 @@ export const downloadsAdminRouter = router({
   deleteBundle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [bundle] = await db.select().from(digitalBundles).where(eq(digitalBundles.id, input.id)).limit(1);
@@ -847,7 +846,7 @@ export const downloadsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -885,7 +884,7 @@ export const downloadsAdminRouter = router({
   duplicateBundle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -929,7 +928,7 @@ export const downloadsAdminRouter = router({
       publishDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [existing] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
@@ -947,7 +946,7 @@ export const downloadsAdminRouter = router({
       slug: z.string().min(1).max(255).regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [existing] = await db.select({ id: digitalBundles.id }).from(digitalBundles)
@@ -965,7 +964,7 @@ export const downloadsAdminRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Find or create user
@@ -1031,7 +1030,7 @@ export const downloadsAdminRouter = router({
       email: z.string().email(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Find or create user
@@ -1093,7 +1092,7 @@ export const downloadsAdminRouter = router({
   aiGenerateLandingPage: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAdminRole(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -1197,7 +1196,7 @@ Make ALL content specific and compelling based on the product title and descript
       pageSize: z.number().min(1).max(100).default(25),
     }))
     .query(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) return { purchases: [], total: 0, totalRevenue: 0 };
 
@@ -1240,7 +1239,7 @@ Make ALL content specific and compelling based on the product title and descript
       purchaseId: z.number(),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
 
@@ -1258,7 +1257,7 @@ Make ALL content specific and compelling based on the product title and descript
       reason: z.string().default("requested_by_customer"),
     }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new Error("DB unavailable");
 

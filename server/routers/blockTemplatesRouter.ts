@@ -63,7 +63,8 @@ export const blockTemplatesRouter = router({
 
       const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin" && ctx.user.role !== "org_admin" && ctx.user.role !== "org_super_admin") {
+      const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"];
+      if (existing.createdByUserId !== ctx.user.id && !ADMIN_ROLES.includes(ctx.user.role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -85,7 +86,8 @@ export const blockTemplatesRouter = router({
 
       const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin" && ctx.user.role !== "org_admin" && ctx.user.role !== "org_super_admin") {
+      const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"];
+      if (existing.createdByUserId !== ctx.user.id && !ADMIN_ROLES.includes(ctx.user.role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 

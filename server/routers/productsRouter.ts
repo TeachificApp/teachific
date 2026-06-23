@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import {
@@ -76,7 +76,7 @@ export const productsPublicRouter = router({
         .where(eq(physicalProducts.slug, input.slug)).limit(1);
       if (!product) throw new TRPCError({ code: "NOT_FOUND" });
       // Allow preview for admins
-      const isAdmin = (ctx.user as any)?.role === "admin" || (ctx.user as any)?.role === "platform_admin";
+      const isAdmin = (ctx.user as any)?.role === "site_owner" || (ctx.user as any)?.role === "site_admin" || (ctx.user as any)?.role === "admin" || (ctx.user as any)?.role === "platform_admin";
       if (product.status !== "published" && !input.preview && !isAdmin) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
@@ -250,9 +250,7 @@ export const productsLearnerRouter = router({
 export const productsAdminRouter = router({
   /** List all products (admin) */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-      throw new TRPCError({ code: "FORBIDDEN" });
-    }
+    await requireOrgAdmin(ctx.user.id, ctx.user.role);
     const db = await getDb();
     if (!db) return [];
     return db.select().from(physicalProducts).orderBy(desc(physicalProducts.createdAt));

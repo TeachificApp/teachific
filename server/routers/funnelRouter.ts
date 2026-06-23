@@ -25,7 +25,7 @@ async function requireFunnelAccess(
 ): Promise<number> {
   const db = await getDb();
   // Platform admins bypass org check
-  if (platformRole === "admin") {
+  if (platformRole === "site_owner" || platformRole === "site_admin" || platformRole === "admin") {
     if (orgIdHint) return orgIdHint;
     const orgId = await getOrgIdForUser(userId);
     if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });

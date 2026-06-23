@@ -325,7 +325,7 @@ export const lmsPublicRouter = router({
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
       // draft, archived, and private are not publicly accessible; hidden is accessible by direct URL
       // Admins can always see any course regardless of status or preview flag
-      const isAdmin = ctx.user?.role === "admin";
+      const isAdmin = ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user?.role ?? "");
       if (!isAdmin) {
         if (course.status === "draft" || course.status === "archived" || course.status === "private") throw new TRPCError({ code: "NOT_FOUND" });
       }
@@ -613,7 +613,7 @@ export const lmsLearnerRouter = router({
 
       // Admin preview mode: only active when admin is NOT enrolled AND explicitly requested preview.
       // If the admin IS enrolled, treat them as a regular enrolled user so progress is tracked.
-      const isAdminPreview = input.preview && ctx.user.role === "admin" && !enrollment;
+      const isAdminPreview = input.preview && ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role) && !enrollment;
 
       // Fetch sections + ALL lessons for this course in 2 parallel queries (avoids N+1)
       // Select only lightweight columns for the sidebar — heavy content (contentBlocks, content, videoContent)
@@ -716,7 +716,7 @@ export const lmsLearnerRouter = router({
         if (section) resolvedCourseId = section.courseId;
       }
             if (!resolvedCourseId) throw new TRPCError({ code: "NOT_FOUND" });
-      const isAdmin = ctx.user.role === "admin";
+      const isAdmin = ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role);
       // Block draft lessons from non-admin learners
       if (!isAdmin && lesson.lessonStatus === "draft") {
         throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
@@ -1579,7 +1579,7 @@ export const lmsLearnerRouter = router({
 
       // Admin preview mode: only active when admin is NOT enrolled AND explicitly requested preview.
       // If the admin IS enrolled, treat them as a regular enrolled user so progress is tracked.
-      const isAdminPreview = input.preview && ctx.user.role === "admin" && !enrollment;
+      const isAdminPreview = input.preview && ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role) && !enrollment;
       if (!enrollment && !isAdminPreview) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment required" });
 
       // Fetch sections + lessons
@@ -1631,7 +1631,7 @@ export const lmsLearnerRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Verify the user is enrolled (or is admin)
-      const isAdmin = ctx.user.role === "admin";
+      const isAdmin = ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role);
       if (!isAdmin) {
         const [enrollment] = await db.select({ id: lmsEnrollments.id })
           .from(lmsEnrollments)

@@ -297,7 +297,7 @@ export async function requireOrgAdmin(
   const db = await getDb();
   const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin", "sub_admin"];
   // Platform admins bypass org check
-  if (platformRole === "admin") {
+  if (platformRole === "site_owner" || platformRole === "site_admin" || platformRole === "admin") {
     if (orgIdHint) return orgIdHint;
     const orgId = await getOrgIdForUser(userId);
     if (!orgId) {

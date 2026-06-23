@@ -4333,3 +4333,14 @@
 - [x] Fix questionBankRouter - assertAdmin now calls requireOrgAdmin
 - [x] Fix lmsCohortAdminRouter - learner-side bypass checks now include org admins
 - [x] Learner-side bypass checks in lmsRouter now include org admins (IP tracking, enrollment checks, message ownership)
+
+## Multi-Tenancy Fix Sprint (Org Admin Access)
+
+- [x] Add `requireOrgAdmin` shared helper to `server/db.ts` — checks `users.role` first, then `org_members` table
+- [x] Fix `assertAdmin` in `lmsHelpers.ts` — now checks `org_members` table as fallback for users whose admin status is only in `org_members.role`
+- [x] Fix `assertAdmin` in `lmsAdminRouter.ts` — now delegates to `requireOrgAdmin` (was only checking `users.role`)
+- [x] Fix `assertAdmin` in `downloadsRouter.ts` — now delegates to `requireOrgAdmin`; all `isAdminRole` FORBIDDEN guards replaced with `await assertAdmin(ctx)`
+- [x] Fix `assertAdmin` in `questionBankRouter.ts` — simplified to use `requireOrgAdmin` directly
+- [x] Fix `productsAdminRouter.list` — replaced hard-coded `site_owner/site_admin/admin` check with `requireOrgAdmin`
+- [x] Fix `blockTemplatesRouter` delete/update — added `sub_admin` and `site_owner/site_admin` to ADMIN_ROLES check
+- [x] All 360 tests passing after fixes

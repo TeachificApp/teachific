@@ -66,6 +66,7 @@ import {
   lmsCohortSubmissions,
   mediaUploadFolders,
   mediaUploadResponses,
+  orgMembers,
 } from "../../drizzle/schema";
 import { getEnrollmentsForCourse, getThinkificCourse } from "../thinkific";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
@@ -75,13 +76,20 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 // ─── Shared helpers (used by all LMS sub-routers) ────────────────────────────
 
 const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin"];
+const ORG_ADMIN_MEMBER_ROLES = ["org_super_admin", "org_admin", "sub_admin"];
 export async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  if (!ADMIN_ROLES.includes(ctx.user.role)) {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    if (!u || !ADMIN_ROLES.includes(u.role ?? "")) throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
-  }
+  // Fast path: users.role already indicates platform or org admin
+  if (ADMIN_ROLES.includes(ctx.user.role)) return;
+  // Slow path: check org_members table (users whose admin status lives only in org_members)
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [membership] = await db
+    .select({ role: orgMembers.role })
+    .from(orgMembers)
+    .where(eq(orgMembers.userId, ctx.user.id))
+    .limit(1);
+  if (membership && ORG_ADMIN_MEMBER_ROLES.includes(membership.role)) return;
+  throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
 }
 
 export function generateSlug(title: string): string {

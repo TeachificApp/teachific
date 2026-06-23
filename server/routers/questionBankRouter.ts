@@ -8,7 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import {
   questionBank,
@@ -19,13 +19,7 @@ import {
 } from "../../drizzle/schema";
 
 async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  if (ctx.user.role !== "admin") {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    if (!u) throw new TRPCError({ code: "FORBIDDEN", message: "User not found" });
-    await requireOrgAdmin(u.id, u.role);
-  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role);
 }
 
 // ─── Shared question input schema ─────────────────────────────────────────────
