@@ -4423,3 +4423,19 @@
 - [x] Apply assertCourseOwnership to updateLandingPage in lmsQuizLandingRouter.ts (IDOR fix)
 - [x] Fix getCoursesWithLandingBlocks and getDownloadsWithLandingBlocks to filter by org for non-platform-admins
 - [x] Fix requireOrgAccess in teachificPayRouter.ts to allow org admins (not just org owners)
+
+## Email Campaigns: Per-Org Email Platform & Security (Jun 2026)
+- [x] emailCampaignsRouter: requireOrgAdmin auth checks on ALL procedures (templates, campaigns, emailSettings)
+- [x] emailCampaignsRouter: resolveOrgRecipients now scopes to org members only (was fetching ALL platform users — critical bug fixed)
+- [x] emailCampaignsRouter: per-org SendGrid key support with AES-256-CBC encryption (encryptOrgKey/decryptOrgKey in sendgrid.ts)
+- [x] emailCampaignsRouter: campaigns.send uses sendOrgEmail — decrypts org key on the fly, falls back to platform key
+- [x] emailCampaignsRouter: campaigns.schedule and campaigns.cancel now require orgId for auth check
+- [x] emailCampaignsRouter: templates.update and templates.delete verify orgId ownership before mutating
+- [x] sendgrid.ts: added encryptOrgKey/decryptOrgKey helpers (AES-256-CBC, keyed from JWT_SECRET)
+- [x] sendgrid.ts: added sendOrgEmail() — wraps sendEmail with per-org key + custom sender resolution
+- [x] sendgrid.ts: validateSendGridKey() now accepts optional apiKey param (validates org key or platform key)
+- [x] lmsRouter.ts emailMarketing.send: uses sendOrgEmail + getOrgById for per-org key and custom sender
+- [x] EmailMarketingPage.tsx: added "Email Settings" tab with Sender Identity and SendGrid API Key panels
+- [x] EmailMarketingPage.tsx: org admins can set custom sender name/email and their own SendGrid API key
+- [x] EmailMarketingPage.tsx: shows key status (own key configured vs platform key), with remove key action
+- [x] All 360 tests passing after changes

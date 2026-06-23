@@ -23,7 +23,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq, and, desc, lte, isNull, isNotNull, inArray, sql } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, requireOrgAdmin, getOrgMembers } from "./db";
 import {
   users,
   emailTemplates,
@@ -34,23 +34,9 @@ import {
   lmsCourses,
   organizations,
 } from "../drizzle/schema";
-import { sendEmail } from "./sendgrid";
-import sgMail from "@sendgrid/mail";
-import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from "crypto";
+import { sendEmail, sendOrgEmail, encryptOrgKey } from "./sendgrid";
+import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
-
-// ─── Encryption helpers for per-org SendGrid keys ─────────────────────────────
-const ENC_KEY = scryptSync(process.env.JWT_SECRET ?? "teachific-default", "salt", 32);
-function encryptKey(plain: string): string {
-  const iv = randomBytes(16);
-  const cipher = createCipheriv("aes-256-cbc", ENC_KEY, iv);
-  return iv.toString("hex") + ":" + cipher.update(plain, "utf8", "hex") + cipher.final("hex");
-}
-function decryptKey(enc: string): string {
-  const [ivHex, data] = enc.split(":");
-  const decipher = createDecipheriv("aes-256-cbc", ENC_KEY, Buffer.from(ivHex, "hex"));
-  return decipher.update(data, "hex", "utf8") + decipher.final("utf8");
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,16 +90,21 @@ async function resolveOrgRecipients(
 ): Promise<{ id: number; email: string; name: string | null }[]> {
   const recipients = new Set<number>();
 
-  // Get all org users first
-  const orgUsers = await db
-    .select({ id: users.id, email: users.email, name: users.name })
-    .from(users)
-    .where(isNotNull(users.email));
+  // Get org members only (scoped to this org)
+  const orgMemberRows = await getOrgMembers(orgId);
+  const orgUserIds = new Set(orgMemberRows.map((m: any) => m.userId).filter(Boolean) as number[]);
+
+  // Fetch user details for org members
+  const orgUsers = orgUserIds.size > 0
+    ? await db
+        .select({ id: users.id, email: users.email, name: users.name })
+        .from(users)
+        .where(and(isNotNull(users.email), inArray(users.id, [...orgUserIds])))
+    : [];
 
   // If specific emails provided, filter to those
   if (filter.specificEmails && filter.specificEmails.length > 0) {
-    const specificUsers = orgUsers.filter(u => filter.specificEmails!.includes(u.email));
-    return specificUsers;
+    return orgUsers.filter((u: any) => filter.specificEmails!.includes(u.email));
   }
 
   // Filter by course enrollment
@@ -122,26 +113,29 @@ async function resolveOrgRecipients(
       const enrollments = await db
         .select({ userId: lmsEnrollments.userId, completionPercentage: lmsEnrollments.completionPercentage })
         .from(lmsEnrollments)
-        .where(eq(lmsEnrollments.courseId, courseId));
+        .where(and(
+          eq(lmsEnrollments.courseId, courseId),
+          inArray(lmsEnrollments.userId, [...orgUserIds]),
+        ));
       
       let filtered = enrollments;
       if (filter.enrollmentStatus === "completed") {
-        filtered = enrollments.filter(e => e.completionPercentage === 100);
+        filtered = enrollments.filter((e: any) => e.completionPercentage === 100);
       }
       
-      filtered.forEach(e => recipients.add(e.userId));
+      filtered.forEach((e: any) => recipients.add(e.userId));
     }
   }
 
-  // If no filters, include all org users
+  // If no filters, include all org members
   if (!filter.courseIds?.length) {
-    orgUsers.forEach(u => recipients.add(u.id));
+    orgUsers.forEach((u: any) => recipients.add(u.id));
   }
 
   // Build final recipient list
   const result: { id: number; email: string; name: string | null }[] = [];
   for (const userId of recipients) {
-    const user = orgUsers.find(u => u.id === userId);
+    const user = orgUsers.find((u: any) => u.id === userId);
     if (user?.email) {
       result.push({ id: userId, email: user.email, name: user.name });
     }
@@ -158,7 +152,8 @@ export const emailCampaignsRouter = router({
   templates: router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) return [];
         
@@ -177,7 +172,8 @@ export const emailCampaignsRouter = router({
         htmlBody: z.string(),
         textBody: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -211,10 +207,13 @@ export const emailCampaignsRouter = router({
         htmlBody: z.string().optional(),
         textBody: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        
+        // Verify ownership via template's orgId
+        const [tmpl] = await db.select({ orgId: emailTemplates.orgId }).from(emailTemplates).where(eq(emailTemplates.id, input.id)).limit(1);
+        if (!tmpl) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, tmpl.orgId);
         const { id, ...updates } = input;
         await db
           .update(emailTemplates)
@@ -226,10 +225,12 @@ export const emailCampaignsRouter = router({
 
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        
+        const [tmpl] = await db.select({ orgId: emailTemplates.orgId }).from(emailTemplates).where(eq(emailTemplates.id, input.id)).limit(1);
+        if (!tmpl) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, tmpl.orgId);
         await db.delete(emailTemplates).where(eq(emailTemplates.id, input.id));
         return { success: true };
       }),
@@ -240,7 +241,8 @@ export const emailCampaignsRouter = router({
   campaigns: router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) return [];
         
@@ -259,7 +261,8 @@ export const emailCampaignsRouter = router({
         subject: z.string().min(1),
         htmlBody: z.string(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -297,7 +300,8 @@ export const emailCampaignsRouter = router({
         listIds: z.array(z.number()).optional(),
         courseIds: z.array(z.number()).optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -314,7 +318,8 @@ export const emailCampaignsRouter = router({
         campaignId: z.number(),
         orgId: z.number(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -349,22 +354,6 @@ export const emailCampaignsRouter = router({
           );
         const unsubEmails = new Set(unsubRows.map((r: { email: string }) => r.email.toLowerCase()));
 
-        // Determine sender identity (org custom > platform default)
-        const fromName = org[0].customSenderName || undefined;
-        const fromEmail = org[0].customSenderEmail || undefined;
-
-        // If org has their own SendGrid key (Builder+ plan), use it for this batch
-        let orgSgClient: typeof sgMail | null = null;
-        if (org[0].ownSendGridKeyEncrypted) {
-          try {
-            const ownKey = decryptKey(org[0].ownSendGridKeyEncrypted);
-            orgSgClient = Object.create(sgMail) as typeof sgMail;
-            orgSgClient.setApiKey(ownKey);
-          } catch {
-            console.warn("[Campaign] Failed to decrypt org SendGrid key, falling back to platform key");
-          }
-        }
-
         // Send emails (skip unsubscribed recipients)
         let sentCount = 0;
         for (const recipient of recipients) {
@@ -380,25 +369,19 @@ export const emailCampaignsRouter = router({
               org[0].name,
             );
 
-            if (orgSgClient) {
-              // Use org's own SendGrid key
-              await orgSgClient.send({
-                to: recipient.email,
-                from: { email: fromEmail ?? "hello@teachific.net", name: fromName ?? "Teachific" },
-                subject: campaign[0].subject,
-                html: htmlWithFooter,
-                text: campaign[0].textBody || htmlWithFooter.replace(/<[^>]+>/g, ""),
-              });
-            } else {
-              await sendEmail({
+            await sendOrgEmail(
+              {
                 to: recipient.email,
                 subject: campaign[0].subject,
                 html: htmlWithFooter,
                 text: campaign[0].textBody || undefined,
-                fromName,
-                fromEmail,
-              });
-            }
+              },
+              {
+                ownSendGridKeyEncrypted: org[0].ownSendGridKeyEncrypted,
+                customSenderName: org[0].customSenderName,
+                customSenderEmail: org[0].customSenderEmail,
+              },
+            );
 
             sentCount++;
           } catch (err) {
@@ -424,9 +407,11 @@ export const emailCampaignsRouter = router({
     schedule: protectedProcedure
       .input(z.object({
         campaignId: z.number(),
+        orgId: z.number(),
         scheduledFor: z.date(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -443,8 +428,9 @@ export const emailCampaignsRouter = router({
       }),
 
     cancel: protectedProcedure
-      .input(z.object({ campaignId: z.number() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ campaignId: z.number(), orgId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         
@@ -551,7 +537,8 @@ export const emailCampaignsRouter = router({
     /** Get org email settings */
     get: protectedProcedure
       .input(z.object({ orgId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -583,7 +570,8 @@ export const emailCampaignsRouter = router({
         ownSendGridKey: z.string().optional(), // plain text key — will be encrypted on save
         clearOwnSendGridKey: z.boolean().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -592,7 +580,7 @@ export const emailCampaignsRouter = router({
         if (input.customSenderName !== undefined) updates.customSenderName = input.customSenderName || null;
         if (input.customSenderEmail !== undefined) updates.customSenderEmail = input.customSenderEmail || null;
         if (input.clearOwnSendGridKey) updates.ownSendGridKeyEncrypted = null;
-        if (input.ownSendGridKey) updates.ownSendGridKeyEncrypted = encryptKey(input.ownSendGridKey);
+        if (input.ownSendGridKey) updates.ownSendGridKeyEncrypted = encryptOrgKey(input.ownSendGridKey);
 
         await db.update(organizations).set(updates).where(eq(organizations.id, input.orgId));
 

@@ -5,7 +5,8 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember } from "./db";
+import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
 import { scrapeVideoFromUrl, cleanupScrapedVideo } from "./videoScraper";
@@ -778,39 +779,115 @@ export const lmsRouter = router({
   // ── Email Marketing ────────────────────────────────────────────────────────
   emailMarketing: router({
     list: protectedProcedure
-      .input(z.object({ orgId: z.number().optional() }).optional())
-      .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        return listEmailCampaigns(orgId);
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+        return listEmailCampaigns(input.orgId);
+      }),
+    stats: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+        return getEmailCampaignStats(input.orgId);
+      }),
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const c = await getEmailCampaignById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, c.orgId!);
+        return c;
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), subject: z.string(), htmlBody: z.string().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        return createEmailCampaign({ orgId, name: input.name, subject: input.subject, htmlBody: input.htmlBody ?? "", createdBy: ctx.user.id });
+      .input(z.object({
+        orgId: z.number(),
+        name: z.string().min(1),
+        subject: z.string().min(1),
+        htmlBody: z.string().default(""),
+        textBody: z.string().optional(),
+        status: z.enum(["draft", "scheduled", "sending", "sent", "failed"]).optional(),
+        scheduledAt: z.date().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+        return createEmailCampaign({ ...input, createdBy: ctx.user.id });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
-        return updateEmailCampaign(input.id, input.data as any);
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        subject: z.string().optional(),
+        htmlBody: z.string().optional(),
+        textBody: z.string().optional(),
+        status: z.enum(["draft", "scheduled", "sending", "sent", "failed"]).optional(),
+        scheduledAt: z.date().optional().nullable(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const c = await getEmailCampaignById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, c.orgId!);
+        const { id, ...data } = input;
+        return updateEmailCampaign(id, data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const c = await getEmailCampaignById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, c.orgId!);
         await deleteEmailCampaign(input.id);
         return { ok: true };
       }),
     send: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        await updateEmailCampaign(input.id, { status: "sent", sentAt: new Date() });
-        return { ok: true };
-      }),
-    stats: protectedProcedure
-      .input(z.object({ orgId: z.number().optional() }).optional())
-      .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        return getEmailCampaignStats(orgId);
+      .input(z.object({
+        id: z.number(),
+        audience: z.enum(["all_members", "enrolled_students", "custom"]).default("all_members"),
+        courseId: z.number().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const c = await getEmailCampaignById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, c.orgId!);
+        if (c.status === "sent") throw new TRPCError({ code: "BAD_REQUEST", message: "Campaign already sent" });
+        // Mark as sending
+        await updateEmailCampaign(input.id, { status: "sending" });
+        // Gather recipients
+        const members = await getOrgMembers(c.orgId!);
+        const recipientUserIds = members.map((m: any) => m.userId).filter(Boolean) as number[];
+        // Load org config for per-org SendGrid key + custom sender
+        const orgConfig = await getOrgById(c.orgId!);
+        let sentCount = 0;
+        let failedCount = 0;
+        for (const userId of recipientUserIds) {
+          const user = await getUserById(userId);
+          if (!user?.email) { failedCount++; continue; }
+          const unsubToken = buildUnsubscribeToken(c.orgId!, userId);
+          const html = resolveMergeTags(c.htmlBody, {
+            user_name: user.name ?? user.email,
+            org_name: orgConfig?.name ?? String(c.orgId),
+            course_title: "",
+            unsubscribe_url: `${process.env.VITE_OAUTH_PORTAL_URL ?? ""}/unsubscribe?token=${unsubToken}`,
+            site_url: process.env.VITE_OAUTH_PORTAL_URL ?? "",
+            year: String(new Date().getFullYear()),
+          });
+          const ok = await sendOrgEmail(
+            { to: user.email, subject: c.subject, html },
+            {
+              ownSendGridKeyEncrypted: orgConfig?.ownSendGridKeyEncrypted,
+              customSenderName: orgConfig?.customSenderName,
+              customSenderEmail: orgConfig?.customSenderEmail,
+            },
+          );
+          if (ok) sentCount++; else failedCount++;
+        }
+        await updateEmailCampaign(input.id, {
+          status: "sent",
+          sentAt: new Date(),
+          sentCount,
+          failedCount,
+          recipientCount: recipientUserIds.length,
+        });
+        return { sentCount, failedCount, total: recipientUserIds.length };
       }),
   }),
 
