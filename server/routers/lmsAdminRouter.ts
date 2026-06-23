@@ -264,6 +264,8 @@ const _lmsAdminBaseRouter = router({
       // Scope to the user's own org — platform admins (site_owner/site_admin) see all
       const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
       const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
+      // Safety: if not a platform admin and no org found, return empty to prevent data leak
+      if (!isPlatformAdmin && orgId === null) return { courses: [], total: 0 };
       const conditions: any[] = [];
       if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as any));

@@ -106,6 +106,8 @@ export const lmsCourseBuilderRouter = router({
       // Scope to the user's own org — platform admins (site_owner/site_admin) see all
       const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
       const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
+      // Safety: if not a platform admin and no org found, return empty to prevent data leak
+      if (!isPlatformAdmin && orgId === null) return { courses: [], total: 0 };
       const conditions: any[] = [];
       // Always filter by orgId unless the user is a platform admin
       if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
@@ -196,11 +198,11 @@ export const lmsCourseBuilderRouter = router({
       metaTitle: z.string().optional(),
       metaDescription: z.string().optional(),
       // Course color scheme
-      primaryColor: z.string().max(20).optional(),
-      accentColor: z.string().max(20).optional(),
-      gradientFrom: z.string().max(20).optional(),
-      gradientTo: z.string().max(20).optional(),
-      gradientDirection: z.string().max(30).optional(),
+      primaryColor: z.string().max(20).nullable().optional(),
+      accentColor: z.string().max(20).nullable().optional(),
+      gradientFrom: z.string().max(20).nullable().optional(),
+      gradientTo: z.string().max(20).nullable().optional(),
+      gradientDirection: z.string().max(30).nullable().optional(),
       thumbnailUrl: z.string().nullable().optional(),
       showInLibrary: z.boolean().optional(),
       sendEnrollmentEmail: z.boolean().optional(),
