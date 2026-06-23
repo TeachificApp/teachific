@@ -2,7 +2,7 @@
  * Account Sharing Monitor
  * 
  * Detects potential account sharing by monitoring IP access patterns for paid content.
- * Flags accounts with suspicious multi-IP usage and alerts support@allaboutultrasound.com.
+ * Flags accounts with suspicious multi-IP usage and alerts support@teachific.com.
  * 
  * Detection rules:
  * - 3+ distinct IPs accessing paid content within a 24-hour window → flagged
@@ -19,7 +19,7 @@ import { sendEmail } from "../sendgrid";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const ALERT_EMAIL = "support@allaboutultrasound.com";
+const ALERT_EMAIL = "support@teachific.com";
 const ALERT_NAME = "Support Team";
 
 // Thresholds

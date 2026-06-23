@@ -22,7 +22,7 @@ export const FUNNEL_TEMPLATES: Array<{
         data: {
           headline: "Adult Echo Cross-Training Course",
           headline2: "Build confidence reading cardiac anatomy, Doppler, and pathology",
-          subheadline: "A cohort-style sales funnel for sonographers moving into adult echo, with clear outcomes, urgency, and checkout flow.",
+          subheadline: "A cohort-style sales funnel for educators moving into adult echo, with clear outcomes, urgency, and checkout flow.",
           bgType: "gradient",
           gradientFrom: "#0f766e",
           gradientTo: "#0f172a",
@@ -78,7 +78,7 @@ export const FUNNEL_TEMPLATES: Array<{
       {
         type: "two_column",
         data: {
-          leftHtml: "<h2>Designed for sonographers crossing into echo</h2><p>Position the program for general, vascular, or multi-modality sonographers who need a structured bridge into adult echocardiography.</p>",
+          leftHtml: "<h2>Designed for educators crossing into echo</h2><p>Position the program for general, vascular, or multi-modality educators who need a structured bridge into adult echocardiography.</p>",
           rightHtml: "<h3>Funnel message</h3><ul><li>Live cohort urgency</li><li>Replay access</li><li>Hands-on optional add-on</li><li>Clear next step to checkout</li></ul>",
           leftRatio: 55,
           bgColor: "#f8fafc",

@@ -365,7 +365,7 @@ function TemplateDialog({ open, onClose, template, canWhiteLabel, onSave, isSavi
             <Textarea
               value={form.footerText}
               onChange={(e) => set("footerText", e.target.value)}
-              placeholder="e.g. This certificate is issued by All About Ultrasound and is valid for CPD purposes."
+              placeholder="e.g. This certificate is issued by Teachific and is valid for CPD purposes."
               rows={2}
             />
           </div>

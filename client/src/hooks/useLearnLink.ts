@@ -3,7 +3,7 @@
  *
  * Returns a `navigateToLearn(path)` function that:
  *  1. Issues a short-lived SSO token from the server
- *  2. Appends ?sso=TOKEN to the learn.allaboutultrasound.com URL
+ *  2. Appends ?sso=TOKEN to the learn.teachific.com URL
  *  3. Opens the URL (in the same tab by default, or a new tab for admin previews)
  *
  * If the user is not logged in, navigates without a token (they'll see the login page).
@@ -11,7 +11,7 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
-const LEARN_DOMAIN = "https://learn.allaboutultrasound.com";
+const LEARN_DOMAIN = "https://learn.teachific.com";
 
 export function getLearnUrl(path: string, ssoToken?: string): string {
   const base = LEARN_DOMAIN + (path.startsWith("/") ? path : `/${path}`);

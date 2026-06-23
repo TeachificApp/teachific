@@ -175,7 +175,7 @@ export const mediaRepoRouter = router({
       search: z.string().optional(),
       mediaType: z.enum(MEDIA_TYPES).optional(),
       access: z.enum(["public", "private"]).optional(),
-      brand: z.enum(["aaus", "iheartecho"]).optional(),
+      brand: z.enum(["teachific"]).optional(),
       folder: z.string().nullable().optional(), // null = uncategorized, string = specific folder, undefined = all
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(24),
@@ -654,7 +654,7 @@ export const mediaRepoRouter = router({
       });
 
       // Build access URL (uses the app's canonical URL from env)
-      const origin = process.env.VITE_APP_URL || "https://app.allaboutultrasound.com";
+      const origin = process.env.VITE_APP_URL || "https://app.teachific.com";
       const accessUrl = `${origin}/media/${asset.slug}?token=${token}`;
 
       await sendEmail({
@@ -670,7 +670,7 @@ export const mediaRepoRouter = router({
               View / Embed Media
             </a>
             ${expiresAt ? `<p style="color:#6b7280;font-size:13px;margin-top:16px;">This link expires on ${expiresAt.toLocaleDateString()}.</p>` : ""}
-            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">All About Ultrasound™ — Clinical Intelligence Platform</p>
+            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">Teachific™ — Clinical Intelligence Platform</p>
           </div>
         `,
       });

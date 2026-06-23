@@ -109,7 +109,7 @@ export function ProductOfferStackBlock({ data, onPrimaryCta }: { data: Record<st
 
 /**
  * InlineOrderBumpBlock
- * Matches the allaboutultrasound.net checkout order bump design:
+ * Matches the platform checkout order bump design:
  * - Product image on left
  * - Shipping/delivery notice at top
  * - Product title + description in center

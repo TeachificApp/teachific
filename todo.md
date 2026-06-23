@@ -4358,3 +4358,45 @@
 - [x] communityRouter (root) — already org-scoped via communityHubs.orgId
 - [x] questionBankRouter (root) — already org-scoped via orgId input param
 - [x] lmsAdminRouter.listCourses — already org-scoped
+
+## Brand Cleanup Sprint
+- [x] Replace shared/brands.ts with Teachific-generic brand config
+- [x] Clean all AAUS/iHeartEcho/ultrasound references from server/_core/email.ts
+- [ ] Remove brand labels and ultrasound placeholder text from all client UI pages
+- [ ] Remove AAUS-specific hardcoded Thinkific importer values (make generic for any org)
+
+## Org Home Page Editor
+- [ ] Add org_home_pages table to drizzle/schema.ts (orgId, slug, title, blocks JSON, publishedAt, updatedAt)
+- [ ] Run migration via webdev_execute_sql
+- [ ] Add tRPC procedures: orgPages.get, orgPages.save, orgPages.publish (org admin protected)
+- [ ] Build OrgHomePageEditor in admin UI with full block type support:
+  - [ ] Hero block (headline, subheadline, CTA button, background image/color/gradient)
+  - [ ] Features/Benefits block (icon grid, multi-column layout)
+  - [ ] Text/Rich Text block (WYSIWYG or markdown)
+  - [ ] Image block (full-width, inline, with caption)
+  - [ ] Video block (URL embed or uploaded video)
+  - [ ] Testimonials block (quote, author, avatar, star rating)
+  - [ ] CTA block (headline, description, button, background)
+  - [ ] Pricing block (plan cards with features list)
+  - [ ] FAQ block (accordion Q&A)
+  - [ ] Countdown timer block (deadline date/time)
+  - [ ] Divider/Spacer block
+  - [ ] Embed block (iframe/HTML snippet)
+  - [ ] Course catalog block (auto-pulls org's published courses)
+  - [ ] Social proof / stats block (numbers, metrics)
+- [ ] Block drag-and-drop reordering (reuse @dnd-kit already installed)
+- [ ] Live preview panel (split-view or preview tab)
+- [ ] Publish/unpublish toggle
+- [ ] Build public OrgHomePage renderer at /org/:orgSlug route
+- [ ] Wire "Edit Home Page" link into org admin sidebar
+- [ ] Write vitest tests for orgPages procedures
+
+## Site Builder Sprint
+- [ ] Add Header block type to BlockPreview (logo upload, nav links, link picker for courses/cohorts/webinars/downloads/products/site pages)
+- [ ] Add Header block to BLOCK_CATALOG under Layout category
+- [ ] Org-level privacy policy and terms of service already in organizations schema — expose in org settings UI
+- [ ] Build siteBuilderRouter: getPage, savePage, publishPage procedures (orgAdminProcedure)
+- [ ] Build SiteBuilderPage admin UI at /site-builder using LandingPageBuilder
+- [ ] Build public OrgHomePage renderer at /home serving published blocks
+- [ ] Wire Header block to org privacy/terms links from org settings
+- [ ] Add /site-builder route to App.tsx

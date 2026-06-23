@@ -275,7 +275,7 @@ export async function getOrdersByEmail(
 
 /**
  * The Thinkific product ID for the UltrasoundAssist™ App - Premium Access subscription.
- * Enrollment URL: https://member.allaboutultrasound.com/enroll/3714929?price_id=4664974
+ * Enrollment URL: https://member.teachific.com/enroll/3714929?price_id=4664974
  */
 export const IHEARTECHO_PREMIUM_PRODUCT_ID = 3714929; // UltrasoundAssist™ Premium product ID
 export const ULTRASOUNDASSIST_PREMIUM_PRODUCT_ID = 3714929;
@@ -298,8 +298,8 @@ export async function getCollections(): Promise<ThinkificCollection[]> {
   return fetchAllPages<ThinkificCollection>("/collections");
 }
 
-/** Custom domain for All About Ultrasound™ member portal */
-const MEMBER_DOMAIN = "member.allaboutultrasound.com";
+/** Custom domain for Teachific™ member portal */
+const MEMBER_DOMAIN = "member.teachific.com";
 
 /**
  * Build the direct course URL on the member portal.
@@ -319,7 +319,7 @@ export function buildEnrollUrl(productSlug: string): string {
 
 /**
  * The Free Membership bundle for UltrasoundAssist™ on Thinkific.
- * Enrollment URL: https://member.allaboutultrasound.com/enroll/3714918?price_id=4664963
+ * Enrollment URL: https://member.teachific.com/enroll/3714918?price_id=4664963
  */
 export const FREE_MEMBERSHIP_COURSE_IDS = [3714918] as const;
 
@@ -420,7 +420,7 @@ export async function enrollInFreeMembership(
 
 /**
  * Fetch all users from Thinkific (paginated, up to 250 per page).
- * Used for bulk backfill of All About Ultrasound™ accounts for existing members.
+ * Used for bulk backfill of Teachific™ accounts for existing members.
  * NOTE: This can be slow for large user bases — run as a background job.
  */
 export async function getAllThinkificUsers(): Promise<ThinkificUser[]> {
@@ -746,7 +746,7 @@ export async function getContentDetailWithSession(
   courseSlug: string
 ): Promise<ThinkificLessonContent | null> {
   const subdomain = ENV.thinkificSubdomain;
-  const memberDomain = "member.allaboutultrasound.com";
+  const memberDomain = "member.teachific.com";
 
   // Endpoints to try in order (member domain first, then subdomain)
   const endpoints = [
@@ -812,7 +812,7 @@ export async function getContentDetailWithSession(
  * @returns        ThinkificLessonContent-shaped object, or null on failure
  */
 export async function scrapeLessonFromTakeUrl(takeUrl: string): Promise<ThinkificLessonContent | null> {
-  const memberDomain = "member.allaboutultrasound.com";
+  const memberDomain = "member.teachific.com";
   const fullUrl = takeUrl.startsWith("http") ? takeUrl : `https://${memberDomain}${takeUrl}`;
 
   for (let attempt = 0; attempt < 2; attempt++) {

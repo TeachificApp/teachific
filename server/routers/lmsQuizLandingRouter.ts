@@ -1,12 +1,12 @@
 /**
  * lmsQuizLandingRouter.ts
- * All About Ultrasound™ LMS — Quiz Builder + Landing Pages (admin)
+ * Teachific™ LMS — Quiz Builder + Landing Pages (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * All About Ultrasound™ LMS — LMS Management
+ * Teachific™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles

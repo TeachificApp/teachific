@@ -778,7 +778,7 @@ const communityAdminRouter = router({
     title: z.string().min(1).max(255),
     slug: z.string().min(1).max(255),
     description: z.string().optional(),
-    brand: z.enum(["all_about_ultrasound", "iheartecho"]).default("all_about_ultrasound"),
+    brand: z.enum(["teachific"]).default("teachific"),
     privacy: z.enum(["public", "private", "paid"]).default("public"),
     accessType: z.enum(["free", "paid", "restricted"]).default("free"),
     accentColor: z.string().default("#189aa1"),

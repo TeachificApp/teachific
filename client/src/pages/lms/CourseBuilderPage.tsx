@@ -125,7 +125,7 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
       <span className="text-gray-400">{TYPE_ICONS[course.type]}</span>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
-        <p className="text-xs text-gray-400">{course.brand === "aaus" ? "All About Ultrasound™" : "iHeartEcho™"} · {course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`}</p>
+        <p className="text-xs text-gray-400">{course.brand === "teachific" ? "Teachific™" : "Teachific™"} · {course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`}</p>
       </div>
       <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
       <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(course.id)}>
@@ -310,7 +310,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [type, setType] = useState<"course" | "quiz" | "download" | "cohort">(defaultType);
-  const [brand, setBrand] = useState<"aaus" | "iheartecho">("aaus");
+  const [brand, setBrand] = useState<"teachific">("teachific");
   const [pricingType, setPricingType] = useState<"free"|"one_time"|"subscription"|"payment_plan">("one_time");
   const [price, setPrice] = useState("");
   const [subscriptionInterval, setSubscriptionInterval] = useState<"monthly"|"quarterly"|"annual">("monthly");
@@ -415,8 +415,8 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                   <Select value={brand} onValueChange={v => setBrand(v as any)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-                      <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
+                      <SelectItem value="teachific">Teachific™</SelectItem>
+                      
                     </SelectContent>
                   </Select>
                 </div>
@@ -529,8 +529,8 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       <Select value={brand} onValueChange={v => setBrand(v as any)}>
                         <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-                          <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
+                          <SelectItem value="teachific">Teachific™</SelectItem>
+                          
                         </SelectContent>
                       </Select>
                     </div>
@@ -1529,7 +1529,9 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload-course-image", { method: "POST", credentials: "include", body: fd });
+      fd.append("folder", "course-covers");
+      fd.append("orgId", String(course.orgId ?? 0));
+      const res = await fetch("/api/media-upload", { method: "POST", credentials: "include", body: fd });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error ?? "Upload failed"); }
       const { url } = await res.json();
       setCoverImageUrl(url);
@@ -1697,8 +1699,8 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           <Select value={brand} onValueChange={setBrand}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-              <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
+              <SelectItem value="teachific">Teachific™</SelectItem>
+              
             </SelectContent>
           </Select>
         </div>
@@ -5586,7 +5588,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           <div className="space-y-3 py-2">
             <div>
               <Label className="text-xs">Destination URL *</Label>
-              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://learn.allaboutultrasound.com/courses/..." className="mt-1 text-sm" />
+              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://learn.teachific.com/courses/..." className="mt-1 text-sm" />
             </div>
             <div>
               <Label className="text-xs">Custom Slug (optional)</Label>
@@ -6497,8 +6499,8 @@ function CommunityFormInline({
           <Select value={form.brand} onValueChange={v => setForm(f => ({ ...f, brand: v }))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all_about_ultrasound">All About Ultrasound™</SelectItem>
-              <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
+              <SelectItem value="all_about_ultrasound">Teachific™</SelectItem>
+              
             </SelectContent>
           </Select>
         </div>
@@ -11002,13 +11004,13 @@ function LMSPublishDomainSettings() {
                 value={courseDomain}
                 onChange={setCourseDomain}
                 label="Courses Default Domain"
-                description="Course landing pages will be served at this domain (e.g. learn.allaboutultrasound.com/course-slug)."
+                description="Course landing pages will be served at this domain (e.g. learn.teachific.com/course-slug)."
               />
               <DomainSelect
                 value={funnelDomain}
                 onChange={setFunnelDomain}
                 label="Funnels Default Domain"
-                description="Funnel pages will be served at this domain (e.g. allaboutultrasound.com/funnel-slug)."
+                description="Funnel pages will be served at this domain (e.g. teachific.com/funnel-slug)."
               />
               <DomainSelect
                 value={downloadDomain}

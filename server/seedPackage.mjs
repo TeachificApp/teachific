@@ -1,6 +1,6 @@
 /**
  * Seed script: uploads AdvancedCardiacSonographer.zip to S3 and registers
- * it in the database under org 1 (All About Ultrasound), user 1.
+ * it in the database under org 1, user 1.
  *
  * Usage: node server/seedPackage.mjs
  */
@@ -137,7 +137,7 @@ function findEntryPoint(files) {
 const ORG_ID = 1;
 const USER_ID = 1;
 const TITLE = "Advanced Cardiac Sonographer";
-const DESCRIPTION = "Advanced cardiac sonography training content from All About Ultrasound";
+const DESCRIPTION = "Advanced training content";
 const DISPLAY_MODE = "native";
 const BATCH = 8; // parallel S3 uploads
 

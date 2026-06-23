@@ -2,7 +2,7 @@
  * useSubdomain
  *
  * Detects whether the app is running on an org-specific subdomain
- * (e.g. allaboutultrasound.teachific.app) and returns the subdomain slug.
+ * (e.g. myorg.teachific.app) and returns the subdomain slug.
  *
  * Returns null when running on the root domain (teachific.app, www.teachific.app,
  * localhost, Railway preview URLs, or any Manus preview URL).
@@ -39,7 +39,7 @@ export function getSubdomain(): string | null {
   // Only treat as a subdomain if it's actually a subdomain of teachific.app
   if (!isTeachificSubdomain(hostname)) return null;
 
-  // Extract the subdomain part: "allaboutultrasound" from "allaboutultrasound.teachific.app"
+  // Extract the subdomain part: "myorg" from "myorg.teachific.app"
   const sub = hostname.replace(/\.teachific\.app$/, "");
 
   // Exclude "www" as a valid org subdomain

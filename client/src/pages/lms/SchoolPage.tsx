@@ -91,7 +91,7 @@ function CourseCard({
 
 export default function SchoolPage({ subdomainOrg }: { subdomainOrg?: string } = {}) {
   // orgSlug param is present when visiting /school/:orgSlug
-  // subdomainOrg is passed when accessed via an org subdomain (e.g. allaboutultrasound.teachific.app)
+  // subdomainOrg is passed when accessed via an org subdomain (e.g. myorg.teachific.app)
   const params = useParams<{ orgSlug?: string }>();
   const orgSlug = subdomainOrg ?? params?.orgSlug;
 

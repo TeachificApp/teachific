@@ -2,7 +2,7 @@
  * orgUrl.ts — Shared utilities for building org-specific URLs.
  *
  * All org content (forms, courses, shop, webinars, quizzes, custom pages)
- * must be served from the org's subdomain (e.g. https://allaboutultrasound.teachific.app/)
+ * must be served from the org's subdomain (e.g. https://myorg.teachific.app/)
  * or custom domain, NOT from the root domain with the org slug in the path.
  *
  * This ensures custom domain / whitelabel support works correctly: if an org uses
@@ -30,7 +30,7 @@ export interface OrgUrlInfo {
  * - On localhost / Manus preview / Railway preview: returns a path-based
  *   fallback `/school/{slug}` so development still works.
  *
- * @param slug                   The org's subdomain slug (e.g. "allaboutultrasound")
+ * @param slug                   The org's subdomain slug (e.g. "myorg")
  * @param customDomain           Optional custom domain (e.g. "courses.example.com")
  * @param domainVerificationStatus  Optional verification status; only "verified" domains are used
  */

@@ -1237,7 +1237,7 @@ export const funnelPublicRouter = router({
           product_type: selectedProduct.productType ?? selectedProduct.type ?? "other",
           product_id: selectedProduct.productId ? selectedProduct.productId.toString() : "",
           success_url: successUrl.slice(0, 490),
-          brand_mode: checkoutBlock.data?.brandMode ?? "aaus",
+          brand_mode: checkoutBlock.data?.brandMode ?? "teachific",
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
@@ -1350,8 +1350,8 @@ export const funnelPublicRouter = router({
       if (totalAmount === 0) {
         // Free product — bypass Stripe entirely
         const customerName = `${input.firstName || ""} ${input.lastName || ""}`.trim();
-        const brandMode = (checkoutBlock.data?.brandMode as string) || "aaus";
-        const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://app.allaboutultrasound.com";
+        const brandMode = (checkoutBlock.data?.brandMode as string) || "teachific";
+        const baseUrl = "https://app.teachific.com";
 
         // 1. Create or find user account
         let resolvedUserId: number | null = ctx.user?.id ?? null;
@@ -1389,7 +1389,7 @@ export const funnelPublicRouter = router({
               to: { name: customerName || firstName, email: input.email },
               subject: `Your account is ready — set your password to access ${selectedProduct.name || "your purchase"}`,
               htmlBody: emailContent.htmlBody,
-              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${brandMode === "iheartecho" ? "iHeartEcho" : "All About Ultrasound"}`,
+              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${"Teachific"}`,
             });
             console.log(`[FreeCheckout] Sent set-password email to ${input.email} (new user ${resolvedUserId})`);
           } catch (emailErr) {
@@ -1548,7 +1548,7 @@ export const funnelPublicRouter = router({
           product_type: selectedProduct.productType ?? selectedProduct.type ?? "other",
           product_id: selectedProduct.productId ? selectedProduct.productId.toString() : "",
           success_url: successUrl.slice(0, 490),
-          brand_mode: checkoutBlock.data?.brandMode ?? "aaus",
+          brand_mode: checkoutBlock.data?.brandMode ?? "teachific",
         },
         automatic_payment_methods: { enabled: true },
       });

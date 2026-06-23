@@ -1,12 +1,12 @@
 /**
  * lmsCourseBuilderRouter.ts
- * All About Ultrasound™ LMS — Course/Section/Lesson CRUD (admin)
+ * Teachific™ LMS — Course/Section/Lesson CRUD (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * All About Ultrasound™ LMS — LMS Management
+ * Teachific™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -124,7 +124,7 @@ export const lmsCourseBuilderRouter = router({
       title: z.string().min(1).max(255),
       subtitle: z.string().max(500).optional(),
       type: z.enum(["course", "quiz", "download", "cohort"]).default("course"),
-      brand: z.enum(["aaus", "iheartecho"]).default("aaus"),
+      brand: z.enum(["teachific"]).default("teachific"),
       pricingType: z.enum(["free", "one_time", "subscription", "payment_plan", "trial_then_subscription"]).default("one_time"),
       price: z.number().min(0).default(0),
       isFree: z.boolean().default(false),
@@ -175,7 +175,7 @@ export const lmsCourseBuilderRouter = router({
       status: z.enum(["draft", "public", "hidden", "private", "archived"]).optional(),
       type: z.enum(["course", "quiz", "download", "cohort"]).optional(),
       enrollmentCloseDate: z.string().nullable().optional(), // ISO date string or null
-      brand: z.enum(["aaus", "iheartecho"]).optional(),
+      brand: z.enum(["teachific"]).optional(),
       price: z.number().min(0).optional(),
       isFree: z.boolean().optional(),
       pricingType: z.enum(["free", "one_time", "subscription", "payment_plan", "trial_then_subscription"]).optional(),

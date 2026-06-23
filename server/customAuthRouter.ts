@@ -32,7 +32,7 @@ function generateOpenId(): string {
 function serializeCookie(name: string, value: string, maxAge: number): string {
   const isProduction = process.env.NODE_ENV === "production";
   // Use SameSite=None + Secure in production so the cookie is sent cross-subdomain
-  // (e.g. from teachific.app to allaboutultrasound.teachific.app).
+  // (e.g. from teachific.app to myorg.teachific.app).
   // Domain=.teachific.app ensures all subdomains share the same session.
   let str = `${name}=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=${maxAge}`;
   if (isProduction) {

@@ -305,7 +305,7 @@ function BundleSalesTab({ bundleId }: { bundleId: number }) {
 }
 
 // ─── Membership Sales Tab ──────────────────────────────────────────────────────
-function MembershipSalesTab({ brand }: { brand: "aaus" | "iheartecho" }) {
+function MembershipSalesTab({ brand }: { brand: "teachific" }) {
   const [revokeTarget, setRevokeTarget] = useState<{ userId: number; email: string } | null>(null);
   const { data, isLoading, refetch } = trpc.brandMembership.adminList.useQuery({ brand });
 
@@ -376,7 +376,7 @@ function MembershipSalesTab({ brand }: { brand: "aaus" | "iheartecho" }) {
       <Dialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Revoke Membership</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Revoke {brand === "aaus" ? "AAUS" : "iHeartEcho"} membership for <strong>{revokeTarget?.email}</strong>?</p>
+          <p className="text-sm text-muted-foreground">Revoke {brand === "teachific" ? "Teachific™" : "Teachific™"} membership for <strong>{revokeTarget?.email}</strong>?</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRevokeTarget(null)}>Cancel</Button>
             <Button variant="destructive" disabled={revokeMutation.isPending}

@@ -1,6 +1,6 @@
 /**
  * lmsRouter.ts
- * All About Ultrasound™ LMS — Router Aggregator
+ * Teachific LMS — Router Aggregator
  *
  * The lmsAdminRouter procedures are split across focused sub-routers:
  *   lmsCourseBuilderRouter    — course/section/lesson CRUD (~970 lines)
@@ -11,7 +11,7 @@
 
 /**
  * lmsRouter.ts
- * All About Ultrasound™ LMS — LMS Management
+ * Teachific LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -114,7 +114,6 @@ export const lmsPublicRouter = router({
   /** List all publicly visible courses */
   listCourses: publicProcedure
     .input(z.object({
-      brand: z.enum(["aaus", "iheartecho"]).optional(),
       type: z.enum(["course", "quiz", "download", "cohort"]).optional(),
       isFree: z.boolean().optional(),
       search: z.string().optional(),
@@ -128,7 +127,7 @@ export const lmsPublicRouter = router({
       // If type is explicitly "quiz", merge lmsCourses quizzes + sonoQuizzes
       if (input.type === "quiz") {
         const lmsConditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.type, "quiz")];
-        if (input.brand) lmsConditions.push(eq(lmsCourses.brand, input.brand));
+
         const offset = (input.page - 1) * input.pageSize;
         const [lmsQuizRows, sqRows] = await Promise.all([
           db.select().from(lmsCourses).where(and(...lmsConditions)).orderBy(desc(lmsCourses.createdAt)),
@@ -144,7 +143,6 @@ export const lmsPublicRouter = router({
           coverImageUrl: q.coverImageUrl ?? null,
           status: "public" as const,
           type: "quiz" as const,
-          brand: "aaus" as const,
           price: 0,
           isFree: true,
           isFeatured: false,
@@ -180,7 +178,6 @@ export const lmsPublicRouter = router({
           coverImageUrl: p.thumbnailUrl ?? null,
           status: "public" as const,
           type: "download" as const,
-          brand: "aaus" as const,
           price: p.price,
           isFree: p.isFree,
           isFeatured: false,
@@ -194,7 +191,7 @@ export const lmsPublicRouter = router({
       }
 
       const conditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true)];
-      if (input.brand) conditions.push(eq(lmsCourses.brand, input.brand));
+
       if (input.type) conditions.push(eq(lmsCourses.type, input.type));
       if (input.isFree !== undefined) conditions.push(eq(lmsCourses.isFree, input.isFree));
 
@@ -239,7 +236,7 @@ export const lmsPublicRouter = router({
           coverImageUrl: p.thumbnailUrl ?? null,
           status: "public" as const,
           type: "download" as const,
-          brand: "aaus" as const,
+          
           price: p.price,
           isFree: p.isFree,
           isFeatured: false,
@@ -260,7 +257,7 @@ export const lmsPublicRouter = router({
           coverImageUrl: q.coverImageUrl ?? null,
           status: "public" as const,
           type: "quiz" as const,
-          brand: "aaus" as const,
+          
           price: 0,
           isFree: true,
           isFeatured: false,
@@ -539,7 +536,7 @@ export const lmsPublicRouter = router({
         .limit(1);
       if (course) {
         try {
-          const previewUrl = `https://app.allaboutultrasound.com/courses/${course.slug}?preview_token=${accessToken}`;
+          const previewUrl = `https://app.teachific.com/courses/${course.slug}?preview_token=${accessToken}`;
           const emailData = buildFreePreviewConfirmationEmail({
             firstName: input.firstName,
             courseTitle: course.title,
@@ -1890,7 +1887,7 @@ export const lmsLearnerRouter = router({
           const courseName = course?.title ?? "your cohort course";
           const groupName = group?.name ?? "";
           const snippet = input.body ? (input.body.length > 200 ? input.body.slice(0, 200) + "…" : input.body) : "[media attachment]";
-          const discussionUrl = `https://learn.allaboutultrasound.com/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
+          const discussionUrl = `https://learn.teachific.com/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
           // Collect admins + cohort staff (exclude the poster)
           const adminUsers = await db.select({ id: users.id, email: users.email, name: users.name, displayName: users.displayName, notificationPrefs: users.notificationPrefs })
             .from(users).where(eq(users.role, "admin"));
@@ -1922,7 +1919,7 @@ export const lmsLearnerRouter = router({
             </div>
             <a href="${discussionUrl}" style="display:inline-block;background:#0d9488;color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;">View Discussion →</a>
             <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;">You can manage your notification preferences in your account settings.</p>
-          `, "aaus");
+          `);
           // Send emails
           for (const r of recipients) {
             if (r.email) {
@@ -2344,7 +2341,7 @@ export const lmsGroupRouter = router({
       signatureTitle: z.string().optional().nullable(),
       signatureImageUrl: z.string().optional().nullable(),
       footerText: z.string().optional().nullable(),
-      organizationName: z.string().default("All About Ultrasound"),
+      organizationName: z.string().default("Teachific"),
       layout: z.enum(["classic", "modern", "minimal"]).default("classic"),
       isDefault: z.boolean().default(false),
     }))

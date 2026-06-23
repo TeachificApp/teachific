@@ -33,7 +33,7 @@ export function getSessionCookieOptions(
   //   hostname !== "::1";
 
   // In production, set Domain=.teachific.app so the Manus OAuth session cookie
-  // is also shared across all subdomains (allaboutultrasound.teachific.app, etc.)
+  // is also shared across all subdomains (myorg.teachific.app, etc.)
   const hostname = req.hostname ?? "";
   const isTeachificProd =
     hostname === "teachific.app" ||

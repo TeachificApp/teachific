@@ -323,7 +323,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/upload-course-image", { method: "POST", credentials: "include", body: fd });
+      const res = await fetch("/api/media-upload", { method: "POST", credentials: "include", body: fd });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error ?? "Upload failed"); }
       const { url } = await res.json();
       setForm((prev: any) => ({ ...prev, thumbnailUrl: url }));

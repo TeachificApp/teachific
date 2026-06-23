@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  datetime,
   decimal,
   float,
   index,
@@ -11,6 +12,7 @@ import {
   mysqlTable,
   text,
   timestamp,
+  tinyint,
   varchar,
 } from "drizzle-orm/mysql-core";
 
@@ -2612,11 +2614,21 @@ export const lmsCohortSessions = mysqlTable("lms_cohort_sessions", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
   courseId: int("course_id").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  status: mysqlEnum("status", ["upcoming", "active", "completed"]).default("upcoming").notNull(),
-  maxParticipants: int("max_participants"),
+  cohortGroupId: int("cohort_group_id"),
+  title: varchar("title", { length: 255 }),
+  description: text("description"),
+  sessionDate: datetime("session_date"),
+  durationMinutes: int("duration_minutes").notNull().default(60),
+  meetingUrl: text("meeting_url"),
+  recordingUrl: text("recording_url"),
+  status: mysqlEnum("status", ["draft", "published", "cancelled"]).default("draft").notNull(),
+  timezone: varchar("timezone", { length: 100 }).notNull().default("America/New_York"),
+  recurrenceRule: mysqlEnum("recurrence_rule", ["weekly", "biweekly", "monthly"]),
+  recurrenceDaysOfWeek: varchar("recurrence_days_of_week", { length: 20 }),
+  recurrenceInterval: int("recurrence_interval"),
+  recurrenceEndDate: datetime("recurrence_end_date"),
+  recurrenceOccurrenceCount: int("recurrence_occurrence_count"),
+  parentSessionId: int("parent_session_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -2626,8 +2638,20 @@ export type InsertLmsCohortSession = typeof lmsCohortSessions.$inferInsert;
 export const lmsCohortGroups = mysqlTable("lms_cohort_groups", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  cohortSessionId: int("cohort_session_id").notNull(),
+  cohortSessionId: int("cohort_session_id"),
+  courseId: int("course_id"),
   name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }),
+  description: text("description"),
+  startDate: datetime("start_date"),
+  endDate: datetime("end_date"),
+  enrollmentCloseDate: datetime("enrollment_close_date"),
+  maxStudents: int("max_students"),
+  status: mysqlEnum("status", ["draft", "open", "active", "completed", "archived"]).notNull().default("draft"),
+  sortOrder: int("sort_order").notNull().default(0),
+  isFeaturedOnLanding: tinyint("is_featured_on_landing").notNull().default(0),
+  accessDurationDays: int("access_duration_days"),
+  pageBlocks: longtext("page_blocks"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsCohortGroup = typeof lmsCohortGroups.$inferSelect;
@@ -2638,6 +2662,9 @@ export const lmsCohortGroupEnrollments = mysqlTable("lms_cohort_group_enrollment
   orgId: int("orgId").notNull(),
   cohortGroupId: int("cohort_group_id").notNull(),
   userId: int("user_id").notNull(),
+  courseId: int("course_id"),
+  enrollmentId: int("enrollment_id"),
+  joinedAt: datetime("joined_at"),
   enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
 });
 export type LmsCohortGroupEnrollment = typeof lmsCohortGroupEnrollments.$inferSelect;
@@ -2646,10 +2673,17 @@ export type InsertLmsCohortGroupEnrollment = typeof lmsCohortGroupEnrollments.$i
 export const lmsCohortAssignments = mysqlTable("lms_cohort_assignments", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  cohortSessionId: int("cohort_session_id").notNull(),
+  cohortSessionId: int("cohort_session_id"),
+  courseId: int("course_id"),
+  cohortGroupId: int("cohort_group_id"),
   title: varchar("title", { length: 255 }).notNull(),
   description: longtext("description"),
-  dueDate: timestamp("due_date").notNull(),
+  contentBlocks: longtext("content_blocks"),
+  dueDate: datetime("due_date"),
+  maxPoints: int("max_points").notNull().default(100),
+  submissionType: mysqlEnum("submission_type", ["text", "file", "url", "none"]).notNull().default("none"),
+  status: mysqlEnum("status", ["draft", "published"]).notNull().default("draft"),
+  position: int("position").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsCohortAssignment = typeof lmsCohortAssignments.$inferSelect;
@@ -2671,10 +2705,17 @@ export type InsertLmsCohortSubmission = typeof lmsCohortSubmissions.$inferInsert
 export const lmsCohortRecordings = mysqlTable("lms_cohort_recordings", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  cohortSessionId: int("cohort_session_id").notNull(),
+  cohortSessionId: int("cohort_session_id"),
+  courseId: int("course_id"),
+  cohortGroupId: int("cohort_group_id"),
+  sessionId: int("session_id"),
   title: varchar("title", { length: 255 }).notNull(),
-  recordingUrl: text("recording_url").notNull(),
-  recordedAt: timestamp("recorded_at").notNull(),
+  description: text("description"),
+  videoUrl: text("video_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  durationSeconds: int("duration_seconds"),
+  status: mysqlEnum("status", ["draft", "published"]).notNull().default("draft"),
+  position: int("position").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsCohortRecording = typeof lmsCohortRecordings.$inferSelect;
@@ -2683,9 +2724,16 @@ export type InsertLmsCohortRecording = typeof lmsCohortRecordings.$inferInsert;
 export const lmsCohortMessages = mysqlTable("lms_cohort_messages", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  cohortSessionId: int("cohort_session_id").notNull(),
+  cohortSessionId: int("cohort_session_id"),
+  courseId: int("course_id"),
+  cohortGroupId: int("cohort_group_id"),
   userId: int("user_id").notNull(),
-  message: longtext("message").notNull(),
+  body: longtext("body"),
+  mediaUrls: longtext("media_urls"),
+  isAdminPost: tinyint("is_admin_post").notNull().default(0),
+  isPinned: tinyint("is_pinned").notNull().default(0),
+  updatedAt: datetime("updated_at"),
+  deletedAt: datetime("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsCohortMessage = typeof lmsCohortMessages.$inferSelect;
@@ -2694,9 +2742,15 @@ export type InsertLmsCohortMessage = typeof lmsCohortMessages.$inferInsert;
 export const lmsCohortStaff = mysqlTable("lms_cohort_staff", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  cohortSessionId: int("cohort_session_id").notNull(),
+  cohortSessionId: int("cohort_session_id"),
+  courseId: int("course_id"),
+  cohortGroupId: int("cohort_group_id"),
   userId: int("user_id").notNull(),
   role: mysqlEnum("role", ["instructor", "ta", "facilitator"]).default("instructor").notNull(),
+  canAddAssignments: tinyint("can_add_assignments").notNull().default(0),
+  canAddRecordings: tinyint("can_add_recordings").notNull().default(0),
+  canAddSessions: tinyint("can_add_sessions").notNull().default(0),
+  canManageDiscussions: tinyint("can_manage_discussions").notNull().default(0),
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
 });
 export type LmsCohortStaff = typeof lmsCohortStaff.$inferSelect;
@@ -4297,4 +4351,18 @@ export const courseResources = mysqlTable("course_resources", {
   resourceType: varchar("resource_type", { length: 50 }).default("file"),
   sortOrder: int("sort_order").default(0),
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+});
+
+// ─── Org Site Builder ────────────────────────────────────────────────────────
+export const orgSitePages = mysqlTable("org_site_pages", {
+  id: int("id").primaryKey().autoincrement(),
+  orgId: int("org_id").notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().default("home"),
+  title: varchar("title", { length: 255 }).notNull().default("Home"),
+  blocks: json("blocks").notNull().$default(() => []),
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  publishedAt: bigint("published_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
 });

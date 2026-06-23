@@ -67,7 +67,7 @@ function stripDashBullet(text: string): string {
 /**
  * Split a flat string that has checkmarks embedded mid-string (no newlines).
  * ClickFunnels pages often produce text like:
- *   "✔ Built for general sonographers✔ Live, structured✔ Learn vascular"
+ *   "✔ Built for general educators✔ Live, structured✔ Learn vascular"
  * because <br> tags get stripped and zero-width spaces collapse.
  */
 function splitOnInlineCheckmarks(text: string): Array<{ text: string; crossed: boolean }> | null {

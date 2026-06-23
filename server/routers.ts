@@ -379,6 +379,26 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    // Upload a media file (image/video) from a base64 data URI for use in page builders
+    uploadPageMedia: protectedProcedure
+      .input(z.object({
+        dataUri: z.string().min(1),
+        mimeType: z.string().min(1),
+        fileName: z.string().optional(),
+        context: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const matches = input.dataUri.match(/^data:([^;]+);base64,(.+)$/);
+        if (!matches) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid data URI" });
+        const [, mime, b64] = matches;
+        const buffer = Buffer.from(b64, "base64");
+        if (buffer.length > 50 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "File too large (max 50 MB)" });
+        const ext = mime.split("/")[1]?.replace("jpeg", "jpg") ?? "bin";
+        const suffix = Math.random().toString(36).slice(2, 8);
+        const key = `page-media/user-${ctx.user.id}/${Date.now()}-${suffix}.${ext}`;
+        const { url } = await storagePut(key, buffer, mime);
+        return { url };
+      }),
   }),
 
   // ── Resolved Branding (public) ─────────────────────────────────────────────

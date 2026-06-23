@@ -149,7 +149,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     } },
   { type: "ticker", label: "Running Ticker / Marquee", icon: <Radio size={14} />, category: "Content",
     defaultData: {
-      items: ["Welcome to All About Ultrasound!", "New courses available now!", "Expand your clinical skills today!"],
+      items: ["Welcome to Teachific!", "New courses available now!", "Expand your clinical skills today!"],
       separator: "•",
       direction: "left", speed: 40,
       pauseOnHover: true,
@@ -164,7 +164,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     defaultData: { headline: "Course Modules", cards: [{ front: "Module 1", back: "Description of module 1 content" }, { front: "Module 2", back: "Description of module 2 content" }], accentColor: "#179ca3", bgColor: "#f8fffe" } },
   // ── Conversion
   { type: "pricing_cta", label: "Pricing / Enroll CTA", icon: <CreditCard size={14} />, category: "Conversion",
-    defaultData: { headline: "Ready to Get Started?", subtext: "Join thousands of sonographers improving their skills.", ctaText: "Enroll Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true, originalPrice: "", showOriginalPrice: false,
+    defaultData: { headline: "Ready to Get Started?", subtext: "Join thousands of educators improving their skills.", ctaText: "Enroll Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true, originalPrice: "", showOriginalPrice: false,
       optOutEnabled: false, optOutText: "No thanks, I don't want this offer", optOutLinkType: "custom", optOutCourseId: null, optOutDownloadId: null, optOutCustomUrl: "" } },
   { type: "cta_standalone", label: "Call to Action", icon: <CheckSquare size={14} />, category: "Conversion",
     defaultData: { headline: "Start Learning Today", subtext: "", ctaText: "Get Started", ctaLink: "", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#f0fafa", align: "center",
@@ -245,7 +245,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       successRedirect: "",
       termsText: "I attest that I meet the pre-requisites for this course and I agree to the",
       termsLinkText: "TERMS OF SERVICE",
-      termsLinkUrl: "https://www.allaboutultrasound.com/terms-of-service.html",
+      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
       sourceType: "landing_page",
     } },
   { type: "embedded_checkout", label: "Embedded Checkout (Legacy)", icon: <CreditCard size={14} />, category: "Funnel",
@@ -268,7 +268,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       successMessage: "Thank you for your purchase! You'll receive a confirmation email shortly.",
       termsText: "",
       termsLinkText: "Terms of Service",
-      termsLinkUrl: "https://www.allaboutultrasound.com/terms-of-service.html",
+      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
     } },
   { type: "checkout_form", label: "Checkout Form (Legacy)", icon: <CreditCard size={14} />, category: "Funnel",
     defaultData: {
@@ -289,7 +289,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       ],
       termsText: "I attest that I meet the pre-requisites for this course and I agree to the",
       termsLinkText: "TERMS OF SERVICE",
-      termsLinkUrl: "https://www.allaboutultrasound.com/terms-of-service.html",
+      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
       submitText: "Submit",
       submitIcon: "none",
       successRedirect: "",
@@ -300,8 +300,8 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
   { type: "footer", label: "Footer", icon: <Columns size={14} />, category: "Layout",
     defaultData: {
       bgColor: "#0e1e2e", textColor: "#ffffff", align: "center",
-      copyrightText: `© ${new Date().getFullYear()} All About Ultrasound. All rights reserved.`,
-      links: [{ text: "Privacy Policy", url: "https://www.allaboutultrasound.com/privacy-policy.html" }, { text: "Terms of Service", url: "https://www.allaboutultrasound.com/terms-of-service.html" }, { text: "Contact", url: "https://www.allaboutultrasound.com/contact.html" }],
+      copyrightText: `© ${new Date().getFullYear()} Teachific. All rights reserved.`,
+      links: [{ text: "Privacy Policy", url: "https://www.teachific.com/privacy-policy.html" }, { text: "Terms of Service", url: "https://www.teachific.com/terms-of-service.html" }, { text: "Contact", url: "https://www.teachific.com/contact.html" }],
       showSocial: true, socialLinks: { facebook: "", instagram: "", youtube: "", linkedin: "" },
       logoUrl: "", logoMaxWidth: "120px",
     } },
@@ -1780,7 +1780,7 @@ function AdditionalAccessEditor({
   };
 
   const addMembership = (brand: string) => {
-    const label = brand === "aaus" ? "All About Ultrasound™ Membership" : brand === "iheartecho" ? "iHeartEcho™ Membership" : "All Memberships";
+    const label = brand === "teachific" ? "Teachific™ Membership" : brand === "teachific" ? "Teachific™ Membership" : "All Memberships";
     onSet("additionalAccess", [...items, { type: "membership", brand, label }]);
   };
 
@@ -1835,10 +1835,10 @@ function AdditionalAccessEditor({
       {/* Membership quick-add */}
       <div className="flex flex-wrap gap-1">
         <span className="text-xs text-gray-400">+ Membership:</span>
-        {(["aaus", "iheartecho", "both"] as const).map(b => (
+        {(["teachific", "both"] as const).map(b => (
           <button key={b} onClick={() => addMembership(b)}
             className="text-xs px-2 py-0.5 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 transition-colors">
-            {b === "aaus" ? "All About Ultrasound™" : b === "iheartecho" ? "iHeartEcho™" : "Both"}
+            {b === "teachific" ? "Teachific™" : b === "both" ? "Both" : "Teachific™"}
           </button>
         ))}
       </div>
@@ -1995,7 +1995,7 @@ function CheckoutFormBlockSettings({
       <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" multiline />
       <div className="grid grid-cols-2 gap-2">
         <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="TERMS OF SERVICE" />
-        <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.allaboutultrasound.com/terms-of-service.html" />
+        <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
       </div>
       <BSTextField data={d} onSet={set} label="Submit Button Text" field="submitText" placeholder="Submit" />
       <BSSelectField data={d} onSet={set} label="Submit Button Icon" field="submitIcon" options={SUBMIT_ICON_OPTIONS} />
@@ -3603,7 +3603,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" placeholder="I agree to the" />
             <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="Terms of Service" />
           </div>
-          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.allaboutultrasound.com/terms-of-service.html" />
+          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
           {/* Colors */}
           <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
           <BSColorField data={d} onSet={set} label="Background" field="bgColor" />
@@ -3722,7 +3722,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" placeholder="I agree to the" />
             <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="Terms of Service" />
           </div>
-          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.allaboutultrasound.com/terms-of-service.html" />
+          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
           {/* Colors */}
           <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
           <BSColorField data={d} onSet={set} label="Background" field="bgColor" />
@@ -5304,7 +5304,7 @@ export default function LandingPageBuilder() {
       setBlocks([
         { id: uid(), type: "hero", data: { headline: lpData.heroTitle || lpData.courseTitle || "Your Course Title", subheadline: lpData.heroSubtitle || "", bgType: "color", bgColor: "#179ca3", textColor: "#ffffff", align: "left", buttons: [{ text: lpData.ctaText || "Enroll Now", color: "#ffffff", textColor: "#179ca3", link: "", style: "filled" }] } },
         { id: uid(), type: "bullets", data: { headline: "What You'll Learn", items: ["Key skill or concept one", "Key skill or concept two", "Key skill or concept three"], iconColor: "#179ca3", bgColor: "#f8fffe" } },
-        { id: uid(), type: "pricing_cta", data: { headline: "Ready to Get Started?", subtext: "Join thousands of sonographers improving their skills.", ctaText: lpData.ctaText || "Enroll Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true } },
+        { id: uid(), type: "pricing_cta", data: { headline: "Ready to Get Started?", subtext: "Join thousands of educators improving their skills.", ctaText: lpData.ctaText || "Enroll Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true } },
       ]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5679,7 +5679,7 @@ export default function LandingPageBuilder() {
             <Bookmark size={14} /> Save as Template
           </button>
           {courseInfo?.slug && (
-            <a href={`https://learn.allaboutultrasound.com/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+            <a href={`https://learn.teachific.com/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
               <Eye size={14} /> Preview
             </a>
           )}
@@ -5907,7 +5907,7 @@ export default function LandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || courseInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'learn.allaboutultrasound.com'}</p>
+                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'learn.teachific.com'}</p>
                     </div>
                   </div>
                 )}
@@ -6887,7 +6887,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       <div className="border border-gray-100 rounded p-2 space-y-2">
         <p className="text-xs font-semibold text-gray-600 mb-1">Player Theme</p>
         <BSColorField data={d} onSet={set} label="Accent Color (play button &amp; progress bar)" field="accentColor" />
-        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to AAUS teal (#189aa1).</p>
+        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to Teachific teal (#189aa1).</p>
       </div>
     </div>
   );

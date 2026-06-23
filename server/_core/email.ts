@@ -56,7 +56,7 @@ interface SendEmailOptions {
   subject: string;
   htmlBody: string;
   previewText?: string;
-  /** Brand mode for sender override. Defaults to "aaus" if not provided. */
+  /** Brand mode for sender override (kept for backward compatibility). */
   brandMode?: BrandMode;
   /** Override sender name (campaign sender profiles) */
   fromName?: string;
@@ -68,7 +68,7 @@ interface SendEmailOptions {
 
 export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
   const apiKey = process.env.SENDGRID_API_KEY;
-  const brandConfig = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const brandConfig = getBrandDisplayConfig();
   // Use brand-specific sender, but allow env override for verified domain constraints
   const senderEmail = process.env.SENDGRID_FROM_EMAIL || brandConfig.senderEmail;
   const senderName = brandConfig.senderName;
@@ -121,7 +121,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
       return false;
     }
 
-    console.log(`[email] Sent "${opts.subject}" to ${opts.to.email} [brand=${opts.brandMode || "aaus"}]`);
+    console.log(`[email] Sent "${opts.subject}" to ${opts.to.email} [brand=teachific]`);
     _logEmailSend(opts.to, opts.subject, "sent").catch(() => {});
     return true;
   } catch (err) {
@@ -138,8 +138,8 @@ const brandDark = "#0e1e2e";
 
 /** Brand-aware email wrapper. Pass brandMode to customize header/footer. */
 export function emailWrapper(content: string, brandMode?: BrandMode): string {
-  const bc = getBrandDisplayConfig(brandMode || "aaus");
-  // For combined mode, show only the AAUS logo (covers both brands)
+  const bc = getBrandDisplayConfig();
+  // Show platform logo
   const logoHtml = `<img src="${bc.logoUrl}" alt="${bc.displayName}" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 12px;" />`;
 
   return `<!DOCTYPE html>
@@ -240,7 +240,7 @@ export function buildVerificationEmail(opts: {
   verificationUrl: string;
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Verify your ${bc.displayName} account`;
   const previewText = `Click to verify your email and activate your ${bc.displayName} account`;
   const htmlBody = emailWrapper(`
@@ -272,7 +272,7 @@ export function buildPasswordResetEmail(opts: {
   resetUrl: string;
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Reset your ${bc.displayName} password`;
   const previewText = "Click to reset your password \u2014 link expires in 1 hour";
   const htmlBody = emailWrapper(`
@@ -305,7 +305,7 @@ export function buildEmailChangeVerificationEmail(opts: {
   verificationUrl: string;
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Confirm your new email address \u2014 ${bc.displayName}`;
   const previewText = `Click to confirm your new email address for ${bc.displayName}`;
   const htmlBody = emailWrapper(`
@@ -342,7 +342,7 @@ export function buildMagicLinkEmail(opts: {
   magicUrl: string;
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Your ${bc.displayName} sign-in link`;
   const previewText = `Click to sign in to ${bc.displayName} \u2014 link expires in 15 minutes`;
   const htmlBody = emailWrapper(`
@@ -380,7 +380,7 @@ export function buildNewCaseSubmissionAdminEmail(opts: {
   adminUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
   const subject = `New case submission pending review — "${opts.caseTitle}"`;
-  const previewText = `${opts.submitterName} submitted a new ultrasound case for your review: "${opts.caseTitle}"`;
+  const previewText = `${opts.submitterName} submitted a new learning case for your review: "${opts.caseTitle}"`;
   const difficultyLabel: Record<string, string> = {
     beginner: "Beginner",
     intermediate: "Intermediate",
@@ -391,7 +391,7 @@ export function buildNewCaseSubmissionAdminEmail(opts: {
       New Case Submission Awaiting Review
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      A user has submitted a new ultrasound case to the All About Ultrasound™ Ultrasound Case Library.
+      A user has submitted a new learning case to the Teaching & Learning Library.
       Please review it and approve or reject it from the Case Management panel.
     </p>
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:16px;border-radius:0 8px 8px 0;margin:0 0 24px;">
@@ -421,7 +421,7 @@ export function buildNewCaseSubmissionAdminEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
-      This is an automated notification from All About Ultrasound™. The submitter has acknowledged the HIPAA/PHI policy.
+      This is an automated notification from Teachific™. The submitter has acknowledged the HIPAA/PHI policy.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -432,22 +432,22 @@ export function buildCaseApprovedEmail(opts: {
   caseTitle: string;
   caseUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = `Your ultrasound case has been approved — "${opts.caseTitle}"`;
-  const previewText = "Great news! Your submitted ultrasound case has been approved and is now live in the Ultrasound Case Library.";
+  const subject = `Your learning case has been approved — "${opts.caseTitle}"`;
+  const previewText = "Great news! Your submitted learning case has been approved and is now live in the Case Library.";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
       Your Case Has Been Approved! 🎉
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Hi ${opts.firstName}, great news — your submitted ultrasound case has been reviewed and <strong style="color:#16a34a;">approved</strong>.
-      It is now live in the All About Ultrasound™ Ultrasound Case Library and available to the community.
+      Hi ${opts.firstName}, great news — your submitted learning case has been reviewed and <strong style="color:#16a34a;">approved</strong>.
+      It is now live in the Teaching & Learning Library and available to the community.
     </p>
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
       <p style="margin:0;font-size:14px;font-weight:700;color:${brandDark};">${opts.caseTitle}</p>
-      <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Now live in the Ultrasound Case Library</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Now live in the Case Library</p>
     </div>
     <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">
-      Thank you for contributing to the All About Ultrasound™ learning community. Your case will help sonographers, physicians, and ultrasound learners sharpen their clinical scanning skills.
+      Thank you for contributing to the Teachific™ learning community. Your case will help educators, physicians, and learners sharpen their clinical scanning skills.
     </p>
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.caseUrl}"
@@ -468,14 +468,14 @@ export function buildCaseRejectedEmail(opts: {
   reason: string;
   submitUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = `Update on your submitted ultrasound case — "${opts.caseTitle}"`;
-  const previewText = "Your submitted ultrasound case requires some changes before it can be published.";
+  const subject = `Update on your submitted learning case — "${opts.caseTitle}"`;
+  const previewText = "Your submitted learning case requires some changes before it can be published.";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
       Case Submission Update
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Hi ${opts.firstName}, thank you for submitting a case to the All About Ultrasound™ Ultrasound Case Library.
+      Hi ${opts.firstName}, thank you for submitting a case to the Teaching & Learning Library.
       After review, our team was unable to approve the following submission at this time:
     </p>
     <div style="background:#fef2f2;border-left:3px solid #ef4444;padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
@@ -499,7 +499,7 @@ export function buildCaseRejectedEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       If you have questions about this decision, please contact us at
-      <a href="mailto:support@allaboutultrasound.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@allaboutultrasound.com</a>.
+      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -511,7 +511,7 @@ export function buildWelcomeEmail(opts: {
   roles: string[];
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Your ${bc.displayName} account is ready`;
   const previewText = `Your account has been set up — sign in to get started`;
   const roleLabels: Record<string, string> = {
@@ -574,7 +574,7 @@ export function buildPhysicianOverReadInvitationEmail(opts: {
       Dear ${opts.physicianName},
     </p>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      <strong>${opts.labName}</strong> has requested your independent blind over-read for the following ultrasound study:
+      <strong>${opts.labName}</strong> has requested your independent blind over-read for the following clinical study:
     </p>
     <div style="background:#f0fbfc;border:1px solid #b2e8eb;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
@@ -669,7 +669,7 @@ export function buildOverReadCompletedEmail(opts: {
 
 // ─── Sonographer Peer Review Feedback Email ───────────────────────────────────
 export function buildPeerReviewFeedbackEmail(opts: {
-  sonographerName: string;
+  educatorName: string;
   reviewerName: string;
   examType: string;
   examDate: string;
@@ -707,7 +707,7 @@ export function buildPeerReviewFeedbackEmail(opts: {
       Peer Review Feedback
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Hi ${opts.sonographerName}, a peer review has been completed for one of your studies.
+      Hi ${opts.educatorName}, a peer review has been completed for one of your studies.
     </p>
     <div style="background:#f0fbfc;border:1px solid #b2e8eb;border-radius:8px;padding:16px 20px;margin:0 0 20px;">
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
@@ -738,7 +738,7 @@ export function buildPeerReviewFeedbackEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center;">
-      This is an automated notification from All About Ultrasound™ DIY Accreditation Tool.
+      This is an automated notification from Teachific™ Accreditation Tool.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -843,62 +843,62 @@ export function buildMeetingInvitationEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center;">
-      This invitation was sent from the All About Ultrasound™ DIY Accreditation Tool.<br/>
-      You can also manage your RSVP by logging in to <a href="${opts.appUrl}" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">All About Ultrasound™</a>.
+      This invitation was sent from the Teachific™ Accreditation Tool.<br/>
+      You can also manage your RSVP by logging in to <a href="${opts.appUrl}" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">Teachific™</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
 
 }
-// UltrasoundAssist Free Membership Welcome Email
-export function buildUltrasoundAssistFreeWelcomeEmail(opts: {
+// Platform Free Membership Welcome Email
+export function buildPlatformFreeWelcomeEmail(opts: {
   firstName: string;
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = "Welcome to UltrasoundAssist - Your Free Account is Ready";
-  const previewText = "Your free UltrasoundAssist account is ready - sign in to get started";
+  const subject = "Welcome to Teachific™ - Your Free Account is Ready";
+  const previewText = "Your free Teachific™ account is ready - sign in to get started";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
-      Welcome to UltrasoundAssist, ${opts.firstName}!
+      Welcome to Teachific™, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Your free UltrasoundAssist account has been created. You now have access to our guideline-driven clinical tools, including the <strong>ACR TI-RADS Thyroid</strong> assessment tool and more.
+      Your free Teachific™ account has been created. You now have access to our learning tools and course catalog.
     </p>
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
       <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${brandColor};">Your free access includes:</p>
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#475569;">
         <li style="margin:4px 0;">ACR TI-RADS Thyroid Nodule Assessment</li>
         <li style="margin:4px 0;">Daily Challenge - Thyroid category</li>
-        <li style="margin:4px 0;">Access to the All About Ultrasound community</li>
+        <li style="margin:4px 0;">Access to the Teachific™ learning community</li>
       </ul>
     </div>
     <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-      Upgrade to <strong>Premium</strong> to unlock all 9 Clinical Intelligence tools, unlimited Daily Challenge categories, Ultrasound Flashcards, Case Library, and more.
+      Upgrade to <strong>Premium</strong> to unlock all courses, unlimited content, and advanced coaching tools.
     </p>
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.loginUrl}"
         style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
-        Sign In to UltrasoundAssist
+        Sign In to Teachific™
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@allaboutultrasound.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@allaboutultrasound.com</a>.
+      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
 }
 
-// UltrasoundAssist Premium Membership Welcome Email
-export function buildUltrasoundAssistPremiumWelcomeEmail(opts: {
+// Platform Premium Membership Welcome Email
+export function buildPlatformPremiumWelcomeEmail(opts: {
   firstName: string;
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = "Welcome to UltrasoundAssist Premium - Full Access Unlocked";
-  const previewText = "Your UltrasoundAssist Premium account is ready - full clinical intelligence access awaits";
+  const subject = "Welcome to Teachific™ Premium - Full Access Unlocked";
+  const previewText = "Your Teachific™ Premium account is ready - full access awaits";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
-      Welcome to UltrasoundAssist Premium, ${opts.firstName}!
+      Welcome to Teachific™ Premium, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
       Your premium membership is now active. You have full access to every clinical intelligence tool, learning resource, and feature on the platform.
@@ -908,21 +908,21 @@ export function buildUltrasoundAssistPremiumWelcomeEmail(opts: {
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#475569;">
         <li style="margin:4px 0;">All 9 Clinical Intelligence tools (TI-RADS, LI-RADS, BI-RADS, O-RADS, Vascular, Renal, MSK, OB/Gyn, POCUS)</li>
         <li style="margin:4px 0;">Daily Challenge - all 11 specialty categories</li>
-        <li style="margin:4px 0;">Unlimited Ultrasound Flashcards</li>
+        <li style="margin:4px 0;">Unlimited course content</li>
         <li style="margin:4px 0;">Full Case Library (500+ cases)</li>
         <li style="margin:4px 0;">SoundBytes clinical audio library</li>
-        <li style="margin:4px 0;">UltrasoundAssist AI-powered scan coach</li>
+        <li style="margin:4px 0;">AI-powered coaching tools</li>
       </ul>
     </div>
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.loginUrl}"
         style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
-        Open UltrasoundAssist
+        Open Teachific™
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@allaboutultrasound.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@allaboutultrasound.com</a>.
+      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -940,7 +940,7 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
   loginUrl: string;
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Your purchase is confirmed — ${opts.productName}`;
   const previewText = `Thank you for your purchase! Your access to ${opts.productName} is now active.`;
   const totalCents = opts.amountPaid;
@@ -991,7 +991,7 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@allaboutultrasound.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@allaboutultrasound.com</a>.
+      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -1024,7 +1024,7 @@ export function buildPaymentFailedEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@allaboutultrasound.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@allaboutultrasound.com</a>.
+      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -1038,7 +1038,7 @@ export function buildFreePreviewConfirmationEmail(opts: {
   accessExpiresAt: Date;
   brandMode?: BrandMode;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const bc = getBrandDisplayConfig(opts.brandMode || "aaus");
+  const bc = getBrandDisplayConfig();
   const subject = `Your free preview access to "${opts.courseTitle}" is ready`;
   const previewText = `You're registered for a free preview of ${opts.courseTitle}. Click to start watching.`;
   const expiryStr = opts.accessExpiresAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });

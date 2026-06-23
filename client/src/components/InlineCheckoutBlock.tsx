@@ -60,8 +60,8 @@ export interface AdditionalAccessItem {
   type: "course" | "download" | "physical" | "membership";
   /** DB product/course ID (for course/download/physical) */
   productId?: number;
-  /** Brand slug for membership grants: "aaus" | "iheartecho" | "both" */
-  brand?: "aaus" | "iheartecho" | "both";
+  /** Brand slug for membership grants: "teachific" | "both" */
+  brand?: "teachific" | "both";
 }
 
 export interface InlineCheckoutBlockData {
@@ -96,7 +96,7 @@ export interface InlineCheckoutBlockData {
   additionalAccess?: AdditionalAccessItem[];
   // Legacy single-item fulfillment fields (deprecated — use additionalAccess)
   lmsCourseId?: number;
-  fulfillmentBrand?: "aaus" | "iheartecho" | "both";
+  fulfillmentBrand?: "teachific" | "both";
 }
 
 // ─── Submit icon renderer ────────────────────────────────────────────────────

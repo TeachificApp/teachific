@@ -54,10 +54,10 @@ export async function generateCertificatePdf(opts: CertificateOptions): Promise<
   const GOLD = tmpl.accentColor || "#c9a84c";
   const DARK = tmpl.textColor || "#0e1e2e";
   const LIGHT_BG = "#f0fbfc";
-  const orgName = tmpl.organizationName || "All About Ultrasound™";
+  const orgName = tmpl.organizationName || "Teachific™";
   const sigName = tmpl.signatureName || "Lara Williams, RVT, RDMS";
   const sigTitle = tmpl.signatureTitle || `Founder, ${orgName}`;
-  const footerText = tmpl.footerText || `www.allaboutultrasound.com  ·  © ${orgName}`;
+  const footerText = tmpl.footerText || `www.teachific.com  ·  © ${orgName}`;
   const layout = tmpl.layout || "classic";
 
   // Pre-fetch images if provided

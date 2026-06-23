@@ -1,12 +1,12 @@
 /**
  * lmsEnrollmentAdminRouter.ts
- * All About Ultrasound™ LMS — Enrollments, Groups, Analytics, Orders (admin)
+ * Teachific™ LMS — Enrollments, Groups, Analytics, Orders (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * All About Ultrasound™ LMS — LMS Management
+ * Teachific™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -782,7 +782,7 @@ export const lmsEnrollmentAdminRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
 
-      const systemPrompt = `You are an expert medical education curriculum designer specializing in ultrasound and echocardiography for All About Ultrasound™ and iHeartEcho™.
+      const systemPrompt = `You are an expert medical education curriculum designer specializing in ultrasound and echocardiography for Teachific™ and Teachific™.
 You create structured, clinically accurate, and pedagogically sound course content.
 Always use United States English spelling.
 Return ONLY valid JSON — no markdown, no code fences, no extra text.

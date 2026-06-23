@@ -1,12 +1,12 @@
 /**
  * lmsCohortAdminRouter.ts
- * All About Ultrasound™ LMS — Cohort Sessions, Assignments, Recordings (admin)
+ * Teachific™ LMS — Cohort Sessions, Assignments, Recordings (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * All About Ultrasound™ LMS — LMS Management
+ * Teachific™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -167,8 +167,8 @@ export const lmsCohortAdminRouter = router({
                   ${input.meetingUrl ? `<tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Join Link</td><td style="padding:8px 12px;border:1px solid #d1fae5;"><a href="${input.meetingUrl}" style="color:#0d9488;">Click to join</a></td></tr>` : ""}
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                <p><a href="https://members.allaboutultrasound.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>
-                <p style="color:#94a3b8;font-size:12px;">All About Ultrasound™</p>
+                <p><a href="https://members.teachific.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>
+                <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
               </div>`,
             });
           }
@@ -294,8 +294,8 @@ export const lmsCohortAdminRouter = router({
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Submission</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${input.submissionType}</td></tr>
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                <p><a href="https://members.allaboutultrasound.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>
-                <p style="color:#94a3b8;font-size:12px;">All About Ultrasound™</p>
+                <p><a href="https://members.teachific.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>
+                <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
               </div>`,
             });
           }
@@ -621,7 +621,7 @@ export const lmsCohortAdminRouter = router({
         const end = new Date(start.getTime() + (s.durationMinutes ?? 60) * 60 * 1000);
         lines.push(
           "BEGIN:VEVENT",
-          `UID:cohort-session-${s.id}@allaboutultrasound.com`,
+          `UID:cohort-session-${s.id}@teachific.com`,
           `DTSTAMP:${formatIcsDate(new Date())}`,
           `DTSTART:${formatIcsDate(start)}`,
           `DTEND:${formatIcsDate(end)}`,
@@ -819,8 +819,10 @@ export const lmsCohortAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, name, slug, description, startDate, endDate, enrollmentCloseDate, maxStudents, status, sortOrder } = input;
+      const orgId = await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organisation found for user" });
       const [result] = await db.insert(lmsCohortGroups).values({
-        courseId, name, slug, description,
+        orgId, courseId, name, slug, description,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
         enrollmentCloseDate: enrollmentCloseDate ? new Date(enrollmentCloseDate) : undefined,

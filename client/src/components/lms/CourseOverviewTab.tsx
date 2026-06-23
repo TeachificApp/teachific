@@ -241,7 +241,7 @@ export default function CourseOverviewTab({ course, onSave }: Props) {
           <Textarea
             value={instructorBio}
             onChange={(e) => setInstructorBio(e.target.value)}
-            placeholder="e.g. Lara Williams is a registered sonographer with 15+ years of clinical experience..."
+            placeholder="e.g. Lara Williams is a registered educator with 15+ years of clinical experience..."
             rows={5}
             className="text-sm resize-none"
           />

@@ -14,7 +14,7 @@ function emailWrapper(content: string): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Certificate of Completion — All About Ultrasound™</title>
+  <title>Certificate of Completion — Teachific™</title>
 </head>
 <body style="margin:0;padding:0;background:#f0fbfc;font-family:Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fbfc;padding:32px 16px;">
@@ -24,9 +24,9 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="background:linear-gradient(135deg,${brandDark} 0%,#0e4a50 60%,${brandColor} 100%);padding:28px 32px;text-align:center;">
               <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp"
-                alt="All About Ultrasound™" width="80" height="80"
+                alt="Teachific™" width="80" height="80"
                 style="border-radius:50%;display:block;margin:0 auto 12px;" />
-              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">All About Ultrasound™</div>
+              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Teachific™</div>
               <div style="font-size:12px;color:#4ad9e0;margin-top:4px;">General & Vascular Ultrasound Clinical Intelligence</div>
             </td>
           </tr>
@@ -38,7 +38,7 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="background:#f8fffe;border-top:1px solid #e5f7f8;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                © All About Ultrasound™ · <a href="https://www.allaboutultrasound.com" style="color:${brandColor};text-decoration:none;">www.allaboutultrasound.com</a>
+                © Teachific™ · <a href="https://www.teachific.com" style="color:${brandColor};text-decoration:none;">www.teachific.com</a>
               </p>
             </td>
           </tr>
@@ -58,8 +58,8 @@ export async function sendCertificateEmail(opts: {
   issuedAt: Date;
 }): Promise<boolean> {
   const apiKey = process.env.SENDGRID_API_KEY;
-  const senderEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@allaboutultrasound.com";
-  const senderName = process.env.SENDGRID_FROM_NAME || "All About Ultrasound™";
+  const senderEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@teachific.com";
+  const senderName = process.env.SENDGRID_FROM_NAME || "Teachific™";
 
   if (!apiKey) {
     console.warn("[certificate-email] SENDGRID_API_KEY not set — skipping email");

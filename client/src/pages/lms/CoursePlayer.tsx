@@ -3,7 +3,7 @@
  * Enrolled learner's course player — lesson viewer, quiz runner, progress tracking.
  * Route: /courses/:slug/player
  * Design: Dark teal/navy sidebar with numbered modules, video area, "In This Lesson" panel,
- *         progress bar, Mark Complete button (bottom-right). Matches the All About Ultrasound mockup.
+ *         progress bar, Mark Complete button (bottom-right). Matches the Teachific mockup.
  * Admin extras: WYSIWYG lesson content block editor + student preview toggle.
  */
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
@@ -1243,7 +1243,7 @@ export default function CoursePlayer() {
           </button>
           {LOGO
             ? <img src={LOGO} alt="Logo" className="h-7 sm:h-8 w-auto flex-shrink-0" />
-            : <span className="font-bold text-sm sm:text-base truncate" style={{ color: primaryColor }}>All About Ultrasound</span>
+            : <span className="font-bold text-sm sm:text-base truncate" style={{ color: primaryColor }}>Teachific</span>
           }
         </div>
         <div className="flex items-center gap-2 sm:gap-5 flex-shrink-0">

@@ -132,7 +132,7 @@ interface LandingBlock {
 /**
  * Scrapes the Thinkific sales/landing page for a course.
  * The page is rendered at: https://{subdomain}.thinkific.com/courses/{slug}
- * which redirects to: https://member.allaboutultrasound.com/courses/{slug}
+ * which redirects to: https://member.teachific.com/courses/{slug}
  *
  * Extracts: title, description, pricing, curriculum, images, and FAQ.
  */
@@ -445,7 +445,7 @@ export const thinkificImportRouter = router({
       thinkificCourseId: z.number(),
       importEnrollments: z.boolean().default(true),
       scrapeSalesPage: z.boolean().default(true),
-      customDomain: z.string().optional(), // custom domain for sales page scraping (e.g., member.allaboutultrasound.com)
+      customDomain: z.string().optional(), // custom domain for sales page scraping (e.g., member.teachific.com)
       courseType: z.enum(["course", "quiz", "download"]).default("course"),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -517,7 +517,7 @@ export const thinkificImportRouter = router({
           coverImageUrl: course.course_card_image_url || undefined,
           status: "draft",
           type: input.courseType,
-          brand: "aaus",
+          brand: "teachific",
           price: coursePrice,
           isFree,
           pricingType: isFree ? "free" : "one_time",
@@ -1424,7 +1424,7 @@ export const thinkificImportRouter = router({
       let playerResult: unknown = null;
       try {
         const { ENV } = await import("../_core/env");
-        const memberDomain = "member.allaboutultrasound.com";
+        const memberDomain = "member.teachific.com";
         const subdomain = ENV.thinkificSubdomain;
         const { getThinkificAdminSession } = await import("../thinkific");
         const sessionCookie = await getThinkificAdminSession();

@@ -922,7 +922,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         title: ["Advanced Vascular Ultrasound", "Fetal Echo Essentials", "POCUS Fundamentals"][i] ?? `Product ${i + 1}`,
         type: i % 2 === 0 ? "Course" : "Digital Download",
         price: i === 0 ? "$149" : i === 1 ? "$79" : "Free",
-        description: "Comprehensive training resource for sonographers and clinicians.",
+        description: "Comprehensive training resource for educators and clinicians.",
       }));
       return (
         <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>

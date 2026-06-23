@@ -16,10 +16,10 @@ const brandDark = "#0e4a50";
 // as the learning platform. Falls back to the platform-wide SENDGRID_FROM_EMAIL.
 const LMS_FROM_EMAIL = process.env.LMS_FROM_EMAIL
   || process.env.SENDGRID_FROM_EMAIL
-  || "learn@allaboutultrasound.com";
+  || "learn@teachific.com";
 const LMS_FROM_NAME = process.env.LMS_FROM_NAME
   || process.env.SENDGRID_FROM_NAME
-  || "All About Ultrasound™ Learning";
+  || "Teachific™ Learning";
 
 export type ContentType = "course" | "download" | "bundle" | "quiz";
 
@@ -32,7 +32,7 @@ function buildAccessUrl(destination: string, accessToken?: string | null): strin
   if (!accessToken) return destination;
   const encoded = encodeURIComponent(destination);
   // Use learn subdomain for LMS auto-login so the session cookie is scoped correctly
-  return `https://learn.allaboutultrasound.com/auth/access?token=${accessToken}&next=${encoded}`;
+  return `https://learn.teachific.com/auth/access?token=${accessToken}&next=${encoded}`;
 }
 
 function emailWrapper(content: string): string {
@@ -51,9 +51,9 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="background:linear-gradient(135deg,#0e4a50 0%,#0e4a50 60%,${brandColor} 100%);padding:28px 32px;text-align:center;">
               <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp"
-                alt="All About Ultrasound™" width="80" height="80"
+                alt="Teachific™" width="80" height="80"
                 style="border-radius:50%;display:block;margin:0 auto 12px;" />
-              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">All About Ultrasound™</div>
+              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Teachific™</div>
               <div style="font-size:12px;color:#4ad9e0;margin-top:4px;">General &amp; Vascular Ultrasound Clinical Intelligence</div>
             </td>
           </tr>
@@ -65,7 +65,7 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="background:#f8fffe;border-top:1px solid #e5f7f8;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                © All About Ultrasound™ · <a href="https://www.allaboutultrasound.com" style="color:${brandColor};text-decoration:none;">www.allaboutultrasound.com</a>
+                © Teachific™ · <a href="https://www.teachific.com" style="color:${brandColor};text-decoration:none;">www.teachific.com</a>
               </p>
             </td>
           </tr>
@@ -127,7 +127,7 @@ export async function sendEnrollmentEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Welcome to "${opts.courseTitle}" 🎉`;
-  const courseDestination = `https://learn.allaboutultrasound.com/courses/${opts.courseSlug}`;
+  const courseDestination = `https://learn.teachific.com/courses/${opts.courseSlug}`;
   const courseUrl = buildAccessUrl(courseDestination, opts.accessToken);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
@@ -174,7 +174,7 @@ export async function sendDownloadAccessEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Your download is ready: "${opts.productTitle}"`;
-  const filesDestination = `https://app.allaboutultrasound.com/downloads/${opts.productSlug}/files`;
+  const filesDestination = `https://app.teachific.com/downloads/${opts.productSlug}/files`;
   const filesUrl = buildAccessUrl(filesDestination, opts.accessToken);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
@@ -220,7 +220,7 @@ export async function sendBundleAccessEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been granted access to "${opts.bundleTitle}"`;
-  const bundleDestination = `https://app.allaboutultrasound.com/downloads/bundle/${opts.bundleSlug}`;
+  const bundleDestination = `https://app.teachific.com/downloads/bundle/${opts.bundleSlug}`;
   const bundleUrl = buildAccessUrl(bundleDestination, opts.accessToken);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
@@ -265,7 +265,7 @@ export async function sendQuizAccessEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been invited to "${opts.quizTitle}"`;
-  const appDestination = `https://app.allaboutultrasound.com`;
+  const appDestination = `https://app.teachific.com`;
   const appUrl = buildAccessUrl(appDestination, opts.accessToken);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`

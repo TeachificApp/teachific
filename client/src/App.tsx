@@ -400,7 +400,7 @@ function AdminRouter() {
 
 /**
  * SubdomainSchoolRouter
- * When the app is accessed via an org subdomain (e.g. allaboutultrasound.teachific.app),
+ * When the app is accessed via an org subdomain (e.g. myorg.teachific.app),
  * serve both the learner portal AND the admin dashboard for org admins.
  */
 function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
