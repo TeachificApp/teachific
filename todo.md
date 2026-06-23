@@ -4344,3 +4344,17 @@
 - [x] Fix `productsAdminRouter.list` — replaced hard-coded `site_owner/site_admin/admin` check with `requireOrgAdmin`
 - [x] Fix `blockTemplatesRouter` delete/update — added `sub_admin` and `site_owner/site_admin` to ADMIN_ROLES check
 - [x] All 360 tests passing after fixes
+
+## Org Data Isolation Sprint (Jun 22 2026)
+- [x] productsAdminRouter.list — scope physicalProducts to org (platform admin sees all)
+- [x] productsAdminRouter.create — stamp orgId on new physicalProducts
+- [x] downloadsAdminRouter.list — scope digitalProducts to org
+- [x] downloadsAdminRouter.listBundles — scope digitalBundles to org
+- [x] downloadsAdminRouter.create — stamp orgId on new digitalProducts
+- [x] lmsEnrollmentAdminRouter.listEnrollments — scope to courses in caller's org
+- [x] blockTemplatesRouter.list — scope blockTemplates to org
+- [x] blockTemplatesRouter.save — stamp orgId on new blockTemplates
+- [x] funnelRouter — already org-scoped via requireFunnelAccess
+- [x] communityRouter (root) — already org-scoped via communityHubs.orgId
+- [x] questionBankRouter (root) — already org-scoped via orgId input param
+- [x] lmsAdminRouter.listCourses — already org-scoped

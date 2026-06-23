@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, requireOrgAdmin } from "../db";
+import { getDb, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import {
@@ -248,12 +248,17 @@ export const productsLearnerRouter = router({
 
 // ─── Admin Router ─────────────────────────────────────────────────────────────
 export const productsAdminRouter = router({
-  /** List all products (admin) */
+  /** List all products (admin) — scoped to caller's org unless platform admin */
   list: protectedProcedure.query(async ({ ctx }) => {
     await requireOrgAdmin(ctx.user.id, ctx.user.role);
     const db = await getDb();
     if (!db) return [];
-    return db.select().from(physicalProducts).orderBy(desc(physicalProducts.createdAt));
+    if (isPlatformAdmin(ctx.user.role)) {
+      return db.select().from(physicalProducts).orderBy(desc(physicalProducts.createdAt));
+    }
+    const orgId = await getOrgIdForUser(ctx.user.id);
+    if (!orgId) return [];
+    return db.select().from(physicalProducts).where(eq(physicalProducts.orgId, orgId)).orderBy(desc(physicalProducts.createdAt));
   }),
 
   /** Get a single product with its pricing options */
@@ -280,10 +285,13 @@ export const productsAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const slug = await uniqueSlug(db, slugify(input.title));
+      const orgId = await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
       const [result] = await db.insert(physicalProducts).values({
         title: input.title,
         slug,
         status: "draft",
+        orgId,
       });
       const insertId = (result as any).insertId;
       return { id: insertId, slug };

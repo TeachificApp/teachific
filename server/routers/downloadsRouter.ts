@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin } from "../db";
+import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser } from "../db";
 import {
   digitalProducts,
   digitalProductFiles,
@@ -439,12 +439,17 @@ export const downloadsLearnerRouter = router({
 
 // ─── Admin Router ───────────────────────────────────────────────────────────
 export const downloadsAdminRouter = router({
-  /** List all digital products (admin) */
+  /** List all digital products (admin) — scoped to caller's org unless platform admin */
   list: protectedProcedure.query(async ({ ctx }) => {
     await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return [];
-    return db.select().from(digitalProducts).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
+    if (isPlatformAdmin(ctx.user.role)) {
+      return db.select().from(digitalProducts).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
+    }
+    const orgId = await getOrgIdForUser(ctx.user.id);
+    if (!orgId) return [];
+    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId)).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
   }),
 
   /** Reorder digital products in the Education Library */
@@ -504,15 +509,16 @@ export const downloadsAdminRouter = router({
       let slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const [existing] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
         .where(eq(digitalProducts.slug, slug)).limit(1);
-      if (existing) slug += `-${Date.now().toString(36)}`;
-
+            if (existing) slug += `-${Date.now().toString(36)}`;
+      const orgId = await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
       const [result] = await db.insert(digitalProducts).values({
         ...input,
         slug,
+        orgId,
       }).$returningId();
       return { id: result.id, slug };
     }),
-
   /** Update a digital product */
   update: protectedProcedure
     .input(z.object({
@@ -703,11 +709,12 @@ export const downloadsAdminRouter = router({
       return { success: true };
     }),
 
-  /** Get download analytics for all products (admin) */
+  /** Get download analytics for all products (admin) — scoped to caller's org unless platform admin */
   getAnalytics: protectedProcedure.query(async ({ ctx }) => {
     await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return { products: [], recentDownloads: [] };
+    const orgId = isPlatformAdmin(ctx.user.role) ? null : await getOrgIdForUser(ctx.user.id);
 
     // Per-product stats
     const products = await db.select({
@@ -715,7 +722,9 @@ export const downloadsAdminRouter = router({
       title: digitalProducts.title,
       downloadCount: digitalProducts.downloadCount,
       slug: digitalProducts.slug,
-    }).from(digitalProducts).orderBy(desc(digitalProducts.downloadCount));
+    }).from(digitalProducts)
+      .where(orgId !== null ? eq(digitalProducts.orgId, orgId) : undefined)
+      .orderBy(desc(digitalProducts.downloadCount));
 
     // Recent 50 download events
     const recentDownloads = await db.select({
@@ -736,12 +745,15 @@ export const downloadsAdminRouter = router({
   }),
 
   // ─── Bundle Admin CRUD ─────────────────────────────────────────────────────
-  /** List all bundles (admin) */
+  /** List all bundles (admin) — scoped to caller's org unless platform admin */
   listBundles: protectedProcedure.query(async ({ ctx }) => {
     await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return [];
-    const bundles = await db.select().from(digitalBundles).orderBy(desc(digitalBundles.createdAt));
+    const orgId = isPlatformAdmin(ctx.user.role) ? null : await getOrgIdForUser(ctx.user.id);
+    const bundles = await db.select().from(digitalBundles)
+      .where(orgId !== null ? eq(digitalBundles.orgId, orgId) : undefined)
+      .orderBy(desc(digitalBundles.createdAt));
     const result = await Promise.all(bundles.map(async (bundle) => {
       const items = await db.select({
         productId: digitalBundleItems.productId,

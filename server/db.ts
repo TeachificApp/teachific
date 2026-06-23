@@ -337,6 +337,11 @@ export async function requireOrgAdmin(
   return adminMemberships[0].orgId;
 }
 
+/** Returns true for site_owner / site_admin / admin (platform-wide admins who can see all orgs) */
+export function isPlatformAdmin(role: string | undefined): boolean {
+  return ["site_owner", "site_admin", "admin"].includes(role ?? "");
+}
+
 // ─── Org Members ───────────────────────────────────────────────────────────────
 export async function addOrgMember(orgId: number, userId: number, role: "org_super_admin" | "org_admin" | "member" | "user", invitedBy?: number, memberSubRole?: "basic_member" | "instructor" | "group_manager" | "group_member") {
   const db = await getDb();

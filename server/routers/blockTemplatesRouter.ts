@@ -2,18 +2,23 @@ import { z } from "zod";
 import { eq, desc, like, or, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, isPlatformAdmin, getOrgIdForUser } from "../db";
 import { blockTemplates } from "../../drizzle/schema";
 
 export const blockTemplatesRouter = router({
-  /** List all saved block templates, optionally filtered by search query */
+  /** List all saved block templates, optionally filtered by search query — scoped to org */
   list: protectedProcedure
     .input(z.object({ search: z.string().optional(), blockType: z.string().optional() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const conditions = [];
+      const conditions: any[] = [];
+      // Scope to org unless platform admin
+      if (!isPlatformAdmin(ctx.user.role)) {
+        const orgId = await getOrgIdForUser(ctx.user.id);
+        if (orgId) conditions.push(eq(blockTemplates.orgId, orgId));
+      }
       if (input.blockType) {
         conditions.push(eq(blockTemplates.blockType, input.blockType));
       }
@@ -42,6 +47,7 @@ export const blockTemplatesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const orgId = await getOrgIdForUser(ctx.user.id);
       const [inserted] = await db.insert(blockTemplates).values({
         name: input.name,
         description: input.description ?? null,
@@ -49,6 +55,7 @@ export const blockTemplatesRouter = router({
         blockData: JSON.stringify(input.blockData),
         tags: input.tags ?? null,
         createdByUserId: ctx.user.id,
+        orgId: orgId ?? null,
       });
 
       return { id: (inserted as any).insertId };
