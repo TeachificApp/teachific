@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Mail, Plus, MoreVertical, Edit, Trash2, Send, Eye, BarChart2 } from "lucide-react";
+import { Mail, Plus, MoreVertical, Edit, Trash2, Send, Copy } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, any> = { draft: "outline", scheduled: "secondary", sending: "default", sent: "default", failed: "destructive" };
 
@@ -40,6 +40,10 @@ export default function EmailCampaignsPage() {
   });
   const deleteMut = trpc.lms.emailMarketing.delete.useMutation({
     onSuccess: () => { utils.lms.emailMarketing.list.invalidate(); toast.success("Deleted"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const duplicateMut = trpc.lms.emailMarketing.duplicate.useMutation({
+    onSuccess: () => { utils.lms.emailMarketing.list.invalidate(); toast.success("Campaign duplicated as draft"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -97,6 +101,7 @@ export default function EmailCampaignsPage() {
                           <Send className="h-4 w-4 mr-2" />Send Now
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem onClick={() => duplicateMut.mutate({ id: c.id })} disabled={duplicateMut.isPending}><Copy className="h-4 w-4 mr-2" />Duplicate</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => { if (confirm("Delete?")) deleteMut.mutate({ id: c.id }); }} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

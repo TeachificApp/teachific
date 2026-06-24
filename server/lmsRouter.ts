@@ -889,6 +889,25 @@ export const lmsRouter = router({
         });
         return { sentCount, failedCount, total: recipientUserIds.length };
       }),
+    duplicate: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const c = await getEmailCampaignById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, c.orgId!);
+        return createEmailCampaign({
+          orgId: c.orgId,
+          name: `${c.name} (Copy)`,
+          templateId: c.templateId ?? undefined,
+          subject: c.subject,
+          htmlBody: c.htmlBody,
+          textBody: c.textBody ?? undefined,
+          status: "draft",
+          createdBy: ctx.user.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }),
   }),
 
   // ── Categories ─────────────────────────────────────────────────────────────

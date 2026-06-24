@@ -4443,3 +4443,19 @@
 ## Bug Fix: Secondary Pricing "Add Option" Crash + Meta Description Not Saving (Jun 2026)
 - [x] Fix React error #185 crash when clicking "Add Option" in secondary pricing option (likely .map() on undefined)
 - [x] Fix meta description not saving in course/page settings
+
+## Feature: AI-Powered Multi-Language Translation (Pro/Enterprise)
+- [ ] Schema: add `translationsEnabled`, `supportedLanguages` (JSON), `defaultLanguage` to organizations table
+- [ ] Schema: create `content_translations` table (orgId, entityType, entityId, field, language, translatedText, isManualOverride, createdAt, updatedAt)
+- [ ] Migration: run SQL for new columns and table
+- [ ] Server: translationRouter with procedures: getTranslation, translateContent (AI), setManualOverride, deleteTranslation, listTranslations, bulkTranslate
+- [ ] Server: plan-gate helper to check org is Pro/Enterprise before allowing translation
+- [ ] Learner: useTranslation hook that detects browser language, checks org has translation enabled, fetches/caches translated content
+- [ ] Learner: CourseLanding — translate title, subtitle, description, landing page blocks
+- [ ] Learner: CoursePlayer — translate lesson titles, section titles, lesson content/description
+- [ ] Learner: MyCoursesPage / SchoolPage — translate course titles and subtitles in listings
+- [ ] Learner: language selector widget (floating or in nav) for students to manually override browser language
+- [ ] Admin UI: Language & Translation tab in org settings (enable toggle, supported languages picker, default language)
+- [ ] Admin UI: Translation review table — list all cached translations, edit/override, delete to re-trigger AI
+- [ ] Admin UI: Bulk translate button to pre-translate all content into selected languages
+- [x] Fix copy campaign error: add duplicate procedure to emailMarketing router and wire Duplicate menu item in EmailCampaignsPage
