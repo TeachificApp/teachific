@@ -40,4 +40,3 @@ once application code is added to the repository.
 - Cover manual review required behavior.
 - Cover stale translation invalidation after source content changes.
 - Cover AI provider failure fallback.
-
