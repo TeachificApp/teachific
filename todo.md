@@ -4439,3 +4439,7 @@
 - [x] EmailMarketingPage.tsx: org admins can set custom sender name/email and their own SendGrid API key
 - [x] EmailMarketingPage.tsx: shows key status (own key configured vs platform key), with remove key action
 - [x] All 360 tests passing after changes
+
+## Bug Fix: Secondary Pricing "Add Option" Crash + Meta Description Not Saving (Jun 2026)
+- [x] Fix React error #185 crash when clicking "Add Option" in secondary pricing option (likely .map() on undefined)
+- [x] Fix meta description not saving in course/page settings

@@ -2297,8 +2297,8 @@ export const lmsGroupRouter = router({
     .input(z.object({
       courseId: z.number().int().positive(),
       slug: z.string().min(1).max(255).regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
-      metaTitle: z.string().max(255).optional(),
-      metaDescription: z.string().max(500).optional(),
+      metaTitle: z.string().max(255).nullable().optional(),
+      metaDescription: z.string().max(500).nullable().optional(),
       status: z.enum(["draft", "public", "hidden", "private", "archived"]).optional(),
       hasCertificate: z.boolean().optional(),
       certificateTemplateId: z.number().int().positive().nullable().optional(),

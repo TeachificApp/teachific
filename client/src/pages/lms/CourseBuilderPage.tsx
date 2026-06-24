@@ -2061,7 +2061,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
         </div>
         <Button size="sm" variant="outline" className="border-teal-300 text-teal-600 hover:bg-teal-50"
           disabled={updateCourseSettings.isPending}
-          onClick={() => updateCourseSettings.mutate({ courseId: course.id, slug: slug.trim() || course.slug, metaTitle: metaTitle.trim() || undefined, metaDescription: metaDescription.trim() || undefined, status, hasCertificate, certificateTemplateId, isFeatured, publishDomain: publishDomain || null })}
+          onClick={() => updateCourseSettings.mutate({ courseId: course.id, slug: slug.trim() || course.slug, metaTitle: metaTitle.trim() || null, metaDescription: metaDescription.trim() || null, status, hasCertificate, certificateTemplateId, isFeatured, publishDomain: publishDomain || null })}
         >
           {updateCourseSettings.isPending ? "Saving..." : "Save URL & SEO"}
         </Button>
@@ -8563,18 +8563,27 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
     </div>
   );
 }
+// Stable fallback — avoids creating a new array reference on every render
+const EMPTY_PRICING_OPTIONS: PricingOption[] = [];
+
 function CoursePricingOptionsEditor({ courseId, courseSlug }: { courseId: number; courseSlug?: string | null }) {
   const utils = trpc.useUtils();
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [localOrder, setLocalOrder] = useState<number[]>([]);
 
-  const { data: options = [], isLoading } = trpc.lmsGroup.listPricingOptions.useQuery({ courseId });
+  const { data: options = EMPTY_PRICING_OPTIONS, isLoading } = trpc.lmsGroup.listPricingOptions.useQuery({ courseId });
 
-  // Keep local order in sync with server data
+  // Keep local order in sync with server data.
+  // Use a serialised string of IDs as the dependency so the effect only fires
+  // when the actual list of IDs changes, not on every render (which would
+  // happen if we depended on the `options` array reference directly and
+  // caused React error #185 — Maximum update depth exceeded).
+  const optionIdKey = (options as PricingOption[]).map(o => o.id).join(",");
   useEffect(() => {
     setLocalOrder((options as PricingOption[]).map(o => o.id));
-  }, [options]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [optionIdKey]);
 
   const createOption = trpc.lmsGroup.createPricingOption.useMutation({
     onSuccess: () => { toast.success("Pricing option added"); setShowAdd(false); utils.lmsGroup.listPricingOptions.invalidate({ courseId }); },
