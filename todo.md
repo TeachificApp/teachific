@@ -4459,3 +4459,4 @@
 - [ ] Admin UI: Translation review table — list all cached translations, edit/override, delete to re-trigger AI
 - [ ] Admin UI: Bulk translate button to pre-translate all content into selected languages
 - [x] Fix copy campaign error: add duplicate procedure to emailMarketing router and wire Duplicate menu item in EmailCampaignsPage
+- [x] Deep email campaign analytics: per-recipient tracking rows written on send (emailMarketing.send + emailCampaigns.send), analytics procedure in emailMarketing router, CampaignAnalyticsModal with 6 KPI cards, 3 rate cards, engagement funnel bar chart, and searchable per-recipient table with open/click timestamps

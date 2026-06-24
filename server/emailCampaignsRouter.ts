@@ -354,13 +354,23 @@ export const emailCampaignsRouter = router({
           );
         const unsubEmails = new Set(unsubRows.map((r: { email: string }) => r.email.toLowerCase()));
 
-        // Send emails (skip unsubscribed recipients)
-        let sentCount = 0;
-        for (const recipient of recipients) {
-          try {
-            // Skip unsubscribed recipients
-            if (unsubEmails.has(recipient.email.toLowerCase())) continue;
+        // Clear previous recipient rows (idempotent re-send)
+        await db.delete(emailCampaignRecipients).where(eq(emailCampaignRecipients.campaignId, input.campaignId));
 
+        // Mark as sending
+        await db.update(emailCampaigns)
+          .set({ status: "sending", updatedAt: new Date() })
+          .where(eq(emailCampaigns.id, input.campaignId));
+
+        // Send emails and track per-recipient rows
+        let sentCount = 0;
+        let failedCount = 0;
+        for (const recipient of recipients) {
+          if (unsubEmails.has(recipient.email.toLowerCase())) continue;
+
+          let ok = false;
+          let errorMsg: string | null = null;
+          try {
             const unsubscribeToken = await ensureUnsubscribeToken(db, recipient.id);
             const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken, "https://teachific.app");
             const htmlWithFooter = injectUnsubscribeFooter(
@@ -382,26 +392,39 @@ export const emailCampaignsRouter = router({
                 customSenderEmail: org[0].customSenderEmail,
               },
             );
-
+            ok = true;
             sentCount++;
-          } catch (err) {
+          } catch (err: any) {
+            errorMsg = err?.message ?? "Send failed";
+            failedCount++;
             console.error(`Failed to send email to ${recipient.email}:`, err);
           }
+
+          // Insert per-recipient tracking row
+          await db.insert(emailCampaignRecipients).values({
+            campaignId: input.campaignId,
+            userId: recipient.id,
+            email: recipient.email,
+            status: ok ? "sent" : "failed",
+            sentAt: ok ? new Date() : null,
+            errorMessage: errorMsg,
+          });
         }
         
-        // Update campaign status
+        // Update campaign status with final counts
         await db
           .update(emailCampaigns)
           .set({
             status: "sent",
             sentCount,
+            failedCount,
             recipientCount: recipients.length,
             sentAt: new Date(),
             updatedAt: new Date(),
           })
           .where(eq(emailCampaigns.id, input.campaignId));
         
-        return { success: true, sentCount };
+        return { success: true, sentCount, failedCount };
       }),
 
     schedule: protectedProcedure
@@ -440,6 +463,51 @@ export const emailCampaignsRouter = router({
           .where(eq(emailCampaigns.id, input.campaignId));
         
         return { success: true };
+      }),
+
+    /** Deep analytics for a single campaign */
+    analytics: protectedProcedure
+      .input(z.object({ campaignId: z.number(), orgId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+        const [campaign] = await db
+          .select()
+          .from(emailCampaigns)
+          .where(and(eq(emailCampaigns.id, input.campaignId), eq(emailCampaigns.orgId, input.orgId)))
+          .limit(1);
+
+        if (!campaign) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const recipientRows = await db
+          .select()
+          .from(emailCampaignRecipients)
+          .where(eq(emailCampaignRecipients.campaignId, input.campaignId))
+          .orderBy(desc(emailCampaignRecipients.sentAt));
+
+        const totalSent = recipientRows.filter((r: any) => r.status === "sent").length;
+        const totalFailed = recipientRows.filter((r: any) => r.status === "failed").length;
+        const totalOpened = recipientRows.filter((r: any) => r.openedAt != null).length;
+        const totalClicked = recipientRows.filter((r: any) => r.clickedAt != null).length;
+        const totalBounced = recipientRows.filter((r: any) => r.status === "bounced").length;
+
+        return {
+          campaign,
+          summary: {
+            totalRecipients: campaign.recipientCount ?? 0,
+            totalSent,
+            totalFailed,
+            totalBounced,
+            totalOpened,
+            totalClicked,
+            openRate: totalSent > 0 ? Math.round((totalOpened / totalSent) * 1000) / 10 : 0,
+            clickRate: totalSent > 0 ? Math.round((totalClicked / totalSent) * 1000) / 10 : 0,
+            clickToOpenRate: totalOpened > 0 ? Math.round((totalClicked / totalOpened) * 1000) / 10 : 0,
+          },
+          recipients: recipientRows,
+        };
       }),
   }),
 

@@ -856,6 +856,14 @@ export const lmsRouter = router({
         const recipientUserIds = members.map((m: any) => m.userId).filter(Boolean) as number[];
         // Load org config for per-org SendGrid key + custom sender
         const orgConfig = await getOrgById(c.orgId!);
+        // Clear previous recipient rows (idempotent re-send)
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        const { emailCampaignRecipients } = await import("../drizzle/schema");
+        const { eq: eqDrizzle } = await import("drizzle-orm");
+        if (db) {
+          await db.delete(emailCampaignRecipients).where(eqDrizzle(emailCampaignRecipients.campaignId, input.id));
+        }
         let sentCount = 0;
         let failedCount = 0;
         for (const userId of recipientUserIds) {
@@ -879,6 +887,17 @@ export const lmsRouter = router({
             },
           );
           if (ok) sentCount++; else failedCount++;
+          // Write per-recipient tracking row
+          if (db) {
+            await db.insert(emailCampaignRecipients).values({
+              campaignId: input.id,
+              userId,
+              email: user.email,
+              status: ok ? "sent" : "failed",
+              sentAt: ok ? new Date() : null,
+              errorMessage: ok ? null : "Send failed",
+            });
+          }
         }
         await updateEmailCampaign(input.id, {
           status: "sent",
@@ -888,6 +907,43 @@ export const lmsRouter = router({
           recipientCount: recipientUserIds.length,
         });
         return { sentCount, failedCount, total: recipientUserIds.length };
+      }),
+    analytics: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const c = await getEmailCampaignById(input.id);
+        if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, c.orgId!);
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { emailCampaignRecipients } = await import("../drizzle/schema");
+        const { eq: eqDrizzle, desc: descDrizzle } = await import("drizzle-orm");
+        const recipientRows = await db
+          .select()
+          .from(emailCampaignRecipients)
+          .where(eqDrizzle(emailCampaignRecipients.campaignId, input.id))
+          .orderBy(descDrizzle(emailCampaignRecipients.sentAt));
+        const totalSent = recipientRows.filter((r: any) => r.status === "sent").length;
+        const totalFailed = recipientRows.filter((r: any) => r.status === "failed").length;
+        const totalOpened = recipientRows.filter((r: any) => r.openedAt != null).length;
+        const totalClicked = recipientRows.filter((r: any) => r.clickedAt != null).length;
+        const totalBounced = recipientRows.filter((r: any) => r.status === "bounced").length;
+        return {
+          campaign: c,
+          summary: {
+            totalRecipients: c.recipientCount ?? 0,
+            totalSent,
+            totalFailed,
+            totalBounced,
+            totalOpened,
+            totalClicked,
+            openRate: totalSent > 0 ? Math.round((totalOpened / totalSent) * 1000) / 10 : 0,
+            clickRate: totalSent > 0 ? Math.round((totalClicked / totalSent) * 1000) / 10 : 0,
+            clickToOpenRate: totalOpened > 0 ? Math.round((totalClicked / totalOpened) * 1000) / 10 : 0,
+          },
+          recipients: recipientRows,
+        };
       }),
     duplicate: protectedProcedure
       .input(z.object({ id: z.number() }))
