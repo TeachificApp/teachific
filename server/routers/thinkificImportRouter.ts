@@ -137,20 +137,14 @@ interface LandingBlock {
  * Extracts: title, description, pricing, curriculum, images, and FAQ.
  */
 async function scrapeThinkificSalesPage(slug: string, customDomain: string): Promise<{ blocks: LandingBlock[]; price: number }> {
-  // Try the public Thinkific subdomain first (no login required), then fall back to custom domain
-  const { ENV } = await import("../_core/env");
-  const thinkificSubdomain = ENV.thinkificSubdomain;
+  const normalizedDomain = customDomain
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/.*$/, "");
   const urlsToTry: string[] = [];
-  if (thinkificSubdomain) {
-    urlsToTry.push(`https://${thinkificSubdomain}.thinkific.com/courses/${slug}`);
-  }
   // Only try custom domain if it's NOT a member portal (those require login)
-  if (customDomain && !customDomain.startsWith("member.")) {
-    urlsToTry.push(`https://${customDomain}/courses/${slug}`);
-  }
-  // Always try the generic Thinkific subdomain as last resort
-  if (!thinkificSubdomain) {
-    urlsToTry.push(`https://${customDomain}/courses/${slug}`);
+  if (normalizedDomain && !normalizedDomain.startsWith("member.")) {
+    urlsToTry.push(`https://${normalizedDomain}/courses/${slug}`);
   }
 
   let html = "";
@@ -1423,14 +1417,11 @@ export const thinkificImportRouter = router({
       // 1. Course player JSON API
       let playerResult: unknown = null;
       try {
-        const { ENV } = await import("../_core/env");
         const memberDomain = "member.teachific.com";
-        const subdomain = ENV.thinkificSubdomain;
         const { getThinkificAdminSession } = await import("../thinkific");
         const sessionCookie = await getThinkificAdminSession();
         const endpoints = [
           `https://${memberDomain}/api/course_player/v2/contents/${input.contentId}`,
-          `https://${subdomain}.thinkific.com/api/course_player/v2/contents/${input.contentId}`,
         ];
         for (const endpoint of endpoints) {
           const res = await fetch(endpoint, {
@@ -1484,12 +1475,13 @@ export const thinkificImportRouter = router({
     .mutation(async ({ ctx, input }) => {
       adminOnly(ctx.user.role);
       const log: string[] = [];
-      const { ENV } = await import("../_core/env");
-      const subdomain = ENV.thinkificSubdomain;
+      const normalizedDomain = input.customDomain
+        ?.trim()
+        .replace(/^https?:\/\//i, "")
+        .replace(/\/.*$/, "");
       const urlsToTry: string[] = [];
-      if (subdomain) urlsToTry.push(`https://${subdomain}.thinkific.com/courses/${input.courseSlug}`);
-      if (input.customDomain && !input.customDomain.startsWith("member.")) {
-        urlsToTry.push(`https://${input.customDomain}/courses/${input.courseSlug}`);
+      if (normalizedDomain && !normalizedDomain.startsWith("member.")) {
+        urlsToTry.push(`https://${normalizedDomain}/courses/${input.courseSlug}`);
       }
       log.push(`URLs to try: ${urlsToTry.join(", ")}`);
       const result = await scrapeThinkificSalesPage(input.courseSlug, input.customDomain || "");

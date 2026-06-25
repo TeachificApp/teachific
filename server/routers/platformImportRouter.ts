@@ -31,6 +31,16 @@ import { createKajabiClient } from "../kajabi";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function requireDb(): Promise<Db> {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  }
+  return db;
+}
+
 function assertOrgAdmin(role: string) {
   const adminRoles = ["site_owner", "site_admin", "org_super_admin", "org_admin"];
   if (!adminRoles.includes(role)) {
@@ -47,7 +57,7 @@ function slugify(text: string): string {
     .substring(0, 80);
 }
 
-async function makeUniqueSlug(db: ReturnType<typeof getDb>, base: string, orgId: number): Promise<string> {
+async function makeUniqueSlug(db: Db, base: string, orgId: number): Promise<string> {
   let slug = slugify(base);
   let attempt = 0;
   while (true) {
@@ -157,7 +167,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .query(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(thinkificIntegrations)
@@ -199,7 +209,7 @@ export const platformImportRouter = router({
             message: `Could not connect to Thinkific: ${(err as Error).message}`,
           });
         }
-        const db = getDb();
+        const db = await requireDb();
         await db
           .insert(thinkificIntegrations)
           .values({
@@ -225,7 +235,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         await db
           .delete(thinkificIntegrations)
           .where(eq(thinkificIntegrations.orgId, input.orgId));
@@ -239,7 +249,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(thinkificIntegrations)
@@ -325,7 +335,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(thinkificIntegrations)
@@ -427,7 +437,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(thinkificIntegrations)
@@ -509,7 +519,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .query(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(teachableIntegrations)
@@ -549,7 +559,7 @@ export const platformImportRouter = router({
             message: `Could not connect to Teachable: ${(err as Error).message}`,
           });
         }
-        const db = getDb();
+        const db = await requireDb();
         await db
           .insert(teachableIntegrations)
           .values({
@@ -575,7 +585,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         await db
           .delete(teachableIntegrations)
           .where(eq(teachableIntegrations.orgId, input.orgId));
@@ -589,7 +599,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(teachableIntegrations)
@@ -671,7 +681,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(teachableIntegrations)
@@ -768,7 +778,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(teachableIntegrations)
@@ -845,7 +855,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .query(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(kajabiIntegrations)
@@ -885,7 +895,7 @@ export const platformImportRouter = router({
             message: `Could not connect to Kajabi: ${(err as Error).message}`,
           });
         }
-        const db = getDb();
+        const db = await requireDb();
         const now = Date.now();
         await db
           .insert(kajabiIntegrations)
@@ -915,7 +925,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         await db
           .delete(kajabiIntegrations)
           .where(eq(kajabiIntegrations.orgId, input.orgId));
@@ -929,7 +939,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(kajabiIntegrations)
@@ -1010,7 +1020,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(kajabiIntegrations)
@@ -1079,7 +1089,7 @@ export const platformImportRouter = router({
       .input(z.object({ orgId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         assertOrgAdmin(ctx.user.role);
-        const db = getDb();
+        const db = await requireDb();
         const [integration] = await db
           .select()
           .from(kajabiIntegrations)

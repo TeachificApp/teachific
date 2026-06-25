@@ -1,20 +1,45 @@
 /**
  * Thinkific API helper — wraps the Thinkific Admin REST API v1.
  *
- * All requests use the API key + subdomain header auth.
+ * Requests use API key + subdomain header auth. New imports should use the
+ * per-org client in platformImportRouter; this legacy helper only reads process
+ * env directly for older admin-only import paths.
  * Rate limit: 120 req/min — we cache aggressively to stay well under.
  *
  * Reference: https://developers.thinkific.com/api/api-documentation/
  */
 
-import { ENV } from "./_core/env";
-
 const BASE_URL = "https://api.thinkific.com/api/public/v1";
 
-function thinkificHeaders() {
+interface ThinkificCredentials {
+  apiKey: string;
+  subdomain: string;
+  adminEmail?: string;
+  adminPassword?: string;
+}
+
+function getLegacyThinkificCredentials(): ThinkificCredentials {
+  const apiKey = process.env.THINKIFIC_API_KEY ?? "";
+  const subdomain = process.env.THINKIFIC_SUBDOMAIN ?? "";
+  if (!apiKey || !subdomain) {
+    throw new Error(
+      "[Thinkific] Platform-level Thinkific credentials are not configured. " +
+      "Use the org-scoped Thinkific integration for admin imports."
+    );
+  }
   return {
-    "X-Auth-API-Key": ENV.thinkificApiKey,
-    "X-Auth-Subdomain": ENV.thinkificSubdomain,
+    apiKey,
+    subdomain,
+    adminEmail: process.env.THINKIFIC_ADMIN_EMAIL ?? "",
+    adminPassword: process.env.THINKIFIC_ADMIN_PASSWORD ?? "",
+  };
+}
+
+function thinkificHeaders() {
+  const credentials = getLegacyThinkificCredentials();
+  return {
+    "X-Auth-API-Key": credentials.apiKey,
+    "X-Auth-Subdomain": credentials.subdomain,
     "Content-Type": "application/json",
   };
 }
@@ -619,9 +644,10 @@ export async function getThinkificAdminSession(): Promise<string> {
     return _adminSession.cookie;
   }
 
-  const email = ENV.thinkificAdminEmail;
-  const password = ENV.thinkificAdminPassword;
-  const subdomain = ENV.thinkificSubdomain;
+  const credentials = getLegacyThinkificCredentials();
+  const email = credentials.adminEmail;
+  const password = credentials.adminPassword;
+  const subdomain = credentials.subdomain;
 
   if (!email || !password) {
     throw new Error(
@@ -745,7 +771,8 @@ export async function getContentDetailWithSession(
   contentId: number,
   courseSlug: string
 ): Promise<ThinkificLessonContent | null> {
-  const subdomain = ENV.thinkificSubdomain;
+  const subdomain = process.env.THINKIFIC_SUBDOMAIN ?? "";
+  if (!subdomain) return null;
   const memberDomain = "member.teachific.com";
 
   // Endpoints to try in order (member domain first, then subdomain)
