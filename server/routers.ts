@@ -130,7 +130,6 @@ import { lmsLearnerRouter, lmsGroupRouter } from "./routers/lmsRouter";
 import { lmsEnrollmentAdminRouter } from "./routers/lmsEnrollmentAdminRouter";
 import { lmsCheckoutPublicRouter, lmsCheckoutLearnerRouter, lmsCheckoutAdminRouter } from "./routers/lmsCheckoutRouter";
 import { mediaRepoRouter } from "./routers/mediaRepoRouter";
-import { thinkificImportRouter } from "./routers/thinkificImportRouter";
 import { platformImportRouter } from "./routers/platformImportRouter";
 import { blockTemplatesRouter } from "./routers/blockTemplatesRouter";
 import { pageScraperRouter } from "./routers/pageScraperRouter";
@@ -219,7 +218,6 @@ export const appRouter = router({
   lmsCheckoutLearner: lmsCheckoutLearnerRouter,
   lmsCheckoutAdmin: lmsCheckoutAdminRouter,
   mediaRepo: mediaRepoRouter,
-  thinkificImport: thinkificImportRouter,
   platformImport: platformImportRouter,
   blockTemplates: blockTemplatesRouter,
   pageScraper: pageScraperRouter,

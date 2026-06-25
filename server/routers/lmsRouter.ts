@@ -88,7 +88,6 @@ import {
   userActivityLogs,
   organizations,
 } from "../../drizzle/schema";
-import { getEnrollmentsForCourse, getThinkificCourse } from "../thinkific";
 import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
 import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripePaymentLinks";
