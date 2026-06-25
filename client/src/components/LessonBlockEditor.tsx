@@ -438,7 +438,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     scrollToBlock(copy.id);
   };
 
-  const handleSaveRef = React.useRef<(andClose?: boolean) => Promise<void>>();
+  const handleSaveRef = React.useRef<((andClose?: boolean) => Promise<void>) | null>(null);
 
   useImperativeHandle(ref, () => ({
     save: (andClose = false) => handleSaveRef.current?.(andClose) ?? Promise.resolve(),

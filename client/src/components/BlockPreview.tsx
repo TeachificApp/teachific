@@ -2245,9 +2245,8 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
   const triggerScrollPct: number = d.triggerScrollPercent ?? 50;
   const accentColor: string = d.accentColor ?? "#179ca3";
   const bgColor: string = d.bgColor ?? "#f0fdfa";
-  const productType = (["course", "download", "product"].includes(d.productType) ? d.productType : "course") as "course" | "download" | "product";
-  const productSlug: string = d.productSlug ?? "";
-  const productId: number | null = d.productId ? Number(d.productId) : null;
+  const upgradePlan: string = d.plan ?? d.upgradePlan ?? "pro";
+  const orgId: number | undefined = d.orgId ? Number(d.orgId) : undefined;
   const discountType: string = d.discountType ?? "none"; // none | percent | fixed | promo_code
   const discountValue: number = d.discountValue ?? 0;
   const promoCode: string = d.promoCode ?? "";
@@ -2273,20 +2272,16 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
       window.location.href = `/login?return=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
-    if (!productSlug && !productId) return;
     setCheckoutLoading(true);
     try {
       const result = await createCheckout.mutateAsync({
-        productType,
-        productSlug: productSlug || undefined,
-        productId: productId || undefined,
-        promoCode: promoCode || undefined,
-        origin: window.location.origin,
+        plan: upgradePlan,
+        orgId,
       });
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank");
-      } else if ("alreadyEnrolled" in result && result.alreadyEnrolled) {
-        alert("You already have access to this product.");
+      } else if (result.message) {
+        alert(result.message);
       }
     } catch (err: any) {
       alert(err?.message ?? "Checkout failed. Please try again.");
