@@ -7,7 +7,7 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb, getOrCreateUserByEmail, getOrgIdForUser } from "../db";
-import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, membershipPlans, orgMembers } from "../../drizzle/schema";
+import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, membershipPlans, orgMembers, funnelSteps } from "../../drizzle/schema";
 import { eq, and, asc, desc, sql, inArray, or, like, isNotNull } from "drizzle-orm";
 import { evaluateBranchRules, type VisitorContext } from "../lib/funnelBranchEngine";
 
@@ -1004,6 +1004,88 @@ export const funnelRouter = router({
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "A funnel with this slug already exists" });
       const { funnelId, ...fields } = input;
       await db.update(funnels).set(fields).where(eq(funnels.id, funnelId));
+      return { success: true };
+    }),
+
+  // ─── Step-based funnel builder ────────────────────────────────────────────
+
+  /** Get a funnel with its steps (for FunnelBuilderPage) */
+  getWithSteps: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      const db = await getDb();
+      const [funnel] = await db.select().from(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
+      if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
+      const steps = await db.select().from(funnelSteps).where(eq(funnelSteps.funnelId, funnel.id)).orderBy(asc(funnelSteps.sortOrder));
+      return { ...funnel, steps };
+    }),
+
+  /** Create a new step in a funnel */
+  createStep: protectedProcedure
+    .input(z.object({
+      funnelId: z.number(),
+      name: z.string().min(1).max(255),
+      stepType: z.enum(["landing", "sales", "order", "upsell", "downsell", "thank_you", "webinar", "custom"]).default("landing"),
+      sortOrder: z.number().default(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      const db = await getDb();
+      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, input.funnelId), eq(funnels.orgId, _orgId))).limit(1);
+      if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
+      const result = await db.insert(funnelSteps).values({
+        funnelId: input.funnelId,
+        name: input.name,
+        stepType: input.stepType,
+        sortOrder: input.sortOrder,
+      });
+      return { id: result[0].insertId };
+    }),
+
+  /** Update a step */
+  updateStep: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).max(255).optional(),
+      stepType: z.enum(["landing", "sales", "order", "upsell", "downsell", "thank_you", "webinar", "custom"]).optional(),
+      sortOrder: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      const db = await getDb();
+      const [step] = await db.select({ funnelId: funnelSteps.funnelId }).from(funnelSteps).where(eq(funnelSteps.id, input.id)).limit(1);
+      if (!step) throw new TRPCError({ code: "NOT_FOUND" });
+      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, step.funnelId), eq(funnels.orgId, _orgId))).limit(1);
+      if (!funnel) throw new TRPCError({ code: "FORBIDDEN" });
+      const { id, ...fields } = input;
+      await db.update(funnelSteps).set(fields).where(eq(funnelSteps.id, id));
+      return { success: true };
+    }),
+
+  /** Delete a step */
+  deleteStep: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      const db = await getDb();
+      const [step] = await db.select({ funnelId: funnelSteps.funnelId }).from(funnelSteps).where(eq(funnelSteps.id, input.id)).limit(1);
+      if (!step) throw new TRPCError({ code: "NOT_FOUND" });
+      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, step.funnelId), eq(funnels.orgId, _orgId))).limit(1);
+      if (!funnel) throw new TRPCError({ code: "FORBIDDEN" });
+      await db.delete(funnelSteps).where(eq(funnelSteps.id, input.id));
+      return { success: true };
+    }),
+
+  /** Reorder steps */
+  reorderSteps: protectedProcedure
+    .input(z.object({ funnelId: z.number(), stepIds: z.array(z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      const db = await getDb();
+      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, input.funnelId), eq(funnels.orgId, _orgId))).limit(1);
+      if (!funnel) throw new TRPCError({ code: "FORBIDDEN" });
+      await Promise.all(input.stepIds.map((id, idx) => db.update(funnelSteps).set({ sortOrder: idx }).where(eq(funnelSteps.id, id))));
       return { success: true };
     }),
 });

@@ -221,7 +221,7 @@ export default function FunnelBuilderPage() {
   const utils = trpc.useUtils();
 
   // Data
-  const { data: funnel, isLoading } = trpc.lms.funnels.get.useQuery(
+  const { data: funnel, isLoading } = trpc.lms.funnels.getWithSteps.useQuery(
     { id: funnelId },
     { enabled: !!funnelId }
   );
@@ -235,7 +235,7 @@ export default function FunnelBuilderPage() {
   // Mutations
   const createStep = trpc.lms.funnels.createStep.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.get.invalidate({ id: funnelId });
+      utils.lms.funnels.getWithSteps.invalidate({ id: funnelId });
       setAddOpen(false);
       toast.success("Step added");
     },
@@ -243,7 +243,7 @@ export default function FunnelBuilderPage() {
   });
   const updateStep = trpc.lms.funnels.updateStep.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.get.invalidate({ id: funnelId });
+      utils.lms.funnels.getWithSteps.invalidate({ id: funnelId });
       setEditStep(null);
       toast.success("Step updated");
     },
@@ -251,13 +251,13 @@ export default function FunnelBuilderPage() {
   });
   const deleteStep = trpc.lms.funnels.deleteStep.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.get.invalidate({ id: funnelId });
+      utils.lms.funnels.getWithSteps.invalidate({ id: funnelId });
       toast.success("Step deleted");
     },
     onError: (e) => toast.error(e.message),
   });
   const reorderSteps = trpc.lms.funnels.reorderSteps.useMutation({
-    onSuccess: () => utils.lms.funnels.get.invalidate({ id: funnelId }),
+    onSuccess: () => utils.lms.funnels.getWithSteps.invalidate({ id: funnelId }),
   });
 
   // Add step dialog
