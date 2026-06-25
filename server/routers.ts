@@ -139,6 +139,7 @@ import { downloadsPublicRouter, downloadsLearnerRouter, downloadsAdminRouter } f
 import { productsPublicRouter, productsLearnerRouter, productsAdminRouter } from "./routers/productsRouter";
 import { quizBankRouter } from "./routers/quizBankRouter";
 import { quizRouter } from "./routers/quizRouter";
+import { lessonCommentsRouter } from "./routers/lessonCommentsRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -227,6 +228,7 @@ export const appRouter = router({
   downloadsAdmin: downloadsAdminRouter,
   downloadsLearner: downloadsLearnerRouter,
   downloadsPublic: downloadsPublicRouter,
+  lessonComments: lessonCommentsRouter,
   productAnalytics: router({
     getProductPurchasers: protectedProcedure
       .input(z.object({ productId: z.number(), productType: z.string() }))

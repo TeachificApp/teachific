@@ -2535,6 +2535,20 @@ export const lmsLessons = mysqlTable("lms_lessons", {
 export type LmsLesson = typeof lmsLessons.$inferSelect;
 export type InsertLmsLesson = typeof lmsLessons.$inferInsert;
 
+export const lessonComments = mysqlTable("lesson_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  lessonId: int("lesson_id").notNull(),
+  userId: int("user_id").notNull(),
+  content: text("content").notNull(),
+  parentId: int("parent_id"),
+  deletedAt: timestamp("deleted_at"),
+  deletedByAdminId: int("deleted_by_admin_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type LessonComment = typeof lessonComments.$inferSelect;
+export type InsertLessonComment = typeof lessonComments.$inferInsert;
+
 export const lmsEnrollments = mysqlTable("lms_enrollments", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
