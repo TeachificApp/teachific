@@ -8,7 +8,7 @@ import { renderBlockPreview } from "@/components/PageBuilder";
 
 type OrderBump = {
   id: number;
-  name: string;
+  name?: string;
   headline?: string | null;
   description?: string | null;
   discountPercent?: number | null;
@@ -17,8 +17,8 @@ type OrderBump = {
   declineText?: string | null;
   imageUrl?: string | null;
   landingPageJson?: any;
-  bumpProductType: string;
-  bumpProductId: number;
+  bumpProductType?: string;
+  bumpProductId?: number;
 };
 
 interface OrderBumpOfferProps {
@@ -27,7 +27,7 @@ interface OrderBumpOfferProps {
   triggerType?: "course" | "quiz" | "download" | "bundle" | "physical" | "cohort";
   triggerProductId?: number;
   timing?: "before_checkout" | "after_checkout";
-  onAccept: (bump: number | { bumpId: number; bump: OrderBump }) => void;
+  onAccept: (bump: any) => void;
   onDecline: (bumpId?: number) => void;
   loading?: boolean;
   variant?: "interstitial" | "inline" | "card";
