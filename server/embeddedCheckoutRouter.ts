@@ -49,6 +49,14 @@ const orderBumpInputSchema = z.object({
   productId: z.number().optional(),
 });
 
+const additionalAccessSchema = z.array(z.object({
+  label: z.string().optional(),
+  type: z.enum(["course", "download", "quiz", "physical", "membership", "bundle"]),
+  id: z.number().optional(),
+  productId: z.number().optional(),
+  brand: z.enum(["teachific", "both"]).optional(),
+})).optional();
+
 export const embeddedCheckoutRouter = router({
   /**
    * Create a Stripe PaymentIntent for an embedded checkout block.
@@ -89,6 +97,7 @@ export const embeddedCheckoutRouter = router({
         fulfillmentQuizId: z.number().optional(),
         fulfillmentMembershipId: z.number().optional(),
         fulfillmentBrand: z.enum(["teachific", "both"]).optional(),
+        additionalAccess: additionalAccessSchema,
         // Redirect after success
         successRedirect: z.string().optional(),
         origin: z.string(),
@@ -338,6 +347,7 @@ export const embeddedCheckoutRouter = router({
       fulfillmentQuizId: z.number().optional(),
       fulfillmentMembershipId: z.number().optional(),
       fulfillmentBrand: z.enum(["teachific", "both"]).optional(),
+      additionalAccess: additionalAccessSchema,
       successRedirect: z.string().optional(),
       origin: z.string(),
     }))

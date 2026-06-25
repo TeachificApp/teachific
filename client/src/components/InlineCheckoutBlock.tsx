@@ -92,6 +92,7 @@ export interface InlineCheckoutBlockData {
   sourceType?: "funnel" | "landing_page" | "product_page" | "lms_lesson" | "other";
   sourceFunnelId?: number;
   sourceLandingPageId?: number;
+  orgId?: number;
   // Additional access items granted at no extra charge after payment
   additionalAccess?: AdditionalAccessItem[];
   // Legacy single-item fulfillment fields (deprecated — use additionalAccess)
@@ -241,10 +242,17 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     setSubmitting(true);
     setCardError(null);
 
+    if (!data.orgId) {
+      toast.error("Checkout is missing organization context.");
+      setSubmitting(false);
+      return;
+    }
+
     // ── Free order: skip Stripe entirely ──
     if (totalCents === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
+          orgId: data.orgId,
           email,
           firstName: firstName || undefined,
           lastName:  lastName  || undefined,
@@ -273,6 +281,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     try {
       // 1. Create PaymentIntent on server
       const intentResult = await createPaymentIntent.mutateAsync({
+        orgId: data.orgId,
         email,
         firstName: firstName || undefined,
         lastName:  lastName  || undefined,

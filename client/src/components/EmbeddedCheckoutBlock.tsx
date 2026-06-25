@@ -114,6 +114,7 @@ export interface EmbeddedCheckoutBlockData {
   sourceFunnelPageId?: number;
   sourceLandingPageId?: number;
   sourceLmsLessonId?: number;
+  orgId?: number;
 }
 
 interface EmbeddedCheckoutBlockProps {
@@ -706,6 +707,10 @@ function EmbeddedCheckoutInner({
     const orderBumps = d.orderBumps ?? [];
     const selectedProduct = products[formData.selectedProductIdx];
     if (!selectedProduct) return;
+    if (!d.orgId) {
+      toast.error("Checkout is missing organization context.");
+      return;
+    }
 
     const selectedBumps = Array.from(formData.addedBumps)
       .map((idx) => orderBumps[idx])
@@ -717,6 +722,7 @@ function EmbeddedCheckoutInner({
     if (formData.totalAmount === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
+          orgId: d.orgId,
           email: formData.email,
           firstName: formData.firstName || undefined,
           lastName: formData.lastName || undefined,
@@ -747,6 +753,7 @@ function EmbeddedCheckoutInner({
     }
     try {
       const result = await createPaymentIntent.mutateAsync({
+        orgId: d.orgId,
         email: formData.email,
         firstName: formData.firstName || undefined,
         lastName: formData.lastName || undefined,
