@@ -1,35 +1,58 @@
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Zap, ArrowRight } from "lucide-react";
 import { renderBlockPreview } from "@/components/PageBuilder";
 
+type OrderBump = {
+  id: number;
+  name: string;
+  headline?: string | null;
+  description?: string | null;
+  discountPercent?: number | null;
+  discountedPrice?: string | null;
+  buttonText?: string | null;
+  declineText?: string | null;
+  imageUrl?: string | null;
+  landingPageJson?: any;
+  bumpProductType: string;
+  bumpProductId: number;
+};
+
 interface OrderBumpOfferProps {
-  bump: {
-    id: number;
-    name: string;
-    headline?: string | null;
-    description?: string | null;
-    discountPercent?: number | null;
-    discountedPrice?: string | null;
-    buttonText?: string | null;
-    declineText?: string | null;
-    imageUrl?: string | null;
-    landingPageJson?: any;
-    bumpProductType: string;
-    bumpProductId: number;
-  };
-  orgId: number;
-  onAccept: (bumpId: number) => void;
-  onDecline: (bumpId: number) => void;
+  bump?: OrderBump;
+  orgId?: number;
+  triggerType?: "course" | "quiz" | "download" | "bundle" | "physical" | "cohort";
+  triggerProductId?: number;
+  timing?: "before_checkout" | "after_checkout";
+  onAccept: (bump: number | { bumpId: number; bump: OrderBump }) => void;
+  onDecline: (bumpId?: number) => void;
   loading?: boolean;
   variant?: "interstitial" | "inline" | "card";
 }
 
-export function OrderBumpOffer({ bump, orgId, onAccept, onDecline, loading, variant = "card" }: OrderBumpOfferProps) {
+export function OrderBumpOffer({
+  bump: providedBump,
+  triggerType,
+  triggerProductId,
+  timing,
+  onAccept,
+  onDecline,
+  loading,
+  variant = "card",
+}: OrderBumpOfferProps) {
+  const { data: fetchedBumps } = trpc.orderBumpsPublic.getForProduct.useQuery(
+    { triggerType: triggerType!, triggerProductId: triggerProductId!, timing },
+    { enabled: !providedBump && !!triggerType && !!triggerProductId }
+  );
+  const bump = providedBump ?? (fetchedBumps?.[0] as OrderBump | undefined);
+
+  if (!bump) return null;
+
   const handleAccept = () => {
-    onAccept(bump.id);
+    onAccept(providedBump ? bump.id : { bumpId: bump.id, bump });
   };
 
   const handleDecline = () => {
