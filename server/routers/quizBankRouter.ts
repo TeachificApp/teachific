@@ -71,6 +71,10 @@ const questionUpsertSchema = z.object({
   choices: z.array(answerChoiceSchema).default([]),
 });
 
+function toDecimalString(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : String(value);
+}
+
 export const quizBankRouter = router({
   // ─── Banks ────────────────────────────────────────────────────────────────
   listBanks: protectedProcedure
@@ -213,18 +217,23 @@ export const quizBankRouter = router({
     .input(questionUpsertSchema)
     .mutation(async ({ input, ctx }) => {
       const { id, tagIds, choices, ...questionData } = input;
+      const normalizedQuestionData = {
+        ...questionData,
+        numericMin: toDecimalString(questionData.numericMin),
+        numericMax: toDecimalString(questionData.numericMax),
+      };
 
       let questionId: number;
       if (id) {
         await (await db()).update(quizBankQuestions).set({
-          ...questionData,
+          ...normalizedQuestionData,
           hotspotZones: questionData.hotspotZones ?? null,
           puzzleConfig: questionData.puzzleConfig ?? null,
         }).where(eq(quizBankQuestions.id, id));
         questionId = id;
       } else {
         const [result] = await (await db()).insert(quizBankQuestions).values({
-          ...questionData,
+          ...normalizedQuestionData,
           orgId: questionData.bankId, // will be overridden below
         });
         // Fix orgId from bank

@@ -413,7 +413,6 @@ export const platformImportRouter = router({
                     title: content.name,
                     type: lessonType,
                     position: content.position,
-                    isPublished: true,
                   });
                 }
               }
@@ -754,7 +753,6 @@ export const platformImportRouter = router({
                     title: lecture.name,
                     type: lessonType,
                     position: lecture.position,
-                    isPublished: lecture.is_published,
                   });
                 }
               }

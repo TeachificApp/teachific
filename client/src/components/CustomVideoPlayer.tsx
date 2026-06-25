@@ -475,7 +475,7 @@ export function CustomVideoPlayer({
                   style={{
                     writingMode: "vertical-lr",
                     direction: "rtl",
-                    appearance: "slider-vertical",
+                    appearance: "slider-vertical" as any,
                     WebkitAppearance: "slider-vertical",
                     accentColor: "white",
                   }}

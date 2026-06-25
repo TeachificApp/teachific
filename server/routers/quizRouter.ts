@@ -103,7 +103,7 @@ export const quizRouter = router({
         allowPartialCredit: settings.allowPartialCredit,
         penaltyForWrong: settings.penaltyForWrong,
         themeConfig: settings.themeConfig,
-        priceAmountCents: settings.priceAmountCents,
+        priceAmount: (settings.priceAmountCents / 100).toFixed(2),
         currency: settings.currency,
         status: "draft",
       });

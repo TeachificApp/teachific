@@ -269,7 +269,7 @@ function AdminRouter() {
 
           {/* ── Products ── */}
           <Route path="/lms/manage" component={CourseBuilderPage} />
-          <Route path="/lms/courses" component={CoursesPage} />
+          <Route path="/lms/courses">{() => <CoursesPage />}</Route>
           <Route path="/lms/courses/new" component={CourseEditorPage} />
           <Route path="/lms/courses/:id/curriculum" component={CourseEditorPage} />
           <Route path="/lms/courses/:id/settings" component={CourseEditorPage} />
@@ -290,7 +290,7 @@ function AdminRouter() {
           <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
           <Route path="/products/bundles" component={BundlesPage} />
           <Route path="/products/bundles/:id/edit">{() => <BundleEditorPage />}</Route>
-          <Route path="/products/physical" component={PhysicalProductsAdmin} />
+          <Route path="/products/physical">{() => <PhysicalProductsAdmin />}</Route>
           <Route path="/products/workshops" component={WorkshopsPage} />
           <Route path="/lms/forms" component={FormsPage} />
           <Route path="/lms/forms/:id/responses" component={FormResponsesPage} />

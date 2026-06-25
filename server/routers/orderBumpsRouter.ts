@@ -12,6 +12,7 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { sql, eq, and, isNull, or } from "drizzle-orm";
 import { orderBumps, orderBumpConversions, lmsPricingOptions } from "../../drizzle/schema";
+import { requireOrgAdmin } from "../db";
 
 // Helper to get DB
 async function getDb() {
