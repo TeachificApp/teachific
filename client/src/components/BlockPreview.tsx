@@ -1490,11 +1490,12 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
   const instructorId = d.instructorId ? Number(d.instructorId) : null;
   const { data: instructors } = trpc.lms.listInstructors.useQuery();
   const instructor = instructorId ? instructors?.find((i: any) => i.id === instructorId) : null;
-  const name = instructor?.name ?? d.name ?? "Instructor Name";
+  const instructorProfile = instructor as (typeof instructor & { name?: string | null; website?: string | null }) | null;
+  const name = instructor?.displayName ?? instructorProfile?.name ?? d.name ?? "Instructor Name";
   const title = instructor?.title ?? d.title ?? "";
   const bio = instructor?.bio ?? d.bio ?? "";
   const avatarUrl = instructor?.avatarUrl ?? d.avatarUrl ?? "";
-  const website = instructor?.website ?? d.website ?? "";
+  const website = instructorProfile?.website ?? d.website ?? "";
   const layout = d.layout ?? "horizontal";
   const showBio = d.showBio !== false;
   const showWebsite = d.showWebsite !== false;
@@ -2244,7 +2245,7 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
   const triggerScrollPct: number = d.triggerScrollPercent ?? 50;
   const accentColor: string = d.accentColor ?? "#179ca3";
   const bgColor: string = d.bgColor ?? "#f0fdfa";
-  const productType: string = d.productType ?? "course"; // course | download | product
+  const productType = (["course", "download", "product"].includes(d.productType) ? d.productType : "course") as "course" | "download" | "product";
   const productSlug: string = d.productSlug ?? "";
   const productId: number | null = d.productId ? Number(d.productId) : null;
   const discountType: string = d.discountType ?? "none"; // none | percent | fixed | promo_code
@@ -2284,7 +2285,7 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
       });
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank");
-      } else if (result.alreadyEnrolled) {
+      } else if ("alreadyEnrolled" in result && result.alreadyEnrolled) {
         alert("You already have access to this product.");
       }
     } catch (err: any) {

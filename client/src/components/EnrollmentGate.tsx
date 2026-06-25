@@ -285,22 +285,20 @@ function EnrollCard({
       <p className="text-muted-foreground text-sm mb-5 leading-relaxed">
         Enroll to get full access to all lessons, track your progress, and earn your certificate.
       </p>
-      {(checkoutUrl || onEnroll) && (
-        <Button
-          className="w-full text-white font-semibold"
-          style={{ backgroundColor: primaryColor }}
-          onClick={onEnroll}
-          disabled={enrolling}
-        >
-          {enrolling ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <ShoppingCart className="w-4 h-4 mr-2" />
-          )}
-          {enrollLabel ?? "Enroll Now"}
-          {!enrolling && <ArrowRight className="w-4 h-4 ml-1" />}
-        </Button>
-      )}
+      <Button
+        className="w-full text-white font-semibold"
+        style={{ backgroundColor: primaryColor }}
+        onClick={onEnroll}
+        disabled={enrolling}
+      >
+        {enrolling ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <ShoppingCart className="w-4 h-4 mr-2" />
+        )}
+        {enrollLabel ?? "Enroll Now"}
+        {!enrolling && <ArrowRight className="w-4 h-4 ml-1" />}
+      </Button>
     </div>
   );
 }

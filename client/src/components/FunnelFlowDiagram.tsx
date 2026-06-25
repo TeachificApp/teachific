@@ -283,7 +283,7 @@ export function FunnelFlowDiagram({ funnelId, onEditPage }: FunnelFlowDiagramPro
 
   const layout = useMemo(() => {
     if (!pages) return { nodes: [], edges: [], width: 800, height: 400 };
-    return computeLayout(pages as DiagramPage[]);
+    return computeLayout(pages as unknown as DiagramPage[]);
   }, [pages]);
 
   // Edge grouping for parallel edges (same source)
@@ -458,7 +458,7 @@ export function FunnelFlowDiagram({ funnelId, onEditPage }: FunnelFlowDiagramPro
 
             // Find the rule for tooltip
             const rule = edge.ruleId
-              ? (pages as DiagramPage[]).flatMap(p => p.branchRules).find(r => r.id === edge.ruleId)
+              ? (pages as unknown as DiagramPage[]).flatMap(p => p.branchRules).find(r => r.id === edge.ruleId)
               : null;
 
             return (

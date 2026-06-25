@@ -452,7 +452,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
       onBlocksChange(blocks);
       toast.success("Content saved!");
       if (andClose && onSavedAndClose) onSavedAndClose();
-      else if (onSaved) onSaved();
+      else onSaved?.();
       return;
     }
     setSaving(true);
@@ -465,7 +465,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
       if (andClose && onSavedAndClose) {
         onSavedAndClose();
       } else {
-        onSaved();
+        onSaved?.();
       }
     } catch (e: any) {
       toast.error(`Save failed: ${e.message}`);
@@ -914,7 +914,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             {/* Block grid or Saved templates */}
             {activeCategory === "Saved" ? (
               <div className="flex-1 overflow-hidden p-1">
-                <BlockTemplatesTabContent onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
+                <BlockTemplatesTabContent onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedBlockId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
