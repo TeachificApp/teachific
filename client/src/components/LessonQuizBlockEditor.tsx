@@ -410,17 +410,24 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
           {/* From Bank */}
           <TabsContent value="bank" className="mt-2">
             <QuestionBankPicker onAdd={(bankQ) => {
-              const opts = Array.isArray(bankQ.options)
-                ? bankQ.options.map((o: any) => (typeof o === "string" ? o : o.text ?? ""))
+              const payload = (() => {
+                try { return JSON.parse(bankQ.dataJson ?? "{}"); } catch { return {}; }
+              })();
+              const rawOptions = Array.isArray(payload.options) ? payload.options : [];
+              const opts = rawOptions.length > 0
+                ? rawOptions.map((o: any) => (typeof o === "string" ? o : o.text ?? ""))
                 : ["True", "False"];
-              const correctIdx = opts.findIndex((o: string) => o === bankQ.correctAnswer);
+              const correctAnswer = payload.correctAnswer ?? payload.answer ?? "";
+              const correctIdx = typeof correctAnswer === "number"
+                ? correctAnswer
+                : opts.findIndex((o: string) => o === correctAnswer);
               const q: QuizQuestion = {
-                question: bankQ.question,
+                question: bankQ.stem,
                 options: opts.length > 0 ? opts : ["True", "False"],
                 correctAnswer: correctIdx >= 0 ? correctIdx : 0,
                 explanation: bankQ.explanation ?? "",
-                imageUrl: bankQ.questionImageUrl ?? undefined,
-                videoUrl: bankQ.questionVideoUrl ?? undefined,
+                imageUrl: payload.questionImageUrl ?? payload.imageUrl ?? undefined,
+                videoUrl: payload.questionVideoUrl ?? payload.videoUrl ?? undefined,
               };
               set("questions", [...questions, q]);
               toast.success("Question added from bank.");
@@ -614,23 +621,21 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
 function QuestionBankPicker({ onAdd }: { onAdd: (q: any) => void }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [page, setPage] = useState(1);
+  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
+  const orgId = orgs?.[0]?.id;
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: tagsData } = trpc.questionBank.listTags.useQuery();
-  const tags = tagsData ?? [];
-
   const { data, isLoading } = trpc.questionBank.listQuestions.useQuery({
+    orgId: orgId!,
     search: debouncedSearch || undefined,
-    tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-    page,
-    pageSize: 10,
-  });
+    limit: 10,
+    offset: (page - 1) * 10,
+  }, { enabled: !!orgId });
 
   const questions = data?.questions ?? [];
   const total = data?.total ?? 0;
@@ -645,17 +650,6 @@ function QuestionBankPicker({ onAdd }: { onAdd: (q: any) => void }) {
           <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-gray-400" />
         </div>
       </div>
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {tags.map((tag: any) => (
-            <button key={tag.id} onClick={() => { setSelectedTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]); setPage(1); }}
-              className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-all ${selectedTagIds.includes(tag.id) ? "text-white border-transparent" : "bg-white text-gray-600 border-gray-200"}`}
-              style={selectedTagIds.includes(tag.id) ? { backgroundColor: tag.color, borderColor: tag.color } : {}}>
-              {tag.name}
-            </button>
-          ))}
-        </div>
-      )}
       {isLoading ? (
         <p className="text-xs text-gray-400 text-center py-3">Loading...</p>
       ) : questions.length === 0 ? (
@@ -667,8 +661,7 @@ function QuestionBankPicker({ onAdd }: { onAdd: (q: any) => void }) {
         <div className="space-y-1 max-h-60 overflow-y-auto">
           {questions.map((q: any) => (
             <div key={q.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs hover:border-teal-200 hover:bg-teal-50 transition-colors">
-              {q.questionImageUrl && <img src={q.questionImageUrl} alt="" className="h-8 w-auto rounded border border-gray-200 object-cover shrink-0" />}
-              <p className="flex-1 text-gray-700 font-medium line-clamp-2">{q.question}</p>
+              <p className="flex-1 text-gray-700 font-medium line-clamp-2">{q.stem}</p>
               <button onClick={() => onAdd(q)} className="shrink-0 px-2 py-0.5 bg-teal-600 text-white rounded text-xs hover:bg-teal-700 transition-colors">Add</button>
             </div>
           ))}

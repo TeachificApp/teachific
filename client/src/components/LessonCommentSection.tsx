@@ -85,7 +85,7 @@ function ReplyBox({
 
   return (
     <div className="flex gap-2 mt-2">
-      <CommentAvatar name={user?.name} displayName={(user as any)?.displayName} avatarUrl={user?.avatarUrl} />
+      <CommentAvatar name={user?.name} displayName={(user as any)?.displayName} avatarUrl={(user as any)?.avatarUrl} />
       <div className="flex-1 space-y-1.5">
         <Textarea
           value={text}
@@ -273,7 +273,7 @@ export default function LessonCommentSection({ lessonId, commentsEnabled }: Less
           {/* Comment input */}
           {user ? (
             <div className="flex gap-3">
-              <CommentAvatar name={user.name} displayName={(user as any).displayName} avatarUrl={user.avatarUrl} />
+              <CommentAvatar name={user.name} displayName={(user as any).displayName} avatarUrl={(user as any).avatarUrl} />
               <div className="flex-1 space-y-2">
                 <Textarea
                   value={draft}
