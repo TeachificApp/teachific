@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,15 +28,11 @@ interface OrderBumpOfferProps {
 }
 
 export function OrderBumpOffer({ bump, orgId, onAccept, onDecline, loading, variant = "card" }: OrderBumpOfferProps) {
-  const recordConversion = trpc.lms.orderBumps.recordConversion.useMutation();
-
   const handleAccept = () => {
-    recordConversion.mutate({ bumpId: bump.id, orgId, accepted: true });
     onAccept(bump.id);
   };
 
   const handleDecline = () => {
-    recordConversion.mutate({ bumpId: bump.id, orgId, accepted: false });
     onDecline(bump.id);
   };
 

@@ -85,8 +85,8 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
     { pageSize: maxItems + 4 },
     { enabled: needsCourses }
   );
-    const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloads.list.useQuery(
-    { limit: maxItems + 4 },
+    const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloadsPublic.list.useQuery(
+    { page: 1, limit: maxItems + 4 },
     { enabled: needsDownloads }
   );
   const { data: membershipsData, isLoading: membershipsLoading } = trpc.lms.memberships.list.useQuery(
@@ -125,9 +125,9 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
       id: `course-${c.id}`,
       slug: c.slug,
       title: c.title,
-      description: c.subtitle ?? c.description ?? "",
-      price: c.price,
-      isFree: c.isFree,
+      description: (c as any).subtitle ?? c.description ?? "",
+      price: Number((c as any).price ?? 0),
+      isFree: Boolean((c as any).isFree ?? Number((c as any).price ?? 0) === 0),
       imageUrl: (c as any).coverImageUrl ?? (c as any).thumbnailUrl ?? "",
       type: "course" as const,
       href: `/courses/${c.slug}`,
@@ -137,9 +137,9 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
       id: `download-${p.id}`,
       slug: p.slug,
       title: p.title,
-      description: p.subtitle ?? p.description ?? "",
-      price: p.price,
-      isFree: p.isFree,
+      description: (p as any).subtitle ?? p.description ?? "",
+      price: Number((p as any).price ?? 0),
+      isFree: Boolean((p as any).isFree ?? Number((p as any).price ?? 0) === 0),
       imageUrl: p.thumbnailUrl ?? "",
       type: "download" as const,
       href: `/downloads/${p.slug}`,
