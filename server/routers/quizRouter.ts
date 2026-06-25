@@ -1,9 +1,19 @@
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { TRPCError } from "@trpc/server";
 
-let _db: Awaited<ReturnType<typeof getDb>>;
-async function db() { return _db ?? (_db = await getDb()); }
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+let _db: Db | undefined;
+async function db(): Promise<Db> {
+  if (_db) return _db;
+  const connection = await getDb();
+  if (!connection) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+  }
+  _db = connection;
+  return connection;
+}
 import {
   quizzes,
   quizBankQuestions,
@@ -17,7 +27,6 @@ import {
   quizAccessGrants,
 } from "../../drizzle/schema";
 import { and, eq, inArray, sql, desc, asc, isNull } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
 
 // ─── Quiz settings schema ─────────────────────────────────────────────────────
 const quizSettingsSchema = z.object({

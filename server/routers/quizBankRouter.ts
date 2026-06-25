@@ -1,9 +1,19 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { TRPCError } from "@trpc/server";
 
-let _db: Awaited<ReturnType<typeof getDb>>;
-async function db() { return _db ?? (_db = await getDb()); }
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+let _db: Db | undefined;
+async function db(): Promise<Db> {
+  if (_db) return _db;
+  const connection = await getDb();
+  if (!connection) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+  }
+  _db = connection;
+  return connection;
+}
 import {
   quizBanks,
   quizBankQuestions,
@@ -14,7 +24,6 @@ import {
 } from "../../drizzle/schema";
 import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
-import { TRPCError } from "@trpc/server";
 
 // ─── Question type enum ───────────────────────────────────────────────────────
 const QUESTION_TYPES = ["mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"] as const;
