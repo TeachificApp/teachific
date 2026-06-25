@@ -89,6 +89,7 @@ interface CheckoutFormData {
   submitText: string;
   submitIcon?: "none" | "lock" | "shield" | "shopping-cart" | "shopping-bag" | "zap" | "star" | "heart" | "gift" | "award" | "arrow-right" | "sparkles" | "rocket" | "badge-check" | "credit-card";
   successRedirect: string;
+  orgId?: number;
 }
 
 interface CheckoutFormBlockProps {
@@ -195,10 +196,15 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
 
     // ── Free order: skip Stripe entirely ──
     if (totalPrice === 0) {
+      if (!d.orgId) {
+        toast.error("Checkout is missing organization context.");
+        return;
+      }
       setIsCreatingIntent(true);
       try {
         const selectedProduct = products[selectedProductIdx];
         const result = await processFreeOrder.mutateAsync({
+          orgId: d.orgId,
           email,
           firstName: firstName || undefined,
           lastName:  lastName  || undefined,
