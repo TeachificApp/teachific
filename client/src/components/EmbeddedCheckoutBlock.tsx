@@ -122,6 +122,12 @@ interface EmbeddedCheckoutBlockProps {
   pageSlug?: string; // optional context for purchase tracking
 }
 
+type CheckoutProductType = "course" | "download" | "quiz" | "physical" | "membership" | "bundle" | "other";
+
+function normalizeCheckoutProductType(type: EmbeddedCheckoutProduct["type"]): CheckoutProductType {
+  return type === "subscription" ? "membership" : type;
+}
+
 // ─── Animated Order Bump ─────────────────────────────────────────────────────
 
 function AnimatedOrderBump({
@@ -716,14 +722,14 @@ function EmbeddedCheckoutInner({
           lastName: formData.lastName || undefined,
           phone: formData.phone || undefined,
           productName: selectedProduct.name,
-          productType: selectedProduct.type,
+          productType: normalizeCheckoutProductType(selectedProduct.type),
           productId: (selectedProduct as any).productId ?? undefined,
           sourceType: d.sourceType ?? "other",
           sourceFunnelId: d.sourceFunnelId,
           sourceFunnelPageId: d.sourceFunnelPageId,
           sourceLandingPageId: d.sourceLandingPageId,
           sourceLmsLessonId: d.sourceLmsLessonId,
-          lmsCourseId: (d as any).lmsCourseId ?? undefined,
+          fulfillmentCourseId: (d as any).lmsCourseId ?? undefined,
           fulfillmentBrand: (d as any).fulfillmentBrand ?? undefined,
           successRedirect: d.successRedirect,
           origin: window.location.origin,
@@ -747,7 +753,7 @@ function EmbeddedCheckoutInner({
         phone: formData.phone || undefined,
         productName: selectedProduct.name,
         productPrice: selectedProduct.price,
-        productType: selectedProduct.type,
+        productType: normalizeCheckoutProductType(selectedProduct.type),
         productId: (selectedProduct as any).productId ?? undefined,
         selectedBumps,
         shippingAddress: formData.shippingAddress || undefined,
@@ -757,7 +763,7 @@ function EmbeddedCheckoutInner({
         sourceFunnelPageId: d.sourceFunnelPageId,
         sourceLandingPageId: d.sourceLandingPageId,
         sourceLmsLessonId: d.sourceLmsLessonId,
-        lmsCourseId: (d as any).lmsCourseId ?? undefined,
+        fulfillmentCourseId: (d as any).lmsCourseId ?? undefined,
         fulfillmentBrand: (d as any).fulfillmentBrand ?? undefined,
         successRedirect: d.successRedirect,
         origin: window.location.origin,

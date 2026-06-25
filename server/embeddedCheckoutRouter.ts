@@ -88,6 +88,7 @@ export const embeddedCheckoutRouter = router({
         fulfillmentDownloadId: z.number().optional(),
         fulfillmentQuizId: z.number().optional(),
         fulfillmentMembershipId: z.number().optional(),
+        fulfillmentBrand: z.enum(["teachific", "both"]).optional(),
         // Redirect after success
         successRedirect: z.string().optional(),
         origin: z.string(),
@@ -336,6 +337,7 @@ export const embeddedCheckoutRouter = router({
       fulfillmentDownloadId: z.number().optional(),
       fulfillmentQuizId: z.number().optional(),
       fulfillmentMembershipId: z.number().optional(),
+      fulfillmentBrand: z.enum(["teachific", "both"]).optional(),
       successRedirect: z.string().optional(),
       origin: z.string(),
     }))

@@ -116,8 +116,9 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
   })();
 
   // Derive initial values — logged-in user takes highest priority
-  const initFirstName = user?.firstName ?? user?.displayName?.split(" ")[0] ?? user?.name?.split(" ")[0] ?? savedLead.name?.split(" ")[0] ?? "";
-  const initLastName = user?.lastName ?? user?.displayName?.split(" ").slice(1).join(" ") ?? user?.name?.split(" ").slice(1).join(" ") ?? savedLead.name?.split(" ").slice(1).join(" ") ?? "";
+  const authUser = user as (typeof user & { firstName?: string | null; lastName?: string | null; displayName?: string | null }) | null;
+  const initFirstName = authUser?.firstName ?? authUser?.displayName?.split(" ")[0] ?? user?.name?.split(" ")[0] ?? savedLead.name?.split(" ")[0] ?? "";
+  const initLastName = authUser?.lastName ?? authUser?.displayName?.split(" ").slice(1).join(" ") ?? user?.name?.split(" ").slice(1).join(" ") ?? savedLead.name?.split(" ").slice(1).join(" ") ?? "";
   const initEmail = user?.email ?? savedLead.email ?? "";
 
   const [firstName, setFirstName] = useState(initFirstName);
