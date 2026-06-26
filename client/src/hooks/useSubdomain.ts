@@ -11,6 +11,10 @@
 const ROOT_DOMAINS = new Set([
   "teachific.app",
   "www.teachific.app",
+  "learn.teachific.app",
+  "app.teachific.app",
+  "api.teachific.app",
+  "admin.teachific.app",
   "localhost",
   "127.0.0.1",
 ]);
@@ -42,8 +46,12 @@ export function getSubdomain(): string | null {
   // Extract the subdomain part: "myorg" from "myorg.teachific.app"
   const sub = hostname.replace(/\.teachific\.app$/, "");
 
-  // Exclude "www" as a valid org subdomain
-  if (sub === "www") return null;
+  // Exclude reserved platform subdomains that should never be treated as org slugs
+  const RESERVED_SUBDOMAINS = new Set([
+    "www", "learn", "app", "api", "admin", "mail", "status", "help",
+    "cdn", "assets", "static", "media", "support", "docs",
+  ]);
+  if (RESERVED_SUBDOMAINS.has(sub)) return null;
 
   // Subdomain must be a simple slug (no dots)
   if (sub.includes(".")) return null;
