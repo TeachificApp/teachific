@@ -924,6 +924,22 @@ export const lmsLearnerRouter = router({
 
       if (pricingType === "free") throw new TRPCError({ code: "BAD_REQUEST", message: "Use enrollFree for free courses" });
 
+      // ── Duplicate charge prevention ──────────────────────────────────────────
+      // If the user is already enrolled, return a special response so the
+      // frontend can redirect them to the player instead of creating a new
+      // Stripe session.
+      const [existingEnrollment] = await db
+        .select({ id: lmsEnrollments.id })
+        .from(lmsEnrollments)
+        .where(and(
+          eq(lmsEnrollments.userId, ctx.user.id),
+          eq(lmsEnrollments.courseId, course.id),
+        ))
+        .limit(1);
+      if (existingEnrollment) {
+        return { alreadyEnrolled: true as const, courseSlug: course.slug, checkoutUrl: null };
+      }
+
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
 
@@ -1091,7 +1107,7 @@ export const lmsLearnerRouter = router({
 
       if (!session) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create checkout session" });
       await db.update(lmsOrders).set({ stripeSessionId: session.id }).where(eq(lmsOrders.id, orderResult.id));
-      return { checkoutUrl: session.url };
+      return { checkoutUrl: session.url, alreadyEnrolled: false as const };
     }),
 
   /**

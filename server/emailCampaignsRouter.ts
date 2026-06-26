@@ -33,10 +33,14 @@ import {
   lmsEnrollments,
   lmsCourses,
   organizations,
+  emailListSubscribers,
 } from "../drizzle/schema";
 import { sendEmail, sendOrgEmail, encryptOrgKey } from "./sendgrid";
+import { addToSendGridGlobalUnsubscribes, removeFromSendGridGlobalUnsubscribes } from "./lib/sendgridSuppressions";
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
+
+const SITE_URL = process.env.VITE_SITE_URL || process.env.VITE_OAUTH_PORTAL_URL || "https://teachific.app";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,8 +62,88 @@ async function ensureUnsubscribeToken(db: any, userId: number): Promise<string> 
   return token;
 }
 
-function buildUnsubscribeUrl(token: string, origin: string): string {
-  return `${origin}/unsubscribe?token=${token}`;
+function buildUnsubscribeUrl(token: string, origin?: string): string {
+  return `${origin ?? SITE_URL}/unsubscribe?token=${token}`;
+}
+
+/**
+ * Wrap campaign HTML in a responsive 600px email container with Teachific branding.
+ * Handles both raw HTML snippets and full HTML documents.
+ */
+function wrapCampaignHtml(htmlBody: string, orgName: string): string {
+  // If it's already a full HTML document, inject our wrapper styles and return as-is
+  if (htmlBody.trim().toLowerCase().startsWith("<!doctype") || htmlBody.trim().toLowerCase().startsWith("<html")) {
+    return htmlBody;
+  }
+  // Wrap raw HTML snippet in a responsive email container
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>${orgName}</title>
+  <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
+  <style>
+    body { margin: 0; padding: 0; background-color: #f0f4f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .email-wrapper { width: 100%; background-color: #f0f4f8; padding: 32px 16px; box-sizing: border-box; }
+    .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .email-header { background-color: #0e1e2e; padding: 20px 32px; text-align: center; }
+    .email-header .brand { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .email-header .brand-white { color: #ffffff; }
+    .email-header .brand-teal { color: #24abbc; }
+    .email-body { padding: 32px; color: #1a202c; font-size: 15px; line-height: 1.6; }
+    .email-body h1, .email-body h2, .email-body h3 { color: #0e1e2e; margin-top: 0; }
+    .email-body a { color: #189aa1; }
+    .email-body img { max-width: 100%; height: auto; display: block; }
+    @media only screen and (max-width: 600px) {
+      .email-body { padding: 20px 16px; }
+      .email-header { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="email-header">
+        <span class="brand"><span class="brand-white">teach</span><span class="brand-teal">ific</span><span class="brand-white" style="font-size:13px;vertical-align:super;">&#8482;</span></span>
+      </div>
+      <div class="email-body">
+        ${htmlBody}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Rewrite all href links in HTML to go through our click tracking proxy.
+ * Skips mailto:, tel:, and unsubscribe links.
+ */
+function injectClickTracking(html: string, campaignId: number, recipientId: number): string {
+  return html.replace(
+    /href="(https?:\/\/[^"]+)"/gi,
+    (match, url: string) => {
+      // Skip unsubscribe links — they have their own tracking
+      if (url.includes("/unsubscribe") || url.includes("unsubscribe_url")) return match;
+      const encoded = Buffer.from(url).toString("base64url");
+      const trackUrl = `${SITE_URL}/api/email/click?c=${campaignId}&r=${recipientId}&u=${encoded}`;
+      return `href="${trackUrl}"`;
+    },
+  );
+}
+
+/**
+ * Inject a 1x1 tracking pixel at the end of the email body.
+ */
+function injectOpenPixel(html: string, campaignId: number, recipientId: number): string {
+  const pixelUrl = `${SITE_URL}/api/email/open?c=${campaignId}&r=${recipientId}`;
+  const pixel = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`;
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${pixel}</body>`);
+  }
+  return html + pixel;
 }
 
 function injectUnsubscribeFooter(htmlBody: string, unsubscribeUrl: string, orgName: string): string {
@@ -86,6 +170,7 @@ async function resolveOrgRecipients(
     courseIds?: number[];
     enrollmentStatus?: "enrolled" | "completed" | "all";
     specificEmails?: string[];
+    listIds?: number[];
   },
 ): Promise<{ id: number; email: string; name: string | null }[]> {
   const recipients = new Set<number>();
@@ -107,11 +192,31 @@ async function resolveOrgRecipients(
     return orgUsers.filter((u: any) => filter.specificEmails!.includes(u.email));
   }
 
+  // If email list IDs provided, include subscribers from those lists
+  if (filter.listIds && filter.listIds.length > 0) {
+    const listSubs = await db
+      .select({ email: emailListSubscribers.email, userId: emailListSubscribers.userId })
+      .from(emailListSubscribers)
+      .where(and(
+        inArray(emailListSubscribers.listId, filter.listIds),
+        eq(emailListSubscribers.status, "subscribed"),
+      ));
+    // Merge list subscribers into orgUsers (by email) so they can be filtered by unsubscribes
+    const extraEmails = new Set(listSubs.map((s: any) => s.email.toLowerCase()));
+    const merged = [...orgUsers];
+    for (const sub of listSubs) {
+      if (!merged.find((u: any) => u.email?.toLowerCase() === sub.email.toLowerCase())) {
+        merged.push({ id: sub.userId ?? 0, email: sub.email, name: null });
+      }
+    }
+    return merged.filter((u: any) => extraEmails.has(u.email?.toLowerCase()));
+  }
+
   // Filter by course enrollment
   if (filter.courseIds && filter.courseIds.length > 0) {
     for (const courseId of filter.courseIds) {
       const enrollments = await db
-        .select({ userId: lmsEnrollments.userId, completionPercentage: lmsEnrollments.completionPercentage })
+        .select({ userId: lmsEnrollments.userId, progressPercent: lmsEnrollments.progressPercent })
         .from(lmsEnrollments)
         .where(and(
           eq(lmsEnrollments.courseId, courseId),
@@ -120,7 +225,7 @@ async function resolveOrgRecipients(
       
       let filtered = enrollments;
       if (filter.enrollmentStatus === "completed") {
-        filtered = enrollments.filter((e: any) => e.completionPercentage === 100);
+        filtered = enrollments.filter((e: any) => Number(e.progressPercent) >= 100);
       }
       
       filtered.forEach((e: any) => recipients.add(e.userId));
@@ -176,26 +281,24 @@ export const emailCampaignsRouter = router({
         await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        
-        const slug = `${input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${nanoid(6)}`;
-        
         await db.insert(emailTemplates).values({
           orgId: input.orgId,
           name: input.name,
-          slug,
           subject: input.subject,
           htmlBody: input.htmlBody,
           textBody: input.textBody ?? null,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-        
         const created = await db
           .select()
           .from(emailTemplates)
-          .where(eq(emailTemplates.slug, slug))
+          .where(and(
+            eq(emailTemplates.orgId, input.orgId),
+            eq(emailTemplates.name, input.name),
+          ))
+          .orderBy(desc(emailTemplates.createdAt))
           .limit(1);
-        
         return created[0];
       }),
 
@@ -213,7 +316,7 @@ export const emailCampaignsRouter = router({
         // Verify ownership via template's orgId
         const [tmpl] = await db.select({ orgId: emailTemplates.orgId }).from(emailTemplates).where(eq(emailTemplates.id, input.id)).limit(1);
         if (!tmpl) throw new TRPCError({ code: "NOT_FOUND" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, tmpl.orgId);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, tmpl.orgId ?? undefined);
         const { id, ...updates } = input;
         await db
           .update(emailTemplates)
@@ -230,7 +333,7 @@ export const emailCampaignsRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const [tmpl] = await db.select({ orgId: emailTemplates.orgId }).from(emailTemplates).where(eq(emailTemplates.id, input.id)).limit(1);
         if (!tmpl) throw new TRPCError({ code: "NOT_FOUND" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, tmpl.orgId);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, tmpl.orgId ?? undefined);
         await db.delete(emailTemplates).where(eq(emailTemplates.id, input.id));
         return { success: true };
       }),
@@ -277,6 +380,7 @@ export const emailCampaignsRouter = router({
           sentCount: 0,
           openCount: 0,
           clickCount: 0,
+          createdBy: ctx.user.id,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -367,23 +471,33 @@ export const emailCampaignsRouter = router({
         let failedCount = 0;
         for (const recipient of recipients) {
           if (unsubEmails.has(recipient.email.toLowerCase())) continue;
-
           let ok = false;
           let errorMsg: string | null = null;
+          let recipientRowId: number | null = null;
           try {
             const unsubscribeToken = await ensureUnsubscribeToken(db, recipient.id);
-            const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken, "https://teachific.app");
-            const htmlWithFooter = injectUnsubscribeFooter(
-              campaign[0].htmlBody,
-              unsubscribeUrl,
-              org[0].name,
-            );
-
+            const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken);
+            // 1. Wrap in responsive email container
+            const wrappedHtml = wrapCampaignHtml(campaign[0].htmlBody, org[0].name);
+            // 2. Insert per-recipient row FIRST so we have the ID for tracking URLs
+            const insertResult = await db.insert(emailCampaignRecipients).values({
+              campaignId: input.campaignId,
+              userId: recipient.id,
+              email: recipient.email,
+              status: "pending",
+              sentAt: null,
+              errorMessage: null,
+            });
+            recipientRowId = (insertResult[0] as any).insertId as number;
+            // 3. Inject footer, click tracking, and open pixel
+            const htmlWithFooter = injectUnsubscribeFooter(wrappedHtml, unsubscribeUrl, org[0].name);
+            const htmlWithClicks = injectClickTracking(htmlWithFooter, input.campaignId, recipientRowId);
+            const finalHtml = injectOpenPixel(htmlWithClicks, input.campaignId, recipientRowId);
             await sendOrgEmail(
               {
                 to: recipient.email,
                 subject: campaign[0].subject,
-                html: htmlWithFooter,
+                html: finalHtml,
                 text: campaign[0].textBody || undefined,
               },
               {
@@ -394,21 +508,33 @@ export const emailCampaignsRouter = router({
             );
             ok = true;
             sentCount++;
+            // Update tracking row to sent
+            await db.update(emailCampaignRecipients)
+              .set({ status: "sent", sentAt: new Date(), errorMessage: null })
+              .where(eq(emailCampaignRecipients.id, recipientRowId));
           } catch (err: any) {
             errorMsg = err?.message ?? "Send failed";
             failedCount++;
             console.error(`Failed to send email to ${recipient.email}:`, err);
           }
-
-          // Insert per-recipient tracking row
-          await db.insert(emailCampaignRecipients).values({
-            campaignId: input.campaignId,
-            userId: recipient.id,
-            email: recipient.email,
-            status: ok ? "sent" : "failed",
-            sentAt: ok ? new Date() : null,
-            errorMessage: errorMsg,
-          });
+          // Update or insert failed tracking row
+          if (!ok) {
+            if (recipientRowId !== null) {
+              await db.update(emailCampaignRecipients)
+                .set({ status: "failed", errorMessage: errorMsg })
+                .where(eq(emailCampaignRecipients.id, recipientRowId));
+            } else {
+              // Fallback: insert a failed row if we never got to insert above
+              await db.insert(emailCampaignRecipients).values({
+                campaignId: input.campaignId,
+                userId: recipient.id,
+                email: recipient.email,
+                status: "failed",
+                sentAt: null,
+                errorMessage: errorMsg,
+              });
+            }
+          }
         }
         
         // Update campaign status with final counts
@@ -442,7 +568,7 @@ export const emailCampaignsRouter = router({
           .update(emailCampaigns)
           .set({
             status: "scheduled",
-            scheduledFor: input.scheduledFor,
+            scheduledAt: input.scheduledFor,
             updatedAt: new Date(),
           })
           .where(eq(emailCampaigns.id, input.campaignId));
@@ -459,7 +585,7 @@ export const emailCampaignsRouter = router({
         
         await db
           .update(emailCampaigns)
-          .set({ status: "cancelled", updatedAt: new Date() })
+          .set({ status: "draft", updatedAt: new Date() })
           .where(eq(emailCampaigns.id, input.campaignId));
         
         return { success: true };
@@ -568,6 +694,9 @@ export const emailCampaignsRouter = router({
           });
         }
 
+        // Add to SendGrid global suppression (best-effort)
+        addToSendGridGlobalUnsubscribes([user.email]).catch(() => {});
+
         return { success: true, email: user.email };
       }),
 
@@ -594,6 +723,9 @@ export const emailCampaignsRouter = router({
             eq(emailUnsubscribes.email, user.email),
             isNull(emailUnsubscribes.orgId),
           ));
+
+        // Remove from SendGrid global suppression (best-effort)
+        removeFromSendGridGlobalUnsubscribes(user.email).catch(() => {});
 
         return { success: true, email: user.email };
       }),

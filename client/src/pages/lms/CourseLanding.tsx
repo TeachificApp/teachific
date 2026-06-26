@@ -976,7 +976,15 @@ export default function CourseLanding() {
     onError: (e) => toast.error(`Enrollment failed: ${e.message}`),
   });
   const createCheckout = trpc.lmsLearner.createCheckout.useMutation({
-    onSuccess: (data) => { if (data.checkoutUrl) window.open(data.checkoutUrl, "_blank"); },
+    onSuccess: (data) => {
+      if (data.alreadyEnrolled) {
+        // User is already enrolled — redirect to player instead of creating a duplicate charge
+        toast.success("You already have access to this course!");
+        navigate(`/courses/${slug}/player`);
+        return;
+      }
+      if (data.checkoutUrl) window.open(data.checkoutUrl, "_blank");
+    },
     onError: (e) => toast.error(`Checkout failed: ${e.message}`),
   });
   const registerFreePreview = trpc.lms.registerFreePreview.useMutation();

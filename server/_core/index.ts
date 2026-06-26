@@ -18,6 +18,7 @@ import mediaUploadRouter from "../mediaUploadRoutes";
 import widgetRouter from "../widgetRoutes";
 import stripeWebhookRouter from "../stripeWebhookRoutes";
 import { embeddedCheckoutWebhookRouter } from "../embeddedCheckoutWebhook";
+import { registerEmailTrackingRoutes } from "../routes/emailTrackingRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -173,6 +174,9 @@ async function startServer() {
 
   // Embeddable course widgets (card, curriculum) — served as JS for external sites
   app.use("/api/widget", widgetRouter);
+
+  // Email open/click tracking + one-click unsubscribe (GET /api/email/open, /api/email/click, /api/unsubscribe)
+  registerEmailTrackingRoutes(app);
 
   // tRPC API
   app.use(

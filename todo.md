@@ -4461,3 +4461,16 @@
 - [x] Fix copy campaign error: add duplicate procedure to emailMarketing router and wire Duplicate menu item in EmailCampaignsPage
 - [x] Deep email campaign analytics: per-recipient tracking rows written on send (emailMarketing.send + emailCampaigns.send), analytics procedure in emailMarketing router, CampaignAnalyticsModal with 6 KPI cards, 3 rate cards, engagement funnel bar chart, and searchable per-recipient table with open/click timestamps
 - [x] Fix funnel builder stuck on "Loading funnel...": added getWithSteps, createStep, updateStep, deleteStep, reorderSteps procedures to funnelRouter; updated FunnelBuilderPage to call getWithSteps instead of get (which returned pages, not steps)
+
+## Port from ultrasound-assist: Unsubscribe, Tracking, Duplicate Charge Prevention (Jun 2026)
+- [x] Create server/lib/sendgridSuppressions.ts — per-org SendGrid global unsubscribe helpers
+- [x] Create server/routes/emailTrackingRoutes.ts — HMAC-signed /api/unsubscribe GET route + /api/email/click + /api/email/open tracking routes
+- [x] Register /api/unsubscribe, /api/email/click, /api/email/open routes in server/_core/index.ts
+- [x] Update emailCampaignsRouter.ts send — call addToSendGridGlobalUnsubscribes on unsubscribe.confirm; removeFromSendGridGlobalUnsubscribes on resubscribe
+- [x] Update sendgrid.ts sendEmail/sendOrgEmail — disable click_tracking and open_tracking (prevent SendGrid from rewriting links)
+- [x] Add email click tracking: /api/email/click?c=<campaignId>&r=<recipientId>&u=<encodedUrl> redirect route that records clickedAt and redirects
+- [x] Add email open tracking: inject 1x1 pixel img in email body pointing to /api/email/open?c=<campaignId>&r=<recipientId>
+- [x] Add email sizing: wrap campaign HTML in responsive email container (max-width 600px, white card, Teachific brand header/footer)
+- [x] lmsRouter.ts createCheckout — add enrollment check before creating Stripe session; return { checkoutUrl: null, alreadyEnrolled: true } if already enrolled
+- [ ] funnelRouter.ts createCheckout — add purchase check; return { checkoutUrl: null, alreadyPurchased: true } if already purchased (deferred: funnelPages schema missing productId/productType columns — pre-existing TS errors)
+- [x] CourseLanding.tsx — handle alreadyEnrolled response from createCheckout (navigate to player instead of opening Stripe)

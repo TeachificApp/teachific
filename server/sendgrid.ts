@@ -60,6 +60,11 @@ export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
       html: opts.html,
       text: opts.text ?? opts.html.replace(/<[^>]+>/g, ""),
       ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
+      // Disable SendGrid's built-in link rewriting — we inject our own tracking
+      trackingSettings: {
+        clickTracking: { enable: false, enableText: false },
+        openTracking: { enable: false },
+      },
     });
     return true;
   } catch (err: any) {
