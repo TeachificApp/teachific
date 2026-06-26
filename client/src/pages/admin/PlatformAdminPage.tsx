@@ -142,10 +142,10 @@ const SITEMAP_SECTIONS: SitemapSection[] = [
     ],
   },
   {
-    title: "LMS Dashboard",
+    title: "LMS Management",
     icon: <GraduationCap className="w-4 h-4" />,
     entries: [
-      { label: "Dashboard", path: "/lms" },
+      { label: "LMS Management", path: "/lms/manage" },
       { label: "My Courses", path: "/lms/my-courses" },
       { label: "Branding", path: "/lms/branding" },
       { label: "Settings", path: "/lms/settings" },
@@ -538,7 +538,7 @@ function OrgsTab() {
   const impersonateOrg = trpc.platformAdmin.impersonateOrg.useMutation({
     onSuccess: (data) => {
       toast.success(`Now viewing as ${data.impersonatedUser.name || data.impersonatedUser.email}`);
-      setTimeout(() => { window.location.href = "/lms"; }, 800);
+      setTimeout(() => { window.location.href = "/lms/manage"; }, 800);
     },
     onError: (e) => toast.error(e.message),
   });

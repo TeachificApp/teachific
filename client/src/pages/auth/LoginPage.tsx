@@ -22,6 +22,15 @@ const features = [
   { icon: Award, text: "Automated certificates & completions" },
 ];
 
+function getRootAppUrl(path: string) {
+  const { protocol, hostname, port } = window.location;
+  if (hostname.endsWith(".teachific.app") && hostname !== "teachific.app" && hostname !== "www.teachific.app") {
+    return `${protocol}//teachific.app${path}`;
+  }
+  const portSuffix = port ? `:${port}` : "";
+  return `${protocol}//${hostname}${portSuffix}${path}`;
+}
+
 export default function LoginPage() {
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -66,19 +75,19 @@ export default function LoginPage() {
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data.user)); } catch {}
       }
 
-      // If we're at the root domain and the user belongs to an org,
-      // redirect immediately to their org subdomain — zero delay.
-      const isAtRoot = !getSubdomain();
-      const orgSlug = (data as any).orgSlug as string | null;
-      if (isAtRoot && orgSlug) {
-        // Cache the orgSlug so Home.tsx can redirect instantly without waiting for API
-        try { localStorage.setItem("teachific_org_slug", orgSlug); } catch {}
-        const dest = getOrgSubdomainUrl(orgSlug, returnTo || "/lms");
-        window.location.href = dest;
+      if (data.user?.role === "site_owner" || data.user?.role === "site_admin") {
+        window.location.href = getRootAppUrl(returnTo || "/platform-admin");
         return;
       }
 
-      // Platform admins or subdomain logins: stay on current domain
+      const isAtRoot = !getSubdomain();
+      const orgSlug = (data as any).orgSlug as string | null;
+      if (isAtRoot && orgSlug) {
+        try { localStorage.setItem("teachific_org_slug", orgSlug); } catch {}
+        window.location.href = getOrgSubdomainUrl(orgSlug, returnTo || "/lms");
+        return;
+      }
+
       navigate(returnTo || "/lms");
     },
     onError: (err) => {
