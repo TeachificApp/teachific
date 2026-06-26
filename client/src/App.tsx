@@ -3,6 +3,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import DashboardLayout from "@/components/DashboardLayout";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { UploadQueueProvider } from "./contexts/UploadQueueContext";
@@ -404,6 +406,44 @@ function AdminRouter() {
  * serve both the learner portal AND the admin dashboard for org admins.
  */
 function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
+  const isTeachificLearn = subdomain === "learn";
+  const schoolSubdomain = isTeachificLearn ? "teach" : subdomain;
+  const { user, loading } = useAuth();
+  const { data: orgs, isLoading: orgsLoading } = trpc.orgs.myOrgs.useQuery(undefined, {
+    enabled: isTeachificLearn && !!user,
+  });
+  const canAccessTeachificLearn = !isTeachificLearn ||
+    user?.role === "site_owner" ||
+    user?.role === "site_admin" ||
+    (orgs ?? []).some((org: any) => org.role === "org_admin" || org.role === "org_super_admin");
+
+  if (isTeachificLearn && (loading || (!!user && orgsLoading))) {
+    return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Loading...</div>;
+  }
+
+  if (isTeachificLearn && !user) {
+    return <LoginPage />;
+  }
+
+  if (isTeachificLearn && !canAccessTeachificLearn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
+          <h1 className="text-xl font-bold text-slate-900">Teachific Learn is for org admins</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Sign in with an organization admin account to access Teachific platform tutorials and FAQs.
+          </p>
+          <button
+            className="mt-5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
+            onClick={() => { window.location.href = "/login"; }}
+          >
+            Sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
       <Switch>
         {/* Auth works on subdomains */}
@@ -508,7 +548,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/help" component={HelpPage} />
 
         {/* Default: show landing page if published, otherwise fall back to SchoolPage */}
-        <Route>{() => <OrgLandingPage subdomainOrg={subdomain} fallback={<SchoolPage subdomainOrg={subdomain} />} />}</Route>
+        <Route>{() => <OrgLandingPage subdomainOrg={schoolSubdomain} fallback={<SchoolPage subdomainOrg={schoolSubdomain} />} />}</Route>
       </Switch>
   );
 }

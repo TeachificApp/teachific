@@ -192,6 +192,17 @@ const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+async function grantTeachificSchoolAccess(userId: number) {
+  try {
+    const teachOrg = await getOrgBySlug("teach");
+    if (teachOrg) {
+      await addOrgMember(teachOrg.id, userId, "org_admin");
+    }
+  } catch (_e) {
+    // Non-fatal: the Teachific training org may not exist in every environment yet.
+  }
+}
+
 // ─── App Router ────────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -546,6 +557,9 @@ export const appRouter = router({
         if (input.orgId) {
           const orgRole = (input.role === "org_admin" || input.role === "org_super_admin") ? input.role : "member";
           await addOrgMember(input.orgId, newUser.id, orgRole, undefined, input.memberSubRole);
+          if (orgRole === "org_admin" || orgRole === "org_super_admin") {
+            await grantTeachificSchoolAccess(newUser.id);
+          }
           // If group assignment requested, add to group_members
           if (input.groupId) {
             const db2 = await getDb();
@@ -572,6 +586,9 @@ export const appRouter = router({
           await updateOrgMemberRole(input.orgId, input.userId, input.orgRole, input.memberSubRole);
         } else {
           await addOrgMember(input.orgId, input.userId, input.orgRole, undefined, input.memberSubRole);
+        }
+        if (input.orgRole === "org_admin" || input.orgRole === "org_super_admin") {
+          await grantTeachificSchoolAccess(input.userId);
         }
         if (input.groupId) {
           const db2 = await getDb();
@@ -865,7 +882,10 @@ export const appRouter = router({
       const orgName = ctx.user.name ? `${ctx.user.name}'s Workspace` : "My Workspace";
       await createOrg({ name: orgName, slug: finalSlug, description: "Default personal workspace", ownerId: ctx.user.id });
       const newOrg = await getOrgBySlug(finalSlug);
-      if (newOrg) await addOrgMember(newOrg.id, ctx.user.id, "org_admin");
+      if (newOrg) {
+        await addOrgMember(newOrg.id, ctx.user.id, "org_super_admin");
+        await grantTeachificSchoolAccess(ctx.user.id);
+      }
       return newOrg;
     }),
     // Upload org logo to S3 and save URL
@@ -1175,14 +1195,8 @@ export const appRouter = router({
         await createOrg({ ...input, ownerId: ctx.user.id });
         const org = await getOrgBySlug(input.slug);
         if (org) {
-          await addOrgMember(org.id, ctx.user.id, "org_admin");
-          // Auto-enroll the org admin in the Teachific school (slug='teach')
-          try {
-            const teachOrg = await getOrgBySlug("teach");
-            if (teachOrg && teachOrg.id !== org.id) {
-              await addOrgMember(teachOrg.id, ctx.user.id, "member");
-            }
-          } catch (_e) { /* non-fatal */ }
+          await addOrgMember(org.id, ctx.user.id, "org_super_admin");
+          await grantTeachificSchoolAccess(ctx.user.id);
           // Auto-seed landing page on org creation with Teachific teal branding
           const db = await getDb();
           if (db) {
@@ -1377,13 +1391,19 @@ export const appRouter = router({
       }),
       add: adminProcedure
         .input(z.object({ orgId: z.number(), userId: z.number(), role: z.enum(["org_admin", "user"]) }))
-        .mutation(({ input, ctx }) => addOrgMember(input.orgId, input.userId, input.role, ctx.user.id)),
+        .mutation(async ({ input, ctx }) => {
+          await addOrgMember(input.orgId, input.userId, input.role, ctx.user.id);
+          if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
+        }),
       remove: adminProcedure
         .input(z.object({ orgId: z.number(), userId: z.number() }))
         .mutation(({ input }) => removeOrgMember(input.orgId, input.userId)),
       updateRole: adminProcedure
         .input(z.object({ orgId: z.number(), userId: z.number(), role: z.enum(["org_admin", "user"]) }))
-        .mutation(({ input }) => updateOrgMemberRole(input.orgId, input.userId, input.role)),
+        .mutation(async ({ input }) => {
+          await updateOrgMemberRole(input.orgId, input.userId, input.role);
+          if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
+        }),
       // Org-admin accessible updateRole — org admins can change member roles within their org
       updateMemberRole: orgAdminProcedure
         .input(z.object({
@@ -1407,6 +1427,9 @@ export const appRouter = router({
           await db2.update(orgMembers).set({ role: input.role }).where(
             andOp(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, input.userId))
           );
+          if (input.role === "org_admin" || input.role === "org_super_admin") {
+            await grantTeachificSchoolAccess(input.userId);
+          }
           return { success: true };
         }),
       // Org-admin accessible remove member
@@ -1500,7 +1523,9 @@ export const appRouter = router({
             userId = existing.id;
             const existingMember = await getOrgMember(input.orgId, existing.id);
             if (!existingMember) {
-              await addOrgMember(input.orgId, existing.id, input.role === "org_admin" ? "org_admin" : "member", ctx.user.id);
+              const orgRole = input.role === "org_admin" ? "org_admin" : "member";
+              await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
+              if (orgRole === "org_admin") await grantTeachificSchoolAccess(existing.id);
             }
           } else {
             const bcrypt = await import("bcryptjs");
@@ -1510,7 +1535,9 @@ export const appRouter = router({
             const newUser = await getUserByEmail(input.email);
             if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
             userId = newUser.id;
-            await addOrgMember(input.orgId, userId, input.role === "org_admin" ? "org_admin" : "member", ctx.user.id);
+            const orgRole = input.role === "org_admin" ? "org_admin" : "member";
+            await addOrgMember(input.orgId, userId, orgRole, ctx.user.id);
+            if (orgRole === "org_admin") await grantTeachificSchoolAccess(userId);
           }
           if (input.courseIds?.length) {
             const { getEnrollment: getEnr } = await import("./lmsDb");
@@ -1571,7 +1598,9 @@ export const appRouter = router({
               const existing = await getUserByEmail(u.email);
               if (existing) {
                 const existingMember = await getOrgMember(input.orgId, existing.id);
-                if (!existingMember) await addOrgMember(input.orgId, existing.id, u.role === "org_admin" ? "org_admin" : "member", ctx.user.id);
+                const orgRole = u.role === "org_admin" ? "org_admin" : "member";
+                if (!existingMember) await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
+                if (orgRole === "org_admin") await grantTeachificSchoolAccess(existing.id);
                 updated++;
               } else {
                 const password = u.password || nanoid(12);
@@ -1580,7 +1609,9 @@ export const appRouter = router({
                 await createManualUser({ openId, name: u.name, email: u.email, loginMethod: "email", role: "user", passwordHash });
                 const newUser = await getUserByEmail(u.email);
                 if (!newUser) throw new Error("Failed to create user");
-                await addOrgMember(input.orgId, newUser.id, u.role === "org_admin" ? "org_admin" : "member", ctx.user.id);
+                const orgRole = u.role === "org_admin" ? "org_admin" : "member";
+                await addOrgMember(input.orgId, newUser.id, orgRole, ctx.user.id);
+                if (orgRole === "org_admin") await grantTeachificSchoolAccess(newUser.id);
                 created++;
               }
             } catch (e: any) { failed++; errors.push(`${u.email}: ${e.message}`); }
@@ -2785,6 +2816,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
             const existing = allUsers.find((usr) => usr.email === u.email);
             if (existing) {
               await addOrgMember(input.orgId, existing.id, u.role, undefined, u.memberSubRole);
+              if (u.role === "org_admin" || u.role === "org_super_admin") {
+                await grantTeachificSchoolAccess(existing.id);
+              }
               results.push({ email: u.email, status: "added_existing", userId: existing.id });
             } else {
               const openId = `pending_${nanoid(16)}`;
@@ -2792,6 +2826,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
               const newUser = (await getAllUsers()).find((usr) => usr.email === u.email);
               if (newUser) {
                 await addOrgMember(input.orgId, newUser.id, u.role, undefined, u.memberSubRole);
+                if (u.role === "org_admin" || u.role === "org_super_admin") {
+                  await grantTeachificSchoolAccess(newUser.id);
+                }
                 results.push({ email: u.email, status: "created", userId: newUser.id });
               }
             }
@@ -2976,9 +3013,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         let adminUserId: number;
         if (existingUsers.length) {
           adminUserId = existingUsers[0].id;
-          // Upgrade to org_admin if needed
+          // Upgrade to org super admin if needed
           if (existingUsers[0].role === "user") {
-            await db2.update(usersTable).set({ role: "org_admin", name: input.adminName }).where(eqOp(usersTable.id, adminUserId));
+            await db2.update(usersTable).set({ role: "org_super_admin", name: input.adminName }).where(eqOp(usersTable.id, adminUserId));
           }
         } else {
           const { nanoid } = await import("nanoid");
@@ -2987,7 +3024,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
             openId,
             name: input.adminName,
             email: input.adminEmail,
-            role: "org_admin",
+            role: "org_super_admin",
           });
           adminUserId = (result as any).insertId;
         }
@@ -2999,17 +3036,11 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
           isActive: true,
         });
         const orgId = (orgResult as any).insertId;
-        // Add admin as org_admin member
-        await db2.insert(orgMembersTable).values({ orgId, userId: adminUserId, role: "org_admin" }).onDuplicateKeyUpdate({ set: { role: "org_admin" } });
+        // Add the organization creator as super admin for their org.
+        await db2.insert(orgMembersTable).values({ orgId, userId: adminUserId, role: "org_super_admin" }).onDuplicateKeyUpdate({ set: { role: "org_super_admin" } });
         // Set subscription plan
         await db2.insert(orgSubTable).values({ orgId, plan: input.plan, status: "active" }).onDuplicateKeyUpdate({ set: { plan: input.plan, status: "active" } });
-        // Auto-enroll the new org admin in the Teachific school (slug='teach')
-        try {
-          const teachOrg = await getOrgBySlug("teach");
-          if (teachOrg && teachOrg.id !== orgId) {
-            await addOrgMember(teachOrg.id, adminUserId, "member");
-          }
-        } catch (_e) { /* non-fatal */ }
+        await grantTeachificSchoolAccess(adminUserId);
         return { orgId, adminUserId };
       }),
     uploadPlatformLogo: adminProcedure
@@ -3229,6 +3260,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       }))
       .mutation(async ({ input }) => {
         await updateOrgMemberRole(input.orgId, input.userId, input.role as any);
+        if (input.role === "org_admin" || input.role === "org_super_admin") {
+          await grantTeachificSchoolAccess(input.userId);
+        }
         return { success: true };
       }),
 
@@ -3242,6 +3276,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const existing = await getOrgMember(input.orgId, input.userId);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member of this org" });
         await addOrgMember(input.orgId, input.userId, input.role as any);
+        if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
         return { success: true };
       }),
     addUserToOrgByEmail: adminProcedure
@@ -3256,6 +3291,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const existing = await getOrgMember(input.orgId, user.id);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member of this org" });
         await addOrgMember(input.orgId, user.id, input.role as any);
+        if (input.role === "org_admin") await grantTeachificSchoolAccess(user.id);
         return { success: true, userId: user.id, name: user.name, email: user.email };
       }),
   }),

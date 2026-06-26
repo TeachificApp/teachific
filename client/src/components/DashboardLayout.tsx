@@ -107,6 +107,7 @@ type NavItem = {
   icon: React.ElementType;
   label: string;
   path: string;
+  external?: boolean;
   adminOnly?: boolean;
   ownerOnly?: boolean;
   subItems?: NavSubItem[];
@@ -124,6 +125,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/lms" },
+      { icon: GraduationCap, label: "Teachific Learn", path: "https://learn.teachific.app", external: true },
     ],
   },
 
@@ -152,7 +154,7 @@ const navGroups: NavGroup[] = [
     items: [
       {
         icon: Package,
-        label: "Products",
+        label: "LMS Management",
         path: "/lms/manage",
         subItems: [
           { label: "Courses", path: "/lms/manage?tab=courses" },
@@ -445,9 +447,16 @@ function DashboardLayoutContent({
     };
   }, [isResizing, setSidebarWidth]);
 
+  const getItemPath = (item: NavItem) => {
+    if (item.label === "Dashboard" && isAdmin) return "/platform-admin";
+    return item.path;
+  };
+
   const isItemActive = (item: NavItem) => {
-    if (item.path === "/lms") return location === "/lms" || location === "/";
-    return location.startsWith(item.path);
+    if (item.external) return false;
+    const itemPath = getItemPath(item);
+    if (itemPath === "/lms") return location === "/lms" || location === "/";
+    return location.startsWith(itemPath);
   };
 
   const isSubItemActive = (sub: NavSubItem) =>
@@ -457,8 +466,9 @@ function DashboardLayoutContent({
   const allItems = navGroups.flatMap((g) => g.items);
   const activeItem =
     allItems.find((i) => {
-      if (i.path === "/lms") return location === "/lms" || location === "/";
-      return location.startsWith(i.path) && i.path !== "/lms";
+      const itemPath = getItemPath(i);
+      if (itemPath === "/lms") return location === "/lms" || location === "/";
+      return location.startsWith(itemPath) && itemPath !== "/lms";
     }) ?? allItems.find((i) => i.path === "/lms");
 
   return (
@@ -515,8 +525,10 @@ function DashboardLayoutContent({
                               onClick={() => {
                                 if (hasSubItems && !isCollapsed) {
                                   toggleGroup(item.path);
+                                } else if (item.external) {
+                                  window.open(item.path, "_blank", "noopener,noreferrer");
                                 } else {
-                                  setLocation(item.path);
+                                  setLocation(getItemPath(item));
                                 }
                               }}
                               title={isCollapsed ? item.label : undefined}

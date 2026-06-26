@@ -486,43 +486,22 @@ export default function Home() {
     enabled: !!user,
   });
 
-  // ── Instant redirect from cached orgSlug (set by LoginPage on login) ────────
-  // This fires synchronously before any API call completes, eliminating the
-  // loading flash for org users who just logged in.
-  useEffect(() => {
-    if (!user) return;
-    try {
-      const cachedSlug = localStorage.getItem("teachific_org_slug");
-      if (cachedSlug) {
-        localStorage.removeItem("teachific_org_slug"); // consume once
-        window.location.href = getOrgSubdomainUrl(cachedSlug, "/lms");
-        return;
-      }
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  // ── Subdomain redirect logic (fallback for already-logged-in users) ──────────
-  // We are on the root domain (teachific.app). Redirect based on role:
-  //   - Platform admins (site_owner / site_admin): stay here
-  //   - Org admins / super admins: redirect to their org subdomain
-  //   - Students with exactly 1 org: redirect to that org's subdomain
-  //   - Students with 2+ orgs: show school picker (handled below)
+  // Root-domain fallbacks. Org users land on their own org subdomain dashboard;
+  // Teachific Learn remains a separate explicit menu link.
   useEffect(() => {
     if (!user || orgLoading || orgsLoading) return;
     const role = orgCtx?.role;
-    // Platform admins stay on root
-    if (role === "site_owner" || role === "site_admin") return;
-    // Org admins / super admins → redirect to their org subdomain
+    if (role === "site_owner" || role === "site_admin") {
+      window.location.replace("/platform-admin");
+      return;
+    }
     if ((role === "org_admin" || role === "org_super_admin") && orgCtx?.org?.slug) {
       window.location.href = getOrgSubdomainUrl(orgCtx.org.slug, "/lms");
       return;
     }
-    // Students: redirect based on number of orgs
     if (myOrgs && myOrgs.length === 1 && myOrgs[0].slug) {
       window.location.href = getOrgSubdomainUrl(myOrgs[0].slug);
     }
-    // Students with 2+ orgs: fall through to school picker below
   }, [user, orgCtx, myOrgs, orgLoading, orgsLoading]);
 
   if (!user || orgLoading || orgsLoading) {
@@ -539,7 +518,7 @@ export default function Home() {
     );
   }
 
-  // Platform admins: show the full admin dashboard inline
+  // Platform admins are redirected above.
   if (orgCtx?.role === "site_owner" || orgCtx?.role === "site_admin") {
     return <OrgAdminDashboard orgId={orgCtx.org?.id ?? 0} orgName={orgCtx.org?.name ?? "Platform"} />;
   }
