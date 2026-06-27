@@ -226,12 +226,21 @@ function MediaLibraryPickerModal({
     return "all";
   })();
 
-  const { data, isLoading } = trpc.lms.media.listOrgMedia.useQuery(
-    { orgId, typeFilter: typeFilter as any, search: search || undefined },
+  const { data: mediaItems = [], isLoading } = trpc.lms.media.listOrgMedia.useQuery(
+    { orgId },
     { enabled: open && orgId > 0 }
   );
 
-  const items = data?.items ?? [];
+  const items = mediaItems.filter((item) => {
+    const matchesType =
+      typeFilter === "all" ||
+      (typeFilter === "audio" && item.mimeType.startsWith("audio/")) ||
+      (typeFilter === "video" && item.mimeType.startsWith("video/")) ||
+      (typeFilter === "image" && item.mimeType.startsWith("image/")) ||
+      (typeFilter === "document" && (item.mimeType === "application/pdf" || item.mimeType.includes("word") || item.mimeType.includes("presentation")));
+    const matchesSearch = !search || item.filename.toLowerCase().includes(search.toLowerCase());
+    return matchesType && matchesSearch;
+  });
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -550,7 +559,7 @@ function TextEditor({ form, set, lessonTitle, courseTitle }: { form: any; set: (
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiType, setAiType] = useState<"text" | "outline" | "summary" | "quiz_questions">("text");
   const [aiPreview, setAiPreview] = useState("");
-  const generateContent = trpc.lms.ai.generateContent.useMutation({
+  const generateContent = trpc.lms.ai.generateLessonContent.useMutation({
     onSuccess: (data) => { setAiPreview(data.content); },
     onError: (e) => { toast.error(e.message); },
   });
@@ -627,7 +636,7 @@ function TextEditor({ form, set, lessonTitle, courseTitle }: { form: any; set: (
               </Button>
             )}
             <Button
-              onClick={() => generateContent.mutate({ lessonTitle: lessonTitle ?? "Lesson", courseTitle, prompt: aiPrompt || undefined, contentType: aiType })}
+              onClick={() => generateContent.mutate({ lessonTitle: `${lessonTitle ?? "Lesson"}${aiPrompt ? ` — ${aiPrompt}` : ""}`, courseTitle, format: aiType })}
               disabled={generateContent.isPending}
             >
               {generateContent.isPending ? "Generating..." : (aiPreview ? "Regenerate" : "Generate")}

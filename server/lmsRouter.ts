@@ -119,6 +119,9 @@ import {
   createRevenuePartner,
   updateRevenuePartner,
   deleteRevenuePartner,
+  getCouponsByOrg,
+  createCoupon,
+  updateCoupon,
   getCourseOrdersByOrg,
   getCourseOrderById,
   createCourseOrder,
@@ -1354,6 +1357,67 @@ export const lmsRouter = router({
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
         return getActivityEventsByOrg(orgId, { userId: input?.userId, courseId: input?.courseId, limit: input?.limit });
+      }),
+  }),
+
+  // ── Coupons ────────────────────────────────────────────────────────────────
+  coupons: router({
+    list: protectedProcedure
+      .input(z.object({ orgId: z.number().optional(), includeInactive: z.boolean().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        return getCouponsByOrg(orgId, input?.includeInactive ?? false);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        orgId: z.number().optional(),
+        code: z.string().min(1).max(64),
+        discountType: z.enum(["percentage", "fixed"]),
+        discountValue: z.number().positive(),
+        maxUses: z.number().int().positive().nullable().optional(),
+        expiresAt: z.date().nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        return createCoupon({
+          orgId,
+          code: input.code.trim().toUpperCase(),
+          discountType: input.discountType,
+          discountValue: input.discountValue,
+          maxUses: input.maxUses ?? null,
+          expiresAt: input.expiresAt ?? null,
+          isActive: true,
+        });
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        orgId: z.number().optional(),
+        code: z.string().min(1).max(64).optional(),
+        discountType: z.enum(["percentage", "fixed"]).optional(),
+        discountValue: z.number().positive().optional(),
+        maxUses: z.number().int().positive().nullable().optional(),
+        expiresAt: z.date().nullable().optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const { id, orgId: _orgId, ...data } = input;
+        const updateData = {
+          ...data,
+          code: data.code ? data.code.trim().toUpperCase() : undefined,
+        };
+        return updateCoupon(id, updateData);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number(), orgId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        await updateCoupon(input.id, { isActive: false });
+        return { success: true };
       }),
   }),
 

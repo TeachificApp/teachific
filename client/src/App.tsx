@@ -312,10 +312,15 @@ function AdminRouter() {
           <Route path="/marketing/email" component={EmailCampaignsPage} />
           <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
+          <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
           <Route path="/marketing/funnels" component={FunnelsPage} />
           <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
-          <Route path="/admin/funnels/:funnelId">{() => <FunnelBuilder />}</Route>
-          <Route path="/admin/funnels">{() => <FunnelBuilder />}</Route>
+          <Route path="/admin/funnels/:funnelId">{() => {
+            const id = window.location.pathname.split("/")[3];
+            window.location.replace(`/marketing/funnels/${id}`);
+            return null;
+          }}</Route>
+          <Route path="/admin/funnels">{() => { window.location.replace("/marketing/funnels"); return null; }}</Route>
           <Route path="/marketing/widgets" component={WidgetsPage} />
           <Route path="/admin/widgets">{() => { window.location.replace("/marketing/widgets"); return null; }}</Route>
           <Route path="/admin/community">{() => { window.location.replace("/products/community"); return null; }}</Route>
@@ -353,6 +358,7 @@ function AdminRouter() {
           {/* ── Profile ── */}
           <Route path="/profile" component={ProfilePage} />
           <Route path="/billing" component={BillingPage} />
+          <Route path="/support" component={SupportPage} />
 
           {/* ── Platform Admin ── */}
           <Route path="/admin/orgs" component={AdminOrgsPage} />
@@ -515,6 +521,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/integrations/kajabi">{() => <DashboardLayout><KajabiImportPage /></DashboardLayout>}</Route>
         <Route path="/profile">{() => <DashboardLayout><ProfilePage /></DashboardLayout>}</Route>
         <Route path="/billing">{() => <DashboardLayout><BillingPage /></DashboardLayout>}</Route>
+        <Route path="/support">{() => <DashboardLayout><SupportPage /></DashboardLayout>}</Route>
         <Route path="/lms/branding">{() => <DashboardLayout><BrandingPage /></DashboardLayout>}</Route>
         <Route path="/lms/settings">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-courses">{() => <DashboardLayout><MyCoursesPage /></DashboardLayout>}</Route>

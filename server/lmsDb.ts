@@ -541,11 +541,11 @@ export async function deleteInstructorById(id: number) {
 
 // ─── Coupons ─────────────────────────────────────────────────────────────────
 
-export async function getCouponsByOrg(orgId: number) {
+export async function getCouponsByOrg(orgId: number, includeInactive = false) {
   return db
     .select()
     .from(coupons)
-    .where(and(eq(coupons.orgId, orgId), eq(coupons.isActive, true)));
+    .where(includeInactive ? eq(coupons.orgId, orgId) : and(eq(coupons.orgId, orgId), eq(coupons.isActive, true)));
 }
 
 export async function getCouponByCode(orgId: number, code: string) {

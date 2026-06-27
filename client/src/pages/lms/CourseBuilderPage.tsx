@@ -6176,14 +6176,12 @@ const LMS_NAV_GROUPS = [
     items: [
       { value: "orderbumps",  label: "Order Bumps", icon: Tag },
       { value: "collections", label: "Collections", icon: LayoutGrid },
-      { value: "discount_codes", label: "Discount Codes ↗", icon: Tag, href: getAdminUrl("/admin/discount-codes") },
     ],
   },
   {
     label: "People",
     color: "teal",
     items: [
-      { value: "members_hub", label: "Members Hub ↗", icon: Users, href: getAdminUrl("/admin/members") },
       { value: "groups",      label: "Teams",      icon: Users },
       { value: "instructors", label: "Instructors", icon: GraduationCap },
       { value: "certificates",label: "Certificates",icon: CheckCircle },
@@ -6198,7 +6196,7 @@ const LMS_NAV_GROUPS = [
     items: [
       { value: "analytics",   label: "Analytics",   icon: TrendingUp },
       { value: "affiliates",  label: "Affiliates",  icon: DollarSign },
-      { value: "activity_log", label: "Activity Log ↗", icon: Activity, href: getAdminUrl("/admin/members?tab=activity") },
+      { value: "activity_log", label: "Activity Log ↗", icon: Activity, href: getAdminUrl("/lms/activity") },
     ],
   },
   {
@@ -6248,11 +6246,6 @@ export default function LMSAdmin() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-7xl mx-auto">
-          <div className="mb-2">
-            <a href={getAdminUrl("/platform-admin")} className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
-              <ChevronLeft className="w-3 h-3" /> Platform Admin
-            </a>
-          </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center shadow-sm">
@@ -6501,7 +6494,7 @@ function ChannelFormInline({
 
 function CommunitiesTab() {
   const { user } = useAuth();
-  const isAdmin = (user as any)?.role === "admin";
+  const isAdmin = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin"].includes((user as any)?.role);
   const utils = trpc.useUtils();
 
   // Community list
@@ -10898,31 +10891,31 @@ function LMSPublishDomainSettings() {
                 value={courseDomain}
                 onChange={setCourseDomain}
                 label="Courses Default Domain"
-                description="Course landing pages will be served at this domain (e.g. learn.teachific.com/course-slug)."
+                description="Course landing pages use your org domain by default (e.g. yourslug.teachific.app/courses/course-slug) or a verified custom domain."
               />
               <DomainSelect
                 value={funnelDomain}
                 onChange={setFunnelDomain}
                 label="Funnels Default Domain"
-                description="Funnel pages will be served at this domain (e.g. teachific.com/funnel-slug)."
+                description="Funnels use your org domain by default (e.g. yourslug.teachific.app/funnel-slug/page-slug) or a verified funnel domain."
               />
               <DomainSelect
                 value={downloadDomain}
                 onChange={setDownloadDomain}
                 label="Downloads Default Domain"
-                description="Download landing pages will be served at this domain (e.g. yourdomain.com/download/slug)."
+                description="Download landing pages use your org domain by default (e.g. yourslug.teachific.app/downloads/download-slug) or a verified download domain."
               />
               <DomainSelect
                 value={productDomain}
                 onChange={setProductDomain}
                 label="Products Default Domain"
-                description="Product landing pages will be served at this domain (e.g. yourdomain.com/product/slug)."
+                description="Product pages use your org domain by default (e.g. yourslug.teachific.app/products/product-slug) or a verified product domain."
               />
               <DomainSelect
                 value={formDomain}
                 onChange={setFormDomain}
                 label="Forms Default Domain"
-                description="Public form pages will be served at this domain (e.g. yourdomain.com/form/slug)."
+                description="Public forms use your org domain by default (e.g. yourslug.teachific.app/forms/form-slug) or a verified form domain."
               />
               <div className="flex justify-end pt-2 border-t border-gray-100">
                 <Button
