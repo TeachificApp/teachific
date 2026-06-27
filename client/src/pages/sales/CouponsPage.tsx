@@ -8,23 +8,41 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Tag, Plus, Copy, Trash2, Percent, DollarSign } from "lucide-react";
-
-interface Coupon { id: number; code: string; type: "percent" | "fixed"; value: number; uses: number; maxUses: number | null; expires: string | null; active: boolean; }
-
-const MOCK: Coupon[] = [
-  { id: 1, code: "WELCOME20", type: "percent", value: 20, uses: 45, maxUses: 100, expires: "2026-12-31", active: true },
-  { id: 2, code: "SAVE10", type: "fixed", value: 10, uses: 12, maxUses: null, expires: null, active: true },
-  { id: 3, code: "SUMMER50", type: "percent", value: 50, uses: 200, maxUses: 200, expires: "2026-08-31", active: false },
-];
+import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 export default function CouponsPage() {
-  const [coupons, setCoupons] = useState<Coupon[]>(MOCK);
+  const { orgId, ready } = useOrgScope();
+  const utils = trpc.useUtils();
+  const { data: coupons = [], isLoading } = trpc.lms.coupons.list.useQuery(
+    { orgId: orgId!, includeInactive: true },
+    { enabled: ready && !!orgId }
+  );
   const [showAdd, setShowAdd] = useState(false);
   const [code, setCode] = useState("");
   const [type, setType] = useState<"percent" | "fixed">("percent");
   const [value, setValue] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [expires, setExpires] = useState("");
+  const createCoupon = trpc.lms.coupons.create.useMutation({
+    onSuccess: () => {
+      utils.lms.coupons.list.invalidate({ orgId: orgId!, includeInactive: true });
+      setCode("");
+      setValue("");
+      setMaxUses("");
+      setExpires("");
+      setShowAdd(false);
+      toast.success("Coupon created");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteCoupon = trpc.lms.coupons.delete.useMutation({
+    onSuccess: () => {
+      utils.lms.coupons.list.invalidate({ orgId: orgId!, includeInactive: true });
+      toast.success("Deleted");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const generateCode = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -34,9 +52,15 @@ export default function CouponsPage() {
   const handleCreate = () => {
     if (!code.trim()) { toast.error("Coupon code required"); return; }
     if (!value || isNaN(Number(value))) { toast.error("Valid discount value required"); return; }
-    setCoupons(prev => [...prev, { id: Date.now(), code: code.toUpperCase(), type, value: Number(value), uses: 0, maxUses: maxUses ? Number(maxUses) : null, expires: expires || null, active: true }]);
-    setCode(""); setValue(""); setMaxUses(""); setExpires(""); setShowAdd(false);
-    toast.success("Coupon created");
+    if (!orgId) { toast.error("Organization context unavailable"); return; }
+    createCoupon.mutate({
+      orgId,
+      code,
+      discountType: type === "percent" ? "percentage" : "fixed",
+      discountValue: Number(value),
+      maxUses: maxUses ? Number(maxUses) : null,
+      expiresAt: expires ? new Date(expires) : null,
+    });
   };
 
   return (
@@ -49,14 +73,17 @@ export default function CouponsPage() {
         <Button onClick={() => setShowAdd(true)} className=" hover:"><Plus className="w-4 h-4 mr-2" /> Create Coupon</Button>
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.filter(c => c.active).length}</p><p className="text-sm text-muted-foreground">Active Coupons</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.reduce((s, c) => s + c.uses, 0)}</p><p className="text-sm text-muted-foreground">Total Uses</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.filter(c => c.expires && new Date(c.expires) < new Date()).length}</p><p className="text-sm text-muted-foreground">Expired</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.filter(c => c.isActive).length}</p><p className="text-sm text-muted-foreground">Active Coupons</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.reduce((s, c) => s + c.usedCount, 0)}</p><p className="text-sm text-muted-foreground">Total Uses</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.filter(c => c.expiresAt && new Date(c.expiresAt) < new Date()).length}</p><p className="text-sm text-muted-foreground">Expired</p></CardContent></Card>
       </div>
       <Card>
         <CardHeader><CardTitle>All Coupons</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
+          {isLoading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">Loading coupons...</div>
+          ) : (
+            <table className="w-full text-sm">
             <thead className="border-b bg-muted/30">
               <tr>
                 <th className="text-left p-3 font-medium">Code</th>
@@ -78,15 +105,16 @@ export default function CouponsPage() {
                       </Button>
                     </div>
                   </td>
-                  <td className="p-3"><span className="flex items-center gap-1">{c.type === "percent" ? <Percent className="w-3 h-3" /> : <DollarSign className="w-3 h-3" />}{c.value}{c.type === "percent" ? "%" : ""} off</span></td>
-                  <td className="p-3">{c.uses}{c.maxUses ? ` / ${c.maxUses}` : ""}</td>
-                  <td className="p-3">{c.expires ?? "No expiry"}</td>
-                  <td className="p-3"><Badge variant={c.active ? "default" : "secondary"} className={c.active ? "bg-green-100 text-green-700" : ""}>{c.active ? "Active" : "Inactive"}</Badge></td>
-                  <td className="p-3"><Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setCoupons(p => p.filter(x => x.id !== c.id)); toast.success("Deleted"); }}><Trash2 className="w-3 h-3" /></Button></td>
+                  <td className="p-3"><span className="flex items-center gap-1">{c.discountType === "percentage" ? <Percent className="w-3 h-3" /> : <DollarSign className="w-3 h-3" />}{c.discountValue}{c.discountType === "percentage" ? "%" : ""} off</span></td>
+                  <td className="p-3">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ""}</td>
+                  <td className="p-3">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "No expiry"}</td>
+                  <td className="p-3"><Badge variant={c.isActive ? "default" : "secondary"} className={c.isActive ? "bg-green-100 text-green-700" : ""}>{c.isActive ? "Active" : "Inactive"}</Badge></td>
+                  <td className="p-3"><Button size="sm" variant="ghost" className="text-red-500" disabled={deleteCoupon.isPending || !c.isActive} onClick={() => deleteCoupon.mutate({ id: c.id, orgId: orgId! })}><Trash2 className="w-3 h-3" /></Button></td>
                 </tr>
               ))}
             </tbody>
           </table>
+          )}
         </CardContent>
       </Card>
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
@@ -120,7 +148,7 @@ export default function CouponsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={handleCreate} className=" hover:">Create Coupon</Button>
+            <Button onClick={handleCreate} className=" hover:" disabled={createCoupon.isPending}>{createCoupon.isPending ? "Creating..." : "Create Coupon"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
