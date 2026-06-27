@@ -311,10 +311,15 @@ function AdminRouter() {
           <Route path="/marketing/email" component={EmailCampaignsPage} />
           <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
+          <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
           <Route path="/marketing/funnels" component={FunnelsPage} />
           <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
-          <Route path="/admin/funnels/:funnelId">{() => <FunnelBuilder />}</Route>
-          <Route path="/admin/funnels">{() => <FunnelBuilder />}</Route>
+          <Route path="/admin/funnels/:funnelId">{() => {
+            const id = window.location.pathname.split("/")[3];
+            window.location.replace(`/marketing/funnels/${id}`);
+            return null;
+          }}</Route>
+          <Route path="/admin/funnels">{() => { window.location.replace("/marketing/funnels"); return null; }}</Route>
           <Route path="/marketing/widgets" component={WidgetsPage} />
           <Route path="/admin/widgets">{() => { window.location.replace("/marketing/widgets"); return null; }}</Route>
           <Route path="/admin/community">{() => { window.location.replace("/products/community"); return null; }}</Route>
