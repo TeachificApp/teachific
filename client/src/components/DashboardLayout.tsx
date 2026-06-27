@@ -142,7 +142,7 @@ const navGroups: NavGroup[] = [
           { label: "Groups", path: "/members/groups" },
           { label: "Certificates", path: "/members/certificates" },
           { label: "Discussions", path: "/members/discussions" },
-          { label: "Assignments", path: "/members/assignments" },
+          { label: "Assignments", path: "/lms/manage?tab=cohorts" },
         ],
       },
     ],
