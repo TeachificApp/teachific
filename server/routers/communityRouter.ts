@@ -9,7 +9,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc, inArray, or, isNull, ne, lt } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { randomBytes } from "crypto";
 import { invokeLLM } from "../_core/llm";
 import {

@@ -6494,7 +6494,7 @@ function ChannelFormInline({
 
 function CommunitiesTab() {
   const { user } = useAuth();
-  const isAdmin = (user as any)?.role === "admin";
+  const isAdmin = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin"].includes((user as any)?.role);
   const utils = trpc.useUtils();
 
   // Community list
