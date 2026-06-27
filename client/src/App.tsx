@@ -352,6 +352,7 @@ function AdminRouter() {
           {/* ── Profile ── */}
           <Route path="/profile" component={ProfilePage} />
           <Route path="/billing" component={BillingPage} />
+          <Route path="/support" component={SupportPage} />
 
           {/* ── Platform Admin ── */}
           <Route path="/admin/orgs" component={AdminOrgsPage} />
@@ -513,6 +514,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/integrations/kajabi">{() => <DashboardLayout><KajabiImportPage /></DashboardLayout>}</Route>
         <Route path="/profile">{() => <DashboardLayout><ProfilePage /></DashboardLayout>}</Route>
         <Route path="/billing">{() => <DashboardLayout><BillingPage /></DashboardLayout>}</Route>
+        <Route path="/support">{() => <DashboardLayout><SupportPage /></DashboardLayout>}</Route>
         <Route path="/lms/branding">{() => <DashboardLayout><BrandingPage /></DashboardLayout>}</Route>
         <Route path="/lms/settings">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-courses">{() => <DashboardLayout><MyCoursesPage /></DashboardLayout>}</Route>
