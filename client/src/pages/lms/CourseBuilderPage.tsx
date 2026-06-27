@@ -6182,7 +6182,6 @@ const LMS_NAV_GROUPS = [
     label: "People",
     color: "teal",
     items: [
-      { value: "members_hub", label: "Members Hub ↗", icon: Users, href: getAdminUrl("/admin/members") },
       { value: "groups",      label: "Teams",      icon: Users },
       { value: "instructors", label: "Instructors", icon: GraduationCap },
       { value: "certificates",label: "Certificates",icon: CheckCircle },
@@ -6197,7 +6196,7 @@ const LMS_NAV_GROUPS = [
     items: [
       { value: "analytics",   label: "Analytics",   icon: TrendingUp },
       { value: "affiliates",  label: "Affiliates",  icon: DollarSign },
-      { value: "activity_log", label: "Activity Log ↗", icon: Activity, href: getAdminUrl("/admin/members?tab=activity") },
+      { value: "activity_log", label: "Activity Log ↗", icon: Activity, href: getAdminUrl("/lms/activity") },
     ],
   },
   {
