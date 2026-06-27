@@ -103,6 +103,7 @@ import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
 import WidgetsPage from "./pages/marketing/WidgetsPage";
 import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
+import OrgLandingPageEditor from "./pages/lms/OrgLandingPageEditor";
 import DownloadLandingPageBuilder from "./pages/admin/DownloadLandingPageBuilder";
 import ProductLandingPageBuilder from "./pages/admin/ProductLandingPageBuilder";
 import EmailCampaignEditor from "./pages/EmailCampaignEditor";
@@ -382,6 +383,7 @@ function AdminRouter() {
           <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
+          <Route path="/lms/school/landing-builder">{() => <OrgLandingPageEditor />}</Route>
           <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
           <Route path="/admin/downloads/:productId/landing-builder">{() => <DownloadLandingPageBuilder />}</Route>
           <Route path="/admin/products/:productId/landing-builder">{() => <ProductLandingPageBuilder />}</Route>
@@ -522,6 +524,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
+        <Route path="/lms/school/landing-builder">{() => <OrgLandingPageEditor />}</Route>
         <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
         <Route path="/admin/downloads/:productId/landing-builder">{() => <DownloadLandingPageBuilder />}</Route>
         <Route path="/admin/products/:productId/landing-builder">{() => <ProductLandingPageBuilder />}</Route>

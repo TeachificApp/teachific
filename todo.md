@@ -4477,3 +4477,9 @@
 
 ## Bug Fix: Org Admin LMS Routes Missing from SubdomainSchoolRouter (Jun 2026)
 - [x] Add all missing admin routes to SubdomainSchoolRouter so org admins on subdomains can access edit/management views instead of being redirected to landing pages
+
+## Feature: Org Landing Page Editor (Jun 2026)
+- [x] Add getOrgLandingPageForEditor tRPC procedure (protected, org admin only) — returns blocksJson + flat fields, auto-seeds default if none exists
+- [x] Build OrgLandingPageEditor.tsx — full-screen block editor reusing LandingPageBuilder engine, wired to orgs.getLandingPageForEditor / orgs.saveLandingPage
+- [x] Add /lms/school/landing-builder route to App.tsx (main router) and SubdomainSchoolRouter
+- [x] Add "Edit Home Page" link (LayoutTemplate icon) to DashboardLayout Settings section

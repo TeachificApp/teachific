@@ -1187,6 +1187,47 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Get landing page data for the editor (org admin only) — auto-seeds default if none exists
+    getLandingPageForEditor: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const member = await getOrgMember(input.orgId, ctx.user.id);
+        const isOrgAdmin = member && (member.role === "org_admin" || member.role === "org_super_admin");
+        const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+        if (!isOrgAdmin && !isSiteAdmin) throw new TRPCError({ code: "FORBIDDEN" });
+        const [org] = await db.select({ id: organizations.id, name: organizations.name, slug: organizations.slug, description: organizations.description })
+          .from(organizations).where(eq(organizations.id, input.orgId)).limit(1);
+        if (!org) throw new TRPCError({ code: "NOT_FOUND", message: "Org not found" });
+        let [lp] = await db.select().from(orgLandingPages).where(eq(orgLandingPages.orgId, input.orgId)).limit(1);
+        if (!lp) {
+          const defaultBlocks = JSON.stringify([
+            { id: "banner-1", type: "banner", visible: true, data: { headline: `Welcome to ${org.name}`, subheadline: org.description || "Explore our courses and start learning today.", ctaText: "Browse Courses", ctaUrl: "#courses", ctaSecondaryText: "", ctaSecondaryUrl: "", backgroundColor: "#0f2942", textColor: "#ffffff", ctaBgColor: "#0ea5e9", ctaTextColor: "#ffffff", alignment: "center", backgroundType: "color", backgroundImageUrl: "", overlay: false, overlayOpacity: 0.5, minHeight: 500 } },
+            { id: "feature-1", type: "feature_grid", visible: true, data: { headline: `Why Choose ${org.name}`, subheadline: "Everything you need to learn and grow.", columns: 3, features: [{ id: "f1", icon: "BookOpen", title: "Expert Content", description: "Courses created by industry professionals." }, { id: "f2", icon: "Award", title: "Earn Certificates", description: "Get recognized for your achievements." }, { id: "f3", icon: "Users", title: "Community", description: "Learn alongside a supportive community." }], backgroundColor: "#ffffff", textColor: "#1e293b", accentColor: "#0ea5e9" } },
+            { id: "courses-1", type: "course_outline", visible: true, data: { headline: "Our Courses", subheadline: "Start your learning journey today.", backgroundColor: "#f8fafc", textColor: "#1e293b", accentColor: "#0ea5e9" } },
+            { id: "cta-1", type: "cta", visible: true, data: { headline: "Ready to get started?", subtext: "Join thousands of learners already on the platform.", ctaText: "Enroll Now", ctaUrl: "#courses", backgroundType: "color", backgroundColor: "#0ea5e9", textColor: "#ffffff", alignment: "center", overlay: false, overlayOpacity: 0.5 } },
+          ]);
+          await db.insert(orgLandingPages).values({
+            orgId: input.orgId,
+            heroHeadline: `Welcome to ${org.name}`,
+            heroSubheadline: org.description || "Explore our courses and start learning today.",
+            heroCtaText: "Browse Courses",
+            heroBgColor: "#0f2942",
+            heroTextColor: "#ffffff",
+            accentColor: "#0ea5e9",
+            showCourses: true,
+            isPublished: true,
+            aboutTitle: `About ${org.name}`,
+            aboutBody: org.description || "We offer high-quality online courses designed to help you grow.",
+            footerText: `\u00a9 ${new Date().getFullYear()} ${org.name}. All rights reserved.`,
+            blocksJson: defaultBlocks,
+          }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+          [lp] = await db.select().from(orgLandingPages).where(eq(orgLandingPages.orgId, input.orgId)).limit(1);
+        }
+        return { org, landingPage: lp! };
+      }),
+
     create: adminProcedure
       .input(z.object({ name: z.string().min(1), slug: z.string().min(1), description: z.string().optional() }))
       .mutation(async ({ input, ctx }) => {

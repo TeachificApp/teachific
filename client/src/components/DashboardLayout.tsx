@@ -64,6 +64,7 @@ import {
   Webhook,
   Zap,
   Library,
+  LayoutTemplate,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -262,6 +263,12 @@ const navGroups: NavGroup[] = [
   {
     dividerBefore: true,
     items: [
+      {
+        icon: LayoutTemplate,
+        label: "Edit Home Page",
+        path: "/lms/school/landing-builder",
+        adminOnly: true,
+      },
       {
         icon: Settings,
         label: "Settings",
