@@ -176,9 +176,9 @@ export const emailCampaignsRouter = router({
         await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        
+
         const slug = `${input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${nanoid(6)}`;
-        
+
         await db.insert(emailTemplates).values({
           orgId: input.orgId,
           name: input.name,
@@ -189,13 +189,13 @@ export const emailCampaignsRouter = router({
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-        
+
         const created = await db
           .select()
           .from(emailTemplates)
           .where(eq(emailTemplates.slug, slug))
           .limit(1);
-        
+
         return created[0];
       }),
 
