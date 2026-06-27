@@ -4474,3 +4474,6 @@
 - [x] lmsRouter.ts createCheckout — add enrollment check before creating Stripe session; return { checkoutUrl: null, alreadyEnrolled: true } if already enrolled
 - [ ] funnelRouter.ts createCheckout — add purchase check; return { checkoutUrl: null, alreadyPurchased: true } if already purchased (deferred: funnelPages schema missing productId/productType columns — pre-existing TS errors)
 - [x] CourseLanding.tsx — handle alreadyEnrolled response from createCheckout (navigate to player instead of opening Stripe)
+
+## Bug Fix: Org Admin LMS Routes Missing from SubdomainSchoolRouter (Jun 2026)
+- [x] Add all missing admin routes to SubdomainSchoolRouter so org admins on subdomains can access edit/management views instead of being redirected to landing pages

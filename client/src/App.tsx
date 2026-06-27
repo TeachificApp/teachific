@@ -521,8 +521,55 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/page-builder/:pageId" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
+        <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
         <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
+        <Route path="/admin/downloads/:productId/landing-builder">{() => <DownloadLandingPageBuilder />}</Route>
+        <Route path="/admin/products/:productId/landing-builder">{() => <ProductLandingPageBuilder />}</Route>
         <Route path="/lms/webinars/:webinarId/page-builder" component={PageBuilderPage} />
+        {/* ── Missing admin routes (added to match main router) ── */}
+        <Route path="/lms/manage" component={CourseBuilderPage} />
+        <Route path="/lms/downloads">{() => <DashboardLayout><DigitalDownloadsAdminPage /></DashboardLayout>}</Route>
+        <Route path="/lms/webinars/reports">{() => <DashboardLayout><WebinarReportsPage /></DashboardLayout>}</Route>
+        <Route path="/lms/members">{() => { window.location.replace("/members/users"); return null; }}</Route>
+        <Route path="/lms/email-marketing">{() => { window.location.replace("/marketing/email"); return null; }}</Route>
+        <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
+        <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
+        <Route path="/marketing/widgets">{() => <DashboardLayout><WidgetsPage /></DashboardLayout>}</Route>
+        <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
+        <Route path="/admin/funnels/:funnelId">{() => <FunnelBuilder />}</Route>
+        <Route path="/admin/funnels">{() => <FunnelBuilder />}</Route>
+        <Route path="/admin/downloads/reports">{() => <DashboardLayout><DigitalDownloadsReportsPage /></DashboardLayout>}</Route>
+        <Route path="/admin/community">{() => { window.location.replace("/products/community"); return null; }}</Route>
+        <Route path="/admin/widgets">{() => { window.location.replace("/marketing/widgets"); return null; }}</Route>
+        <Route path="/products/bundles/:id/edit">{() => <BundleEditorPage />}</Route>
+        <Route path="/products/physical">{() => <DashboardLayout><PhysicalProductsAdmin /></DashboardLayout>}</Route>
+        <Route path="/products/workshops">{() => <DashboardLayout><WorkshopsPage /></DashboardLayout>}</Route>
+        <Route path="/members/group-manager">{() => <DashboardLayout><GroupManagerPortalPage /></DashboardLayout>}</Route>
+        <Route path="/sales/group-orders">{() => <DashboardLayout><GroupOrdersPage /></DashboardLayout>}</Route>
+        <Route path="/sales/order-bumps/:id" component={OrderBumpEditorPage} />
+        <Route path="/sales/order-bumps">{() => <DashboardLayout><OrderBumpsPage /></DashboardLayout>}</Route>
+        <Route path="/sales/revenue-partners">{() => <DashboardLayout><RevenuePartnersPage /></DashboardLayout>}</Route>
+        <Route path="/analytics/marketing">{() => <DashboardLayout><MarketingAnalyticsPage /></DashboardLayout>}</Route>
+        <Route path="/analytics/custom-reports">{() => <DashboardLayout><CustomReportsPage /></DashboardLayout>}</Route>
+        <Route path="/analytics/organization">{() => <DashboardLayout><OrgAnalyticsPage /></DashboardLayout>}</Route>
+        <Route path="/analytics-hub">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
+        <Route path="/quizzes/new" component={QuizBuilderPage} />
+        <Route path="/quizzes/:id/edit" component={QuizBuilderPage} />
+        <Route path="/quizzes/:id/play" component={QuizPlayerPage} />
+        <Route path="/quizzes/:id/results/:attemptId" component={QuizResultsPage} />
+        <Route path="/quizzes/:id/analytics" component={QuizResultsPage} />
+        <Route path="/quizzes">{() => { window.location.replace("/media-library#quizzes"); return null; }}</Route>
+        <Route path="/question-bank/import" component={QuestionBankImportPage} />
+        <Route path="/question-bank" component={QuestionBankPage} />
+        <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
+        <Route path="/cohort/:courseId" component={CohortSchedule} />
+        <Route path="/settings">{() => { window.location.replace("/lms/settings"); return null; }}</Route>
+        <Route path="/products">{() => { window.location.replace("/lms/manage"); return null; }}</Route>
+        <Route path="/upload">{() => { window.location.replace("/media-library#library"); return null; }}</Route>
+        <Route path="/files/:id" component={FileDetailPage} />
+        <Route path="/files">{() => { window.location.replace("/media-library#library"); return null; }}</Route>
+        <Route path="/record">{() => { window.location.replace("/media-library#record-edit"); return null; }}</Route>
+        <Route path="/play/:id" component={PlayerPage} />
 
         {/* ── Learner / public routes ── */}
         <Route path="/learn/:courseId/overview" component={CourseOverviewPage} />
