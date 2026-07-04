@@ -1790,13 +1790,13 @@
 - [x] Write vitest tests for VTT generation, clip validation, transcript editing, format helpers (10 tests)
 
 ## Audio Studio & Text-to-Speech (Media Library Integration)
-- [ ] Backend: add lms.media.generateSpeech procedure (TTS via forge API v1/audio/speech → save mp3 to S3 → save to media library)
-- [ ] Backend: TTS supports voice selection (alloy, echo, fable, onyx, nova, shimmer), speed control
-- [ ] RecordEditPage: add "Audio" top-level tab alongside Record/Upload/Edit
-- [ ] Audio tab: sub-tabs — Record Audio, Upload Audio, Text-to-Speech
-- [ ] Record Audio sub-tab: microphone-only recording (MediaRecorder, audio/webm), waveform visualizer, pause/resume/stop, save to Media Library
-- [ ] Upload Audio sub-tab: drag-and-drop or file picker for audio files (mp3, wav, m4a, ogg, webm); progress bar; saves to Media Library
-- [ ] Text-to-Speech sub-tab: textarea for input text, voice selector (6 voices with preview labels), speed slider (0.25–4.0), Generate button, audio player preview, Save to Media Library button
+- [x] Backend: add lms.media.generateSpeech procedure (TTS via forge API v1/audio/speech → save mp3 to S3 → save to media library)
+- [x] Backend: TTS supports voice selection (alloy, echo, fable, onyx, nova, shimmer), speed control
+- [x] RecordEditPage: add "Audio" top-level tab alongside Record/Upload/Edit
+- [x] Audio tab: sub-tabs — Record Audio, Upload Audio, Text-to-Speech
+- [x] Record Audio sub-tab: microphone-only recording (MediaRecorder, audio/webm), waveform visualizer, pause/resume/stop, save to Media Library
+- [x] Upload Audio sub-tab: drag-and-drop or file picker for audio files (mp3, wav, m4a, ogg, webm); progress bar; saves to Media Library
+- [x] Text-to-Speech sub-tab: textarea for input text, voice selector (6 voices with preview labels), speed slider (0.25–4.0), Generate button, audio player preview, Save to Media Library button
 - [ ] Audio waveform visualizer using Web Audio API AnalyserNode (real-time during recording)
 - [ ] Audio player component: play/pause, seek bar, time display, download button
 - [x] StudioTab type extended to include "audio"

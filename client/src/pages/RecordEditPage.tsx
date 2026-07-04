@@ -2626,6 +2626,7 @@ export default function RecordEditPage() {
   const TABS: { id: StudioTab; label: string; icon: React.ElementType }[] = [
     { id: "record", label: "Record Video", icon: Circle },
     { id: "upload", label: "Upload Video", icon: Upload },
+    { id: "edit", label: "Edit Video", icon: Scissors },
     { id: "audio", label: "Audio", icon: Headphones },
   ];
 

@@ -1705,15 +1705,43 @@ export const lmsRouter = router({
         return db.select().from(orgMediaLibrary).where(and(...conditions));
       }),
     saveMediaItem: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), filename: z.string(), mimeType: z.string(), fileSize: z.number(), fileKey: z.string(), url: z.string(), folderId: z.number().optional(), altText: z.string().optional(), source: z.enum(["form", "course", "direct", "other"]).optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        // Accept both casing variants from different callers
+        filename: z.string().optional(),
+        fileName: z.string().optional(),
+        mimeType: z.string(),
+        fileSize: z.number(),
+        fileKey: z.string(),
+        url: z.string(),
+        folderId: z.number().optional(),
+        altText: z.string().optional(),
+        source: z.enum(["form", "course", "direct", "other"]).optional(),
+        durationSeconds: z.number().optional(),
+        tags: z.array(z.string()).optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const resolvedFilename = input.filename ?? input.fileName ?? "untitled";
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id, filename: input.filename, mimeType: input.mimeType, fileSize: input.fileSize, fileKey: input.fileKey, url: input.url, folderId: input.folderId ?? null, altText: input.altText ?? null, source: input.source ?? "direct" });
-        return { ok: true };
+        const [result] = await db.insert(orgMediaLibrary).values({
+          orgId,
+          uploadedBy: ctx.user.id,
+          filename: resolvedFilename,
+          mimeType: input.mimeType,
+          fileSize: input.fileSize,
+          fileKey: input.fileKey,
+          url: input.url,
+          folderId: input.folderId ?? null,
+          altText: input.altText ?? null,
+          source: input.source ?? "direct",
+          durationSeconds: input.durationSeconds ?? null,
+          tags: input.tags ? JSON.stringify(input.tags) : null,
+        }).$returningId();
+        return { ok: true, id: result.id };
       }),
     // Import a video from an external URL (YouTube, Facebook, LinkedIn, direct .mp4)
     importFromUrl: protectedProcedure
@@ -1858,17 +1886,74 @@ export const lmsRouter = router({
         return { ok: true };
       }),
     listClips: protectedProcedure
-      .input(z.object({ mediaItemId: z.number() }))
-      .query(async () => []),
+      .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) return [];
+        const { videoClips } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        return db.select().from(videoClips).where(eq(videoClips.mediaItemId, input.mediaItemId));
+      }),
     saveClip: protectedProcedure
-      .input(z.object({ mediaItemId: z.number(), label: z.string(), startSeconds: z.number(), endSeconds: z.number() }))
-      .mutation(async () => ({ ok: true })),
+      .input(z.object({
+        mediaItemId: z.number(),
+        orgId: z.number().optional(),
+        label: z.string(),
+        // Accept both naming conventions from frontend
+        startSec: z.number().optional(),
+        endSec: z.number().optional(),
+        startSeconds: z.number().optional(),
+        endSeconds: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const startSec = input.startSec ?? input.startSeconds ?? 0;
+        const endSec = input.endSec ?? input.endSeconds ?? 0;
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { videoClips } = await import("../drizzle/schema");
+        const [result] = await db.insert(videoClips).values({
+          mediaItemId: input.mediaItemId,
+          label: input.label,
+          startSec,
+          endSec,
+          orgId: input.orgId ?? 0,
+          createdBy: 0,
+        }).$returningId();
+        return { ok: true, id: result.id };
+      }),
     extractClip: protectedProcedure
-      .input(z.object({ mediaItemId: z.number(), startSeconds: z.number(), endSeconds: z.number() }))
-      .mutation(async () => ({ ok: true })),
+      .input(z.object({
+        mediaItemId: z.number(),
+        orgId: z.number().optional(),
+        clipId: z.number().optional(),
+        label: z.string().optional(),
+        startSec: z.number().optional(),
+        endSec: z.number().optional(),
+        startSeconds: z.number().optional(),
+        endSeconds: z.number().optional(),
+        sourceUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Server-side clip extraction is not supported (requires ffmpeg).
+        // Return the source URL so the frontend can download the full video.
+        // The frontend will handle trimming client-side or the user can download.
+        const sourceUrl = input.sourceUrl ?? "";
+        if (!sourceUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No source URL provided for clip extraction" });
+        return { ok: true, url: sourceUrl };
+      }),
     deleteClip: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async () => ({ ok: true })),
+      .input(z.object({ id: z.number(), orgId: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { videoClips } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.delete(videoClips).where(eq(videoClips.id, input.id));
+        return { ok: true };
+      }),
     generateCaptions: protectedProcedure
       .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional(), fileUrl: z.string().optional() }))
       .mutation(async ({ input }) => {
@@ -1967,11 +2052,72 @@ export const lmsRouter = router({
         return { ok: true, captionsUrl: url };
       }),
     transcribe: protectedProcedure
-      .input(z.object({ mediaItemId: z.number() }))
-      .mutation(async () => ({ ok: true, transcript: null })),
+      .input(z.object({
+        mediaItemId: z.number().optional(),
+        orgId: z.number().optional(),
+        fileUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Delegate to generateCaptions which handles transcription + VTT generation
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        let audioUrl = input.fileUrl ?? null;
+        if (!audioUrl && input.mediaItemId) {
+          const [item] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+          if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+          audioUrl = item.url;
+        }
+        if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL or media item ID provided" });
+        const { transcribeAudio } = await import("./_core/voiceTranscription");
+        const result = await transcribeAudio({ audioUrl, wordTimestamps: true });
+        if ("error" in result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error });
+        const transcript = result.segments?.map((s) => ({ start: s.start, end: s.end, text: s.text.trim() })) ?? [];
+        // Build a plain text version for callers that use result.text
+        const text = transcript.map((s) => s.text).join(" ");
+        return { ok: true, transcript, text };
+      }),
     generateSpeech: protectedProcedure
-      .input(z.object({ text: z.string(), voice: z.string().optional() }))
-      .mutation(async () => ({ ok: true, url: null })),
+      .input(z.object({
+        orgId: z.number().optional(),
+        text: z.string().min(1).max(4096),
+        voice: z.enum(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]).optional(),
+        speed: z.number().min(0.25).max(4.0).optional(),
+        fileName: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const { generateSpeech: tts } = await import("./_core/textToSpeech");
+        const { buffer, mimeType } = await tts({
+          text: input.text,
+          voice: input.voice ?? "nova",
+          speed: input.speed ?? 1.0,
+        });
+        // Upload to S3
+        const baseName = (input.fileName ?? `tts-${input.voice ?? "nova"}-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, "-");
+        const fileName = baseName.endsWith(".mp3") ? baseName : `${baseName}.mp3`;
+        const fileKey = `org-${orgId}/tts/${nanoid(12)}-${fileName}`;
+        const { url } = await storagePut(fileKey, buffer, mimeType);
+        // Save to media library
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const [result] = await db.insert(orgMediaLibrary).values({
+          orgId,
+          uploadedBy: ctx.user.id,
+          filename: fileName,
+          mimeType,
+          fileSize: buffer.byteLength,
+          fileKey,
+          url,
+          source: "direct",
+          tags: JSON.stringify(["tts", "audio"]),
+        }).$returningId();
+        return { ok: true, url, id: result.id, filename: fileName, fileSize: buffer.byteLength };
+      }),
     saveRecording: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
