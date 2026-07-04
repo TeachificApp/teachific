@@ -91,6 +91,7 @@ import {
 import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
 import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripePaymentLinks";
+import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -943,6 +944,31 @@ export const lmsLearnerRouter = router({
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
 
+      // Load per-org invoice settings
+      const _invoiceSettings = await getOrCreateOrgPaymentSettings(course.orgId).catch(() => null);
+      const [_orgRow] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      const _buildInvoiceOpts = (productLabel: string) => {
+        const prefix = _invoiceSettings?.invoicePrefix?.trim() || "";
+        const num = _invoiceSettings?.nextInvoiceNumber ?? 1;
+        const invoiceNum = prefix ? `${prefix}-${String(num).padStart(5, "0")}` : String(num).padStart(5, "0");
+        const descTemplate = _invoiceSettings?.purchaseDescriptionTemplate?.trim() || "";
+        const studentName = ctx.user.name ?? ctx.user.email ?? "Student";
+        const orgName = _orgRow?.name ?? "";
+        const description = descTemplate
+          ? descTemplate.replace(/\{courseName\}/g, productLabel).replace(/\{studentName\}/g, studentName).replace(/\{orgName\}/g, orgName)
+          : `${productLabel} — ${studentName}`;
+        return {
+          payment_intent_data: { description, metadata: { invoice_number: invoiceNum } },
+          invoice_creation: { enabled: true, invoice_data: { description, custom_fields: [{ name: "Invoice #", value: invoiceNum }] } },
+        };
+      };
+      const _invoiceOpts = _buildInvoiceOpts(course.title);
+      // Increment nextInvoiceNumber (fire-and-forget)
+      if (_invoiceSettings) {
+        const { orgPaymentSettings: _ops } = await import("../../drizzle/schema");
+        db.update(_ops).set({ nextInvoiceNumber: (_invoiceSettings.nextInvoiceNumber ?? 1) + 1 }).where(eq(_ops.orgId, course.orgId)).catch(() => {});
+      }
+
       const orderBumpCheckout = await buildOrderBumpCheckoutLine(db, {
         orderBumpId: input.orderBumpId,
         triggerType: "course",
@@ -1048,6 +1074,7 @@ export const lmsLearnerRouter = router({
           client_reference_id: ctx.user.id.toString(),
           metadata: { ...commonMeta, pricing_option_id: input.pricingOptionId?.toString() ?? "" },
           ...shippingOptions,
+          ..._invoiceOpts,
         });
 
       } else if (pricingType === "payment_plan") {
@@ -1100,6 +1127,7 @@ export const lmsLearnerRouter = router({
           client_reference_id: ctx.user.id.toString(),
           metadata: { ...commonMeta, installment_count: installmentCount.toString(), pricing_option_id: input.pricingOptionId?.toString() ?? "" },
           ...shippingOptions,
+          ..._invoiceOpts,
         });
       } else {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown pricing type" });
@@ -1266,6 +1294,7 @@ export const lmsLearnerRouter = router({
           client_reference_id: user.id.toString(),
           metadata: { ...commonMeta, pricing_option_id: input.pricingOptionId?.toString() ?? "" },
           ...shippingOptions,
+          ..._invoiceOpts,
         });
       } else if (pricingType === "subscription") {
         let stripePriceId = effectiveStripePriceId;

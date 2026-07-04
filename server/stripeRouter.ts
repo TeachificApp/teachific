@@ -36,7 +36,7 @@ async function getOrgContext(userId: number) {
 }
 
 // ─── Helper: ensure org payment settings row ──────────────────────────────────
-async function getOrCreateOrgPaymentSettings(orgId: number) {
+export async function getOrCreateOrgPaymentSettings(orgId: number) {
   const db = await getDb();
   const { orgPaymentSettings } = await import("../drizzle/schema");
   const rows = await db
@@ -247,6 +247,9 @@ export const stripeRouter = router({
         stripeSecretKey: settings.stripeSecretKey ? "••••••••••••••••" : null,
         paypalClientSecret: settings.paypalClientSecret ? "••••••••" : null,
         autoEnrollment: settings.autoEnrollNewMembers,
+        invoicePrefix: settings.invoicePrefix ?? "",
+        nextInvoiceNumber: settings.nextInvoiceNumber ?? 1,
+        purchaseDescriptionTemplate: settings.purchaseDescriptionTemplate ?? "",
       };
     }),
 
@@ -261,6 +264,9 @@ export const stripeRouter = router({
         paypalClientSecret: z.string().optional().nullable(),
         autoEnrollment: z.boolean().optional(),
         autoEnrollCourseIds: z.string().optional(), // JSON array of course IDs
+        invoicePrefix: z.string().max(20).optional().nullable(),
+        nextInvoiceNumber: z.number().int().min(1).optional(),
+        purchaseDescriptionTemplate: z.string().max(255).optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -281,6 +287,9 @@ export const stripeRouter = router({
       }
       if (input.autoEnrollment !== undefined) updateData.autoEnrollNewMembers = input.autoEnrollment;
       if (input.autoEnrollCourseIds !== undefined) updateData.autoEnrollCourseIds = input.autoEnrollCourseIds;
+      if (input.invoicePrefix !== undefined) updateData.invoicePrefix = input.invoicePrefix || null;
+      if (input.nextInvoiceNumber !== undefined) updateData.nextInvoiceNumber = input.nextInvoiceNumber;
+      if (input.purchaseDescriptionTemplate !== undefined) updateData.purchaseDescriptionTemplate = input.purchaseDescriptionTemplate || null;
       if (Object.keys(updateData).length > 0) {
         await db
           .update(orgPaymentSettings)

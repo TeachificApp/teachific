@@ -1964,6 +1964,10 @@ export const orgPaymentSettings = mysqlTable("org_payment_settings", {
   autoEnrollCourseIds: text("autoEnrollCourseIds"),
   // Revenue share config (JSON): [{ userId, percentage, paypalEmail }]
   revenueShareJson: text("revenueShareJson"),
+  // Per-org Stripe invoice settings
+  invoicePrefix: varchar("invoicePrefix", { length: 20 }),
+  nextInvoiceNumber: int("nextInvoiceNumber").default(1).notNull(),
+  purchaseDescriptionTemplate: varchar("purchaseDescriptionTemplate", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

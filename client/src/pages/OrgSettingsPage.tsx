@@ -2147,6 +2147,10 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
   const [autoEnrollment, setAutoEnrollment] = useState(false);
   const [autoEnrollCourseIds, setAutoEnrollCourseIds] = useState<number[]>([]);
   const [initialized, setInitialized] = useState(false);
+  // Invoice / receipt settings
+  const [invoicePrefix, setInvoicePrefix] = useState("");
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState(1);
+  const [purchaseDescriptionTemplate, setPurchaseDescriptionTemplate] = useState("");
 
   const { data: paymentSettings, isLoading } = trpc.billing.getOrgPaymentSettings.useQuery(
     { orgId: orgId! },
@@ -2172,6 +2176,9 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
           : [];
         setAutoEnrollCourseIds(Array.isArray(ids) ? ids : []);
       } catch { setAutoEnrollCourseIds([]); }
+      setInvoicePrefix((paymentSettings as any).invoicePrefix ?? "");
+      setNextInvoiceNumber((paymentSettings as any).nextInvoiceNumber ?? 1);
+      setPurchaseDescriptionTemplate((paymentSettings as any).purchaseDescriptionTemplate ?? "");
       setInitialized(true);
     }
   }, [paymentSettings, initialized]);
@@ -2195,6 +2202,9 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
       paypalClientSecret: paypalClientSecret.startsWith("•") ? undefined : paypalClientSecret || null,
       autoEnrollment,
       autoEnrollCourseIds: JSON.stringify(autoEnrollCourseIds),
+      invoicePrefix: invoicePrefix || null,
+      nextInvoiceNumber,
+      purchaseDescriptionTemplate: purchaseDescriptionTemplate || null,
     });
   };
 
@@ -2368,6 +2378,90 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Invoice & Receipt Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "#24abbc15" }}>
+              <ReceiptText className="h-5 w-5" style={{ color: "#24abbc" }} />
+            </div>
+            <div>
+              <CardTitle className="text-base">Invoice &amp; Receipt Settings</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Customise the invoice number format and purchase description shown on Stripe receipts.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Invoice prefix + starting number */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="invoicePrefix">Invoice Prefix</Label>
+              <Input
+                id="invoicePrefix"
+                placeholder="e.g. INV- or ACME-"
+                value={invoicePrefix}
+                onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase())}
+                maxLength={20}
+              />
+              <p className="text-xs text-muted-foreground">
+                Prepended to each invoice number (e.g. <span className="font-mono">INV-0042</span>).
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nextInvoiceNumber">Next Invoice Number</Label>
+              <Input
+                id="nextInvoiceNumber"
+                type="number"
+                min={1}
+                step={1}
+                value={nextInvoiceNumber}
+                onChange={(e) => setNextInvoiceNumber(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Auto-increments with each successful payment. Adjust to continue from an existing sequence.
+              </p>
+            </div>
+          </div>
+
+          {/* Preview */}
+          {(invoicePrefix || nextInvoiceNumber > 1) && (
+            <div className="rounded-md border border-dashed px-4 py-2.5 bg-muted/40 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm">
+                Next invoice will be numbered{" "}
+                <span className="font-mono font-semibold">
+                  {invoicePrefix}{String(nextInvoiceNumber).padStart(4, "0")}
+                </span>
+              </span>
+            </div>
+          )}
+
+          {/* Purchase description template */}
+          <div className="space-y-1.5">
+            <Label htmlFor="purchaseDesc">Purchase Description Template</Label>
+            <Input
+              id="purchaseDesc"
+              placeholder="e.g. {courseName} — {orgName}"
+              value={purchaseDescriptionTemplate}
+              onChange={(e) => setPurchaseDescriptionTemplate(e.target.value)}
+              maxLength={255}
+            />
+            <p className="text-xs text-muted-foreground">
+              Shown on Stripe payment receipts. Use <span className="font-mono">{'{courseName}'}</span> and{" "}
+              <span className="font-mono">{'{orgName}'}</span> as placeholders.
+            </p>
+          </div>
+
+          <div className="flex justify-end pt-1">
+            <Button onClick={handleSave} disabled={saveSettings.isPending} className="gap-2">
+              {saveSettings.isPending ? "Saving..." : <><Check className="h-4 w-4" /> Save Invoice Settings</>}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </TabsContent>

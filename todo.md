@@ -4483,3 +4483,22 @@
 - [x] Build OrgLandingPageEditor.tsx — full-screen block editor reusing LandingPageBuilder engine, wired to orgs.getLandingPageForEditor / orgs.saveLandingPage
 - [x] Add /lms/school/landing-builder route to App.tsx (main router) and SubdomainSchoolRouter
 - [x] Add "Edit Home Page" link (LayoutTemplate icon) to DashboardLayout Settings section
+
+## Port Settings from Ultrasound-Assist + Stripe Invoice/Description
+
+### Schema additions (migration required)
+- [x] orgPaymentSettings: add invoicePrefix (varchar 20), nextInvoiceNumber (int default 1), purchaseDescriptionTemplate (varchar 255)
+- [ ] lmsOrders: add currency (varchar 10)
+- [ ] lmsEnrollments: add affiliateCode (varchar 64), groupId (int), progressPct (float)
+- [ ] lmsGroupSeats: add email (varchar 320)
+- [ ] emailCampaigns: add sentByUserId (int), subject (varchar 255)
+- [ ] lmsQuizQuestions: add correctAnswer (text), options (text JSON)
+- [ ] orderBumps: add bumpPrice (int), bumpProductId (int), bumpType enum, discountLabel (varchar), timing enum, triggerProductId (int), triggerType enum
+
+### Stripe invoice number + purchase description
+- [x] stripeRouter.ts: add invoicePrefix, nextInvoiceNumber, purchaseDescriptionTemplate to getOrgPaymentSettings return
+- [x] stripeRouter.ts: add invoicePrefix, nextInvoiceNumber, purchaseDescriptionTemplate to updateOrgPaymentSettings input
+- [x] lmsRouter.ts createCheckout: read org payment settings, build invoice number (prefix + padded number), increment nextInvoiceNumber, set payment_intent_data.description and invoice_creation on Stripe session (all 3 pricing modes)
+- [ ] funnelRouter.ts createCheckout: same invoice number + description wiring (deferred — pre-existing TS errors)
+- [ ] stripeRouter.ts createCourseCheckout: same invoice number + description wiring
+- [x] OrgSettingsPage.tsx OrgPaymentSettingsTab: add Invoice Settings section with invoicePrefix input, nextInvoiceNumber display, purchaseDescriptionTemplate input with variable hints ({courseName}, {orgName})
