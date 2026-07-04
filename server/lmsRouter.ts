@@ -864,6 +864,13 @@ export const lmsRouter = router({
         const recipientUserIds = members.map((m: any) => m.userId).filter(Boolean) as number[];
         // Load org config for per-org SendGrid key + custom sender
         const orgConfig = await getOrgById(c.orgId!);
+        // ── Two-tier email model: campaigns require org's own SendGrid key ──────
+        if (!orgConfig?.ownSendGridKeyEncrypted) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "sendgrid_key_required",
+          });
+        }
         // Clear previous recipient rows (idempotent re-send)
         const { getDb } = await import("./db");
         const db = await getDb();

@@ -4502,3 +4502,12 @@
 - [ ] funnelRouter.ts createCheckout: same invoice number + description wiring (deferred — pre-existing TS errors)
 - [ ] stripeRouter.ts createCourseCheckout: same invoice number + description wiring
 - [x] OrgSettingsPage.tsx OrgPaymentSettingsTab: add Invoice Settings section with invoicePrefix input, nextInvoiceNumber display, purchaseDescriptionTemplate input with variable hints ({courseName}, {orgName})
+
+## Feature: Two-Tier Email Routing Model
+
+- [x] sendgrid.ts sendOrgEmail: if org has own SendGrid key in orgPaymentSettings, use it (white-label); otherwise fall back to Teachific's SENDGRID_API_KEY
+- [x] emailCampaignsRouter campaigns.send: check if org has SendGrid key before sending; throw TRPCError with code 'PRECONDITION_FAILED' and message 'sendgrid_key_required' if not set
+- [x] emailCampaignsRouter campaigns.schedule: same SendGrid key check before scheduling
+- [x] EmailCampaignsPage: show "Set up your SendGrid account to send campaigns" banner/card when org has no SendGrid key, with link to Settings → Email
+- [x] OrgSettingsPage email tab: updated copy to explain the two-tier model (notifications use Teachific domain by default; own key enables white-label sender for all emails including campaigns; campaigns blocked without key)
+- [ ] All transactional email call sites (enrollment confirmations, receipts, password resets, notifications): use sendOrgEmail (not sendEmail) so they auto-route via org key when available

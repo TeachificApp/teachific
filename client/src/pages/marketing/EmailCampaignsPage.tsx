@@ -13,10 +13,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import { Link } from "wouter";
 import {
   Mail, Plus, MoreVertical, Edit, Trash2, Send, Copy,
   BarChart2, Users, Eye, MousePointerClick, AlertTriangle,
   CheckCircle2, XCircle, Clock, TrendingUp, ArrowLeft,
+  AlertCircle, KeyRound,
 } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, any> = {
@@ -278,6 +280,11 @@ export default function EmailCampaignsPage() {
     { orgId: orgId! },
     { enabled: ready && !!orgId },
   );
+  const { data: emailSettings } = trpc.emailCampaigns.emailSettings.get.useQuery(
+    { orgId: orgId! },
+    { enabled: ready && !!orgId },
+  );
+  const hasOwnSendGridKey = emailSettings?.hasOwnSendGridKey ?? true; // default true to avoid flash
 
   const createMut = trpc.lms.emailMarketing.create.useMutation({
     onSuccess: () => {
@@ -304,7 +311,13 @@ export default function EmailCampaignsPage() {
       utils.lms.emailMarketing.list.invalidate();
       utils.lms.emailMarketing.stats.invalidate();
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      if (e.message === "sendgrid_key_required") {
+        toast.error("A SendGrid API key is required to send campaigns. Go to Settings → Email to set it up.");
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
   const deleteMut = trpc.lms.emailMarketing.delete.useMutation({
     onSuccess: () => {
@@ -357,6 +370,27 @@ export default function EmailCampaignsPage() {
           <Plus className="h-4 w-4" />New Campaign
         </Button>
       </div>
+
+      {/* SendGrid setup banner — shown when org has no own key */}
+      {ready && emailSettings !== undefined && !hasOwnSendGridKey && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4">
+          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">SendGrid account required to send campaigns</p>
+            <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+              Email campaigns are delivered through your own SendGrid account for full control over
+              sending reputation and deliverability. Transactional emails (receipts, course access)
+              continue to work without this setting.
+            </p>
+          </div>
+          <Link href="/settings?tab=email">
+            <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-amber-400 text-amber-800 hover:bg-amber-100 dark:text-amber-300 dark:border-amber-600 dark:hover:bg-amber-900/40">
+              <KeyRound className="h-3.5 w-3.5" />
+              Set up SendGrid
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

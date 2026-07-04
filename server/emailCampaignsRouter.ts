@@ -446,7 +446,15 @@ export const emailCampaignsRouter = router({
         if (!org.length) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
         }
-        
+
+        // ── Two-tier email model: campaigns require org's own SendGrid key ──────
+        if (!org[0].ownSendGridKeyEncrypted) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "sendgrid_key_required",
+          });
+        }
+
         const recipients = await resolveOrgRecipients(db, input.orgId, {});
 
         // Build unsubscribe set — include org-specific AND platform-wide (orgId IS NULL) unsubscribes
@@ -563,7 +571,20 @@ export const emailCampaignsRouter = router({
         await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        
+
+        // ── Two-tier email model: campaigns require org's own SendGrid key ──────
+        const [orgForKey] = await db
+          .select({ ownSendGridKeyEncrypted: organizations.ownSendGridKeyEncrypted })
+          .from(organizations)
+          .where(eq(organizations.id, input.orgId))
+          .limit(1);
+        if (!orgForKey?.ownSendGridKeyEncrypted) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "sendgrid_key_required",
+          });
+        }
+
         await db
           .update(emailCampaigns)
           .set({

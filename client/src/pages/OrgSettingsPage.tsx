@@ -3208,8 +3208,9 @@ function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: 
             <Mail className="h-5 w-5" /> Sender Identity
           </CardTitle>
           <CardDescription>
-            Customise how your name and email address appear in campaign emails sent to your students.
-            All emails are delivered through the Teachific platform.
+            Customise how your name and email address appear in emails sent to your students.
+            When you add your own SendGrid key below, all emails (campaigns and transactional notifications)
+            are sent through your account and domain.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -3244,8 +3245,8 @@ function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: 
           <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
             <span>
-              Transactional emails (receipts, course access, password resets) always use the platform sender
-              and are not affected by these settings.
+              Without a custom SendGrid key, transactional emails (receipts, course access, password resets)
+              use the Teachific platform sender. Email campaigns require your own SendGrid key.
             </span>
           </div>
         </CardContent>
@@ -3265,7 +3266,8 @@ function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: 
                 )}
               </CardTitle>
               <CardDescription className="mt-1">
-                Use your own SendGrid API key for full control over sending reputation and analytics.
+                Use your own SendGrid API key to send campaigns and all transactional emails through your
+                own domain. <strong>Email campaigns are blocked until a key is configured.</strong>{" "}
                 Available on Builder and higher plans.
               </CardDescription>
             </div>
