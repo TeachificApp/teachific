@@ -109,11 +109,12 @@ export const embeddedCheckoutRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
-      // All prices are in CENTS (productPrice and bump prices are stored as cents in the DB)
-      let totalAmountCents = Math.round(Number(input.productPrice));
+      // Prices arrive in DOLLARS (e.g. 37.00). Convert to cents only at the Stripe boundary.
+      let totalAmountDollars = Number(input.productPrice);
       for (const bump of input.selectedBumps) {
-        if (bump.price > 0) totalAmountCents += Math.round(Number(bump.price));
+        if (bump.price > 0) totalAmountDollars += Number(bump.price);
       }
+      let totalAmountCents = Math.round(totalAmountDollars * 100);
 
       // Apply promo code discount if provided
       let discountAppliedCents = 0;
@@ -135,6 +136,7 @@ export const embeddedCheckoutRouter = router({
               discountAppliedCents = Math.min(coupon.amount_off, totalAmountCents);
             }
             totalAmountCents = Math.max(50, totalAmountCents - discountAppliedCents);
+            totalAmountDollars = totalAmountCents / 100;
           } else {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired promo code" });
           }
@@ -148,8 +150,8 @@ export const embeddedCheckoutRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum charge amount is $0.50" });
       }
 
-      // totalAmountCents is already in cents for Stripe API
-      const totalAmount = totalAmountCents / 100; // dollars, for display and DB storage
+      // totalAmountCents is in cents for Stripe; totalAmountDollars is for DB storage and display
+      const totalAmount = totalAmountDollars;
 
       // Get org payment settings to determine which Stripe account to use
       const { orgPaymentSettings, orgSubscriptions } = await import("../drizzle/schema");

@@ -46,7 +46,7 @@ interface Props {
 
 function formatPrice(price: number, isFree: boolean): string {
   if (isFree || price === 0) return "Free";
-  return `$${(price / 100).toFixed(2)}`;
+  return `$${Number(price).toFixed(2)}`;
 }
 
 type ProductItem = {
@@ -150,7 +150,7 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
       slug: String(m.id),
       title: m.name,
       description: m.description ?? "",
-      price: Number(m.price ?? 0) * 100,
+      price: Number(m.price ?? 0),
       isFree: !m.price || Number(m.price) === 0,
       imageUrl: "",
       type: "membership" as const,

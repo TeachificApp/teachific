@@ -1245,7 +1245,7 @@ function PricingCtaSettings({ d, set, setMany }: { d: Record<string, any>; set: 
     // Format price for display (price is stored in cents)
   const formatItemPrice = (item: typeof allItems[0]) => {
     if (item.isFree) return "Free";
-    const priceStr = `$${(Number(item.price) / 100).toFixed(2)}`;
+    const priceStr = `$${Number(item.price).toFixed(2)}`;
     if (item.pricingType === "subscription" && item.subscriptionInterval) {
       const intervalLabel: Record<string, string> = { monthly: "/ mo", quarterly: "/ qtr", annual: "/ yr" };
       return `${priceStr} ${intervalLabel[item.subscriptionInterval] ?? "/ period"}`;
@@ -1952,7 +1952,7 @@ function CheckoutFormBlockSettings({
                   className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
                   {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                   <span className="flex-1 truncate">{item.name}</span>
-                  <span className="text-gray-400 flex-shrink-0">${(Number(item.price) / 100).toFixed(2)}</span>
+                  <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
                   <span className="text-gray-300 flex-shrink-0 capitalize">{item.type}</span>
                 </button>
               ))}
@@ -1969,10 +1969,10 @@ function CheckoutFormBlockSettings({
                 <label className="text-xs text-gray-400 w-24 flex-shrink-0">Override Price</label>
                 <div className="relative flex-1">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
-                  <DebouncedInput type="number" value={(Number(p.price) / 100).toFixed(2)} onChange={v => { const next = [...cfProds]; next[i] = { ...next[i], price: Math.round(parseFloat(v || "0") * 100) }; set("products", next); }} className="h-7 text-xs pl-5" placeholder="0.00" />
+                  <DebouncedInput type="number" value={Number(p.price).toFixed(2)} onChange={v => { const next = [...cfProds]; next[i] = { ...next[i], price: parseFloat(v || "0") || 0 }; set("products", next); }} className="h-7 text-xs pl-5" placeholder="0.00" />
                 </div>
                 {(p as any).catalogPrice && (p as any).catalogPrice !== p.price && (
-                  <span className="text-xs text-gray-400 flex-shrink-0">orig ${(Number((p as any).catalogPrice) / 100).toFixed(2)}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">orig $${Number((p as any).catalogPrice).toFixed(2)}</span>
                 )}
               </div>
               <div className="flex items-center gap-1">
@@ -2010,7 +2010,7 @@ function CheckoutFormBlockSettings({
                   className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
                   {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                   <span className="flex-1 truncate">{item.name}</span>
-                  <span className="text-gray-400 flex-shrink-0">${(Number(item.price) / 100).toFixed(2)}</span>
+                  <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
                 </button>
               ))}
             </div>
@@ -2023,7 +2023,7 @@ function CheckoutFormBlockSettings({
             <DebouncedInput value={bump.title ?? ""} onChange={v => set("orderBumps", cfBumps.map((b: any, j: number) => j === i ? { ...b, title: v } : b))} className="h-7 text-xs" placeholder="Bump title" />
             <DebouncedTextarea value={bump.description ?? ""} onChange={v => set("orderBumps", cfBumps.map((b: any, j: number) => j === i ? { ...b, description: v } : b))} className="text-xs min-h-[50px]" placeholder="Short description" />
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="text-xs text-gray-400">Price (cents)</label><Input type="number" value={bump.price ?? 0} onChange={e => set("orderBumps", cfBumps.map((b: any, j: number) => j === i ? { ...b, price: Number(e.target.value) } : b))} className="h-7 text-xs" placeholder="2700 = $27" /></div>
+              <div><label className="text-xs text-gray-400">Price ($)</label><Input type="number" step="0.01" min="0" value={bump.price ?? 0} onChange={e => set("orderBumps", cfBumps.map((b: any, j: number) => j === i ? { ...b, price: parseFloat(e.target.value) || 0 } : b))} className="h-7 text-xs" placeholder="27.00" /></div>
               <div><label className="text-xs text-gray-400">CTA Text</label><DebouncedInput value={bump.ctaText ?? ""} onChange={v => set("orderBumps", cfBumps.map((b: any, j: number) => j === i ? { ...b, ctaText: v } : b))} className="h-7 text-xs" placeholder="+ Add" /></div>
             </div>
             <div className="flex items-center gap-1"><label className="text-xs text-gray-400 w-24 flex-shrink-0">Strikethrough</label><DebouncedInput value={bump.strikethroughPrice ?? ""} onChange={v => set("orderBumps", cfBumps.map((b: any, j: number) => j === i ? { ...b, strikethroughPrice: v } : b))} className="h-7 text-xs flex-1" placeholder="e.g. $47 (display only)" /></div>
@@ -3573,7 +3573,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                       className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
                       {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                       <span className="flex-1 truncate">{item.name}</span>
-                      <span className="text-gray-400 flex-shrink-0">${(Number(item.price) / 100).toFixed(2)}</span>
+                      <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
                       <span className="text-gray-300 flex-shrink-0 capitalize">{item.type}</span>
                     </button>
                   ))}
@@ -3590,10 +3590,10 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                     <label className="text-xs text-gray-400 w-24 flex-shrink-0">Override Price</label>
                     <div className="relative flex-1">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
-                      <DebouncedInput type="number" value={(Number(p.price) / 100).toFixed(2)} onChange={v => { const next = [...icProds]; next[i] = { ...next[i], price: Math.round(parseFloat(v || "0") * 100) }; set("products", next); }} className="h-7 text-xs pl-5" placeholder="0.00" />
+                      <DebouncedInput type="number" value={Number(p.price).toFixed(2)} onChange={v => { const next = [...icProds]; next[i] = { ...next[i], price: parseFloat(v || "0") || 0 }; set("products", next); }} className="h-7 text-xs pl-5" placeholder="0.00" />
                     </div>
                     {(p as any).catalogPrice && (p as any).catalogPrice !== p.price && (
-                      <span className="text-xs text-gray-400 flex-shrink-0">orig ${(Number((p as any).catalogPrice) / 100).toFixed(2)}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">orig $${Number((p as any).catalogPrice).toFixed(2)}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
@@ -3623,7 +3623,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 <DebouncedInput value={bump.title ?? ""} onChange={v => set("orderBumps", icBumps.map((b: any, j: number) => j === i ? { ...b, title: v } : b))} className="h-7 text-xs" placeholder="Bump title" />
                 <DebouncedTextarea value={bump.description ?? ""} onChange={v => set("orderBumps", icBumps.map((b: any, j: number) => j === i ? { ...b, description: v } : b))} className="text-xs min-h-[50px]" placeholder="Short description" />
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-xs text-gray-400">Price (cents)</label><Input type="number" value={bump.price ?? 0} onChange={e => set("orderBumps", icBumps.map((b: any, j: number) => j === i ? { ...b, price: Number(e.target.value) } : b))} className="h-7 text-xs" /></div>
+                  <div><label className="text-xs text-gray-400">Price ($)</label><Input type="number" step="0.01" min="0" value={bump.price ?? 0} onChange={e => set("orderBumps", icBumps.map((b: any, j: number) => j === i ? { ...b, price: parseFloat(e.target.value) || 0 } : b))} className="h-7 text-xs" placeholder="27.00" /></div>
                   <div><label className="text-xs text-gray-400">Animation</label><select value={bump.animation ?? "pulse"} onChange={e => set("orderBumps", icBumps.map((b: any, j: number) => j === i ? { ...b, animation: e.target.value } : b))} className="h-7 w-full text-xs rounded border border-gray-200 px-2"><option value="pulse">Pulse Border</option><option value="glow">Glow Border</option><option value="shake">Shake</option><option value="bounce">Bounce</option><option value="none">None</option></select></div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -3691,7 +3691,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                       className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
                       {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                       <span className="flex-1 truncate">{item.name}</span>
-                      <span className="text-gray-400 flex-shrink-0">${(Number(item.price) / 100).toFixed(2)}</span>
+                      <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
                       <span className="text-gray-300 flex-shrink-0 capitalize">{item.type}</span>
                     </button>
                   ))}
@@ -3708,10 +3708,10 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                     <label className="text-xs text-gray-400 w-24 flex-shrink-0">Override Price</label>
                     <div className="relative flex-1">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
-                      <DebouncedInput type="number" value={(Number(p.price) / 100).toFixed(2)} onChange={v => { const next = [...ecProds]; next[i] = { ...next[i], price: Math.round(parseFloat(v || "0") * 100) }; set("products", next); }} className="h-7 text-xs pl-5" placeholder="0.00" />
+                      <DebouncedInput type="number" value={Number(p.price).toFixed(2)} onChange={v => { const next = [...ecProds]; next[i] = { ...next[i], price: parseFloat(v || "0") || 0 }; set("products", next); }} className="h-7 text-xs pl-5" placeholder="0.00" />
                     </div>
                     {(p as any).catalogPrice && (p as any).catalogPrice !== p.price && (
-                      <span className="text-xs text-gray-400 flex-shrink-0">orig ${(Number((p as any).catalogPrice) / 100).toFixed(2)}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">orig $${Number((p as any).catalogPrice).toFixed(2)}</span>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
@@ -3743,7 +3743,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 <DebouncedInput value={bump.title ?? ""} onChange={v => set("orderBumps", ecBumps.map((b: any, j: number) => j === i ? { ...b, title: v } : b))} className="h-7 text-xs" placeholder="Bump title" />
                 <DebouncedTextarea value={bump.description ?? ""} onChange={v => set("orderBumps", ecBumps.map((b: any, j: number) => j === i ? { ...b, description: v } : b))} className="text-xs min-h-[50px]" placeholder="Short description" />
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-xs text-gray-400">Price (cents)</label><Input type="number" value={bump.price ?? 0} onChange={e => set("orderBumps", ecBumps.map((b: any, j: number) => j === i ? { ...b, price: Number(e.target.value) } : b))} className="h-7 text-xs" /></div>
+                  <div><label className="text-xs text-gray-400">Price ($)</label><Input type="number" step="0.01" min="0" value={bump.price ?? 0} onChange={e => set("orderBumps", ecBumps.map((b: any, j: number) => j === i ? { ...b, price: parseFloat(e.target.value) || 0 } : b))} className="h-7 text-xs" placeholder="27.00" /></div>
                   <div><label className="text-xs text-gray-400">Animation</label><select value={bump.animation ?? "pulse"} onChange={e => set("orderBumps", ecBumps.map((b: any, j: number) => j === i ? { ...b, animation: e.target.value } : b))} className="h-7 w-full text-xs rounded border border-gray-200 px-2"><option value="pulse">Pulse Border</option><option value="glow">Glow Border</option><option value="shake">Shake</option><option value="bounce">Bounce</option><option value="none">None</option></select></div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -4840,7 +4840,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
                   <input type="checkbox" checked={selectedIds.includes(c.id)} onChange={e => {
                     const existing = d.cards ?? [];
-                    if (e.target.checked) set("cards", [...existing, { id: c.id, title: c.title, description: c.description ?? "", price: c.price ? `$${(c.price / 100).toFixed(0)}` : "Free", thumbnail: c.thumbnailUrl ?? "", slug: c.slug }]);
+                    if (e.target.checked) set("cards", [...existing, { id: c.id, title: c.title, description: c.description ?? "", price: c.price ? `$${Number(c.price).toFixed(2)}` : "Free", thumbnail: c.thumbnailUrl ?? "", slug: c.slug }]);
                     else set("cards", existing.filter((x: any) => x.id !== c.id));
                   }} />
                   {c.title}
@@ -7682,7 +7682,7 @@ function UpgradePromptBlockSettings({ d, set }: { d: Record<string, any>; set: (
         )}
         {discountType !== "none" && (
           <div className="mt-2">
-            <label className="text-xs text-gray-500 block mb-1">Original price (cents, e.g. 29900 = $299)</label>
+            <label className="text-xs text-gray-500 block mb-1">Original price (e.g. 299.00)</label>
             <input type="number" min={0} value={d.originalPriceCents ?? 0} onChange={e => set("originalPriceCents", Number(e.target.value))} className="w-full h-8 text-xs border border-gray-200 rounded px-2" />
           </div>
         )}

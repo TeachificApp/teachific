@@ -4511,3 +4511,13 @@
 - [x] EmailCampaignsPage: show "Set up your SendGrid account to send campaigns" banner/card when org has no SendGrid key, with link to Settings → Email
 - [x] OrgSettingsPage email tab: updated copy to explain the two-tier model (notifications use Teachific domain by default; own key enables white-label sender for all emails including campaigns; campaigns blocked without key)
 - [ ] All transactional email call sites (enrollment confirmations, receipts, password resets, notifications): use sendOrgEmail (not sendEmail) so they auto-route via org key when available
+
+## Pricing Standardization (dollars everywhere, cents only at Stripe API boundary)
+
+- [ ] EmbeddedCheckoutBlock: change price type from cents to dollars; remove all /100 display divisions; update totalAmount calc; pass dollars to embeddedCheckoutRouter
+- [ ] InlineCheckoutBlock: same — dollars throughout, remove fmt(cents/100) pattern
+- [ ] LandingPageBuilder (admin): remove all item.price/100 display hacks; remove *100 catalog assignments; remove /100 in price input value; remove *100 in price input onChange; fix "Price (cents)" labels to "Price ($)"
+- [ ] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
+- [ ] embeddedCheckoutRouter: accept productPrice and bump prices in dollars; multiply by 100 only when calling Stripe
+- [ ] lmsEnrollmentAdminRouter CSV export: remove /100 from orderAmount (stored in dollars)
+- [ ] RelatedProductsBlock: remove *100 for membership price; update formatPrice to not divide by 100

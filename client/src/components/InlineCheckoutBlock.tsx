@@ -36,7 +36,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export interface InlineCheckoutProduct {
   name: string;
   description: string;
-  price: number;          // cents
+  price: number;          // dollars (e.g. 37.00)
   imageUrl?: string;
   type?: string;          // "course" | "download" | "physical" | "membership" | "other"
 }
@@ -45,7 +45,7 @@ export interface InlineCheckoutOrderBump {
   title: string;
   headline: string;
   description: string;
-  price: number;          // cents
+  price: number;          // dollars (e.g. 27.00)
   imageUrl?: string;
   ctaText?: string;
   ctaEmoji?: string;
@@ -206,13 +206,13 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
 
   const selectedProduct = products[selectedIdx];
 
-  const totalCents = useMemo(() => {
+  const totalAmount = useMemo(() => {
     let t = selectedProduct?.price ?? 0;
     addedBumps.forEach(i => { if (orderBumps[i]) t += orderBumps[i].price; });
     return t;
   }, [selectedIdx, addedBumps, products, orderBumps]);
 
-  const fmt = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+  const fmt = (dollars: number) => `$${Number(dollars).toFixed(2)}`;
 
   const toggleBump = (idx: number) => {
     setAddedBumps(prev => {
@@ -249,7 +249,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     }
 
     // ── Free order: skip Stripe entirely ──
-    if (totalCents === 0) {
+    if (totalAmount === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
           orgId: data.orgId,
@@ -543,7 +543,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
           )}
 
           {/* ── Payment Information ─────────────────────────────────────── */}
-          {totalCents > 0 && <fieldset className="border border-gray-200 rounded-lg p-4 space-y-3">
+          {totalAmount > 0 && <fieldset className="border border-gray-200 rounded-lg p-4 space-y-3">
             <legend className="text-[10px] font-bold tracking-widest text-gray-500 uppercase px-1">
               Payment Information
             </legend>
@@ -660,7 +660,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
                 Summary
               </span>
               <span className="flex items-center gap-2">
-                <span style={{ color: accent }}>{fmt(totalCents)}</span>
+                <span style={{ color: accent }}>{fmt(totalAmount)}</span>
                 {summaryOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
               </span>
             </button>
@@ -683,7 +683,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
                 ))}
                 <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-800">
                   <span>Total</span>
-                  <span style={{ color: accent }}>{fmt(totalCents)}</span>
+                  <span style={{ color: accent }}>{fmt(totalAmount)}</span>
                 </div>
               </div>
             )}
@@ -825,7 +825,7 @@ export const INLINE_CHECKOUT_DEFAULTS: InlineCheckoutBlockData = {
     {
       name:        "Example Course",
       description: "Full online access",
-      price:       99700,
+      price:       997,
       imageUrl:    "",
       type:        "course",
     },

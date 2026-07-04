@@ -2028,7 +2028,7 @@ CRITICAL REQUIREMENTS:
           esc(r.courseSlug),
           r.rowDate ? new Date(r.rowDate).toISOString() : "",
           r.progressPct ?? 0,
-          r.orderAmount != null ? (Number(r.orderAmount) / 100).toFixed(2) : "",
+          r.orderAmount != null ? Number(r.orderAmount).toFixed(2) : "",
           esc(r.orderStatus),
           esc(r.stripeSessionId),
         ].join(",")),
