@@ -44,9 +44,11 @@ const shippingAddressSchema = z.object({
 
 const orderBumpInputSchema = z.object({
   title: z.string(),
-  price: z.number(), // cents
+  price: z.number(), // dollars (e.g. 37.00)
   productType: z.string().optional(),
   productId: z.number().optional(),
+  bumpId: z.number().optional(),    // order_bumps.id — needed for webhook fulfillment
+  bumpType: z.string().optional(),  // "course" | "download" | "bundle" | "physical"
 });
 
 const additionalAccessSchema = z.array(z.object({
@@ -76,7 +78,7 @@ export const embeddedCheckoutRouter = router({
         phone: z.string().optional(),
         // Primary product
         productName: z.string(),
-        productPrice: z.number().int().min(50), // cents, min $0.50
+        productPrice: z.number().positive(), // dollars (e.g. 37.00), min $0.50 enforced below
         productType: z.enum(["course", "download", "quiz", "physical", "membership", "bundle", "other"]).default("other"),
         productId: z.number().optional(),
         // Order bumps selected by the user
@@ -190,6 +192,9 @@ export const embeddedCheckoutRouter = router({
       // Build bump metadata (pipe-separated for Stripe metadata string limits)
       const bumpTitles = input.selectedBumps.map(b => b.title).join("|");
       const bumpPrices = input.selectedBumps.map(b => b.price).join("|");
+      const bumpIds = input.selectedBumps.map(b => b.bumpId ?? "").join("|");
+      const bumpTypes = input.selectedBumps.map(b => b.bumpType ?? "").join("|");
+      const bumpProductIds = input.selectedBumps.map(b => b.productId ?? "").join("|");
 
       // Success URL — resolve special values
       const resolveSuccessUrl = (redirect: string | undefined) => {
@@ -214,6 +219,9 @@ export const embeddedCheckoutRouter = router({
         bumps_added: input.selectedBumps.length > 0 ? "1" : "",
         bump_titles: bumpTitles.slice(0, 490),
         bump_prices: bumpPrices.slice(0, 490),
+        bump_ids: bumpIds.slice(0, 490),
+        bump_types: bumpTypes.slice(0, 490),
+        bump_product_ids: bumpProductIds.slice(0, 490),
         source_type: input.sourceType,
         success_url: successUrl.slice(0, 490),
         gateway: useOwnGateway ? "own_gateway" : "teachific_pay",
@@ -274,7 +282,13 @@ export const embeddedCheckoutRouter = router({
         productId: input.productId ?? null,
         amount: totalAmount, // stored in dollars
         currency: "USD",
-        orderBumps: input.selectedBumps.length > 0 ? JSON.stringify(input.selectedBumps.map(b => ({ title: b.title, price: b.price }))) : null,
+        orderBumps: input.selectedBumps.length > 0 ? JSON.stringify(input.selectedBumps.map(b => ({
+          title: b.title,
+          price: b.price,
+          bumpId: b.bumpId ?? null,
+          bumpType: b.bumpType ?? null,
+          productId: b.productId ?? null,
+        }))) : null,
         stripePaymentIntentId: paymentIntent.id,
         sourceType: input.sourceType,
         sourceFunnelId: input.sourceFunnelId ?? null,

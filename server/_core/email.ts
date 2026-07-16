@@ -997,6 +997,51 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
   return { subject, htmlBody, previewText };
 }
 
+/**
+ * Notify org admins of a new purchase made through their school.
+ * Sent from Teachific email (not Manus) to all org_super_admin / org_admin members.
+ */
+export function buildOrgAdminNewPurchaseEmail(opts: {
+  orgName: string;
+  buyerName: string;
+  buyerEmail: string;
+  productName: string;
+  amountPaid: number; // dollars
+  productType: string;
+  adminDashboardUrl: string;
+  brandMode?: BrandMode;
+}): { subject: string; htmlBody: string; previewText: string } {
+  const subject = `New purchase: ${opts.productName} — $${Number(opts.amountPaid).toFixed(2)}`;
+  const previewText = `${opts.buyerName} just purchased ${opts.productName} for $${Number(opts.amountPaid).toFixed(2)}.`;
+  const amountDisplay = `$${Number(opts.amountPaid).toFixed(2)}`;
+  const htmlBody = emailWrapper(`
+    <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
+      New Purchase Received
+    </h2>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
+      A new purchase has been completed on <strong>${opts.orgName}</strong>.
+    </p>
+    <div style="background:#f0fbfc;border:1px solid #d1f5f7;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="font-size:13px;color:#64748b;padding:4px 0;">Buyer</td><td style="font-size:13px;color:#0e1e2e;font-weight:600;text-align:right;padding:4px 0;">${opts.buyerName} &lt;${opts.buyerEmail}&gt;</td></tr>
+        <tr><td style="font-size:13px;color:#64748b;padding:4px 0;">Product</td><td style="font-size:13px;color:#0e1e2e;font-weight:600;text-align:right;padding:4px 0;">${opts.productName}</td></tr>
+        <tr><td style="font-size:13px;color:#64748b;padding:4px 0;">Type</td><td style="font-size:13px;color:#0e1e2e;text-align:right;padding:4px 0;text-transform:capitalize;">${opts.productType}</td></tr>
+        <tr><td style="font-size:14px;color:#0e1e2e;font-weight:700;padding:8px 0 4px;">Amount</td><td style="font-size:14px;color:${brandColor};font-weight:700;text-align:right;padding:8px 0 4px;">${amountDisplay}</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${opts.adminDashboardUrl}"
+        style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
+        View in Admin Dashboard
+      </a>
+    </div>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
+      This is an automated notification from Teachific™. You are receiving this because you are an admin of ${opts.orgName}.
+    </p>
+  `, opts.brandMode);
+  return { subject, htmlBody, previewText };
+}
+
 /** Payment failed / subscription past-due notification */
 export function buildPaymentFailedEmail(opts: {
   firstName: string;

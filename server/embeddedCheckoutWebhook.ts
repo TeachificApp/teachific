@@ -17,9 +17,10 @@ import type Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getStripe } from "./stripePlans";
 import { getDb, getUserByEmail, upsertUser } from "./db";
-import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions, digitalBundlePurchases, digitalBundleItems, digitalPurchases } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
-import { sendEmail } from "./sendgrid";
+import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions, digitalBundlePurchases, digitalBundleItems, digitalPurchases, orgMembers, users, organizations } from "../drizzle/schema";
+import { eq, and, inArray } from "drizzle-orm";
+import { sendEmail, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
+import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 
 const router = express.Router();
 
@@ -241,10 +242,26 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
     // Process order bumps if any
     if (purchase.orderBumps) {
       try {
-        const bumps = JSON.parse(purchase.orderBumps);
+        const bumps = JSON.parse(purchase.orderBumps) as Array<{
+          title: string; price: number;
+          bumpId?: number | null; bumpType?: string | null; productId?: number | null;
+        }>;
         for (const bump of bumps) {
-          // TODO: Process each bump based on its type
-          console.log(`[Embedded Checkout Webhook] Processing order bump: ${bump.title}`);
+          if (!bump.bumpId || !bump.bumpType) {
+            console.log(`[Embedded Checkout Webhook] Skipping bump "${bump.title}" — no bumpId/bumpType`);
+            continue;
+          }
+          const bumpMeta: Record<string, string> = {
+            order_bump_id: String(bump.bumpId),
+            order_bump_type: bump.bumpType,
+            order_bump_product_id: String(bump.productId ?? ""),
+            order_bump_price: String(bump.price),
+          };
+          await fulfillOrderBumpPurchase(db, bumpMeta, {
+            userId,
+            sessionId: paymentIntentId,
+            triggerOrderType: (purchase.productType as any) ?? "course",
+          }).catch((e: any) => console.error(`[Embedded Checkout Webhook] Bump fulfillment error: ${e.message}`));
         }
       } catch (e) {
         console.error("[Embedded Checkout Webhook] Failed to parse order bumps:", e);
@@ -257,17 +274,78 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
       .set({ status: "completed", updatedAt: new Date() })
       .where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId));
 
-    // Send confirmation email
+    // Send Teachific-branded confirmation email to buyer
+    const buyerFirstName = (purchase.name ?? purchase.email).split(/[\s@]/)[0] ?? "there";
+    let loginUrl = `https://learn.teachific.com/my-courses`;
+    if (purchase.fulfillmentCourseId) {
+      try {
+        const { lmsCourses } = await import("../drizzle/schema");
+        const [courseRow] = await db.select({ slug: lmsCourses.slug }).from(lmsCourses)
+          .where(eq(lmsCourses.id, purchase.fulfillmentCourseId)).limit(1);
+        if (courseRow?.slug) loginUrl = `https://learn.teachific.com/courses/${courseRow.slug}`;
+      } catch { /* keep default */ }
+    } else if (purchase.productType === "download") {
+      loginUrl = `https://learn.teachific.com/my-downloads`;
+    }
+    const orderBumpsForEmail = purchase.orderBumps
+      ? (() => { try { return JSON.parse(purchase.orderBumps); } catch { return []; } })()
+      : [];
+    const { subject: confirmSubject, htmlBody: confirmHtml, previewText: confirmPreview } =
+      buildFunnelPurchaseConfirmationEmail({
+        firstName: buyerFirstName,
+        productName: purchase.productName,
+        amountPaid: Number(purchase.amount),
+        orderBumps: orderBumpsForEmail,
+        loginUrl,
+      });
     await sendEmail({
-      to: purchase.email,
-      subject: `Your purchase is confirmed: ${purchase.productName}`,
-      html: `
-        <h2>Thank you for your purchase!</h2>
-        <p>Your order for <strong>${purchase.productName}</strong> has been confirmed.</p>
-        <p>Amount paid: <strong>$${Number(purchase.amount).toFixed(2)} ${purchase.currency}</strong></p>
-        <p>You now have access to your purchase. Log in to your account to get started.</p>
-      `,
-    });
+      to: { name: purchase.name ?? purchase.email, email: purchase.email },
+      subject: confirmSubject,
+      htmlBody: confirmHtml,
+      previewText: confirmPreview,
+    }).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
+
+    // Notify org admins via Teachific email (not Manus)
+    if (purchase.orgId) {
+      try {
+        const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];
+        const [orgRow] = await db.select({ name: organizations.name })
+          .from(organizations).where(eq(organizations.id, purchase.orgId)).limit(1);
+        const orgName = orgRow?.name ?? `School #${purchase.orgId}`;
+        const adminMembers = await db
+          .select({ email: users.email, name: users.name })
+          .from(orgMembers)
+          .innerJoin(users, eq(orgMembers.userId, users.id))
+          .where(and(
+            eq(orgMembers.orgId, purchase.orgId),
+            inArray(orgMembers.role, ORG_ADMIN_ROLES),
+          ));
+        const adminDashboardUrl = `https://teachific.com/admin?tab=enrollments`;
+        const { subject: adminSubject, htmlBody: adminHtml, previewText: adminPreview } =
+          buildOrgAdminNewPurchaseEmail({
+            orgName,
+            buyerName: purchase.name ?? purchase.email,
+            buyerEmail: purchase.email,
+            productName: purchase.productName,
+            amountPaid: Number(purchase.amount),
+            productType: purchase.productType,
+            adminDashboardUrl,
+          });
+        for (const admin of adminMembers) {
+          if (admin.email) {
+            await sendEmail({
+              to: { name: admin.name ?? admin.email, email: admin.email },
+              subject: adminSubject,
+              htmlBody: adminHtml,
+              previewText: adminPreview,
+            }).catch(() => {});
+          }
+        }
+        console.log(`[Embedded Checkout Webhook] Notified ${adminMembers.length} org admin(s) of purchase`);
+      } catch (e: any) {
+        console.error("[Embedded Checkout Webhook] Org admin notification failed:", e.message);
+      }
+    }
 
     console.log(`[Embedded Checkout Webhook] Purchase ${purchase.id} fulfilled successfully`);
   } catch (error: any) {

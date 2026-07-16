@@ -10,12 +10,59 @@ import { getStripe, PLAN_LIMITS, type PlanTier } from "./stripePlans";
 import { upsertOrgSubscription, createEnrollment, getEnrollment } from "./lmsDb";
 import { getUserByEmail, getDb } from "./db";
 import { sendEmail } from "./sendgrid";
+import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions } from "../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers } from "../drizzle/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
+
+/** Send a new-purchase notification to all org_super_admin / org_admin members of an org. */
+async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
+  buyerName: string;
+  buyerEmail: string;
+  productName: string;
+  amountPaid: number;
+  productType: string;
+}): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];
+    const [orgRow] = await db.select({ name: organizations.name })
+      .from(organizations).where(eq(organizations.id, orgId)).limit(1);
+    const orgName = orgRow?.name ?? `School #${orgId}`;
+    const adminMembers = await db
+      .select({ email: users.email, name: users.name })
+      .from(orgMembers)
+      .innerJoin(users, eq(orgMembers.userId, users.id))
+      .where(and(eq(orgMembers.orgId, orgId), inArray(orgMembers.role, ORG_ADMIN_ROLES)));
+    const adminDashboardUrl = `https://teachific.com/admin?tab=enrollments`;
+    const { subject, htmlBody, previewText } = buildOrgAdminNewPurchaseEmail({
+      orgName,
+      buyerName: opts.buyerName,
+      buyerEmail: opts.buyerEmail,
+      productName: opts.productName,
+      amountPaid: opts.amountPaid,
+      productType: opts.productType,
+      adminDashboardUrl,
+    });
+    for (const admin of adminMembers) {
+      if (admin.email) {
+        await sendEmailCore({
+          to: { name: admin.name ?? admin.email, email: admin.email },
+          subject,
+          htmlBody,
+          previewText,
+        }).catch(() => {});
+      }
+    }
+    console.log(`[Stripe Webhook] Notified ${adminMembers.length} org admin(s) of purchase for org ${orgId}`);
+  } catch (e: any) {
+    console.error(`[Stripe Webhook] Org admin notification failed:`, e.message);
+  }
+}
 
 const router = express.Router();
 
@@ -104,6 +151,14 @@ router.post(
                         triggerOrderType: "course",
                       }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
                     }
+                    // Notify org admins via Teachific email (non-blocking)
+                    notifyOrgAdminsOfPurchase(orgId, {
+                      buyerName: user.name ?? buyerEmail,
+                      buyerEmail,
+                      productName: course?.title ?? `Course #${courseId}`,
+                      amountPaid,
+                      productType: "course",
+                    }).catch(() => {});
                     // Dispatch Zapier new_order event (non-blocking)
                     import("./zapierRouter").then(({ dispatchZapierEvent }) => {
                       dispatchZapierEvent(orgId, "new_order", {
@@ -155,6 +210,14 @@ router.post(
                         }
                       }
                       console.log(`[Stripe Webhook] User ${user.id} granted bundle ${bundleId} (${items.length} items)`);
+                    // Notify org admins via Teachific email (non-blocking)
+                    notifyOrgAdminsOfPurchase(orgId2, {
+                      buyerName: user.name ?? buyerEmail2,
+                      buyerEmail: buyerEmail2,
+                      productName: `Bundle #${bundleId}`,
+                      amountPaid: session.amount_total ? session.amount_total / 100 : 0,
+                      productType: "bundle",
+                    }).catch(() => {});
                     }
                     // Fulfill order bumps
                     const meta = (session.metadata ?? {}) as Record<string, string>;
