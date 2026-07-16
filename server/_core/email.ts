@@ -8,7 +8,73 @@
 
 import { type BrandMode, getBrandDisplayConfig } from "@shared/brands";
 import { getDb } from "../db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
+
+/**
+ * Resolve the email sender identity for an org.
+ * If the org has its own SendGrid key + sender configured, returns those.
+ * Otherwise returns null (caller should fall back to Teachific's platform key).
+ */
+export interface OrgEmailSender {
+  apiKey: string;       // decrypted SendGrid API key
+  fromName: string;     // e.g. "Acme Academy"
+  fromEmail: string;    // e.g. "hello@acme.com"
+}
+
+export async function getOrgEmailSender(orgId: number): Promise<OrgEmailSender | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+    const { organizations } = await import("../../drizzle/schema");
+    const [org] = await db
+      .select({
+        ownSendGridKeyEncrypted: organizations.ownSendGridKeyEncrypted,
+        customSenderName: organizations.customSenderName,
+        customSenderEmail: organizations.customSenderEmail,
+        name: organizations.name,
+      })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+    if (!org?.ownSendGridKeyEncrypted) return null;
+    const { decryptOrgKey } = await import("../sendgrid");
+    let apiKey: string;
+    try {
+      apiKey = decryptOrgKey(org.ownSendGridKeyEncrypted);
+    } catch {
+      console.warn(`[email] Failed to decrypt org ${orgId} SendGrid key — falling back to platform sender`);
+      return null;
+    }
+    const fromName = org.customSenderName || org.name || "Teachific";
+    const fromEmail = org.customSenderEmail || process.env.SENDGRID_FROM_EMAIL || "hello@teachific.net";
+    return { apiKey, fromName, fromEmail };
+  } catch (e: any) {
+    console.warn(`[email] getOrgEmailSender(${orgId}) failed:`, e.message);
+    return null;
+  }
+}
+
+/**
+ * Send a transactional email, routing through the org's own SendGrid key/sender
+ * when available, falling back to Teachific's platform key.
+ */
+export async function sendEmailViaOrg(
+  opts: SendEmailOptions,
+  orgId: number | null | undefined,
+): Promise<boolean> {
+  if (orgId) {
+    const orgSender = await getOrgEmailSender(orgId);
+    if (orgSender) {
+      return sendEmail({
+        ...opts,
+        fromName: opts.fromName ?? orgSender.fromName,
+        fromEmail: opts.fromEmail ?? orgSender.fromEmail,
+        _apiKey: orgSender.apiKey,
+      });
+    }
+  }
+  return sendEmail(opts);
+}
 
 /** Infer email type from subject line for logging purposes */
 function inferEmailType(subject: string): string {
@@ -64,10 +130,12 @@ interface SendEmailOptions {
   fromEmail?: string;
   /** List-Unsubscribe header value (RFC 8058 one-click) */
   listUnsubscribeUrl?: string;
+  /** Internal: use this SendGrid API key instead of the platform key (set by sendEmailViaOrg) */
+  _apiKey?: string;
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
-  const apiKey = process.env.SENDGRID_API_KEY;
+  const apiKey = opts._apiKey ?? process.env.SENDGRID_API_KEY;
   const brandConfig = getBrandDisplayConfig();
   // Use brand-specific sender, but allow env override for verified domain constraints
   const senderEmail = process.env.SENDGRID_FROM_EMAIL || brandConfig.senderEmail;

@@ -4521,3 +4521,12 @@
 - [ ] embeddedCheckoutRouter: accept productPrice and bump prices in dollars; multiply by 100 only when calling Stripe
 - [ ] lmsEnrollmentAdminRouter CSV export: remove /100 from orderAmount (stored in dollars)
 - [ ] RelatedProductsBlock: remove *100 for membership price; update formatPrice to not divide by 100
+
+## Org-Sender Buyer Confirmation Emails
+- [ ] Add getOrgEmailSender(orgId, db) helper in _core/email.ts — resolves org's own SendGrid key + fromName + fromEmail from orgPaymentSettings; falls back to Teachific key/sender
+- [ ] embeddedCheckoutWebhook.ts: send buyer confirmation via org sender (purchase.orgId → getOrgEmailSender)
+- [ ] stripeWebhookRoutes.ts course_purchase: send enrollment confirmation via org sender
+- [ ] stripeWebhookRoutes.ts digital_bundle: send bundle confirmation via org sender
+- [ ] funnelRouter.ts free checkout confirmation: send via org sender when orgId is present
+- [ ] lmsCheckoutRouter.ts course purchase confirmation: send via org sender
+- [ ] downloadsRouter.ts sendPurchaseConfirmationEmail: send via org sender

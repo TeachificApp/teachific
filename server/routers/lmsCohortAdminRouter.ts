@@ -950,7 +950,7 @@ export const lmsCohortAdminRouter = router({
             const [settings] = await db.select({ enrollmentEmailEnabled: platformSettings.enrollmentEmailEnabled, enrollmentEmailSubject: platformSettings.enrollmentEmailSubject, enrollmentEmailIntro: platformSettings.enrollmentEmailIntro }).from(platformSettings).limit(1);
             const platformEnabled = settings?.enrollmentEmailEnabled !== false;
             if (!platformEnabled) return;
-            const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+            const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
             if (!course?.sendEnrollmentEmail) return;
             const [user] = await db.select({ name: users.name, displayName: users.displayName, email: users.email }).from(users).where(eq(users.id, input.userId)).limit(1);
             if (!user?.email) return;
@@ -962,6 +962,7 @@ export const lmsCohortAdminRouter = router({
               customSubject: settings?.enrollmentEmailSubject,
               customIntro: settings?.enrollmentEmailIntro,
               accessToken,
+              orgId: course.orgId ?? null,
             });
           } catch (e) {
             console.error("[cohort-welcome-email] Failed to send:", e);

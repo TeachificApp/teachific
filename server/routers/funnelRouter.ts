@@ -1545,7 +1545,7 @@ export const funnelPublicRouter = router({
 
         // 6. Send purchase confirmation email
         try {
-          const { sendEmail, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
+          const { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
           const firstName = input.firstName || customerName.split(" ")[0] || "there";
           let loginUrl = `${baseUrl}/my-courses`;
           if (productType === "course" && productId) {
@@ -1565,7 +1565,7 @@ export const funnelPublicRouter = router({
             loginUrl,
             brandMode: brandMode as any,
           });
-          await sendEmail({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText });
+          await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, input.orgId ?? null);
           console.log(`[FreeCheckout] Confirmation email sent to ${input.email}`);
         } catch (emailErr) {
           console.error(`[FreeCheckout] Failed to send confirmation email:`, emailErr);

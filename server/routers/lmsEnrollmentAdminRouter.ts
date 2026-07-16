@@ -130,7 +130,7 @@ export const lmsEnrollmentAdminRouter = router({
           const [settings] = await db.select().from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
           const platformEnabled = settings?.enrollmentEmailEnabled !== false;
           if (!platformEnabled) return;
-          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
           if (!course?.sendEnrollmentEmail) return;
           const [user] = await db.select({ name: users.name, displayName: users.displayName, email: users.email }).from(users).where(eq(users.id, input.userId)).limit(1);
           if (!user?.email) return;
@@ -142,6 +142,7 @@ export const lmsEnrollmentAdminRouter = router({
             customSubject: settings?.enrollmentEmailSubject,
             customIntro: settings?.enrollmentEmailIntro,
             accessToken,
+            orgId: course.orgId ?? null,
           });
         } catch (e) {
           console.error("[enrollment-email] Failed to send:", e);
@@ -1347,7 +1348,7 @@ CRITICAL REQUIREMENTS:
           const [settings] = await db.select().from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
           const platformEnabled = settings?.enrollmentEmailEnabled !== false;
           if (!platformEnabled) return;
-          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
           if (!course?.sendEnrollmentEmail) return;
           // Look up userId for the new user to get/create their access token
           const [newUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, input.email.trim().toLowerCase())).limit(1);
@@ -1359,6 +1360,7 @@ CRITICAL REQUIREMENTS:
             customSubject: settings?.enrollmentEmailSubject,
             customIntro: settings?.enrollmentEmailIntro,
             accessToken: accessToken2,
+            orgId: course.orgId ?? null,
           });
         } catch (e) {
           console.error("[enrollment-email] Failed to send:", e);

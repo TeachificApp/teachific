@@ -81,7 +81,15 @@ async function deliverEmail(opts: {
   to: { name: string; email: string };
   subject: string;
   htmlBody: string;
+  orgId?: number | null;
 }): Promise<boolean> {
+  // Try to route via org's own SendGrid key/sender first
+  if (opts.orgId) {
+    try {
+      const { sendEmailViaOrg } = await import("../_core/email");
+      return await sendEmailViaOrg({ to: opts.to, subject: opts.subject, htmlBody: opts.htmlBody }, opts.orgId);
+    } catch { /* fall through to platform key */ }
+  }
   const apiKey = process.env.SENDGRID_API_KEY;
   const senderEmail = LMS_FROM_EMAIL;
   const senderName = LMS_FROM_NAME;
@@ -124,6 +132,8 @@ export async function sendEnrollmentEmail(opts: {
   customIntro?: string | null;
   /** Persistent access token — auto-signs user in when they click the link */
   accessToken?: string | null;
+  /** Org ID — routes email via org's own SendGrid key/sender when set */
+  orgId?: number | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Welcome to "${opts.courseTitle}" 🎉`;
@@ -159,7 +169,7 @@ export async function sendEnrollmentEmail(opts: {
       If you have any questions, reply to this email or visit our help center.
     </p>
   `);
-  return deliverEmail({ to: opts.to, subject, htmlBody });
+  return deliverEmail({ to: opts.to, subject, htmlBody, orgId: opts.orgId });
 }
 
 // ─── Digital Download Access Email ───────────────────────────────────────────
@@ -171,6 +181,8 @@ export async function sendDownloadAccessEmail(opts: {
   customIntro?: string | null;
   /** Persistent access token — auto-signs user in when they click the link */
   accessToken?: string | null;
+  /** Org ID — routes email via org's own SendGrid key/sender when set */
+  orgId?: number | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Your download is ready: "${opts.productTitle}"`;
@@ -205,7 +217,7 @@ export async function sendDownloadAccessEmail(opts: {
       If you have any questions, reply to this email or visit our help center.
     </p>
   `);
-  return deliverEmail({ to: opts.to, subject, htmlBody });
+  return deliverEmail({ to: opts.to, subject, htmlBody, orgId: opts.orgId });
 }
 
 // ─── Bundle Access Email ──────────────────────────────────────────────────────
@@ -217,6 +229,8 @@ export async function sendBundleAccessEmail(opts: {
   customIntro?: string | null;
   /** Persistent access token — auto-signs user in when they click the link */
   accessToken?: string | null;
+  /** Org ID — routes email via org's own SendGrid key/sender when set */
+  orgId?: number | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been granted access to "${opts.bundleTitle}"`;
@@ -251,7 +265,7 @@ export async function sendBundleAccessEmail(opts: {
       If you have any questions, reply to this email or visit our help center.
     </p>
   `);
-  return deliverEmail({ to: opts.to, subject, htmlBody });
+  return deliverEmail({ to: opts.to, subject, htmlBody, orgId: opts.orgId });
 }
 
 // ─── Quiz Access Email ────────────────────────────────────────────────────────
@@ -262,6 +276,8 @@ export async function sendQuizAccessEmail(opts: {
   customIntro?: string | null;
   /** Persistent access token — auto-signs user in when they click the link */
   accessToken?: string | null;
+  /** Org ID — routes email via org's own SendGrid key/sender when set */
+  orgId?: number | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been invited to "${opts.quizTitle}"`;
@@ -296,5 +312,5 @@ export async function sendQuizAccessEmail(opts: {
       If you have any questions, reply to this email or visit our help center.
     </p>
   `);
-  return deliverEmail({ to: opts.to, subject, htmlBody });
+  return deliverEmail({ to: opts.to, subject, htmlBody, orgId: opts.orgId });
 }

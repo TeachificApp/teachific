@@ -19,7 +19,7 @@ import { getStripe } from "./stripePlans";
 import { getDb, getUserByEmail, upsertUser } from "./db";
 import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions, digitalBundlePurchases, digitalBundleItems, digitalPurchases, orgMembers, users, organizations } from "../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { sendEmail, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
+import { sendEmail, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 
 const router = express.Router();
@@ -298,12 +298,12 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
         orderBumps: orderBumpsForEmail,
         loginUrl,
       });
-    await sendEmail({
+    await sendEmailViaOrg({
       to: { name: purchase.name ?? purchase.email, email: purchase.email },
       subject: confirmSubject,
       htmlBody: confirmHtml,
       previewText: confirmPreview,
-    }).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
+    }, purchase.orgId ?? null).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
 
     // Notify org admins via Teachific email (not Manus)
     if (purchase.orgId) {

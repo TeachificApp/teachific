@@ -16,6 +16,7 @@ import {
   lmsArchive,
 } from "../../drizzle/schema";
 import { sendEmail } from "../sendgrid";
+import { sendEmailViaOrg } from "../_core/email";
 import { invokeLLM } from "../_core/llm";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
@@ -1017,7 +1018,7 @@ export const downloadsAdminRouter = router({
       // Send email asynchronously
       void (async () => {
         try {
-          const [product] = await db.select({ title: digitalProducts.title, slug: digitalProducts.slug })
+          const [product] = await db.select({ title: digitalProducts.title, slug: digitalProducts.slug, orgId: digitalProducts.orgId })
             .from(digitalProducts).where(eq(digitalProducts.id, input.productId)).limit(1);
           if (!product) return;
           const accessToken = await getOrCreateAccessToken(userId);
@@ -1026,6 +1027,7 @@ export const downloadsAdminRouter = router({
             productTitle: product.title,
             productSlug: product.slug,
             accessToken,
+            orgId: product.orgId ?? null,
           });
         } catch (e) {
           console.error("[download-access-email] Failed:", e);
@@ -1083,7 +1085,7 @@ export const downloadsAdminRouter = router({
       // Send email asynchronously
       void (async () => {
         try {
-          const [bundle] = await db.select({ title: digitalBundles.title, slug: digitalBundles.slug })
+          const [bundle] = await db.select({ title: digitalBundles.title, slug: digitalBundles.slug, orgId: digitalBundles.orgId })
             .from(digitalBundles).where(eq(digitalBundles.id, input.bundleId)).limit(1);
           if (!bundle) return;
           const accessToken = await getOrCreateAccessToken(userId);
@@ -1092,6 +1094,7 @@ export const downloadsAdminRouter = router({
             bundleTitle: bundle.title,
             bundleSlug: bundle.slug,
             accessToken,
+            orgId: bundle.orgId ?? null,
           });
         } catch (e) {
           console.error("[bundle-access-email] Failed:", e);
@@ -1358,11 +1361,13 @@ export async function sendPurchaseConfirmationEmail(userId: number, productId: n
   </table>
 </body></html>`;
 
-  await sendEmail({
+  // Route through org's own SendGrid key/sender if the product belongs to an org
+  const orgId = product.orgId ?? null;
+  await sendEmailViaOrg({
     to: { name: user.name || "Customer", email: user.email },
     subject: `Your download is ready: ${product.title}`,
     htmlBody,
     previewText: `Your download "${product.title}" is ready — click to access your files instantly.`,
-  });
+  }, orgId);
   console.log(`[sendPurchaseConfirmationEmail] Sent access email to ${user.email} for product ${productId} (auto-login: ${accessUrl !== filesUrl ? 'yes' : 'no'})`);
 }

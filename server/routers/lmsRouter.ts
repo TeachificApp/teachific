@@ -1230,7 +1230,21 @@ export const lmsLearnerRouter = router({
           .where(and(eq(lmsEnrollments.userId, user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
         if (!existing[0]) {
           await db.insert(lmsEnrollments).values({ userId: user.id, courseId: course.id, status: "active", progressPct: 0 });
-          try { await sendEnrollmentEmail({ userId: user.id, courseId: course.id }); } catch {}
+          try {
+            const [settings] = await db.select({ enrollmentEmailEnabled: platformSettings.enrollmentEmailEnabled, enrollmentEmailSubject: platformSettings.enrollmentEmailSubject, enrollmentEmailIntro: platformSettings.enrollmentEmailIntro }).from(platformSettings).limit(1);
+            if (settings?.enrollmentEmailEnabled !== false && course.sendEnrollmentEmail) {
+              const accessToken = await getOrCreateAccessToken(user.id);
+              await sendEnrollmentEmail({
+                to: { name: user.displayName || user.name || "Student", email: user.email! },
+                courseTitle: course.title,
+                courseSlug: course.slug,
+                customSubject: settings?.enrollmentEmailSubject,
+                customIntro: settings?.enrollmentEmailIntro,
+                accessToken,
+                orgId: course.orgId ?? null,
+              });
+            }
+          } catch {}
         }
         return { checkoutUrl: null, enrolled: true };
       }

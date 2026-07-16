@@ -10,7 +10,7 @@ import { getStripe, PLAN_LIMITS, type PlanTier } from "./stripePlans";
 import { upsertOrgSubscription, createEnrollment, getEnrollment } from "./lmsDb";
 import { getUserByEmail, getDb } from "./db";
 import { sendEmail } from "./sendgrid";
-import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore } from "./_core/email";
+import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
 import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers } from "../drizzle/schema";
@@ -132,15 +132,20 @@ router.post(
                     await createEnrollment({ courseId, userId: user.id, orgId, amountPaid });
                     console.log(`[Stripe Webhook] User ${user.id} enrolled in course ${courseId}`);
                     const course = await getCourseById(courseId).catch(() => null);
-                    await sendEmail({
-                      to: user.email ?? "",
-                      subject: `Your enrollment is confirmed!`,
-                      html: courseEnrollmentHtml({
-                        userName: user.name ?? "there",
-                        courseTitles: course?.title ? [course.title] : ["your course"],
+                    // Send buyer confirmation via org sender if available
+                    const { subject: enrollSubj, htmlBody: enrollHtml, previewText: enrollPreview } =
+                      buildFunnelPurchaseConfirmationEmail({
+                        firstName: (user.name ?? "there").split(" ")[0],
+                        productName: course?.title ?? "your course",
                         amountPaid,
-                      }),
-                    });
+                        loginUrl: `https://learn.teachific.com/courses/${course?.slug ?? courseId}`,
+                      });
+                    await sendEmailViaOrg({
+                      to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },
+                      subject: enrollSubj,
+                      htmlBody: enrollHtml,
+                      previewText: enrollPreview,
+                    }, orgId).catch(() => {});
                     // Fulfill order bump purchases (non-blocking)
                     const db2 = await getDb();
                     if (db2) {
@@ -210,6 +215,21 @@ router.post(
                         }
                       }
                       console.log(`[Stripe Webhook] User ${user.id} granted bundle ${bundleId} (${items.length} items)`);
+                      // Send buyer confirmation via org sender
+                      const bundleAmountPaid = session.amount_total ? session.amount_total / 100 : 0;
+                      const { subject: bundleSubj, htmlBody: bundleHtml, previewText: bundlePreview } =
+                        buildFunnelPurchaseConfirmationEmail({
+                          firstName: (user.name ?? user.email ?? "there").split(" ")[0],
+                          productName: `Bundle #${bundleId}`,
+                          amountPaid: bundleAmountPaid,
+                          loginUrl: `https://teachific.app/my-library`,
+                        });
+                      await sendEmailViaOrg({
+                        to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },
+                        subject: bundleSubj,
+                        htmlBody: bundleHtml,
+                        previewText: bundlePreview,
+                      }, orgId2).catch(() => {});
                     // Notify org admins via Teachific email (non-blocking)
                     notifyOrgAdminsOfPurchase(orgId2, {
                       buyerName: user.name ?? buyerEmail2,
