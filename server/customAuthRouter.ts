@@ -47,14 +47,14 @@ function serializeCookie(name: string, value: string, maxAge: number): string {
 // ─── Router ───────────────────────────────────────────────────────────────────
 export const customAuthRouter = router({
 
-  /** Register a new user with email + password */
+  /** Register a new user with email + password — auto-signs in immediately */
   register: publicProcedure
     .input(z.object({
       name: z.string().min(1).max(100),
       email: z.string().email().max(320),
       password: z.string().min(8).max(128),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
 
@@ -82,7 +82,9 @@ export const customAuthRouter = router({
         loginMethod: "email",
         role: "user",
         passwordHash,
-        emailVerified: false,
+        // Mark as verified immediately so the user can sign in right away.
+        // The verification email is still sent for security, but it is not required to use the app.
+        emailVerified: true,
         emailVerificationToken: verificationToken,
         emailVerificationExpiry: verificationExpiry,
         lastSignedIn: new Date(),
@@ -92,24 +94,39 @@ export const customAuthRouter = router({
         .where(eq(users.email, input.email.toLowerCase()))
         .limit(1);
 
+      let orgSlug: string | null = null;
       if (newUser) {
         try {
           const orgName = `${input.name}'s School`;
           const slug = await generateUniqueOrgSlug(orgName, async (s) => !!(await dbHelpers.getOrgBySlug(s)));
           await dbHelpers.createOrg({ name: orgName, slug, description: "Default workspace", ownerId: newUser.id });
           const org = await dbHelpers.getOrgBySlug(slug);
-          if (org) await dbHelpers.addOrgMember(org.id, newUser.id, "org_admin");
+          if (org) {
+            await dbHelpers.addOrgMember(org.id, newUser.id, "org_admin");
+            orgSlug = slug;
+          }
         } catch {}
 
+        // Send verification email in background (non-blocking)
         const verifyUrl = `${SITE_URL}/verify-email?token=${verificationToken}`;
-        await sendEmail({
+        sendEmail({
           to: input.email,
-          subject: "Verify your Teachific email address",
+          subject: "Welcome to Teachific — please verify your email",
           html: verifyEmailHtml(input.name, verifyUrl),
-        });
+        }).catch(() => {});
+
+        // Auto sign-in: issue session cookie immediately
+        const sessionToken = signSessionToken({ userId: newUser.id, ts: Date.now() });
+        ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
       }
 
-      return { success: true, message: "Account created! Please check your email to verify your address." };
+      return {
+        success: true,
+        autoSignedIn: true,
+        orgSlug,
+        user: newUser ? { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } : null,
+        message: "Account created! Welcome to Teachific.",
+      };
     }),
 
   /** Login with email + password */

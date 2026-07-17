@@ -33,8 +33,31 @@ export default function RegisterPage() {
   const { branding, primary, buttonText, displayName } = useOrgAuthBranding();
   const isOrgSubdomain = !!branding;
 
+  const utils = trpc.useUtils();
   const register = trpc.customAuth.register.useMutation({
-    onSuccess: () => setSuccess(true),
+    onSuccess: (data) => {
+      if (data.autoSignedIn && data.user) {
+        // Seed the auth.me cache so DashboardLayout doesn't flash the sign-in screen
+        utils.auth.me.setData(undefined, data.user as never);
+        try { localStorage.setItem("teachific_auth_cache", JSON.stringify(data.user)); } catch {}
+        // Redirect to the org subdomain if one was created, otherwise go to /lms
+        if (data.orgSlug) {
+          const { protocol, port } = window.location;
+          const portSuffix = port ? `:${port}` : "";
+          const isProduction = window.location.hostname.endsWith(".teachific.app") || window.location.hostname === "teachific.app";
+          if (isProduction) {
+            window.location.href = `${protocol}//${data.orgSlug}.teachific.app/lms`;
+          } else {
+            // Dev: stay on same host, navigate to /lms
+            navigate("/lms");
+          }
+        } else {
+          navigate("/lms");
+        }
+      } else {
+        setSuccess(true);
+      }
+    },
     onError: (err) => setError(err.message),
   });
 
