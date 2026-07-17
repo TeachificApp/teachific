@@ -173,16 +173,12 @@ export const embeddedCheckoutRouter = router({
       let stripeInstance: InstanceType<typeof Stripe>;
       let useOwnGateway = false;
 
-      if (paySettings?.stripeSecretKey && planLimits.customGateway) {
-        // Org has configured their own Stripe account and plan allows it
+      if (paySettings?.stripeSecretKey) {
+        // Org has their own Stripe key — always use it (own gateway is the default for all plans)
         stripeInstance = new Stripe(paySettings.stripeSecretKey, { apiVersion: "2025-02-24.acacia" as any });
         useOwnGateway = true;
-      } else if (!paySettings?.stripeSecretKey && planLimits.customGateway) {
-        // Plan allows custom gateway but not configured — use TeachificPay
-        stripeInstance = getStripe();
-        useOwnGateway = false;
       } else {
-        // Free/Starter/Builder plans must use TeachificPay
+        // No org Stripe key configured — fall back to platform Stripe (TeachificPay, admin test only)
         stripeInstance = getStripe();
         useOwnGateway = false;
       }

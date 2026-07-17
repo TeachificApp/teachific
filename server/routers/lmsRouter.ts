@@ -2184,7 +2184,8 @@ export const lmsGroupRouter = router({
         if (course) {
           const [org] = await db.select().from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
           if (org && input.pricingType !== "free" && input.price > 0) {
-            const orgStripeKey = org.paymentGateway === "own_gateway" && org.ownStripeSecretKeyEncrypted ? org.ownStripeSecretKeyEncrypted : null;
+            // Always use org's own Stripe key when available — own_gateway is the default for all plans
+            const orgStripeKey = org.ownStripeSecretKeyEncrypted ?? null;
             const linkResult = await createStripePaymentLink({
               productName: `${course.title} — ${input.label}`,
               priceAmount: input.price,
@@ -2243,8 +2244,9 @@ export const lmsGroupRouter = router({
               const [org] = await db.select().from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
               if (org && opt.pricingType !== "free" && Number(opt.price) > 0) {
                 // Deactivate old link if exists
-                if (opt.stripePaymentLinkId) { deactivateStripePaymentLink(opt.stripePaymentLinkId, org.paymentGateway === "own_gateway" ? (org.ownStripeSecretKeyEncrypted ?? null) : null).catch(() => {}); }
-                const orgStripeKey = org.paymentGateway === "own_gateway" && org.ownStripeSecretKeyEncrypted ? org.ownStripeSecretKeyEncrypted : null;
+                if (opt.stripePaymentLinkId) { deactivateStripePaymentLink(opt.stripePaymentLinkId, org.ownStripeSecretKeyEncrypted ?? null).catch(() => {}); }
+                // Always use org's own Stripe key when available — own_gateway is the default for all plans
+                const orgStripeKey = org.ownStripeSecretKeyEncrypted ?? null;
                 const linkResult = await createStripePaymentLink({
                   productName: `${course.title} — ${opt.label}`,
                   priceAmount: Number(opt.price),
