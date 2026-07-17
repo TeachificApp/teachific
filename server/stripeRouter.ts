@@ -150,8 +150,8 @@ export const stripeRouter = router({
             plan: input.plan,
           },
         },
-        success_url: `${input.origin}/lms/billing?success=1&plan=${input.plan}&trial=1`,
-        cancel_url: `${input.origin}/lms/billing?cancelled=1`,
+        success_url: `${input.origin}/billing?success=1&plan=${input.plan}&trial=1`,
+        cancel_url: `${input.origin}/billing?cancelled=1`,
       });
 
       return { url: session.url };
@@ -175,7 +175,7 @@ export const stripeRouter = router({
       const stripe = getStripe();
       const session = await stripe.billingPortal.sessions.create({
         customer: sub.stripeCustomerId,
-        return_url: `${input.origin}/lms/billing`,
+        return_url: `${input.origin}/billing`,
       });
       return { url: session.url };
     }),

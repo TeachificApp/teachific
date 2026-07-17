@@ -213,6 +213,7 @@ export const appRouter = router({
   customAuth: customAuthRouter,
   community: communityRouter,
   stripe: stripeRouter,
+  billing: stripeRouter, // alias — trpc.billing.* resolves to the same stripe procedures
   authoring: authoringRouter,
   quizMaker: quizMakerRouter,
   questionBank: questionBankRouter,

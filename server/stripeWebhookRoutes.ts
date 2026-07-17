@@ -383,15 +383,87 @@ router.post(
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
           const orgId = parseInt(subscription.metadata?.org_id ?? "0");
-          if (!orgId) break;
+          const productType = subscription.metadata?.product_type as string | undefined;
+          const userId = parseInt(subscription.metadata?.user_id ?? "0");
 
+          // ── Platform app subscription cancelled ──────────────────────────────
+          if (productType && userId) {
+            const db = await getDb();
+            if (db) {
+              const { users } = await import("../drizzle/schema");
+              const { eq } = await import("drizzle-orm");
+              if (productType === "studio") {
+                await db.update(users).set({ studioAccess: null }).where(eq(users.id, userId));
+              } else if (productType === "creator") {
+                await db.update(users).set({ creatorAccess: null }).where(eq(users.id, userId));
+              } else if (productType === "quiz_creator") {
+                await db.update(users).set({ quizCreatorAccess: null }).where(eq(users.id, userId));
+              }
+              console.log(`[Stripe Webhook] User ${userId} ${productType} access revoked (subscription cancelled)`);
+            }
+            break;
+          }
+
+          // ── Org subscription cancelled ────────────────────────────────────────
+          if (!orgId) break;
           await upsertOrgSubscription(orgId, {
             plan: "free",
             status: "cancelled",
             cancelAtPeriodEnd: false,
           });
-
           console.log(`[Stripe Webhook] Org ${orgId} subscription cancelled, downgraded to free`);
+          break;
+        }
+
+        // ── Subscription renewal (invoice.paid) ───────────────────────────────
+        case "invoice.paid": {
+          const invoice = event.data.object as Stripe.Invoice;
+          const subscriptionId = (invoice as any).subscription as string;
+          if (!subscriptionId) break;
+          // Only process subscription renewals (billing_reason = subscription_cycle or subscription_update)
+          const billingReason = (invoice as any).billing_reason as string;
+          if (billingReason !== "subscription_cycle" && billingReason !== "subscription_update" && billingReason !== "subscription_create") break;
+
+          const stripe = getStripe();
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const productType = subscription.metadata?.product_type as string | undefined;
+          const userId = parseInt(subscription.metadata?.user_id ?? "0");
+          const orgId = parseInt(subscription.metadata?.org_id ?? "0");
+          const item = subscription.items.data[0];
+
+          // ── Platform app renewal: re-confirm access ───────────────────────────
+          if (productType && userId && (productType === "studio" || productType === "creator" || productType === "quiz_creator")) {
+            const accessTier = subscription.metadata?.access_tier as string;
+            if (accessTier) {
+              const db = await getDb();
+              if (db) {
+                const { users } = await import("../drizzle/schema");
+                const { eq } = await import("drizzle-orm");
+                if (productType === "studio") {
+                  await db.update(users).set({ studioAccess: accessTier as any }).where(eq(users.id, userId));
+                } else if (productType === "creator") {
+                  await db.update(users).set({ creatorAccess: accessTier as any }).where(eq(users.id, userId));
+                } else if (productType === "quiz_creator") {
+                  await db.update(users).set({ quizCreatorAccess: accessTier as any }).where(eq(users.id, userId));
+                }
+                console.log(`[Stripe Webhook] User ${userId} ${productType} access renewed (${accessTier}) — billing_reason: ${billingReason}`);
+              }
+            }
+            break;
+          }
+
+          // ── Org subscription renewal: update period dates ─────────────────────
+          if (orgId) {
+            const plan = subscription.metadata?.plan as string ?? "starter";
+            await upsertOrgSubscription(orgId, {
+              plan: plan as any,
+              status: normalizeStripeStatus(subscription.status),
+              currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
+              currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
+              cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            });
+            console.log(`[Stripe Webhook] Org ${orgId} subscription renewed — next period ends ${item ? new Date(item.current_period_end * 1000).toISOString() : "unknown"}`);
+          }
           break;
         }
 
@@ -402,9 +474,18 @@ router.post(
 
           const stripe = getStripe();
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const productType = subscription.metadata?.product_type as string | undefined;
+          const userId = parseInt(subscription.metadata?.user_id ?? "0");
           const orgId = parseInt(subscription.metadata?.org_id ?? "0");
-          if (!orgId) break;
 
+          // Platform app payment failed — log but don't revoke access immediately (Stripe retries)
+          if (productType && userId) {
+            console.warn(`[Stripe Webhook] User ${userId} ${productType} payment failed — subscription ${subscriptionId} is past_due`);
+            break;
+          }
+
+          // Org subscription payment failed
+          if (!orgId) break;
           await upsertOrgSubscription(orgId, { status: "past_due" });
           console.log(`[Stripe Webhook] Org ${orgId} payment failed, status: past_due`);
           break;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
@@ -147,6 +147,19 @@ export default function BillingPage() {
 
   const { user } = useAuth();
   const { data: subscription, isLoading } = trpc.billing.getSubscription.useQuery();
+
+  // Handle Stripe redirect query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "1") {
+      const plan = params.get("plan");
+      toast.success(plan ? `Welcome to the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan! Your 14-day trial has started.` : "Subscription activated!");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("cancelled") === "1") {
+      toast.info("Checkout cancelled. You can upgrade anytime.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const createCheckout = trpc.billing.createCheckoutSession.useMutation({
     onSuccess: (data) => {
