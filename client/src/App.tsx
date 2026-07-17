@@ -44,6 +44,7 @@ import PageBuilderPage from "./pages/lms/PageBuilderPage";
 import SchoolPage from "./pages/lms/SchoolPage";
 import OrgLandingPage from "./pages/lms/OrgLandingPage";
 import SchoolMyCoursesPage from "./pages/lms/SchoolMyCoursesPage";
+import SchoolProfilePage from "./pages/lms/SchoolProfilePage";
 import FormsPage from "./pages/lms/FormsPage";
 import FormBuilderPage from "./pages/lms/FormBuilderPage";
 import FormResponsesPage from "./pages/lms/FormResponsesPage";
@@ -194,6 +195,8 @@ function BareRouter() {
         {/* Member portal routes — require auth, show member sidebar */}
         <Route path="/school/:orgSlug/my-courses" component={SchoolMyCoursesPage} />
         <Route path="/school/my-courses" component={SchoolMyCoursesPage} />
+        <Route path="/school/:orgSlug/profile" component={SchoolProfilePage} />
+        <Route path="/school/profile" component={SchoolProfilePage} />
         <Route path="/community/:hubId" component={CommunityLearnerPage} />
         {/* Cohort learner routes */}
         <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
@@ -586,6 +589,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/learn/:courseId/lesson/:lessonId" component={CoursePlayerPage} />
         <Route path="/learn/:courseId" component={CoursePlayerPage} />
         <Route path="/my-courses" component={SchoolMyCoursesPage} />
+        <Route path="/profile" component={SchoolProfilePage} />
         <Route path="/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>
         <Route path="/courses/:courseId/thank-you" component={ThankYouPage} />
         <Route path="/courses/:slug/player" component={CoursePlayer} />

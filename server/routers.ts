@@ -1488,6 +1488,21 @@ export const appRouter = router({
           return { success: true };
         }),
 
+      // Returns the calling user's own membership record for a given org
+      getMyMembership: protectedProcedure
+        .input(z.object({ orgId: z.number() }))
+        .query(async ({ ctx, input }) => {
+          const db2 = await getDb();
+          if (!db2) return null;
+          const { and: andOp } = await import("drizzle-orm");
+          const [membership] = await db2
+            .select()
+            .from(orgMembers)
+            .where(andOp(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)))
+            .limit(1);
+          return membership ?? null;
+        }),
+
       // Returns org members enriched with user data and course enrollments
       listWithEnrollments: orgAdminProcedure
         .input(z.object({ orgId: z.number() }))

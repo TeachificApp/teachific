@@ -180,6 +180,134 @@ export const stripeRouter = router({
       return { url: session.url };
     }),
 
+  // ── Change plan (upgrade / downgrade with proration) ────────────────────────
+  changePlan: protectedProcedure
+    .input(z.object({
+      plan: z.enum(["starter", "builder", "pro"]),
+      interval: z.enum(["monthly", "annual"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ENV.stripeSecretKey) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
+      const orgCtx = await getOrgContext(ctx.user.id);
+      if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
+      if (!([ "org_super_admin", "org_admin"] as string[]).includes(orgCtx.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can manage billing" });
+      }
+      const sub = await getOrgSubscription(orgCtx.orgId);
+      if (!sub?.stripeSubscriptionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found. Please subscribe first." });
+      }
+      const priceKey = `${input.plan}_${input.interval}`;
+      const priceId = STRIPE_PRICE_IDS[priceKey];
+      if (!priceId) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Price not configured for ${priceKey}` });
+      }
+      const stripe = getStripe();
+      const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+      const currentItem = stripeSub.items.data[0];
+      if (!currentItem) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Subscription item not found" });
+
+      // Determine proration behaviour: upgrades are immediate (prorated), downgrades take effect at period end
+      const PLAN_ORDER: Record<string, number> = { starter: 1, builder: 2, pro: 3 };
+      const currentPlanName = (sub.plan ?? "free") as string;
+      const isUpgrade = (PLAN_ORDER[input.plan] ?? 0) > (PLAN_ORDER[currentPlanName] ?? 0);
+
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+        items: [{ id: currentItem.id, price: priceId }],
+        proration_behavior: isUpgrade ? "create_prorations" : "none",
+        billing_cycle_anchor: isUpgrade ? "now" : "unchanged",
+        metadata: { org_id: String(orgCtx.orgId), plan: input.plan, interval: input.interval },
+      });
+
+      // Immediately update the DB so the UI reflects the change without waiting for webhook
+      await upsertOrgSubscription(orgCtx.orgId, {
+        plan: input.plan,
+        status: "active",
+        stripeSubscriptionId: sub.stripeSubscriptionId,
+        stripeCustomerId: sub.stripeCustomerId ?? undefined,
+        currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
+        cancelAtPeriodEnd: false,
+      });
+
+      return { success: true, isUpgrade };
+    }),
+
+  // ── Cancel subscription (at period end) ──────────────────────────────────────
+  cancelSubscription: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (!ENV.stripeSecretKey) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
+      const orgCtx = await getOrgContext(ctx.user.id);
+      if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
+      if (!([ "org_super_admin", "org_admin"] as string[]).includes(orgCtx.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can cancel the subscription" });
+      }
+      const sub = await getOrgSubscription(orgCtx.orgId);
+      if (!sub?.stripeSubscriptionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found" });
+      }
+      const stripe = getStripe();
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: true });
+      // Reflect immediately in DB
+      await upsertOrgSubscription(orgCtx.orgId, {
+        plan: sub.plan ?? "free",
+        status: sub.status ?? "active",
+        stripeSubscriptionId: sub.stripeSubscriptionId,
+        stripeCustomerId: sub.stripeCustomerId ?? undefined,
+        currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
+        cancelAtPeriodEnd: true,
+      });
+      return { success: true, currentPeriodEnd: sub.currentPeriodEnd };
+    }),
+
+  // ── Reactivate subscription (undo pending cancellation) ──────────────────────
+  reactivateSubscription: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (!ENV.stripeSecretKey) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
+      const orgCtx = await getOrgContext(ctx.user.id);
+      if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
+      if (!([ "org_super_admin", "org_admin"] as string[]).includes(orgCtx.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can manage billing" });
+      }
+      const sub = await getOrgSubscription(orgCtx.orgId);
+      if (!sub?.stripeSubscriptionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found" });
+      }
+      const stripe = getStripe();
+      await stripe.subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: false });
+      await upsertOrgSubscription(orgCtx.orgId, {
+        plan: sub.plan ?? "free",
+        status: "active",
+        stripeSubscriptionId: sub.stripeSubscriptionId,
+        stripeCustomerId: sub.stripeCustomerId ?? undefined,
+        currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
+        cancelAtPeriodEnd: false,
+      });
+      return { success: true };
+    }),
+
+  // ── Subuser: leave org (self-cancel membership) ───────────────────────────────
+  leaveOrg: protectedProcedure
+    .input(z.object({ orgId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      const { orgMembers } = await import("../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      // Verify the user is actually a member (not an admin — admins cannot self-remove)
+      const [membership] = await db
+        .select()
+        .from(orgMembers)
+        .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)))
+        .limit(1);
+      if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Membership not found" });
+      if (["org_super_admin", "org_admin"].includes(membership.role)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Org admins cannot self-remove. Transfer ownership first." });
+      }
+      await db
+        .delete(orgMembers)
+        .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)));
+      return { success: true };
+    }),
+
   // ── Get org payment settings ───────────────────────────────────────────────
   getPaymentSettings: protectedProcedure.query(async ({ ctx }) => {
     const orgCtx = await getOrgContext(ctx.user.id);

@@ -140,6 +140,9 @@ export default function BillingPage() {
   const [annual, setAnnual] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [changePlanOpen, setChangePlanOpen] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<"starter" | "builder" | "pro" | null>(null);
   const [enterpriseForm, setEnterpriseForm] = useState({
     teamSize: "",
     message: "",
@@ -194,7 +197,44 @@ export default function BillingPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const utils = trpc.useUtils();
+
+  const changePlan = trpc.billing.changePlan.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.isUpgrade ? "Plan upgraded successfully!" : "Plan change scheduled — takes effect at next billing cycle.");
+      utils.billing.getSubscription.invalidate();
+      setLoadingPlan(null);
+      setChangePlanOpen(false);
+    },
+    onError: (err) => { toast.error(err.message); setLoadingPlan(null); },
+  });
+
+  const cancelSub = trpc.billing.cancelSubscription.useMutation({
+    onSuccess: (data) => {
+      const date = data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toLocaleDateString() : "the end of your billing period";
+      toast.success(`Subscription cancelled. You'll retain access until ${date}.`);
+      utils.billing.getSubscription.invalidate();
+      setCancelOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const reactivateSub = trpc.billing.reactivateSubscription.useMutation({
+    onSuccess: () => {
+      toast.success("Subscription reactivated! Your plan will continue as normal.");
+      utils.billing.getSubscription.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const handleUpgrade = (plan: "starter" | "builder" | "pro") => {
+    // If already subscribed, use changePlan (in-place upgrade/downgrade)
+    if (subscription?.stripeSubscriptionId) {
+      setPendingPlan(plan);
+      setChangePlanOpen(true);
+      return;
+    }
+    // First-time subscriber: go to Stripe checkout
     setLoadingPlan(plan);
     createCheckout.mutate({
       plan,
@@ -271,12 +311,36 @@ export default function BillingPage() {
                   )}
                 </div>
               </div>
-              {subscription.stripeSubscriptionId && (
-                <Button variant="outline" size="sm" onClick={handlePortal} disabled={createPortal.isPending}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                  Manage
-                </Button>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {subscription.stripeSubscriptionId && !subscription.cancelAtPeriodEnd && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                    onClick={() => setCancelOpen(true)}
+                    disabled={cancelSub.isPending}
+                  >
+                    Cancel Plan
+                  </Button>
+                )}
+                {subscription.stripeSubscriptionId && subscription.cancelAtPeriodEnd && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600 border-green-200 hover:bg-green-50"
+                    onClick={() => reactivateSub.mutate()}
+                    disabled={reactivateSub.isPending}
+                  >
+                    {reactivateSub.isPending ? "Reactivating..." : "Reactivate Plan"}
+                  </Button>
+                )}
+                {subscription.stripeCustomerId && (
+                  <Button variant="outline" size="sm" onClick={handlePortal} disabled={createPortal.isPending}>
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                    Payment Methods
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -377,10 +441,10 @@ export default function BillingPage() {
                       variant="ghost"
                       size="sm"
                       className="w-full text-muted-foreground"
-                      onClick={handlePortal}
-                      disabled={createPortal.isPending}
+                      onClick={() => handleUpgrade(tier as "starter" | "builder" | "pro")}
+                      disabled={loadingPlan === tier || changePlan.isPending}
                     >
-                      Downgrade
+                      {loadingPlan === tier ? "Loading..." : "Downgrade"}
                     </Button>
                   ) : (
                     <Button
@@ -388,9 +452,9 @@ export default function BillingPage() {
                       className="w-full gap-1"
                       variant={meta.highlight ? "default" : "outline"}
                       onClick={() => handleUpgrade(tier as "starter" | "builder" | "pro")}
-                      disabled={loadingPlan === tier || createCheckout.isPending}
+                      disabled={loadingPlan === tier || createCheckout.isPending || changePlan.isPending}
                     >
-                      {loadingPlan === tier ? "Loading..." : "Upgrade"}
+                      {loadingPlan === tier ? "Loading..." : subscription?.stripeSubscriptionId ? "Switch to this plan" : "Upgrade"}
                       {loadingPlan !== tier && <ArrowUpRight className="h-3.5 w-3.5" />}
                     </Button>
                   )}
@@ -472,6 +536,81 @@ export default function BillingPage() {
             >
               {contactEnterprise.isPending ? "Sending…" : "Send Inquiry"}
               <Send className="ml-2 h-3.5 w-3.5" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Plan Confirmation Dialog */}
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Cancel Your Plan?
+            </DialogTitle>
+            <DialogDescription className="pt-1">
+              Your subscription will remain active until the end of your current billing period
+              {subscription?.currentPeriodEnd ? (
+                <strong> ({new Date(subscription.currentPeriodEnd).toLocaleDateString()})</strong>
+              ) : null}. After that, your account will revert to the Free plan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1">
+            <p className="font-medium">You will lose access to:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+              <li>Additional members, courses, and communities</li>
+              <li>White-label branding and custom domain</li>
+              <li>Email marketing and advanced features</li>
+            </ul>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCancelOpen(false)}>Keep My Plan</Button>
+            <Button
+              variant="destructive"
+              onClick={() => cancelSub.mutate()}
+              disabled={cancelSub.isPending}
+            >
+              {cancelSub.isPending ? "Cancelling..." : "Yes, Cancel Plan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Plan Confirmation Dialog */}
+      <Dialog open={changePlanOpen} onOpenChange={setChangePlanOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Plan Change</DialogTitle>
+            <DialogDescription>
+              {pendingPlan && (() => {
+                const PLAN_ORDER: Record<string, number> = { starter: 1, builder: 2, pro: 3 };
+                const currentPlanName = (subscription?.plan ?? "free") as string;
+                const isUp = (PLAN_ORDER[pendingPlan] ?? 0) > (PLAN_ORDER[currentPlanName] ?? 0);
+                const targetMeta = PLAN_META[pendingPlan];
+                const price = annual ? targetMeta.annualPrice : targetMeta.monthlyPrice;
+                return (
+                  <span>
+                    {isUp
+                      ? `You're upgrading to the ${targetMeta.name} plan ($${price}/${annual ? "yr" : "mo"}). Your card will be charged a prorated amount today.`
+                      : `You're downgrading to the ${targetMeta.name} plan ($${price}/${annual ? "yr" : "mo"}). The change takes effect at the end of your current billing period.`
+                    }
+                  </span>
+                );
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setChangePlanOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!pendingPlan) return;
+                setLoadingPlan(pendingPlan);
+                changePlan.mutate({ plan: pendingPlan, interval: annual ? "annual" : "monthly" });
+              }}
+              disabled={changePlan.isPending}
+            >
+              {changePlan.isPending ? "Processing..." : "Confirm Change"}
             </Button>
           </DialogFooter>
         </DialogContent>
