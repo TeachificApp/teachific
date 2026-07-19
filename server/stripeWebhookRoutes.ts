@@ -17,6 +17,7 @@ import { teachificPayDisputes, teachificPayCharges, organizations, users, digita
 import { eq, and, inArray } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
+import { sendPurchaseConfirmationEmail } from "./routers/downloadsRouter";
 
 /** Send a new-purchase notification to all org_super_admin / org_admin members of an org. */
 async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
@@ -146,16 +147,6 @@ router.post(
                       htmlBody: enrollHtml,
                       previewText: enrollPreview,
                     }, orgId).catch(() => {});
-                    // Fulfill order bump purchases (non-blocking)
-                    const db2 = await getDb();
-                    if (db2) {
-                      const meta = (session.metadata ?? {}) as Record<string, string>;
-                      await fulfillOrderBumpPurchase(db2, meta, {
-                        userId: user.id,
-                        sessionId: session.id as string,
-                        triggerOrderType: "course",
-                      }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
-                    }
                     // Notify org admins via Teachific email (non-blocking)
                     notifyOrgAdminsOfPurchase(orgId, {
                       buyerName: user.name ?? buyerEmail,
@@ -180,11 +171,63 @@ router.post(
                       });
                     }).catch(() => {});
                   }
+                  // Fulfill order bump purchases even if the learner was already enrolled
+                  const db2 = await getDb();
+                  if (db2) {
+                    const meta = (session.metadata ?? {}) as Record<string, string>;
+                    await fulfillOrderBumpPurchase(db2, meta, {
+                      userId: user.id,
+                      sessionId: session.id as string,
+                      triggerOrderType: "course",
+                    }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
+                  }
                 } else {
                   console.warn(`[Stripe Webhook] No user for email ${buyerEmail} — enrollment deferred`);
                 }
               } catch (enrollErr: any) {
                 console.error("[Stripe Webhook] Course enrollment failed:", enrollErr.message);
+              }
+            }
+            break;
+          }
+
+          // ── Digital download purchase (one-time payment) ───────────────────────────
+          if (session.mode === "payment" && session.metadata?.type === "digital_download") {
+            const productId = parseInt(session.metadata?.product_id ?? "0");
+            const userId = parseInt(session.metadata?.user_id ?? "0");
+            if (productId && userId) {
+              try {
+                const db = await getDb();
+                if (db) {
+                  const [existing] = await db.select().from(digitalPurchases)
+                    .where(and(eq(digitalPurchases.userId, userId), eq(digitalPurchases.productId, productId)))
+                    .limit(1);
+                  if (existing) {
+                    console.log(`[Stripe Webhook] Digital download already purchased: user ${userId}, product ${productId}`);
+                  } else {
+                    await db.insert(digitalPurchases).values({
+                      userId,
+                      productId,
+                      stripeCheckoutSessionId: session.id,
+                    });
+                    await notifyOwner({
+                      title: "📦 New Digital Download Purchase",
+                      content: `User ID ${userId} purchased digital product ID ${productId}. Amount: $${(((session.amount_total as number) ?? 0) / 100).toFixed(2)}.`,
+                    }).catch(() => {});
+                    await sendPurchaseConfirmationEmail(userId, productId).catch((e: any) =>
+                      console.error("[Stripe Webhook] Digital download confirmation email failed:", e.message)
+                    );
+                    console.log(`[Stripe Webhook] Digital download purchase recorded: user ${userId}, product ${productId}`);
+                  }
+                  const meta = (session.metadata ?? {}) as Record<string, string>;
+                  await fulfillOrderBumpPurchase(db, meta, {
+                    userId,
+                    sessionId: session.id,
+                    triggerOrderType: "download",
+                  }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
+                }
+              } catch (e: any) {
+                console.error("[Stripe Webhook] Digital download fulfillment failed:", e.message);
               }
             }
             break;
