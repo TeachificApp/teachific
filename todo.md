@@ -4552,3 +4552,19 @@
 - [x] MyCoursesPage: Purchases tab (student views own purchase history + receipt modal)
 - [x] InvoicesPage (/sales/invoices): full transaction list + manual create dialog + stats
 - [x] invoiceRouter.test.ts: 2 tests covering importability and procedure exports
+
+## Blueprint System — Phase 1 (Course Template Marketplace)
+- [x] Architecture document: /docs/blueprint-architecture.md
+- [x] DB schema: blueprints, blueprint_versions, blueprint_resources, blueprint_variables, blueprint_purchases, blueprint_installations, blueprint_installed_resources, blueprint_licenses, blueprint_reviews tables
+- [x] blueprintAccess tier gates in stripePlans.ts: Starter=none, Builder=install, Pro=create, Enterprise=marketplace
+- [x] BlueprintInstallationService: deep-clone engine with ID remapping, variable replacement, rollback support
+- [x] blueprintRouter: platform-admin CRUD, org-admin install/browse, public marketplace listing
+- [x] blueprintRouter merged into appRouter in routers.ts
+- [x] Blueprint nav section in DashboardLayout sidebar (Marketplace, Installed, Manage)
+- [x] BlueprintMarketplacePage at /blueprints/marketplace
+- [x] InstalledBlueprintsPage at /blueprints/installed
+- [x] ManageBlueprintsPage at /blueprints/manage (platform admin only)
+- [x] Routes added to App.tsx
+- [ ] Blueprint Phase 2: Brand Kit variable system (org-level variable inheritance)
+- [ ] Blueprint Phase 3: Marketplace commission tracking and payouts
+- [ ] Blueprint Phase 4: Third-party blueprint submissions and review workflow

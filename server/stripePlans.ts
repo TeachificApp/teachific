@@ -46,6 +46,7 @@ export interface PlanLimits {
   communityAccess: boolean;
   revenueShare: boolean;
   onboardingTeam: boolean;
+  blueprintAccess: "none" | "install" | "create" | "marketplace";
 }
 
 export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
@@ -75,6 +76,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     communityAccess: false,
     revenueShare: false,
     onboardingTeam: false,
+    blueprintAccess: "none",
   },
   starter: {
     name: "Starter",
@@ -102,6 +104,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     communityAccess: false,
     revenueShare: false,
     onboardingTeam: false,
+    blueprintAccess: "none",
   },
   builder: {
     name: "Builder",
@@ -129,6 +132,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     communityAccess: true,
     revenueShare: false,
     onboardingTeam: false,
+    blueprintAccess: "install",
   },
   pro: {
     name: "Pro",
@@ -156,6 +160,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     communityAccess: true,
     revenueShare: true,
     onboardingTeam: false,
+    blueprintAccess: "create",
   },
   enterprise: {
     name: "Enterprise",
@@ -183,6 +188,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     communityAccess: true,
     revenueShare: true,
     onboardingTeam: true,
+    blueprintAccess: "marketplace",
   },
 };
 

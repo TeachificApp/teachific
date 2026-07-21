@@ -65,6 +65,7 @@ import {
   Zap,
   Library,
   LayoutTemplate,
+  Layers,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -239,6 +240,22 @@ const navGroups: NavGroup[] = [
     ],
   },
 
+  // ── Blueprints ──
+  {
+    dividerBefore: true,
+    items: [
+      {
+        icon: Layers,
+        label: "Blueprints",
+        path: "/blueprints",
+        subItems: [
+          { label: "Marketplace", path: "/blueprints/marketplace" },
+          { label: "Installed", path: "/blueprints/installed" },
+          { label: "Manage Blueprints", path: "/blueprints/manage" },
+        ],
+      },
+    ],
+  },
   // ── Integrations ──
   {
     dividerBefore: true,

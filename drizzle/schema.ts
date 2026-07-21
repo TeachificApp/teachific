@@ -4408,3 +4408,155 @@ export const orgInvoices = mysqlTable("org_invoices", {
 });
 export type OrgInvoice = typeof orgInvoices.$inferSelect;
 export type InsertOrgInvoice = typeof orgInvoices.$inferInsert;
+
+// ─── Blueprint System ───────────────────────────────────────────────────────
+export const blueprints = mysqlTable("blueprints", {
+  id: int("id").autoincrement().primaryKey(),
+  creatorUserId: int("creator_user_id"),
+  creatorOrgId: int("creator_org_id"),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  shortDescription: varchar("short_description", { length: 500 }),
+  fullDescription: longtext("full_description"),
+  category: varchar("category", { length: 100 }),
+  subcategory: varchar("subcategory", { length: 100 }),
+  thumbnailUrl: text("thumbnail_url"),
+  previewImageUrls: text("preview_image_urls"),
+  previewUrl: text("preview_url"),
+  status: mysqlEnum("status", ["draft", "pending_review", "approved", "published", "suspended", "archived"]).default("draft").notNull(),
+  visibility: mysqlEnum("visibility", ["private", "organization_only", "marketplace", "direct_link", "platform_only"]).default("private").notNull(),
+  pricingType: mysqlEnum("pricing_type", ["free", "one_time", "subscription_included", "private_access"]).default("free").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  currentVersion: varchar("current_version", { length: 20 }).default("1.0.0").notNull(),
+  setupTimeEstimate: varchar("setup_time_estimate", { length: 50 }),
+  difficultyLevel: mysqlEnum("difficulty_level", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  featured: boolean("featured").default(false).notNull(),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type Blueprint = typeof blueprints.$inferSelect;
+export type InsertBlueprint = typeof blueprints.$inferInsert;
+
+export const blueprintVersions = mysqlTable("blueprint_versions", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  versionNumber: varchar("version_number", { length: 20 }).notNull(),
+  releaseNotes: text("release_notes"),
+  snapshotData: longtext("snapshot_data").notNull(),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type BlueprintVersion = typeof blueprintVersions.$inferSelect;
+export type InsertBlueprintVersion = typeof blueprintVersions.$inferInsert;
+
+export const blueprintResources = mysqlTable("blueprint_resources", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  blueprintVersionId: int("blueprint_version_id"),
+  resourceType: mysqlEnum("resource_type", ["course", "product", "download", "page", "funnel", "webinar", "form", "email", "email_sequence", "automation", "coupon", "tag"]).notNull(),
+  sourceResourceId: int("source_resource_id").notNull(),
+  resourceName: varchar("resource_name", { length: 255 }).notNull(),
+  resourceOrder: int("resource_order").default(0).notNull(),
+  configurationData: text("configuration_data"),
+  required: boolean("required").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+export type BlueprintResource = typeof blueprintResources.$inferSelect;
+export type InsertBlueprintResource = typeof blueprintResources.$inferInsert;
+
+export const blueprintVariables = mysqlTable("blueprint_variables", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  variableKey: varchar("variable_key", { length: 100 }).notNull(),
+  label: varchar("label", { length: 255 }).notNull(),
+  description: text("description"),
+  variableType: mysqlEnum("variable_type", ["text", "textarea", "url", "email", "phone", "image", "logo", "color", "number", "currency", "date", "select", "boolean"]).default("text").notNull(),
+  defaultValue: text("default_value"),
+  required: boolean("required").default(false).notNull(),
+  validationRules: text("validation_rules"),
+  displayOrder: int("display_order").default(0).notNull(),
+});
+export type BlueprintVariable = typeof blueprintVariables.$inferSelect;
+export type InsertBlueprintVariable = typeof blueprintVariables.$inferInsert;
+
+export const blueprintPurchases = mysqlTable("blueprint_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  blueprintVersionId: int("blueprint_version_id").notNull(),
+  buyerUserId: int("buyer_user_id").notNull(),
+  buyerOrgId: int("buyer_org_id").notNull(),
+  orderId: varchar("order_id", { length: 255 }),
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }).default("0").notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  licenseType: mysqlEnum("license_type", ["single_organization", "multi_organization", "platform_subscription", "lifetime"]).default("single_organization").notNull(),
+  accessStatus: mysqlEnum("access_status", ["active", "refunded", "revoked", "expired"]).default("active").notNull(),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+});
+export type BlueprintPurchase = typeof blueprintPurchases.$inferSelect;
+export type InsertBlueprintPurchase = typeof blueprintPurchases.$inferInsert;
+
+export const blueprintInstallations = mysqlTable("blueprint_installations", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  blueprintVersionId: int("blueprint_version_id").notNull(),
+  purchaseId: int("purchase_id"),
+  organizationId: int("organization_id").notNull(),
+  installedByUserId: int("installed_by_user_id").notNull(),
+  installationStatus: mysqlEnum("installation_status", ["queued", "validating", "copying", "configuring", "awaiting_setup", "completed", "failed", "rolled_back"]).default("queued").notNull(),
+  customizationValues: text("customization_values"),
+  resourceIdMap: text("resource_id_map"),
+  installationLog: longtext("installation_log"),
+  installedAt: timestamp("installed_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  lastUpdatedAt: timestamp("last_updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BlueprintInstallation = typeof blueprintInstallations.$inferSelect;
+export type InsertBlueprintInstallation = typeof blueprintInstallations.$inferInsert;
+
+export const blueprintInstalledResources = mysqlTable("blueprint_installed_resources", {
+  id: int("id").autoincrement().primaryKey(),
+  installationId: int("installation_id").notNull(),
+  blueprintResourceId: int("blueprint_resource_id").notNull(),
+  resourceType: mysqlEnum("resource_type", ["course", "product", "download", "page", "funnel", "webinar", "form", "email", "email_sequence", "automation", "coupon", "tag"]).notNull(),
+  sourceResourceId: int("source_resource_id").notNull(),
+  installedResourceId: int("installed_resource_id"),
+  organizationId: int("organization_id").notNull(),
+  installationStatus: mysqlEnum("installation_status", ["pending", "completed", "failed", "skipped"]).default("pending").notNull(),
+  customized: boolean("customized").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BlueprintInstalledResource = typeof blueprintInstalledResources.$inferSelect;
+export type InsertBlueprintInstalledResource = typeof blueprintInstalledResources.$inferInsert;
+
+export const blueprintLicenses = mysqlTable("blueprint_licenses", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  organizationId: int("organization_id").notNull(),
+  licenseType: mysqlEnum("license_type", ["single_organization", "multi_organization", "platform_subscription", "lifetime"]).default("single_organization").notNull(),
+  startsAt: timestamp("starts_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+  updateAccess: boolean("update_access").default(true).notNull(),
+  supportAccess: boolean("support_access").default(true).notNull(),
+  status: mysqlEnum("status", ["active", "expired", "revoked"]).default("active").notNull(),
+});
+export type BlueprintLicense = typeof blueprintLicenses.$inferSelect;
+export type InsertBlueprintLicense = typeof blueprintLicenses.$inferInsert;
+
+export const blueprintReviews = mysqlTable("blueprint_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  userId: int("user_id").notNull(),
+  organizationId: int("organization_id").notNull(),
+  rating: tinyint("rating").notNull(),
+  title: varchar("title", { length: 255 }),
+  reviewText: text("review_text"),
+  verifiedPurchase: boolean("verified_purchase").default(false).notNull(),
+  moderationStatus: mysqlEnum("moderation_status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BlueprintReview = typeof blueprintReviews.$inferSelect;
+export type InsertBlueprintReview = typeof blueprintReviews.$inferInsert;
