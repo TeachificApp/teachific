@@ -144,6 +144,7 @@ import { invoiceRouter } from "./routers/invoiceRouter";
 import { blueprintRouter } from "./routers/blueprintRouter";
 import { blueprintReferralRouter } from "./routers/blueprintReferralRouter";
 import { blueprintPurchaseRouter } from "./routers/blueprintPurchaseRouter";
+import { orgMergeRouter } from "./routers/orgMergeRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -259,6 +260,7 @@ export const appRouter = router({
   blueprints: blueprintRouter,
   blueprintReferrals: blueprintReferralRouter,
   blueprintPurchases: blueprintPurchaseRouter,
+  orgMerge: orgMergeRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
 

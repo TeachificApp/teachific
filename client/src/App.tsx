@@ -29,6 +29,7 @@ import QuizPlayerPage from "./pages/QuizPlayerPage";
 import QuizResultsPage from "./pages/QuizResultsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminOrgsPage from "./pages/admin/AdminOrgsPage";
+import OrgMergePage from "./pages/admin/OrgMergePage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
@@ -372,6 +373,7 @@ function AdminRouter() {
 
           {/* ── Platform Admin ── */}
           <Route path="/admin/orgs" component={AdminOrgsPage} />
+          <Route path="/admin/orgs/merge" component={OrgMergePage} />
           <Route path="/admin/users" component={AdminUsersPage} />
           <Route path="/admin/permissions" component={AdminPermissionsPage} />
           <Route path="/admin/settings" component={AdminSettingsPage} />

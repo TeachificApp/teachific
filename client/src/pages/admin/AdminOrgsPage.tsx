@@ -20,11 +20,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
-import { Building2, Plus, Users, MoreVertical, Pencil, Trash2, Search, Globe, UserPlus, X } from "lucide-react";
+import { Building2, Plus, Users, MoreVertical, Pencil, Trash2, Search, Globe, UserPlus, X, Merge } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function AdminOrgsPage() {
+  const [, setLocation] = useLocation();
   const { data: orgs, refetch } = trpc.orgs.list.useQuery();
 
   const createOrg = trpc.orgs.create.useMutation({
@@ -192,6 +194,10 @@ export default function AdminOrgsPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEdit({ id: org.id, name: org.name, slug: org.slug, description: org.description, adminNotes: (org as any).adminNotes })}>
                               <Pencil className="h-4 w-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setLocation(`/admin/orgs/merge?source=${org.id}`)}>
+                              <Merge className="h-4 w-4 mr-2" /> Merge into another org
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

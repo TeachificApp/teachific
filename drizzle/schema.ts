@@ -4619,3 +4619,32 @@ export const blueprintCommissions = mysqlTable("blueprint_commissions", {
 });
 export type BlueprintCommission = typeof blueprintCommissions.$inferSelect;
 export type InsertBlueprintCommission = typeof blueprintCommissions.$inferInsert;
+
+// ─── Org Merge Logs ───────────────────────────────────────────────────────────
+export const orgMergeLogs = mysqlTable("org_merge_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceOrgId: int("source_org_id").notNull(),
+  targetOrgId: int("target_org_id").notNull(),
+  initiatedBy: int("initiated_by").notNull(),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "failed"]).default("pending").notNull(),
+  summary: json("summary").$type<{
+    users: number;
+    courses: number;
+    contentPackages: number;
+    enrollments: number;
+    funnels: number;
+    downloads: number;
+    forms: number;
+    emailLists: number;
+    mediaAssets: number;
+    otherTables: Record<string, number>;
+    totalRecords: number;
+    duplicateEmailsResolved: number;
+    slugConflictsResolved: number;
+  }>(),
+  errorMessage: text("error_message"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  completedAt: bigint("completed_at", { mode: "number" }),
+});
+export type OrgMergeLog = typeof orgMergeLogs.$inferSelect;
+export type InsertOrgMergeLog = typeof orgMergeLogs.$inferInsert;

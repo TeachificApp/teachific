@@ -4601,3 +4601,26 @@
 - [ ] Frontend: Creator commission payout view in BlueprintReferralDashboard — pending/paid breakdown per link (Phase 3)
 - [x] Tests: blueprintPurchase.test.ts — 11 tests covering router import, procedure names, pricing logic, commission math, webhook logic
 - [x] All 407 tests passing
+
+## Org Merge (Platform Admin)
+
+- [x] DB: org_merge_logs table (id, sourceOrgId, targetOrgId, initiatedBy, status, summary JSON, createdAt, completedAt)
+- [x] DB: migrated via webdev_execute_sql
+- [x] Schema: orgMergeLogs table added to drizzle/schema.ts
+- [x] Backend: orgMergeRouter — preview, execute, and listLogs procedures (all guarded by assertPlatformAdmin)
+- [x] Backend: MERGE_TABLES array covering 20+ org-scoped tables (content_packages, lms_courses, lms_enrollments, org_members, funnels, digital_products, email_lists, media_assets, forms, quizzes, blog posts, affiliates, blueprints, etc.)
+- [x] Backend: Duplicate member detection — members already in target org are skipped
+- [x] Backend: Slug conflict resolution — conflicting slugs get -2, -3, -4 suffix
+- [x] Backend: Source org deactivated after successful merge (isActive = false)
+- [x] Backend: Audit log written to org_merge_logs on completion or failure
+- [x] Backend: wired into appRouter as orgMerge
+- [x] Frontend: OrgMergePage — 4-step wizard (Select Orgs → Preview → Confirm → Done)
+- [x] Frontend: Step 1 — dual org selectors with mutual exclusion, warning banner, merge history table
+- [x] Frontend: Step 2 — preview counts table (members, courses, packages, enrollments, funnels, downloads, forms, email lists, media assets, blueprint installs) with conflict notes
+- [x] Frontend: Step 3 — type-to-confirm safety gate (must type exact source org name), final AlertDialog
+- [x] Frontend: Step 4 — success summary with records moved, duplicates skipped, conflicts resolved, log ID
+- [x] Frontend: AdminOrgsPage — "Merge into another org" option in each org's dropdown (deep-links to /admin/orgs/merge?source=ID)
+- [x] Frontend: DashboardLayout — "Merge Organizations" link in Platform Admin sidebar section
+- [x] Frontend: App.tsx — /admin/orgs/merge route registered
+- [x] Tests: orgMerge.test.ts — 14 tests covering importability, procedure names, table coverage, slug conflict resolution, duplicate member handling, summary structure, audit log schema, platform admin guard, self-merge prevention, preview count aggregation
+- [x] All 421 tests passing
