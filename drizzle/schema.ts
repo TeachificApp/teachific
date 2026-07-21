@@ -4492,6 +4492,11 @@ export const blueprintPurchases = mysqlTable("blueprint_purchases", {
   currency: varchar("currency", { length: 3 }).default("USD").notNull(),
   licenseType: mysqlEnum("license_type", ["single_organization", "multi_organization", "platform_subscription", "lifetime"]).default("single_organization").notNull(),
   accessStatus: mysqlEnum("access_status", ["active", "refunded", "revoked", "expired"]).default("active").notNull(),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  referralLinkId: int("referral_link_id"),
+  buyerEmail: varchar("buyer_email", { length: 255 }),
+  buyerName: varchar("buyer_name", { length: 255 }),
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 export type BlueprintPurchase = typeof blueprintPurchases.$inferSelect;

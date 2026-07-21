@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Layers, Star, Download, CheckCircle, BookOpen, Video, FileText, Users, Package, Zap, ArrowRight, Clock, BarChart3 } from "lucide-react";
+import { Loader2, Layers, Star, Download, CheckCircle, BookOpen, Video, FileText, Users, Package, Zap, ArrowRight, Clock, BarChart3, ShoppingCart, Lock } from "lucide-react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   course: BookOpen,
@@ -36,10 +38,12 @@ interface BlueprintLandingPageProps {
 export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps) {
   const [, setLocation] = useLocation();
   const [clicked, setClicked] = useState(false);
+  const { user } = useAuth();
 
   const { data, isLoading, error } = trpc.blueprintReferrals.getLandingPage.useQuery({ slug });
   const trackClick = trpc.blueprintReferrals.trackClick.useMutation();
   const createPending = trpc.blueprintReferrals.createPendingInstall.useMutation();
+  const createCheckout = trpc.blueprintPurchases.createCheckoutSession.useMutation();
 
   // Track the page view as a click once on mount
   useEffect(() => {
@@ -51,20 +55,53 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
 
   function handleGetStarted() {
     if (!data) return;
+    const blueprint = data.blueprint;
+    const isPaid = blueprint.pricingType === "one_time" && blueprint.price;
+
+    if (isPaid) {
+      // Paid blueprint: if logged in, go straight to Stripe checkout; otherwise register first
+      if (user) {
+        createCheckout.mutate(
+          {
+            blueprintId: blueprint.id,
+            referralLinkId: data.referralLinkId ?? undefined,
+            origin: window.location.origin,
+          },
+          {
+            onSuccess: (result) => {
+              if (result.url) window.location.href = result.url;
+              else toast.error("Could not start checkout. Please try again.");
+            },
+            onError: (err) => toast.error(err.message),
+          }
+        );
+      } else {
+        // Not logged in: store intent and redirect to register
+        localStorage.setItem("blueprint_install_token", "");
+        localStorage.setItem("blueprint_install_name", blueprint.title);
+        localStorage.setItem("blueprint_paid_id", String(blueprint.id));
+        const rootDomain = window.location.hostname.replace(/^[^.]+\./, "");
+        const protocol = window.location.protocol;
+        window.location.href = `${protocol}//${rootDomain}/register?bp_name=${encodeURIComponent(blueprint.title)}&bp_paid=1`;
+      }
+      return;
+    }
+
+    // Free blueprint flow
     createPending.mutate(
       {
-        blueprintId: data.blueprint.id,
+        blueprintId: blueprint.id,
         referralLinkId: data.referralLinkId,
       },
       {
         onSuccess: (result) => {
           // Store the session token in localStorage so RegisterPage can pick it up
           localStorage.setItem("blueprint_install_token", result.sessionToken);
-          localStorage.setItem("blueprint_install_name", data.blueprint.title);
+          localStorage.setItem("blueprint_install_name", blueprint.title);
           // Redirect to register page on the root domain
           const rootDomain = window.location.hostname.replace(/^[^.]+\./, "");
           const protocol = window.location.protocol;
-          window.location.href = `${protocol}//${rootDomain}/register?blueprint=${result.sessionToken}&bp_name=${encodeURIComponent(data.blueprint.title)}`;
+          window.location.href = `${protocol}//${rootDomain}/register?blueprint=${result.sessionToken}&bp_name=${encodeURIComponent(blueprint.title)}`;
         },
       }
     );
@@ -94,6 +131,8 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
   const { blueprint } = data;
   const CategoryIcon = CATEGORY_ICONS[blueprint.category ?? "course"] ?? Package;
   const isFree = blueprint.pricingType === "free" || !blueprint.price;
+  const isPaid = blueprint.pricingType === "one_time" && blueprint.price;
+  const isLoading2 = createPending.isPending || createCheckout.isPending;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
@@ -105,8 +144,8 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
             <span className="text-[#24abbc]">ific</span>
             <span className="text-slate-900 text-sm">™</span>
           </a>
-          <Button size="sm" onClick={handleGetStarted} disabled={createPending.isPending}>
-            {createPending.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get Started Free"}
+          <Button size="sm" onClick={handleGetStarted} disabled={isLoading2}>
+            {isLoading2 ? <Loader2 className="w-4 h-4 animate-spin" /> : isPaid ? `Buy — $${parseFloat(String(blueprint.price)).toFixed(2)}` : "Get Started Free"}
           </Button>
         </div>
       </nav>
@@ -169,19 +208,18 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
                 size="lg"
                 className="bg-[#24abbc] hover:bg-[#1d8f9e] text-white text-base px-8"
                 onClick={handleGetStarted}
-                disabled={createPending.isPending}
+                disabled={isLoading2}
               >
-                {createPending.isPending ? (
+                {isLoading2 ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Preparing...</>
+                ) : isPaid ? (
+                  <><ShoppingCart className="w-4 h-4 mr-2" />Buy for ${parseFloat(String(blueprint.price)).toFixed(2)}<ArrowRight className="w-4 h-4 ml-2" /></>
                 ) : (
-                  <>
-                    {isFree ? "Install Free" : `Get for $${blueprint.price}`}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
+                  <>Install Free<ArrowRight className="w-4 h-4 ml-2" /></>
                 )}
               </Button>
               <p className="text-sm text-slate-500 self-center">
-                {isFree ? "No credit card required" : "Includes Teachific account"}
+                {isPaid ? `One-time purchase · ${blueprint.currency ?? "USD"}` : "No credit card required"}
               </p>
             </div>
           </div>
@@ -268,15 +306,19 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
             variant="outline"
             className="bg-white text-[#24abbc] hover:bg-white/90 border-white text-base px-10"
             onClick={handleGetStarted}
-            disabled={createPending.isPending}
+            disabled={isLoading2}
           >
-            {createPending.isPending ? (
+            {isLoading2 ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Preparing...</>
+            ) : isPaid ? (
+              <><ShoppingCart className="w-4 h-4 mr-2" />Buy for ${parseFloat(String(blueprint.price)).toFixed(2)}<ArrowRight className="w-4 h-4 ml-2" /></>
             ) : (
-              <>{isFree ? "Get Started Free" : `Get Started — $${blueprint.price}`}<ArrowRight className="w-4 h-4 ml-2" /></>
+              <>Get Started Free<ArrowRight className="w-4 h-4 ml-2" /></>
             )}
           </Button>
-          <p className="text-white/60 text-sm mt-3">No credit card required for free blueprints</p>
+          <p className="text-white/60 text-sm mt-3">
+            {isPaid ? "One-time purchase · Includes Teachific account" : "No credit card required · Cancel anytime"}
+          </p>
         </div>
       </div>
 

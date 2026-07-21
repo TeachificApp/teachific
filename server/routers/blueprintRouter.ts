@@ -375,6 +375,24 @@ export const blueprintRouter = router({
       return { success: true };
     }),
 
+  // ── Org Admin: Get a published blueprint by ID (for post-purchase install) ─
+  getPublishedById: protectedProcedure
+    .input(z.object({ blueprintId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertOrgAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [bp] = await db.select().from(blueprints)
+        .where(and(eq(blueprints.id, input.blueprintId), eq(blueprints.status, "published")))
+        .limit(1);
+      if (!bp) throw new TRPCError({ code: "NOT_FOUND" });
+      const [latestVersion] = await db.select().from(blueprintVersions)
+        .where(eq(blueprintVersions.blueprintId, bp.id))
+        .orderBy(desc(blueprintVersions.createdAt))
+        .limit(1);
+      return { ...bp, latestVersionId: latestVersion?.id ?? null };
+    }),
+
   // ── Org Admin: List available blueprints for this org's tier ─────────────
   listAvailable: protectedProcedure
     .input(z.object({

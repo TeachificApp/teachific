@@ -121,6 +121,7 @@ import InstalledBlueprintsPage from "./pages/blueprints/InstalledBlueprintsPage"
 import ManageBlueprintsPage from "./pages/blueprints/ManageBlueprintsPage";
 import BlueprintLandingPage from "./pages/blueprints/BlueprintLandingPage";
 import BlueprintReferralDashboard from "./pages/blueprints/BlueprintReferralDashboard";
+import BlueprintPurchaseSuccessPage from "./pages/blueprints/BlueprintPurchaseSuccessPage";
 import RevenuePartnersPage from "./pages/sales/RevenuePartnersPage";
 import OrderBumpsPage from "./pages/sales/OrderBumpsPage";
 import OrderBumpEditorPage from "./pages/sales/OrderBumpEditorPage";
@@ -521,6 +522,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/blueprints/installed">{() => <DashboardLayout><InstalledBlueprintsPage /></DashboardLayout>}</Route>
         <Route path="/blueprints/manage">{() => <DashboardLayout><ManageBlueprintsPage /></DashboardLayout>}</Route>
         <Route path="/blueprints/referrals">{() => <DashboardLayout><BlueprintReferralDashboard /></DashboardLayout>}</Route>
+        <Route path="/blueprints/purchase-success">{() => <BlueprintPurchaseSuccessPage />}</Route>
         <Route path="/blueprints">{() => { window.location.replace("/blueprints/marketplace"); return null; }}</Route>
         <Route path="/analytics/revenue">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
         <Route path="/analytics/engagement">{() => <DashboardLayout><EngagementAnalyticsPage /></DashboardLayout>}</Route>

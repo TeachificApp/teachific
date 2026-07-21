@@ -4588,3 +4588,16 @@
 - [x] Frontend: Creator referral dashboard — generate referral link, copy subdomain URL, view click/signup/conversion stats
 - [ ] Frontend: Blueprint pricing editor in ManageBlueprintsPage — set price or mark as free (Phase 2)
 - [x] Subdomain routing: slug.teachific.app routes to BlueprintLandingPage (not org school portal)
+
+## Blueprint Phase 2 — Paid Blueprints & Commissions
+- [x] Backend: blueprintPurchaseRouter — createCheckoutSession, verifyPurchase, listPurchases, checkAccess procedures
+- [x] Backend: blueprintPurchaseWebhook.ts — Stripe checkout.session.completed handler (records purchase, auto-installs blueprint)
+- [x] Backend: commission recording on subscription conversion (customer.subscription.created webhook → check pending commissions, insert into blueprint_commissions)
+- [x] Backend: getPublishedById procedure added to blueprintRouter for org users (post-purchase install flow)
+- [x] Frontend: ManageBlueprintsPage — full pricing editor dialog (pricingType select, price input, currency, update mutation)
+- [x] Frontend: BlueprintLandingPage — paid CTA (Buy for $X.XX with ShoppingCart icon), free CTA (Install Free), Stripe checkout redirect for logged-in users
+- [x] Frontend: BlueprintPurchaseSuccessPage — auto-install blueprint after Stripe checkout return, loading/success/error states
+- [x] Frontend: App.tsx — BlueprintPurchaseSuccessPage route at /blueprints/purchase-success
+- [ ] Frontend: Creator commission payout view in BlueprintReferralDashboard — pending/paid breakdown per link (Phase 3)
+- [x] Tests: blueprintPurchase.test.ts — 11 tests covering router import, procedure names, pricing logic, commission math, webhook logic
+- [x] All 407 tests passing

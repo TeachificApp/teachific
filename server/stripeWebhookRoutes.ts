@@ -13,8 +13,8 @@ import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans } from "../drizzle/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions } from "../drizzle/schema";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 import { sendPurchaseConfirmationEmail } from "./routers/downloadsRouter";
@@ -628,6 +628,65 @@ router.post(
               cancelAtPeriodEnd: subscription.cancel_at_period_end,
             });
             console.log(`[Stripe Webhook] Org ${orgId} subscription renewed — next period ends ${item ? new Date(item.current_period_end * 1000).toISOString() : "unknown"}`);
+
+            // ── Blueprint referral commission on first subscription payment ────────
+            if (billingReason === "subscription_create") {
+              try {
+                const db2 = await getDb();
+                if (db2) {
+                  // Find the most recent claimed pending install for this org
+                  const [pendingInstall] = await db2
+                    .select()
+                    .from(blueprintPendingInstalls)
+                    .where(and(eq(blueprintPendingInstalls.orgId, orgId), eq(blueprintPendingInstalls.status, "completed")))
+                    .limit(1);
+                  if (pendingInstall?.referralLinkId) {
+                    const [link] = await db2
+                      .select()
+                      .from(blueprintReferralLinks)
+                      .where(and(eq(blueprintReferralLinks.id, pendingInstall.referralLinkId), eq(blueprintReferralLinks.isActive, true)))
+                      .limit(1);
+                    if (link) {
+                      const amountCents = invoice.amount_paid ?? 0;
+                      const commissionRate = parseFloat(String(link.commissionRate));
+                      const commissionCents = Math.round(amountCents * commissionRate);
+                      const currency = (invoice.currency ?? "usd").toUpperCase();
+                      const paymentIntentId = typeof invoice.payment_intent === "string" ? invoice.payment_intent : null;
+                      // Check idempotency — don't double-record
+                      const [existingComm] = await db2
+                        .select({ id: blueprintCommissions.id })
+                        .from(blueprintCommissions)
+                        .where(and(
+                          eq(blueprintCommissions.referralLinkId, link.id),
+                          eq(blueprintCommissions.subscriberOrgId, orgId),
+                        ))
+                        .limit(1);
+                      if (!existingComm) {
+                        await db2.insert(blueprintCommissions).values({
+                          referralLinkId: link.id,
+                          pendingInstallId: pendingInstall.id,
+                          subscriberUserId: (parseInt(subscription.metadata?.user_id ?? "0") || pendingInstall.userId) ?? 0,
+                          subscriberOrgId: orgId,
+                          creatorOrgId: link.creatorOrgId,
+                          subscriptionAmountCents: amountCents,
+                          commissionAmountCents: commissionCents,
+                          currency,
+                          status: "pending",
+                          stripePaymentIntentId: paymentIntentId,
+                        });
+                        // Increment totalConversions
+                        await db2.update(blueprintReferralLinks)
+                          .set({ totalConversions: sql`total_conversions + 1` })
+                          .where(eq(blueprintReferralLinks.id, link.id));
+                        console.log(`[Stripe Webhook] Blueprint referral commission recorded: ${commissionCents} cents for link ${link.id}, org ${orgId}`);
+                      }
+                    }
+                  }
+                }
+              } catch (commErr: any) {
+                console.error("[Stripe Webhook] Blueprint commission recording failed:", commErr.message);
+              }
+            }
           }
           break;
         }

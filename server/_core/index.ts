@@ -18,6 +18,7 @@ import mediaUploadRouter from "../mediaUploadRoutes";
 import widgetRouter from "../widgetRoutes";
 import stripeWebhookRouter from "../stripeWebhookRoutes";
 import { embeddedCheckoutWebhookRouter } from "../embeddedCheckoutWebhook";
+import blueprintPurchaseWebhookRouter from "../blueprintPurchaseWebhook";
 import { registerEmailTrackingRoutes } from "../routes/emailTrackingRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -145,6 +146,7 @@ async function startServer() {
   // Stripe webhooks MUST be before express.json() for raw body signature verification
   app.use("/api/stripe", stripeWebhookRouter);
   app.use("/api/webhooks/stripe", embeddedCheckoutWebhookRouter);
+  app.use("/api/webhooks/stripe", blueprintPurchaseWebhookRouter);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "3gb" }));
