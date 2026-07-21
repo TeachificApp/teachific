@@ -4568,3 +4568,23 @@
 - [ ] Blueprint Phase 2: Brand Kit variable system (org-level variable inheritance)
 - [ ] Blueprint Phase 3: Marketplace commission tracking and payouts
 - [ ] Blueprint Phase 4: Third-party blueprint submissions and review workflow
+
+## Blueprint Referral + Pre-Install Growth System
+- [x] DB: blueprint_referral_links table (id, blueprintId, creatorOrgId, slug, commissionRate, totalClicks, totalSignups, totalConversions, createdAt)
+- [x] DB: blueprint_pending_installs table (id, blueprintId, referralLinkId, userEmail, sessionToken, status, createdAt, installedAt)
+- [x] DB: blueprint_commissions table (id, referralLinkId, subscriberId, orgId, amount, currency, status, stripePaymentIntentId, createdAt)
+- [x] DB: add price, priceCurrency, isFree columns to blueprints table
+- [x] DB: migrate all new tables via webdev_execute_sql
+- [x] Backend: blueprintReferralRouter with createLink, getLandingPage, listLinks, trackClick, createPendingInstall, claimPendingInstall, getStats procedures
+- [x] Backend: getLandingPage public procedure (by slug, no auth) and trackClick
+- [x] Backend: pre-install queue: after user registers with referral token, auto-install blueprint into their new org
+- [x] Backend: subdomain referral detection — when request hits *.teachific.app and subdomain is not an org slug, check blueprint_referral_links table
+- [ ] Backend: blueprint purchase flow — Stripe checkout for paid blueprints, free install for free blueprints (Phase 2)
+- [ ] Backend: commission calculation and recording on successful subscription conversion (Phase 2)
+- [x] Frontend: BlueprintLandingPage — public-facing page shown at slug.teachific.app with preview, resource list, install/signup CTA
+- [x] Frontend: RegisterPage — detect referral token in URL/cookie, show "You're installing [Blueprint Name]" context during signup
+- [x] Frontend: Post-signup redirect to blueprint install confirmation page
+- [x] Frontend: Blueprint marketplace upgrade gate — show full blueprint preview to Starter users with inline upgrade CTA
+- [x] Frontend: Creator referral dashboard — generate referral link, copy subdomain URL, view click/signup/conversion stats
+- [ ] Frontend: Blueprint pricing editor in ManageBlueprintsPage — set price or mark as free (Phase 2)
+- [x] Subdomain routing: slug.teachific.app routes to BlueprintLandingPage (not org school portal)

@@ -251,6 +251,7 @@ const navGroups: NavGroup[] = [
         subItems: [
           { label: "Marketplace", path: "/blueprints/marketplace" },
           { label: "Installed", path: "/blueprints/installed" },
+          { label: "Referral Links", path: "/blueprints/referrals" },
           { label: "Manage Blueprints", path: "/blueprints/manage" },
         ],
       },

@@ -142,6 +142,7 @@ import { quizRouter } from "./routers/quizRouter";
 import { lessonCommentsRouter } from "./routers/lessonCommentsRouter";
 import { invoiceRouter } from "./routers/invoiceRouter";
 import { blueprintRouter } from "./routers/blueprintRouter";
+import { blueprintReferralRouter } from "./routers/blueprintReferralRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -255,6 +256,7 @@ export const appRouter = router({
   productsPublic: productsPublicRouter,
   invoices: invoiceRouter,
   blueprints: blueprintRouter,
+  blueprintReferrals: blueprintReferralRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
 

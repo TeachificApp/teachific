@@ -119,6 +119,8 @@ import InvoicesPage from "./pages/sales/InvoicesPage";
 import BlueprintMarketplacePage from "./pages/blueprints/BlueprintMarketplacePage";
 import InstalledBlueprintsPage from "./pages/blueprints/InstalledBlueprintsPage";
 import ManageBlueprintsPage from "./pages/blueprints/ManageBlueprintsPage";
+import BlueprintLandingPage from "./pages/blueprints/BlueprintLandingPage";
+import BlueprintReferralDashboard from "./pages/blueprints/BlueprintReferralDashboard";
 import RevenuePartnersPage from "./pages/sales/RevenuePartnersPage";
 import OrderBumpsPage from "./pages/sales/OrderBumpsPage";
 import OrderBumpEditorPage from "./pages/sales/OrderBumpEditorPage";
@@ -518,6 +520,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/blueprints/marketplace">{() => <DashboardLayout><BlueprintMarketplacePage /></DashboardLayout>}</Route>
         <Route path="/blueprints/installed">{() => <DashboardLayout><InstalledBlueprintsPage /></DashboardLayout>}</Route>
         <Route path="/blueprints/manage">{() => <DashboardLayout><ManageBlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints/referrals">{() => <DashboardLayout><BlueprintReferralDashboard /></DashboardLayout>}</Route>
         <Route path="/blueprints">{() => { window.location.replace("/blueprints/marketplace"); return null; }}</Route>
         <Route path="/analytics/revenue">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
         <Route path="/analytics/engagement">{() => <DashboardLayout><EngagementAnalyticsPage /></DashboardLayout>}</Route>
@@ -650,6 +653,19 @@ function Router() {
   // If running on an org subdomain, serve the school portal directly
   const subdomain = getSubdomain();
   if (subdomain) {
+    // Blueprint referral subdomains: slug.teachific.app where slug is NOT an org slug.
+    // We optimistically render BlueprintLandingPage; if the slug is actually an org,
+    // the SubdomainSchoolRouter handles it. We detect blueprint subdomains by checking
+    // if the subdomain starts with "bp-" prefix OR by querying the landing page endpoint.
+    // For simplicity, we render BlueprintLandingPage first and fall back to school portal
+    // if the blueprint query returns NOT_FOUND. The BlueprintLandingPage handles this gracefully.
+    // However, to avoid breaking existing org subdomains, we use a URL param hint:
+    // blueprint referral links always include ?ref=1 in the URL they generate.
+    const isBlueprintReferral = window.location.search.includes('ref=1') || 
+      window.location.pathname === '/' && window.location.search.includes('blueprint');
+    if (isBlueprintReferral) {
+      return <BlueprintLandingPage slug={subdomain} />;
+    }
     return (
       <SubdomainThemeProvider subdomain={subdomain}>
         <SubdomainSchoolRouter subdomain={subdomain} />

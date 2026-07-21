@@ -4560,3 +4560,57 @@ export const blueprintReviews = mysqlTable("blueprint_reviews", {
 });
 export type BlueprintReview = typeof blueprintReviews.$inferSelect;
 export type InsertBlueprintReview = typeof blueprintReviews.$inferInsert;
+
+// ── Blueprint Referral System ─────────────────────────────────────────────────
+export const blueprintReferralLinks = mysqlTable("blueprint_referral_links", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  creatorOrgId: int("creator_org_id").notNull(),
+  creatorUserId: int("creator_user_id").notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
+  totalClicks: int("total_clicks").default(0).notNull(),
+  totalSignups: int("total_signups").default(0).notNull(),
+  totalConversions: int("total_conversions").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BlueprintReferralLink = typeof blueprintReferralLinks.$inferSelect;
+export type InsertBlueprintReferralLink = typeof blueprintReferralLinks.$inferInsert;
+
+export const blueprintPendingInstalls = mysqlTable("blueprint_pending_installs", {
+  id: int("id").autoincrement().primaryKey(),
+  blueprintId: int("blueprint_id").notNull(),
+  referralLinkId: int("referral_link_id"),
+  sessionToken: varchar("session_token", { length: 255 }).notNull().unique(),
+  userEmail: varchar("user_email", { length: 255 }),
+  userId: int("user_id"),
+  orgId: int("org_id"),
+  status: mysqlEnum("status", ["pending", "claimed", "installing", "completed", "expired", "failed"]).default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  claimedAt: timestamp("claimed_at"),
+  installedAt: timestamp("installed_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+export type BlueprintPendingInstall = typeof blueprintPendingInstalls.$inferSelect;
+export type InsertBlueprintPendingInstall = typeof blueprintPendingInstalls.$inferInsert;
+
+export const blueprintCommissions = mysqlTable("blueprint_commissions", {
+  id: int("id").autoincrement().primaryKey(),
+  referralLinkId: int("referral_link_id").notNull(),
+  pendingInstallId: int("pending_install_id"),
+  subscriberUserId: int("subscriber_user_id").notNull(),
+  subscriberOrgId: int("subscriber_org_id").notNull(),
+  creatorOrgId: int("creator_org_id").notNull(),
+  subscriptionAmountCents: int("subscription_amount_cents").notNull(),
+  commissionAmountCents: int("commission_amount_cents").notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "paid", "reversed"]).default("pending").notNull(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type BlueprintCommission = typeof blueprintCommissions.$inferSelect;
+export type InsertBlueprintCommission = typeof blueprintCommissions.$inferInsert;

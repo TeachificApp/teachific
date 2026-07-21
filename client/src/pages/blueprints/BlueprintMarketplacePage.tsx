@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Layers, Search, Star, Download, Lock, CheckCircle, Loader2, Package, BookOpen, Video, FileText, Users, Zap } from "lucide-react";
+import { Layers, Search, Star, Download, Lock, CheckCircle, Loader2, Package, BookOpen, Video, FileText, Users, Zap, ArrowRight, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -104,19 +104,27 @@ export default function BlueprintMarketplacePage() {
 
       {/* Plan gate banner */}
       {!canInstall && (
-        <Alert className="mb-6 border-amber-500/30 bg-amber-500/10">
-          <Lock className="w-4 h-4 text-amber-500" />
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
-            Blueprints are available on the <strong>Builder</strong> plan and above.{" "}
-            <button
-              className="underline font-medium"
+        <div className="mb-6 rounded-2xl overflow-hidden border border-[#24abbc]/20">
+          <div className="bg-gradient-to-r from-[#24abbc]/10 to-teal-50 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-[#24abbc]/15 shrink-0">
+                <Sparkles className="w-5 h-5 text-[#24abbc]" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900">Unlock Blueprint Marketplace</p>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Install pre-built schools in 60 seconds. Available on the <strong>Builder</strong> plan ($29/mo) and above.
+                </p>
+              </div>
+            </div>
+            <Button
+              className="bg-[#24abbc] hover:bg-[#1d8f9e] text-white shrink-0"
               onClick={() => setLocation("/lms/settings?tab=billing")}
             >
-              Upgrade your plan
-            </button>{" "}
-            to install Blueprints.
-          </AlertDescription>
-        </Alert>
+              Upgrade to Builder <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Filters */}
@@ -225,14 +233,23 @@ export default function BlueprintMarketplacePage() {
                       </>
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    variant={isInstalled ? "outline" : "default"}
-                    onClick={() => handleInstallClick(bp.id)}
-                    disabled={!canInstall}
-                  >
-                    {isInstalled ? "Re-install" : canInstall ? "Install" : <><Lock className="w-3 h-3 mr-1" />Upgrade</>}
-                  </Button>
+                  {!canInstall ? (
+                    <Button
+                      size="sm"
+                      className="bg-[#24abbc] hover:bg-[#1d8f9e] text-white"
+                      onClick={() => setLocation("/lms/settings?tab=billing")}
+                    >
+                      <Lock className="w-3 h-3 mr-1" />Upgrade to Install
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant={isInstalled ? "outline" : "default"}
+                      onClick={() => handleInstallClick(bp.id)}
+                    >
+                      {isInstalled ? "Re-install" : "Install"}
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             );

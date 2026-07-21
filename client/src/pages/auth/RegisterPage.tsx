@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Shield, Zap, Globe } from "lucide-react";
+import { Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Shield, Zap, Globe, Layers } from "lucide-react";
 import { useOrgAuthBranding } from "@/hooks/useOrgAuthBranding";
 
 const NAVY = "#0b1d35";
@@ -20,6 +20,24 @@ const perks = [
   { icon: Shield, text: "SSL-secured, GDPR-ready platform" },
 ];
 
+// ── Blueprint install context ─────────────────────────────────────────────────
+function useBlueprintInstallContext() {
+  const [blueprintToken, setBlueprintToken] = useState<string | null>(null);
+  const [blueprintName, setBlueprintName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("blueprint") || localStorage.getItem("blueprint_install_token");
+    const name = params.get("bp_name") || localStorage.getItem("blueprint_install_name");
+    if (token) {
+      setBlueprintToken(token);
+      setBlueprintName(name ? decodeURIComponent(name) : "your blueprint");
+    }
+  }, []);
+
+  return { blueprintToken, blueprintName };
+}
+
 export default function RegisterPage() {
   const [, navigate] = useLocation();
   const [name, setName] = useState("");
@@ -33,14 +51,44 @@ export default function RegisterPage() {
   const { branding, primary, buttonText, displayName } = useOrgAuthBranding();
   const isOrgSubdomain = !!branding;
 
+  // Blueprint install context (from referral link)
+  const { blueprintToken, blueprintName } = useBlueprintInstallContext();
+  const hasBlueprintInstall = !!blueprintToken;
+
   const utils = trpc.useUtils();
+  const claimInstall = trpc.blueprintReferrals.claimPendingInstall.useMutation();
+
   const register = trpc.customAuth.register.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.autoSignedIn && data.user) {
         // Seed the auth.me cache so DashboardLayout doesn't flash the sign-in screen
         utils.auth.me.setData(undefined, data.user as never);
         try { localStorage.setItem("teachific_auth_cache", JSON.stringify(data.user)); } catch {}
-        // Redirect to the org subdomain if one was created, otherwise go to /lms
+
+        // If there's a pending blueprint install, claim it now
+        if (blueprintToken) {
+          try {
+            const claimed = await claimInstall.mutateAsync({ sessionToken: blueprintToken });
+            // Clear the stored token
+            try {
+              localStorage.removeItem("blueprint_install_token");
+              localStorage.removeItem("blueprint_install_name");
+            } catch {}
+            // Redirect to blueprint install confirmation page
+            const isProduction = window.location.hostname.endsWith(".teachific.app") || window.location.hostname === "teachific.app";
+            const orgSlug = data.orgSlug;
+            if (isProduction && orgSlug) {
+              window.location.href = `https://${orgSlug}.teachific.app/blueprints/install-confirm?pending=${claimed.pendingInstallId}`;
+            } else {
+              navigate(`/blueprints/install-confirm?pending=${claimed.pendingInstallId}`);
+            }
+            return;
+          } catch {
+            // Non-fatal: if claim fails, just proceed to normal redirect
+          }
+        }
+
+        // Normal post-signup redirect
         if (data.orgSlug) {
           const { protocol, port } = window.location;
           const portSuffix = port ? `:${port}` : "";
@@ -48,7 +96,6 @@ export default function RegisterPage() {
           if (isProduction) {
             window.location.href = `${protocol}//${data.orgSlug}.teachific.app/lms`;
           } else {
-            // Dev: stay on same host, navigate to /lms
             navigate("/lms");
           }
         } else {
@@ -84,6 +131,14 @@ export default function RegisterPage() {
               <span className="font-medium" style={{ color: TEAL_LIGHT }}>{email}</span>.
               Click the link in the email to activate your account.
             </p>
+            {hasBlueprintInstall && (
+              <div className="mb-6 rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
+                <Layers className="w-6 h-6 mx-auto mb-2" style={{ color: TEAL_LIGHT }} />
+                <p className="text-white/70 text-sm">
+                  Once verified, <strong style={{ color: TEAL_LIGHT }}>{blueprintName}</strong> will be automatically installed in your school.
+                </p>
+              </div>
+            )}
             <Link href="/login">
               <Button className="font-semibold w-full text-white" style={{ background: `linear-gradient(135deg, ${TEAL} 0%, #15b8c0 100%)` }}>
                 Back to Sign In
@@ -119,18 +174,47 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Hero copy */}
+        {/* Hero copy — blueprint context or default */}
         <div className="relative z-10 space-y-8">
-          <div>
-            <h1 className="text-4xl font-bold text-white leading-tight mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Start teaching.<br />
-              <span style={{ color: TEAL_LIGHT }}>Start earning.</span><br />
-              Start today.
-            </h1>
-            <p className="text-white/60 text-base leading-relaxed max-w-sm">
-              Everything you need to launch, grow, and monetize your online school — in one place.
-            </p>
-          </div>
+          {hasBlueprintInstall ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${TEAL}25`, border: `1px solid ${TEAL}40` }}>
+                  <Layers className="w-5 h-5" style={{ color: TEAL_LIGHT }} />
+                </div>
+                <span className="text-sm font-semibold uppercase tracking-widest" style={{ color: `${TEAL_LIGHT}80` }}>Blueprint Install</span>
+              </div>
+              <h1 className="text-4xl font-bold text-white leading-tight mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Your school is<br />
+                <span style={{ color: TEAL_LIGHT }}>ready to build.</span>
+              </h1>
+              <p className="text-white/60 text-base leading-relaxed max-w-sm">
+                Create your free account and <strong className="text-white/80">{blueprintName}</strong> will be automatically installed in your new school.
+              </p>
+              <div className="mt-6 rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 className="w-4 h-4" style={{ color: TEAL_LIGHT }} />
+                  <span className="text-white/80 text-sm font-medium">What happens next</span>
+                </div>
+                <ol className="space-y-1.5 text-white/60 text-sm">
+                  <li>1. Create your free account</li>
+                  <li>2. Blueprint is installed automatically</li>
+                  <li>3. Customize and launch in minutes</li>
+                </ol>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h1 className="text-4xl font-bold text-white leading-tight mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Start teaching.<br />
+                <span style={{ color: TEAL_LIGHT }}>Start earning.</span><br />
+                Start today.
+              </h1>
+              <p className="text-white/60 text-base leading-relaxed max-w-sm">
+                Everything you need to launch, grow, and monetize your online school — in one place.
+              </p>
+            </div>
+          )}
 
           {/* Perks */}
           <div className="space-y-3">
@@ -146,12 +230,14 @@ export default function RegisterPage() {
           </div>
 
           {/* Testimonial */}
-          <div className="rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
-            <p className="text-white/70 text-sm italic leading-relaxed">
-              "Teachific helped me go from zero to $12K/month in under 6 months. The platform just works."
-            </p>
-            <p className="text-white/40 text-xs mt-2">— Sarah K., Nutrition Coach</p>
-          </div>
+          {!hasBlueprintInstall && (
+            <div className="rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
+              <p className="text-white/70 text-sm italic leading-relaxed">
+                "Teachific helped me go from zero to $12K/month in under 6 months. The platform just works."
+              </p>
+              <p className="text-white/40 text-xs mt-2">— Sarah K., Nutrition Coach</p>
+            </div>
+          )}
         </div>
 
         <p className="relative z-10 text-white/25 text-xs">
@@ -179,7 +265,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="w-full max-w-sm">
-          <div className="mb-8">
+          <div className="mb-6">
             <h2 className="text-2xl font-bold mb-1" style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {isOrgSubdomain ? `Join ${displayName}` : "Create your account"}
             </h2>
@@ -187,6 +273,19 @@ export default function RegisterPage() {
               {isOrgSubdomain ? `Create your student account` : "Free forever — upgrade when you're ready"}
             </p>
           </div>
+
+          {/* Blueprint install banner */}
+          {hasBlueprintInstall && (
+            <div className="mb-5 rounded-xl p-3.5 flex items-start gap-3" style={{ background: `${TEAL}10`, border: `1px solid ${TEAL}30` }}>
+              <Layers className="w-5 h-5 mt-0.5 shrink-0" style={{ color: TEAL }} />
+              <div>
+                <p className="text-sm font-semibold" style={{ color: NAVY }}>Blueprint ready to install</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  <span className="font-medium" style={{ color: TEAL }}>{blueprintName}</span> will be installed automatically after you sign up.
+                </p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <Alert className="mb-5 border-red-200 bg-red-50">
@@ -249,16 +348,18 @@ export default function RegisterPage() {
             </div>
             <Button
               type="submit"
-              disabled={register.isPending}
+              disabled={register.isPending || claimInstall.isPending}
               className="w-full h-11 font-semibold rounded-lg transition-all shadow-sm"
               style={{
                 background: isOrgSubdomain ? primary : `linear-gradient(135deg, ${TEAL} 0%, #15b8c0 100%)`,
                 color: buttonText,
               }}
             >
-              {register.isPending
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</>
-                : isOrgSubdomain ? "Create account" : "Create free account"}
+              {register.isPending || claimInstall.isPending
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{claimInstall.isPending ? "Installing blueprint..." : "Creating account..."}</>
+                : hasBlueprintInstall
+                  ? "Create account & install blueprint"
+                  : isOrgSubdomain ? "Create account" : "Create free account"}
             </Button>
           </form>
 
