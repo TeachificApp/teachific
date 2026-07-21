@@ -140,6 +140,7 @@ import { productsPublicRouter, productsLearnerRouter, productsAdminRouter } from
 import { quizBankRouter } from "./routers/quizBankRouter";
 import { quizRouter } from "./routers/quizRouter";
 import { lessonCommentsRouter } from "./routers/lessonCommentsRouter";
+import { invoiceRouter } from "./routers/invoiceRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -251,6 +252,7 @@ export const appRouter = router({
   productsAdmin: productsAdminRouter,
   productsLearner: productsLearnerRouter,
   productsPublic: productsPublicRouter,
+  invoices: invoiceRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
 

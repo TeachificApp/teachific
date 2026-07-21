@@ -4530,3 +4530,25 @@
 - [ ] funnelRouter.ts free checkout confirmation: send via org sender when orgId is present
 - [ ] lmsCheckoutRouter.ts course purchase confirmation: send via org sender
 - [ ] downloadsRouter.ts sendPurchaseConfirmationEmail: send via org sender
+
+## Invoice / Transaction System
+- [ ] Schema: add org_invoices table with orgId, userId, invoiceNumber, productType, productId, productTitle, buyerName, buyerEmail, amountPaid, currency, status, stripePaymentIntentId, notes, createdAt, isManual
+- [ ] Migration: run org_invoices table SQL via webdev_execute_sql
+- [ ] invoiceRouter: list (org-admin scoped + platform-admin all), get by id, createManual, resend email
+- [ ] stripeWebhookRoutes: auto-create org_invoices row on course/download/bundle/membership fulfillment
+- [ ] lmsEnrollmentAdminRouter: update getAnalytics totalRevenue to include org_invoices manual entries
+- [ ] InvoicesPage (org-admin): real data from invoiceRouter, search/filter, manual create dialog, view/print invoice modal
+- [ ] Student receipts: My Receipts page showing own purchases with view/print receipt
+- [ ] Invoice print modal: product title, buyer info, org branding, amount, invoice number
+- [ ] Wire /invoices and /my-receipts routes in App.tsx
+- [ ] Tests: invoiceRouter.test.ts covering list, get, createManual procedures
+
+## Invoice / Transaction System (Jul 20 2026)
+- [x] org_invoices table added to schema and migrated
+- [x] invoiceRouter: list (role-scoped), get, createManual, resend, updateStatus, listByUser, getStats
+- [x] stripeWebhookRoutes: auto-create org_invoices row on course, download, bundle, membership fulfillment
+- [x] getDashboardMetrics: org_invoices revenue + count included in totals
+- [x] UserDetailPanel: Transactions tab (admin views any user's purchase history + receipt modal)
+- [x] MyCoursesPage: Purchases tab (student views own purchase history + receipt modal)
+- [x] InvoicesPage (/sales/invoices): full transaction list + manual create dialog + stats
+- [x] invoiceRouter.test.ts: 2 tests covering importability and procedure exports

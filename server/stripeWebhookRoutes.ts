@@ -13,11 +13,59 @@ import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers } from "../drizzle/schema";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans } from "../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 import { sendPurchaseConfirmationEmail } from "./routers/downloadsRouter";
+
+// ─── Invoice row helper ───────────────────────────────────────────────────────
+async function createInvoiceRow(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, opts: {
+  orgId: number;
+  userId?: number | null;
+  productType: "course" | "download" | "bundle" | "membership" | "manual";
+  productId?: number | null;
+  productTitle: string;
+  buyerName?: string | null;
+  buyerEmail?: string | null;
+  amountPaid: number;
+  currency?: string;
+  stripePaymentIntentId?: string | null;
+  stripeCheckoutSessionId?: string | null;
+}): Promise<void> {
+  try {
+    const [settings] = await db
+      .select({ invoicePrefix: orgPaymentSettings.invoicePrefix, nextInvoiceNumber: orgPaymentSettings.nextInvoiceNumber })
+      .from(orgPaymentSettings)
+      .where(eq(orgPaymentSettings.orgId, opts.orgId))
+      .limit(1);
+    const prefix = settings?.invoicePrefix?.trim() || "";
+    const num = settings?.nextInvoiceNumber ?? 1;
+    const invoiceNumber = prefix ? `${prefix}-${String(num).padStart(5, "0")}` : String(num).padStart(5, "0");
+    db.update(orgPaymentSettings)
+      .set({ nextInvoiceNumber: num + 1 })
+      .where(eq(orgPaymentSettings.orgId, opts.orgId))
+      .catch(() => {});
+    await db.insert(orgInvoices).values({
+      orgId: opts.orgId,
+      userId: opts.userId ?? null,
+      invoiceNumber,
+      productType: opts.productType,
+      productId: opts.productId ?? null,
+      productTitle: opts.productTitle,
+      buyerName: opts.buyerName ?? null,
+      buyerEmail: opts.buyerEmail ?? null,
+      amountPaid: String(opts.amountPaid.toFixed(2)),
+      currency: (opts.currency ?? "usd").toLowerCase(),
+      status: "paid",
+      stripePaymentIntentId: opts.stripePaymentIntentId ?? null,
+      stripeCheckoutSessionId: opts.stripeCheckoutSessionId ?? null,
+      isManual: false,
+    });
+  } catch (e: any) {
+    console.error("[Invoice] Failed to create invoice row:", e.message);
+  }
+}
 
 /** Send a new-purchase notification to all org_super_admin / org_admin members of an org. */
 async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
@@ -171,6 +219,26 @@ router.post(
                       });
                     }).catch(() => {});
                   }
+                  // Create invoice row (idempotent — only if new enrollment)
+                  if (!existing) {
+                    const db2inv = await getDb();
+                    if (db2inv) {
+                      const course = await getCourseById(courseId).catch(() => null);
+                      createInvoiceRow(db2inv, {
+                        orgId,
+                        userId: user.id,
+                        productType: "course",
+                        productId: courseId,
+                        productTitle: course?.title ?? `Course #${courseId}`,
+                        buyerName: user.name ?? null,
+                        buyerEmail: buyerEmail,
+                        amountPaid,
+                        currency: session.currency ?? "usd",
+                        stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+                        stripeCheckoutSessionId: session.id,
+                      }).catch(() => {});
+                    }
+                  }
                   // Fulfill order bump purchases even if the learner was already enrolled
                   const db2 = await getDb();
                   if (db2) {
@@ -218,6 +286,26 @@ router.post(
                       console.error("[Stripe Webhook] Digital download confirmation email failed:", e.message)
                     );
                     console.log(`[Stripe Webhook] Digital download purchase recorded: user ${userId}, product ${productId}`);
+                  }
+                  // Create invoice row for download
+                  if (!existing) {
+                    const [dpRow] = await db.select({ title: digitalProducts.title, orgId: digitalProducts.orgId })
+                      .from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+                    if (dpRow?.orgId) {
+                      createInvoiceRow(db, {
+                        orgId: dpRow.orgId,
+                        userId,
+                        productType: "download",
+                        productId,
+                        productTitle: dpRow.title ?? `Product #${productId}`,
+                        buyerName: null,
+                        buyerEmail: session.customer_details?.email ?? null,
+                        amountPaid: session.amount_total ? session.amount_total / 100 : 0,
+                        currency: session.currency ?? "usd",
+                        stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+                        stripeCheckoutSessionId: session.id,
+                      }).catch(() => {});
+                    }
                   }
                   const meta = (session.metadata ?? {}) as Record<string, string>;
                   await fulfillOrderBumpPurchase(db, meta, {
@@ -282,6 +370,24 @@ router.post(
                       productType: "bundle",
                     }).catch(() => {});
                     }
+                    // Create invoice row for bundle
+                    if (!existing.length) {
+                      const [bundleRow] = await db.select({ title: digitalBundles.title })
+                        .from(digitalBundles).where(eq(digitalBundles.id, bundleId)).limit(1);
+                      createInvoiceRow(db, {
+                        orgId: orgId2,
+                        userId: user.id,
+                        productType: "bundle",
+                        productId: bundleId,
+                        productTitle: bundleRow?.title ?? `Bundle #${bundleId}`,
+                        buyerName: user.name ?? null,
+                        buyerEmail: buyerEmail2,
+                        amountPaid: session.amount_total ? session.amount_total / 100 : 0,
+                        currency: session.currency ?? "usd",
+                        stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+                        stripeCheckoutSessionId: session.id,
+                      }).catch(() => {});
+                    }
                     // Fulfill order bumps
                     const meta = (session.metadata ?? {}) as Record<string, string>;
                     await fulfillOrderBumpPurchase(db, meta, { userId: user.id, sessionId: session.id, triggerOrderType: "bundle" }).catch(() => {});
@@ -316,6 +422,22 @@ router.post(
                         endDate: null,
                       });
                       console.log(`[Stripe Webhook] User ${user.id} granted membership plan ${membershipPlanId}`);
+                      // Create invoice row for membership
+                      const [planRow] = await db.select({ name: membershipPlans.name, price: membershipPlans.price })
+                        .from(membershipPlans).where(eq(membershipPlans.id, membershipPlanId)).limit(1);
+                      createInvoiceRow(db, {
+                        orgId: orgId2,
+                        userId: user.id,
+                        productType: "membership",
+                        productId: membershipPlanId,
+                        productTitle: planRow?.name ?? `Membership Plan #${membershipPlanId}`,
+                        buyerName: user.name ?? null,
+                        buyerEmail: buyerEmail2,
+                        amountPaid: session.amount_total ? session.amount_total / 100 : Number(planRow?.price ?? 0),
+                        currency: session.currency ?? "usd",
+                        stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+                        stripeCheckoutSessionId: session.id,
+                      }).catch(() => {});
                     }
                   }
                 }

@@ -72,6 +72,7 @@ import StudentLogReportsPage from "./pages/lms/StudentLogReportsPage";
 import LmsDashboardPage from "./pages/lms/LmsDashboardPage";
 import MyCoursesPage from "./pages/lms/MyCoursesPage";
 import MyCertificatesPage from "./pages/lms/MyCertificatesPage";
+import MyReceiptsPage from "./pages/MyReceiptsPage";
 import EmailMarketingPage from "./pages/lms/EmailMarketingPage";
 import PublicPagePage from "./pages/PublicPagePage";
 
@@ -591,6 +592,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/my-courses" component={SchoolMyCoursesPage} />
         <Route path="/profile" component={SchoolProfilePage} />
         <Route path="/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>
+        <Route path="/my-receipts">{() => <DashboardLayout><MyReceiptsPage /></DashboardLayout>}</Route>
         <Route path="/courses/:courseId/thank-you" component={ThankYouPage} />
         <Route path="/courses/:slug/player" component={CoursePlayer} />
         <Route path="/courses/:slug" component={CourseLanding} />

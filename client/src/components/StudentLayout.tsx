@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
-import { Award, BookOpen, GraduationCap, LayoutDashboard, LogOut, User } from "lucide-react";
+import { Award, BookOpen, GraduationCap, LayoutDashboard, LogOut, Receipt, User } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "./ui/button";
 import {
@@ -28,6 +28,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   const navItems = [
     { label: "My Courses", path: "/lms/my-courses", icon: BookOpen },
     { label: "My Certificates", path: "/lms/my-certificates", icon: Award },
+    { label: "My Receipts", path: "/my-receipts", icon: Receipt },
     { label: "Browse", path: orgSlug ? getOrgBaseUrl(orgSlug) : "/school", icon: GraduationCap },
   ];
 
@@ -103,6 +104,9 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setLocation("/lms/my-certificates")}>
                 <Award className="h-4 w-4 mr-2" /> My Certificates
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setLocation("/my-receipts")}>
+                <Receipt className="h-4 w-4 mr-2" /> My Receipts
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

@@ -53,6 +53,7 @@ import {
   workshopRegistrations,
   courseAnnouncements,
   courseResources,
+  orgInvoices,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -617,25 +618,32 @@ export async function getDashboardMetrics(orgId: number, days: number = 30) {
   const db = await getDb();
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  const [revenueRow] = await db
-    .select({ total: sql<number>`COALESCE(SUM(${courseEnrollments.amountPaid}), 0)` })
-    .from(courseEnrollments)
-    .where(and(eq(courseEnrollments.orgId, orgId), gte(courseEnrollments.enrolledAt, cutoff)));
-  const revenue = Number(revenueRow?.total ?? 0);
+  // Revenue: sum from org_invoices (covers all product types + manual invoices)
+  const [invoiceRevenueRow] = await db
+    .select({ total: sql<number>`COALESCE(SUM(${orgInvoices.amountPaid}), 0)` })
+    .from(orgInvoices)
+    .where(and(
+      eq(orgInvoices.orgId, orgId),
+      eq(orgInvoices.status, "paid"),
+      gte(orgInvoices.createdAt, cutoff)
+    ));
+  const revenue = Number(invoiceRevenueRow?.total ?? 0);
 
+  // Registrations: course enrollments (unchanged — tracks learner registrations)
   const [regRow] = await db
     .select({ count: sql<number>`COUNT(*)` })
     .from(courseEnrollments)
     .where(and(eq(courseEnrollments.orgId, orgId), gte(courseEnrollments.enrolledAt, cutoff)));
   const registrations = Number(regRow?.count ?? 0);
 
+  // Sales: all paid transactions from org_invoices
   const [salesRow] = await db
     .select({ count: sql<number>`COUNT(*)` })
-    .from(courseEnrollments)
+    .from(orgInvoices)
     .where(and(
-      eq(courseEnrollments.orgId, orgId),
-      gte(courseEnrollments.enrolledAt, cutoff),
-      gt(courseEnrollments.amountPaid, 0)
+      eq(orgInvoices.orgId, orgId),
+      eq(orgInvoices.status, "paid"),
+      gte(orgInvoices.createdAt, cutoff)
     ));
   const sales = Number(salesRow?.count ?? 0);
 

@@ -56,6 +56,11 @@ import {
   Save,
   RefreshCw,
   AlertTriangle,
+  Receipt,
+  Printer,
+  CheckCircle2,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -175,6 +180,7 @@ export function UserDetailPanel({
                   { value: "profile", label: "Profile", icon: User },
                   { value: "security", label: "Security", icon: Lock },
                   { value: "enrollments", label: "Enrollments", icon: BookOpen },
+                  { value: "transactions", label: "Transactions", icon: Receipt },
                   ...(isPlatformAdmin ? [{ value: "subscription", label: "Subscription", icon: CreditCard }] : []),
                 ].map(({ value, label, icon: Icon }) => (
                   <button
@@ -207,6 +213,11 @@ export function UserDetailPanel({
               {/* Enrollments Tab */}
               <TabsContent value="enrollments" className="p-6 space-y-5 mt-0">
                 <EnrollmentsTab user={user} isPlatformAdmin={isPlatformAdmin} onSaved={refresh} />
+              </TabsContent>
+
+              {/* Transactions Tab */}
+              <TabsContent value="transactions" className="p-0 mt-0">
+                <TransactionsTab user={user} isPlatformAdmin={isPlatformAdmin} />
               </TabsContent>
 
               {/* Subscription Tab (platform admin only) */}
@@ -785,6 +796,181 @@ function SubscriptionTab({ user, onSaved }: { user: UserRow; onSaved: () => void
           {updateSub.isPending ? "Saving..." : "Save Subscription"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ─── Transactions Tab ───────────────────────────────────────────────────────────
+
+type InvoiceRow = {
+  id: number;
+  invoiceNumber: string | null;
+  productType: string;
+  productTitle: string;
+  buyerName: string | null;
+  buyerEmail: string | null;
+  amountPaid: number;
+  currency: string;
+  status: string;
+  isManual: boolean | null;
+  createdAt: number;
+  orgName: string | null;
+  orgLogoUrl: string | null;
+  notes: string | null;
+  stripePaymentIntentId: string | null;
+};
+
+function ReceiptModal({ invoice, onClose }: { invoice: InvoiceRow; onClose: () => void }) {
+  const fmt = (n: number, cur: string) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: cur.toUpperCase() }).format(n);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="bg-white text-slate-900 rounded-xl shadow-2xl w-full max-w-md p-8 space-y-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div>
+            {invoice.orgLogoUrl && (
+              <img src={invoice.orgLogoUrl} alt="" className="h-8 mb-2 object-contain" />
+            )}
+            <h2 className="text-xl font-bold text-slate-900">Receipt</h2>
+            {invoice.invoiceNumber && (
+              <p className="text-xs text-slate-500 mt-0.5">#{invoice.invoiceNumber}</p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {/* Details */}
+        <div className="border border-slate-200 rounded-lg divide-y divide-slate-100">
+          <div className="px-4 py-3 flex justify-between text-sm">
+            <span className="text-slate-500">Product</span>
+            <span className="font-medium text-right max-w-[60%]">{invoice.productTitle}</span>
+          </div>
+          <div className="px-4 py-3 flex justify-between text-sm">
+            <span className="text-slate-500">Type</span>
+            <span className="capitalize">{invoice.productType}</span>
+          </div>
+          {invoice.buyerName && (
+            <div className="px-4 py-3 flex justify-between text-sm">
+              <span className="text-slate-500">Buyer</span>
+              <span>{invoice.buyerName}</span>
+            </div>
+          )}
+          {invoice.buyerEmail && (
+            <div className="px-4 py-3 flex justify-between text-sm">
+              <span className="text-slate-500">Email</span>
+              <span className="text-right break-all">{invoice.buyerEmail}</span>
+            </div>
+          )}
+          <div className="px-4 py-3 flex justify-between text-sm">
+            <span className="text-slate-500">Date</span>
+            <span>{new Date(invoice.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+          </div>
+          <div className="px-4 py-3 flex justify-between text-sm font-semibold">
+            <span>Amount Paid</span>
+            <span className="text-green-700">{fmt(invoice.amountPaid, invoice.currency)}</span>
+          </div>
+          {invoice.notes && (
+            <div className="px-4 py-3 text-sm">
+              <span className="text-slate-500 block mb-1">Notes</span>
+              <span className="text-slate-700">{invoice.notes}</span>
+            </div>
+          )}
+        </div>
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.print()}
+            className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  paid: <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />,
+  pending: <Clock className="h-3.5 w-3.5 text-amber-500" />,
+  refunded: <XCircle className="h-3.5 w-3.5 text-slate-400" />,
+};
+
+function TransactionsTab({ user, isPlatformAdmin }: { user: UserRow; isPlatformAdmin: boolean }) {
+  const [receiptInvoice, setReceiptInvoice] = useState<InvoiceRow | null>(null);
+  const { data, isLoading } = trpc.invoices.listByUser.useQuery(
+    { targetUserId: user.id, orgId: user.orgId ?? undefined },
+    { enabled: !!user.id }
+  );
+  const fmt = (n: number, cur: string) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: cur.toUpperCase() }).format(n);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-14 rounded-lg bg-muted/30 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="p-6">
+        <div className="rounded-lg border border-dashed border-border/50 px-4 py-10 text-center">
+          <Receipt className="h-7 w-7 mx-auto mb-2 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">No transactions found for this user.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalPaid = data.filter((r) => r.status === "paid").reduce((s, r) => s + r.amountPaid, 0);
+
+  return (
+    <div className="flex flex-col">
+      {/* Summary */}
+      <div className="px-6 py-3 border-b border-border/40 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{data.length} transaction{data.length !== 1 ? "s" : ""}</span>
+        <span className="text-xs font-semibold text-green-700">{fmt(totalPaid, data[0]?.currency ?? "usd")} paid</span>
+      </div>
+      {/* List */}
+      <div className="divide-y divide-border/40">
+        {data.map((inv) => (
+          <div key={inv.id} className="flex items-center gap-3 px-6 py-3 hover:bg-muted/20 transition-colors">
+            <div className="shrink-0 mt-0.5">{STATUS_ICONS[inv.status] ?? STATUS_ICONS.pending}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{inv.productTitle}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(inv.createdAt).toLocaleDateString()} · <span className="capitalize">{inv.productType}</span>
+                {inv.isManual && <span className="ml-1 text-amber-600">(manual)</span>}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-semibold">{fmt(inv.amountPaid, inv.currency)}</p>
+              <button
+                onClick={() => setReceiptInvoice(inv)}
+                className="text-xs text-primary hover:underline flex items-center gap-1 ml-auto"
+              >
+                <Receipt className="h-3 w-3" /> Receipt
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {receiptInvoice && <ReceiptModal invoice={receiptInvoice} onClose={() => setReceiptInvoice(null)} />}
     </div>
   );
 }

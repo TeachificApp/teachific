@@ -4384,3 +4384,27 @@ export const orgSitePages = mysqlTable("org_site_pages", {
   createdAt: bigint("created_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull().$defaultFn(() => Date.now()),
 });
+
+// ─── Org Invoices / Transactions ─────────────────────────────────────────────
+export const orgInvoices = mysqlTable("org_invoices", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  userId: int("user_id"),
+  invoiceNumber: varchar("invoice_number", { length: 64 }).notNull(),
+  productType: mysqlEnum("product_type", ["course", "download", "bundle", "membership", "manual"]).notNull().default("manual"),
+  productId: int("product_id"),
+  productTitle: varchar("product_title", { length: 512 }).notNull(),
+  buyerName: varchar("buyer_name", { length: 255 }),
+  buyerEmail: varchar("buyer_email", { length: 320 }),
+  amountPaid: decimal("amount_paid", { precision: 12, scale: 2 }).notNull().default("0.00"),
+  currency: varchar("currency", { length: 8 }).notNull().default("usd"),
+  status: mysqlEnum("status", ["paid", "pending", "refunded"]).notNull().default("paid"),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id", { length: 255 }),
+  notes: text("notes"),
+  isManual: boolean("is_manual").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type OrgInvoice = typeof orgInvoices.$inferSelect;
+export type InsertOrgInvoice = typeof orgInvoices.$inferInsert;
