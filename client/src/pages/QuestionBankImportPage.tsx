@@ -34,12 +34,15 @@ interface ParsedBankQuestion {
 }
 
 interface PreviewResult {
-  source: "csv" | "scorm" | "xlsx";
+  source: "csv" | "scorm" | "xlsx" | "quiz";
   questions: ParsedBankQuestion[];
   totalRows: number;
   validCount: number;
   errorCount: number;
   warnings: string[];
+  hostedPackageUrl?: string | null;
+  hostedPackageName?: string | null;
+  mediaUploaded?: number;
 }
 
 const QUESTION_TYPE_LABELS: Record<string, string> = {
@@ -67,6 +70,7 @@ const SOURCE_LABELS: Record<string, string> = {
   csv: "CSV",
   scorm: "SCORM / QTI",
   xlsx: "Excel (XLSX)",
+  quiz: ".quiz",
 };
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
@@ -112,10 +116,10 @@ export default function QuestionBankImportPage() {
   // ─── File upload & parse ────────────────────────────────────────────────────
   const handleFile = useCallback(async (file: File) => {
     if (!orgId) return;
-    const allowed = [".csv", ".xml", ".zip", ".xlsx", ".xls"];
+    const allowed = [".csv", ".xml", ".zip", ".quiz", ".xlsx", ".xls"];
     const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
     if (!allowed.includes(ext)) {
-      toast.error("Unsupported file type. Please upload a .csv, .xml, .zip, .xlsx, or .xls file.");
+      toast.error("Unsupported file type. Please upload a .csv, .xml, .zip, .quiz, .xlsx, or .xls file.");
       return;
     }
     setUploading(true);
@@ -219,7 +223,7 @@ export default function QuestionBankImportPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Import Questions</h1>
-          <p className="text-muted-foreground text-sm">Import questions from CSV files or SCORM/QTI packages into your Question Bank.</p>
+          <p className="text-muted-foreground text-sm">Import questions from CSV, SCORM/QTI, Excel, or .quiz packages into your Question Bank.</p>
         </div>
       </div>
 
@@ -257,7 +261,7 @@ export default function QuestionBankImportPage() {
                   <Upload className="h-12 w-12 text-muted-foreground/50" />
                   <div className="text-center">
                     <p className="font-semibold text-lg">Drop your file here or click to browse</p>
-                    <p className="text-muted-foreground text-sm mt-1">Supports CSV, SCORM ZIP, QTI XML, XLSX, and XLS files</p>
+                    <p className="text-muted-foreground text-sm mt-1">Supports CSV, SCORM ZIP, QTI XML, .quiz, XLSX, and XLS files</p>
                   </div>
                   <Button variant="outline" className="mt-2 gap-2" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
                     <Upload className="h-4 w-4" />
@@ -269,7 +273,7 @@ export default function QuestionBankImportPage() {
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
-                accept=".csv,.xml,.zip,.xlsx,.xls"
+                accept=".csv,.xml,.zip,.quiz,.xlsx,.xls"
                 onChange={onFileInputChange}
               />
             </CardContent>
@@ -306,8 +310,8 @@ export default function QuestionBankImportPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
-                <p>Upload a SCORM package (.zip) or a QTI XML file. Questions will be extracted from the assessment items automatically.</p>
-                <p className="text-xs">Supports SCORM 1.2 and SCORM 2004 QTI assessment formats.</p>
+                <p>Upload a hosted SCORM package (.zip), iSpring/Teachific .quiz archive, or QTI XML file. Questions can be extracted while the original package remains hosted.</p>
+                <p className="text-xs">Supports SCORM 1.2, SCORM 2004 QTI, and unencrypted .quiz files.</p>
                 <div className="rounded bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 p-2 text-purple-800 dark:text-purple-300 text-xs mt-1">
                   Tip: Export your SCORM quiz from your authoring tool (Articulate, iSpring, etc.) and upload the resulting .zip file.
                 </div>
@@ -400,7 +404,25 @@ export default function QuestionBankImportPage() {
                 {preview.warnings.length} warning{preview.warnings.length !== 1 ? "s" : ""}
               </Badge>
             )}
+            {preview.mediaUploaded ? (
+              <Badge variant="outline" className="gap-1.5 text-sm py-1 px-3">
+                {preview.mediaUploaded} media file{preview.mediaUploaded === 1 ? "" : "s"} hosted
+              </Badge>
+            ) : null}
           </div>
+
+          {preview.hostedPackageUrl && (
+            <Alert>
+              <FileArchive className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                Original package hosted:{" "}
+                <a className="underline font-medium" href={preview.hostedPackageUrl} target="_blank" rel="noreferrer">
+                  {preview.hostedPackageName || "Open hosted package"}
+                </a>
+                . Continue below to extract selected questions into the native question bank.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Warnings */}
           {preview.warnings.length > 0 && (

@@ -15,6 +15,7 @@ import { Readable } from "stream";
 import { storagePut } from "./storage";
 import { parseQuizExcel, exportQuizToExcel, parsedToDbQuestions } from "./quizExcel";
 import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb";
+import { getQuestionsByOrg, getQuestionsByIds } from "./questionBankDb";
 import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
 
@@ -101,6 +102,7 @@ async function uploadMediaToS3(
         const { url } = await storagePut(key, buf, mime);
         urlMap.set(relPath, url);
         urlMap.set(relPath.replace(/\//g, "\\\\"), url);
+        urlMap.set(fileName, url);
       } catch (e) {
         console.error(`[Quiz Import] Failed to upload media ${relPath}:`, e);
       }
@@ -108,6 +110,19 @@ async function uploadMediaToS3(
   );
 
   return urlMap;
+}
+
+function safeStorageName(filename: string): string {
+  const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")).toLowerCase() : "";
+  const base = filename.replace(/\.[^.]+$/, "").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "");
+  return `${base || "quiz-package"}-${Date.now()}${ext}`;
+}
+
+async function hostUploadedPackage(file: Express.Multer.File, orgId: string): Promise<{ key: string; url: string } | null> {
+  const lower = file.originalname.toLowerCase();
+  if (!lower.endsWith(".zip") && !lower.endsWith(".quiz")) return null;
+  const key = `question-bank-imports/${orgId}/${safeStorageName(file.originalname)}`;
+  return storagePut(key, file.buffer, file.mimetype || "application/octet-stream");
 }
 
 // ── POST /api/quiz/import/preview ─────────────────────────────────────────────
@@ -187,9 +202,9 @@ router.get("/export/:quizId", async (req: Request, res: Response) => {
         incorrectFeedback: undefined as string | undefined,
         choices: (await getChoicesByQuestion(q.id)).map((c) => ({
           sortOrder: c.sortOrder,
-          choiceText: c.choiceText,
+          choiceText: c.choiceText ?? "",
           isCorrect: c.isCorrect,
-          matchTarget: c.matchTarget ?? undefined,
+          matchTarget: (c as any).matchTarget ?? undefined,
         })),
       }))
     );
@@ -207,8 +222,8 @@ router.get("/export/:quizId", async (req: Request, res: Response) => {
 });
 
 // ── POST /api/quiz/bank-import/preview ───────────────────────────────────────
-// Parse a CSV or SCORM ZIP/XML file and return questions for preview (no DB write)
-// Accepts: .csv, .xml, .zip (SCORM package), .xlsx/.xls
+// Parse a CSV, SCORM ZIP/XML, iSpring/Teachific .quiz, or XLSX file and return questions for preview.
+// ZIP/.quiz uploads are also hosted so admins can keep the original package while optionally extracting questions.
 router.post("/bank-import/preview", upload.single("file"), async (req: Request, res: Response) => {
   try {
     const user = await authenticateRequest(req);
@@ -216,53 +231,95 @@ router.post("/bank-import/preview", upload.single("file"), async (req: Request, 
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const originalName = req.file.originalname.toLowerCase();
     const source = req.body.source as string ?? "auto";
+    const orgId = (user as any)?.orgId?.toString() ?? "unknown";
+    const hostedPackage = await hostUploadedPackage(req.file, orgId);
+    const withHostedPackage = (payload: Record<string, unknown>) => res.json({
+      ...payload,
+      hostedPackageUrl: hostedPackage?.url ?? null,
+      hostedPackageKey: hostedPackage?.key ?? null,
+      hostedPackageName: hostedPackage ? req.file!.originalname : null,
+    });
+
     // ── CSV ─────────────────────────────────────────────────────────────────
     if (originalName.endsWith(".csv") || source === "csv") {
       const text = req.file.buffer.toString("utf-8");
       const questions = parseCSVToBank(text);
-      return res.json({ source: "csv", questions, totalRows: questions.length, validCount: questions.length, errorCount: 0, warnings: [] });
+      return withHostedPackage({ source: "csv", questions, totalRows: questions.length, validCount: questions.length, errorCount: 0, warnings: [] });
     }
     // ── SCORM XML ────────────────────────────────────────────────────────────
     if (originalName.endsWith(".xml") || source === "scorm_xml") {
       const text = req.file.buffer.toString("utf-8");
       const questions = parseSCORMQTIToBank(text);
-      return res.json({ source: "scorm", questions, totalRows: questions.length, validCount: questions.length, errorCount: 0, warnings: [] });
+      return withHostedPackage({ source: "scorm", questions, totalRows: questions.length, validCount: questions.length, errorCount: 0, warnings: [] });
     }
-    // ── SCORM ZIP ────────────────────────────────────────────────────────────
-    if (originalName.endsWith(".zip")) {
-      const { xlsxBuffer, xmlBuffers, mediaMap } = await extractBankZip(req.file.buffer);
+    // ── SCORM ZIP / iSpring .quiz ───────────────────────────────────────────
+    if (originalName.endsWith(".zip") || originalName.endsWith(".quiz")) {
+      if (originalName.endsWith(".quiz") && !isZipBuffer(req.file.buffer)) {
+        const questions = parseTeachificQuizFileToBank(req.file.buffer.toString("utf-8"));
+        return withHostedPackage({
+          source: "quiz",
+          questions,
+          totalRows: questions.length,
+          validCount: questions.length,
+          errorCount: 0,
+          warnings: [],
+        });
+      }
+
+      const { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer } = await extractBankZip(req.file.buffer);
+      let mediaUrlMap = new Map<string, string>();
+      if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, orgId);
+
+      if (quizDocumentBuffer) {
+        try {
+          const questions = parseISpringQuizToBank(quizDocumentBuffer.toString("utf-8"), mediaUrlMap);
+          if (questions.length > 0 || originalName.endsWith(".quiz")) {
+            return withHostedPackage({
+              source: "quiz",
+              questions,
+              totalRows: questions.length,
+              validCount: questions.length,
+              errorCount: 0,
+              warnings: [],
+              mediaUploaded: mediaUrlMap.size,
+            });
+          }
+        } catch (err) {
+          if (originalName.endsWith(".quiz")) throw err;
+        }
+      }
+
       // If it contains an XLSX, treat as Teachific Excel import
       if (xlsxBuffer) {
-        const orgId = (user as any)?.orgId?.toString() ?? "unknown";
-        let mediaUrlMap = new Map<string, string>();
-        if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, orgId);
         const result = parseQuizExcel(xlsxBuffer);
         if (mediaUrlMap.size > 0) {
           for (const q of result.questions) {
             if (q.imagePath) { const u = mediaUrlMap.get(q.imagePath); if (u) q.imagePath = u; }
+            if (q.videoPath) { const u = mediaUrlMap.get(q.videoPath); if (u) q.videoPath = u; }
+            if (q.audioPath) { const u = mediaUrlMap.get(q.audioPath); if (u) q.audioPath = u; }
           }
         }
         const bankQuestions = result.questions.map(q => excelParsedToBankQuestion(q));
-        return res.json({ source: "xlsx", questions: bankQuestions, totalRows: result.totalRows, validCount: result.validCount, errorCount: result.errorCount, warnings: result.warnings });
+        return withHostedPackage({ source: "xlsx", questions: bankQuestions, totalRows: result.totalRows, validCount: result.validCount, errorCount: result.errorCount, warnings: result.warnings, mediaUploaded: mediaUrlMap.size });
       }
       // Otherwise look for QTI XML files (SCORM package)
       if (xmlBuffers.length > 0) {
         const allQuestions: BankQuestion[] = [];
         for (const xmlBuf of xmlBuffers) {
           const text = xmlBuf.toString("utf-8");
-          allQuestions.push(...parseSCORMQTIToBank(text));
+          allQuestions.push(...parseSCORMQTIToBank(text, mediaUrlMap));
         }
-        return res.json({ source: "scorm", questions: allQuestions, totalRows: allQuestions.length, validCount: allQuestions.length, errorCount: 0, warnings: [] });
+        return withHostedPackage({ source: "scorm", questions: allQuestions, totalRows: allQuestions.length, validCount: allQuestions.length, errorCount: 0, warnings: [], mediaUploaded: mediaUrlMap.size });
       }
-      return res.status(400).json({ error: "No supported file found inside the ZIP. Expected .xlsx, .xls, or QTI .xml files." });
+      return res.status(400).json({ error: "No supported file found inside the archive. Expected document.json, .xlsx/.xls, or QTI .xml files.", hostedPackageUrl: hostedPackage?.url ?? null });
     }
     // ── XLSX/XLS (direct) ────────────────────────────────────────────────────
     if (originalName.endsWith(".xlsx") || originalName.endsWith(".xls")) {
       const result = parseQuizExcel(req.file.buffer);
       const bankQuestions = result.questions.map(q => excelParsedToBankQuestion(q));
-      return res.json({ source: "xlsx", questions: bankQuestions, totalRows: result.totalRows, validCount: result.validCount, errorCount: result.errorCount, warnings: result.warnings });
+      return withHostedPackage({ source: "xlsx", questions: bankQuestions, totalRows: result.totalRows, validCount: result.validCount, errorCount: result.errorCount, warnings: result.warnings });
     }
-    return res.status(400).json({ error: "Unsupported file type. Supported: .csv, .xml, .zip, .xlsx, .xls" });
+    return res.status(400).json({ error: "Unsupported file type. Supported: .csv, .xml, .zip, .quiz, .xlsx, .xls" });
   } catch (err: unknown) {
     console.error("[Bank Import] Parse error:", err);
     return res.status(500).json({ error: "Failed to parse file", detail: String(err) });
@@ -350,7 +407,7 @@ function normalizeDifficulty(raw?: string): "easy" | "medium" | "hard" {
 }
 
 // ─── SCORM QTI XML → Bank Questions ──────────────────────────────────────────
-function parseSCORMQTIToBank(xmlText: string): BankQuestion[] {
+function parseSCORMQTIToBank(xmlText: string, mediaUrlMap: Map<string, string> = new Map()): BankQuestion[] {
   const questions: BankQuestion[] = [];
   const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
   let itemMatch;
@@ -388,10 +445,12 @@ function parseSCORMQTIToBank(xmlText: string): BankQuestion[] {
     const explanation = feedbackMatches && feedbackMatches.length > 1
       ? stripHtmlEntities(feedbackMatches[feedbackMatches.length - 1]).trim()
       : undefined;
+    const imageMatch = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i) || itemXml.match(/uri=["']([^"']+\.(?:png|jpe?g|gif|webp|svg))["']/i);
+    const imageUrl = imageMatch ? resolvePackageMedia(imageMatch[1], mediaUrlMap) : undefined;
     questions.push({
       questionType,
       stem,
-      dataJson: JSON.stringify({ choices: choices.map(c => ({ text: (c as any).text, isCorrect: c.isCorrect })) }),
+      dataJson: JSON.stringify({ choices: choices.map(c => ({ text: (c as any).text, isCorrect: c.isCorrect })), imageUrl }),
       points: 1,
       difficulty: "medium",
       explanation,
@@ -405,6 +464,17 @@ function stripHtmlEntities(html: string): string {
     .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/\s+/g, " ").trim();
+}
+
+function isZipBuffer(buffer: Buffer): boolean {
+  return buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04;
+}
+
+function resolvePackageMedia(path: string | undefined, mediaUrlMap: Map<string, string>): string | undefined {
+  if (!path) return undefined;
+  const normalized = path.replace(/\\/g, "/").replace(/^\.?\//, "");
+  const fileName = normalized.split("/").pop() ?? normalized;
+  return mediaUrlMap.get(normalized) || mediaUrlMap.get(path) || mediaUrlMap.get(fileName) || path;
 }
 
 // ─── Excel ParsedQuestion → BankQuestion ─────────────────────────────────────
@@ -428,11 +498,302 @@ function excelParsedToBankQuestion(q: any): BankQuestion {
   };
 }
 
+function parseTeachificQuizFileToBank(fileText: string): BankQuestion[] {
+  const trimmed = fileText.trim();
+  let quizData: any;
+  if (trimmed.startsWith("TEACHIFIC_QUIZ_V1")) {
+    const payload = trimmed.split("\n")[1];
+    if (!payload) throw new Error("Invalid .quiz file: missing payload.");
+    try {
+      quizData = JSON.parse(Buffer.from(payload, "base64").toString("utf-8"));
+    } catch {
+      throw new Error("Encrypted .quiz files cannot be extracted server-side. Save without encryption and try again.");
+    }
+  } else {
+    quizData = JSON.parse(trimmed);
+  }
+
+  const questions = Array.isArray(quizData?.questions) ? quizData.questions : [];
+  return questions.map((q: any) => quizCreatorQuestionToBank(q, quizData?.meta?.tags ?? []));
+}
+
+function parseISpringQuizToBank(documentText: string, mediaUrlMap: Map<string, string>): BankQuestion[] {
+  const doc = JSON.parse(documentText);
+  const rawQuestions: any[] = [];
+
+  if (doc.sl?.g) {
+    for (const group of doc.sl.g) {
+      if (Array.isArray(group.S)) rawQuestions.push(...group.S);
+    }
+  } else if (Array.isArray(doc.questions)) {
+    rawQuestions.push(...doc.questions);
+  } else if (Array.isArray(doc.quiz?.questions)) {
+    rawQuestions.push(...doc.quiz.questions);
+  } else if (Array.isArray(doc.slides)) {
+    rawQuestions.push(...doc.slides.filter((s: any) => s.tp || s.type));
+  } else if (Array.isArray(doc)) {
+    rawQuestions.push(...doc);
+  }
+
+  const docTags = Array.isArray(doc.tags) ? doc.tags : [];
+  return rawQuestions.map((q, index) => {
+    const questionType = mapQuizCreatorTypeToBank(q.tp || q.type || "mc");
+    const stem = extractQuizText(q.D || q.question || q.stem || q.text || `Question ${index + 1}`);
+    const imageUrl = resolvePackageMedia(q.img || q.image || q.imageUrl, mediaUrlMap);
+    const videoUrl = resolvePackageMedia(typeof q.video === "string" ? q.video : q.video?.src, mediaUrlMap);
+    const audioUrl = resolvePackageMedia(typeof q.audio === "string" ? q.audio : q.audio?.src, mediaUrlMap);
+    const data = buildBankDataFromQuizLikeQuestion(q, questionType, mediaUrlMap);
+    const tags = [...docTags, ...(Array.isArray(q.tags) ? q.tags : [])].filter(Boolean);
+
+    return {
+      questionType,
+      stem,
+      dataJson: JSON.stringify({ ...data, imageUrl, videoUrl, audioUrl }),
+      points: Number(q.points ?? q.score ?? 1) || 1,
+      difficulty: normalizeDifficulty(q.difficulty ?? q.level),
+      explanation: extractQuizText(q.explanation || q.exp || q.feedback?.correct || q.fb?.correct || "") || undefined,
+      tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
+    };
+  });
+}
+
+function quizCreatorQuestionToBank(q: any, inheritedTags: string[] = []): BankQuestion {
+  const questionType = mapQuizCreatorTypeToBank(q.type || q.questionType || "mcq");
+  const data = q.data ?? {};
+  const imageUrl = q.image?.url || data.imageUrl;
+  const videoUrl = q.video?.url || data.videoUrl;
+  const audioUrl = q.audio?.url || data.audioUrl;
+  const tags = [...inheritedTags, ...(Array.isArray(q.tags) ? q.tags : [])].filter(Boolean);
+  return {
+    questionType,
+    stem: q.stem || q.questionText || "Imported question",
+    dataJson: JSON.stringify({ ...data, imageUrl, videoUrl, audioUrl }),
+    points: Number(q.points ?? 1) || 1,
+    difficulty: normalizeDifficulty(q.difficulty),
+    explanation: q.explanation || q.feedback?.correct || undefined,
+    tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
+  };
+}
+
+function mapQuizCreatorTypeToBank(rawType: string): string {
+  const raw = String(rawType || "").toLowerCase();
+  const map: Record<string, string> = {
+    mc: "mcq",
+    mcq: "mcq",
+    multiple_choice: "mcq",
+    mr: "multiple_select",
+    multiple_select: "multiple_select",
+    multiple_response: "multiple_select",
+    tf: "tf",
+    true_false: "tf",
+    sa: "short_answer",
+    short_answer: "short_answer",
+    essay: "long_answer",
+    long_answer: "long_answer",
+    match: "matching",
+    matching: "matching",
+    seq: "ordering",
+    sequence: "ordering",
+    ordering: "ordering",
+    fill_blank: "fill_blank",
+    fill_in_blank: "fill_blank",
+    fib: "fill_blank",
+    hotspot: "hotspot",
+    hs: "hotspot",
+    image_choice: "image_choice",
+    numeric: "numeric",
+    num: "numeric",
+    likert: "rating_scale",
+    rating_scale: "rating_scale",
+  };
+  return map[raw] ?? detectBankType(raw);
+}
+
+function buildBankDataFromQuizLikeQuestion(q: any, questionType: string, mediaUrlMap: Map<string, string>): Record<string, unknown> {
+  const config = q.C || q.data || {};
+  if (questionType === "matching") {
+    const pairs = (config.pairs || q.pairs || []).map((p: any) => ({
+      left: extractQuizText(p.l || p.left || p.premise),
+      right: extractQuizText(p.r || p.right || p.response),
+      leftImageUrl: resolvePackageMedia(p.lImg || p.leftImage, mediaUrlMap),
+      rightImageUrl: resolvePackageMedia(p.rImg || p.rightImage, mediaUrlMap),
+    }));
+    return { pairs };
+  }
+  if (questionType === "ordering") {
+    const items = (config.items || q.items || []).map((item: any) => ({
+      text: extractQuizText(item.t || item.text || item),
+      imageUrl: resolvePackageMedia(item.img || item.image, mediaUrlMap),
+    }));
+    return { items };
+  }
+  if (questionType === "numeric") {
+    return { answer: config.answer ?? q.answer ?? q.correct, tolerance: config.tolerance ?? q.tolerance };
+  }
+  if (questionType === "fill_blank") {
+    return { template: extractQuizText(config.template || q.template || q.D), blanks: config.blanks || q.blanks || [] };
+  }
+  if (questionType === "short_answer" || questionType === "long_answer") {
+    return { acceptedAnswers: config.variants || config.keywords || q.variants || q.keywords || [] };
+  }
+  const choices = (config.chs || config.choices || q.choices || []).map((choice: any) => ({
+    text: extractQuizText(choice.t || choice.text || choice),
+    isCorrect: Boolean(choice.c ?? choice.correct),
+    imageUrl: resolvePackageMedia(choice.img || choice.image, mediaUrlMap),
+  }));
+  if (questionType === "tf" && choices.length === 0) {
+    const correct = Boolean(config.correct ?? q.correct ?? true);
+    return { choices: [{ text: "True", isCorrect: correct }, { text: "False", isCorrect: !correct }] };
+  }
+  return { choices };
+}
+
+function extractQuizText(node: any): string {
+  if (!node) return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractQuizText).filter(Boolean).join(" ");
+  if (node.d && Array.isArray(node.d)) {
+    return node.d.map((para: any) => extractQuizText(para.c ?? para)).filter(Boolean).join("\n");
+  }
+  if (node.c && Array.isArray(node.c)) {
+    return node.c.map((segment: any) => segment.t || segment.text || extractQuizText(segment)).join("");
+  }
+  return node.t || node.text || node.value || "";
+}
+
+function bankQuestionTypeToExportType(questionType: string): any {
+  const map: Record<string, string> = {
+    mcq: "multiple_choice",
+    tf: "true_false",
+    multiple_select: "multiple_select",
+    short_answer: "short_answer",
+    long_answer: "essay",
+    matching: "matching",
+    ordering: "sequence",
+    numeric: "numeric",
+    fill_blank: "short_answer",
+    image_choice: "multiple_choice",
+    hotspot: "multiple_choice",
+    rating_scale: "survey",
+  };
+  return map[questionType] ?? "multiple_choice";
+}
+
+function parseJsonObject(value: string | null | undefined): Record<string, any> {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function parseTags(value: string | null | undefined): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.map((tag) => String(tag)).filter(Boolean);
+  } catch {
+    // Fall through to comma-delimited tags.
+  }
+  return value.split(",").map((tag) => tag.trim()).filter(Boolean);
+}
+
+function bankItemToExportQuestion(q: any) {
+  const data = parseJsonObject(q.dataJson);
+  const choicesSource = Array.isArray(data.choices) ? data.choices : [];
+  const pairsSource = Array.isArray(data.pairs) ? data.pairs : [];
+  const itemsSource = Array.isArray(data.items) ? data.items : [];
+  const questionType = bankQuestionTypeToExportType(q.questionType);
+  let choices: Array<{ choiceText: string; isCorrect: boolean; matchTarget?: string; sortOrder: number }> = choicesSource.map((choice: any, index: number) => ({
+    choiceText: String(choice.text ?? choice.choiceText ?? ""),
+    isCorrect: Boolean(choice.isCorrect ?? choice.correct),
+    matchTarget: choice.matchTarget ? String(choice.matchTarget) : undefined,
+    sortOrder: Number(choice.sortOrder ?? index),
+  }));
+
+  if (questionType === "matching" && choices.length === 0) {
+    choices = pairsSource.map((pair: any, index: number) => ({
+      choiceText: String(pair.left ?? pair.premise ?? ""),
+      matchTarget: String(pair.right ?? pair.response ?? ""),
+      isCorrect: true,
+      sortOrder: index,
+    }));
+  }
+  if (questionType === "sequence" && choices.length === 0) {
+    choices = itemsSource.map((item: any, index: number) => ({
+      choiceText: String(item.text ?? item),
+      isCorrect: true,
+      sortOrder: index,
+    }));
+  }
+  if (questionType === "numeric" && choices.length === 0 && data.answer !== undefined) {
+    choices = [{ choiceText: `=${data.answer}`, isCorrect: true, sortOrder: 0 }];
+  }
+
+  return {
+    questionType,
+    questionText: q.stem,
+    imagePath: data.imageUrl || data.imagePath || undefined,
+    videoPath: data.videoUrl || data.videoPath || undefined,
+    audioPath: data.audioUrl || data.audioPath || undefined,
+    choices,
+    correctFeedback: q.explanation ?? undefined,
+    incorrectFeedback: undefined,
+    points: q.points ?? 1,
+    explanation: q.explanation ?? undefined,
+    tags: parseTags(q.tags),
+    difficulty: q.difficulty ?? "medium",
+  };
+}
+
+function csvCell(value: unknown): string {
+  const text = value === null || value === undefined ? "" : String(value);
+  if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
+}
+
+function exportBankQuestionsToCsv(questions: any[]): string {
+  const header = [
+    "question", "type", "image_url", "video_url", "audio_url",
+    "answer_1", "answer_2", "answer_3", "answer_4", "answer_5",
+    "answer_6", "answer_7", "answer_8", "answer_9", "answer_10",
+    "correct_answer", "explanation", "difficulty", "tags", "points",
+  ];
+  const rows = [header];
+  questions.forEach((q) => {
+    const answers = Array(10).fill("");
+    q.choices.slice().sort((a: any, b: any) => a.sortOrder - b.sortOrder).slice(0, 10).forEach((choice: any, index: number) => {
+      answers[index] = choice.matchTarget ? `${choice.choiceText}|${choice.matchTarget}` : choice.choiceText;
+    });
+    const correct = q.choices
+      .map((choice: any, index: number) => choice.isCorrect ? String(index + 1) : "")
+      .filter(Boolean)
+      .join(",");
+    rows.push([
+      q.questionText,
+      q.questionType,
+      q.imagePath ?? "",
+      q.videoPath ?? "",
+      q.audioPath ?? "",
+      ...answers,
+      correct,
+      q.explanation ?? "",
+      q.difficulty ?? "medium",
+      q.tags.join(","),
+      q.points,
+    ]);
+  });
+  return rows.map((row) => row.map(csvCell).join(",")).join("\n");
+}
+
 // ─── ZIP extractor for bank imports ──────────────────────────────────────────
-async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer | null; xmlBuffers: Buffer[]; mediaMap: Map<string, Buffer> }> {
+async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer | null; xmlBuffers: Buffer[]; mediaMap: Map<string, Buffer>; quizDocumentBuffer: Buffer | null }> {
   const mediaMap = new Map<string, Buffer>();
   const xmlBuffers: Buffer[] = [];
   let xlsxBuffer: Buffer | null = null;
+  let quizDocumentBuffer: Buffer | null = null;
   const readable = Readable.from(zipBuffer);
   const directory = readable.pipe(unzipper.Parse({ forceStream: true }));
   for await (const entry of directory) {
@@ -443,6 +804,9 @@ async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer |
     for await (const chunk of entry) chunks.push(chunk as Buffer);
     const buf = Buffer.concat(chunks);
     const lower = entryPath.toLowerCase();
+    if (!quizDocumentBuffer && (lower.endsWith("document.json") || lower.endsWith("data.json"))) {
+      quizDocumentBuffer = buf; continue;
+    }
     if (!xlsxBuffer && (lower.endsWith(".xlsx") || lower.endsWith(".xls"))) { xlsxBuffer = buf; continue; }
     if (lower.endsWith(".xml") && (lower.includes("assessment") || lower.includes("quiz") || lower.includes("question") || lower.includes("qti"))) {
       xmlBuffers.push(buf); continue;
@@ -450,13 +814,65 @@ async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer |
     if (lower.endsWith(".xml") && !lower.includes("imsmanifest") && !lower.includes("metadata")) {
       xmlBuffers.push(buf); continue;
     }
-    if (lower.includes("media/") && /\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mp3|wav|ogg|m4a|aac)$/i.test(lower)) {
-      const normalized = entryPath.replace(/^.*?(media\/.+)$/, "$1");
+    if (/\.(jpg|jpeg|png|gif|webp|svg|mp4|webm|mov|mp3|wav|ogg|m4a|aac)$/i.test(lower)) {
+      const normalized = lower.includes("media/") ? entryPath.replace(/^.*?(media\/.+)$/, "$1") : entryPath;
       mediaMap.set(normalized, buf);
     }
   }
-  return { xlsxBuffer, xmlBuffers, mediaMap };
+  return { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer };
 }
+
+// ── GET /api/quiz/bank-export ─────────────────────────────────────────────────
+// Export org-scoped question bank items as iSpring-style XLSX or CSV.
+router.get("/bank-export", async (req: Request, res: Response) => {
+  try {
+    const user = await authenticateRequest(req);
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const orgId = Number(req.query.orgId);
+    if (!Number.isFinite(orgId)) return res.status(400).json({ error: "orgId is required" });
+    const role = String((user as any).role ?? "");
+    if (!["site_owner", "site_admin", "org_super_admin", "org_admin"].includes(role)) {
+      return res.status(403).json({ error: "Organization admin access required" });
+    }
+
+    const format = String(req.query.format ?? "xlsx").toLowerCase();
+    const ids = String(req.query.ids ?? "")
+      .split(",")
+      .map((id) => Number(id.trim()))
+      .filter((id) => Number.isFinite(id));
+    const folderIdParam = req.query.folderId === undefined ? undefined : String(req.query.folderId);
+    const folderId = folderIdParam === undefined || folderIdParam === "all"
+      ? undefined
+      : folderIdParam === "none"
+        ? null
+        : Number(folderIdParam);
+
+    const sourceQuestions = ids.length > 0
+      ? await getQuestionsByIds(orgId, ids)
+      : await getQuestionsByOrg(orgId, {
+          folderId: folderId as number | null | undefined,
+          limit: 10000,
+          offset: 0,
+        });
+    const exportQuestions = sourceQuestions.map(bankItemToExportQuestion);
+    const filenameBase = `question-bank-${new Date().toISOString().slice(0, 10)}`;
+
+    if (format === "csv") {
+      const csv = exportBankQuestionsToCsv(exportQuestions);
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filenameBase}.csv"`);
+      return res.send(csv);
+    }
+
+    const buf = exportQuizToExcel("Question Bank Export", exportQuestions);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filenameBase}.xlsx"`);
+    return res.send(buf);
+  } catch (err: unknown) {
+    console.error("[Bank Export] Error:", err);
+    return res.status(500).json({ error: "Failed to export question bank", detail: String(err) });
+  }
+});
 
 // ── GET /api/quiz/bank-import/csv-template ──────────────────────────────────
 // Return a sample CSV template for question bank imports

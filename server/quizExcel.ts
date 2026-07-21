@@ -290,6 +290,8 @@ export interface ExportQuestion {
   questionType: InternalQuestionType;
   questionText: string;
   imagePath?: string;
+  videoPath?: string;
+  audioPath?: string;
   choices: Array<{
     choiceText: string;
     isCorrect: boolean;
@@ -361,8 +363,8 @@ export function exportQuizToExcel(quizTitle: string, questions: ExportQuestion[]
       typeCode,
       q.questionText,
       q.imagePath ?? "",
-      "", // video
-      "", // audio
+      q.videoPath ?? "",
+      q.audioPath ?? "",
       ...answers,
       q.correctFeedback ?? "",
       q.incorrectFeedback ?? "",

@@ -15,6 +15,7 @@ import {
   deleteQuestion,
   bulkDeleteQuestions,
   moveQuestionsToFolder,
+  copyQuestionsToFolder,
   incrementUsageCount,
 } from "./questionBankDb";
 
@@ -22,6 +23,21 @@ import {
 async function requireOrgAdmin(userId: number, orgId: number, userRole: string) {
   if (["site_owner", "site_admin", "org_super_admin", "org_admin"].includes(userRole)) return;
   throw new TRPCError({ code: "FORBIDDEN", message: "Organization admin access required" });
+}
+
+function normalizeTags(tags: string | undefined): string | null {
+  if (!tags) return null;
+  try {
+    const parsed = JSON.parse(tags);
+    if (Array.isArray(parsed)) {
+      const normalized = parsed.map((tag) => String(tag).trim()).filter(Boolean);
+      return normalized.length > 0 ? JSON.stringify(normalized) : null;
+    }
+  } catch {
+    // Fall through to comma-delimited parsing.
+  }
+  const normalized = tags.split(",").map((tag) => tag.trim()).filter(Boolean);
+  return normalized.length > 0 ? JSON.stringify(normalized) : null;
 }
 
 export const questionBankRouter = router({
@@ -177,7 +193,7 @@ export const questionBankRouter = router({
     .input(z.object({ orgId: z.number(), ids: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
       await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      await bulkDeleteQuestions(input.ids);
+      await bulkDeleteQuestions(input.orgId, input.ids);
       return { success: true };
     }),
 
@@ -189,8 +205,20 @@ export const questionBankRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      await moveQuestionsToFolder(input.ids, input.folderId);
+      await moveQuestionsToFolder(input.orgId, input.ids, input.folderId);
       return { success: true };
+    }),
+
+  copyToFolder: protectedProcedure
+    .input(z.object({
+      orgId: z.number(),
+      ids: z.array(z.number()),
+      folderId: z.number().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const copied = await copyQuestionsToFolder(input.orgId, input.ids, input.folderId, ctx.user.id);
+      return { success: true, copied };
     }),
 
   // ── Bulk Import (from CSV/SCORM parse) ────────────────────────────────────
@@ -222,7 +250,7 @@ export const questionBankRouter = router({
             dataJson: q.dataJson,
             points: q.points ?? 1,
             difficulty: (q.difficulty ?? "medium") as any,
-            tags: q.tags ?? null,
+            tags: normalizeTags(q.tags),
             explanation: q.explanation ?? null,
             createdBy: ctx.user.id,
           });

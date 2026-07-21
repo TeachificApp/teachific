@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, sql, isNull } from "drizzle-orm";
+import { eq, and, asc, desc, sql, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { questionBankFolders, questionBankItems } from "../drizzle/schema";
 
@@ -94,6 +94,13 @@ export async function getQuestionById(id: number) {
   return q ?? null;
 }
 
+export async function getQuestionsByIds(orgId: number, ids: number[]) {
+  if (ids.length === 0) return [];
+  return db.select().from(questionBankItems)
+    .where(and(eq(questionBankItems.orgId, orgId), inArray(questionBankItems.id, ids)))
+    .orderBy(desc(questionBankItems.updatedAt));
+}
+
 export async function createQuestion(data: typeof questionBankItems.$inferInsert) {
   const [result] = await db.insert(questionBankItems).values(data as any);
   return { id: (result as any).insertId };
@@ -107,16 +114,38 @@ export async function deleteQuestion(id: number) {
   await db.delete(questionBankItems).where(eq(questionBankItems.id, id));
 }
 
-export async function bulkDeleteQuestions(ids: number[]) {
+export async function bulkDeleteQuestions(orgId: number, ids: number[]) {
   if (ids.length === 0) return;
-  await db.delete(questionBankItems).where(sql`${questionBankItems.id} IN (${sql.raw(ids.join(","))})`);
+  await db.delete(questionBankItems)
+    .where(and(eq(questionBankItems.orgId, orgId), inArray(questionBankItems.id, ids)));
 }
 
-export async function moveQuestionsToFolder(ids: number[], folderId: number | null) {
+export async function moveQuestionsToFolder(orgId: number, ids: number[], folderId: number | null) {
   if (ids.length === 0) return;
   await db.update(questionBankItems)
     .set({ folderId } as any)
-    .where(sql`${questionBankItems.id} IN (${sql.raw(ids.join(","))})`);
+    .where(and(eq(questionBankItems.orgId, orgId), inArray(questionBankItems.id, ids)));
+}
+
+export async function copyQuestionsToFolder(orgId: number, ids: number[], folderId: number | null, createdBy: number) {
+  const sourceQuestions = await getQuestionsByIds(orgId, ids);
+  let copied = 0;
+  for (const q of sourceQuestions) {
+    await createQuestion({
+      orgId,
+      folderId,
+      questionType: q.questionType,
+      stem: `${q.stem} (copy)`,
+      dataJson: q.dataJson,
+      points: q.points,
+      difficulty: q.difficulty,
+      tags: q.tags,
+      explanation: q.explanation,
+      createdBy,
+    } as typeof questionBankItems.$inferInsert);
+    copied++;
+  }
+  return copied;
 }
 
 export async function incrementUsageCount(ids: number[]) {

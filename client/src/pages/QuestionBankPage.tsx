@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import {
   FolderOpen, FolderPlus, Plus, Search, Trash2, Edit2, ChevronRight,
   ChevronDown, FileText, Copy, MoveRight, MoreHorizontal, Library,
-  Filter, Tag, Upload,
+  Filter, Tag, Upload, Download,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -103,6 +103,9 @@ export default function QuestionBankPage() {
   const moveToFolderMut = trpc.questionBank.moveToFolder.useMutation({
     onSuccess: () => { refetchQuestions(); setSelectedIds([]); toast.success("Questions moved"); },
   });
+  const copyToFolderMut = trpc.questionBank.copyToFolder.useMutation({
+    onSuccess: (result) => { refetchQuestions(); setSelectedIds([]); toast.success(`${result.copied} question${result.copied === 1 ? "" : "s"} copied`); },
+  });
 
   const questions = questionsData?.questions ?? [];
   const totalQuestions = questionsData?.total ?? 0;
@@ -137,6 +140,17 @@ export default function QuestionBankPage() {
     else setSelectedIds(questions.map(q => q.id));
   };
 
+  const exportQuestions = (format: "xlsx" | "csv", ids = selectedIds) => {
+    if (!orgId) return;
+    const params = new URLSearchParams({ orgId: String(orgId), format });
+    if (ids.length > 0) {
+      params.set("ids", ids.join(","));
+    } else if (selectedFolderId !== "all") {
+      params.set("folderId", selectedFolderId === null ? "none" : String(selectedFolderId));
+    }
+    window.location.href = `/api/quiz/bank-export?${params.toString()}`;
+  };
+
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -157,6 +171,17 @@ export default function QuestionBankPage() {
           <Button variant="outline" size="sm" onClick={() => setLocation("/question-bank/import")}>
             <Upload className="h-4 w-4 mr-1" /> Import
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => exportQuestions("xlsx", [])}>Current view as XLSX</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportQuestions("csv", [])}>Current view as CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button size="sm" onClick={() => setShowCreateQuestion(true)}>
             <Plus className="h-4 w-4 mr-1" /> New Question
           </Button>
@@ -256,6 +281,30 @@ export default function QuestionBankPage() {
                       {f.name}
                     </DropdownMenuItem>
                   ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm"><Copy className="h-3.5 w-3.5 mr-1" /> Copy to Folder</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => copyToFolderMut.mutate({ orgId: orgId!, ids: selectedIds, folderId: null })}>
+                    Unfiled
+                  </DropdownMenuItem>
+                  {(folders ?? []).map(f => (
+                    <DropdownMenuItem key={f.id} onClick={() => copyToFolderMut.mutate({ orgId: orgId!, ids: selectedIds, folderId: f.id })}>
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm"><Download className="h-3.5 w-3.5 mr-1" /> Export Selected</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => exportQuestions("xlsx")}>XLSX</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportQuestions("csv")}>CSV</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Button variant="destructive" size="sm" onClick={() => {
