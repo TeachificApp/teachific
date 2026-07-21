@@ -4624,3 +4624,18 @@
 - [x] Frontend: App.tsx — /admin/orgs/merge route registered
 - [x] Tests: orgMerge.test.ts — 14 tests covering importability, procedure names, table coverage, slug conflict resolution, duplicate member handling, summary structure, audit log schema, platform admin guard, self-merge prevention, preview count aggregation
 - [x] All 421 tests passing
+
+## Question Bank Import/Export (Cursor — commit 34d0666)
+
+- [x] QuestionBankImportPage: added .quiz file support to the import wizard
+- [x] QuestionBankImportPage: hosted original .zip / SCORM / .quiz uploads during preview and surfaced the hosted package link
+- [x] quizImportRoutes.ts: extraction into native org-scoped question bank questions
+- [x] quizImportRoutes.ts: preserved/imported media references for image/video/audio where available
+- [x] quizImportRoutes.ts: normalized imported tags into the question bank tag JSON format
+- [x] QuestionBankPage: added bulk copy-to-folder for selected questions
+- [x] QuestionBankPage: added question bank export (iSpring-style XLSX and CSV)
+- [x] QuestionBankPage: export covers selected questions or current filtered view
+- [x] quizExcel.ts: updated to support the new export formats
+- [x] questionBankDb.ts: updated query helpers for import/export flows
+- [x] questionBankRouter.ts: new tRPC procedures for import extraction and export
+- [x] All 421 tests passing after merge
