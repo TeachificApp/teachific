@@ -52,6 +52,9 @@ import { LMSSalesTab } from "@/components/LMSSalesTab";
 import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 import DigitalDownloadsAdmin from "./DigitalDownloadsAdmin";
 import PhysicalProductsAdmin from "./PhysicalProductsAdmin";
+import BundlesAdmin from "./BundlesAdmin";
+import WebinarsPage from "../admin/WebinarsPage";
+import MembershipsPage from "../products/MembershipsPage";
 import OrderBumpsAdmin from "./OrderBumpsAdmin";
 import CertificateTemplatesAdmin from "./CertificateTemplatesAdmin";
 import LessonBlockEditor from "@/components/LessonBlockEditor";
@@ -6320,9 +6323,9 @@ export default function LMSAdmin() {
               {activeTab === "cohorts"     && <CoursesTab onEdit={setEditingCourseId} typeFilter="cohort" />}
               {activeTab === "downloads"   && <DigitalDownloadsAdmin initialEditId={urlEditDownload ? Number(urlEditDownload) : undefined} />}
               {activeTab === "products"    && <PhysicalProductsAdmin initialEditId={urlEditProduct ? Number(urlEditProduct) : undefined} />}
-              {activeTab === "webinars"    && <LMSComingSoonTab icon={Radio} title="Webinars" description="Host and manage live webinar sessions with registration, reminders, and replay access." color="teal" />}
-              {activeTab === "bundles"     && <LMSComingSoonTab icon={Layers} title="Bundles" description="Package courses, downloads, products, and quizzes together and sell them as a single bundle at a special price." color="teal" />}
-              {activeTab === "memberships" && <LMSComingSoonTab icon={Award} title="Memberships" description="Create membership tiers that unlock course access, community features, and exclusive content on a recurring basis." color="teal" />}
+              {activeTab === "webinars"    && <WebinarsPage />}
+              {activeTab === "bundles"     && <BundlesAdmin />}
+              {activeTab === "memberships" && <MembershipsPage />}
               {activeTab === "communities" && <CommunitiesTab />}
               {activeTab === "orderbumps"  && <OrderBumpsAdmin />}
               {activeTab === "collections" && <CollectionsTab />}
