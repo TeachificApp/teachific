@@ -2293,7 +2293,7 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
   const aiGenerateLandingPage = trpc.lmsAdmin.aiGenerateLandingPage.useMutation({
     onSuccess: () => {
       toast.success("Landing page generated! Opening builder...");
-      setTimeout(() => navigate(`/admin/lms/${courseId}/landing-builder?t=${Date.now()}`), 600);
+      setTimeout(() => navigate(`/lms/courses/${courseId}/landing-builder?t=${Date.now()}`), 600);
     },
     onError: e => toast.error(`AI error: ${e.message}`),
   });
@@ -2316,7 +2316,7 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
       {/* Quick actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <button
-          onClick={() => navigate(`/admin/lms/${courseId}/landing-builder`)}
+          onClick={() => navigate(`/lms/courses/${courseId}/landing-builder`)}
           className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-colors text-left"
         >
           <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">

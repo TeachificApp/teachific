@@ -69,7 +69,7 @@ function OverviewBlockEditor({
         <div className="flex flex-col gap-2">
           <Button
             className="bg-teal-600 hover:bg-teal-700 text-white w-full"
-            onClick={() => { navigate(`/admin/lms/${courseId}?tab=overview`); onClose(); }}
+            onClick={() => { navigate(`/lms/courses/${courseId}`); onClose(); }}
           >
             <ExternalLink className="w-4 h-4 mr-2" /> Open in Admin Panel
           </Button>

@@ -4639,3 +4639,16 @@
 - [x] questionBankDb.ts: updated query helpers for import/export flows
 - [x] questionBankRouter.ts: new tRPC procedures for import extraction and export
 - [x] All 421 tests passing after merge
+
+## Routing Fix — /admin/lms/:courseId/landing-builder 404
+
+- [x] Bug: /admin/lms/:courseId/landing-builder returned 404 during impersonation (and for all users)
+- [x] Root cause: Route was never registered in App.tsx; CourseBuilderPage.tsx navigated to old /admin/lms path instead of canonical /lms/courses/:courseId path
+- [x] Fix 1: Added /admin/lms/:courseId/landing-builder as a legacy alias route in AdminRouter and SubdomainSchoolRouter in App.tsx
+- [x] Fix 2: Updated CourseBuilderPage.tsx navigate calls to use /lms/courses/${courseId}/landing-builder
+- [x] Fix 3: Updated CourseOverview.tsx navigate call to use /lms/courses/${courseId}
+- [x] Fix 4: Updated lms/LandingPageBuilder.tsx back button to use /lms/courses/${courseId}
+- [x] Fix 5: Updated admin/LandingPageBuilder.tsx back button to use /lms/courses/${courseId}
+- [x] Fix 6: Updated DownloadLandingPageBuilder.tsx back button to use /admin/downloads/${productId}
+- [x] Fix 7: Updated ProductLandingPageBuilder.tsx back button to use /admin/products/${productId}
+- [x] All 421 tests still passing

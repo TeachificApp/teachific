@@ -401,6 +401,8 @@ function AdminRouter() {
           <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
+          {/* Legacy alias — CourseBuilderPage still navigates to /admin/lms/:courseId/landing-builder */}
+          <Route path="/admin/lms/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
           <Route path="/lms/school/landing-builder">{() => <OrgLandingPageEditor />}</Route>
           <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
           <Route path="/admin/downloads/:productId/landing-builder">{() => <DownloadLandingPageBuilder />}</Route>
@@ -549,6 +551,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/thank-you-builder" component={PageBuilderPage} />
         <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
+        {/* Legacy alias — CourseBuilderPage still navigates to /admin/lms/:courseId/landing-builder */}
+        <Route path="/admin/lms/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
         <Route path="/lms/school/landing-builder">{() => <OrgLandingPageEditor />}</Route>
         <Route path="/admin/downloads/:productId/page-builder" component={PageBuilderPage} />
         <Route path="/admin/downloads/:productId/landing-builder">{() => <DownloadLandingPageBuilder />}</Route>

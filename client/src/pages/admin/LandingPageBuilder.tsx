@@ -5663,7 +5663,7 @@ export default function LandingPageBuilder() {
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(`/admin/lms?editCourse=${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
+          <button onClick={() => navigate(`/lms/courses/${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
             <ArrowLeft size={16} /> Back to Course
           </button>
           <div className="w-px h-5 bg-gray-200" />
