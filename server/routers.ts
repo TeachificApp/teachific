@@ -145,6 +145,7 @@ import { blueprintRouter } from "./routers/blueprintRouter";
 import { blueprintReferralRouter } from "./routers/blueprintReferralRouter";
 import { blueprintPurchaseRouter } from "./routers/blueprintPurchaseRouter";
 import { orgMergeRouter } from "./routers/orgMergeRouter";
+import { ipSharingRouter } from "./routers/ipSharingRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -261,6 +262,7 @@ export const appRouter = router({
   blueprintReferrals: blueprintReferralRouter,
   blueprintPurchases: blueprintPurchaseRouter,
   orgMerge: orgMergeRouter,
+  ipSharing: ipSharingRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
 

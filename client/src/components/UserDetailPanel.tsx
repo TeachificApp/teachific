@@ -61,6 +61,12 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  Monitor,
+  Wifi,
+  WifiOff,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -529,8 +535,13 @@ function EnrollmentsTab({
 }) {
   const [enrollOrgId, setEnrollOrgId] = useState<number | null>(null);
   const [enrollCourseId, setEnrollCourseId] = useState<number | null>(null);
+  const [expandedEnrollId, setExpandedEnrollId] = useState<number | null>(null);
 
   const { data: enrollments, refetch: refetchEnrollments } = trpc.users.getEnrollments.useQuery({ userId: user.id });
+  const { data: ipSummary } = trpc.ipSharing.getEnrollmentIpSummary.useQuery(
+    { userId: user.id },
+    { enabled: isPlatformAdmin }
+  );
   const { data: orgs } = trpc.orgs.list.useQuery(undefined, { enabled: isPlatformAdmin });
   const { data: courses } = trpc.lms.courses.list.useQuery(
     { orgId: enrollOrgId ?? 0 },
@@ -554,6 +565,12 @@ function EnrollmentsTab({
 
   const activeEnrollments = enrollments?.filter((e) => e.isActive) ?? [];
 
+  // Map courseId → IP summary row
+  const ipByCourse = new Map<number, { distinctIpCount: number; lastAccessIp: string | null; accessCount: number; isSuspicious: boolean }>();
+  for (const row of ipSummary?.enrollments ?? []) {
+    ipByCourse.set(row.courseId, row);
+  }
+
   return (
     <div className="space-y-5">
       <div className="space-y-3">
@@ -563,30 +580,83 @@ function EnrollmentsTab({
 
         {activeEnrollments.length > 0 ? (
           <div className="space-y-2">
-            {activeEnrollments.map((e) => (
-              <div key={e.id} className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{(e as any).courseTitle ?? `Course #${e.courseId}`}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {e.progressPct ?? 0}% complete · enrolled {new Date(e.enrolledAt).toLocaleDateString()}
-                  </p>
-                  {(e as any).orgName && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <Building2 className="h-3 w-3" /> {(e as any).orgName}
-                    </p>
+            {activeEnrollments.map((e) => {
+              const ip = ipByCourse.get(e.courseId);
+              const isExpanded = expandedEnrollId === e.id;
+              return (
+                <div key={e.id} className="rounded-lg border border-border/50 bg-muted/20 overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2.5 gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{(e as any).courseTitle ?? `Course #${e.courseId}`}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {e.progressPct ?? 0}% complete · enrolled {new Date(e.enrolledAt).toLocaleDateString()}
+                      </p>
+                      {(e as any).orgName && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Building2 className="h-3 w-3" /> {(e as any).orgName}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isPlatformAdmin && ip && (
+                        <button
+                          onClick={() => setExpandedEnrollId(isExpanded ? null : e.id)}
+                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md border transition-colors ${
+                            ip.isSuspicious
+                              ? "border-orange-400/50 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
+                              : "border-border/50 bg-background text-muted-foreground hover:bg-muted/50"
+                          }`}
+                          title={ip.isSuspicious ? "Suspicious: multiple IPs detected" : "IP access info"}
+                        >
+                          {ip.isSuspicious ? <WifiOff className="h-3 w-3" /> : <Wifi className="h-3 w-3" />}
+                          <span>{ip.distinctIpCount} IP{ip.distinctIpCount !== 1 ? "s" : ""}</span>
+                          {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => revokeMutation.mutate({ enrollmentId: e.id })}
+                        disabled={revokeMutation.isPending}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  {isExpanded && ip && (
+                    <div className="border-t border-border/40 px-3 py-2.5 bg-muted/30 space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs">
+                        <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Distinct IPs:</span>
+                        <span className={`font-medium ${ip.isSuspicious ? "text-orange-400" : ""}`}>{ip.distinctIpCount}</span>
+                        {ip.isSuspicious && (
+                          <Badge variant="outline" className="text-orange-400 border-orange-400/40 text-[10px] py-0">Suspicious</Badge>
+                        )}
+                      </div>
+                      {ip.lastAccessIp && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Wifi className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground">Last IP:</span>
+                          <code className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded">{ip.lastAccessIp}</code>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-xs">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Total accesses:</span>
+                        <span className="font-medium">{ip.accessCount}</span>
+                      </div>
+                      <a
+                        href={`/admin/sharing-monitor?userId=${user.id}`}
+                        className="flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                      >
+                        <ExternalLink className="h-3 w-3" /> View full IP timeline
+                      </a>
+                    </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive shrink-0"
-                  onClick={() => revokeMutation.mutate({ enrollmentId: e.id })}
-                  disabled={revokeMutation.isPending}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="rounded-lg border border-dashed border-border/50 px-4 py-6 text-center">

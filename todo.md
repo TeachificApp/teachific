@@ -4652,3 +4652,33 @@
 - [x] Fix 6: Updated DownloadLandingPageBuilder.tsx back button to use /admin/downloads/${productId}
 - [x] Fix 7: Updated ProductLandingPageBuilder.tsx back button to use /admin/products/${productId}
 - [x] All 421 tests still passing
+
+## IP Sharing Monitor + Enrollment IP Breakdown (UltrasoundAssist Port)
+
+- [ ] Backend: ipSharingRouter — getFlags (platform-admin: all orgs; org-admin: own org only), updateFlag (confirm/warn/dismiss + notes), getIpTimeline (per-user IP access log with content breakdown), getOrgRiskSummary (per-org flag counts and risk score)
+- [ ] Backend: users.getEnrollmentsWithIpBreakdown — extend getEnrollmentsByUser to include per-enrollment IP access summary (distinct IPs, last accessed IP, access count, last accessed at)
+- [ ] Backend: users.getIpAccessLog — paginated IP access log for a specific user (platform-admin and org-admin scoped)
+- [ ] Frontend: UserDetailPanel Enrollments tab — add IP access column (distinct IPs badge, last IP, last accessed) to each enrollment row; add "View IP Log" expand section
+- [ ] Frontend: IP Sharing Monitor page at /admin/sharing-monitor — platform admin view: all flagged users across all orgs, filter by org/status/date, bulk actions
+- [ ] Frontend: IP Sharing Monitor in org-admin Members section — org-scoped view of flagged members, same actions (confirm/warn/dismiss)
+- [ ] Frontend: Per-user IP timeline modal — full chronological IP access log with content name, IP, user agent, timestamp; flag/unflag actions
+- [ ] Frontend: DashboardLayout — add Sharing Monitor link to Platform Admin section and to Members section for org admins
+- [ ] Frontend: PlatformAdminPage — add Sharing Monitor tab
+- [ ] Tests: ipSharingRouter procedures, org-scoping, flag status transitions
+
+## IP Sharing Monitor + Enrollment IP Breakdown (ported from UltrasoundAssist)
+
+- [x] Backend: ipSharingRouter with getFlags, updateFlag, getIpTimeline, getEnrollmentIpBreakdown, getOrgRiskSummary procedures
+- [x] Backend: getFlags — multi-tier scoped: platform admins see all flags across all orgs; org admins see only their org's flags
+- [x] Backend: updateFlag — platform admins can confirm/warn/dismiss any flag; org admins can only update flags in their own org
+- [x] Backend: getIpTimeline — returns per-IP access log with content_type/content_id breakdown for a given user
+- [x] Backend: getEnrollmentIpBreakdown — returns per-enrollment IP access summary for UserDetailPanel
+- [x] Backend: getOrgRiskSummary — platform admin only: per-org risk scores, flag counts, most flagged users
+- [x] Backend: wired into appRouter as ipSharing
+- [x] Frontend: UserDetailPanel EnrollmentsTab — IP breakdown accordion per enrollment (expand to see which IPs accessed each course, with timestamps and access counts)
+- [x] Frontend: SharingMonitorPage at /admin/sharing-monitor — dual-mode (platform admin vs org admin)
+- [x] Frontend: Platform admin view — org risk summary table + flag list with filter by status/severity, IP timeline modal, confirm/warn/dismiss actions
+- [x] Frontend: Org admin view — scoped to their own org's flags only, same actions
+- [x] Frontend: App.tsx — /admin/sharing-monitor route registered
+- [x] Frontend: DashboardLayout — "Sharing Monitor" link added to Platform Admin sidebar section (ShieldAlert icon)
+- [x] All 421 tests passing

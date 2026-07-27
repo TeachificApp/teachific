@@ -67,6 +67,7 @@ import {
   LayoutTemplate,
   Layers,
   Merge,
+  ShieldAlert,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -311,6 +312,12 @@ const navGroups: NavGroup[] = [
         icon: Merge,
         label: "Merge Organizations",
         path: "/admin/orgs/merge",
+        adminOnly: true,
+      },
+      {
+        icon: ShieldAlert,
+        label: "Sharing Monitor",
+        path: "/admin/sharing-monitor",
         adminOnly: true,
       },
     ],
