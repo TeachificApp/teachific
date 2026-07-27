@@ -2829,10 +2829,35 @@ export type InsertLmsAffiliateConversion = typeof lmsAffiliateConversions.$infer
 // ─── LMS: Certificates ────────────────────────────────────────────────────────────
 export const lmsCertificateTemplates = mysqlTable("lms_certificate_templates", {
   id: int("id").autoincrement().primaryKey(),
-  orgId: int("orgId").notNull(),
+  orgId: int("orgId"),  // null = global template (platform admin)
   name: varchar("name", { length: 255 }).notNull(),
-  templateHtml: longtext("template_html").notNull(),
+  description: text("description"),
+  // Branding
+  logoUrl: text("logo_url"),
+  backgroundImageUrl: text("background_image_url"),
+  backgroundColorHex: varchar("background_color_hex", { length: 20 }).default("#f0fbfc"),
+  // Text content
+  titleText: varchar("title_text", { length: 255 }).default("Certificate of Completion"),
+  subtitleText: varchar("subtitle_text", { length: 255 }),
+  bodyText: text("body_text"),
+  signatureText: varchar("signature_text", { length: 255 }),
+  signatureTitleText: varchar("signature_title_text", { length: 255 }),
+  footerText: text("footer_text"),
+  // Typography & colors
+  fontFamily: varchar("font_family", { length: 100 }).default("Helvetica"),
+  primaryColorHex: varchar("primary_color_hex", { length: 20 }).default("#189aa1"),
+  accentColorHex: varchar("accent_color_hex", { length: 20 }).default("#c9a84c"),
+  textColorHex: varchar("text_color_hex", { length: 20 }).default("#0e1e2e"),
+  // Border
+  showBorder: boolean("show_border").default(true),
+  borderColorHex: varchar("border_color_hex", { length: 20 }).default("#189aa1"),
+  borderWidth: int("border_width").default(3),
+  // Layout
+  layout: mysqlEnum("layout", ["classic", "modern", "minimal"]).default("classic"),
+  // Org default
+  isDefault: boolean("is_default").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 export type LmsCertificateTemplate = typeof lmsCertificateTemplates.$inferSelect;
 export type InsertLmsCertificateTemplate = typeof lmsCertificateTemplates.$inferInsert;
@@ -2841,7 +2866,10 @@ export const lmsCertificates = mysqlTable("lms_certificates", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
   enrollmentId: int("enrollment_id").notNull(),
-  templateId: int("template_id").notNull(),
+  userId: int("user_id"),
+  courseId: int("course_id"),
+  templateId: int("template_id"),
+  certificateUrl: text("certificate_url"),
   certificateNumber: varchar("certificate_number", { length: 64 }).unique().notNull(),
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
 });

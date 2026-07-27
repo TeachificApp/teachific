@@ -8,6 +8,15 @@ import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
 import { assertCourseOwnership } from "./lmsHelpers";
 import {
+  getLmsCertificateTemplatesByOrg,
+  getLmsCertificateTemplateById,
+  createLmsCertificateTemplate,
+  updateLmsCertificateTemplate,
+  deleteLmsCertificateTemplate,
+  listIssuedCertificates,
+} from "../lmsDb";
+import { storagePut, storagePresignedPut } from "../storage";
+import {
   lmsCourses,
   lmsLandingPages,
   digitalProducts,
@@ -310,10 +319,136 @@ const _lmsAdminBaseRouter = router({
     }),
 });
 
+// ─── Certificate Templates sub-router ────────────────────────────────────────
+const _lmsCertificateTemplatesRouter = router({
+  listCertificateTemplates: protectedProcedure
+    .input(z.object({ orgId: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const orgId = input?.orgId ?? await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+      return getLmsCertificateTemplatesByOrg(orgId);
+    }),
+  getCertificateTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return getLmsCertificateTemplateById(input.id);
+    }),
+  createCertificateTemplate: protectedProcedure
+    .input(z.object({
+      orgId: z.number().optional(),
+      name: z.string().min(1),
+      description: z.string().optional(),
+      logoUrl: z.string().optional(),
+      backgroundImageUrl: z.string().optional(),
+      backgroundColorHex: z.string().optional(),
+      titleText: z.string().optional(),
+      subtitleText: z.string().optional(),
+      bodyText: z.string().optional(),
+      signatureText: z.string().optional(),
+      signatureTitleText: z.string().optional(),
+      footerText: z.string().optional(),
+      fontFamily: z.string().optional(),
+      primaryColorHex: z.string().optional(),
+      accentColorHex: z.string().optional(),
+      textColorHex: z.string().optional(),
+      showBorder: z.boolean().optional(),
+      borderColorHex: z.string().optional(),
+      borderWidth: z.number().int().optional(),
+      layout: z.enum(["classic", "modern", "minimal"]).optional(),
+      isDefault: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = input.orgId ?? await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+      const { orgId: _orgId, ...rest } = input;
+      return createLmsCertificateTemplate({ orgId, ...rest } as any);
+    }),
+  updateCertificateTemplate: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      logoUrl: z.string().nullable().optional(),
+      backgroundImageUrl: z.string().nullable().optional(),
+      backgroundColorHex: z.string().optional(),
+      titleText: z.string().optional(),
+      subtitleText: z.string().nullable().optional(),
+      bodyText: z.string().nullable().optional(),
+      signatureText: z.string().nullable().optional(),
+      signatureTitleText: z.string().nullable().optional(),
+      footerText: z.string().nullable().optional(),
+      fontFamily: z.string().optional(),
+      primaryColorHex: z.string().optional(),
+      accentColorHex: z.string().optional(),
+      textColorHex: z.string().optional(),
+      showBorder: z.boolean().optional(),
+      borderColorHex: z.string().optional(),
+      borderWidth: z.number().int().optional(),
+      layout: z.enum(["classic", "modern", "minimal"]).optional(),
+      isDefault: z.boolean().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      return updateLmsCertificateTemplate(id, data as any);
+    }),
+  deleteCertificateTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteLmsCertificateTemplate(input.id);
+      return { ok: true };
+    }),
+  listIssuedCertificates: protectedProcedure
+    .input(z.object({ orgId: z.number().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const orgId = input?.orgId ?? await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+      return listIssuedCertificates(orgId);
+    }),
+  previewCertificateTemplate: protectedProcedure
+    .input(z.object({ templateId: z.number().optional() }))
+    .mutation(async ({ input }) => {
+      const { generateCertificatePdf } = await import("../lib/certificateGenerator");
+      let template = null;
+      if (input.templateId) {
+        template = await getLmsCertificateTemplateById(input.templateId);
+      }
+      const pdfBuffer = await generateCertificatePdf({
+        learnerName: "Jane Smith",
+        courseTitle: "Sample Course Title",
+        issuedAt: new Date(),
+        credentials: "RVT, RDMS",
+        template: template ? {
+          primaryColor: template.primaryColorHex,
+          accentColor: template.accentColorHex,
+          textColor: template.textColorHex,
+          fontFamily: template.fontFamily,
+          signatureName: template.signatureText,
+          signatureTitle: template.signatureTitleText,
+          backgroundImageUrl: template.backgroundImageUrl,
+          logoUrl: template.logoUrl,
+          footerText: template.footerText,
+          layout: template.layout as any,
+        } : null,
+      });
+      const key = `certificate-previews/preview-${Date.now()}.pdf`;
+      const { url } = await storagePut(key, pdfBuffer, "application/pdf");
+      return { url };
+    }),
+  uploadCertificateAsset: protectedProcedure
+    .input(z.object({ filename: z.string(), contentType: z.string() }))
+    .mutation(async ({ input }) => {
+      const key = `certificate-assets/${Date.now()}-${input.filename}`;
+      const { url: uploadUrl } = await storagePresignedPut(key, input.contentType);
+      const publicUrl = uploadUrl.split("?")[0];
+      return { uploadUrl, publicUrl, key };
+    }),
+});
+
 // Merge all sub-routers into lmsAdminRouter (matching ultrasound-app structure)
 export const lmsAdminRouter = router({
   ..._lmsAdminBaseRouter._def.procedures,
   ...lmsCourseBuilderRouter._def.procedures,
   ...lmsEnrollmentAdminRouter._def.procedures,
   ...lmsCohortAdminRouter._def.procedures,
+  ..._lmsCertificateTemplatesRouter._def.procedures,
 });

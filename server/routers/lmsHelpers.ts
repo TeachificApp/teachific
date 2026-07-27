@@ -269,7 +269,7 @@ export async function issueCertificateIfEnabled(
 ) {
   if (!db) return;
   // Check course has certificate enabled
-  const [course] = await db.select({ hasCertificate: lmsCourses.hasCertificate, title: lmsCourses.title, certificateTemplateId: lmsCourses.certificateTemplateId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+  const [course] = await db.select({ hasCertificate: lmsCourses.hasCertificate, title: lmsCourses.title, certificateTemplateId: lmsCourses.certificateTemplateId, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
   if (!course?.hasCertificate) return;
 
   // Check if certificate already issued
@@ -315,6 +315,7 @@ export async function issueCertificateIfEnabled(
     userId,
     courseId,
     enrollmentId,
+    orgId: course.orgId ?? 0,
     certificateUrl,
     templateId: template?.id ?? null,
     issuedAt,

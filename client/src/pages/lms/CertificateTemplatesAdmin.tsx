@@ -1,6 +1,7 @@
 /**
  * CertificateTemplatesAdmin.tsx
- * Admin UI for managing certificate templates and viewing issued certificates.
+ * Admin UI for managing LMS certificate PDF templates and viewing issued certificates.
+ * Uses trpc.lmsAdmin.* procedures backed by lmsCertificateTemplates table.
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -15,85 +16,131 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Award, Star, Download, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Award, Star, Download, Eye, ExternalLink } from "lucide-react";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface CertTemplate {
   id: number;
   name: string;
   description?: string | null;
   backgroundImageUrl?: string | null;
+  backgroundColorHex?: string | null;
   logoUrl?: string | null;
-  primaryColor: string;
-  accentColor: string;
-  textColor: string;
-  fontFamily: string;
-  signatureName?: string | null;
-  signatureTitle?: string | null;
-  signatureImageUrl?: string | null;
+  titleText?: string | null;
+  subtitleText?: string | null;
+  bodyText?: string | null;
+  signatureText?: string | null;
+  signatureTitleText?: string | null;
   footerText?: string | null;
-  organizationName: string;
-  layout: "classic" | "modern" | "minimal";
-  isDefault: boolean;
-  isActive: boolean;
-  createdAt: Date | string;
+  primaryColorHex?: string | null;
+  accentColorHex?: string | null;
+  textColorHex?: string | null;
+  fontFamily?: string | null;
+  showBorder?: boolean | null;
+  borderColorHex?: string | null;
+  borderWidth?: number | null;
+  layout?: "classic" | "modern" | "minimal" | null;
+  isDefault?: boolean | null;
+  createdAt?: Date | string | null;
 }
 
-const DEFAULT_TEMPLATE: Omit<CertTemplate, "id" | "createdAt"> = {
+type TemplateFormData = Omit<CertTemplate, "id" | "createdAt">;
+
+const DEFAULT_FORM: TemplateFormData = {
   name: "",
   description: "",
   backgroundImageUrl: null,
+  backgroundColorHex: "#f0fbfc",
   logoUrl: null,
-  primaryColor: "#189aa1",
-  accentColor: "#c9a84c",
-  textColor: "#0e1e2e",
-  fontFamily: "Helvetica",
-  signatureName: "Lara Williams, RVT, RDMS",
-  signatureTitle: "Founder, Teachific™",
-  signatureImageUrl: null,
+  titleText: "Certificate of Completion",
+  subtitleText: null,
+  bodyText: null,
+  signatureText: null,
+  signatureTitleText: null,
   footerText: "www.teachific.com  ·  © Teachific™",
-  organizationName: "Teachific",
+  primaryColorHex: "#189aa1",
+  accentColorHex: "#c9a84c",
+  textColorHex: "#0e1e2e",
+  fontFamily: "Helvetica",
+  showBorder: true,
+  borderColorHex: "#189aa1",
+  borderWidth: 3,
   layout: "classic",
   isDefault: false,
-  isActive: true,
 };
+
+// ── TemplateEditor sub-component ─────────────────────────────────────────────
 
 function TemplateEditor({
   initial,
   onSave,
   onCancel,
   isSaving,
+  templateId,
 }: {
   initial: Partial<CertTemplate>;
-  onSave: (data: Omit<CertTemplate, "id" | "createdAt">) => void;
+  onSave: (data: TemplateFormData) => void;
   onCancel: () => void;
   isSaving: boolean;
+  templateId?: number;
 }) {
-  const [form, setForm] = useState<Omit<CertTemplate, "id" | "createdAt">>({
-    ...DEFAULT_TEMPLATE,
+  const utils = trpc.useUtils();
+  const [form, setForm] = useState<TemplateFormData>({
+    ...DEFAULT_FORM,
     ...initial,
   });
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
-  const set = (key: keyof typeof form, value: any) => setForm(f => ({ ...f, [key]: value }));
+  const set = (key: keyof TemplateFormData, value: any) =>
+    setForm(f => ({ ...f, [key]: value }));
+
+  const previewMut = trpc.lmsAdmin.previewCertificateTemplate.useMutation({
+    onSuccess: ({ url }) => {
+      window.open(url, "_blank");
+      setIsPreviewing(false);
+    },
+    onError: (e) => {
+      toast.error(`Preview failed: ${e.message}`);
+      setIsPreviewing(false);
+    },
+  });
+
+  const handlePreview = () => {
+    setIsPreviewing(true);
+    previewMut.mutate({ templateId });
+  };
 
   return (
-    <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1">
+      {/* Basic info */}
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <Label>Template Name *</Label>
-          <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="e.g. Classic Teal" />
+          <Input
+            value={form.name}
+            onChange={e => set("name", e.target.value)}
+            placeholder="e.g. Classic Teal"
+          />
         </div>
         <div className="col-span-2">
           <Label>Description</Label>
-          <Textarea value={form.description ?? ""} onChange={e => set("description", e.target.value)} rows={2} placeholder="Brief description of this template" />
+          <Textarea
+            value={form.description ?? ""}
+            onChange={e => set("description", e.target.value)}
+            rows={2}
+            placeholder="Brief description of this template"
+          />
         </div>
       </div>
 
+      {/* Layout & Branding */}
       <div className="border rounded-lg p-3 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Layout & Branding</p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Layout Style</Label>
-            <Select value={form.layout} onValueChange={v => set("layout", v)}>
+            <Select value={form.layout ?? "classic"} onValueChange={v => set("layout", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="classic">Classic (centered, header band)</SelectItem>
@@ -103,48 +150,128 @@ function TemplateEditor({
             </Select>
           </div>
           <div>
-            <Label>Organization Name</Label>
-            <Input value={form.organizationName} onChange={e => set("organizationName", e.target.value)} />
+            <Label>Background Color</Label>
+            <div className="flex gap-2 items-center">
+              <input
+                type="color"
+                value={form.backgroundColorHex ?? "#f0fbfc"}
+                onChange={e => set("backgroundColorHex", e.target.value)}
+                className="w-10 h-9 rounded border cursor-pointer"
+              />
+              <Input
+                value={form.backgroundColorHex ?? ""}
+                onChange={e => set("backgroundColorHex", e.target.value)}
+                className="font-mono text-sm"
+              />
+            </div>
           </div>
           <div>
             <Label>Logo URL</Label>
-            <Input value={form.logoUrl ?? ""} onChange={e => set("logoUrl", e.target.value || null)} placeholder="https://..." />
+            <Input
+              value={form.logoUrl ?? ""}
+              onChange={e => set("logoUrl", e.target.value || null)}
+              placeholder="https://..."
+            />
           </div>
           <div>
             <Label>Background Image URL</Label>
-            <Input value={form.backgroundImageUrl ?? ""} onChange={e => set("backgroundImageUrl", e.target.value || null)} placeholder="https://..." />
+            <Input
+              value={form.backgroundImageUrl ?? ""}
+              onChange={e => set("backgroundImageUrl", e.target.value || null)}
+              placeholder="https://..."
+            />
           </div>
         </div>
       </div>
 
+      {/* Certificate Text */}
+      <div className="border rounded-lg p-3 space-y-3">
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Certificate Text</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Title</Label>
+            <Input
+              value={form.titleText ?? ""}
+              onChange={e => set("titleText", e.target.value || null)}
+              placeholder="Certificate of Completion"
+            />
+          </div>
+          <div>
+            <Label>Subtitle</Label>
+            <Input
+              value={form.subtitleText ?? ""}
+              onChange={e => set("subtitleText", e.target.value || null)}
+              placeholder="This certifies that"
+            />
+          </div>
+          <div className="col-span-2">
+            <Label>Body Text (optional)</Label>
+            <Textarea
+              value={form.bodyText ?? ""}
+              onChange={e => set("bodyText", e.target.value || null)}
+              rows={2}
+              placeholder="has successfully completed..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Colors & Typography */}
       <div className="border rounded-lg p-3 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Colors & Typography</p>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <Label>Primary Color</Label>
             <div className="flex gap-2 items-center">
-              <input type="color" value={form.primaryColor} onChange={e => set("primaryColor", e.target.value)} className="w-10 h-9 rounded border cursor-pointer" />
-              <Input value={form.primaryColor} onChange={e => set("primaryColor", e.target.value)} className="font-mono text-sm" />
+              <input
+                type="color"
+                value={form.primaryColorHex ?? "#189aa1"}
+                onChange={e => set("primaryColorHex", e.target.value)}
+                className="w-10 h-9 rounded border cursor-pointer"
+              />
+              <Input
+                value={form.primaryColorHex ?? ""}
+                onChange={e => set("primaryColorHex", e.target.value)}
+                className="font-mono text-sm"
+              />
             </div>
           </div>
           <div>
             <Label>Accent Color</Label>
             <div className="flex gap-2 items-center">
-              <input type="color" value={form.accentColor} onChange={e => set("accentColor", e.target.value)} className="w-10 h-9 rounded border cursor-pointer" />
-              <Input value={form.accentColor} onChange={e => set("accentColor", e.target.value)} className="font-mono text-sm" />
+              <input
+                type="color"
+                value={form.accentColorHex ?? "#c9a84c"}
+                onChange={e => set("accentColorHex", e.target.value)}
+                className="w-10 h-9 rounded border cursor-pointer"
+              />
+              <Input
+                value={form.accentColorHex ?? ""}
+                onChange={e => set("accentColorHex", e.target.value)}
+                className="font-mono text-sm"
+              />
             </div>
           </div>
           <div>
             <Label>Text Color</Label>
             <div className="flex gap-2 items-center">
-              <input type="color" value={form.textColor} onChange={e => set("textColor", e.target.value)} className="w-10 h-9 rounded border cursor-pointer" />
-              <Input value={form.textColor} onChange={e => set("textColor", e.target.value)} className="font-mono text-sm" />
+              <input
+                type="color"
+                value={form.textColorHex ?? "#0e1e2e"}
+                onChange={e => set("textColorHex", e.target.value)}
+                className="w-10 h-9 rounded border cursor-pointer"
+              />
+              <Input
+                value={form.textColorHex ?? ""}
+                onChange={e => set("textColorHex", e.target.value)}
+                className="font-mono text-sm"
+              />
             </div>
           </div>
         </div>
         <div>
           <Label>Font Family</Label>
-          <Select value={form.fontFamily} onValueChange={v => set("fontFamily", v)}>
+          <Select value={form.fontFamily ?? "Helvetica"} onValueChange={v => set("fontFamily", v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Helvetica">Helvetica (default)</SelectItem>
@@ -155,52 +282,117 @@ function TemplateEditor({
         </div>
       </div>
 
+      {/* Border */}
+      <div className="border rounded-lg p-3 space-y-3">
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.showBorder ?? true}
+            onCheckedChange={v => set("showBorder", v)}
+            id="showBorder"
+          />
+          <Label htmlFor="showBorder" className="font-semibold">Show Border</Label>
+        </div>
+        {form.showBorder && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Border Color</Label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={form.borderColorHex ?? "#189aa1"}
+                  onChange={e => set("borderColorHex", e.target.value)}
+                  className="w-10 h-9 rounded border cursor-pointer"
+                />
+                <Input
+                  value={form.borderColorHex ?? ""}
+                  onChange={e => set("borderColorHex", e.target.value)}
+                  className="font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Border Width (px)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={form.borderWidth ?? 3}
+                onChange={e => set("borderWidth", parseInt(e.target.value) || 3)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Signature */}
       <div className="border rounded-lg p-3 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Signature</p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Signature Name</Label>
-            <Input value={form.signatureName ?? ""} onChange={e => set("signatureName", e.target.value || null)} placeholder="e.g. Lara Williams, RVT, RDMS" />
+            <Input
+              value={form.signatureText ?? ""}
+              onChange={e => set("signatureText", e.target.value || null)}
+              placeholder="e.g. Lara Williams, RVT, RDMS"
+            />
           </div>
           <div>
             <Label>Signature Title</Label>
-            <Input value={form.signatureTitle ?? ""} onChange={e => set("signatureTitle", e.target.value || null)} placeholder="e.g. Founder, Teachific™" />
-          </div>
-          <div className="col-span-2">
-            <Label>Signature Image URL (optional)</Label>
-            <Input value={form.signatureImageUrl ?? ""} onChange={e => set("signatureImageUrl", e.target.value || null)} placeholder="https://..." />
+            <Input
+              value={form.signatureTitleText ?? ""}
+              onChange={e => set("signatureTitleText", e.target.value || null)}
+              placeholder="e.g. Founder, Teachific™"
+            />
           </div>
         </div>
       </div>
 
+      {/* Footer */}
       <div className="border rounded-lg p-3 space-y-3">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Footer</p>
         <div>
           <Label>Footer Text</Label>
-          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="www.teachific.com  ·  © Teachific™" />
+          <Input
+            value={form.footerText ?? ""}
+            onChange={e => set("footerText", e.target.value || null)}
+            placeholder="www.teachific.com  ·  © Teachific™"
+          />
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Switch checked={form.isDefault} onCheckedChange={v => set("isDefault", v)} id="isDefault" />
-          <Label htmlFor="isDefault">Set as Default Template</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch checked={form.isActive} onCheckedChange={v => set("isActive", v)} id="isActive" />
-          <Label htmlFor="isActive">Active</Label>
-        </div>
+      {/* Default toggle */}
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={form.isDefault ?? false}
+          onCheckedChange={v => set("isDefault", v)}
+          id="isDefault"
+        />
+        <Label htmlFor="isDefault">Set as Default Template</Label>
       </div>
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={onCancel} disabled={isSaving}>Cancel</Button>
-        <Button onClick={() => onSave(form)} disabled={isSaving || !form.name.trim()}>
-          {isSaving ? "Saving..." : "Save Template"}
+      {/* Actions */}
+      <div className="flex justify-between items-center pt-2">
+        <Button
+          variant="outline"
+          onClick={handlePreview}
+          disabled={isPreviewing || isSaving}
+          className="text-xs"
+        >
+          <Eye className="w-3 h-3 mr-1" />
+          {isPreviewing ? "Generating…" : "Preview PDF"}
         </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancel} disabled={isSaving}>Cancel</Button>
+          <Button onClick={() => onSave(form)} disabled={isSaving || !form.name.trim()}>
+            {isSaving ? "Saving…" : "Save Template"}
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function CertificateTemplatesAdmin() {
   const utils = trpc.useUtils();
@@ -241,14 +433,19 @@ export default function CertificateTemplatesAdmin() {
 
   const setDefaultMut = trpc.lmsAdmin.updateCertificateTemplate.useMutation({
     onSuccess: () => utils.lmsAdmin.listCertificateTemplates.invalidate(),
+    onError: (e) => toast.error(`Error: ${e.message}`),
   });
 
   return (
     <div className="space-y-6">
       <Tabs defaultValue="templates">
         <TabsList>
-          <TabsTrigger value="templates"><Award className="w-4 h-4 mr-1" />Templates</TabsTrigger>
-          <TabsTrigger value="issued"><Download className="w-4 h-4 mr-1" />Issued Certificates</TabsTrigger>
+          <TabsTrigger value="templates">
+            <Award className="w-4 h-4 mr-1" />Templates
+          </TabsTrigger>
+          <TabsTrigger value="issued">
+            <Download className="w-4 h-4 mr-1" />Issued Certificates
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Templates Tab ─────────────────────────────────────────────────── */}
@@ -256,7 +453,9 @@ export default function CertificateTemplatesAdmin() {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="text-lg font-semibold">Certificate Templates</h3>
-              <p className="text-sm text-muted-foreground">Design templates used when issuing completion certificates.</p>
+              <p className="text-sm text-muted-foreground">
+                Design templates used when generating completion certificate PDFs.
+              </p>
             </div>
             <Button onClick={() => setShowCreate(true)}>
               <Plus className="w-4 h-4 mr-1" /> New Template
@@ -265,12 +464,14 @@ export default function CertificateTemplatesAdmin() {
 
           {isLoading ? (
             <div className="text-center py-12 text-muted-foreground">Loading templates…</div>
-          ) : templates.length === 0 ? (
+          ) : (templates as CertTemplate[]).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Award className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
                 <p className="text-muted-foreground">No certificate templates yet.</p>
-                <p className="text-sm text-muted-foreground mt-1">Create a template to customise the look of issued certificates.</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Create a template to customise the look of issued certificates.
+                </p>
                 <Button className="mt-4" onClick={() => setShowCreate(true)}>
                   <Plus className="w-4 h-4 mr-1" /> Create First Template
                 </Button>
@@ -278,39 +479,72 @@ export default function CertificateTemplatesAdmin() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {templates.map((t: CertTemplate) => (
-                <Card key={t.id} className={`relative ${!t.isActive ? "opacity-60" : ""}`}>
+              {(templates as CertTemplate[]).map((t) => (
+                <Card key={t.id} className="relative">
                   {t.isDefault && (
                     <div className="absolute top-2 right-2">
-                      <Badge className="bg-amber-500 text-white text-xs"><Star className="w-3 h-3 mr-1 inline" />Default</Badge>
+                      <Badge className="bg-amber-500 text-white text-xs">
+                        <Star className="w-3 h-3 mr-1 inline" />Default
+                      </Badge>
                     </div>
                   )}
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">{t.name}</CardTitle>
-                    {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                    {t.description && (
+                      <p className="text-xs text-muted-foreground">{t.description}</p>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {/* Color swatches */}
                     <div className="flex gap-2 items-center">
-                      <div className="w-6 h-6 rounded-full border" style={{ background: t.primaryColor }} title="Primary" />
-                      <div className="w-6 h-6 rounded-full border" style={{ background: t.accentColor }} title="Accent" />
-                      <div className="w-6 h-6 rounded-full border" style={{ background: t.textColor }} title="Text" />
-                      <span className="text-xs text-muted-foreground ml-1 capitalize">{t.layout}</span>
+                      <div
+                        className="w-6 h-6 rounded-full border"
+                        style={{ background: t.primaryColorHex ?? "#189aa1" }}
+                        title="Primary"
+                      />
+                      <div
+                        className="w-6 h-6 rounded-full border"
+                        style={{ background: t.accentColorHex ?? "#c9a84c" }}
+                        title="Accent"
+                      />
+                      <div
+                        className="w-6 h-6 rounded-full border"
+                        style={{ background: t.textColorHex ?? "#0e1e2e" }}
+                        title="Text"
+                      />
+                      <span className="text-xs text-muted-foreground ml-1 capitalize">
+                        {t.layout ?? "classic"}
+                      </span>
                     </div>
                     <div className="text-xs text-muted-foreground space-y-0.5">
-                      {t.signatureName && <div>Signature: {t.signatureName}</div>}
-                      {t.organizationName && <div>Org: {t.organizationName}</div>}
+                      {t.signatureText && <div>Signature: {t.signatureText}</div>}
+                      {t.fontFamily && <div>Font: {t.fontFamily}</div>}
                     </div>
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 flex-wrap">
                       {!t.isDefault && (
-                        <Button size="sm" variant="outline" className="text-xs" onClick={() => setDefaultMut.mutate({ id: t.id, isDefault: true })}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={() => setDefaultMut.mutate({ id: t.id, isDefault: true })}
+                          disabled={setDefaultMut.isPending}
+                        >
                           <Star className="w-3 h-3 mr-1" />Set Default
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" onClick={() => setEditTemplate(t)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditTemplate(t)}
+                      >
                         <Edit className="w-3 h-3 mr-1" />Edit
                       </Button>
-                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(t.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteId(t.id)}
+                      >
                         <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
@@ -325,11 +559,14 @@ export default function CertificateTemplatesAdmin() {
         <TabsContent value="issued" className="space-y-4">
           <div>
             <h3 className="text-lg font-semibold">Issued Certificates</h3>
-            <p className="text-sm text-muted-foreground">All certificates that have been generated and emailed to learners.</p>
+            <p className="text-sm text-muted-foreground">
+              All certificates generated for learners in your organisation.
+            </p>
           </div>
+
           {certsLoading ? (
             <div className="text-center py-12 text-muted-foreground">Loading…</div>
-          ) : issuedCerts.length === 0 ? (
+          ) : (issuedCerts as any[]).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Award className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
@@ -341,34 +578,31 @@ export default function CertificateTemplatesAdmin() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr>
-                    <th className="text-left px-4 py-2">Learner</th>
-                    <th className="text-left px-4 py-2">Course</th>
-                    <th className="text-left px-4 py-2">Type</th>
+                    <th className="text-left px-4 py-2">Certificate #</th>
+                    <th className="text-left px-4 py-2">User ID</th>
+                    <th className="text-left px-4 py-2">Course ID</th>
                     <th className="text-left px-4 py-2">Issued</th>
-                    <th className="text-left px-4 py-2">Certificate</th>
+                    <th className="text-left px-4 py-2">PDF</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {issuedCerts.map((c: any) => (
+                  {(issuedCerts as any[]).map((c) => (
                     <tr key={c.id} className="border-t hover:bg-muted/20">
-                      <td className="px-4 py-2">
-                        <div className="font-medium">{c.userName || "Unknown"}</div>
-                        <div className="text-xs text-muted-foreground">{c.userEmail}</div>
-                      </td>
-                      <td className="px-4 py-2 max-w-[200px] truncate">{c.courseTitle}</td>
-                      <td className="px-4 py-2">
-                        <Badge variant="outline" className="text-xs capitalize">{c.courseType}</Badge>
-                      </td>
+                      <td className="px-4 py-2 font-mono text-xs">{c.certificateNumber}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{c.userId ?? "—"}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{c.courseId ?? "—"}</td>
                       <td className="px-4 py-2 text-muted-foreground text-xs">
                         {c.issuedAt ? new Date(c.issuedAt).toLocaleDateString() : "—"}
                       </td>
                       <td className="px-4 py-2">
-                        {c.certificateUrl && (
+                        {c.certificateUrl ? (
                           <a href={c.certificateUrl} target="_blank" rel="noopener noreferrer">
                             <Button size="sm" variant="outline" className="text-xs">
-                              <Eye className="w-3 h-3 mr-1" />View PDF
+                              <ExternalLink className="w-3 h-3 mr-1" />View PDF
                             </Button>
                           </a>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </td>
                     </tr>
@@ -404,6 +638,7 @@ export default function CertificateTemplatesAdmin() {
             </DialogHeader>
             <TemplateEditor
               initial={editTemplate}
+              templateId={editTemplate.id}
               onSave={(data) => updateMut.mutate({ id: editTemplate.id, ...data } as any)}
               onCancel={() => setEditTemplate(null)}
               isSaving={updateMut.isPending}
@@ -419,11 +654,16 @@ export default function CertificateTemplatesAdmin() {
             <DialogTitle>Delete Template</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete this certificate template? Any courses using it will revert to the default template.
+            Are you sure you want to delete this certificate template? Any courses using it will
+            revert to the default template.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteId && deleteMut.mutate({ id: deleteId })} disabled={deleteMut.isPending}>
+            <Button
+              variant="destructive"
+              onClick={() => deleteId && deleteMut.mutate({ id: deleteId })}
+              disabled={deleteMut.isPending}
+            >
               {deleteMut.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>

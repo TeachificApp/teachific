@@ -114,6 +114,12 @@ import {
   createCertificateTemplate,
   updateCertificateTemplate,
   deleteCertificateTemplate,
+  getLmsCertificateTemplatesByOrg,
+  getLmsCertificateTemplateById,
+  createLmsCertificateTemplate,
+  updateLmsCertificateTemplate,
+  deleteLmsCertificateTemplate,
+  listIssuedCertificates,
   getRevenuePartnersByOrg,
   getRevenuePartnerById,
   createRevenuePartner,
@@ -604,29 +610,119 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        return getCertificateTemplatesByOrg(orgId);
+        return getLmsCertificateTemplatesByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return getCertificateTemplateById(input.id);
+        return getLmsCertificateTemplateById(input.id);
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), htmlTemplate: z.string().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        name: z.string().min(1),
+        description: z.string().optional(),
+        logoUrl: z.string().optional(),
+        backgroundImageUrl: z.string().optional(),
+        backgroundColorHex: z.string().optional(),
+        titleText: z.string().optional(),
+        subtitleText: z.string().optional(),
+        bodyText: z.string().optional(),
+        signatureText: z.string().optional(),
+        signatureTitleText: z.string().optional(),
+        footerText: z.string().optional(),
+        fontFamily: z.string().optional(),
+        primaryColorHex: z.string().optional(),
+        accentColorHex: z.string().optional(),
+        textColorHex: z.string().optional(),
+        showBorder: z.boolean().optional(),
+        borderColorHex: z.string().optional(),
+        borderWidth: z.number().int().optional(),
+        layout: z.enum(["classic", "modern", "minimal"]).optional(),
+        isDefault: z.boolean().optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        return createCertificateTemplate({ orgId, name: input.name, htmlTemplate: input.htmlTemplate ?? null });
+        const { orgId: _orgId, ...rest } = input;
+        return createLmsCertificateTemplate({ orgId, ...rest } as any);
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        logoUrl: z.string().nullable().optional(),
+        backgroundImageUrl: z.string().nullable().optional(),
+        backgroundColorHex: z.string().optional(),
+        titleText: z.string().optional(),
+        subtitleText: z.string().nullable().optional(),
+        bodyText: z.string().nullable().optional(),
+        signatureText: z.string().nullable().optional(),
+        signatureTitleText: z.string().nullable().optional(),
+        footerText: z.string().nullable().optional(),
+        fontFamily: z.string().optional(),
+        primaryColorHex: z.string().optional(),
+        accentColorHex: z.string().optional(),
+        textColorHex: z.string().optional(),
+        showBorder: z.boolean().optional(),
+        borderColorHex: z.string().optional(),
+        borderWidth: z.number().int().optional(),
+        layout: z.enum(["classic", "modern", "minimal"]).optional(),
+        isDefault: z.boolean().optional(),
+      }))
       .mutation(async ({ input }) => {
-        return updateCertificateTemplate(input.id, input.data as any);
+        const { id, ...data } = input;
+        return updateLmsCertificateTemplate(id, data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await deleteCertificateTemplate(input.id);
+        await deleteLmsCertificateTemplate(input.id);
         return { ok: true };
+      }),
+    listIssued: protectedProcedure
+      .input(z.object({ orgId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        return listIssuedCertificates(orgId);
+      }),
+    preview: protectedProcedure
+      .input(z.object({ templateId: z.number().optional(), orgId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const { generateCertificatePdf } = await import("./lib/certificateGenerator");
+        let template = null;
+        if (input.templateId) {
+          template = await getLmsCertificateTemplateById(input.templateId);
+        }
+        const pdfBuffer = await generateCertificatePdf({
+          learnerName: "Jane Smith",
+          courseTitle: "Sample Course Title",
+          issuedAt: new Date(),
+          credentials: "RVT, RDMS",
+          template: template ? {
+            primaryColor: template.primaryColorHex,
+            accentColor: template.accentColorHex,
+            textColor: template.textColorHex,
+            fontFamily: template.fontFamily,
+            signatureName: template.signatureText,
+            signatureTitle: template.signatureTitleText,
+            backgroundImageUrl: template.backgroundImageUrl,
+            logoUrl: template.logoUrl,
+            footerText: template.footerText,
+            layout: template.layout as any,
+          } : null,
+        });
+        const key = `certificate-previews/preview-${Date.now()}.pdf`;
+        const { url } = await storagePut(key, pdfBuffer, "application/pdf");
+        return { url };
+      }),
+    uploadAsset: protectedProcedure
+      .input(z.object({ filename: z.string(), contentType: z.string() }))
+      .mutation(async ({ input }) => {
+        const key = `certificate-assets/${Date.now()}-${input.filename}`;
+        const { url: uploadUrl } = await storagePresignedPut(key, input.contentType);
+        const publicUrl = uploadUrl.split("?")[0];
+        return { uploadUrl, publicUrl, key };
       }),
   }),
 

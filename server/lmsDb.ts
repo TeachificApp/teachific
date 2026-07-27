@@ -36,6 +36,8 @@ import {
   assignments,
   assignmentSubmissions,
   certificateTemplates,
+  lmsCertificateTemplates,
+  lmsCertificates,
   affiliates,
   revenuePartners,
   courseOrders,
@@ -1441,8 +1443,7 @@ export async function gradeSubmission(id: number, grade: string, score: number |
   return rows[0];
 }
 
-// ─── Certificate Templates ────────────────────────────────────────────────────
-
+// ─── Certificate Templates (old — kept for legacy compatibility) ──────────────
 export async function getCertificateTemplatesByOrg(orgId: number) {
   return db.select().from(certificateTemplates).where(eq(certificateTemplates.orgId, orgId)).orderBy(desc(certificateTemplates.isDefault), asc(certificateTemplates.name));
 }
@@ -1468,6 +1469,48 @@ export async function updateCertificateTemplate(id: number, data: Partial<typeof
 }
 export async function deleteCertificateTemplate(id: number) {
   await db.delete(certificateTemplates).where(eq(certificateTemplates.id, id));
+}
+// ─── LMS Certificate Templates (rich, pdfkit-based) ──────────────────────────
+export async function getLmsCertificateTemplatesByOrg(orgId: number) {
+  // Returns org-specific templates + global templates (orgId = null)
+  return db.select().from(lmsCertificateTemplates)
+    .where(sql`(${lmsCertificateTemplates.orgId} = ${orgId} OR ${lmsCertificateTemplates.orgId} IS NULL)`)
+    .orderBy(desc(lmsCertificateTemplates.isDefault), asc(lmsCertificateTemplates.name));
+}
+export async function getLmsCertificateTemplateById(id: number) {
+  const rows = await db.select().from(lmsCertificateTemplates).where(eq(lmsCertificateTemplates.id, id));
+  return rows[0] ?? null;
+}
+export async function createLmsCertificateTemplate(data: typeof lmsCertificateTemplates.$inferInsert) {
+  if (data.isDefault && data.orgId) {
+    await db.update(lmsCertificateTemplates).set({ isDefault: false }).where(eq(lmsCertificateTemplates.orgId, data.orgId));
+  }
+  const result = await db.insert(lmsCertificateTemplates).values(data);
+  const id = (result as any)[0]?.insertId ?? (result as any).insertId;
+  return getLmsCertificateTemplateById(Number(id));
+}
+export async function updateLmsCertificateTemplate(id: number, data: Partial<typeof lmsCertificateTemplates.$inferInsert>) {
+  if (data.isDefault) {
+    const t = await getLmsCertificateTemplateById(id);
+    if (t?.orgId) await db.update(lmsCertificateTemplates).set({ isDefault: false }).where(eq(lmsCertificateTemplates.orgId, t.orgId));
+  }
+  await db.update(lmsCertificateTemplates).set(data).where(eq(lmsCertificateTemplates.id, id));
+  return getLmsCertificateTemplateById(id);
+}
+export async function deleteLmsCertificateTemplate(id: number) {
+  await db.delete(lmsCertificateTemplates).where(eq(lmsCertificateTemplates.id, id));
+}
+export async function listIssuedCertificates(orgId: number) {
+  return db.select({
+    id: lmsCertificates.id,
+    userId: lmsCertificates.userId,
+    courseId: lmsCertificates.courseId,
+    enrollmentId: lmsCertificates.enrollmentId,
+    templateId: lmsCertificates.templateId,
+    certificateUrl: lmsCertificates.certificateUrl,
+    certificateNumber: lmsCertificates.certificateNumber,
+    issuedAt: lmsCertificates.issuedAt,
+  }).from(lmsCertificates).where(eq(lmsCertificates.orgId, orgId)).orderBy(desc(lmsCertificates.issuedAt));
 }
 
 // ─── Affiliates ──────────────────────────────────────────────────────────────

@@ -9,17 +9,25 @@ import https from "https";
 import http from "http";
 
 export interface CertificateTemplate {
+  // New schema field names (lmsCertificateTemplates)
+  primaryColorHex?: string | null;
+  accentColorHex?: string | null;
+  textColorHex?: string | null;
+  signatureText?: string | null;
+  signatureTitleText?: string | null;
+  // Legacy field names (backward compat)
   primaryColor?: string | null;
   accentColor?: string | null;
   textColor?: string | null;
-  fontFamily?: string | null;
   signatureName?: string | null;
   signatureTitle?: string | null;
   signatureImageUrl?: string | null;
+  organizationName?: string | null;
+  // Shared fields
+  fontFamily?: string | null;
   backgroundImageUrl?: string | null;
   logoUrl?: string | null;
   footerText?: string | null;
-  organizationName?: string | null;
   layout?: "classic" | "modern" | "minimal" | null;
 }
 
@@ -49,14 +57,14 @@ function fetchBuffer(url: string): Promise<Buffer> {
 export async function generateCertificatePdf(opts: CertificateOptions): Promise<Buffer> {
   const tmpl = opts.template ?? {};
 
-  // Resolve colors with fallback to brand defaults
-  const TEAL = tmpl.primaryColor || "#189aa1";
-  const GOLD = tmpl.accentColor || "#c9a84c";
-  const DARK = tmpl.textColor || "#0e1e2e";
+  // Resolve colors with fallback to brand defaults (support both old and new field names)
+  const TEAL = tmpl.primaryColorHex || tmpl.primaryColor || "#189aa1";
+  const GOLD = tmpl.accentColorHex || tmpl.accentColor || "#c9a84c";
+  const DARK = tmpl.textColorHex || tmpl.textColor || "#0e1e2e";
   const LIGHT_BG = "#f0fbfc";
   const orgName = tmpl.organizationName || "Teachific™";
-  const sigName = tmpl.signatureName || "Lara Williams, RVT, RDMS";
-  const sigTitle = tmpl.signatureTitle || `Founder, ${orgName}`;
+  const sigName = tmpl.signatureText || tmpl.signatureName || "Lara Williams, RVT, RDMS";
+  const sigTitle = tmpl.signatureTitleText || tmpl.signatureTitle || `Founder, ${orgName}`;
   const footerText = tmpl.footerText || `www.teachific.com  ·  © ${orgName}`;
   const layout = tmpl.layout || "classic";
 

@@ -518,9 +518,9 @@
 - [ ] Enrollment analytics: total enrollments, active students, completion rate, revenue
 - [ ] Per-course analytics: lesson completion funnel, quiz scores, time spent
 - [ ] Student progress report
-- [ ] Certificate template builder: org logo, student name, course name, date, signature
-- [ ] Auto-issue certificate on course completion
-- [ ] Certificate PDF download
+- [x] Certificate template builder: org logo, student name, course name, date, signature
+- [x] Auto-issue certificate on course completion
+- [x] Certificate PDF download
 - [ ] Export student data as CSV
 
 ## LMS Course Player Enhancements
