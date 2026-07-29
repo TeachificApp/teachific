@@ -4773,3 +4773,15 @@
 - [x] Copy relatedProductsBlock.ts to shared directory
 - [x] Add new admin page routes to AdminRouter and SubdomainSchoolRouter in App.tsx (LMSAdmin, AdminDiscountCodesPage, FulfillmentAdmin, ProductAnalytics, UserAnalytics, MediaRepository, GeneralFormBuilder, ContactsAdmin, WidgetManager, PrintfulAdmin, PrintifyAdmin, SitePagesAdmin, SitePageBuilder, BundleLandingPageBuilder, CheckoutPageEditorPage, DownloadAnalytics, AdminNotifications, AdminLessonComments, AdminUserDetailPage)
 - [x] All 427 tests pass
+
+## SCORM/.quiz Bank Import Fixes (2026-07-29)
+
+- [x] Gap 1: iSpring SCORM .zip (index.html base64 format) silently fails — extractBankZip now captures index.html; bank-import/preview falls back to parseISpringQuizFromBuffer (adm-zip) when no document.json is found
+- [x] Gap 2: Question HTML with embedded images stripped to plain text — parseISpringQuizToBank now uses q.D.h (HTML) as stem and rewrites storage:// refs via rewriteStorageRefsInHtml
+- [x] Gap 3: storage:// image refs in HTML not resolved — new iSpring SCORM fallback path uses uploadISpringImagesFromZip to upload all storage:// refs to S3 before parsing
+- [x] Gap 4: Answer choice images not extracted — buildBankDataFromQuizLikeQuestion now checks choice.t?.r?.[0] (iSpring imageRef) and resolves it via mediaUrlMap
+- [x] Gap 5: Preview UI does not render images — QuestionBankImportPage now renders HTML stems with DOMPurify sanitization and shows imageUrl thumbnails on choice chips
+- [x] Gap 6: Question type mapping for iSpring PascalCase types — mapQuizCreatorTypeToBank now includes lowercase aliases for MultipleChoice, MultipleResponse, TrueFalse, FillInTheBlank, WordBank, ShortAnswer
+- [x] parsedQuizToBankQuestions helper added — converts ParsedQuiz (from iSpringQuizParser) to BankQuestion[] with full storage:// rewriting
+- [x] parseISpringQuizToBank now handles doc.d?.sl?.g wrapper (full iSpring JSON with 'd' key)
+- [x] rewriteStorageRefsInHtml helper added — rewrites storage:// refs and relative src/href paths in HTML strings

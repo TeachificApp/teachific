@@ -18,6 +18,8 @@ import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb"
 import { getQuestionsByOrg, getQuestionsByIds } from "./questionBankDb";
 import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
+import { parseISpringQuizFromBuffer, type ParsedQuiz } from "./lib/iSpringQuizParser";
+import { uploadISpringImagesFromZip, rewriteStorageRefs } from "./lib/iSpringImageImporter";
 
 // CDN URLs for the pre-built Teachific templates
 const TEMPLATE_ZIP_URL =
@@ -288,6 +290,39 @@ router.post("/bank-import/preview", upload.single("file"), async (req: Request, 
           if (originalName.endsWith(".quiz")) throw err;
         }
       }
+      // ── iSpring SCORM (index.html base64 format) ─────────────────────────
+      // Standard iSpring SCORM .zip embeds quiz data in index.html as base64.
+      // extractBankZip won't find a document.json, so we fall back here.
+      if (!quizDocumentBuffer) {
+        try {
+          const AdmZip = (await import("adm-zip")).default;
+          const zip = new AdmZip(req.file!.buffer);
+          const parsed = await parseISpringQuizFromBuffer(req.file!.buffer);
+          if (parsed.groups.length > 0) {
+            // Upload storage:// image refs from the ZIP
+            const zipEntries = zip.getEntries();
+            const allRefs = parsed.allImageRefs;
+            const storageUrlMap = allRefs.length > 0
+              ? await uploadISpringImagesFromZip(zipEntries, allRefs)
+              : new Map<string, string>();
+            // Merge with mediaUrlMap (relative path media)
+            for (const [k, v] of mediaUrlMap) storageUrlMap.set(k, v);
+            const questions = parsedQuizToBankQuestions(parsed, storageUrlMap);
+            return withHostedPackage({
+              source: "quiz",
+              questions,
+              totalRows: questions.length,
+              validCount: questions.length,
+              errorCount: 0,
+              warnings: [],
+              mediaUploaded: storageUrlMap.size,
+            });
+          }
+        } catch (ispringErr) {
+          // Not an iSpring SCORM package — continue to XLSX/XML fallback
+          console.log("[Bank Import] Not an iSpring SCORM package:", String(ispringErr));
+        }
+      }
 
       // If it contains an XLSX, treat as Teachific Excel import
       if (xlsxBuffer) {
@@ -477,6 +512,22 @@ function resolvePackageMedia(path: string | undefined, mediaUrlMap: Map<string, 
   return mediaUrlMap.get(normalized) || mediaUrlMap.get(path) || mediaUrlMap.get(fileName) || path;
 }
 
+/**
+ * Rewrite storage:// refs AND relative media paths inside an HTML string to S3 URLs.
+ * Falls back to the original ref if no mapping is found.
+ */
+function rewriteStorageRefsInHtml(html: string, mediaUrlMap: Map<string, string>): string {
+  if (!html || mediaUrlMap.size === 0) return html;
+  // Replace storage:// refs
+  let out = html.replace(/storage:\/\/[^\s"'<>)]+/g, (ref) => mediaUrlMap.get(ref) ?? ref);
+  // Replace relative src/href paths (e.g. src="media/image.png")
+  out = out.replace(/(src|href)=["']([^"']+)["']/gi, (match, attr, val) => {
+    const resolved = resolvePackageMedia(val, mediaUrlMap);
+    return resolved && resolved !== val ? `${attr}="${resolved}"` : match;
+  });
+  return out;
+}
+
 // ─── Excel ParsedQuestion → BankQuestion ─────────────────────────────────────
 function excelParsedToBankQuestion(q: any): BankQuestion {
   // Map InternalQuestionType to questionBankItems enum
@@ -519,10 +570,12 @@ function parseTeachificQuizFileToBank(fileText: string): BankQuestion[] {
 
 function parseISpringQuizToBank(documentText: string, mediaUrlMap: Map<string, string>): BankQuestion[] {
   const doc = JSON.parse(documentText);
+  // Handle the full iSpring JSON wrapper { d: { sl: { g: [...] } } } or direct { sl: { g: [...] } }
+  const root = doc.d ?? doc;
   const rawQuestions: any[] = [];
 
-  if (doc.sl?.g) {
-    for (const group of doc.sl.g) {
+  if (root.sl?.g) {
+    for (const group of root.sl.g) {
       if (Array.isArray(group.S)) rawQuestions.push(...group.S);
     }
   } else if (Array.isArray(doc.questions)) {
@@ -535,10 +588,13 @@ function parseISpringQuizToBank(documentText: string, mediaUrlMap: Map<string, s
     rawQuestions.push(...doc);
   }
 
-  const docTags = Array.isArray(doc.tags) ? doc.tags : [];
+  const docTags = Array.isArray((doc.d ?? doc).tags ?? doc.tags) ? ((doc.d ?? doc).tags ?? doc.tags) : [];
   return rawQuestions.map((q, index) => {
     const questionType = mapQuizCreatorTypeToBank(q.tp || q.type || "mc");
-    const stem = extractQuizText(q.D || q.question || q.stem || q.text || `Question ${index + 1}`);
+    // Prefer the HTML version of the question text (q.D.h) to preserve embedded images.
+    // Then rewrite any storage:// refs in that HTML to real S3 URLs.
+    const rawStemHtml = q.D?.h || extractQuizText(q.D || q.question || q.stem || q.text || `Question ${index + 1}`);
+    const stem = rewriteStorageRefsInHtml(rawStemHtml, mediaUrlMap);
     const imageUrl = resolvePackageMedia(q.img || q.image || q.imageUrl, mediaUrlMap);
     const videoUrl = resolvePackageMedia(typeof q.video === "string" ? q.video : q.video?.src, mediaUrlMap);
     const audioUrl = resolvePackageMedia(typeof q.audio === "string" ? q.audio : q.audio?.src, mediaUrlMap);
@@ -581,6 +637,14 @@ function mapQuizCreatorTypeToBank(rawType: string): string {
     mc: "mcq",
     mcq: "mcq",
     multiple_choice: "mcq",
+    // iSpring PascalCase type names
+    multiplechoice: "mcq",
+    multipleresponse: "multiple_select",
+    truefalse: "tf",
+    fillintheblank: "fill_blank",
+    wordbank: "fill_blank",
+    shortanswer: "short_answer",
+    // end iSpring types
     mr: "multiple_select",
     multiple_select: "multiple_select",
     multiple_response: "multiple_select",
@@ -636,11 +700,20 @@ function buildBankDataFromQuizLikeQuestion(q: any, questionType: string, mediaUr
   if (questionType === "short_answer" || questionType === "long_answer") {
     return { acceptedAnswers: config.variants || config.keywords || q.variants || q.keywords || [] };
   }
-  const choices = (config.chs || config.choices || q.choices || []).map((choice: any) => ({
-    text: extractQuizText(choice.t || choice.text || choice),
-    isCorrect: Boolean(choice.c ?? choice.correct),
-    imageUrl: resolvePackageMedia(choice.img || choice.image, mediaUrlMap),
-  }));
+  const choices = (config.chs || config.choices || q.choices || []).map((choice: any) => {
+    // iSpring stores answer text in choice.t (a D-block), images in choice.t.r[0] (imageRef)
+    const textHtml = choice.t?.h || extractQuizText(choice.t || choice.text || choice);
+    const resolvedText = rewriteStorageRefsInHtml(textHtml, mediaUrlMap);
+    const imageRef = choice.t?.r?.[0] ?? choice.imageRef;
+    const imageUrl = imageRef
+      ? (mediaUrlMap.get(imageRef) ?? resolvePackageMedia(imageRef, mediaUrlMap))
+      : resolvePackageMedia(choice.img || choice.image, mediaUrlMap);
+    return {
+      text: resolvedText,
+      isCorrect: Boolean(choice.c ?? choice.correct),
+      ...(imageUrl ? { imageUrl } : {}),
+    };
+  });
   if (questionType === "tf" && choices.length === 0) {
     const correct = Boolean(config.correct ?? q.correct ?? true);
     return { choices: [{ text: "True", isCorrect: correct }, { text: "False", isCorrect: !correct }] };
@@ -789,11 +862,12 @@ function exportBankQuestionsToCsv(questions: any[]): string {
 }
 
 // ─── ZIP extractor for bank imports ──────────────────────────────────────────
-async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer | null; xmlBuffers: Buffer[]; mediaMap: Map<string, Buffer>; quizDocumentBuffer: Buffer | null }> {
+async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer | null; xmlBuffers: Buffer[]; mediaMap: Map<string, Buffer>; quizDocumentBuffer: Buffer | null; indexHtmlBuffers: Buffer[] }> {
   const mediaMap = new Map<string, Buffer>();
   const xmlBuffers: Buffer[] = [];
   let xlsxBuffer: Buffer | null = null;
   let quizDocumentBuffer: Buffer | null = null;
+  const indexHtmlBuffers: Buffer[] = [];
   const readable = Readable.from(zipBuffer);
   const directory = readable.pipe(unzipper.Parse({ forceStream: true }));
   for await (const entry of directory) {
@@ -807,6 +881,9 @@ async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer |
     if (!quizDocumentBuffer && (lower.endsWith("document.json") || lower.endsWith("data.json"))) {
       quizDocumentBuffer = buf; continue;
     }
+    if (lower.endsWith("index.html") && !lower.includes("__macosx")) {
+      indexHtmlBuffers.push(buf); continue;
+    }
     if (!xlsxBuffer && (lower.endsWith(".xlsx") || lower.endsWith(".xls"))) { xlsxBuffer = buf; continue; }
     if (lower.endsWith(".xml") && (lower.includes("assessment") || lower.includes("quiz") || lower.includes("question") || lower.includes("qti"))) {
       xmlBuffers.push(buf); continue;
@@ -819,7 +896,33 @@ async function extractBankZip(zipBuffer: Buffer): Promise<{ xlsxBuffer: Buffer |
       mediaMap.set(normalized, buf);
     }
   }
-  return { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer };
+  return { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer, indexHtmlBuffers };
+}
+
+/** Convert a ParsedQuiz (from iSpringQuizParser) into BankQuestion[] for the bank-import flow. */
+function parsedQuizToBankQuestions(parsed: ParsedQuiz, storageUrlMap: Map<string, string>): BankQuestion[] {
+  const questions: BankQuestion[] = [];
+  for (const group of parsed.groups) {
+    for (const q of group.questions) {
+      const stemHtml = rewriteStorageRefs(q.questionHtml || q.questionText, storageUrlMap);
+      const explanation = rewriteStorageRefs(q.explanationHtml || q.explanationText || "", storageUrlMap) || undefined;
+      const choices = q.answers.map((a) => ({
+        text: rewriteStorageRefs(a.html || a.text, storageUrlMap),
+        isCorrect: a.isCorrect,
+        ...(a.imageRef ? { imageUrl: storageUrlMap.get(a.imageRef) ?? a.imageRef } : {}),
+      }));
+      questions.push({
+        questionType: q.type === "truefalse" ? "tf" : "mcq",
+        stem: stemHtml,
+        dataJson: JSON.stringify({ choices }),
+        points: 1,
+        difficulty: "medium",
+        explanation,
+        tags: group.name ? JSON.stringify([group.name]) : undefined,
+      });
+    }
+  }
+  return questions;
 }
 
 // ── GET /api/quiz/bank-export ─────────────────────────────────────────────────

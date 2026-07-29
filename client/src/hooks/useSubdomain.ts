@@ -109,3 +109,11 @@ export function getOrgSubdomainUrl(slug: string, path = ""): string {
 export function getAdminUrl(path: string): string {
   return path;
 }
+
+// Stub domain helpers for UA-specific domain checks (not applicable in Teachific)
+export function isLearnDomain(): boolean { return false; }
+export function isMembersDomain(): boolean { return false; }
+export function isAccreditationDomain(): boolean { return false; }
+export function isIHeartEchoDomain(): boolean { return false; }
+export function isCombinedBrandingDomain(): boolean { return false; }
+export function isMarketingStagingDomain(): boolean { return false; }

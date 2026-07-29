@@ -21,6 +21,7 @@ import {
   Loader2, BookOpen, Info,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import DOMPurify from "dompurify";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ParsedBankQuestion {
@@ -492,7 +493,19 @@ export default function QuestionBankImportPage() {
                         className="mt-0.5 flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0 space-y-1.5">
-                        <p className="text-sm font-medium line-clamp-2">{q.stem}</p>
+                        {(() => {
+                          const isHtml = /<[a-z][\s\S]*>/i.test(q.stem);
+                          if (isHtml) {
+                            const clean = DOMPurify.sanitize(q.stem, { USE_PROFILES: { html: true } });
+                            return (
+                              <div
+                                className="text-sm font-medium line-clamp-3 [&_img]:max-h-20 [&_img]:max-w-full [&_img]:object-contain [&_img]:rounded"
+                                dangerouslySetInnerHTML={{ __html: clean }}
+                              />
+                            );
+                          }
+                          return <p className="text-sm font-medium line-clamp-2">{q.stem}</p>;
+                        })()}
                         <div className="flex flex-wrap gap-1.5">
                           <Badge variant="outline" className="text-xs py-0">
                             {QUESTION_TYPE_LABELS[q.questionType] ?? q.questionType}
@@ -509,14 +522,27 @@ export default function QuestionBankImportPage() {
                         </div>
                         {choices.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {choices.slice(0, 4).map((c: any, ci: number) => (
-                              <span
-                                key={ci}
-                                className={`text-xs px-2 py-0.5 rounded-full border ${c.isCorrect ? "bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-400 font-medium" : "bg-muted border-muted-foreground/20 text-muted-foreground"}`}
-                              >
-                                {c.text?.slice(0, 40)}{(c.text?.length ?? 0) > 40 ? "…" : ""}
-                              </span>
-                            ))}
+                            {choices.slice(0, 4).map((c: any, ci: number) => {
+                              const choiceIsHtml = /<[a-z][\s\S]*>/i.test(c.text ?? "");
+                              const cleanChoiceHtml = choiceIsHtml
+                                ? DOMPurify.sanitize(c.text, { USE_PROFILES: { html: true } })
+                                : null;
+                              return (
+                                <span
+                                  key={ci}
+                                  className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${c.isCorrect ? "bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-400 font-medium" : "bg-muted border-muted-foreground/20 text-muted-foreground"}`}
+                                >
+                                  {c.imageUrl && (
+                                    <img src={c.imageUrl} alt="" className="h-5 w-5 object-cover rounded flex-shrink-0" />
+                                  )}
+                                  {choiceIsHtml ? (
+                                    <span dangerouslySetInnerHTML={{ __html: cleanChoiceHtml! }} className="[&_img]:h-5 [&_img]:w-5 [&_img]:object-cover" />
+                                  ) : (
+                                    <>{(c.text ?? "").slice(0, 40)}{(c.text?.length ?? 0) > 40 ? "\u2026" : ""}</>
+                                  )}
+                                </span>
+                              );
+                            })}
                             {choices.length > 4 && (
                               <span className="text-xs text-muted-foreground px-1">+{choices.length - 4} more</span>
                             )}
