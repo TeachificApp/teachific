@@ -763,6 +763,7 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onToggleStatus?: (id: number, newStatus: "published" | "draft") => void;
+  onToggleCountTowardCompletion?: (id: number, newValue: boolean) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
   const style: React.CSSProperties = {
@@ -802,6 +803,22 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
       {lesson.isPreview && <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">Preview</Badge>}
       {lesson.requireVideoCompletion === 1 && <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Video req.</Badge>}
       {lesson.requireManualComplete === 1 && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Manual</Badge>}
+      {onToggleCountTowardCompletion && (
+        <button
+          title={lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0 ? "Counts toward completion — click to exclude" : "Excluded from completion — click to include"}
+          onClick={() => {
+            const current = lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0;
+            onToggleCountTowardCompletion(lesson.id, !current);
+          }}
+          className={`text-xs font-semibold px-2 py-0.5 rounded border transition-colors ${
+            lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0
+              ? "text-teal-600 border-teal-300 bg-teal-50 hover:bg-teal-100"
+              : "text-gray-400 border-gray-200 bg-white hover:bg-teal-50 hover:text-teal-600 hover:border-teal-300"
+          }`}
+        >
+          {lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0 ? "Counts" : "Excluded"}
+        </button>
+      )}
       {lesson.type === "quiz" && (
         <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onQuiz(lesson)}>
           <HelpCircle className="w-3 h-3 mr-1" /> Quiz
@@ -956,6 +973,18 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
     onSuccess: () => refetch(),
     onError: e => toast.error(`Error: ${e.message}`),
   });
+  const updateCountTowardCompletion = trpc.lmsAdmin.updateLesson.useMutation({
+    onError: e => toast.error(`Error: ${e.message}`),
+  });
+  const handleToggleCountTowardCompletion = (lessonId: number, newValue: boolean) => {
+    // Optimistic update in local state
+    setLocalTopLessons(prev => prev.map((l: any) => l.id === lessonId ? { ...l, countTowardCompletion: newValue } : l));
+    setLocalSections(prev => prev.map((s: any) => ({
+      ...s,
+      lessons: (s.lessons ?? []).map((l: any) => l.id === lessonId ? { ...l, countTowardCompletion: newValue } : l),
+    })));
+    updateCountTowardCompletion.mutate({ id: lessonId, countTowardCompletion: newValue });
+  };
 
   const handleSaveCourseSettings = (data: any) => {
     const allLessonsFlat = [
@@ -1217,6 +1246,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
                           onCopy={() => setCopyLessonTarget(lesson)}
                           onDelete={id => { if (confirm(`Delete lesson "${lesson.title}"?`)) deleteLesson.mutate({ id }); }}
                           onToggleStatus={(id, newStatus) => updateLessonStatus.mutate({ id, lessonStatus: newStatus })}
+                          onToggleCountTowardCompletion={handleToggleCountTowardCompletion}
                           onMoveUp={li > 0 ? () => setLocalTopLessons(prev => { const r = arrayMove(prev, li, li - 1); reorderLessons.mutate({ lessons: r.map((l: any, i: number) => ({ id: l.id, position: i })) }); return r; }) : undefined}
                           onMoveDown={li < localTopLessons.length - 1 ? () => setLocalTopLessons(prev => { const r = arrayMove(prev, li, li + 1); reorderLessons.mutate({ lessons: r.map((l: any, i: number) => ({ id: l.id, position: i })) }); return r; }) : undefined}
                         />
@@ -1255,6 +1285,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
                               onCopy={() => setCopyLessonTarget(lesson)}
                               onDelete={id => { if (confirm(`Delete lesson "${lesson.title}"?`)) deleteLesson.mutate({ id }); }}
                               onToggleStatus={(id, newStatus) => updateLessonStatus.mutate({ id, lessonStatus: newStatus })}
+                              onToggleCountTowardCompletion={handleToggleCountTowardCompletion}
                               onMoveUp={li > 0 ? () => setLocalSections(prev => { const secs = [...prev]; const lessons = arrayMove(secs[si].lessons, li, li - 1); secs[si] = { ...secs[si], lessons }; reorderLessons.mutate({ lessons: lessons.map((l: any, i: number) => ({ id: l.id, position: i })) }); return secs; }) : undefined}
                               onMoveDown={li < section.lessons.length - 1 ? () => setLocalSections(prev => { const secs = [...prev]; const lessons = arrayMove(secs[si].lessons, li, li + 1); secs[si] = { ...secs[si], lessons }; reorderLessons.mutate({ lessons: lessons.map((l: any, i: number) => ({ id: l.id, position: i })) }); return secs; }) : undefined}
                             />
@@ -1562,6 +1593,8 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
   const [installmentIntervalDays, setInstallmentIntervalDays] = useState(String(course.installmentIntervalDays ?? 30));
   const [hasCertificate, setHasCertificate] = useState(course.hasCertificate);
   const [certificateTemplateId, setCertificateTemplateId] = useState<number | null>((course as any).certificateTemplateId ?? null);
+  const [creditHours, setCreditHours] = useState<string>((course as any).creditHours ?? "");
+  const [certificateTitleOverride, setCertificateTitleOverride] = useState<string>((course as any).certificateTitleOverride ?? "");
   const [isFeatured, setIsFeatured] = useState(course.isFeatured ?? false);
   const [isDrip, setIsDrip] = useState(course.isDrip ?? false);
   const [hideProgress, setHideProgress] = useState(course.hideProgress ?? false);
@@ -1624,6 +1657,9 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
             pricingType,
             isFree: pricingType === "free",
             hasCertificate,
+            certificateTemplateId: certificateTemplateId ?? undefined,
+            creditHours: creditHours.trim() || null,
+            certificateTitleOverride: certificateTitleOverride.trim() || null,
             isFeatured,
             isDrip,
             hideProgress,
@@ -1911,9 +1947,31 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
         <Label htmlFor="cert-switch" className="text-sm">Certificate of completion</Label>
       </div>
       {hasCertificate && (
-        <div className="ml-6 mt-1">
-          <Label className="text-xs text-muted-foreground">Certificate Template</Label>
-          <CertTemplateSelector value={certificateTemplateId} onChange={setCertificateTemplateId} />
+        <div className="ml-6 mt-2 space-y-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">Certificate Template</Label>
+            <CertTemplateSelector value={certificateTemplateId} onChange={setCertificateTemplateId} />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Certificate Course Title</Label>
+            <Input
+              className="mt-1 h-8 text-sm"
+              placeholder={`Defaults to: ${course.title}`}
+              value={certificateTitleOverride}
+              onChange={e => setCertificateTitleOverride(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-0.5">The course title printed on the certificate. Leave blank to use the main course title.</p>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">CME/CE Credit Hours (optional)</Label>
+            <Input
+              className="mt-1 h-8 text-sm w-32"
+              placeholder="e.g. 1.5"
+              value={creditHours}
+              onChange={e => setCreditHours(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-0.5">Shown on the issued certificate. Leave blank to omit.</p>
+          </div>
         </div>
       )}
       <div className="flex items-center gap-2">
@@ -2160,6 +2218,8 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           isFree: pricingType === "free",
           hasCertificate,
           certificateTemplateId,
+          creditHours: creditHours.trim() || null,
+          certificateTitleOverride: certificateTitleOverride.trim() || null,
           isFeatured,
           isDrip,
           hideProgress,

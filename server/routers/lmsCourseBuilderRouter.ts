@@ -187,6 +187,10 @@ export const lmsCourseBuilderRouter = router({
       installmentIntervalDays: z.number().int().min(1).nullable().optional(),
       hasCertificate: z.boolean().optional(),
       certificateTemplateId: z.number().int().positive().nullable().optional(),
+      // CME/CE credit hours shown on certificate (e.g. "1.5")
+      creditHours: z.string().max(16).nullable().optional(),
+      // Optional override for the course title printed on the certificate
+      certificateTitleOverride: z.string().max(512).nullable().optional(),
       isFeatured: z.boolean().optional(),
       isDrip: z.boolean().optional(),
       showInstructor: z.boolean().optional(),
@@ -236,6 +240,18 @@ export const lmsCourseBuilderRouter = router({
       if (filtered.thumbnailUrl && !filtered.coverImageUrl) filtered.coverImageUrl = filtered.thumbnailUrl;
       if (Object.keys(filtered).length > 0) {
         await db.update(lmsCourses).set(filtered).where(eq(lmsCourses.id, id));
+      }
+      // Auto-reissue certificates when cert-related fields change
+      const certFieldsChanged = ['certificateTitleOverride', 'creditHours', 'certificateTemplateId'].some(f => filtered[f] !== undefined);
+      if (certFieldsChanged) {
+        const enrollmentsWithCerts = await db
+          .select({ enrollmentId: lmsCertificates.enrollmentId, userId: lmsCertificates.userId })
+          .from(lmsCertificates)
+          .where(eq(lmsCertificates.courseId, id));
+        // Re-issue each certificate with forceReissue=true (fire-and-forget)
+        void Promise.allSettled(enrollmentsWithCerts.map(e =>
+          issueCertificateIfEnabled(db, e.enrollmentId, e.userId, id, undefined, true)
+        )).catch(err => console.error('[updateCourse] cert reissue failed:', err));
       }
       return { success: true };
     }),
@@ -847,6 +863,8 @@ export const lmsCourseBuilderRouter = router({
       prerequisiteLessonId: z.number().int().nullable().optional(),
       isPrerequisite: z.boolean().optional(),
       commentsEnabled: z.boolean().optional(),
+      // Whether this lesson counts toward the course completion percentage (default: true)
+      countTowardCompletion: z.boolean().optional(),
       meetingLink: z.string().max(1024).nullable().optional(),
       liveStartAt: z.number().int().nullable().optional(),
       liveEndAt: z.number().int().nullable().optional(),
@@ -857,7 +875,7 @@ export const lmsCourseBuilderRouter = router({
       await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const { id, requireVideoCompletion, requireManualComplete, isPrerequisite, commentsEnabled, ...rest } = input;
+      const { id, requireVideoCompletion, requireManualComplete, isPrerequisite, commentsEnabled, countTowardCompletion, ...rest } = input;
       const updates: Record<string, unknown> = Object.fromEntries(
         Object.entries(rest).filter(([, v]) => v !== undefined)
       );
@@ -866,6 +884,7 @@ export const lmsCourseBuilderRouter = router({
       if (requireManualComplete !== undefined) updates.requireManualComplete = requireManualComplete === null ? null : (requireManualComplete ? 1 : 0);
       if (isPrerequisite !== undefined) updates.isPrerequisite = isPrerequisite;
       if (commentsEnabled !== undefined) updates.commentsEnabled = commentsEnabled ? 1 : 0;
+      if (countTowardCompletion !== undefined) updates.countTowardCompletion = countTowardCompletion;
       // Convert null dripDays to 0 (no drip)
       if (updates.dripDays === null) updates.dripDays = 0;
       // Keep isPreview in sync with previewMode for backward compat
@@ -875,6 +894,16 @@ export const lmsCourseBuilderRouter = router({
         updates.previewMode = updates.isPreview ? "preview" : "none";
       }
       if (Object.keys(updates).length > 0) await db.update(lmsLessons).set(updates as any).where(eq(lmsLessons.id, id));
+      // When countTowardCompletion changes, recalculate progress for all enrollments in this course
+      if (countTowardCompletion !== undefined) {
+        const [lesson] = await db.select({ courseId: lmsLessons.courseId }).from(lmsLessons).where(eq(lmsLessons.id, id)).limit(1);
+        if (lesson?.courseId) {
+          const enrollments = await db.select({ id: lmsEnrollments.id }).from(lmsEnrollments).where(eq(lmsEnrollments.courseId, lesson.courseId));
+          void Promise.all(enrollments.map(e => recalcProgress(db, e.id))).catch(err =>
+            console.error('[updateLesson] recalcProgress after countTowardCompletion change failed:', err)
+          );
+        }
+      }
       return { success: true };
     }),
 

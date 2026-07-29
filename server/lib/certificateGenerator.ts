@@ -37,6 +37,8 @@ export interface CertificateOptions {
   issuedAt: Date;
   /** Optional credential string, e.g. "RVT, RDMS" */
   credentials?: string | null;
+  /** Optional CME/CE credit hours string, e.g. "1.5" */
+  creditHours?: string | null;
   /** Optional template — falls back to hardcoded defaults if null */
   template?: CertificateTemplate | null;
 }

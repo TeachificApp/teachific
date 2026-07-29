@@ -4688,3 +4688,17 @@
 - [x] Fix all lmsEnrollments inserts to use progressPercent (not progressPct): lmsRouter.ts (2 inserts), lmsEnrollmentAdminRouter.ts (1 insert)
 - [x] Add quizScore, quizPassed, attempts columns to lms_lesson_progress table (schema + DB migration)
 - [x] Fix showCorrectAnswers → showAnswers in quiz submission procedure (lmsRouter.ts line 817)
+
+## Ultrasound-App Port (Jul 29)
+
+- [x] Add creditHours and certificateTitleOverride columns to lms_courses (DB migration applied)
+- [x] Add countTowardCompletion column to lms_lessons (DB migration applied)
+- [x] Copy certificatePdfOverlay.ts (AcroForm PDF overlay with auto-scaling font, credits field)
+- [x] Update issueCertificateIfEnabled with forceReissue param, certificateTitleOverride, creditHours support
+- [x] updateCourse auto-reissues certificates when cert fields change
+- [x] updateLesson recalculates progress for all enrollments when countTowardCompletion toggles
+- [x] recalcProgress now filters by countTowardCompletion = 1 (excludes excluded lessons)
+- [x] Add getLessonQuizPassStatus procedure to lmsLearner router
+- [x] Add CertificatePreviewBlock.tsx component (quiz gate, PDF embed, social share)
+- [x] Add creditHours + certificateTitleOverride fields to CourseBuilderPage certificate settings UI
+- [x] Add countTowardCompletion toggle pill to SortableLessonRow (optimistic update)

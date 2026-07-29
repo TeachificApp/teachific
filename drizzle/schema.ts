@@ -2448,6 +2448,10 @@ export const lmsCourses = mysqlTable("lms_courses", {
   metaKeywords: text("meta_keywords"),
   hasCertificate: boolean("has_certificate").default(false).notNull(),
   certificateTemplateId: int("certificate_template_id"),
+  // Number of CME/CE credit hours awarded on completion (null = no credits shown on certificate)
+  creditHours: varchar("credit_hours", { length: 16 }),
+  // Optional override for the course title shown on the certificate (falls back to main title if empty)
+  certificateTitleOverride: varchar("certificate_title_override", { length: 512 }),
   isFeatured: boolean("is_featured").default(false).notNull(),
   isDrip: boolean("is_drip").default(false).notNull(),
   showInstructor: boolean("show_instructor").default(false).notNull(),
@@ -2533,6 +2537,8 @@ export const lmsLessons = mysqlTable("lms_lessons", {
   liveStartAt: bigint("live_start_at", { mode: "number" }),
   liveEndAt: bigint("live_end_at", { mode: "number" }),
   commentsEnabled: boolean("comments_enabled").default(false).notNull(),
+  // Whether this lesson counts toward the course completion percentage (default: true)
+  countTowardCompletion: boolean("count_toward_completion").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

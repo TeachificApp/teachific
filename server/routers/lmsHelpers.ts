@@ -19,6 +19,7 @@ import { storagePut } from "../storage";
 import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
+import { overlayLearnerData } from "../lib/certificatePdfOverlay";
 import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
@@ -203,7 +204,8 @@ export async function recalcProgress(db: Awaited<ReturnType<typeof getDb>>, enro
   // Count lessons that count toward progress — exclude free-preview lessons hidden after purchase
   // (previewMode = 'preview_hide_after_purchase' are not visible to enrolled students so must not count)
   let totalCount = 0;
-  const excludeHiddenPreview = sql`${lmsLessons.previewMode} != 'preview_hide_after_purchase' OR ${lmsLessons.previewMode} IS NULL`;
+  // Exclude: preview_hide_after_purchase lessons, draft lessons, and lessons explicitly excluded from completion
+  const excludeHiddenPreview = sql`(${lmsLessons.previewMode} != 'preview_hide_after_purchase' OR ${lmsLessons.previewMode} IS NULL) AND ${lmsLessons.countTowardCompletion} = 1`;
   if (sectionIds.length > 0) {
     const [totalRows] = await db.select({ count: sql<number>`count(*)` }).from(lmsLessons).where(
       and(
@@ -265,17 +267,30 @@ export async function issueCertificateIfEnabled(
   db: Awaited<ReturnType<typeof getDb>>,
   enrollmentId: number,
   userId: number,
-  courseId: number
+  courseId: number,
+  enrollmentType?: string,
+  forceReissue?: boolean
 ) {
   if (!db) return;
   // Check course has certificate enabled
-  const [course] = await db.select({ hasCertificate: lmsCourses.hasCertificate, title: lmsCourses.title, certificateTemplateId: lmsCourses.certificateTemplateId, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+  const [course] = await db.select({
+    hasCertificate: lmsCourses.hasCertificate,
+    title: lmsCourses.title,
+    certificateTemplateId: lmsCourses.certificateTemplateId,
+    orgId: lmsCourses.orgId,
+    creditHours: lmsCourses.creditHours,
+    certificateTitleOverride: lmsCourses.certificateTitleOverride,
+  }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
   if (!course?.hasCertificate) return;
 
   // Check if certificate already issued
   const [existing] = await db.select({ id: lmsCertificates.id }).from(lmsCertificates)
     .where(and(eq(lmsCertificates.userId, userId), eq(lmsCertificates.courseId, courseId))).limit(1);
-  if (existing) return;
+  if (existing) {
+    if (!forceReissue) return;
+    // Force re-issue: delete the existing certificate so it regenerates with latest data
+    await db.delete(lmsCertificates).where(and(eq(lmsCertificates.userId, userId), eq(lmsCertificates.courseId, courseId)));
+  }
 
   // Get user info
   const [user] = await db.select({ name: users.name, email: users.email, displayName: users.displayName, credentials: users.credentials }).from(users).where(eq(users.id, userId)).limit(1);
@@ -296,14 +311,35 @@ export async function issueCertificateIfEnabled(
     template = defaultTmpl ?? null;
   }
 
-  // Generate PDF
-  const pdfBuffer = await generateCertificatePdf({
-    learnerName,
-    courseTitle: course.title,
-    issuedAt,
-    credentials: user.credentials,
-    template,
-  });
+  // Generate PDF — if the template has a custom uploaded PDF, fetch it and
+  // overlay the real learner data via AcroForm fields;
+  // otherwise generate one programmatically from the template settings.
+  let pdfBuffer: Buffer;
+  const certTitle = (course.certificateTitleOverride && course.certificateTitleOverride.trim())
+    ? course.certificateTitleOverride.trim()
+    : course.title;
+
+  if (template?.pdfTemplateUrl) {
+    // Fetch the pre-uploaded custom PDF from S3
+    const res = await fetch(template.pdfTemplateUrl);
+    if (!res.ok) throw new Error(`Failed to fetch custom PDF template: ${res.status}`);
+    const rawBuffer = Buffer.from(await res.arrayBuffer());
+    pdfBuffer = await overlayLearnerData(rawBuffer, {
+      learnerName,
+      courseTitle: certTitle,
+      issuedAt,
+      creditHours: course.creditHours ?? null,
+    });
+  } else {
+    pdfBuffer = await generateCertificatePdf({
+      learnerName,
+      courseTitle: certTitle,
+      issuedAt,
+      credentials: user.credentials,
+      creditHours: course.creditHours ?? null,
+      template,
+    });
+  }
 
   // Upload PDF to S3
   const suffix = randomBytes(6).toString("hex");
@@ -321,16 +357,18 @@ export async function issueCertificateIfEnabled(
     issuedAt,
   });
 
-  // Send email
-  await sendCertificateEmail({
-    to: { name: learnerName, email: user.email },
-    courseTitle: course.title,
-    certificateUrl,
-    pdfBuffer,
-    issuedAt,
-  });
+  // Send email — skip for admin_preview enrollments (test runs should not send real emails)
+  if (enrollmentType !== "admin_preview") {
+    await sendCertificateEmail({
+      to: { name: learnerName, email: user.email },
+      courseTitle: certTitle,
+      certificateUrl,
+      pdfBuffer,
+      issuedAt,
+    });
+  }
 
-  console.log(`[certificate] Issued certificate for user ${userId}, course ${courseId}`);
+  console.log(`[certificate] Issued certificate for user ${userId}, course ${courseId}${enrollmentType === "admin_preview" ? " (admin preview — email suppressed)" : ""}`);
 }
 
 // ─── Public Router ────────────────────────────────────────────────────────────
