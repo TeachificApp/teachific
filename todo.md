@@ -4785,3 +4785,18 @@
 - [x] parsedQuizToBankQuestions helper added — converts ParsedQuiz (from iSpringQuizParser) to BankQuestion[] with full storage:// rewriting
 - [x] parseISpringQuizToBank now handles doc.d?.sl?.g wrapper (full iSpring JSON with 'd' key)
 - [x] rewriteStorageRefsInHtml helper added — rewrites storage:// refs and relative src/href paths in HTML strings
+
+## Dual-Path Import: Native Host + Question Bank (2026-07-29)
+
+- [x] QuestionBankImportPage: add import mode selector card in step 1 (shown only for .zip/.quiz files)
+  - Option A: "Host Natively" — serve the quiz in its original HTML format as a content package
+  - Option B: "Import to Question Bank" — extract questions into the bank
+  - Option C: "Both" — host natively AND extract questions into the bank
+- [x] importMode state: "bank_only" | "native_only" | "both" (default: "bank_only" for CSV/XLSX, "both" for .zip/.quiz)
+- [x] Step 2 (Review): when mode includes "native", show a title/description input for the hosted package
+- [x] Step 2 (Review): when mode is "native_only", hide the question list and show only the package config
+- [x] Step 2 (Review): when mode is "both", show package config above the question list
+- [x] Backend: POST /api/quiz/bank-import/confirm-native — accepts hostedPackageKey + title + description + orgId, creates content_packages record and triggers processZip
+- [x] Backend: confirm-native endpoint returns { packageId, packageUrl } for the newly created content package
+- [x] QuestionBankImportPage: after import, show links to both the hosted package (if native) and the question bank (if bank)
+- [x] Step 3 (Done): show two action cards — "View Hosted Package" and "Go to Question Bank" — based on which modes were selected

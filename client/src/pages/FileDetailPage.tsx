@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,11 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  ChevronLeft, Copy, Download, ExternalLink, FileArchive,
-  GitBranch, Globe, Link2, Lock, Play, RefreshCw, Save, Settings, Shield, User,
+  BookOpen, ChevronLeft, Copy, Database, Download, ExternalLink, FileArchive,
+  GitBranch, Globe, Link2, Loader2, Lock, Play, RefreshCw, Save, Settings, Shield, User, CheckCircle2, AlertTriangle,
 } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
 
@@ -241,6 +245,236 @@ document.getElementById('teachific-frame').src = buildLearnerUrl();`;
         </div>
       )}
     </div>
+  );
+}
+
+// ── Save to Question Bank Dialog ────────────────────────────────────────────
+type BankPreviewQuestion = {
+  questionType: string;
+  stem: string;
+  dataJson: string;
+  points?: number;
+  difficulty?: string;
+  explanation?: string;
+  tags?: string;
+};
+type BankPreviewResult = {
+  source: string;
+  questions: BankPreviewQuestion[];
+  totalRows: number;
+  validCount: number;
+  errorCount: number;
+  warnings: string[];
+  mediaUploaded?: number;
+};
+
+const QTYPE_LABELS: Record<string, string> = {
+  mcq: "Multiple Choice", tf: "True / False", short_answer: "Short Answer",
+  long_answer: "Essay", matching: "Matching", multiple_select: "Multiple Select",
+  ordering: "Ordering", numeric: "Numeric", fill_blank: "Fill in the Blank",
+};
+
+function SaveToBankDialog({ open, onClose, packageTitle, originalZipKey }: {
+  open: boolean; onClose: () => void;
+  packageTitle: string; originalZipKey?: string | null;
+}) {
+  const { orgId, ready } = useOrgScope();
+  const [step, setStep] = useState<"idle" | "loading" | "preview" | "importing" | "done">("idle");
+  const [preview, setPreview] = useState<BankPreviewResult | null>(null);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [targetFolderId, setTargetFolderId] = useState<string>("none");
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: folders } = trpc.questionBank.listFolders.useQuery(
+    { orgId: orgId! }, { enabled: !!orgId && ready }
+  );
+  const bulkImport = trpc.questionBank.bulkImport.useMutation();
+
+  useEffect(() => {
+    if (open) {
+      setStep("idle"); setPreview(null); setSelectedIndices(new Set());
+      setTargetFolderId("none"); setImportResult(null); setError(null);
+    }
+  }, [open]);
+
+  const handleExtract = useCallback(async () => {
+    if (!orgId || !originalZipKey) return;
+    setStep("loading"); setError(null);
+    try {
+      const res = await fetch("/api/quiz/bank-import/extract-from-package", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ packageKey: originalZipKey, orgId: String(orgId) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Extraction failed");
+      if (!data.questions || data.questions.length === 0) throw new Error("No questions were found in this package.");
+      setPreview(data);
+      setSelectedIndices(new Set(data.questions.map((_: unknown, i: number) => i)));
+      setStep("preview");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Extraction failed");
+      setStep("idle");
+    }
+  }, [orgId, originalZipKey]);
+
+  const handleImport = async () => {
+    if (!preview || !orgId || selectedIndices.size === 0) return;
+    setStep("importing");
+    try {
+      const questions = preview.questions.filter((_, i) => selectedIndices.has(i));
+      const folderId = targetFolderId === "none" ? null : parseInt(targetFolderId, 10);
+      const result = await bulkImport.mutateAsync({ orgId, folderId, questions });
+      setImportResult({ imported: result.imported, skipped: result.skipped });
+      setStep("done");
+      toast.success(`${result.imported} question${result.imported !== 1 ? "s" : ""} imported to Question Bank`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Import failed");
+      setStep("preview");
+    }
+  };
+
+  const toggleAll = () => {
+    if (!preview) return;
+    setSelectedIndices(
+      selectedIndices.size === preview.questions.length
+        ? new Set()
+        : new Set(preview.questions.map((_, i) => i))
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Save to Question Bank
+          </DialogTitle>
+          <DialogDescription>
+            Extract questions from <span className="font-medium text-foreground">{packageTitle}</span> and add them to your Question Bank.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto space-y-4 py-2">
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {step === "idle" && !originalZipKey && (
+            <div className="text-center py-8 space-y-2">
+              <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
+              <p className="text-sm font-medium">No original ZIP available</p>
+              <p className="text-xs text-muted-foreground">This package does not have an original ZIP stored. Only packages uploaded with the original .zip or .quiz file can be extracted.</p>
+            </div>
+          )}
+          {step === "idle" && originalZipKey && (
+            <div className="text-center py-8 space-y-3">
+              <Database className="h-10 w-10 text-primary/60 mx-auto" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Extract questions from this package</p>
+                <p className="text-xs text-muted-foreground">Supports iSpring, Teachific .quiz, QTI XML, and XLSX formats inside the ZIP.</p>
+              </div>
+              <Button onClick={handleExtract} className="gap-2"><Database className="h-4 w-4" />Extract Questions</Button>
+            </div>
+          )}
+          {step === "loading" && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Downloading and parsing package…</p>
+            </div>
+          )}
+          {step === "preview" && preview && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">{preview.questions.length} questions found</Badge>
+                {(preview.mediaUploaded ?? 0) > 0 && <Badge variant="outline">{preview.mediaUploaded} media files uploaded</Badge>}
+                {preview.warnings.length > 0 && <Badge variant="outline" className="text-amber-600 border-amber-400">{preview.warnings.length} warnings</Badge>}
+              </div>
+              <div className="flex items-center gap-3">
+                <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Label className="text-sm whitespace-nowrap">Destination Folder</Label>
+                <Select value={targetFolderId} onValueChange={setTargetFolderId}>
+                  <SelectTrigger className="flex-1 max-w-xs"><SelectValue placeholder="No folder (unfiled)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— No folder (unfiled) —</SelectItem>
+                    {(folders ?? []).map((f: { id: number; name: string }) => (
+                      <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{selectedIndices.size} / {preview.questions.length}</span>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b">
+                  <span className="text-xs font-medium">Questions Preview</span>
+                  <button type="button" onClick={toggleAll} className="text-xs text-primary hover:underline">
+                    {selectedIndices.size === preview.questions.length ? "Deselect All" : "Select All"}
+                  </button>
+                </div>
+                <div className="divide-y max-h-64 overflow-y-auto">
+                  {preview.questions.map((q, i) => {
+                    const isHtml = /<[a-z][\s\S]*>/i.test(q.stem);
+                    return (
+                      <div key={i}
+                        className={`flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors ${selectedIndices.has(i) ? "bg-primary/5" : ""}`}
+                        onClick={() => setSelectedIndices((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}>
+                        <div className={`mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center ${selectedIndices.has(i) ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                          {selectedIndices.has(i) && <CheckCircle2 className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5">{QTYPE_LABELS[q.questionType] ?? q.questionType}</Badge>
+                            {q.difficulty && <span className="text-[10px] text-muted-foreground">{q.difficulty}</span>}
+                          </div>
+                          {isHtml
+                            ? <div className="text-xs line-clamp-2 [&_img]:max-h-8 [&_img]:inline" dangerouslySetInnerHTML={{ __html: q.stem }} />
+                            : <p className="text-xs line-clamp-2">{q.stem}</p>
+                          }
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          {step === "importing" && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Importing questions…</p>
+            </div>
+          )}
+          {step === "done" && importResult && (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="h-14 w-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold">{importResult.imported} question{importResult.imported !== 1 ? "s" : ""} imported</p>
+                {importResult.skipped > 0 && <p className="text-xs text-amber-600">{importResult.skipped} skipped due to errors</p>}
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="pt-2">
+          {step === "preview" && (
+            <>
+              <Button variant="outline" onClick={() => setStep("idle")}>Back</Button>
+              <Button onClick={handleImport} disabled={selectedIndices.size === 0} className="gap-2">
+                <Database className="h-4 w-4" />Import {selectedIndices.size} Question{selectedIndices.size !== 1 ? "s" : ""}
+              </Button>
+            </>
+          )}
+          {(step === "idle" || step === "done") && (
+            <Button variant="outline" onClick={onClose}>{step === "done" ? "Close" : "Cancel"}</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -498,6 +732,7 @@ export default function FileDetailPage() {
   const [allowDownload, setAllowDownload] = useState(false);
   const [maxPlays, setMaxPlays] = useState("");
   const [shareToken, setShareToken] = useState("");
+  const [saveToBankOpen, setSaveToBankOpen] = useState(false);
 
   useEffect(() => { if (pkg) { setTitle(pkg.title); setDescription(pkg.description ?? ""); setIsPublic(pkg.isPublic ?? false); setAutoFullscreenMobile((pkg as any).autoFullscreenMobile ?? false); } }, [pkg]);
   useEffect(() => {
@@ -644,6 +879,11 @@ export default function FileDetailPage() {
               {pkg.originalZipUrl && (
                 <Button variant="outline" size="sm" asChild>
                   <a href={pkg.originalZipUrl} download target="_blank" rel="noreferrer"><Download className="h-3.5 w-3.5 mr-1.5" />Download Original ZIP</a>
+                </Button>
+              )}
+              {(pkg as any).originalZipKey && (
+                <Button variant="outline" size="sm" onClick={() => setSaveToBankOpen(true)} className="gap-2">
+                  <Database className="h-3.5 w-3.5" />Save to Question Bank
                 </Button>
               )}
               <Button onClick={() => updatePkg.mutate({ id: packageId, title, description, isPublic, autoFullscreenMobile })} disabled={updatePkg.isPending} className="gap-2">
@@ -796,6 +1036,12 @@ export default function FileDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <SaveToBankDialog
+        open={saveToBankOpen}
+        onClose={() => setSaveToBankOpen(false)}
+        packageTitle={pkg.title}
+        originalZipKey={(pkg as any).originalZipKey}
+      />
     </div>
   );
 }

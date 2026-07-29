@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import {
   Upload, FileText, FileArchive, Table2, CheckCircle2, XCircle,
   ChevronRight, ChevronLeft, AlertTriangle, Download, ArrowLeft,
-  Loader2, BookOpen, Info,
+  Loader2, BookOpen, Info, Globe, Database, Play,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DOMPurify from "dompurify";
@@ -42,6 +42,7 @@ interface PreviewResult {
   errorCount: number;
   warnings: string[];
   hostedPackageUrl?: string | null;
+  hostedPackageKey?: string | null;
   hostedPackageName?: string | null;
   mediaUploaded?: number;
 }
@@ -104,6 +105,16 @@ export default function QuestionBankImportPage() {
   const [targetFolderId, setTargetFolderId] = useState<string>("none");
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+
+  // Import mode: bank-only | native-only | both
+  // Only relevant when the file is a ZIP/SCORM/quiz (preview.hostedPackageUrl is set)
+  type ImportMode = "bank-only" | "native-only" | "both";
+  const [importMode, setImportMode] = useState<ImportMode>("bank-only");
+  // Native hosting state
+  const [nativeTitle, setNativeTitle] = useState("");
+  const [nativeDescription, setNativeDescription] = useState("");
+  const [nativeHosting, setNativeHosting] = useState(false);
+  const [nativePackageId, setNativePackageId] = useState<number | null>(null);
 
   // Fetch folders for destination selector
   const { data: folders } = trpc.questionBank.listFolders.useQuery(
@@ -185,21 +196,48 @@ export default function QuestionBankImportPage() {
 
   // ─── Confirm import ─────────────────────────────────────────────────────────
   const handleConfirmImport = async () => {
-    if (!preview || !orgId || selectedIndices.size === 0) return;
+    if (!preview || !orgId) return;
     setImporting(true);
     try {
-      const questionsToImport = preview.questions.filter((_, i) => selectedIndices.has(i));
-      const folderId = targetFolderId === "none" ? null : parseInt(targetFolderId, 10);
-      const result = await bulkImport.mutateAsync({
-        orgId,
-        folderId,
-        questions: questionsToImport,
-      });
-      setImportResult({ imported: result.imported, skipped: result.skipped });
+      // Step A: native hosting (if requested)
+      if ((importMode === "native-only" || importMode === "both") && preview.hostedPackageUrl) {
+        const hostedPackageKey = preview.hostedPackageKey;
+        if (!hostedPackageKey) throw new Error("No package key available for native hosting.");
+        setNativeHosting(true);
+        const res = await fetch("/api/quiz/bank-import/confirm-native", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            hostedPackageKey,
+            hostedPackageUrl: preview.hostedPackageUrl,
+            title: nativeTitle.trim() || (preview.hostedPackageName ?? "Imported Package"),
+            description: nativeDescription.trim() || undefined,
+            orgId: String(orgId),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Native hosting failed");
+        setNativePackageId(data.packageId);
+        setNativeHosting(false);
+      }
+
+      // Step B: question bank import (if requested)
+      if (importMode === "bank-only" || importMode === "both") {
+        if (selectedIndices.size === 0) throw new Error("No questions selected.");
+        const questionsToImport = preview.questions.filter((_, i) => selectedIndices.has(i));
+        const folderId = targetFolderId === "none" ? null : parseInt(targetFolderId, 10);
+        const result = await bulkImport.mutateAsync({ orgId, folderId, questions: questionsToImport });
+        setImportResult({ imported: result.imported, skipped: result.skipped });
+        toast.success(`Successfully imported ${result.imported} question${result.imported !== 1 ? "s" : ""} into the Question Bank.`);
+      } else {
+        setImportResult(null);
+      }
+
       setStep(3);
-      toast.success(`Successfully imported ${result.imported} question${result.imported !== 1 ? "s" : ""} into the Question Bank.`);
     } catch (err: any) {
       toast.error(err.message ?? "Import failed");
+      setNativeHosting(false);
     } finally {
       setImporting(false);
     }
@@ -412,17 +450,66 @@ export default function QuestionBankImportPage() {
             ) : null}
           </div>
 
+          {/* Import mode selector — only shown for ZIP/SCORM/quiz files */}
           {preview.hostedPackageUrl && (
-            <Alert>
-              <FileArchive className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                Original package hosted:{" "}
-                <a className="underline font-medium" href={preview.hostedPackageUrl} target="_blank" rel="noreferrer">
-                  {preview.hostedPackageName || "Open hosted package"}
-                </a>
-                . Continue below to extract selected questions into the native question bank.
-              </AlertDescription>
-            </Alert>
+            <Card className="border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">What would you like to do with this package?</CardTitle>
+                <CardDescription className="text-xs">Choose how to import this file. You can host it natively, extract questions to the bank, or both.</CardDescription>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {([
+                    { id: "bank-only" as const, icon: Database, label: "Import to Question Bank", desc: "Extract questions and add them to your bank. The original file is not hosted." },
+                    { id: "native-only" as const, icon: Globe, label: "Host Natively", desc: "Host the original package as-is. Questions are not extracted to the bank." },
+                    { id: "both" as const, icon: Play, label: "Both", desc: "Host the original package AND extract questions to the bank." },
+                  ] as const).map(({ id, icon: Icon, label, desc }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setImportMode(id)}
+                      className={`flex flex-col items-start gap-1.5 rounded-lg border-2 p-3 text-left transition-all ${
+                        importMode === id
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border bg-background text-muted-foreground hover:border-border/80 hover:text-foreground"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 font-medium text-sm">
+                        <Icon className="h-4 w-4 shrink-0" />{label}
+                      </div>
+                      <p className="text-xs leading-snug opacity-80">{desc}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Native hosting title/description inputs */}
+                {(importMode === "native-only" || importMode === "both") && (
+                  <div className="mt-4 space-y-3 border-t pt-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hosted Package Details</p>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Title <span className="text-muted-foreground font-normal">(required)</span></Label>
+                      <input
+                        type="text"
+                        value={nativeTitle}
+                        onChange={(e) => setNativeTitle(e.target.value)}
+                        placeholder={preview.hostedPackageName ?? "Package title"}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                      <textarea
+                        value={nativeDescription}
+                        onChange={(e) => setNativeDescription(e.target.value)}
+                        placeholder="Describe this package…"
+                        rows={2}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {/* Warnings */}
@@ -569,43 +656,86 @@ export default function QuestionBankImportPage() {
             </Button>
             <Button
               onClick={handleConfirmImport}
-              disabled={selectedIndices.size === 0 || importing}
+              disabled={(
+                importing ||
+                (importMode !== "native-only" && selectedIndices.size === 0) ||
+                ((importMode === "native-only" || importMode === "both") && !nativeTitle.trim() && !preview?.hostedPackageName)
+              )}
               className="gap-2"
             >
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              {importing ? "Importing…" : `Import ${selectedIndices.size} Question${selectedIndices.size !== 1 ? "s" : ""}`}
+              {importing
+                ? nativeHosting ? "Hosting package…" : "Importing…"
+                : importMode === "native-only"
+                  ? "Host Package"
+                  : importMode === "both"
+                    ? `Host & Import ${selectedIndices.size} Question${selectedIndices.size !== 1 ? "s" : ""}`
+                    : `Import ${selectedIndices.size} Question${selectedIndices.size !== 1 ? "s" : ""}`
+              }
             </Button>
           </div>
         </div>
       )}
 
       {/* ── Step 3: Done ── */}
-      {step === 3 && importResult && (
+      {step === 3 && (
         <Card className="border-green-200 dark:border-green-800">
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
+          <CardContent className="flex flex-col items-center justify-center py-12 gap-5">
             <div className="h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-center space-y-1">
-              <h2 className="text-2xl font-bold">Import Complete!</h2>
-              <p className="text-muted-foreground">
-                <span className="font-semibold text-foreground">{importResult.imported}</span> question{importResult.imported !== 1 ? "s" : ""} were added to your Question Bank.
-                {importResult.skipped > 0 && (
-                  <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                    ({importResult.skipped} skipped due to errors)
-                  </span>
-                )}
-              </p>
+            <div className="text-center space-y-3">
+              <h2 className="text-2xl font-bold">Done!</h2>
+              {/* Native hosting result */}
+              {nativePackageId && (
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <Globe className="h-4 w-4 text-blue-500" />
+                  <span>Package hosted natively.</span>
+                  <a
+                    href={`/files/${nativePackageId}`}
+                    className="underline font-medium text-primary hover:text-primary/80"
+                  >
+                    View package →
+                  </a>
+                </div>
+              )}
+              {/* Bank import result */}
+              {importResult && (
+                <p className="text-muted-foreground text-sm">
+                  <span className="font-semibold text-foreground">{importResult.imported}</span> question{importResult.imported !== 1 ? "s" : ""} added to the Question Bank.
+                  {importResult.skipped > 0 && (
+                    <span className="ml-1 text-yellow-600 dark:text-yellow-400">
+                      ({importResult.skipped} skipped due to errors)
+                    </span>
+                  )}
+                </p>
+              )}
+              {/* Native-only (no bank import) */}
+              {!importResult && !nativePackageId && (
+                <p className="text-muted-foreground text-sm">Operation completed successfully.</p>
+              )}
             </div>
-            <div className="flex gap-3 mt-2">
-              <Button variant="outline" onClick={() => { setStep(1); setPreview(null); setSelectedIndices(new Set()); setImportResult(null); }} className="gap-2">
+            <div className="flex flex-wrap gap-3 mt-2 justify-center">
+              <Button variant="outline" onClick={() => {
+                setStep(1); setPreview(null); setSelectedIndices(new Set());
+                setImportResult(null); setNativePackageId(null); setImportMode("bank-only");
+                setNativeTitle(""); setNativeDescription("");
+              }} className="gap-2">
                 <Upload className="h-4 w-4" />
                 Import Another File
               </Button>
-              <Button onClick={() => setLocation("/question-bank")} className="gap-2">
-                <BookOpen className="h-4 w-4" />
-                Go to Question Bank
-              </Button>
+              {importResult && (
+                <Button onClick={() => setLocation("/question-bank")} className="gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Go to Question Bank
+                </Button>
+              )}
+              {nativePackageId && (
+                <Button onClick={() => setLocation(`/files/${nativePackageId}`)} className="gap-2">
+                  <Globe className="h-4 w-4" />
+                  View Hosted Package
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

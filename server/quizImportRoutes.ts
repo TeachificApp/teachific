@@ -12,6 +12,9 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import unzipper from "unzipper";
 import { Readable } from "stream";
+import { writeFileSync, unlinkSync, existsSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import { storagePut } from "./storage";
 import { parseQuizExcel, exportQuizToExcel, parsedToDbQuestions } from "./quizExcel";
 import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb";
@@ -974,6 +977,156 @@ router.get("/bank-export", async (req: Request, res: Response) => {
   } catch (err: unknown) {
     console.error("[Bank Export] Error:", err);
     return res.status(500).json({ error: "Failed to export question bank", detail: String(err) });
+  }
+});
+
+// ── POST /api/quiz/bank-import/extract-from-package ──────────────────────────
+// Download an already-hosted content package by its S3 key, parse questions,
+// and return a preview identical to bank-import/preview (no DB write).
+// Used by FileDetailPage to extract questions from an existing hosted package.
+router.post("/bank-import/extract-from-package", async (req: Request, res: Response) => {
+  try {
+    const user = await authenticateRequest(req);
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const { packageKey, orgId: orgIdStr } = req.body as { packageKey: string; orgId: string };
+    if (!packageKey || !orgIdStr) return res.status(400).json({ error: "packageKey and orgId are required" });
+    const orgId = parseInt(orgIdStr, 10);
+    if (!Number.isFinite(orgId)) return res.status(400).json({ error: "Invalid orgId" });
+    // Download the ZIP from S3
+    const { storageGet } = await import("./storage");
+    const { url: downloadUrl } = await storageGet(packageKey);
+    const fetchRes = await fetch(downloadUrl);
+    if (!fetchRes.ok) throw new Error(`Failed to fetch package: ${fetchRes.status}`);
+    const arrayBuf = await fetchRes.arrayBuffer();
+    const zipBuffer = Buffer.from(arrayBuf);
+    // Run the same extraction pipeline as bank-import/preview
+    const { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer } = await extractBankZip(zipBuffer);
+    let mediaUrlMap = new Map<string, string>();
+    if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, orgId.toString());
+    // Try iSpring document.json
+    if (quizDocumentBuffer) {
+      try {
+        const questions = parseISpringQuizToBank(quizDocumentBuffer.toString("utf-8"), mediaUrlMap);
+        if (questions.length > 0) {
+          return res.json({ source: "quiz", questions, totalRows: questions.length, validCount: questions.length, errorCount: 0, warnings: [], mediaUploaded: mediaUrlMap.size });
+        }
+      } catch { /* fall through */ }
+    }
+    // Try iSpring SCORM (index.html base64)
+    if (!quizDocumentBuffer) {
+      try {
+        const AdmZip = (await import("adm-zip")).default;
+        const zip = new AdmZip(zipBuffer);
+        const parsed = await parseISpringQuizFromBuffer(zipBuffer);
+        if (parsed.groups.length > 0) {
+          const zipEntries = zip.getEntries();
+          const storageUrlMap = parsed.allImageRefs.length > 0
+            ? await uploadISpringImagesFromZip(zipEntries, parsed.allImageRefs)
+            : new Map<string, string>();
+          for (const [k, v] of mediaUrlMap) storageUrlMap.set(k, v);
+          const questions = parsedQuizToBankQuestions(parsed, storageUrlMap);
+          return res.json({ source: "quiz", questions, totalRows: questions.length, validCount: questions.length, errorCount: 0, warnings: [], mediaUploaded: storageUrlMap.size });
+        }
+      } catch { /* not iSpring */ }
+    }
+    // Try XLSX
+    if (xlsxBuffer) {
+      const result = parseQuizExcel(xlsxBuffer);
+      const bankQuestions = result.questions.map(q => excelParsedToBankQuestion(q));
+      return res.json({ source: "xlsx", questions: bankQuestions, totalRows: result.totalRows, validCount: result.validCount, errorCount: result.errorCount, warnings: result.warnings, mediaUploaded: mediaUrlMap.size });
+    }
+    // Try QTI XML
+    if (xmlBuffers.length > 0) {
+      const allQuestions: BankQuestion[] = [];
+      for (const xmlBuf of xmlBuffers) allQuestions.push(...parseSCORMQTIToBank(xmlBuf.toString("utf-8"), mediaUrlMap));
+      return res.json({ source: "scorm", questions: allQuestions, totalRows: allQuestions.length, validCount: allQuestions.length, errorCount: 0, warnings: [], mediaUploaded: mediaUrlMap.size });
+    }
+    return res.status(400).json({ error: "No supported quiz content found in this package. Expected iSpring/Teachific quiz data, XLSX, or QTI XML." });
+  } catch (err: unknown) {
+    console.error("[ExtractFromPackage] Error:", err);
+    return res.status(500).json({ error: "Failed to extract questions", detail: String(err) });
+  }
+});
+
+// ── POST /api/quiz/bank-import/confirm-native ───────────────────────────────
+// Create a content_packages record and trigger ZIP processing for a previously
+// uploaded .zip/.quiz file (identified by its S3 key from the preview step).
+// This is the "Host Natively" path in the dual-path import wizard.
+router.post("/bank-import/confirm-native", async (req: Request, res: Response) => {
+  try {
+    const user = await authenticateRequest(req);
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const { hostedPackageKey, hostedPackageUrl, title, description, orgId: orgIdStr } = req.body as {
+      hostedPackageKey: string;
+      hostedPackageUrl: string;
+      title: string;
+      description?: string;
+      orgId: string;
+    };
+    if (!hostedPackageKey || !hostedPackageUrl || !title || !orgIdStr) {
+      return res.status(400).json({ error: "hostedPackageKey, hostedPackageUrl, title, and orgId are required" });
+    }
+    const orgId = parseInt(orgIdStr, 10);
+    if (!Number.isFinite(orgId)) return res.status(400).json({ error: "Invalid orgId" });
+    const userId = (user as any).id;
+    // Import createPackage and processZip lazily to avoid circular deps
+    const { createPackage } = await import("./db");
+    const { processZip } = await import("./scormUploadRoutes");
+    // Download the already-hosted ZIP from S3 so processZip can read it from disk
+    const { storageGet } = await import("./storage");
+    const { url: downloadUrl } = await storageGet(hostedPackageKey);
+    const fetchRes = await fetch(downloadUrl);
+    if (!fetchRes.ok) throw new Error(`Failed to fetch hosted package: ${fetchRes.status}`);
+    const arrayBuf = await fetchRes.arrayBuffer();
+    const zipBuffer = Buffer.from(arrayBuf);
+    const zipSize = zipBuffer.length;
+    // Write to a temp file (processZip needs a file path, not a buffer)
+    const suffix = Date.now().toString(36);
+    const tmpPath = join(tmpdir(), `native-import-${suffix}.zip`);
+    writeFileSync(tmpPath, zipBuffer);
+    // Create the content_packages record
+    const pkg = await createPackage({
+      orgId,
+      uploadedBy: userId,
+      title: title.trim(),
+      description: description?.trim() ?? null,
+      originalZipKey: hostedPackageKey,
+      originalZipUrl: hostedPackageUrl,
+      originalZipSize: zipSize,
+      contentType: "unknown",
+      scormVersion: "none",
+      displayMode: "native",
+      status: "processing",
+    });
+    // Fetch the newly created package ID
+    const { getDb } = await import("./db");
+    const { contentPackages } = await import("../drizzle/schema");
+    const { desc, eq } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(500).json({ error: "DB unavailable" });
+    }
+    const pkgs = await db.select().from(contentPackages)
+      .where(eq(contentPackages.orgId, orgId))
+      .orderBy(desc(contentPackages.createdAt))
+      .limit(1);
+    const newPkg = pkgs[0];
+    if (!newPkg) {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(500).json({ error: "Package creation failed" });
+    }
+    // Kick off async ZIP processing (extraction + S3 upload + manifest parse)
+    processZip(tmpPath, zipSize, newPkg.id, orgId, suffix).catch((err: unknown) => {
+      console.error(`[NativeImport] Package ${newPkg.id} processing failed:`, err);
+    });
+    return res.json({
+      packageId: newPkg.id,
+      message: "Package created and processing started.",
+    });
+  } catch (err: unknown) {
+    console.error("[NativeImport] Error:", err);
+    return res.status(500).json({ error: "Failed to create native package", detail: String(err) });
   }
 });
 
