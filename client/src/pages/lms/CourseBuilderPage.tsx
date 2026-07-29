@@ -1967,10 +1967,16 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
             <Input
               className="mt-1 h-8 text-sm w-32"
               placeholder="e.g. 1.5"
+              inputMode="decimal"
+              pattern="[0-9]*(\.[0-9]+)?"
               value={creditHours}
-              onChange={e => setCreditHours(e.target.value)}
+              onChange={e => {
+                const v = e.target.value;
+                // Allow digits and a single decimal point only
+                if (v === "" || /^\d*\.?\d*$/.test(v)) setCreditHours(v);
+              }}
             />
-            <p className="text-xs text-muted-foreground mt-0.5">Shown on the issued certificate. Leave blank to omit.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Decimals allowed (e.g. 0.5, 1.25). Shown on the issued certificate. Leave blank to omit.</p>
           </div>
         </div>
       )}

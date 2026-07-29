@@ -139,6 +139,12 @@ export async function generateCertificatePdf(opts: CertificateOptions): Promise<
       const dateStr = opts.issuedAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       doc.font("Helvetica").fontSize(10).fillColor("#64748b").text(`Issued: ${dateStr}`, 0, 314, { align: "center" });
 
+      // CME/CE credit hours (if set)
+      if (opts.creditHours) {
+        const credLabel = `${opts.creditHours} CME Credit${parseFloat(opts.creditHours) !== 1 ? "s" : ""}`;
+        doc.font("Helvetica").fontSize(10).fillColor(TEAL).text(credLabel, 0, 334, { align: "center" });
+      }
+
       // Signature
       const sigX = W / 2 - 80;
       doc.moveTo(sigX, 390).lineTo(sigX + 160, 390).lineWidth(0.5).stroke("#94a3b8");
@@ -178,6 +184,12 @@ export async function generateCertificatePdf(opts: CertificateOptions): Promise<
 
       const dateStr = opts.issuedAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       doc.font("Helvetica").fontSize(10).fillColor("#64748b").text(`Issued: ${dateStr}`, lx, 304);
+
+      // CME/CE credit hours (if set)
+      if (opts.creditHours) {
+        const credLabel = `${opts.creditHours} CME Credit${parseFloat(opts.creditHours) !== 1 ? "s" : ""}`;
+        doc.font("Helvetica").fontSize(10).fillColor(TEAL).text(credLabel, lx, 322);
+      }
 
       // Signature
       doc.moveTo(lx, 400).lineTo(lx + 160, 400).lineWidth(0.5).stroke("#94a3b8");
@@ -226,6 +238,12 @@ export async function generateCertificatePdf(opts: CertificateOptions): Promise<
 
       const dateStr = opts.issuedAt.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
       doc.font("Helvetica").fontSize(11).fillColor("#64748b").text(`Issued: ${dateStr}`, 0, 334, { align: "center" });
+
+      // CME/CE credit hours (if set)
+      if (opts.creditHours) {
+        const credLabel = `${opts.creditHours} CME Credit${parseFloat(opts.creditHours) !== 1 ? "s" : ""}`;
+        doc.font("Helvetica").fontSize(11).fillColor(TEAL).text(credLabel, 0, 354, { align: "center" });
+      }
 
       // Signature
       const sigX = W / 2 - 80;
