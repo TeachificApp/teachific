@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { UserSearchCombobox, type SelectedUser } from "@/components/UserSearchCombobox";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,13 +13,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { PublishDomainSelect } from "@/components/PublishDomainSelect";
+import { ContentEmbedTab } from "@/components/admin/ContentEmbedTab";
 import {
   Plus, Pencil, Trash2, Copy, Upload, ShoppingBag, ArrowLeft,
   ExternalLink, Eye, Image as ImageIcon, Link as LinkIcon,
   Users, UserPlus, Loader2, Package, BarChart2, Settings,
-  DollarSign, Globe, Tag, Truck, Sparkles, LayoutTemplate,
+  DollarSign, Globe, Tag, Truck, Sparkles, LayoutTemplate, Workflow, Search, Code2,
 } from "lucide-react";
+import { AfterPurchaseWorkflowEditor } from "@/components/AfterPurchaseWorkflowEditor";
+import { HidePricingOptionsToggle } from "@/components/HidePricingOptionsToggle";
 import RichTextEditor from "@/components/RichTextEditor";
+import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: string }) {
@@ -49,19 +54,47 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
     onError: (e) => toast.error(e.message),
   });
   const [showCreate, setShowCreate] = useState(false);
+  const [showPrintfulImport, setShowPrintfulImport] = useState(false);
+  const [showPrintifyImport, setShowPrintifyImport] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
 
+  const allProducts = products ?? [];
+  const filteredProducts = searchQuery.trim()
+    ? allProducts.filter(p => p.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : allProducts;
+
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+        />
+      </div>
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Physical Products</h3>
+        <h3 className="text-lg font-semibold">Physical Products {searchQuery && <span className="text-sm font-normal text-gray-500">({filteredProducts.length} results)</span>}</h3>
+        <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => setShowPrintfulImport(true)}>
+          <Package className="w-4 h-4 mr-1" /> Import from Printful
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setShowPrintifyImport(true)}>
+          <Package className="w-4 h-4 mr-1" /> Import from Printify
+        </Button>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4 mr-1" /> New Product
         </Button>
+        </div>
       </div>
 
-      {(!products || products.length === 0) ? (
+      {filteredProducts.length === 0 && allProducts.length > 0 ? (
+        <div className="text-center py-8 text-gray-400 text-sm">No products match "{searchQuery}"</div>
+      ) : (!allProducts || allProducts.length === 0) ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <ShoppingBag className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
@@ -73,7 +106,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {products.map((p) => (
+          {filteredProducts.map((p) => (
             <Card key={p.id} className="hover:border-teal-500/50 transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
                 {p.thumbnailUrl ? (
@@ -96,8 +129,9 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
                   <div className="text-sm text-muted-foreground mt-0.5">
                     {p.isFree ? "Free" : `$${Number(p.price).toFixed(2)}`}
                     {p.compareAtPrice ? <span className="line-through ml-1 text-xs">${Number(p.compareAtPrice).toFixed(2)}</span> : null}
-                    {" · "}/products/{p.slug}
+                    {" · "}/product/{p.slug}
                     {" · "}{p.orderCount} orders
+                    {" · "}<span className="font-mono text-xs">ID: {p.id}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -121,7 +155,240 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
 
       <CreateProductDialog open={showCreate} onClose={() => setShowCreate(false)}
         onCreated={(id) => { setShowCreate(false); onEdit(id); }} />
+      <ImportFromPrintfulDialog open={showPrintfulImport} onClose={() => setShowPrintfulImport(false)} />
+      <ImportFromPrintifyDialog open={showPrintifyImport} onClose={() => setShowPrintifyImport(false)} />
     </div>
+  );
+}
+
+// ─── Import from Printful Dialog ─────────────────────────────────────────────
+function ImportFromPrintfulDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const statusQuery = trpc.printfulAdmin.getConnectionStatus.useQuery(undefined, { enabled: open });
+  const stores = statusQuery.data?.stores ?? [];
+  const [storeId, setStoreId] = useState<number | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [publish, setPublish] = useState(false);
+  const limit = 50;
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (stores.length > 0 && storeId === null) {
+      const preferred = statusQuery.data?.defaultStoreId;
+      setStoreId(preferred && stores.some((s) => s.id === preferred) ? preferred : stores[0]!.id);
+    }
+  }, [open, stores, storeId, statusQuery.data?.defaultStoreId]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setStoreId(null);
+      setOffset(0);
+      setSelected(new Set());
+      setPublish(false);
+    }
+  }, [open]);
+
+  const productsQuery = trpc.printfulAdmin.listProducts.useQuery(
+    { storeId: storeId!, offset, limit },
+    { enabled: open && storeId != null },
+  );
+  const importedQuery = trpc.printfulAdmin.listImportedProductIds.useQuery(
+    { storeId: storeId! },
+    { enabled: open && storeId != null },
+  );
+  const importMut = trpc.printfulAdmin.importProducts.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Imported ${data.created} new, updated ${data.updated}, skipped ${data.skipped}`);
+      utils.productsAdmin.list.invalidate();
+      if (storeId) utils.printfulAdmin.listImportedProductIds.invalidate({ storeId });
+      setSelected(new Set());
+      onClose();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const importedIds = new Set((importedQuery.data ?? []).map((r) => r.printfulSyncProductId));
+  const products = productsQuery.data?.products ?? [];
+  const total = productsQuery.data?.paging?.total ?? 0;
+  const lastOffset = Math.max(0, total - limit);
+
+  const toggle = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Import from Printful</DialogTitle></DialogHeader>
+        {!statusQuery.data?.configured ? (
+          <p className="text-sm text-muted-foreground">Set PRINTFUL_API_KEY in environment secrets to enable import.</p>
+        ) : !statusQuery.data.connected ? (
+          <p className="text-sm text-red-600">{statusQuery.data.error ?? "Could not connect to Printful"}</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Label className="text-sm">Store</Label>
+              <select
+                className="border rounded px-2 py-1 text-sm bg-background"
+                value={storeId ?? ""}
+                onChange={(e) => { setStoreId(Number(e.target.value)); setOffset(0); setSelected(new Set()); }}
+              >
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.type})</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-2 text-xs ml-auto">
+                <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
+                Publish on import
+              </label>
+            </div>
+            {productsQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading products…</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                {products.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-muted/30">
+                    <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggle(p.id)} />
+                    {p.thumbnail_url ? (
+                      <img src={p.thumbnail_url} alt="" className="w-10 h-10 rounded object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-muted" />
+                    )}
+                    <span className="text-sm flex-1 min-w-0 truncate">{p.name}</span>
+                    {importedIds.has(p.id) && (
+                      <Badge variant="outline" className="text-xs shrink-0">Imported</Badge>
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
+            {total > limit && (
+              <div className="flex justify-between text-sm">
+                <Button size="sm" variant="outline" disabled={offset <= 0} onClick={() => setOffset((o) => Math.max(0, o - limit))}>Previous</Button>
+                <span className="text-muted-foreground">{offset + 1}–{Math.min(offset + limit, total)} of {total}</span>
+                <Button size="sm" variant="outline" disabled={offset >= lastOffset} onClick={() => setOffset((o) => o + limit)}>Next</Button>
+              </div>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={selected.size === 0 || importMut.isPending || storeId == null}
+            onClick={() => importMut.mutate({
+              storeId: storeId!,
+              syncProductIds: Array.from(selected),
+              publish,
+            })}
+          >
+            {importMut.isPending ? "Importing…" : `Import ${selected.size || ""} product${selected.size === 1 ? "" : "s"}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+// ─── Import from Printify Dialog ─────────────────────────────────────────────
+function ImportFromPrintifyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const statusQuery = trpc.printifyAdmin.getConnectionStatus.useQuery(undefined, { enabled: open });
+  const shops = statusQuery.data?.shops ?? [];
+  const [shopId, setShopId] = React.useState<number | null>(null);
+  const [page, setPage] = React.useState(1);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [publish, setPublish] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) return;
+    if (shops.length > 0 && shopId === null) {
+      const preferred = statusQuery.data?.defaultShopId;
+      setShopId(preferred && shops.some((s) => s.id === preferred) ? preferred : shops[0]!.id);
+    }
+  }, [open, shops, shopId, statusQuery.data?.defaultShopId]);
+  React.useEffect(() => {
+    if (!open) { setShopId(null); setPage(1); setSelected(new Set()); setPublish(false); }
+  }, [open]);
+  const productsQuery = trpc.printifyAdmin.listProducts.useQuery(
+    { shopId: shopId!, page, limit: 50 },
+    { enabled: open && shopId != null },
+  );
+  const importedQuery = trpc.printifyAdmin.listImportedProductIds.useQuery(
+    { shopId: shopId! },
+    { enabled: open && shopId != null },
+  );
+  const importMut = trpc.printifyAdmin.importProducts.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Imported ${data.created} new, updated ${data.updated}, skipped ${data.skipped}`);
+      utils.productsAdmin.list.invalidate();
+      if (shopId) utils.printifyAdmin.listImportedProductIds.invalidate({ shopId });
+      setSelected(new Set());
+      onClose();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const importedIds = new Set((importedQuery.data ?? []).map((r: any) => r.printifyProductId));
+  const products = productsQuery.data?.products ?? [];
+  const toggle = (id: string) => {
+    setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Import from Printify</DialogTitle></DialogHeader>
+        {!statusQuery.data?.configured ? (
+          <p className="text-sm text-muted-foreground">Set PRINTIFY_API_TOKEN in environment secrets to enable import.</p>
+        ) : !statusQuery.data.connected ? (
+          <p className="text-sm text-red-600">{(statusQuery.data as any).error ?? "Could not connect to Printify"}</p>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Label className="text-sm">Shop</Label>
+              <select className="border rounded px-2 py-1 text-sm bg-background" value={shopId ?? ""} onChange={(e) => { setShopId(Number(e.target.value)); setPage(1); setSelected(new Set()); }}>
+                {shops.map((s) => (<option key={s.id} value={s.id}>{s.title} ({(s as any).sales_channel})</option>))}
+              </select>
+              <label className="flex items-center gap-2 text-xs ml-auto">
+                <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
+                Publish on import
+              </label>
+            </div>
+            {productsQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading products…</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                {products.map((p: any) => (
+                  <label key={p.id} className="flex items-center gap-2 p-2 border rounded cursor-pointer hover:bg-muted/30">
+                    <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggle(p.id)} />
+                    {p.imageUrl ? (<img src={p.imageUrl} alt="" className="w-10 h-10 rounded object-cover" />) : (<div className="w-10 h-10 rounded bg-muted" />)}
+                    <span className="text-sm flex-1 min-w-0 truncate">{p.title}</span>
+                    {importedIds.has(p.id) && (<Badge variant="outline" className="text-xs shrink-0">Imported</Badge>)}
+                  </label>
+                ))}
+              </div>
+            )}
+            {(productsQuery.data?.lastPage ?? 1) > 1 && (
+              <div className="flex justify-between text-sm">
+                <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+                <span className="text-muted-foreground">Page {page} of {productsQuery.data?.lastPage ?? 1}</span>
+                <Button size="sm" variant="outline" disabled={page >= (productsQuery.data?.lastPage ?? 1)} onClick={() => setPage((p) => p + 1)}>Next</Button>
+              </div>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={selected.size === 0 || importMut.isPending || shopId == null} onClick={() => importMut.mutate({ shopId: shopId!, printifyProductIds: Array.from(selected), publish })}>
+            {importMut.isPending ? "Importing…" : `Import ${selected.size || ""} product${selected.size === 1 ? "" : "s"}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -269,6 +536,20 @@ function OrdersTab({ productId }: { productId: number }) {
     onSuccess: () => { utils.productsAdmin.listOrders.invalidate({ productId }); toast.success("Order updated"); },
     onError: (e) => toast.error(e.message),
   });
+  const retryBvMut = trpc.productsAdmin.retryBookvaultFulfillment.useMutation({
+    onSuccess: () => {
+      utils.productsAdmin.listOrders.invalidate({ productId });
+      toast.success("BookVault fulfillment submitted");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const retryPfMut = trpc.productsAdmin.retryPrintfulFulfillment.useMutation({
+    onSuccess: () => {
+      utils.productsAdmin.listOrders.invalidate({ productId });
+      toast.success("Printful fulfillment submitted");
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
@@ -322,8 +603,51 @@ function OrdersTab({ productId }: { productId: number }) {
                         Tracking: {order.trackingCarrier} {order.trackingNumber}
                       </div>
                     )}
+                    {(order.bookvaultDocRef || order.bookvaultStatus || order.bookvaultError) && (
+                      <div className="text-xs mt-1 rounded p-1.5 bg-slate-50 border border-slate-200">
+                        <span className="font-medium text-slate-700">BookVault:</span>{" "}
+                        {order.bookvaultStatus ?? "pending"}
+                        {order.bookvaultDocRef ? ` · ${order.bookvaultDocRef}` : ""}
+                        {order.bookvaultPodRef ? ` · PodRef ${order.bookvaultPodRef}` : ""}
+                        {order.bookvaultError ? (
+                          <span className="block text-red-600 mt-0.5">{order.bookvaultError}</span>
+                        ) : null}
+                      </div>
+                    )}
+                    {(order.printfulOrderId || order.printfulStatus || order.printfulError) && (
+                      <div className="text-xs mt-1 rounded p-1.5 bg-teal-50 border border-teal-200">
+                        <span className="font-medium text-teal-700">Printful:</span>{" "}
+                        {order.printfulStatus ?? "pending"}
+                        {order.printfulOrderId ? ` · ${order.printfulOrderId}` : ""}
+                        {order.printfulError ? (
+                          <span className="block text-red-600 mt-0.5">{order.printfulError}</span>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
+                    {(order.bookvaultError || (!order.bookvaultSubmittedAt && order.fulfillmentStatus === "pending")) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={retryBvMut.isPending}
+                        onClick={() => retryBvMut.mutate({ orderId: order.id, force: Boolean(order.bookvaultError) })}
+                      >
+                        {retryBvMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send to BookVault"}
+                      </Button>
+                    )}
+                    {(order.printfulError || (!order.printfulSubmittedAt && order.fulfillmentStatus === "pending")) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={retryPfMut.isPending}
+                        onClick={() => retryPfMut.mutate({ orderId: order.id, force: Boolean(order.printfulError) })}
+                      >
+                        {retryPfMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send to Printful"}
+                      </Button>
+                    )}
                     <select
                       className="border rounded px-1.5 py-0.5 text-xs bg-background"
                       value={order.fulfillmentStatus}
@@ -385,7 +709,7 @@ function AnalyticsTab({ productId }: { productId: number }) {
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-teal-600">${(data.totalRevenue / 100).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-teal-600">${Number(data.totalRevenue).toFixed(2)}</div>
             <div className="text-sm text-muted-foreground">Total Revenue</div>
           </CardContent>
         </Card>
@@ -411,49 +735,30 @@ function AnalyticsTab({ productId }: { productId: number }) {
 
 // ─── Grant Access Dialog ──────────────────────────────────────────────────────
 function GrantAccessDialog({ open, productId, onClose }: { open: boolean; productId: number; onClose: () => void }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [searchResult, setSearchResult] = useState<{ id: number; name: string | null; email: string | null } | null | undefined>(undefined);
+  const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
   const utils = trpc.useUtils();
-  const findUser = trpc.platformAdmin.findUserByEmail.useMutation({
-    onSuccess: (data) => setSearchResult(data as any ?? null),
-    onError: () => setSearchResult(null),
-  });
   const grantMut = trpc.productsAdmin.grantAccess.useMutation({
     onSuccess: () => {
       toast.success("Access granted");
       utils.productsAdmin.listOrders.invalidate({ productId });
-      setEmail(""); setName(""); setSearchResult(undefined); onClose();
+      setSelectedUser(null); onClose();
     },
     onError: (e) => toast.error(e.message),
   });
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setSelectedUser(null); onClose(); } }}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-600" /> Grant Product Access</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label>User Email</Label>
-            <div className="flex gap-2">
-              <Input type="email" placeholder="user@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setSearchResult(undefined); }} />
-              <Button size="sm" variant="outline" onClick={() => findUser.mutate({ email: email.trim() })} disabled={findUser.isPending}>
-                {findUser.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
-              </Button>
-            </div>
+            <Label>Search User</Label>
+            <UserSearchCombobox onSelect={setSelectedUser} placeholder="Search by name or email…" existingOnly />
           </div>
-          {searchResult === null && (
-            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">User not found.</p>
-          )}
-          {searchResult && (
-            <div className="bg-teal-50 border border-teal-200 rounded p-2">
-              <p className="text-sm text-teal-800 font-medium">Found: {searchResult.name ?? searchResult.email}</p>
-            </div>
-          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={!searchResult || grantMut.isPending}
-            onClick={() => searchResult && grantMut.mutate({ productId, userId: searchResult.id })}>
+          <Button variant="outline" onClick={() => { setSelectedUser(null); onClose(); }}>Cancel</Button>
+          <Button disabled={!selectedUser || grantMut.isPending}
+            onClick={() => selectedUser?.id && grantMut.mutate({ productId, userId: selectedUser.id })}>
             {grantMut.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />}
             Grant Access
           </Button>
@@ -515,6 +820,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       metaTitle: product.metaTitle ?? "",
       metaDescription: product.metaDescription ?? "",
       publishDomain: (product as any).publishDomain ?? "",
+      brand: (product as any).brand ?? "all_about_ultrasound",
     });
   }
 
@@ -541,6 +847,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       metaTitle: form.metaTitle || null,
       metaDescription: form.metaDescription || null,
       publishDomain: form.publishDomain || null,
+      brand: form.brand || null,
     });
   };
 
@@ -553,7 +860,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/media-upload", { method: "POST", credentials: "include", body: fd });
+      const res = await fetch("/api/upload-course-image", { method: "POST", credentials: "include", body: fd });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error ?? "Upload failed"); }
       const { url } = await res.json();
       setForm((prev: any) => ({ ...prev, thumbnailUrl: url }));
@@ -571,12 +878,13 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
         <h3 className="text-lg font-semibold flex-1 truncate">{product.title}</h3>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-xs font-mono font-semibold text-gray-600 select-all cursor-text" title="Product ID — use for manual grants & support">ID: {product.id}</span>
         <StatusBadge status={product.status} />
       </div>
 
       {/* Top Save Button */}
       <div className="flex justify-end pb-2 border-b border-gray-100">
-        <Button onClick={handleSave} disabled={updateMut.isPending} className=" hover:">
+        <Button onClick={handleSave} disabled={updateMut.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
           {updateMut.isPending ? "Saving..." : "Save Settings"}
         </Button>
       </div>
@@ -593,6 +901,17 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               <Eye className="w-3 h-3 mr-1" /> Preview Sales Page
             </Button>
           </a>
+        )}
+        {product.slug && (
+          <Button size="sm" variant="outline" className="text-xs gap-1 text-teal-600 border-teal-300 hover:bg-teal-50"
+            onClick={() => {
+              const url = `${window.location.origin}/checkout/${product.slug}?type=physical`;
+              navigator.clipboard.writeText(url);
+              toast.success("Checkout link copied");
+            }}
+          >
+            <Copy className="w-3 h-3" /> Copy Checkout Link
+          </Button>
         )}
         <Button size="sm" variant="outline" className="text-xs text-teal-600 border-teal-300 hover:bg-teal-50"
           onClick={() => setShowGrantDialog(true)}>
@@ -613,6 +932,9 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
           <TabsTrigger value="landing" className="text-xs"><Globe className="w-3 h-3 mr-1" />Sales Page</TabsTrigger>
           <TabsTrigger value="orders" className="text-xs"><Truck className="w-3 h-3 mr-1" />Orders</TabsTrigger>
           <TabsTrigger value="analytics" className="text-xs"><BarChart2 className="w-3 h-3 mr-1" />Analytics</TabsTrigger>
+          <TabsTrigger value="after-purchase" className="text-xs"><Workflow className="w-3 h-3 mr-1" />After Purchase</TabsTrigger>
+          <TabsTrigger value="checkout-page" className="text-xs"><ShoppingBag className="w-3 h-3 mr-1" />Checkout Page</TabsTrigger>
+          <TabsTrigger value="embed" className="text-xs"><Code2 className="w-3 h-3 mr-1" />Embed</TabsTrigger>
         </TabsList>
 
         {/* ── Details Tab ── */}
@@ -692,7 +1014,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               <div>
                 <Label className="text-sm">URL Slug</Label>
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">/products/</span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">/product/</span>
                   <Input value={form.slug ?? ""} onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-") })} placeholder="product-url-slug" className="flex-1" />
                 </div>
               </div>
@@ -703,6 +1025,17 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               <div>
                 <Label className="text-sm">Meta Description (SEO)</Label>
                 <Textarea value={form.metaDescription ?? ""} onChange={e => setForm({ ...form, metaDescription: e.target.value })} placeholder="Brief description for search engines" className="mt-1 resize-none h-20" maxLength={500} />
+              </div>
+              <div>
+                <Label className="text-sm">Brand</Label>
+                <select
+                  className="mt-1 border rounded px-2 py-2 text-sm bg-background w-full"
+                  value={form.brand ?? "all_about_ultrasound"}
+                  onChange={e => setForm({ ...form, brand: e.target.value })}
+                >
+                  <option value="all_about_ultrasound">All About Ultrasound</option>
+                  <option value="iheartecho">iHeartEcho</option>
+                </select>
               </div>
               <div>
                 <Label className="text-sm">Publish Domain Override</Label>
@@ -894,6 +1227,68 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         <TabsContent value="analytics" className="mt-4">
           <AnalyticsTab productId={productId} />
         </TabsContent>
+
+        {/* ── After Purchase Tab ── */}
+        <TabsContent value="after-purchase" className="mt-4">
+          <ProductAfterPurchaseTab productId={productId} />
+        </TabsContent>
+
+        <TabsContent value="checkout-page" className="mt-4">
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Customise the sections shown on the hosted checkout page{product.slug && (
+                      <>{" "}at{" "}
+                        <a href={`/checkout/${product.slug}?type=physical`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                          /checkout/{product.slug}
+                        </a>
+                      </>
+                    )}.
+                    Use the full-screen editor to add trust seals, testimonials, FAQs, guarantees, and more.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  {product.slug && (
+                    <a href={`/checkout/${product.slug}?type=physical`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                      Preview
+                    </a>
+                  )}
+                  <a href={`/admin/checkout-editor/physical/${productId}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    Open Page Editor
+                  </a>
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {["Trust Seals & Badges","Product Includes","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
+                  <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="w-2 h-2 rounded-full bg-teal-400" />
+                    <span className="text-xs text-gray-600">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="embed" className="mt-4">
+          {product.slug && (
+            <ContentEmbedTab
+              entityType="physical"
+              slug={product.slug}
+              title={product.title}
+              subtitle={product.subtitle}
+              thumbnailUrl={product.thumbnailUrl}
+              defaultCheckoutUrl={`${window.location.origin}/checkout/${product.slug}?type=physical`}
+            />
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Bottom Save */}
@@ -905,6 +1300,250 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       </div>
 
       <GrantAccessDialog open={showGrantDialog} productId={productId} onClose={() => setShowGrantDialog(false)} />
+    </div>
+  );
+}
+
+// ─── After Purchase Workflow Tab ────────────────────────────────────────────
+function ProductAfterPurchaseTab({ productId }: { productId: number }) {
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.productsAdmin.getAfterPurchaseWorkflow.useQuery({ productId });
+  const saveMut = trpc.productsAdmin.updateAfterPurchaseWorkflow.useMutation({
+    onSuccess: () => { utils.productsAdmin.getAfterPurchaseWorkflow.invalidate({ productId }); toast.success("After purchase workflow saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const { data: hideData } = trpc.productsAdmin.getHidePricingOptions.useQuery({ productId });
+  const hideToggleMut = trpc.productsAdmin.updateHidePricingOptions.useMutation({
+    onSuccess: () => { utils.productsAdmin.getHidePricingOptions.invalidate({ productId }); toast.success("Setting saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  // BookVault settings
+  const { data: bvData } = trpc.productsAdmin.getBookvaultSettings.useQuery({ productId });
+  const { data: bvTitles, isLoading: bvTitlesLoading } = trpc.productsAdmin.listBookvaultTitles.useQuery(
+    undefined,
+    { enabled: Boolean(bvData?.connection?.connected) },
+  );
+  const testBvMut = trpc.productsAdmin.testBookvaultConnection.useMutation({
+    onSuccess: (data) => {
+      utils.productsAdmin.getBookvaultSettings.invalidate({ productId });
+      toast.success(`Connected to ${data.accountName}`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const [bvIsbn, setBvIsbn] = React.useState("");
+  React.useEffect(() => { if (bvData?.bookvaultIsbn) setBvIsbn(bvData.bookvaultIsbn); }, [bvData?.bookvaultIsbn]);
+  const bvMut = trpc.productsAdmin.updateBookvaultSettings.useMutation({
+    onSuccess: () => { utils.productsAdmin.getBookvaultSettings.invalidate({ productId }); toast.success("BookVault settings saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  // Printful settings
+  const { data: pfulData } = trpc.productsAdmin.getPrintfulSettings.useQuery({ productId });
+  const testPfulMut = trpc.productsAdmin.testPrintfulConnection.useMutation({
+    onSuccess: () => {
+      utils.productsAdmin.getPrintfulSettings.invalidate({ productId });
+      toast.success("Connected to Printful");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const [pfulStoreId, setPfulStoreId] = React.useState("");
+  const [pfulProductId, setPfulProductId] = React.useState("");
+  const [pfulVariantId, setPfulVariantId] = React.useState("");
+  React.useEffect(() => {
+    if (pfulData?.printfulStoreId) setPfulStoreId(String(pfulData.printfulStoreId));
+    if (pfulData?.printfulSyncProductId) setPfulProductId(String(pfulData.printfulSyncProductId));
+    if (pfulData?.printfulSyncVariantId) setPfulVariantId(String(pfulData.printfulSyncVariantId));
+  }, [pfulData?.printfulStoreId, pfulData?.printfulSyncProductId, pfulData?.printfulSyncVariantId]);
+  const pfulMut = trpc.productsAdmin.updatePrintfulSettings.useMutation({
+    onSuccess: () => { utils.productsAdmin.getPrintfulSettings.invalidate({ productId }); toast.success("Printful settings saved"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const savePrintful = (enabled: boolean) => {
+    const storeNum = pfulStoreId.trim() ? Number.parseInt(pfulStoreId, 10) : null;
+    const productNum = pfulProductId.trim() ? Number.parseInt(pfulProductId, 10) : null;
+    const variantNum = pfulVariantId.trim() ? Number.parseInt(pfulVariantId, 10) : null;
+    pfulMut.mutate({
+      productId,
+      printfulEnabled: enabled,
+      printfulStoreId: Number.isFinite(storeNum) ? storeNum : null,
+      printfulSyncProductId: Number.isFinite(productNum) ? productNum : null,
+      printfulSyncVariantId: Number.isFinite(variantNum) ? variantNum : null,
+    });
+  };
+  if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
+  return (
+    <div className="space-y-4">
+      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
+        <Workflow className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-teal-800">After Purchase Workflow</p>
+          <p className="text-xs text-teal-600 mt-0.5">Configure what happens immediately after a customer completes their purchase. Actions run in order.</p>
+        </div>
+      </div>
+
+      {/* BookVault Print-on-Demand */}
+      <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">BookVault Print-on-Demand</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Automatically fulfill physical book orders via BookVault when enabled. Requires a valid ISBN linked to your BookVault account.
+            </p>
+          </div>
+          <Switch
+            checked={bvData?.bookvaultEnabled ?? false}
+            onCheckedChange={(v) => bvMut.mutate({ productId, bookvaultEnabled: v, bookvaultIsbn: bvIsbn || null })}
+            disabled={bvMut.isPending}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {bvData?.connection?.connected ? (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              Connected{bvData.connection.accountName ? ` · ${bvData.connection.accountName}` : ""}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              {bvData?.connection?.error ?? "Not connected"}
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => testBvMut.mutate()}
+            disabled={testBvMut.isPending}
+          >
+            {testBvMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Test connection"}
+          </Button>
+        </div>
+
+        {(bvData?.bookvaultEnabled) && (
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-600">ISBN (13-digit)</Label>
+            <div className="flex gap-2 flex-wrap">
+              <Input
+                value={bvIsbn}
+                onChange={(e) => setBvIsbn(e.target.value)}
+                placeholder="978-0-000000-00-0"
+                className="text-sm max-w-xs"
+                maxLength={32}
+                list="bookvault-title-options"
+              />
+              {bvTitles && bvTitles.length > 0 && (
+                <datalist id="bookvault-title-options">
+                  {bvTitles.map((t) => (
+                    <option key={t.isbn} value={t.isbn}>{t.title}{t.author ? ` — ${t.author}` : ""}</option>
+                  ))}
+                </datalist>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => bvMut.mutate({ productId, bookvaultEnabled: true, bookvaultIsbn: bvIsbn || null })}
+                disabled={bvMut.isPending}
+              >
+                {bvMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+              </Button>
+            </div>
+            {bvTitlesLoading ? (
+              <p className="text-xs text-muted-foreground">Loading BookVault titles…</p>
+            ) : bvData?.titleMatch ? (
+              <p className="text-xs text-muted-foreground">
+                {bvData.titleMatch.title
+                  ? `Matched title: ${bvData.titleMatch.title}`
+                  : "ISBN saved — title lookup did not return a match (verify in BookVault)."}
+              </p>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* Printful Print-on-Demand */}
+      <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Printful Print-on-Demand</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Automatically submit orders to Printful when enabled. Link a store, sync product, and variant ID.
+            </p>
+          </div>
+          <Switch
+            checked={pfulData?.printfulEnabled ?? false}
+            onCheckedChange={(v) => savePrintful(v)}
+            disabled={pfulMut.isPending}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {pfulData?.connection?.connected ? (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              Connected · {pfulData.connection.stores.length} store(s)
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              {pfulData?.connection?.error ?? "Not connected"}
+            </Badge>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => testPfulMut.mutate()}
+            disabled={testPfulMut.isPending}
+          >
+            {testPfulMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Test connection"}
+          </Button>
+          <a href="/admin/printful" className="text-xs text-teal-600 hover:underline">Open Printful admin →</a>
+        </div>
+
+        {(pfulData?.printfulEnabled) && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <Label className="text-xs text-gray-600">Store</Label>
+              <select
+                className="mt-1 w-full border rounded px-2 py-1.5 text-sm bg-background"
+                value={pfulStoreId}
+                onChange={(e) => setPfulStoreId(e.target.value)}
+              >
+                <option value="">Select store…</option>
+                {(pfulData?.connection?.stores ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600">Sync Product ID</Label>
+              <Input value={pfulProductId} onChange={(e) => setPfulProductId(e.target.value)} className="mt-1 text-sm" placeholder="Printful sync product ID" />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600">Sync Variant ID</Label>
+              <Input value={pfulVariantId} onChange={(e) => setPfulVariantId(e.target.value)} className="mt-1 text-sm" placeholder="Sync variant ID" />
+            </div>
+            <div className="sm:col-span-3 flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => savePrintful(true)} disabled={pfulMut.isPending}>
+                {pfulMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save Printful link"}
+              </Button>
+              {pfulData?.productMatch?.title && (
+                <p className="text-xs text-muted-foreground">
+                  Linked: {pfulData.productMatch.title}
+                  {pfulData.productMatch.variantName ? ` · ${pfulData.productMatch.variantName}` : ""}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <HidePricingOptionsToggle
+        value={hideData?.hidePricingOptions ?? false}
+        onChange={(v) => hideToggleMut.mutate({ productId, hidePricingOptions: v })}
+        isSaving={hideToggleMut.isPending}
+      />
+      <AfterPurchaseWorkflowEditor
+        value={data?.afterPurchaseWorkflow ?? null}
+        onChange={(workflow) => saveMut.mutate({ productId, workflow })}
+        isSaving={saveMut.isPending}
+      />
     </div>
   );
 }

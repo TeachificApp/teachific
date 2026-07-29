@@ -4868,9 +4868,18 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
 function EnrollmentsTab() {
   
   const [page, setPage] = useState(1);
+  const [certTarget, setCertTarget] = useState<{ enrollmentId: number; userName: string } | null>(null);
   const { data, isLoading, refetch } = trpc.lmsAdmin.listEnrollments.useQuery({ page, pageSize: 20 });
   const removeEnrollment = trpc.lmsAdmin.removeEnrollment.useMutation({
     onSuccess: () => { toast.success("Enrollment removed"); refetch(); },
+    onError: e => toast.error(`Error: ${e.message}`),
+  });
+  const manualIssueCertificate = trpc.lmsEnrollmentAdmin.manualIssueCertificate.useMutation({
+    onSuccess: (res) => {
+      if (res.alreadyExisted) toast.success("Certificate already exists — URL returned");
+      else toast.success("Certificate issued successfully!");
+      setCertTarget(null);
+    },
     onError: e => toast.error(`Error: ${e.message}`),
   });
 
@@ -4909,11 +4918,16 @@ function EnrollmentsTab() {
                   </td>
                   <td className="px-4 py-2.5 text-xs text-gray-400">{new Date(e.enrolledAt).toLocaleDateString()}</td>
                   <td className="px-4 py-2.5">
-                    <Button size="sm" variant="ghost" className="h-6 text-red-400 hover:bg-red-50" onClick={() => {
-                      if (confirm("Remove this enrollment?")) removeEnrollment.mutate({ id: e.id });
-                    }}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" className="h-6 text-teal-500 hover:bg-teal-50 text-xs" onClick={() => setCertTarget({ enrollmentId: e.id, userName: e.user?.displayName ?? "Learner" })}>
+                        <Award className="w-3 h-3 mr-1" /> Cert
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 text-red-400 hover:bg-red-50" onClick={() => {
+                        if (confirm("Remove this enrollment?")) removeEnrollment.mutate({ id: e.id });
+                      }}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -4928,6 +4942,36 @@ function EnrollmentsTab() {
         <div className="flex justify-center gap-2">
           <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
           <Button size="sm" variant="outline" disabled={page * 20 >= (data?.total ?? 0)} onClick={() => setPage(p => p + 1)}>Next</Button>
+        </div>
+      )}
+
+      {/* Manual Certificate Issue Dialog */}
+      {certTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setCertTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <Award className="w-5 h-5 text-teal-500" />
+              <h3 className="font-semibold text-gray-900">Issue Certificate</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">Issue a certificate for <strong>{certTarget.userName}</strong>.</p>
+            <div className="flex flex-col gap-2">
+              <Button
+                className="bg-teal-500 hover:bg-teal-400 text-white"
+                onClick={() => manualIssueCertificate.mutate({ enrollmentId: certTarget.enrollmentId, forceReissue: false })}
+                disabled={manualIssueCertificate.isPending}
+              >
+                {manualIssueCertificate.isPending ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Issuing...</> : "Issue Certificate"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => manualIssueCertificate.mutate({ enrollmentId: certTarget.enrollmentId, forceReissue: true })}
+                disabled={manualIssueCertificate.isPending}
+              >
+                {manualIssueCertificate.isPending ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Re-issuing...</> : "Re-issue Certificate"}
+              </Button>
+              <Button variant="ghost" className="text-gray-500" onClick={() => setCertTarget(null)}>Cancel</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

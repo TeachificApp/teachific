@@ -72,6 +72,8 @@ import {
   lmsCohortSubmissions,
   mediaUploadFolders,
   mediaUploadResponses,
+  lmsCheckoutTemplates,
+  curriculumEmbedVisibility,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
@@ -1093,5 +1095,246 @@ export const lmsCourseBuilderRouter = router({
         effectConfettiMode: input.effectConfettiMode ?? "fall",
       }).where(eq(lmsLessons.id, input.id));
       return { success: true };
+    }),
+
+  // ===== getAfterPurchase =====
+  getAfterPurchase: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({
+          id: lmsCourses.id,
+          title: lmsCourses.title,
+          customThankYouEnabled: lmsCourses.customThankYouEnabled,
+          customThankYouBlocks: lmsCourses.customThankYouBlocks,
+          postPurchaseRedirectUrl: lmsCourses.postPurchaseRedirectUrl,
+          welcomeEmailEnabled: lmsCourses.welcomeEmailEnabled,
+          welcomeEmailSubject: lmsCourses.welcomeEmailSubject,
+          welcomeEmailBody: lmsCourses.welcomeEmailBody,
+          upsellEnabled: lmsCourses.upsellEnabled,
+          upsellCourseId: lmsCourses.upsellCourseId,
+          upsellProductType: lmsCourses.upsellProductType,
+          upsellProductId: lmsCourses.upsellProductId,
+          upsellHeadline: lmsCourses.upsellHeadline,
+          upsellDescription: lmsCourses.upsellDescription,
+          hidePricingOptions: lmsCourses.hidePricingOptions,
+          completionRedirectUrl: lmsCourses.completionRedirectUrl,
+          completionEmailEnabled: lmsCourses.completionEmailEnabled,
+          completionEmailSubject: lmsCourses.completionEmailSubject,
+          completionEmailBody: lmsCourses.completionEmailBody,
+        })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.id, input.courseId))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      return course;
+    }),
+
+  // ===== updateAfterPurchase =====
+  updateAfterPurchase: protectedProcedure
+    .input(z.object({
+      courseId: z.number(),
+      customThankYouEnabled: z.boolean().optional(),
+      customThankYouBlocks: z.string().nullable().optional(),
+      postPurchaseRedirectUrl: z.string().max(1024).nullable().optional(),
+      welcomeEmailEnabled: z.boolean().optional(),
+      welcomeEmailSubject: z.string().max(500).nullable().optional(),
+      welcomeEmailBody: z.string().nullable().optional(),
+      upsellEnabled: z.boolean().optional(),
+      upsellCourseId: z.number().nullable().optional(),
+      upsellProductType: z.enum(["course", "quiz", "webinar", "download", "membership"]).nullable().optional(),
+      upsellProductId: z.number().nullable().optional(),
+      upsellHeadline: z.string().max(500).nullable().optional(),
+      upsellDescription: z.string().nullable().optional(),
+      hidePricingOptions: z.boolean().optional(),
+      completionRedirectUrl: z.string().max(1024).nullable().optional(),
+      completionEmailEnabled: z.boolean().optional(),
+      completionEmailSubject: z.string().max(500).nullable().optional(),
+      completionEmailBody: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { courseId, ...updates } = input;
+      const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+      if (Object.keys(filtered).length > 0) {
+        await db.update(lmsCourses).set(filtered).where(eq(lmsCourses.id, courseId));
+      }
+      return { success: true };
+    }),
+
+  // ===== getCheckoutPageConfig =====
+  getCheckoutPageConfig: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({ checkoutPageConfig: lmsCourses.checkoutPageConfig })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.id, input.courseId))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      return { config: course.checkoutPageConfig ?? null };
+    }),
+
+  // ===== saveCheckoutPageConfig =====
+  saveCheckoutPageConfig: protectedProcedure
+    .input(z.object({
+      courseId: z.number(),
+      config: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      try { JSON.parse(input.config); } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON config" });
+      }
+      await db.update(lmsCourses).set({ checkoutPageConfig: input.config }).where(eq(lmsCourses.id, input.courseId));
+      return { success: true };
+    }),
+
+  // ===== getPublicCheckoutPageConfig =====
+  getPublicCheckoutPageConfig: publicProcedure
+    .input(z.object({ courseId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({ checkoutPageConfig: lmsCourses.checkoutPageConfig })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.id, input.courseId))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      return { config: course.checkoutPageConfig ?? null };
+    }),
+
+  // ===== listCheckoutTemplates =====
+  listCheckoutTemplates: protectedProcedure
+    .query(async ({ ctx }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const templates = await db.select({
+          id: lmsCheckoutTemplates.id,
+          name: lmsCheckoutTemplates.name,
+          description: lmsCheckoutTemplates.description,
+          config: lmsCheckoutTemplates.config,
+          createdAt: lmsCheckoutTemplates.createdAt,
+        })
+        .from(lmsCheckoutTemplates)
+        .orderBy(desc(lmsCheckoutTemplates.createdAt));
+      return templates;
+    }),
+
+  // ===== saveCheckoutTemplate =====
+  saveCheckoutTemplate: protectedProcedure
+    .input(z.object({
+      name: z.string().min(1).max(255),
+      description: z.string().max(1000).optional(),
+      config: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      try { JSON.parse(input.config); } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON config" });
+      }
+      const [result] = await db.insert(lmsCheckoutTemplates).values({
+        name: input.name,
+        description: input.description ?? null,
+        config: input.config,
+        createdByUserId: ctx.user.id,
+      });
+      return { id: (result as any).insertId as number, success: true };
+    }),
+
+  // ===== deleteCheckoutTemplate =====
+  deleteCheckoutTemplate: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(lmsCheckoutTemplates).where(eq(lmsCheckoutTemplates.id, input.id));
+      return { success: true };
+    }),
+
+  // ===== listCoursesWithLessons =====
+  listCoursesWithLessons: protectedProcedure
+    .query(async ({ ctx }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, type: lmsCourses.type })
+        .from(lmsCourses).orderBy(asc(lmsCourses.title));
+      const sections = await db.select({ id: lmsSections.id, courseId: lmsSections.courseId, title: lmsSections.title, position: lmsSections.position })
+        .from(lmsSections).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
+      const lessons = await db.select({ id: lmsLessons.id, courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, title: lmsLessons.title, type: lmsLessons.type, position: lmsLessons.position })
+        .from(lmsLessons).orderBy(asc(lmsLessons.courseId), asc(lmsLessons.position));
+      // Build tree
+      const result = courses.map(c => ({
+        ...c,
+        sections: sections
+          .filter(s => s.courseId === c.id)
+          .map(s => ({
+            ...s,
+            lessons: lessons.filter(l => l.sectionId === s.id),
+          })),
+        topLevelLessons: lessons.filter(l => l.courseId === c.id && !l.sectionId),
+      }));
+      return result;
+    }),
+
+  // ─── Curriculum Embed Visibility ───────────────────────────────────────────────────
+  getCurriculumEmbedVisibility: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await db
+        .select()
+        .from(curriculumEmbedVisibility)
+        .where(eq(curriculumEmbedVisibility.courseId, input.courseId));
+      const hiddenMap: Record<string, boolean> = {};
+      for (const row of rows) {
+        if (row.hidden) hiddenMap[`${row.itemType}_${row.itemId}`] = true;
+      }
+      return { hiddenMap, rows };
+    }),
+
+  setCurriculumEmbedVisibility: protectedProcedure
+    .input(z.object({
+      courseId: z.number(),
+      items: z.array(z.object({
+        itemType: z.enum(["section", "lesson"]),
+        itemId: z.number(),
+        hidden: z.boolean(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      for (const item of input.items) {
+        await db
+          .insert(curriculumEmbedVisibility)
+          .values({
+            courseId: input.courseId,
+            itemType: item.itemType,
+            itemId: item.itemId,
+            hidden: item.hidden,
+          })
+          .onDuplicateKeyUpdate({ set: { hidden: item.hidden } });
+      }
+      return { success: true, updated: input.items.length };
     }),
 });

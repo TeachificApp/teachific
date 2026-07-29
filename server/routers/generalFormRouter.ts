@@ -32,14 +32,91 @@ import {
   googleFormIntegrations,
     generalFormWebhooks,
   users,
+  generalFormSuccessModules,
+  generalFormSuccessRoutingRules,
+  generalFormEmbedWidgets,
+  generalFormEmbedAnalytics,
+  generalFormProgressEvents,
 } from "../../drizzle/schema";
 import { eq, desc, asc, and, sql, like, count, inArray } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { addToEmailList, addToAllContacts } from "../lib/emailListHelper";
+import { sendEmail } from "../_core/email";
+import {
+  ensureLegacySuccessModules,
+  fetchSuccessModules,
+  fetchSuccessRoutingRules,
+  clearDefaultIfDeleted,
+  deleteSuccessDataForForm,
+  copySuccessModulesForDuplicate,
+  copySuccessRoutingRulesForDuplicate,
+  buildModuleIdMapForDuplicate,
+} from "../lib/formSuccessModulesDb";
+import {
+  selectSuccessModule,
+  selectSuccessModuleWithRule,
+  buildSuccessOutcome,
+  extractSubmitterInfo,
+  type FormSubmissionContext,
+} from "../lib/formSuccessRouting";
+import { ensureEmbedWidget, deleteEmbedDataForForm, parseAllowedDomains } from "../lib/formEmbedWidgetDb";
+import { parseEmbedSettings } from "@shared/formEmbedWidgetTypes";
+import { getEmbedAnalyticsSummary } from "../routes/formEmbedRoutes";
+import {
+  isAdminOnlyItem,
+  parseResultsSettings,
+  mergeResultsSettingsIntoTheme,
+  type FormResultsSettings,
+} from "../../shared/formItemUtils";
+import {
+  parseFormAnalyticsSettings,
+  mergeFormAnalyticsIntoTheme,
+  type AnalyticsReportConfig,
+  type AnalyticsDashboardConfig,
+} from "../../shared/formAnalyticsUtils";
+import {
+  loadFormAnalyticsBundle,
+  buildDeepAnalyticsPayload,
+  getGlobalAnalyticsSettings,
+  persistGlobalAnalyticsSettings,
+  resolveReportByToken,
+  resolveDashboardByToken,
+  loadMultiFormCompare,
+  rebuildReportIndexForForm,
+  syncDashboardIndex,
+} from "../lib/formAnalyticsEngine";
+import { randomBytes } from "crypto";
+import {
+  fireFormWebhook,
+  fireConfiguredFormActions,
+  sendFormNotifyEmail,
+} from "../lib/generalFormActions";
+import { createFormStripeCheckout } from "../lib/formStripeCheckout";
+import { applyAccessGrantActions } from "../lib/formAccessGrant";
+
+type DbConn = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function stripAdminOnlyFromResponses(
+  db: DbConn,
+  templateId: number,
+  responsesJson: string,
+): Promise<string> {
+  const items = await db
+    .select({ id: generalFormItems.id, extraConfig: generalFormItems.extraConfig })
+    .from(generalFormItems)
+    .where(eq(generalFormItems.templateId, templateId));
+  const adminIds = new Set(items.filter(isAdminOnlyItem).map(i => i.id.toString()));
+  if (adminIds.size === 0) return responsesJson;
+  const responses = JSON.parse(responsesJson) as Record<string, unknown>;
+  for (const id of adminIds) delete responses[id];
+  return JSON.stringify(responses);
+}
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
 async function requireAdmin(ctx: any) {
-  const _orgId = await requireOrgAdmin(ctx.user!.id, ctx.user!.role);
+  if (ctx.user?.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
 }
 
 // ─── Slug generator ───────────────────────────────────────────────────────────
@@ -52,6 +129,53 @@ function generateSlug(name: string): string {
     .replace(/-+/g, "-")
     .substring(0, 80)
     + "-" + Math.random().toString(36).substring(2, 7);
+}
+
+// ─── Embedded form detector ─────────────────────────────────────────────────
+/**
+ * Fetches the raw HTML of a page and looks for embedded form widgets.
+ * Returns the canonical form URL if an embedded form is detected.
+ * Supports: Typeform (data-tf-widget, iframe), JotForm (data-jotform-id, iframe),
+ * Cognito Forms (iframe), Wufoo (iframe), Formstack (iframe), Gravity Forms (native HTML).
+ */
+async function detectEmbeddedFormUrl(pageUrl: string): Promise<string | null> {
+  try {
+    const resp = await fetch(pageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FormImporter/1.0)', 'Accept': 'text/html' },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!resp.ok) return null;
+    const html = await resp.text();
+
+    // Typeform: data-tf-widget="FORMID" or data-tf-live="FORMID" or iframe src containing typeform.com/to/
+    const tfWidget = html.match(/data-tf-(?:widget|live|popup|sidetab|slider)=["']([A-Za-z0-9]+)["']/i);
+    if (tfWidget) return `https://form.typeform.com/to/${tfWidget[1]}`;
+    const tfIframe = html.match(/src=["'][^"']*typeform\.com\/to\/([A-Za-z0-9]+)[^"']*["']/i);
+    if (tfIframe) return `https://form.typeform.com/to/${tfIframe[1]}`;
+
+    // JotForm: data-jotform-id or iframe src
+    const jfAttr = html.match(/data-jotform-id=["']([0-9]+)["']/i);
+    if (jfAttr) return `https://form.jotform.com/${jfAttr[1]}`;
+    const jfIframe = html.match(/src=["'][^"']*jotform\.com\/(?:form\/)?([0-9]+)[^"']*["']/i);
+    if (jfIframe) return `https://form.jotform.com/${jfIframe[1]}`;
+
+    // Cognito Forms: iframe src containing cognitoforms.com
+    const cogIframe = html.match(/src=["']([^"']*cognitoforms\.com[^"']*)["']/i);
+    if (cogIframe) return cogIframe[1];
+
+    // Wufoo: iframe src containing wufoo.com
+    const wufooIframe = html.match(/src=["']([^"']*wufoo\.com\/forms\/[^"']+)["']/i);
+    if (wufooIframe) return wufooIframe[1];
+
+    // Formstack: iframe src containing formstack.com
+    const fsIframe = html.match(/src=["']([^"']*formstack\.com\/forms[^"']+)["']/i);
+    if (fsIframe) return fsIframe[1];
+
+    // Gravity Forms / native HTML form on the same page — return null to use HTML scraping
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Typeform URL detector & API importer ────────────────────────────────────
@@ -359,6 +483,13 @@ export const generalFormRouter = router({
       welcomeImageUrl: z.string().optional(),
       submitButtonText: z.string().optional(),
       emailListId: z.number().nullable().optional(),
+      // Stripe checkout settings
+      stripeEnabled: z.boolean().optional(),
+      stripeCheckoutMode: z.enum(["payment", "subscription"]).optional(),
+      stripePriceId: z.string().nullable().optional(),
+      stripeAmount: z.number().nullable().optional(),
+      stripeSuccessUrl: z.string().nullable().optional(),
+      stripeCancelUrl: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await requireAdmin(ctx);
@@ -400,7 +531,17 @@ export const generalFormRouter = router({
       await requireAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(generalFormTemplates).set({ themeSettings: input.themeSettings, updatedAt: new Date() }).where(eq(generalFormTemplates.id, input.id));
+      const [existing] = await db
+        .select({ themeSettings: generalFormTemplates.themeSettings })
+        .from(generalFormTemplates)
+        .where(eq(generalFormTemplates.id, input.id))
+        .limit(1);
+      const preserved = parseResultsSettings(existing?.themeSettings ?? null);
+      const merged = mergeResultsSettingsIntoTheme(input.themeSettings, preserved);
+      await db
+        .update(generalFormTemplates)
+        .set({ themeSettings: merged, updatedAt: new Date() })
+        .where(eq(generalFormTemplates.id, input.id));
       return { success: true };
     }),
 
@@ -420,6 +561,8 @@ export const generalFormRouter = router({
       await db.delete(generalFormSections).where(eq(generalFormSections.templateId, input.id));
       await db.delete(generalFormBranchRules).where(eq(generalFormBranchRules.templateId, input.id));
       await db.delete(generalFormSubmissions).where(eq(generalFormSubmissions.templateId, input.id));
+      await deleteEmbedDataForForm(db, input.id);
+      await deleteSuccessDataForForm(db, input.id);
       await db.delete(generalFormTemplates).where(eq(generalFormTemplates.id, input.id));
       return { success: true };
     }),
@@ -451,6 +594,23 @@ export const generalFormRouter = router({
       for (const opt of form.options) {
         await db.insert(generalFormOptions).values({ ...opt, id: undefined as any, itemId: itemIdMap[opt.itemId] ?? opt.itemId, createdAt: undefined as any });
       }
+      const [embedWidget] = await db.select().from(generalFormEmbedWidgets).where(eq(generalFormEmbedWidgets.templateId, input.id)).limit(1);
+      if (embedWidget) {
+        const { randomUUID } = await import("crypto");
+        await db.insert(generalFormEmbedWidgets).values({
+          templateId: newId,
+          widgetKey: randomUUID().replace(/-/g, ""),
+          name: embedWidget.name,
+          isEnabled: embedWidget.isEnabled,
+          displayType: embedWidget.displayType,
+          settingsJson: embedWidget.settingsJson,
+          domainMode: embedWidget.domainMode,
+          allowedDomains: embedWidget.allowedDomains,
+        });
+      }
+      // Copy success modules and routing rules
+      const moduleIdMap = await buildModuleIdMapForDuplicate(db, input.id, newId);
+      await copySuccessRoutingRulesForDuplicate(db, input.id, newId, moduleIdMap);
       return { id: newId };
     }),
 
@@ -465,8 +625,13 @@ export const generalFormRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      // ── Embedded form detection: resolve the actual form URL if page embeds a widget ──
+      let resolvedUrl = input.url;
+      const embeddedUrl = await detectEmbeddedFormUrl(input.url);
+      if (embeddedUrl) resolvedUrl = embeddedUrl;
+
       // ── Typeform fast-path: use public API instead of scraping ──────────────
-      const typeformId = extractTypeformId(input.url);
+      const typeformId = extractTypeformId(resolvedUrl);
       if (typeformId) {
         let tfParsed: TFParsed;
         try {
@@ -543,7 +708,7 @@ export const generalFormRouter = router({
       // Fetch page content — preserve structural HTML hints before stripping
       let pageText = "";
       try {
-        const res = await fetch(input.url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; FormImporter/1.0)" }, signal: AbortSignal.timeout(12000), redirect: "follow" });
+        const res = await fetch(resolvedUrl, { headers: { "User-Agent": "Mozilla/5.0 (compatible; FormImporter/1.0)" }, signal: AbortSignal.timeout(12000), redirect: "follow" });
         const html = await res.text();
         pageText = html
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
@@ -553,7 +718,7 @@ export const generalFormRouter = router({
           .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
           .replace(/\s+/g, " ").trim().substring(0, 6000);
       } catch {
-        pageText = `Form from: ${input.url}`;
+        pageText = `Form from: ${resolvedUrl}`;
       }
       // AI scaffold with rich field metadata + branching + calculations
       const systemPrompt = `You are a form builder assistant. Given a web page or form description, extract or infer ALL form fields, their types, options, conditional/branching logic, scoring, and any calculated/computed fields. Return structured JSON exactly matching the schema provided.
@@ -704,8 +869,13 @@ ${pageText}`;
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      // ── Embedded form detection ─────────────────────────────────────────────────────
+      let resolvedUrlAppend = input.url;
+      const embeddedUrlAppend = await detectEmbeddedFormUrl(input.url);
+      if (embeddedUrlAppend) resolvedUrlAppend = embeddedUrlAppend;
+
       // ── Typeform fast-path ─────────────────────────────────────────────────────
-      const typeformIdAppend = extractTypeformId(input.url);
+      const typeformIdAppend = extractTypeformId(resolvedUrlAppend);
       if (typeformIdAppend) {
         let tfParsed: TFParsed;
         try { tfParsed = await fetchAndParseTypeform(typeformIdAppend); }
@@ -756,7 +926,7 @@ ${pageText}`;
       // Fetch page content — preserve structural hints
       let pageText = "";
       try {
-        const res = await fetch(input.url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; FormImporter/1.0)" }, signal: AbortSignal.timeout(12000), redirect: "follow" });
+        const res = await fetch(resolvedUrlAppend, { headers: { "User-Agent": "Mozilla/5.0 (compatible; FormImporter/1.0)" }, signal: AbortSignal.timeout(12000), redirect: "follow" });
         const html = await res.text();
         pageText = html
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
@@ -766,7 +936,7 @@ ${pageText}`;
           .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
           .replace(/\s+/g, " ").trim().substring(0, 6000);
       } catch {
-        pageText = `Form from: ${input.url}`;
+        pageText = `Form from: ${resolvedUrlAppend}`;
       }
       // AI scaffold with rich metadata + branching + calculations
       const systemPrompt = `You are a form builder assistant. Extract ALL form fields, their types, options, placeholder text, help text, conditional/branching logic, scoring weights, and any calculated/computed fields from the page. Return structured JSON exactly matching the schema provided.
@@ -1106,6 +1276,442 @@ ${pageText}`;
         avgScore: avgScore ? Math.round(avgScore) : null,
         recentSubmissions,
         dailyCounts: (dailyCounts[0] as unknown as any[]) ?? [],
+        embed: await getEmbedAnalyticsSummary(db, input.id),
+      };
+    }),
+
+  getDeepFieldAnalytics: protectedProcedure
+    .input(
+      z.object({
+        formId: z.number(),
+        filterId: z.string().optional(),
+        crossTabRowFieldId: z.number().optional(),
+        crossTabColFieldId: z.number().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const bundle = await loadFormAnalyticsBundle(db, input.formId, input.filterId);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      const payload = buildDeepAnalyticsPayload(
+        bundle.items,
+        bundle.options,
+        bundle.submissions,
+        input.crossTabRowFieldId,
+        input.crossTabColFieldId,
+      );
+      return {
+        formName: bundle.template.name,
+        filterId: input.filterId ?? null,
+        savedFilters: bundle.resultsSettings.savedFilters,
+        items: bundle.items.map(i => ({ id: i.id, label: i.label, itemType: i.itemType })),
+        ...payload,
+      };
+    }),
+
+  listAnalyticsReports: protectedProcedure
+    .input(z.object({ formId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const bundle = await loadFormAnalyticsBundle(db, input.formId);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      return bundle.analyticsSettings.reports;
+    }),
+
+  saveAnalyticsReport: protectedProcedure
+    .input(
+      z.object({
+        formId: z.number(),
+        report: z.object({
+          id: z.string().optional(),
+          name: z.string().min(1),
+          headerHtml: z.string().optional(),
+          password: z.string().optional(),
+          filterId: z.string().optional(),
+          visibleFieldIds: z.array(z.number()).optional(),
+          chartFieldIds: z.array(z.number()).optional(),
+          showTable: z.boolean().default(true),
+          showCharts: z.boolean().default(true),
+          crossTabRowFieldId: z.number().optional(),
+          crossTabColFieldId: z.number().optional(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const bundle = await loadFormAnalyticsBundle(db, input.formId);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const now = new Date().toISOString();
+      const reports = [...bundle.analyticsSettings.reports];
+      const existingIdx = input.report.id ? reports.findIndex(r => r.id === input.report.id) : -1;
+      let passwordHash: string | undefined =
+        existingIdx >= 0 ? reports[existingIdx].passwordHash : undefined;
+      if (input.report.password === "") {
+        passwordHash = undefined;
+      } else if (input.report.password) {
+        const bcrypt = await import("bcryptjs");
+        passwordHash = await bcrypt.hash(input.report.password, 10);
+      }
+
+      const report: AnalyticsReportConfig = {
+        id: input.report.id ?? `rpt_${randomBytes(8).toString("hex")}`,
+        name: input.report.name,
+        token:
+          existingIdx >= 0
+            ? reports[existingIdx].token
+            : randomBytes(24).toString("base64url"),
+        headerHtml: input.report.headerHtml,
+        passwordHash,
+        filterId: input.report.filterId,
+        visibleFieldIds: input.report.visibleFieldIds,
+        chartFieldIds: input.report.chartFieldIds,
+        showTable: input.report.showTable,
+        showCharts: input.report.showCharts,
+        crossTabRowFieldId: input.report.crossTabRowFieldId,
+        crossTabColFieldId: input.report.crossTabColFieldId,
+        createdAt: existingIdx >= 0 ? reports[existingIdx].createdAt : now,
+        updatedAt: now,
+      };
+
+      if (existingIdx >= 0) reports[existingIdx] = report;
+      else reports.push(report);
+
+      const themeMerged = mergeFormAnalyticsIntoTheme(bundle.template.themeSettings, { reports });
+      await db
+        .update(generalFormTemplates)
+        .set({ themeSettings: themeMerged, updatedAt: new Date() })
+        .where(eq(generalFormTemplates.id, input.formId));
+
+      const global = await rebuildReportIndexForForm(db, input.formId, reports);
+      await persistGlobalAnalyticsSettings(db, global);
+
+      return { report };
+    }),
+
+  deleteAnalyticsReport: protectedProcedure
+    .input(z.object({ formId: z.number(), reportId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const bundle = await loadFormAnalyticsBundle(db, input.formId);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      const reports = bundle.analyticsSettings.reports.filter(r => r.id !== input.reportId);
+      const themeMerged = mergeFormAnalyticsIntoTheme(bundle.template.themeSettings, { reports });
+      await db
+        .update(generalFormTemplates)
+        .set({ themeSettings: themeMerged, updatedAt: new Date() })
+        .where(eq(generalFormTemplates.id, input.formId));
+      const global = await rebuildReportIndexForForm(db, input.formId, reports);
+      await persistGlobalAnalyticsSettings(db, global);
+      return { success: true };
+    }),
+
+  listAnalyticsDashboards: protectedProcedure.query(async ({ ctx }) => {
+    await requireAdmin(ctx);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const global = await getGlobalAnalyticsSettings(db);
+    return global.dashboards;
+  }),
+
+  saveAnalyticsDashboard: protectedProcedure
+    .input(
+      z.object({
+        dashboard: z.object({
+          id: z.string().optional(),
+          name: z.string().min(1),
+          headerHtml: z.string().optional(),
+          password: z.string().optional(),
+          widgets: z.array(
+            z.union([
+              z.object({ id: z.string(), type: z.literal("summary"), formIds: z.array(z.number()) }),
+              z.object({
+                id: z.string(),
+                type: z.literal("field_chart"),
+                formId: z.number(),
+                fieldId: z.number(),
+                filterId: z.string().optional(),
+              }),
+              z.object({
+                id: z.string(),
+                type: z.literal("cross_tab"),
+                formId: z.number(),
+                rowFieldId: z.number(),
+                colFieldId: z.number(),
+                filterId: z.string().optional(),
+              }),
+              z.object({
+                id: z.string(),
+                type: z.literal("multi_form_compare"),
+                formIds: z.array(z.number()),
+                fieldLabel: z.string(),
+              }),
+            ]),
+          ),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const global = await getGlobalAnalyticsSettings(db);
+      const now = new Date().toISOString();
+      const dashboards = [...global.dashboards];
+      const idx = input.dashboard.id ? dashboards.findIndex(d => d.id === input.dashboard.id) : -1;
+      let passwordHash: string | undefined = idx >= 0 ? dashboards[idx].passwordHash : undefined;
+      if (input.dashboard.password === "") passwordHash = undefined;
+      else if (input.dashboard.password) {
+        const bcrypt = await import("bcryptjs");
+        passwordHash = await bcrypt.hash(input.dashboard.password, 10);
+      }
+
+      const dashboard: AnalyticsDashboardConfig = {
+        id: input.dashboard.id ?? `dash_${randomBytes(8).toString("hex")}`,
+        name: input.dashboard.name,
+        token: idx >= 0 ? dashboards[idx].token : randomBytes(24).toString("base64url"),
+        headerHtml: input.dashboard.headerHtml,
+        passwordHash,
+        widgets: input.dashboard.widgets as AnalyticsDashboardConfig["widgets"],
+        createdAt: idx >= 0 ? dashboards[idx].createdAt : now,
+        updatedAt: now,
+      };
+
+      if (idx >= 0) dashboards[idx] = dashboard;
+      else dashboards.push(dashboard);
+
+      await persistGlobalAnalyticsSettings(db, {
+        ...global,
+        dashboards,
+        dashboardIndex: syncDashboardIndex(dashboards),
+      });
+      return { dashboard };
+    }),
+
+  deleteAnalyticsDashboard: protectedProcedure
+    .input(z.object({ dashboardId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const global = await getGlobalAnalyticsSettings(db);
+      const dashboards = global.dashboards.filter(d => d.id !== input.dashboardId);
+      await persistGlobalAnalyticsSettings(db, {
+        ...global,
+        dashboards,
+        dashboardIndex: syncDashboardIndex(dashboards),
+      });
+      return { success: true };
+    }),
+
+  getDashboardAnalytics: protectedProcedure
+    .input(z.object({ dashboardId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const global = await getGlobalAnalyticsSettings(db);
+      const dashboard = global.dashboards.find(d => d.id === input.dashboardId);
+      if (!dashboard) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const widgetData = await Promise.all(
+        dashboard.widgets.map(async widget => {
+          if (widget.type === "summary") {
+            const summaries = await Promise.all(
+              widget.formIds.map(async formId => {
+                const bundle = await loadFormAnalyticsBundle(db, formId);
+                return bundle
+                  ? { formId, formName: bundle.template.name, total: bundle.submissions.length }
+                  : null;
+              }),
+            );
+            return { widget, data: summaries.filter(Boolean) };
+          }
+          if (widget.type === "field_chart") {
+            const bundle = await loadFormAnalyticsBundle(db, widget.formId, widget.filterId);
+            if (!bundle) return { widget, data: null };
+            const payload = buildDeepAnalyticsPayload(bundle.items, bundle.options, bundle.submissions);
+            const field = payload.fieldAnalytics.find(f => f.fieldId === widget.fieldId);
+            return { widget, data: field ?? null };
+          }
+          if (widget.type === "cross_tab") {
+            const bundle = await loadFormAnalyticsBundle(db, widget.formId, widget.filterId);
+            if (!bundle) return { widget, data: null };
+            const payload = buildDeepAnalyticsPayload(
+              bundle.items,
+              bundle.options,
+              bundle.submissions,
+              widget.rowFieldId,
+              widget.colFieldId,
+            );
+            return { widget, data: payload.crossTab };
+          }
+          if (widget.type === "multi_form_compare") {
+            const compare = await loadMultiFormCompare(db, widget.formIds, widget.fieldLabel);
+            return { widget, data: compare };
+          }
+          return { widget, data: null };
+        }),
+      );
+
+      return { dashboard, widgetData };
+    }),
+
+  compareFormsByField: protectedProcedure
+    .input(z.object({ formIds: z.array(z.number()).min(1), fieldLabel: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return loadMultiFormCompare(db, input.formIds, input.fieldLabel);
+    }),
+
+  getPublicAnalyticsReport: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        password: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const resolved = await resolveReportByToken(db, input.token);
+      if (!resolved) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (resolved.report.passwordHash) {
+        if (!input.password) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Password required" });
+        }
+        const bcrypt = await import("bcryptjs");
+        const ok = await bcrypt.compare(input.password, resolved.report.passwordHash);
+        if (!ok) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid password" });
+      }
+
+      const payload = buildDeepAnalyticsPayload(
+        resolved.items,
+        resolved.options,
+        resolved.submissions,
+        resolved.report.crossTabRowFieldId,
+        resolved.report.crossTabColFieldId,
+      );
+
+      const visibleItems = resolved.report.visibleFieldIds?.length
+        ? resolved.items.filter(i => resolved.report.visibleFieldIds!.includes(i.id))
+        : resolved.items;
+
+      const chartFields = resolved.report.chartFieldIds?.length
+        ? payload.fieldAnalytics.filter(f => resolved.report.chartFieldIds!.includes(f.fieldId))
+        : payload.fieldAnalytics.filter(f => f.distribution.length > 0 || f.numericStats);
+
+      return {
+        report: {
+          id: resolved.report.id,
+          name: resolved.report.name,
+          headerHtml: resolved.report.headerHtml,
+          showTable: resolved.report.showTable,
+          showCharts: resolved.report.showCharts,
+          requiresPassword: !!resolved.report.passwordHash,
+        },
+        formName: resolved.template.name,
+        items: visibleItems.map(i => ({ id: i.id, label: i.label, itemType: i.itemType })),
+        submissions: resolved.report.showTable
+          ? resolved.submissions.map(s => ({
+              id: s.id,
+              submittedAt: s.submittedAt,
+              responses: Object.fromEntries(
+                visibleItems.map(i => [String(i.id), s.responses[String(i.id)] ?? ""]),
+              ),
+            }))
+          : [],
+        fieldAnalytics: resolved.report.showCharts ? chartFields : [],
+        crossTab: payload.crossTab,
+        totalSubmissions: payload.totalSubmissions,
+      };
+    }),
+
+  getPublicAnalyticsDashboard: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        password: z.string().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const dashboard = await resolveDashboardByToken(db, input.token);
+      if (!dashboard) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (dashboard.passwordHash) {
+        if (!input.password) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Password required" });
+        }
+        const bcrypt = await import("bcryptjs");
+        const ok = await bcrypt.compare(input.password, dashboard.passwordHash);
+        if (!ok) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid password" });
+      }
+
+      const widgetData = await Promise.all(
+        dashboard.widgets.map(async widget => {
+          if (widget.type === "summary") {
+            const summaries = await Promise.all(
+              widget.formIds.map(async formId => {
+                const bundle = await loadFormAnalyticsBundle(db, formId);
+                return bundle
+                  ? { formId, formName: bundle.template.name, total: bundle.submissions.length }
+                  : null;
+              }),
+            );
+            return { widget, data: summaries.filter(Boolean) };
+          }
+          if (widget.type === "field_chart") {
+            const bundle = await loadFormAnalyticsBundle(db, widget.formId, widget.filterId);
+            if (!bundle) return { widget, data: null };
+            const payload = buildDeepAnalyticsPayload(bundle.items, bundle.options, bundle.submissions);
+            return {
+              widget,
+              data: payload.fieldAnalytics.find(f => f.fieldId === widget.fieldId) ?? null,
+            };
+          }
+          if (widget.type === "cross_tab") {
+            const bundle = await loadFormAnalyticsBundle(db, widget.formId, widget.filterId);
+            if (!bundle) return { widget, data: null };
+            const payload = buildDeepAnalyticsPayload(
+              bundle.items,
+              bundle.options,
+              bundle.submissions,
+              widget.rowFieldId,
+              widget.colFieldId,
+            );
+            return { widget, data: payload.crossTab };
+          }
+          if (widget.type === "multi_form_compare") {
+            return {
+              widget,
+              data: await loadMultiFormCompare(db, widget.formIds, widget.fieldLabel),
+            };
+          }
+          return { widget, data: null };
+        }),
+      );
+
+      return {
+        dashboard: {
+          id: dashboard.id,
+          name: dashboard.name,
+          headerHtml: dashboard.headerHtml,
+          requiresPassword: !!dashboard.passwordHash,
+        },
+        widgetData,
       };
     }),
 
@@ -1162,6 +1768,215 @@ ${pageText}`;
       return { success: true };
     }),
 
+  bulkDeleteSubmissions: protectedProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(generalFormSubmissions).where(inArray(generalFormSubmissions.id, input.ids));
+      return { success: true, deleted: input.ids.length };
+    }),
+
+  updateSubmissionResponses: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        fieldUpdates: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [sub] = await db
+        .select()
+        .from(generalFormSubmissions)
+        .where(eq(generalFormSubmissions.id, input.id))
+        .limit(1);
+      if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+      const [template] = await db
+        .select()
+        .from(generalFormTemplates)
+        .where(eq(generalFormTemplates.id, sub.templateId))
+        .limit(1);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+
+      let responses: Record<string, unknown> = {};
+      try {
+        responses = JSON.parse(sub.responses);
+      } catch {
+        responses = {};
+      }
+      const changedFields: string[] = [];
+      for (const [fieldId, value] of Object.entries(input.fieldUpdates)) {
+        responses[fieldId] = value;
+        changedFields.push(fieldId);
+      }
+
+      await db
+        .update(generalFormSubmissions)
+        .set({ responses: JSON.stringify(responses), updatedAt: new Date() })
+        .where(eq(generalFormSubmissions.id, input.id));
+
+      const resultsSettings = parseResultsSettings(template.themeSettings);
+      await fireConfiguredFormActions(db, sub.templateId, "on_update", resultsSettings.actions, {
+        formName: template.name,
+        submissionId: input.id,
+        responses,
+        changedFields,
+      });
+
+      try {
+        await fireFormWebhook(db, sub.templateId, "update", {
+          submissionId: input.id,
+          responses,
+          changedFields,
+        });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[Webhook] Update delivery failed:", msg);
+      }
+
+      if (template.notifyEmail) {
+        try {
+          await sendFormNotifyEmail(
+            template.notifyEmail,
+            `Submission updated: ${template.name} #${input.id}`,
+            `Submission #${input.id} was updated.\nChanged fields: ${changedFields.join(", ")}`,
+          );
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[NotifyEmail] Update notification failed:", msg);
+        }
+      }
+
+      return { success: true };
+    }),
+
+  bulkUpdateSubmissions: protectedProcedure
+    .input(
+      z.object({
+        ids: z.array(z.number()).min(1),
+        fieldUpdates: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const subs = await db
+        .select()
+        .from(generalFormSubmissions)
+        .where(inArray(generalFormSubmissions.id, input.ids));
+      if (subs.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const templateId = subs[0].templateId;
+      const [template] = await db
+        .select()
+        .from(generalFormTemplates)
+        .where(eq(generalFormTemplates.id, templateId))
+        .limit(1);
+      const resultsSettings = template ? parseResultsSettings(template.themeSettings) : { savedFilters: [], actions: [] };
+
+      for (const sub of subs) {
+        let responses: Record<string, unknown> = {};
+        try {
+          responses = JSON.parse(sub.responses);
+        } catch {
+          responses = {};
+        }
+        for (const [fieldId, value] of Object.entries(input.fieldUpdates)) {
+          responses[fieldId] = value;
+        }
+        await db
+          .update(generalFormSubmissions)
+          .set({ responses: JSON.stringify(responses), updatedAt: new Date() })
+          .where(eq(generalFormSubmissions.id, sub.id));
+
+        if (template) {
+          await fireConfiguredFormActions(db, templateId, "on_update", resultsSettings.actions, {
+            formName: template.name,
+            submissionId: sub.id,
+            responses,
+            changedFields: Object.keys(input.fieldUpdates),
+          });
+        }
+      }
+
+      return { success: true, updated: subs.length };
+    }),
+
+  getResultsSettings: protectedProcedure
+    .input(z.object({ formId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [template] = await db
+        .select({ themeSettings: generalFormTemplates.themeSettings })
+        .from(generalFormTemplates)
+        .where(eq(generalFormTemplates.id, input.formId))
+        .limit(1);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      return parseResultsSettings(template.themeSettings);
+    }),
+
+  saveResultsSettings: protectedProcedure
+    .input(
+      z.object({
+        formId: z.number(),
+        settings: z.object({
+          savedFilters: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              logic: z.enum(["AND", "OR"]),
+              conditions: z.array(
+                z.object({
+                  fieldId: z.string(),
+                  operator: z.string(),
+                  value: z.string(),
+                }),
+              ),
+            }),
+          ),
+          actions: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              event: z.enum(["on_submit", "on_update"]),
+              type: z.enum(["email", "webhook"]),
+              enabled: z.boolean(),
+              emailTo: z.string().optional(),
+              emailSubject: z.string().optional(),
+            }),
+          ),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [template] = await db
+        .select({ themeSettings: generalFormTemplates.themeSettings })
+        .from(generalFormTemplates)
+        .where(eq(generalFormTemplates.id, input.formId))
+        .limit(1);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      const merged = mergeResultsSettingsIntoTheme(
+        template.themeSettings,
+        input.settings as FormResultsSettings,
+      );
+      await db
+        .update(generalFormTemplates)
+        .set({ themeSettings: merged, updatedAt: new Date() })
+        .where(eq(generalFormTemplates.id, input.formId));
+      return { success: true };
+    }),
+
   // ── PUBLIC: Get form by slug ───────────────────────────────────────────────
   getPublicForm: publicProcedure
     .input(z.object({ slug: z.string() }))
@@ -1176,11 +1991,24 @@ ${pageText}`;
       if (template.closeAt && new Date(template.closeAt) < new Date()) throw new TRPCError({ code: "FORBIDDEN", message: "This form has expired." });
       if (template.openAt && new Date(template.openAt) > new Date()) throw new TRPCError({ code: "FORBIDDEN", message: "This form is not open yet." });
       const sections = await db.select().from(generalFormSections).where(eq(generalFormSections.templateId, template.id)).orderBy(asc(generalFormSections.sortOrder));
-      const items = await db.select().from(generalFormItems).where(eq(generalFormItems.templateId, template.id)).orderBy(asc(generalFormItems.sortOrder));
-      const options = items.length > 0
-        ? await db.select().from(generalFormOptions).where(inArray(generalFormOptions.itemId, items.map((i: any) => i.id))).orderBy(asc(generalFormOptions.sortOrder))
-        : [];
-      const branchRules = await db.select().from(generalFormBranchRules).where(eq(generalFormBranchRules.templateId, template.id));
+      const allItems = await db
+        .select()
+        .from(generalFormItems)
+        .where(eq(generalFormItems.templateId, template.id))
+        .orderBy(asc(generalFormItems.sortOrder));
+      const items = allItems.filter(i => !isAdminOnlyItem(i));
+      const options =
+        items.length > 0
+          ? await db
+              .select()
+              .from(generalFormOptions)
+              .where(inArray(generalFormOptions.itemId, items.map((i: any) => i.id)))
+              .orderBy(asc(generalFormOptions.sortOrder))
+          : [];
+      const branchRules = await db
+        .select()
+        .from(generalFormBranchRules)
+        .where(eq(generalFormBranchRules.templateId, template.id));
       return { template, sections, items, options, branchRules };
     }),
 
@@ -1286,11 +2114,37 @@ ${pageText}`;
           .offset(offset),
         db.select({ total: count() }).from(generalFormSubmissions).where(and(...conditions)),
       ]);
-      const items = await db.select({ id: generalFormItems.id, label: generalFormItems.label, itemType: generalFormItems.itemType, sortOrder: generalFormItems.sortOrder })
+      const items = await db
+        .select({
+          id: generalFormItems.id,
+          label: generalFormItems.label,
+          itemType: generalFormItems.itemType,
+          sortOrder: generalFormItems.sortOrder,
+          extraConfig: generalFormItems.extraConfig,
+          isRequired: generalFormItems.isRequired,
+        })
         .from(generalFormItems)
         .where(eq(generalFormItems.templateId, input.templateId))
         .orderBy(asc(generalFormItems.sortOrder));
-      return { submissions, total: total as number, items };
+      const itemIds = items.map(i => i.id);
+      const options =
+        itemIds.length > 0
+          ? await db
+              .select()
+              .from(generalFormOptions)
+              .where(inArray(generalFormOptions.itemId, itemIds))
+              .orderBy(asc(generalFormOptions.sortOrder))
+          : [];
+      const resultsSettings = parseResultsSettings(
+        (
+          await db
+            .select({ themeSettings: generalFormTemplates.themeSettings })
+            .from(generalFormTemplates)
+            .where(eq(generalFormTemplates.id, input.templateId))
+            .limit(1)
+        )[0]?.themeSettings ?? null,
+      );
+      return { submissions, total: total as number, items, options, resultsSettings };
     }),
 
   // ── PUBLIC: Submit form ───────────────────────────────────────────────────
@@ -1299,6 +2153,8 @@ ${pageText}`;
       templateId: z.number(),
       responses: z.string(), // JSON: Record<itemId, value>
       userId: z.number().optional(),
+      email: z.string().optional(), // submitter email for Stripe checkout prefill
+      origin: z.string().optional(), // frontend origin for Stripe redirect URLs
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -1311,6 +2167,7 @@ ${pageText}`;
         const [{ total }] = await db.select({ total: count() }).from(generalFormSubmissions).where(eq(generalFormSubmissions.templateId, input.templateId));
         if ((total as number) >= template.maxSubmissions) throw new TRPCError({ code: "FORBIDDEN", message: "This form has reached its maximum number of submissions." });
       }
+      const sanitizedResponses = await stripAdminOnlyFromResponses(db, input.templateId, input.responses);
       // Calculate score if enabled
       let score = 0;
       let maxScore = 0;
@@ -1319,7 +2176,7 @@ ${pageText}`;
         const options = items.length > 0
           ? await db.select().from(generalFormOptions).where(inArray(generalFormOptions.itemId, items.map((i: any) => i.id)))
           : [];
-        const responses: Record<string, any> = JSON.parse(input.responses);
+        const responses: Record<string, any> = JSON.parse(sanitizedResponses);
         for (const item of items) {
           if (item.scoreWeight > 0) {
             maxScore += item.scoreWeight;
@@ -1333,7 +2190,7 @@ ${pageText}`;
       const [result] = await db.insert(generalFormSubmissions).values({
         templateId: input.templateId,
         submittedByUserId: input.userId ?? null,
-        responses: input.responses,
+        responses: sanitizedResponses,
         score,
         maxScore,
         status: "submitted",
@@ -1344,7 +2201,7 @@ ${pageText}`;
       // Fire-and-forget Google Sheets sync (non-blocking)
       try {
         const { syncSubmissionToSheets } = await import("../lib/googleSheets");
-        const parsedResponses: Record<string, any> = JSON.parse(input.responses);
+        const parsedResponses: Record<string, any> = JSON.parse(sanitizedResponses);
         syncSubmissionToSheets(input.templateId, parsedResponses, new Date()).catch((err: any) => {
           console.error("[GoogleSheets] Sync failed for form", input.templateId, err.message);
         });
@@ -1354,7 +2211,7 @@ ${pageText}`;
       ;(async () => {
         try {
           // Extract submitter email from responses
-          const parsedResponses: Record<string, any> = JSON.parse(input.responses);
+          const parsedResponses: Record<string, any> = JSON.parse(sanitizedResponses);
           let submitterEmail: string | null = null;
           let submitterName: string | null = null;
           for (const [, val] of Object.entries(parsedResponses)) {
@@ -1384,43 +2241,178 @@ ${pageText}`;
       // Fire-and-forget Webhook delivery (non-blocking)
       ;(async () => {
         try {
-          const [webhookRow] = await db.select().from(generalFormWebhooks)
-            .where(eq(generalFormWebhooks.formId, input.templateId)).limit(1);
-          if (webhookRow?.isEnabled && webhookRow.webhookUrl) {
-            const payload = JSON.stringify({
-              event: "submission",
-              formId: input.templateId,
-              submissionId,
-              timestamp: new Date().toISOString(),
-              responses: JSON.parse(input.responses),
-              score: template.scoreEnabled ? { score, maxScore } : undefined,
-            });
-            let signature = "";
-            if (webhookRow.secret) {
-              const { createHmac } = await import("crypto");
-              signature = createHmac("sha256", webhookRow.secret).update(payload).digest("hex");
-            }
-            const res = await fetch(webhookRow.webhookUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(signature ? { "X-Signature-256": `sha256=${signature}` } : {}),
-              },
-              body: payload,
-              signal: AbortSignal.timeout(15000),
-            });
-            const statusCode = res.status;
-            await db.update(generalFormWebhooks).set({
-              lastTriggeredAt: Date.now(),
-              lastStatus: statusCode >= 200 && statusCode < 300 ? "success" : "error",
-              lastStatusCode: statusCode,
-            }).where(eq(generalFormWebhooks.id, webhookRow.id));
-          }
+          const parsedResponses: Record<string, any> = JSON.parse(sanitizedResponses);
+          await fireFormWebhook(db, input.templateId, "submission", {
+            submissionId,
+            responses: parsedResponses,
+            score: template.scoreEnabled ? { score, maxScore } : undefined,
+          });
         } catch (e: any) {
           console.error("[Webhook] Delivery failed for form", input.templateId, e.message);
         }
       })();
-      return { id: submissionId, score, maxScore };
+      // Fire-and-forget configured form actions + notify email (non-blocking)
+      ;(async () => {
+        try {
+          const parsedResponses: Record<string, any> = JSON.parse(sanitizedResponses);
+          const resultsSettings = parseResultsSettings(template.themeSettings);
+          await fireConfiguredFormActions(db, input.templateId, "on_submit", resultsSettings.actions, {
+            formName: template.name,
+            submissionId,
+            responses: parsedResponses,
+          });
+          if (template.notifyEmail) {
+            await sendFormNotifyEmail(
+              template.notifyEmail,
+              `New submission: ${template.name}`,
+              `A new submission (#${submissionId}) was received for ${template.name}.`,
+            );
+          }
+        } catch (e: any) {
+          console.error("[FormActions] Submit actions failed for form", input.templateId, e.message);
+        }
+      })();
+      // Build success outcome
+      let successOutcome = null;
+      let matchedRule: any = null;
+      try {
+        await ensureLegacySuccessModules(db, template);
+        const modules = await fetchSuccessModules(db, input.templateId);
+        const rulesRaw = await fetchSuccessRoutingRules(db, input.templateId);
+        const parsedResponses: Record<string, any> = JSON.parse(sanitizedResponses);
+        const submitter = extractSubmitterInfo(parsedResponses);
+        // Build optionsByItemId map for label-as-fallback matching in routing conditions
+        const allItemIds = Object.keys(parsedResponses).map(k => parseInt(k)).filter(n => !isNaN(n));
+        let optionsByItemId: Record<string, Array<{ id: number; label: string; value: string }>> = {};
+        if (allItemIds.length > 0) {
+          const allOpts = await db.select({ id: generalFormOptions.id, itemId: generalFormOptions.itemId, label: generalFormOptions.label, value: generalFormOptions.value })
+            .from(generalFormOptions)
+            .where(inArray(generalFormOptions.itemId, allItemIds));
+          for (const opt of allOpts) {
+            const key = String(opt.itemId);
+            if (!optionsByItemId[key]) optionsByItemId[key] = [];
+            optionsByItemId[key].push({ id: opt.id, label: opt.label, value: opt.value });
+          }
+        }
+        const submissionCtx: FormSubmissionContext = {
+          responses: parsedResponses,
+          score,
+          maxScore,
+          passingScorePercent: (template as any).passingScorePercent ?? null,
+          submissionId,
+          formName: template.name,
+          paymentStatus: null,
+          submitterName: submitter.name,
+          submitterEmail: submitter.email,
+        };
+        const { module: selected, matchedRule: mr } = selectSuccessModuleWithRule(
+          rulesRaw,
+          modules,
+          (template as any).defaultSuccessModuleId ?? null,
+          submissionCtx,
+          optionsByItemId,
+        );
+        matchedRule = mr;
+        successOutcome = buildSuccessOutcome(selected, template, submissionCtx);
+        // Grant access to products if the matched rule has grantAccessActions.
+        // Works for both logged-in users (input.userId) and guests (resolve by email from responses).
+        if (matchedRule?.grantAccessActions) {
+          let grantUserId: number | null = input.userId ?? null;
+          // If no userId (guest submission), resolve user by email from responses
+          if (!grantUserId) {
+            const parsedForGrant: Record<string, any> = JSON.parse(sanitizedResponses);
+            let guestEmail: string | null = null;
+            for (const val of Object.values(parsedForGrant)) {
+              if (typeof val === 'string' && val.includes('@') && val.includes('.')) {
+                guestEmail = val.trim().toLowerCase();
+                break;
+              }
+            }
+            if (guestEmail) {
+              try {
+                const { getOrCreateUserByEmail } = await import('../db');
+                const { user: resolvedUser, isNew } = await getOrCreateUserByEmail({ email: guestEmail, name: submitter.name || undefined });
+                grantUserId = resolvedUser.id;
+                console.log(`[FormGrantAccess] Resolved guest email ${guestEmail} to userId=${grantUserId} (isNew=${isNew})`);
+              } catch (e: any) {
+                console.error('[FormGrantAccess] Failed to resolve guest user by email:', e.message);
+              }
+            }
+          }
+          console.log(`[FormGrantAccess] matchedRule=${matchedRule?.id ?? 'none'} grantAccessActions=${JSON.stringify(matchedRule?.grantAccessActions)} grantUserId=${grantUserId}`);
+          if (grantUserId) {
+            console.log(`[FormGrantAccess] Applying access grant for user ${grantUserId}: ${matchedRule.grantAccessActions}`);
+            applyAccessGrantActions(db, matchedRule.grantAccessActions, grantUserId).catch((e: any) =>
+              console.error("[FormGrantAccess] General form access grant failed:", e.message)
+            );
+          } else {
+            console.warn(`[FormGrantAccess] Rule has grantAccessActions but could not resolve a userId — no email found in responses`);
+          }
+        } else if (matchedRule && !matchedRule.grantAccessActions) {
+          console.log(`[FormGrantAccess] Rule ${matchedRule.id} matched but has no grantAccessActions — configure it in the routing rule dialog`);
+        }
+      } catch (e: any) {
+        console.error("[SuccessModules] Failed to build success outcome:", e.message);
+      }
+      // Create Stripe checkout session if configured
+      // Per-rule Stripe takes priority over template-level Stripe
+      let checkoutUrl: string | null = null;
+      try {
+        const req = (ctx as any).req;
+        const origin = input.origin ?? req?.headers?.origin ?? req?.headers?.referer?.replace(/\/[^\/]*$/, "") ?? "";
+        const ruleStripeEnabled = (matchedRule as any)?.stripeEnabled;
+        const templateStripeEnabled = (template as any).stripeEnabled;
+        if (ruleStripeEnabled) {
+          // Per-rule Stripe checkout
+          checkoutUrl = await createFormStripeCheckout({
+            config: {
+              stripeEnabled: true,
+              stripeProductId: null,
+              stripePriceId: (matchedRule as any).stripePriceId ?? null,
+              stripeAmount: (matchedRule as any).stripeAmount ?? null,
+              stripeCheckoutMode: (matchedRule as any).stripeCheckoutMode ?? "payment",
+              stripeSuccessUrl: (matchedRule as any).stripeSuccessUrl ?? null,
+              stripeCancelUrl: (matchedRule as any).stripeCancelUrl ?? null,
+              formName: (template as any).name,
+              formId: (template as any).id,
+            },
+            submissionId,
+            userId: input.userId ?? 0,
+            userEmail: input.email ?? null,
+            userName: null,
+            origin,
+          }).catch((e: any) => {
+            console.error("[FormStripe] Per-rule checkout creation failed:", e.message);
+            return null;
+          });
+        } else if (templateStripeEnabled) {
+          // Template-level Stripe checkout (fallback)
+          checkoutUrl = await createFormStripeCheckout({
+            config: {
+              stripeEnabled: true,
+              stripeProductId: (template as any).stripeProductId ?? null,
+              stripePriceId: (template as any).stripePriceId ?? null,
+              stripeAmount: (template as any).stripeAmount ?? null,
+              stripeCheckoutMode: (template as any).stripeCheckoutMode ?? "payment",
+              stripeSuccessUrl: (template as any).stripeSuccessUrl ?? null,
+              stripeCancelUrl: (template as any).stripeCancelUrl ?? null,
+              formName: (template as any).name,
+              formId: (template as any).id,
+            },
+            submissionId,
+            userId: input.userId ?? 0,
+            userEmail: input.email ?? null,
+            userName: null,
+            origin,
+          }).catch((e: any) => {
+            console.error("[FormStripe] Template-level checkout creation failed:", e.message);
+            return null;
+          });
+        }
+      } catch (e: any) {
+        console.error("[FormStripe] General form checkout error:", e.message);
+      }
+      return { id: submissionId, score, maxScore, successOutcome, checkoutUrl };
     }),
 
     // ── ADMIN: Export form results as CSV-ready data ───────────────────────────
@@ -1647,4 +2639,419 @@ ${pageText}`;
         .where(eq(generalFormTemplates.id, input.formId));
       return { apiToken: token };
     }),
+
+  listSuccessModules: protectedProcedure
+    .input(z.object({ templateId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [template] = await db.select().from(generalFormTemplates).where(eq(generalFormTemplates.id, input.templateId)).limit(1);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      await ensureLegacySuccessModules(db, template);
+      const modules = await fetchSuccessModules(db, input.templateId);
+      const [freshTemplate] = await db.select().from(generalFormTemplates).where(eq(generalFormTemplates.id, input.templateId)).limit(1);
+      return { modules, defaultSuccessModuleId: freshTemplate?.defaultSuccessModuleId ?? null };
+    }),
+
+  upsertSuccessModule: protectedProcedure
+    .input(z.object({
+      id: z.number().optional(),
+      templateId: z.number(),
+      name: z.string().min(1).max(200),
+      moduleType: z.enum(["inline_message", "full_page", "redirect_url"]),
+      inlineContent: z.string().optional(),
+      pageContent: z.string().optional(),
+      redirectUrl: z.string().optional(),
+      isEnabled: z.boolean().default(true),
+      sortOrder: z.number().default(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { id, templateId, ...rest } = input;
+      const values = { ...rest, templateId, updatedAt: new Date() };
+      if (id) {
+        await db.update(generalFormSuccessModules).set(values).where(eq(generalFormSuccessModules.id, id));
+        return { id };
+      }
+      const [result] = await db.insert(generalFormSuccessModules).values(values);
+      const newId = (result as any).insertId;
+      const [tpl] = await db.select().from(generalFormTemplates).where(eq(generalFormTemplates.id, templateId)).limit(1);
+      if (tpl && !tpl.defaultSuccessModuleId) {
+        await db.update(generalFormTemplates).set({ defaultSuccessModuleId: newId }).where(eq(generalFormTemplates.id, templateId));
+      }
+      return { id: newId };
+    }),
+
+  duplicateSuccessModule: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [mod] = await db.select().from(generalFormSuccessModules).where(eq(generalFormSuccessModules.id, input.id)).limit(1);
+      if (!mod) throw new TRPCError({ code: "NOT_FOUND" });
+      const [result] = await db.insert(generalFormSuccessModules).values({
+        templateId: mod.templateId,
+        name: mod.name + " (Copy)",
+        moduleType: mod.moduleType,
+        inlineContent: mod.inlineContent,
+        pageContent: mod.pageContent,
+        redirectUrl: mod.redirectUrl,
+        isEnabled: mod.isEnabled,
+        sortOrder: mod.sortOrder + 1,
+      });
+      return { id: (result as any).insertId };
+    }),
+
+  deleteSuccessModule: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [mod] = await db.select().from(generalFormSuccessModules).where(eq(generalFormSuccessModules.id, input.id)).limit(1);
+      if (!mod) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.delete(generalFormSuccessRoutingRules).where(eq(generalFormSuccessRoutingRules.successModuleId, input.id));
+      await db.delete(generalFormSuccessModules).where(eq(generalFormSuccessModules.id, input.id));
+      await clearDefaultIfDeleted(db, mod.templateId, input.id);
+      return { success: true };
+    }),
+
+  setDefaultSuccessModule: protectedProcedure
+    .input(z.object({ templateId: z.number(), moduleId: z.number().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.moduleId != null) {
+        const [mod] = await db.select().from(generalFormSuccessModules)
+          .where(and(eq(generalFormSuccessModules.id, input.moduleId), eq(generalFormSuccessModules.templateId, input.templateId)))
+          .limit(1);
+        if (!mod) throw new TRPCError({ code: "NOT_FOUND", message: "Success module not found for this form." });
+      }
+      await db.update(generalFormTemplates).set({ defaultSuccessModuleId: input.moduleId }).where(eq(generalFormTemplates.id, input.templateId));
+      return { success: true };
+    }),
+
+  listSuccessRoutingRules: protectedProcedure
+    .input(z.object({ templateId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return fetchSuccessRoutingRules(db, input.templateId);
+    }),
+
+  upsertSuccessRoutingRule: protectedProcedure
+    .input(z.object({
+      id: z.number().optional(),
+      templateId: z.number(),
+      ruleLabel: z.string().default(""),
+      successModuleId: z.number(),
+      logicOperator: z.enum(["all", "any"]).default("all"),
+      conditions: z.string(),
+      grantAccessActions: z.string().optional(), // JSON array of {productType, productId}
+      // Per-rule Stripe checkout action
+      stripeEnabled: z.boolean().default(false),
+      stripePriceId: z.string().optional(),
+      stripeAmount: z.number().optional(),
+      stripeCheckoutMode: z.string().default("payment"),
+      stripeSuccessUrl: z.string().optional(),
+      stripeCancelUrl: z.string().optional(),
+      sortOrder: z.number().default(0),
+      isEnabled: z.boolean().default(true),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [mod] = await db.select().from(generalFormSuccessModules)
+        .where(and(eq(generalFormSuccessModules.id, input.successModuleId), eq(generalFormSuccessModules.templateId, input.templateId)))
+        .limit(1);
+      if (!mod) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid success module for this form." });
+      const { id, ...rest } = input;
+      if (id) {
+        await db.update(generalFormSuccessRoutingRules).set(rest).where(eq(generalFormSuccessRoutingRules.id, id));
+        return { id };
+      }
+      const [result] = await db.insert(generalFormSuccessRoutingRules).values(rest);
+      return { id: (result as any).insertId };
+    }),
+
+  deleteSuccessRoutingRule: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(generalFormSuccessRoutingRules).where(eq(generalFormSuccessRoutingRules.id, input.id));
+      return { success: true };
+    }),
+
+  getEmbedWidget: protectedProcedure
+    .input(z.object({ templateId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const widget = await ensureEmbedWidget(db, input.templateId);
+      const [template] = await db.select().from(generalFormTemplates).where(eq(generalFormTemplates.id, input.templateId)).limit(1);
+      return {
+        widget,
+        settings: parseEmbedSettings(widget.settingsJson),
+        allowedDomains: parseAllowedDomains(widget.allowedDomains),
+        hostDomain: template?.hostDomain ?? "app.allaboutultrasound.com",
+        publicSlug: template?.publicSlug ?? null,
+      };
+    }),
+
+  saveEmbedWidget: protectedProcedure
+    .input(z.object({
+      templateId: z.number(),
+      name: z.string().min(1).max(200),
+      isEnabled: z.boolean(),
+      displayType: z.enum(["inline", "popup", "slide_in"]),
+      settingsJson: z.string(),
+      domainMode: z.enum(["all", "allowlist"]),
+      allowedDomains: z.array(z.string()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const widget = await ensureEmbedWidget(db, input.templateId);
+      await db.update(generalFormEmbedWidgets).set({
+        name: input.name,
+        isEnabled: input.isEnabled,
+        displayType: input.displayType,
+        settingsJson: input.settingsJson,
+        domainMode: input.domainMode,
+        allowedDomains: JSON.stringify(input.allowedDomains),
+        updatedAt: new Date(),
+      }).where(eq(generalFormEmbedWidgets.id, widget.id));
+      return { success: true, widgetKey: widget.widgetKey };
+    }),
+
+  // ── Multi-field Cross-Tabulation ───────────────────────────────────────────
+  getMultiCrossTab: protectedProcedure
+    .input(z.object({
+      templateId: z.number().int().positive(),
+      rowFieldId: z.number().int().positive(),
+      colFieldIds: z.array(z.number().int().positive()).min(1).max(10),
+      filterId: z.string().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const bundle = await loadFormAnalyticsBundle(db, input.templateId, input.filterId);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      const { computeMultiCrossTab } = await import("../../shared/formAnalyticsUtils");
+      const result = computeMultiCrossTab(
+        bundle.items,
+        bundle.options,
+        bundle.submissions,
+        input.rowFieldId,
+        input.colFieldIds,
+      );
+      return result;
+    }),
+
+  // ── Drop-off / Progress Tracking ──────────────────────────────────────────
+  trackProgress: publicProcedure
+    .input(z.object({
+      sessionId: z.string().max(64),
+      templateId: z.number().int().positive(),
+      userId: z.number().int().positive().nullable().optional(),
+      fieldId: z.number().int().positive().nullable().optional(),
+      pageIndex: z.number().int().min(0).default(0),
+      eventType: z.enum(["session_start", "field_view", "field_answer", "page_advance", "form_submit", "form_abandon"]),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { ok: false };
+      await db.insert(generalFormProgressEvents).values({
+        sessionId: input.sessionId,
+        templateId: input.templateId,
+        userId: input.userId ?? null,
+        fieldId: input.fieldId ?? null,
+        pageIndex: input.pageIndex,
+        eventType: input.eventType,
+        createdAt: Date.now(),
+      });
+      return { ok: true };
+    }),
+
+  getDropOffAnalytics: protectedProcedure
+    .input(z.object({ templateId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [sessionsRows] = await db.execute(
+        sql`SELECT COUNT(DISTINCT session_id) as total FROM general_form_progress_events WHERE template_id = ${input.templateId} AND event_type = 'session_start'`
+      ) as any;
+      const totalSessions = Number((sessionsRows as any[])[0]?.total ?? 0);
+      const [submitRows] = await db.execute(
+        sql`SELECT COUNT(DISTINCT session_id) as total FROM general_form_progress_events WHERE template_id = ${input.templateId} AND event_type = 'form_submit'`
+      ) as any;
+      const totalSubmits = Number((submitRows as any[])[0]?.total ?? 0);
+      const [pageRows] = await db.execute(
+        sql`SELECT page_index, COUNT(DISTINCT session_id) as sessions FROM general_form_progress_events WHERE template_id = ${input.templateId} AND event_type IN ('session_start','page_advance','form_submit') GROUP BY page_index ORDER BY page_index ASC`
+      ) as any;
+      const [fieldViewRows] = await db.execute(
+        sql`SELECT field_id, COUNT(DISTINCT session_id) as views FROM general_form_progress_events WHERE template_id = ${input.templateId} AND event_type = 'field_view' AND field_id IS NOT NULL GROUP BY field_id`
+      ) as any;
+      const [fieldAnswerRows] = await db.execute(
+        sql`SELECT field_id, COUNT(DISTINCT session_id) as answers FROM general_form_progress_events WHERE template_id = ${input.templateId} AND event_type = 'field_answer' AND field_id IS NOT NULL GROUP BY field_id`
+      ) as any;
+      const viewMap: Record<number, number> = {};
+      for (const r of (fieldViewRows as any[])) viewMap[Number(r.field_id)] = Number(r.views);
+      const answerMap: Record<number, number> = {};
+      for (const r of (fieldAnswerRows as any[])) answerMap[Number(r.field_id)] = Number(r.answers);
+      const fieldStats = Object.keys({ ...viewMap, ...answerMap }).map(id => ({
+        fieldId: Number(id),
+        views: viewMap[Number(id)] ?? 0,
+        answers: answerMap[Number(id)] ?? 0,
+        dropOffRate: viewMap[Number(id)] ? Math.round((1 - (answerMap[Number(id)] ?? 0) / viewMap[Number(id)]) * 100) : 0,
+      }));
+      return {
+        totalSessions,
+        totalSubmits,
+        overallCompletionRate: totalSessions > 0 ? Math.round((totalSubmits / totalSessions) * 100) : 0,
+        pageFunnel: (pageRows as any[]).map((r: any) => ({ pageIndex: Number(r.page_index), sessions: Number(r.sessions) })),
+                fieldStats,
+      };
+    }),
+
+  /**
+   * getDropOffAbandonerEmails
+   * Returns a list of users who started the form but never submitted,
+   * with their email addresses (logged-in users only).
+   */
+  getDropOffAbandonerEmails: protectedProcedure
+    .input(z.object({
+      templateId: z.number().int().positive(),
+      /** Only include sessions that answered at least this many fields (default 1) */
+      minFieldAnswers: z.number().int().min(0).default(1),
+    }))
+    .query(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Step 1: Find all sessions that started but never submitted
+      const [abandonedRows] = await db.execute(
+        sql`
+          SELECT DISTINCT s.session_id, s.user_id
+          FROM general_form_progress_events s
+          WHERE s.template_id = ${input.templateId}
+            AND s.event_type = 'session_start'
+            AND s.session_id NOT IN (
+              SELECT session_id FROM general_form_progress_events
+              WHERE template_id = ${input.templateId} AND event_type = 'form_submit'
+            )
+        `
+      ) as any;
+      const abandonedSessions = (abandonedRows as any[]) as Array<{ session_id: string; user_id: number | null }>;
+      if (abandonedSessions.length === 0) {
+        return { totalAbandoned: 0, previousSubmitters: [], anonymousAbandonerCount: 0 };
+      }
+
+      // Step 2: Filter by minFieldAnswers
+      let qualifiedSessions = abandonedSessions;
+      if (input.minFieldAnswers > 0 && abandonedSessions.length > 0) {
+        const sessionIdList = abandonedSessions.map(s => `'${s.session_id.replace(/'/g, "''")}'`).join(',');
+        const [answerCountRows] = await db.execute(
+          sql`
+            SELECT session_id, COUNT(*) as answer_count
+            FROM general_form_progress_events
+            WHERE template_id = ${input.templateId}
+              AND event_type = 'field_answer'
+              AND session_id IN (${sql.raw(sessionIdList)})
+            GROUP BY session_id
+            HAVING COUNT(*) >= ${input.minFieldAnswers}
+          `
+        ) as any;
+        const qualifiedSet = new Set((answerCountRows as any[]).map((r: any) => r.session_id as string));
+        qualifiedSessions = abandonedSessions.filter(s => qualifiedSet.has(s.session_id));
+      }
+
+      const totalAbandoned = qualifiedSessions.length;
+
+      // Step 3: Identify logged-in abandoners via the user_id stored in progress events
+      const loggedInUserIds = [...new Set(
+        qualifiedSessions.map(s => s.user_id).filter((id): id is number => id != null && id > 0)
+      )];
+
+      let identifiedUsers: Array<{ userId: number; email: string; name: string }> = [];
+      if (loggedInUserIds.length > 0) {
+        const userIdList = loggedInUserIds.join(',');
+        const [userRows] = await db.execute(
+          sql`
+            SELECT id, email, name
+            FROM users
+            WHERE id IN (${sql.raw(userIdList)})
+              AND email IS NOT NULL AND email != ''
+              AND unsubscribedAt IS NULL
+          `
+        ) as any;
+        identifiedUsers = (userRows as any[]).map((r: any) => ({
+          userId: Number(r.id),
+          email: r.email as string,
+          name: r.name as string,
+        }));
+      }
+
+      const anonymousAbandonerCount = totalAbandoned - loggedInUserIds.length;
+
+      return {
+        totalAbandoned,
+        previousSubmitters: identifiedUsers,
+        anonymousAbandonerCount: Math.max(0, anonymousAbandonerCount),
+      };
+    }),
+
+  /**
+   * sendDropOffFollowUp
+   * Sends a custom follow-up email to a list of user IDs (form abandoners).
+   */
+  sendDropOffFollowUp: protectedProcedure
+    .input(z.object({
+      templateId: z.number().int().positive(),
+      subject: z.string().min(1).max(200),
+      htmlBody: z.string().min(1),
+      recipientUserIds: z.array(z.number().int().positive()).min(1).max(500),
+      brandMode: z.enum(["aaus", "ihe"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Fetch recipient details
+      const recipients = await db
+        .select({ id: users.id, email: users.email, name: users.name })
+        .from(users)
+        .where(inArray(users.id, input.recipientUserIds));
+
+      let sent = 0;
+      let failed = 0;
+      for (const recipient of recipients) {
+        if (!recipient.email) { failed++; continue; }
+        const ok = await sendEmail({
+          to: { email: recipient.email, name: recipient.name ?? "" },
+          subject: input.subject,
+          htmlBody: input.htmlBody,
+          brandMode: (input.brandMode as any) ?? "aaus",
+        });
+        if (ok) sent++; else failed++;
+      }
+
+      return { sent, failed, total: recipients.length };
+    }),
+
 });

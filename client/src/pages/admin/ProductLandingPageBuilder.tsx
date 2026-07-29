@@ -29,9 +29,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { type Block, type BlockType } from "@/components/BlockPreview";
-import { uid, BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, TemplateLibrary } from "./LandingPageBuilder";
+import { uid, BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock } from "./LandingPageBuilder";
 import {
-  ArrowLeft, Save, Eye, Plus, Palette, X, Layers, BookOpen, Copy, Search, BookmarkPlus, Bookmark, FolderOpen,
+  ArrowLeft, Save, Eye, Plus, Palette, X, Layers, BookOpen, Copy, Search, BookmarkPlus, Bookmark, FolderOpen, Trash2,
 } from "lucide-react";
 
 export default function ProductLandingPageBuilder() {
@@ -45,6 +45,7 @@ export default function ProductLandingPageBuilder() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [activeCat, setActiveCat] = useState<string>("Layout");
   const [productInfo, setProductInfo] = useState<{ title: string; slug: string } | null>(null);
+  const [showApplyTemplate, setShowApplyTemplate] = useState(false);
 
   // SEO / Link Preview state
   const [seoTitle, setSeoTitle] = useState("");
@@ -82,13 +83,33 @@ export default function ProductLandingPageBuilder() {
     window.addEventListener("mouseup", onUp);
   };
 
-  // Page template library state
-  const [showTemplates, setShowTemplates] = useState(false);
+  // Save-as-page-template dialog state
+  const [showSavePageTemplate, setShowSavePageTemplate] = useState(false);
+  const [savePageTemplateName, setSavePageTemplateName] = useState("");
+  const [savePageTemplateDesc, setSavePageTemplateDesc] = useState("");
+  const [isSavingPageTemplate, setIsSavingPageTemplate] = useState(false);
+
   // Save-as-template dialog state
   const [saveTemplateDialogBlock, setSaveTemplateDialogBlock] = useState<Block | null>(null);
   const [saveTemplateName, setSaveTemplateName] = useState("");
   const [saveTemplateDesc, setSaveTemplateDesc] = useState("");
   const utils = trpc.useUtils();
+  const savePageTemplateMutation = trpc.lmsAdmin.savePageTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Page saved as template!");
+      utils.lmsAdmin.listPageTemplates.invalidate();
+      setShowSavePageTemplate(false);
+      setSavePageTemplateName("");
+      setSavePageTemplateDesc("");
+      setIsSavingPageTemplate(false);
+    },
+    onError: (e: any) => { toast.error(`Save failed: ${e.message}`); setIsSavingPageTemplate(false); },
+  });
+  const handleSavePageAsTemplate = async () => {
+    if (!savePageTemplateName.trim()) { toast.error("Please enter a template name"); return; }
+    setIsSavingPageTemplate(true);
+    savePageTemplateMutation.mutate({ name: savePageTemplateName, description: savePageTemplateDesc, templateType: "page", blocks });
+  };
   const saveBlockTemplateMutation = trpc.blockTemplates.save.useMutation({
     onSuccess: () => {
       toast.success("Block saved as template!");
@@ -266,7 +287,7 @@ export default function ProductLandingPageBuilder() {
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(`/admin/products/${productId}`)}
+            onClick={() => navigate(`/admin/lms?tab=products&editProduct=${productId}`)}
             className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors"
           >
             <ArrowLeft size={16} /> Back to Product
@@ -291,20 +312,69 @@ export default function ProductLandingPageBuilder() {
             </a>
           )}
           <button
-            onClick={() => setShowTemplates(true)}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-primary border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+            onClick={() => setShowApplyTemplate(true)}
+            className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 border border-teal-200 bg-teal-50 hover:bg-teal-100 rounded-lg px-3 py-1.5 transition-colors"
+            title="Apply a saved page template"
           >
-            <FolderOpen size={14} /> Page Templates
+            <FolderOpen size={14} /> Apply Template
+          </button>
+          <button
+            onClick={() => { setSavePageTemplateName(""); setSavePageTemplateDesc(""); setShowSavePageTemplate(true); }}
+            className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-1.5 transition-colors"
+            title="Save current page as a reusable template"
+          >
+            <Bookmark size={14} /> Save as Template
           </button>
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-1.5 h-8"
+            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-1.5 h-8"
           >
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>
         </div>
       </div>
+
+      {/* Apply Template Modal */}
+      {showApplyTemplate && (
+        <ProductApplyTemplateModal
+          onClose={() => setShowApplyTemplate(false)}
+          onApply={(tplBlocks) => {
+            if (blocks.length > 0 && !confirm(`This will replace all ${blocks.length} block${blocks.length !== 1 ? 's' : ''} on this page with the template. Continue?`)) return;
+            setBlocks(tplBlocks.map(b => ({ ...b, id: uid() })));
+            setSelectedId(null);
+            setShowApplyTemplate(false);
+            toast.success("Template applied!");
+          }}
+        />
+      )}
+
+      {/* Save as Page Template Dialog */}
+      <Dialog open={showSavePageTemplate} onOpenChange={(open) => { if (!open) setShowSavePageTemplate(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Bookmark className="w-4 h-4 text-amber-500" /> Save Page as Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Template Name <span className="text-red-500">*</span></label>
+              <Input value={savePageTemplateName} onChange={e => setSavePageTemplateName(e.target.value)} placeholder="e.g. Product Sales Page" className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Description (optional)</label>
+              <Input value={savePageTemplateDesc} onChange={e => setSavePageTemplateDesc(e.target.value)} placeholder="Brief description…" className="h-8 text-sm" />
+            </div>
+            <p className="text-xs text-gray-400">This will save all {blocks.length} block{blocks.length !== 1 ? "s" : ""} as a reusable page template.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={() => setShowSavePageTemplate(false)} className="text-sm text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 transition-colors">Cancel</button>
+            <Button onClick={handleSavePageAsTemplate} disabled={isSavingPageTemplate} className="bg-amber-500 hover:bg-amber-600 text-white text-sm h-9">
+              <BookmarkPlus className="w-4 h-4 mr-1" /> {isSavingPageTemplate ? "Saving…" : "Save Template"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Main Editor Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel: Add Block button */}
@@ -371,9 +441,20 @@ export default function ProductLandingPageBuilder() {
         </div>
 
         {/* Right Panel: Block Settings */}
-        <div className="flex-shrink-0 bg-white border-l border-gray-200 overflow-y-auto relative" style={{ width: rightPanelWidth }}>
-          {/* Drag handle */}
-          <div onMouseDown={handleRightPanelMouseDown} className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-teal-400 active:bg-teal-500 z-10 transition-colors" title="Drag to resize panel" />
+        <div className="flex-shrink-0 flex flex-row" style={{ width: rightPanelWidth }}>
+          {/* Drag handle — outside overflow container so it's never clipped */}
+          <div
+            onMouseDown={handleRightPanelMouseDown}
+            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-teal-400 active:bg-teal-500 transition-colors flex items-center justify-center group border-l border-gray-200"
+            title="Drag to resize panel"
+          >
+            <div className="flex flex-col gap-0.5 opacity-40 group-hover:opacity-80">
+              <div className="w-0.5 h-3 bg-gray-500 rounded" />
+              <div className="w-0.5 h-3 bg-gray-500 rounded" />
+              <div className="w-0.5 h-3 bg-gray-500 rounded" />
+            </div>
+          </div>
+          <div className="flex-1 bg-white overflow-y-auto min-w-0">
           {selectedBlock ? (
             <>
               <div className="flex items-center justify-between p-3 border-b border-gray-100">
@@ -435,7 +516,7 @@ export default function ProductLandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || productInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.com'}</p>
+                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'allaboutultrasound.com'}</p>
                     </div>
                   </div>
                 )}
@@ -452,6 +533,7 @@ export default function ProductLandingPageBuilder() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -464,7 +546,7 @@ export default function ProductLandingPageBuilder() {
           </DialogTitle>
         </DialogHeader>
         {/* Top-level tabs */}
-        <div className="flex gap-1 border-b border-gray-200 shrink-0 -mx-1 px-1">
+        <div className="flex gap-1 border-b border-gray-200 shrink-0 -mx-1 px-1 overflow-x-auto scrollbar-hide flex-nowrap">
           <button onClick={() => setPickerTab("catalog")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "catalog" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>
             <Plus className="w-3.5 h-3.5" /> New Block
           </button>
@@ -483,20 +565,14 @@ export default function ProductLandingPageBuilder() {
                 <button key={cat} onClick={() => setActiveCat(cat)} className={cn("px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors", activeCat === cat ? "text-teal-700 border-b-2 border-teal-500 bg-white" : "text-gray-500 hover:text-gray-700")}>{cat}</button>
               ))}
             </div>
-            {activeCat === "Saved" ? (
-              <div className="flex-1 overflow-hidden p-1">
-                <ProductBlockTemplatesTab onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
-                {catalogByCat.map(b => (
-                  <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
-                    <span className="text-teal-600 text-2xl">{b.icon}</span>
-                    <span className="text-xs leading-tight font-medium">{b.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
+              {catalogByCat.map(b => (
+                <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
+                  <span className="text-teal-600 text-2xl">{b.icon}</span>
+                  <span className="text-xs leading-tight font-medium">{b.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {/* ── Copy from Other Pages tab ── */}
@@ -507,7 +583,7 @@ export default function ProductLandingPageBuilder() {
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course Page</label>
                 <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400" value={selectedSourceCourseId ?? ""} onChange={e => { setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null); setSelectedSourceProductId(null); setSelectedSourceDownloadId(null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}>
                   <option value="">— select course —</option>
-                  {coursesWithBlocks?.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  {coursesWithBlocks?.map((c: any) => <option key={c.id} value={c.id} title={c.title}>{c.title}</option>)}
                 </select>
               </div>
               <div className="border-t border-gray-100 pt-2">
@@ -606,7 +682,7 @@ export default function ProductLandingPageBuilder() {
         )}
         {/* ── Block Templates tab ── */}
         {pickerTab === "templates" && (
-          <ProductBlockTemplatesTab onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
+          <ProductTemplatesTab onInsertBlocks={(newBlocks) => { setBlocks(prev => [...prev, ...newBlocks]); if (newBlocks.length > 0) setSelectedId(newBlocks[0].id); toast.success(newBlocks.length === 1 ? "Template inserted!" : `${newBlocks.length} blocks inserted!`); setAddMenuOpen(false); }} />
         )}
       </DialogContent>
     </Dialog>
@@ -634,48 +710,61 @@ export default function ProductLandingPageBuilder() {
         </div>
       </DialogContent>
     </Dialog>
-      {showTemplates && (
-        <TemplateLibrary
-          blocks={blocks}
-          onInsert={(tplBlocks) => { setBlocks(prev => [...prev, ...tplBlocks]); }}
-          onClose={() => setShowTemplates(false)}
-          initialTab="page"
-        />
-      )}
     </>
   );
 }
 
-function ProductBlockTemplatesTab({ onInsert }: { onInsert: (block: Block) => void }) {
+function ProductTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Block[]) => void }) {
+  const [subTab, setSubTab] = useState<"page" | "block">("page");
   const [search, setSearch] = useState("");
-  const { data: templates, isLoading } = trpc.blockTemplates.list.useQuery({ search: search || undefined });
-  const deleteMutation = trpc.blockTemplates.delete.useMutation({
-    onSuccess: () => { toast.success("Template deleted"); },
-  });
+  const { data: pageTemplates, isLoading: pageLoading, refetch: refetchPage } = trpc.lmsAdmin.listPageTemplates.useQuery({});
+  const deletePageTpl = trpc.lmsAdmin.deletePageTemplate.useMutation({ onSuccess: () => { toast.success("Template deleted"); refetchPage(); } });
+  const { data: blockTemplates, isLoading: blockLoading } = trpc.blockTemplates.list.useQuery({ search: search || undefined });
+  const deleteBlockTpl = trpc.blockTemplates.delete.useMutation({ onSuccess: () => { toast.success("Template deleted"); } });
   const utils = trpc.useUtils();
-  const handleDelete = (id: number) => {
-    if (!confirm("Delete this template?")) return;
-    deleteMutation.mutate({ id }, {
-      onSuccess: () => utils.blockTemplates.list.invalidate(),
-    });
-  };
+  const filteredPage = (pageTemplates ?? []).filter((t: any) => !search || t.name?.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="flex flex-col flex-1 overflow-hidden gap-3">
+      <div className="flex border-b border-gray-100 shrink-0">
+        {(["page", "block"] as const).map(t => (
+          <button key={t} onClick={() => setSubTab(t)} className={cn("flex-1 py-1.5 text-xs font-semibold capitalize transition-colors", subTab === t ? "border-b-2 border-teal-500 text-teal-700" : "text-gray-400 hover:text-gray-600")}>
+            {t === "page" ? "Page Templates" : "Block Templates"}
+          </button>
+        ))}
+      </div>
       <div className="relative shrink-0">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search saved templates…" className="pl-8 h-8 text-xs" />
+        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className="pl-8 h-8 text-xs" />
       </div>
-      {isLoading ? (
-        <p className="text-xs text-gray-400 text-center py-6">Loading templates…</p>
-      ) : !templates?.length ? (
+      {subTab === "page" && (pageLoading ? <p className="text-xs text-gray-400 text-center py-6">Loading…</p> : !filteredPage.length ? (
         <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400">
-          <Layers className="w-8 h-8 opacity-30" />
-          <p className="text-xs">No saved block templates yet.</p>
+          <Layers className="w-8 h-8 opacity-30" /><p className="text-xs">No page templates saved yet.</p>
+          <p className="text-xs text-gray-300">Use "Save as Template" in any page editor to create one.</p>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {filteredPage.map((tpl: any) => {
+            const tplBlocks: Block[] = (() => { try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; } })();
+            return (
+              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+                <div className="min-w-0"><p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>{tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}<p className="text-xs text-gray-300">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p></div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onInsertBlocks(tplBlocks.map(b => ({ ...b, id: uid() })))}><Plus className="w-3 h-3 mr-1" /> Insert</Button>
+                  <button className="w-6 h-6 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" onClick={() => { if (confirm("Delete this template?")) deletePageTpl.mutate({ id: tpl.id }); }}><X className="w-3 h-3" /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      {subTab === "block" && (blockLoading ? <p className="text-xs text-gray-400 text-center py-6">Loading…</p> : !blockTemplates?.length ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400">
+          <Layers className="w-8 h-8 opacity-30" /><p className="text-xs">No saved block templates yet.</p>
           <p className="text-xs text-gray-300">Hover a block and click the bookmark icon to save it as a template.</p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-2">
-          {templates.map((tpl: any) => {
+          {blockTemplates.map((tpl: any) => {
             let blockData: Record<string, any> = {};
             try { blockData = typeof tpl.blockData === "string" ? JSON.parse(tpl.blockData) : (tpl.blockData ?? {}); } catch { /* ignore */ }
             const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
@@ -684,30 +773,21 @@ function ProductBlockTemplatesTab({ onInsert }: { onInsert: (block: Block) => vo
               <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
-                    {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
-                    <p className="text-xs text-gray-300">{catalogEntry?.label ?? tpl.blockType}</p>
-                  </div>
+                  <div className="min-w-0"><p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>{tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}<p className="text-xs text-gray-300">{catalogEntry?.label ?? tpl.blockType}</p></div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => onInsert({ ...block, id: uid() })}>
-                    <Plus className="w-3 h-3 mr-1" /> Insert
-                  </Button>
-                  <button className="w-6 h-6 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                    onClick={() => handleDelete(tpl.id)} title="Delete template">
-                    <X className="w-3 h-3" />
-                  </button>
+                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onInsertBlocks([{ ...block, id: uid() }])}><Plus className="w-3 h-3 mr-1" /> Insert</Button>
+                  <button className="w-6 h-6 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" onClick={() => { if (confirm("Delete this template?")) deleteBlockTpl.mutate({ id: tpl.id }, { onSuccess: () => utils.blockTemplates.list.invalidate() }); }}><X className="w-3 h-3" /></button>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
+      ))}
     </div>
   );
 }
+
 
 // ─── Default blocks for a new product sales page ─────────────────────────────
 function getDefaultBlocks(title: string): Block[] {
@@ -731,4 +811,65 @@ function getDefaultBlocks(title: string): Block[] {
       data: { headline: "Order Now", subtext: "Ships within 3-5 business days.", ctaText: "Buy Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true },
     },
   ];
+}
+
+// ─── Apply Template Modal ─────────────────────────────────────────────────────
+function ProductApplyTemplateModal({ onClose, onApply }: { onClose: () => void; onApply: (blocks: Block[]) => void }) {
+  const [search, setSearch] = useState("");
+  const utils = trpc.useUtils();
+  const { data: pageTemplates = [], isLoading } = trpc.lmsAdmin.listPageTemplates.useQuery({});
+  const deletePageTpl = trpc.lmsAdmin.deletePageTemplate.useMutation({
+    onSuccess: () => utils.lmsAdmin.listPageTemplates.invalidate(),
+  });
+
+  const filtered = (pageTemplates as any[]).filter((t: any) =>
+    !search || t.name.toLowerCase().includes(search.toLowerCase()) || (t.description ?? "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-[640px] max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-teal-600" /> Apply Page Template</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <div className="px-4 pt-3 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoading ? (
+            <p className="text-sm text-gray-400 text-center py-8">Loading templates…</p>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-400">
+              <FolderOpen className="w-10 h-10 opacity-30" />
+              <p className="text-sm">No page templates saved yet.</p>
+              <p className="text-xs text-gray-300">Use "Save as Template" in any page editor to create one.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {filtered.map((tpl: any) => {
+                const tplBlocks: Block[] = (() => {
+                  try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; }
+                })();
+                return (
+                  <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-teal-300 hover:bg-teal-50/30 transition-colors group">
+                    <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{tpl.name}</h3>
+                    {tpl.description && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{tpl.description}</p>}
+                    <p className="text-xs text-gray-400 mb-3">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p>
+                    <div className="flex gap-2">
+                      <Button onClick={() => onApply(tplBlocks)} className="flex-1 h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white">Apply Template</Button>
+                      <button onClick={() => { if (confirm("Delete this template?")) deletePageTpl.mutate({ id: tpl.id }); }} className="w-7 h-7 border border-gray-200 rounded text-gray-400 hover:text-red-500 flex items-center justify-center flex-shrink-0"><Trash2 size={12} /></button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -4,9 +4,7 @@
  * Extracted into its own file to break the circular dependency between CoursePlayer and LandingPageBuilder.
  */
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import DOMPurify from "dompurify";
-import { CustomVideoPlayer } from "@/components/CustomVideoPlayer";
-import { ChevronDown, Globe, Image, Package, Upload, Video } from "lucide-react";
+import { Award, BookOpen, ChevronDown, Globe, Image, Package, Upload, Video } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CarouselBlock from "@/components/CarouselBlock";
 import InlineCheckoutBlock from "@/components/InlineCheckoutBlock";
@@ -16,12 +14,9 @@ import { trpc } from "@/lib/trpc";
 import { FunnelWorkflowBlock, InlineOrderBumpBlock, ProductOfferStackBlock } from "@/components/FunnelBlocks";
 import { ButtonSubtext } from "@/lib/ctaSubtext";
 import { handleCtaBtnClick } from "@/pages/lms/CourseLanding";
-
-/** Sanitize HTML strings before rendering with dangerouslySetInnerHTML */
-const sanitize = (html: string | null | undefined): string =>
-  typeof window !== "undefined" && html
-    ? DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
-    : (html ?? "");
+import { applyVideoTrim } from "@/lib/videoTrim";
+import { MediaEmbedIframe } from "@/components/MediaEmbedIframe";
+import { RemainingSeatsBlock } from "@/components/RemainingSeatsBlock";
 
 /**
  * Wraps an image element with the correct click action based on the CTAActionPicker behavior.
@@ -56,8 +51,8 @@ export function ImageLinkWrapper({ d, children, onAction }: { d: Record<string, 
       <span style={style} onClick={e => { e.stopPropagation(); const w = 800, h = 600; const left = window.screenX + (window.outerWidth - w) / 2; const top = window.screenY + (window.outerHeight - h) / 2; window.open(d.linkPopupUrl, "_blank", `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`); }}>{children}</span>
     );
   }
-  // Checkout/free_preview/pricing_option behaviors — delegate to onAction if provided
-  if (onAction && (behavior === "direct_checkout" || behavior === "free_preview" || behavior === "pricing_option" || behavior === "group_purchase")) {
+  // Checkout/free_preview/pricing_option/free_enrollment behaviors — delegate to onAction if provided
+  if (onAction && (behavior === "direct_checkout" || behavior === "free_preview" || behavior === "pricing_option" || behavior === "group_purchase" || behavior === "free_enrollment")) {
     return (
       <span style={style} onClick={e => { e.stopPropagation(); onAction(); }}>{children}</span>
     );
@@ -76,7 +71,7 @@ export type BlockType =
   | "price_stack" | "urgency_offer" | "checkout_form"
   | "footer" | "logo_strip" | "three_column"
   | "related_products" | "embedded_checkout" | "inline_checkout"
-  | "lesson_quiz" | "lesson_flashcard"
+  | "lesson_quiz" | "lesson_flashcard" | "lesson_certificate"
   | "file_download" | "scorm_embed" | "url_embed"
   | "column_layout" | "carousel" | "ticker" | "countdown_v2"
   | "live_session"
@@ -88,12 +83,19 @@ export type BlockType =
   | "data_table"
   | "file_upload"
   | "cohort_sessions_auto"
+  | "cohort_instance_cards_auto"
   | "affiliate_signup"
-  | "lms_course_embed"
-  | "lms_quiz_embed"
-  | "lms_course_card"
-  | "countdown_enrollment"
-  | "social_proof_live";
+  | "webinar_hero"
+  | "webinar_registration"
+  | "webinar_host_bio"
+  | "webinar_replay"
+  | "webinar_agenda"
+  | "conditional_text"
+  | "sdms_cme_module"
+  | "enrollment_counter"
+  | "quiz_embed"
+  | "remaining_seats"
+  | "included_items_auto";
 
 export interface Block {
   id: string;
@@ -101,7 +103,12 @@ export interface Block {
   data: Record<string, any>;
 }
 
-export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: { block: Block; coursePrice?: number; courseTitle?: string; playerColor?: string }) {
+/** Content container: backgrounds bleed full-width, content constrained to max-w-5xl. */
+export const CC = ({ children, className = "", ...rest }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={`max-w-5xl mx-auto px-4 sm:px-6 ${className}`.trim()} {...rest}>{children}</div>
+);
+
+export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnroll, onCheckoutPage }: { block: Block; coursePrice?: number; courseTitle?: string; courseId?: number; onEnroll?: (...args: any[]) => void; onCheckoutPage?: (...args: any[]) => void }) {
   const { user } = useAuth();
   const d = block.data ?? {};
   // Pre-compute pass-through URL for url_embed blocks (hooks must be at top level, not inside switch)
@@ -128,7 +135,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       let heroBg: React.CSSProperties = {};
       if (bgType === "color") heroBg = { backgroundColor: d.bgColor ?? "#179ca3" };
       else if (bgType === "gradient") heroBg = { background: `linear-gradient(${d.gradientDir ?? "to bottom right"}, ${d.gradientFrom ?? "#179ca3"}, ${d.gradientTo ?? "#0e4a50"})` };
-      else if (bgType === "image") heroBg = { backgroundImage: `url(${d.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" };
+      else if (bgType === "image") heroBg = { backgroundImage: `url(${d.imageUrl})`, backgroundSize: d.bgImageSize ?? "cover", backgroundPosition: `${d.bgPositionX ?? "center"} ${d.bgPositionY ?? "center"}` };
       else if (bgType === "video") heroBg = { backgroundColor: "#000" };
       const heroButtons: Array<{ text: string; color: string; textColor: string; link: string; style: string; animation?: string; showStrikethrough?: boolean; strikethroughPrice?: string; showOptOut?: boolean; optOutText?: string; optOutUrl?: string }> =
         d.buttons?.length ? d.buttons : [{ text: d.ctaText ?? "Enroll Now", color: d.ctaColor ?? "#fff", textColor: d.ctaTextColor ?? "#179ca3", link: "", style: "filled" }];
@@ -147,6 +154,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             else if (beh === "open_popup" && d.heroPopupUrl) window.open(d.heroPopupUrl, "_blank");
           })
         : undefined;
+      const heroTopBorderStyle: React.CSSProperties = d.heroTopBorder
+        ? { borderTop: `${d.heroTopBorderWidth ?? 4}px solid ${d.heroTopBorderColor ?? "#179ca3"}` }
+        : {};
       const heroBottomBorderStyle: React.CSSProperties = d.heroBottomBorder
         ? { borderBottom: `${d.heroBottomBorderWidth ?? 4}px solid ${d.heroBottomBorderColor ?? "#179ca3"}` }
         : {};
@@ -154,24 +164,39 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const heroMaxHeight = d.maxHeight ? `${d.maxHeight}px` : undefined;
       return (
         <div
-          className="relative px-8 py-16 overflow-hidden"
-          style={{ ...heroBg, ...heroBottomBorderStyle, color: d.textColor ?? "#fff", textAlign: hasInlineMedia && isHorizontal ? "left" as const : (d.align ?? "left"), cursor: heroClickHandler ? "pointer" : undefined, minHeight: `${heroMinHeight}px`, ...(heroMaxHeight ? { maxHeight: heroMaxHeight, overflow: "hidden" } : {}) }}
-          onClick={heroClickHandler}
+          className="relative px-4 sm:px-8 py-10 sm:py-16 overflow-hidden w-full box-border"
+          style={{ ...heroBg, ...heroTopBorderStyle, ...heroBottomBorderStyle, color: d.textColor ?? "#fff", textAlign: hasInlineMedia && isHorizontal ? "left" as const : (d.align ?? "left"), cursor: heroClickHandler ? "pointer" : undefined, minHeight: `${heroMinHeight}px`, ...(heroMaxHeight ? { maxHeight: heroMaxHeight, overflow: "hidden" } : {}) }}
+          onClick={e => { handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage); if (!( e.target as HTMLElement).closest('[data-cta-btn]')) heroClickHandler?.(); }}
         >
           {bgType === "video" && d.videoUrl && (
             <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-60"><source src={d.videoUrl} /></video>
           )}
-          <div className={`relative max-w-5xl mx-auto ${hasInlineMedia && isHorizontal ? "flex items-center gap-8" : ""} ${hasInlineMedia && placement === "left" ? "flex-row-reverse" : ""}`}>
-            <div className={hasInlineMedia && isHorizontal ? "flex-1" : "max-w-3xl"}>
-              <h1 className="text-4xl font-bold mb-4 leading-tight">
-                <span style={d.headlineColor ? { color: d.headlineColor } : undefined} dangerouslySetInnerHTML={{ __html: sanitize(d.headline ?? '') }} />
-                {d.headline2 && <><br /><span style={d.headline2Color ? { color: d.headline2Color } : undefined} dangerouslySetInnerHTML={{ __html: sanitize(d.headline2) }} /></>}
+          <div className={`relative max-w-5xl mx-auto w-full ${
+            hasInlineMedia && isHorizontal
+              ? "flex flex-col sm:flex-row items-center gap-6 sm:gap-8"
+              : ""
+          } ${hasInlineMedia && placement === "left" ? "sm:flex-row-reverse" : ""}`}>
+            <div className={hasInlineMedia && isHorizontal ? "w-full sm:flex-1 min-w-0" : "max-w-3xl w-full"}>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 leading-tight break-words">
+                <span style={d.headlineColor ? { color: d.headlineColor } : undefined} dangerouslySetInnerHTML={{ __html: d.headline ?? '' }} />
+                {d.headline2 && <><br /><span style={d.headline2Color ? { color: d.headline2Color } : undefined} dangerouslySetInnerHTML={{ __html: d.headline2 }} /></>}
               </h1>
-              {d.subheadline && <p className="text-xl opacity-90 mb-8" dangerouslySetInnerHTML={{ __html: sanitize(d.subheadline) }} />}
+              {d.subheadline && <p className="text-base sm:text-lg md:text-xl opacity-90 mb-6 sm:mb-8 break-words" dangerouslySetInnerHTML={{ __html: d.subheadline }} />}
               {!d.hideButtons && <div className="flex flex-wrap gap-3" style={{ justifyContent: d.align === "center" ? "center" : d.align === "right" ? "flex-end" : "flex-start" }}>
                 {heroButtons.map((btn, i) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <button className={`px-8 py-3 rounded-lg font-semibold text-lg shadow-lg ${btn.animation && btn.animation !== "none" ? `animate-${btn.animation}-btn` : ""}`}
+                    <button
+                      data-cta-btn="1"
+                      data-action={(btn as any).behavior ?? "direct_checkout"}
+                      data-link={(btn as any).behavior === "url" ? ((btn as any).link ?? "") : undefined}
+                      data-anchor={(btn as any).behavior === "scroll_to_section" ? ((btn as any).scrollAnchor ?? "") : undefined}
+                      data-email={(btn as any).behavior === "send_email" ? ((btn as any).emailAddress ?? "") : undefined}
+                      data-popup={(btn as any).behavior === "open_popup" ? ((btn as any).popupUrl ?? "") : undefined}
+                      data-download={(btn as any).behavior === "download_file" ? ((btn as any).downloadUrl ?? "") : undefined}
+                      data-soldout-override={(btn as any).soldOutOverrideUrl || undefined}
+                      data-product-type={(btn as any).behavior === "free_enrollment" ? ((btn as any).freeEnrollProductType ?? "membership") : undefined}
+                      data-product-id={(btn as any).behavior === "free_enrollment" ? ((btn as any).freeEnrollProductId ?? "") : undefined}
+                      className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold text-base sm:text-lg shadow-lg w-full sm:w-auto cursor-pointer ${btn.animation && btn.animation !== "none" ? `animate-${btn.animation}-btn` : ""}`}
                       style={btn.style === "outline" ? { backgroundColor: "transparent", color: btn.color, border: `2px solid ${btn.color}` } : { backgroundColor: btn.color, color: btn.textColor }}>
                       {btn.text}
                     </button>
@@ -179,7 +204,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
                     {btn.showStrikethrough && btn.strikethroughPrice && (
                       <span className="text-xs text-white/60 line-through">{btn.strikethroughPrice}</span>
                     )}
-                  {btn.showOptOut && btn.optOutText && (
+                    {btn.showOptOut && btn.optOutText && (
                       <span className="text-xs text-white/60 underline cursor-pointer hover:text-white/80">{btn.optOutText}</span>
                     )}
                   </div>
@@ -187,11 +212,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>}
             </div>
             {hasInlineMedia && (
-              <div className={isHorizontal ? "flex-1 max-w-xs" : "mt-8 max-w-sm mx-auto"}>
+              <div className={isHorizontal ? "w-full sm:flex-1 sm:max-w-xs mt-6 sm:mt-0" : "mt-6 max-w-sm mx-auto w-full"}>
                 {d.inlineMediaType === "video" ? (
-                  <video autoPlay muted loop playsInline className="w-full rounded-lg shadow-2xl"><source src={d.inlineMediaUrl} /></video>
+                  <video autoPlay muted loop playsInline className={`w-full ${(d.inlineMediaStyle ?? "shadow") === "circle" ? "rounded-full shadow-2xl aspect-square object-cover" : (d.inlineMediaStyle ?? "shadow") === "none" ? "" : "rounded-lg shadow-2xl"}`}><source src={d.inlineMediaUrl} /></video>
                 ) : (
-                  <img src={d.inlineMediaUrl} alt="" className="w-full rounded-lg shadow-2xl" />
+                  <img src={d.inlineMediaUrl} alt="" className={`w-full ${(d.inlineMediaStyle ?? "shadow") === "circle" ? "rounded-full shadow-2xl aspect-square object-cover" : (d.inlineMediaStyle ?? "shadow") === "none" ? "" : "rounded-lg shadow-2xl"}`} />
                 )}
               </div>
             )}
@@ -201,9 +226,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     }
     case "text":
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff", color: d.textColor ?? "#1a1a1a", textAlign: d.align ?? "left" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
-          <div className="max-w-3xl mx-auto prose" dangerouslySetInnerHTML={{ __html: sanitize(d.html ?? "") }} />
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff", color: d.textColor ?? "#1a1a1a" }}
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}>
+          <CC style={{ textAlign: d.align ?? "left" }}><div className="prose" dangerouslySetInnerHTML={{ __html: d.html ?? "" }} /></CC>
         </div>
       );
     case "image": {
@@ -215,41 +240,31 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         ? <img src={d.url} alt={d.alt ?? ""} className={d.showShadow !== false ? "shadow" : ""} style={imgStyle} />
         : <div className="w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400"><Image size={32} /></div>;
       return (
-        <div className="px-8 py-6" style={{ display: "flex", flexDirection: "column", alignItems: imgJustify, backgroundColor: d.bgColor || undefined }}>
+        <div className="py-4 sm:py-6" style={{ backgroundColor: d.bgColor || undefined }}>
+          <CC style={{ display: "flex", flexDirection: "column", alignItems: imgJustify }}>
           <ImageLinkWrapper d={d}>{imgEl}</ImageLinkWrapper>
           {d.caption && <p className="text-sm text-gray-500 mt-2" style={{ textAlign: imgAlign as any }}>{d.caption}</p>}
+          </CC>
         </div>
       );
     }
     case "video": {
       const isDirectVideo = d.embedUrl && /\.(mp4|webm|ogg|mov)([?#]|$)/i.test(d.embedUrl);
-      const isMediaRepo = d.source === "media_repo" && isDirectVideo;
       const videoAccent = d.accentColor ?? "#189aa1";
-      const effectivePlayerColor = playerColor ?? d.accentColor ?? "#00b4b4";
       const containerStyle: React.CSSProperties = { maxWidth: d.maxWidth ?? "100%", height: d.height || undefined, paddingBottom: d.height ? undefined : (isDirectVideo ? undefined : "56.25%"), borderRadius: d.borderRadius ? `${d.borderRadius}px` : "0.5rem", border: d.borderWidth ? `${d.borderWidth}px ${d.borderStyle || "solid"} ${d.borderColor || "#e5e7eb"}` : undefined };
       const videoId = `aaus-vid-${block.id ?? 'v'}`;
+      const trimStart = d.trimStart ?? 0;
+      const trimEnd = d.trimEnd ?? 0;
+      // Build the trimmed embed URL using platform-aware logic
+      const trimmedEmbedUrl = d.embedUrl ? applyVideoTrim(d.embedUrl, trimStart, trimEnd) : "";
       return (
-        <div className={isMediaRepo ? "w-full" : "px-8 py-6"}>
+        <div className="py-4 sm:py-6"><CC>
           {d.embedUrl ? (
             isDirectVideo ? (
-              isMediaRepo ? (
-                // Media repository video: full-width CustomVideoPlayer with course playerColor
-                <div className="w-full" style={{ aspectRatio: d.height ? undefined : "16/9", height: d.height || undefined }}>
-                  <CustomVideoPlayer
-                    src={d.embedUrl}
-                    playerColor={effectivePlayerColor}
-                    autoPlay={d.autoplay ?? false}
-                    muted={d.muted ?? false}
-                    loop={d.loop ?? false}
-                    startTime={d.trimStart ?? 0}
-                    className="w-full h-full"
-                  />
-                </div>
-              ) : (
               <div className="mx-auto overflow-hidden shadow" style={containerStyle}>
                 <style>{`.${videoId} { accent-color: ${videoAccent}; } .${videoId}::-webkit-media-controls-play-button { filter: none; } .${videoId}::-webkit-media-controls-timeline { accent-color: ${videoAccent}; }`}</style>
                 <video
-                  src={d.trimStart && d.trimStart > 0 ? `${d.embedUrl}#t=${d.trimStart ?? 0}${d.trimEnd ? `,${d.trimEnd}` : ""}` : d.embedUrl}
+                  src={trimmedEmbedUrl}
                   autoPlay={d.autoplay ?? false}
                   muted={d.muted ?? true}
                   loop={d.loop ?? false}
@@ -259,11 +274,10 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
                   style={{ height: d.height || undefined, accentColor: videoAccent }}
                 />
               </div>
-              )
             ) : (
               <div className="relative w-full overflow-hidden shadow mx-auto" style={containerStyle}>
                 <iframe
-                  src={d.autoplay ? `${d.embedUrl}${d.embedUrl.includes('?') ? '&' : '?'}autoplay=1${d.muted !== false ? '&mute=1' : ''}${d.loop ? '&loop=1' : ''}` : d.embedUrl}
+                  src={d.autoplay ? `${trimmedEmbedUrl}${trimmedEmbedUrl.includes('?') ? '&' : '?'}autoplay=1${d.muted !== false ? '&mute=1' : ''}${d.loop ? '&loop=1' : ''}` : trimmedEmbedUrl}
                   className="absolute inset-0 w-full h-full"
                   allowFullScreen
                   title="Video"
@@ -281,6 +295,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             </div>
           )}
           {d.caption && <p className="text-sm text-gray-500 mt-2 text-center">{d.caption}</p>}
+        </CC>
         </div>
       );
     }
@@ -304,7 +319,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const embedJustify = embedAlign === "left" ? "flex-start" : embedAlign === "right" ? "flex-end" : "center";
       const embedMaxWidth = d.maxWidth ?? "100%";
       return (
-        <div className="px-8 py-6" style={{ display: "flex", flexDirection: "column", alignItems: embedJustify }}>
+        <div className="py-4 sm:py-6"><CC style={{ display: "flex", flexDirection: "column", alignItems: embedJustify }}>
           <div style={{ width: embedMaxWidth, maxWidth: "100%" }}>
             {d.embedCode ? (
               <iframe
@@ -316,13 +331,13 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             ) : <div className="w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-400" style={{ height: d.height ?? 400 }}><Globe size={32} /></div>}
             {d.caption && <p className="text-sm text-gray-500 mt-2" style={{ textAlign: embedAlign as any }}>{d.caption}</p>}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "gallery":
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${d.columns ?? 3}, 1fr)` }}>
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${Math.floor(100 / (d.columns ?? 3))}%), 1fr))` }}>
             {(d.images ?? []).map((img: any, i: number) => (
               <div key={i} className="rounded-lg overflow-hidden shadow">
                 {img.url ? <img src={img.url} alt={img.caption ?? ""} className="w-full h-40 object-cover" /> : <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400"><Image size={24} /></div>}
@@ -330,16 +345,16 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     case "bullets": {
       const bulletItems: string[] = (d.items ?? []).map((item: string | { text?: string; crossed?: boolean }) =>
         typeof item === "string" ? item : (item?.text ?? "")
       );
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-6 text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-3xl">
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-6 text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {bulletItems.map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-3">
                 <span className="mt-0.5 flex-shrink-0 text-lg" style={{ color: d.iconColor ?? "#179ca3" }}>✓</span>
@@ -347,7 +362,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "numbered_list": {
@@ -355,11 +370,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         typeof item === "string" ? item : (item?.text ?? "")
       );
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(d.subHeading) }} />}
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: d.subHeading }} />}
           {!d.subHeading && d.headline && <div className="mb-6" />}
-          <div className="space-y-4 max-w-2xl">
+          <div className="space-y-4">
             {numItems.map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-4">
                 <span className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: d.accentColor ?? "#179ca3" }}>{i + 1}</span>
@@ -367,7 +382,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "checklist": {
@@ -377,11 +392,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
           typeof item === "string" ? { text: item, crossed: false } : { text: item.text ?? "", crossed: item.crossed ?? false }
       );
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(d.subHeading) }} />}
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subHeading && <p className="text-gray-500 mb-6 text-base leading-relaxed" dangerouslySetInnerHTML={{ __html: d.subHeading }} />}
           {!d.subHeading && d.headline && <div className="mb-6" />}
-          <div className="space-y-3 max-w-2xl">
+          <div className="space-y-3">
             {clItems.map((item, i) => (
               <div key={i} className="flex items-start gap-3">
                 {item.crossed ? (
@@ -393,14 +408,14 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "icon_grid":
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${d.columns ?? 3}, 1fr)` }}>
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${Math.floor(100 / (d.columns ?? 3))}%), 1fr))` }}>
             {(d.items ?? []).map((item: any, i: number) => (
               <div key={i} className="text-center p-4">
                 <div className="text-4xl mb-3">{item.icon}</div>
@@ -409,12 +424,12 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     case "testimonial":
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }}>
-          <div className="max-w-2xl mx-auto text-center">
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }}>
+          <CC><div className="text-center">
             <div className="text-4xl mb-4" style={{ color: d.accentColor ?? "#179ca3" }}>"</div>
             <p className="text-xl text-gray-700 italic mb-6">{d.quote}</p>
             {(d.rating ?? 0) > 0 && (
@@ -426,14 +441,14 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               {d.avatarUrl && <img src={d.avatarUrl} alt={d.author} className="w-10 h-10 rounded-full object-cover" />}
               <span className="font-semibold text-gray-900">{d.author}</span>
             </div>
-          </div>
+          </div></CC>
         </div>
       );
     case "reviews":
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(d.reviews ?? []).map((r: any, i: number) => (
               <div key={i} className="rounded-xl p-5 shadow-sm" style={{ backgroundColor: d.cardBgColor ?? "#f9fafb" }}>
                 <div className="flex items-center gap-1 mb-2">
@@ -444,27 +459,27 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     case "logos":
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          {d.headline && <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}><CC>
+          {d.headline && <p className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           <div className="flex flex-wrap items-center justify-center gap-8">
             {(d.logos ?? []).map((logo: any, i: number) => (
               logo.url ? <img key={i} src={logo.url} alt={logo.alt ?? ""} className="h-10 object-contain opacity-70 hover:opacity-100 transition-opacity" />
                 : <div key={i} className="h-10 w-24 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">{logo.alt || "Logo"}</div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     case "instructor":
       return <InstructorBlockPreview d={d} />;
     case "faq":
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="max-w-3xl space-y-3">
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-8" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="space-y-3">
             {(d.items ?? []).map((item: any, i: number) => (
               <details key={i} className="rounded-lg overflow-hidden group" style={{ border: `1px solid ${d.accentColor ?? "#e5e7eb"}`, backgroundColor: d.itemBgColor ?? "transparent" }}>
                 <summary
@@ -475,11 +490,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
                 >
                   {item.q}
                 </summary>
-                <div className="px-5 py-4 prose prose-sm max-w-none" style={{ color: d.answerColor ?? "#4b5563", borderTop: `1px solid ${d.dividerColor ?? "#f3f4f6"}` }} dangerouslySetInnerHTML={{ __html: sanitize(item.a ?? "") }} />
+                <div className="px-5 py-4 prose prose-sm max-w-none" style={{ color: d.answerColor ?? "#4b5563", borderTop: `1px solid ${d.dividerColor ?? "#f3f4f6"}` }} dangerouslySetInnerHTML={{ __html: item.a ?? "" }} />
               </details>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     case "countdown": {
       const mode = d.mode ?? "on_load";
@@ -487,7 +502,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const placeholders = mode === "event" ? ["00", "00", "00", "00"] : [String(Math.floor((d.durationMinutes ?? 90) / 60)).padStart(2, "0"), String((d.durationMinutes ?? 90) % 60).padStart(2, "0"), "00"];
       return (
         <div className={`px-8 py-10 text-center ${d.showBorder ? "border-2 rounded-2xl mx-4 my-4" : ""}`} style={{ backgroundColor: d.bgColor ?? "#ffffff", color: d.textColor ?? "#0e1e2e", borderColor: d.showBorder ? (d.accentColor ?? "#179ca3") : undefined }}>
-          {d.headline && <h2 className="text-lg font-bold uppercase tracking-wide mb-4" style={{ color: d.accentColor ?? "#179ca3" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.headline && <h2 className="text-lg font-bold uppercase tracking-wide mb-4" style={{ color: d.accentColor ?? "#179ca3" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
           <div className="flex justify-center items-center gap-2">
             {units.map((unit, i) => (
               <div key={unit} className="flex items-center gap-2">
@@ -514,9 +529,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     }
     case "flip_cards":
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {(d.cards ?? []).map((card: any, i: number) => (
               <div key={i} className="rounded-xl overflow-hidden shadow-sm border border-gray-200 group cursor-pointer">
                 <div className="p-5 font-semibold text-white text-center" style={{ backgroundColor: d.accentColor ?? "#179ca3" }}>{card.front}</div>
@@ -524,7 +539,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     case "pricing_cta": {
       const priceAbove = (d.pricePosition ?? "above") === "above";
@@ -539,62 +554,89 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
           </p>
         </div>
       ) : null;
+      const pricingCtaBeh = d.ctaBehavior ?? (d.ctaUrl && d.ctaUrl.startsWith("http") ? "url" : "direct_checkout");
       const ctaBtn = (
-        <a
-          href={d.ctaUrl ?? "#"}
-          target={d.ctaUrl && d.ctaUrl.startsWith("http") ? "_blank" : undefined}
-          rel={d.ctaUrl && d.ctaUrl.startsWith("http") ? "noopener noreferrer" : undefined}
-          className={`inline-block px-10 py-4 rounded-xl font-bold text-lg shadow-lg ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`}
+        <button
+          data-cta-btn="1"
+          data-action={pricingCtaBeh}
+          data-link={pricingCtaBeh === "url" ? (d.ctaUrl ?? "") : undefined}
+          data-soldout-override={d.soldOutOverrideUrl || undefined}
+          className={`inline-block px-10 py-4 rounded-xl font-bold text-lg shadow-lg cursor-pointer ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`}
           style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}
         >
           {d.ctaText ?? "Get Started"}
-        </a>
+        </button>
       );
       return (
-        <div className="px-8 py-12 text-center" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-3xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subtext && <p className="text-gray-600 mb-6 max-w-xl mx-auto" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC className="text-center">
+          {d.headline && <h2 className="text-3xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subtext && <p className="text-gray-600 mb-6 max-w-xl mx-auto" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {priceAbove && priceBlock}
           {ctaBtn}
           {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-teal-600 mt-1">→ Stripe Checkout</p>}
           {!priceAbove && priceBlock}
           <ButtonSubtext d={d} />
-        </div>
+        </CC></div>
       );
     }
-    case "cta_standalone":
+    case "cta_standalone": {
+      const standaloneCtaBeh = d.ctaBehavior ?? (d.ctaLink && d.ctaLink.startsWith("http") ? "url" : "direct_checkout");
       return (
-        <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa", textAlign: d.align ?? "center" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC style={{ textAlign: d.align ?? "center" }}>
+          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
             <p className="text-lg text-gray-400 line-through mb-1">{d.strikethroughPrice}</p>
           )}
           {d.displayPrice && <p className="text-3xl font-bold mb-4" style={{ color: d.ctaColor ?? "#179ca3" }}>{d.displayPrice}</p>}
-          <a href={d.ctaLink ?? "#"} className={`inline-block px-8 py-3 rounded-lg font-semibold shadow ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`} style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>{d.ctaText ?? "Get Started"}</a>
+          <button
+            data-cta-btn="1"
+            data-action={standaloneCtaBeh}
+            data-link={standaloneCtaBeh === "url" ? (d.ctaLink ?? "") : undefined}
+            data-soldout-override={d.soldOutOverrideUrl || undefined}
+            className={`inline-block px-8 py-3 rounded-lg font-semibold shadow cursor-pointer ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`}
+            style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}
+          >{d.ctaText ?? "Get Started"}</button>
           {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-teal-600 mt-1">→ Stripe Checkout</p>}
           <ButtonSubtext d={d} />
           {(d.showOptOut || d.optOutEnabled) && d.optOutText && (
             <div className="mt-3"><a href={d.optOutUrl || d.optOutCustomUrl || "#"} className="text-xs text-gray-400 underline hover:text-gray-600">{d.optOutText}</a></div>
           )}
-        </div>
+        </CC></div>
       );
-    case "lead_capture":
+    }
+    case "lead_capture": {
+      const lcBtnBg = d.btnBg ?? "#ffffff";
+      const lcBtnTxt = d.btnTextColor ?? "#179ca3";
+      const lcBtnBorder = d.btnBorderColor ?? lcBtnBg;
+      const lcBtnStyleType = d.btnStyle ?? "filled";
+      const lcBtnStyle = lcBtnStyleType === "outline"
+        ? { backgroundColor: "transparent", color: lcBtnTxt, border: `2px solid ${lcBtnBorder}` }
+        : { backgroundColor: lcBtnBg, color: lcBtnTxt, border: `2px solid ${lcBtnBorder}` };
+      const lcBgType = d.bgType ?? "color";
+      const lcBgStyle: React.CSSProperties = lcBgType === "gradient"
+        ? { background: `linear-gradient(${d.bgGradientAngle ?? 135}deg, ${d.bgGradientStart ?? "#179ca3"}, ${d.bgGradientEnd ?? "#0e4a50"})` }
+        : lcBgType === "image" && d.bgImageUrl
+        ? { backgroundImage: `url(${d.bgImageUrl})`, backgroundSize: d.bgImageSize ?? "cover", backgroundPosition: "center" }
+        : { backgroundColor: d.bgColor ?? "#179ca3" };
       return (
-        <div className="px-8 py-12 text-center" style={{ backgroundColor: d.bgColor ?? "#179ca3", color: d.textColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subtext && <p className="opacity-90 mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+        <div className="py-8 sm:py-12" style={{ ...lcBgStyle, color: d.textColor ?? "#fff" }}><CC className="text-center">
+          {d.headline && <h2 className="text-2xl font-bold mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subtext && <p className="opacity-90 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           <div className="flex max-w-md mx-auto gap-2">
-            <input type="email" placeholder="Your email address" className="flex-1 px-4 py-3 rounded-lg text-gray-900 border-0 focus:ring-2 focus:ring-white/50" />
-            <button className="px-6 py-3 bg-white font-semibold rounded-lg" style={{ color: d.bgColor ?? "#179ca3" }}>{d.ctaText ?? "Send Me Access"}</button>
+            {(d.showNameField ?? true) && <input type="text" placeholder={d.namePlaceholder ?? "Your name"} className="flex-1 px-4 py-3 rounded-lg text-gray-900 border-0" />}
+            <input type="email" placeholder={d.emailPlaceholder ?? "Your email address"} className="flex-1 px-4 py-3 rounded-lg text-gray-900 border-0 focus:ring-2 focus:ring-white/50" />
+            <button className="px-6 py-3 font-semibold rounded-lg" style={lcBtnStyle}>{d.ctaText ?? "Send Me Access"}</button>
           </div>
-        </div>
+        </CC></div>
       );
-    case "cta_optin":
+    }
+    case "cta_optin": {
+      const optinCtaBeh = d.ctaBehavior ?? "direct_checkout";
       return (
-        <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa", textAlign: d.align ?? "center" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC style={{ textAlign: d.align ?? "center" }}>
+          {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
             <p className="text-lg text-gray-400 line-through mb-1">{d.strikethroughPrice}</p>
           )}
@@ -603,10 +645,18 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             <input type="text" placeholder={d.namePlaceholder ?? "Your name"} className="w-full px-4 py-3 rounded-lg border border-gray-200 text-gray-900 text-sm" />
             <input type="email" placeholder={d.emailPlaceholder ?? "Your email address"} className="w-full px-4 py-3 rounded-lg border border-gray-200 text-gray-900 text-sm" />
           </div>
-          <a href="#" className={`inline-block px-8 py-3 rounded-lg font-semibold shadow ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`} style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>{d.ctaText ?? "Get Access"}</a>
+          <button
+            data-cta-btn="1"
+            data-action={optinCtaBeh}
+            data-link={optinCtaBeh === "url" ? (d.ctaLink ?? "") : undefined}
+            data-soldout-override={d.soldOutOverrideUrl || undefined}
+            className={`inline-block px-8 py-3 rounded-lg font-semibold shadow cursor-pointer ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`}
+            style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}
+          >{d.ctaText ?? "Get Access"}</button>
           <ButtonSubtext d={d} />
-        </div>
+        </CC></div>
       );
+    }
     case "funnel_workflow":
       return <FunnelWorkflowBlock data={d} />;
     case "product_offer_stack":
@@ -618,7 +668,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       return (
         <div className={`px-8 py-10 text-center ${d.showBorder ? "border-2 rounded-2xl mx-4 my-4" : ""}`} style={{ backgroundColor: d.bgColor ?? "#ffffff", color: d.textColor ?? "#0e1e2e", borderColor: d.showBorder ? (d.borderColor ?? "#1a5f7a") : undefined }}>
           {d.imageUrl && <img src={d.imageUrl} alt="" className="w-full max-w-lg mx-auto rounded-lg mb-6 object-cover" />}
-          {d.headline && <h2 className="text-2xl md:text-3xl font-black uppercase mb-6 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.headline && <h2 className="text-2xl md:text-3xl font-black uppercase mb-6 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {items.length > 0 && (
             <div className="space-y-2 mb-8 max-w-md mx-auto text-left">
               {items.map((item, i) => (
@@ -638,7 +688,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               {d.finalPrice && <span className="underline decoration-4 underline-offset-4">{d.finalPrice}</span>}
             </p>
           )}
-          {d.ctaText && <button className="px-10 py-4 rounded-xl font-bold text-lg shadow-lg" style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>{d.ctaText}</button>}
+          {d.ctaText && <button data-cta-btn="1" data-action={d.ctaBehavior ?? "direct_checkout"} data-link={d.ctaBehavior === "url" ? (d.ctaLink ?? "") : undefined} className="px-10 py-4 rounded-xl font-bold text-lg shadow-lg cursor-pointer" style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>{d.ctaText}</button>}
         </div>
       );
     }
@@ -664,9 +714,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             </div>
           </div>
           {/* Content section */}
-          {d.headline && <h2 className="text-2xl md:text-3xl font-black text-center mb-4 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+          {d.headline && <h2 className="text-2xl md:text-3xl font-black text-center mb-4 whitespace-pre-line" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {d.description && <p className="italic mb-4" style={{ color: d.accentColor ?? "#179ca3" }}>{d.description}</p>}
-          {d.bodyHtml && <div className="prose max-w-none mb-6" dangerouslySetInnerHTML={{ __html: sanitize(d.bodyHtml) }} />}
+          {d.bodyHtml && <div className="prose max-w-none mb-6" dangerouslySetInnerHTML={{ __html: d.bodyHtml }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
             <p className="text-xl text-gray-400 line-through text-center mt-4">{d.strikethroughPrice}</p>
           )}
@@ -744,7 +794,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
           {/* Order Bumps */}
           {cfBumps.length > 0 && cfBumps.map((bump, i) => (
             <div key={i} className="border-2 rounded-lg p-4 mb-4 flex items-start gap-4" style={{ borderColor: d.accentColor ?? "#179ca3" }}>
-              {bump.imageUrl && <img src={bump.imageUrl} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" />}
+              {bump.imageUrl && <img src={bump.imageUrl} alt="" className="w-20 h-28 rounded-lg object-cover flex-shrink-0" />}
               <div className="flex-1">
                 <div className="text-sm font-bold">{bump.headline}</div>
                 <div className="text-sm font-semibold">{bump.title}</div>
@@ -766,22 +816,77 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
     case "curriculum_auto": {
       const cr = d.cornerRadius ?? 12;
       const hAlign = d.headlineAlign ?? "left";
-      return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className={`text-2xl font-bold mb-6 ${hAlign === "center" ? "text-center" : hAlign === "right" ? "text-right" : "text-left"}`} style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="overflow-hidden max-w-3xl" style={{ border: `1px solid ${d.sectionBorderColor ?? "#e5e7eb"}`, borderRadius: `${cr}px` }}>
-            {["Section 1", "Section 2", "Section 3"].map((s, i) => (
-              <div key={i} style={{ borderBottom: `1px solid ${d.sectionBorderColor ?? "#e5e7eb"}` }} className="last:border-0">
-                <div className="flex items-center justify-between px-5 py-4 font-semibold" style={{ backgroundColor: d.sectionBgColor ?? "#f9fafb", color: d.sectionTextColor ?? "#1f2937" }}>
-                  <span>{s}</span>
-                  <span className="text-xs mr-2" style={{ color: d.lessonCountColor ?? "#9ca3af" }}>5 lessons</span>
-                  <ChevronDown size={16} style={{ color: d.lessonCountColor ?? "#9ca3af" }} />
-                </div>
+      const showCourseCard = d.showCourseCard ?? false;
+      const autoScroll = d.autoScroll ?? false;
+      const maxHeightPx = d.maxHeight ?? 480;
+      // Course card sidebar data
+      const cardTitle = d.cardTitle ?? "Course Title";
+      const cardSubtitle = d.cardSubtitle ?? "";
+      const cardImage = d.cardImageUrl ?? "";
+      const cardInstructor = d.cardInstructor ?? "";
+      const cardPrice = d.cardPrice ?? "";
+      const cardCtaLabel = d.cardCtaLabel ?? "Enroll Now";
+      const cardCtaUrl = d.cardCtaUrl ?? "#";
+      const cardCtaColor = d.cardCtaColor ?? "#179ca3";
+      const cardBg = d.cardBg ?? "#ffffff";
+      const cardBorderColor = d.cardBorderColor ?? "#e5e7eb";
+      const accordionEl = (
+        <div
+          className="overflow-hidden"
+          style={{
+            border: `1px solid ${d.sectionBorderColor ?? "#e5e7eb"}`,
+            borderRadius: `${cr}px`,
+            ...(autoScroll ? { overflowY: "auto", maxHeight: `${maxHeightPx}px` } : {}),
+          }}
+        >
+          {["Section 1", "Section 2", "Section 3"].map((s, i) => (
+            <div key={i} style={{ borderBottom: `1px solid ${d.sectionBorderColor ?? "#e5e7eb"}` }} className="last:border-0">
+              <div className="flex items-center justify-between px-5 py-4 font-semibold" style={{ backgroundColor: d.sectionBgColor ?? "#f9fafb", color: d.sectionTextColor ?? "#1f2937" }}>
+                <span>{s}</span>
+                <span className="text-xs mr-2" style={{ color: d.lessonCountColor ?? "#9ca3af" }}>5 lessons</span>
+                <ChevronDown size={16} style={{ color: d.lessonCountColor ?? "#9ca3af" }} />
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400 mt-3">Auto-populated from course curriculum</p>
+            </div>
+          ))}
         </div>
+      );
+      const courseCardEl = (
+        <div
+          className="rounded-xl overflow-hidden shadow-md flex-shrink-0"
+          style={{ border: `1px solid ${cardBorderColor}`, backgroundColor: cardBg, width: 260, minWidth: 220, maxWidth: 280 }}
+        >
+          {cardImage
+            ? <img src={cardImage} alt={cardTitle} className="w-full object-cover" style={{ height: 160 }} />
+            : <div className="w-full flex items-center justify-center bg-gray-100" style={{ height: 160 }}><BookOpen size={32} className="text-gray-300" /></div>
+          }
+          <div className="p-4">
+            <h3 className="font-bold text-sm leading-snug mb-1" style={{ color: d.sectionTextColor ?? "#111827" }}>{cardTitle}</h3>
+            {cardSubtitle && <p className="text-xs mb-2" style={{ color: d.lessonCountColor ?? "#6b7280" }}>{cardSubtitle}</p>}
+            {cardInstructor && <p className="text-xs mb-3" style={{ color: d.lessonCountColor ?? "#9ca3af" }}>by {cardInstructor}</p>}
+            {cardPrice && <p className="text-lg font-bold mb-3" style={{ color: cardCtaColor }}>{cardPrice}</p>}
+            <a
+              href={cardCtaUrl}
+              className="block w-full text-center py-2 rounded-lg font-semibold text-sm text-white"
+              style={{ backgroundColor: cardCtaColor }}
+            >
+              {cardCtaLabel}
+            </a>
+          </div>
+        </div>
+      );
+      return (
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className={`text-2xl font-bold mb-6 ${hAlign === "center" ? "text-center" : hAlign === "right" ? "text-right" : "text-left"}`} style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {showCourseCard ? (
+            <div className="flex gap-6 items-start">
+              <div className="hidden sm:block" style={{ position: "sticky", top: 16 }}>{courseCardEl}</div>
+              <div className="flex-1 min-w-0">{accordionEl}</div>
+            </div>
+          ) : (
+            <div className="max-w-3xl">{accordionEl}</div>
+          )}
+          <p className="text-xs text-gray-400 mt-3">Auto-populated from course curriculum</p>
+        </CC></div>
       );
     }
     case "pricing_options_auto":
@@ -795,8 +900,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const titleColor = d.cardTitleColor ?? "#111827";
       const priceColor = d.priceColor ?? "#179ca3";
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-8 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
           <div className="flex justify-center gap-6 max-w-3xl mx-auto">
             {pCards.map((card: any, i: number) => {
               const isFeatured = i === Math.floor(pCards.length / 2);
@@ -817,7 +922,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             })}
           </div>
           <p className="text-xs text-gray-400 mt-3 text-center">Auto-populated from course pricing options</p>
-        </div>
+        </CC></div>
       );
     }
     case "divider":
@@ -840,39 +945,39 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         }
       };
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
-          <div className="flex gap-8">
-            <div style={{ flex: d.leftRatio ?? 50 }}>{renderCol("left")}</div>
-            <div style={{ flex: 100 - (d.leftRatio ?? 50) }}>{renderCol("right")}</div>
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC>
+          <div className="flex flex-col md:flex-row gap-8 items-center">
+            <div className="min-w-0" style={{ flex: `${d.leftRatio ?? 50} 1 0%` }}>{renderCol("left")}</div>
+            <div className="min-w-0" style={{ flex: `${100 - (d.leftRatio ?? 50)} 1 0%` }}>{renderCol("right")}</div>
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "divided_columns": {
       const cols = d.columns ?? [{ html: "" }, { html: "" }];
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC>
           <div className="grid" style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)`, gap: `${d.gap ?? 32}px` }}>
             {cols.map((col: any, i: number) => (
-              <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: sanitize(col.html ?? "") }} />
+              <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: col.html ?? "" }} />
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "three_column": {
       const divStyle = d.showDividers ? { borderRightWidth: `${d.dividerWidth ?? 1}px`, borderRightStyle: d.dividerStyle ?? "solid", borderRightColor: d.dividerColor ?? "#e5e7eb", borderRadius: d.dividerRadius ? `${d.dividerRadius}px` : undefined } : {};
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>)}>
-          <div className="grid grid-cols-3 gap-6 items-stretch">
-            <div className="prose prose-sm pr-4" style={divStyle} dangerouslySetInnerHTML={{ __html: sanitize(d.col1Html ?? "") }} />
-            <div className="prose prose-sm px-4" style={divStyle} dangerouslySetInnerHTML={{ __html: sanitize(d.col2Html ?? "") }} />
-            <div className="prose prose-sm pl-4" dangerouslySetInnerHTML={{ __html: sanitize(d.col3Html ?? "") }} />
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch">
+            <div className="prose prose-sm pr-4" style={divStyle} dangerouslySetInnerHTML={{ __html: d.col1Html ?? "" }} />
+            <div className="prose prose-sm px-4" style={divStyle} dangerouslySetInnerHTML={{ __html: d.col2Html ?? "" }} />
+            <div className="prose prose-sm pl-4" dangerouslySetInnerHTML={{ __html: d.col3Html ?? "" }} />
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "spacer":
@@ -897,7 +1002,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const links: Array<{ text: string; url: string }> = d.links ?? [];
       const socialLinks = d.socialLinks ?? {};
       return (
-        <div className="px-8 py-6" style={{ backgroundColor: d.bgColor ?? "#0e1e2e", color: d.textColor ?? "#ffffff" }}>
+        <div className="px-4 sm:px-8 py-4 sm:py-6" style={{ backgroundColor: d.bgColor ?? "#0e1e2e", color: d.textColor ?? "#ffffff" }}>
           {d.logoUrl && (
             <div className="flex justify-center mb-4">
               <img src={d.logoUrl} alt="Logo" style={{ maxWidth: d.logoMaxWidth ?? "120px" }} className="object-contain" />
@@ -929,13 +1034,13 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         title: ["Advanced Vascular Ultrasound", "Fetal Echo Essentials", "POCUS Fundamentals"][i] ?? `Product ${i + 1}`,
         type: i % 2 === 0 ? "Course" : "Digital Download",
         price: i === 0 ? "$149" : i === 1 ? "$79" : "Free",
-        description: "Comprehensive training resource for educators and clinicians.",
+        description: "Comprehensive training resource for sonographers and clinicians.",
       }));
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-center mb-2" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold text-center mb-2" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {d.subtext && <p className="text-center text-sm mb-6 opacity-70" style={{ color: d.textColor ?? "#111827" }}>{d.subtext}</p>}
-          <div className={layout === "grid" ? `grid grid-cols-${Math.min(maxItems, 3)} gap-4` : "space-y-3"}>
+          <div className={layout === "grid" ? `grid grid-cols-1 sm:grid-cols-${Math.min(maxItems, 3)} gap-4` : "space-y-3"}>
             {mockCards.map((card, i) => (
               <div key={i} className="rounded-xl border border-gray-200 overflow-hidden" style={{ backgroundColor: d.cardBgColor ?? "#ffffff" }}>
                 <div className="h-24 flex items-center justify-center" style={{ backgroundColor: d.accentColor ?? "#179ca3", opacity: 0.15 + i * 0.05 }}>
@@ -954,7 +1059,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             ))}
           </div>
           <p className="text-[10px] text-gray-400 mt-3 text-center">Auto-populated from published products</p>
-        </div>
+        </CC></div>
       );
     }
     case "embedded_checkout":
@@ -992,6 +1097,28 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         </div>
       );
     }
+    case "lesson_certificate": {
+      return (
+        <div className="px-6 py-5 bg-white border border-teal-200 rounded-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
+              <Award className="w-4 h-4 text-teal-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 text-sm">{d.heading || "Your Certificate of Completion"}</p>
+              <p className="text-xs text-gray-500">{d.subtext || "Download and share your achievement."}</p>
+            </div>
+          </div>
+          <div className="w-full bg-gradient-to-br from-teal-50 to-teal-100 border border-teal-200 rounded-lg h-32 flex items-center justify-center">
+            <div className="text-center">
+              <Award className="w-8 h-8 text-teal-400 mx-auto mb-1" />
+              <p className="text-xs text-teal-600 font-medium">Certificate Preview</p>
+              <p className="text-xs text-teal-400">Shown to learners who have earned it</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     case "lesson_flashcard": {
       const cards: any[] = d.cards ?? [];
       return (
@@ -1016,10 +1143,12 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       );
     }
     case "file_download": {
-      // For media_repo: prefer stored mediaAssetUrl, fall back to slug-based serve endpoint
-      // (handles existing blocks saved before slug-URL fix)
+      // Resolve file URL based on source type:
+      // - media_repo: use stored mediaAssetUrl or slug-based serve endpoint
+      // - download_library: use stored fileUrl directly (S3 URL from digital product files)
+      // - upload: use stored fileUrl (S3 URL from page media upload)
       const fileUrl = d.source === "media_repo"
-        ? (d.mediaAssetUrl || (d.mediaAssetSlug ? `/api/media/${d.mediaAssetSlug}/download` : ""))
+        ? (d.mediaAssetUrl || d.fileUrl || (d.mediaAssetSlug ? `/api/media/${d.mediaAssetSlug}/download` : ""))
         : (d.fileUrl || "");
       const fileName = d.source === "media_repo" ? (d.mediaAssetTitle || d.fileName || "File") : (d.fileName || "File");
       const displayMode = d.displayMode ?? "card";
@@ -1030,7 +1159,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         const isVideo = ["mp4", "webm", "mov", "ogg"].includes(ext);
         const isAudio = ["mp3", "wav", "ogg", "m4a"].includes(ext);
         return (
-          <div className="px-8 py-6" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
+          <div className="py-4 sm:py-6" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
             {d.label && <h3 className="text-lg font-semibold text-gray-800 mb-2">{d.label}</h3>}
             {d.description && <p className="text-sm text-gray-500 mb-3">{d.description}</p>}
             {isPdf && <iframe src={fileUrl} className="w-full rounded-lg border border-gray-200" style={{ height: `${d.inlineHeight ?? 600}px` }} title={fileName} />}
@@ -1046,12 +1175,12 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
                 {d.showFileSize !== false && d.fileSize && <span className="opacity-70 text-xs">({d.fileSize})</span>}
               </a>
             </div>
-          </div>
+          </CC></div>
         );
       }
       // Card mode (default)
       return (
-        <div className="px-8 py-6" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
+        <div className="py-4 sm:py-6" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}><CC>
           <div className="max-w-xl mx-auto flex items-center gap-4 p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
             {d.showIcon !== false && (
               <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${d.buttonColor ?? "#179ca3"}20` }}>
@@ -1070,28 +1199,27 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               {d.buttonText ?? "Download"}
             </a>
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "scorm_embed": {
       const slug = d.mediaAssetSlug ?? "";
       const title = d.mediaAssetTitle ?? "Interactive Content";
       const height = d.height ?? 600;
-      const embedUrl = slug ? `/api/media/${slug}/embed` : "";
+      const embedUrl = slug ? `/api/media/${slug}/scorm` : "";
       const scormAlign = d.align ?? "center";
       const scormJustify = scormAlign === "left" ? "flex-start" : scormAlign === "right" ? "flex-end" : "center";
       const scormMaxWidth = d.maxWidth ?? "100%";
       return (
-        <div className="px-8 py-6" style={{ backgroundColor: d.bgColor ?? "#fff", display: "flex", flexDirection: "column", alignItems: scormJustify }}>
+        <div className="py-4 sm:py-6" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC style={{ display: "flex", flexDirection: "column", alignItems: scormJustify }}>
           <div style={{ width: scormMaxWidth, maxWidth: "100%" }}>
             {d.title && <h3 className="text-lg font-semibold text-gray-800 mb-3">{d.title}</h3>}
             {embedUrl ? (
-              <iframe
+              <MediaEmbedIframe
                 src={embedUrl}
-                style={{ width: "100%", height: `${height}px`, border: "none", borderRadius: "8px" }}
+                courseId={courseId}
                 title={title}
-                allow="autoplay; fullscreen"
-                allowFullScreen
+                style={{ width: "100%", height: `${height}px`, border: "none", borderRadius: "8px" }}
               />
             ) : (
               <div
@@ -1105,7 +1233,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             )}
             {d.caption && <p className="text-sm text-gray-500 mt-2" style={{ textAlign: scormAlign as any }}>{d.caption}</p>}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "url_embed": {
@@ -1116,7 +1244,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const urlJustify = urlAlign === "left" ? "flex-start" : urlAlign === "right" ? "flex-end" : "center";
       const urlMaxWidth = d.maxWidth ?? "100%";
       return (
-        <div className="px-8 py-6" style={{ backgroundColor: d.bgColor ?? "#fff", display: "flex", flexDirection: "column", alignItems: urlJustify }}>
+        <div className="py-4 sm:py-6" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC style={{ display: "flex", flexDirection: "column", alignItems: urlJustify }}>
           <div style={{ width: urlMaxWidth, maxWidth: "100%" }}>
             {d.title && <h3 className="text-lg font-semibold text-gray-800 mb-3">{d.title}</h3>}
             {url ? (
@@ -1140,7 +1268,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
             )}
             {d.caption && <p className="text-sm text-gray-500 mt-2" style={{ textAlign: urlAlign as any }}>{d.caption}</p>}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "column_layout": {
@@ -1149,7 +1277,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const leftRatio = d.leftRatio ?? 50;
       const gap = d.gap ?? 32;
       return (
-        <div className="py-4" style={{ backgroundColor: d.bgColor ?? "transparent", padding: `${d.paddingY ?? 16}px ${d.paddingX ?? 32}px` }}>
+        <div style={{ backgroundColor: d.bgColor ?? "transparent", padding: `${d.paddingY ?? 16}px 0` }}><CC>
           <div className="flex items-start" style={{ gap: `${gap}px` }}>
             <div style={{ flex: leftRatio, minWidth: 0 }}>
               {leftBlocks.length === 0 ? (
@@ -1170,11 +1298,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               )}
             </div>
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "carousel":
-      return <div className="px-4 py-4"><CarouselBlock data={d} /></div>;
+      return <div className="py-4" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC><CarouselBlock data={d} /></CC></div>;
     case "ticker":
       return <TickerBlockPreview d={d} />;
     case "countdown_v2":
@@ -1190,9 +1318,9 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const rows: Array<{ feature: string; values: Array<string | boolean | null> }> = d.rows ?? [];
       const accentCol = d.accentColor ?? "#179ca3";
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {!d.subtext && d.headline && <div className="mb-8" />}
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
@@ -1225,7 +1353,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </tbody>
             </table>
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "pricing_cards": {
@@ -1243,11 +1371,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
         return attrs;
       };
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#f8fffe" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-2 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          {d.subtext && <p className="text-center text-gray-500 mb-8 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {!d.subtext && d.headline && <div className="mb-8" />}
-          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${tiers.length || 1}, 1fr)`, maxWidth: "900px", margin: "0 auto" }}>
+          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${tiers.length || 1}, 1fr)` }}>
             {tiers.map((tier, ti) => (
               <div key={ti} className="rounded-2xl overflow-hidden flex flex-col" style={{ border: tier.highlighted ? `2px solid ${accentColor}` : "1px solid #e5e7eb", boxShadow: tier.highlighted ? `0 8px 32px ${accentColor}22` : "0 1px 4px rgba(0,0,0,0.06)" }}>
                 {tier.badge && (
@@ -1275,11 +1403,32 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               </div>
             ))}
           </div>
-        </div>
+        </CC></div>
       );
     }
     case "form_embed":
       return <FormEmbedBlockPreview d={d} />;
+    case "sdms_cme_module": {
+      const activityType = d.activityType ?? "course";
+      const activityId = d.activityId ?? 0;
+      const headline = d.headline ?? "SDMS CME Credit";
+      return (
+        <div className="px-6 py-5 bg-gradient-to-br from-teal-50 to-white border-2 border-teal-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <Award className="w-8 h-8 text-teal-600 shrink-0" />
+            <div>
+              <p className="font-bold text-teal-900">{headline}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                SDMS CME post-test, pass/fail scoring, and roster submission appear here for learners.
+              </p>
+              <p className="text-xs text-gray-400 mt-2 font-mono">
+                {activityType} · activity #{activityId || "—"}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     case "upgrade_prompt":
       return <UpgradePromptBlockPreview d={d} />;
     case "data_table":
@@ -1288,27 +1437,201 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       return <FileUploadBlockPreview d={d} />;
     case "cohort_sessions_auto": {
       const accentColor = d.accentColor ?? "#179ca3";
-      const sampleSessions = [
-        { title: "Session 1: Introduction", date: "Mon, Jun 2 · 10:00 AM" },
-        { title: "Session 2: Core Concepts", date: "Mon, Jun 9 · 10:00 AM" },
-        { title: "Session 3: Advanced Topics", date: "Mon, Jun 16 · 10:00 AM" },
+      const displayMode = (d.displayMode ?? "list") as "list" | "page" | "calendar" | "groups" | "sessions";
+      const enrollNowText = d.enrollNowText ?? "Enroll Now";
+      const showEnrollNow = d.showEnrollNow !== false;
+      const sampleGroups = [
+        { title: "Spring 2025 Cohort", dateRange: "Mar 3 – Apr 14, 2025", location: "Virtual / Online", hours: "12h", description: "6-week live cohort with weekly sessions and hands-on case reviews.", status: "Enrolling Now", statusColor: "#059669", seats: "4 seats left" },
+        { title: "Summer 2025 Cohort", dateRange: "Jun 2 – Jul 14, 2025", location: "Virtual / Online", hours: "12h", description: "Intensive summer cohort with daily check-ins and live Q&A sessions.", status: "In Progress", statusColor: "#2563eb", seats: null },
+        { title: "Fall 2025 Cohort", dateRange: "Sep 8 – Oct 20, 2025", location: "New York, NY", hours: "16h", description: "In-person cohort with full-day workshops and networking events.", status: "Enrolling Now", statusColor: "#059669", seats: "12 seats left" },
       ];
+      // List mode: stacked cohort group cards showing in-progress + upcoming
+      if (displayMode === "list" || displayMode === "groups") {
+        return (
+          <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+            {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+            <div className="space-y-4">
+              {sampleGroups.map((g, i) => (
+                <div key={i} className="rounded-2xl border overflow-hidden" style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}06` }}>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h3 className="font-bold text-gray-900 text-base">{g.title}</h3>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: g.statusColor }}>{g.status}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">📅 {g.dateRange}</span>
+                          <span className="flex items-center gap-1">📍 {g.location}</span>
+                          <span className="flex items-center gap-1">⏱ {g.hours}</span>
+                        </div>
+                        {d.showDescription !== false && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{g.description}</p>}
+                        {g.seats && <p className="text-[11px] font-medium text-amber-600 mt-1">{g.seats}</p>}
+                      </div>
+                      {showEnrollNow && g.status === "Enrolling Now" && (
+                        <button className="flex-shrink-0 px-4 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: accentColor }}>{enrollNowText}</button>
+                      )}
+                      {showEnrollNow && g.status === "In Progress" && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 flex-shrink-0">Enrollment Closed</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="px-5 pb-3 flex items-center gap-1 text-[11px]" style={{ color: accentColor }}>▶ View details for this cohort</div>
+                </div>
+              ))}
+            </div>
+          </CC></div>
+        );
+      }
+      // Page mode: next upcoming cohort as full-detail embed preview
+      if (displayMode === "page") {
+        const nextGroup = sampleGroups[0];
+        return (
+          <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+            {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}06` }}>
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: nextGroup.statusColor }}>{nextGroup.status}</span>
+                </div>
+                <h3 className="font-bold text-gray-900 text-xl mb-2">{nextGroup.title}</h3>
+                <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-gray-500 mb-3">
+                  <span className="flex items-center gap-1.5">📅 {nextGroup.dateRange}</span>
+                  <span className="flex items-center gap-1.5">📍 {nextGroup.location}</span>
+                  <span className="flex items-center gap-1.5">⏱ {nextGroup.hours} total</span>
+                </div>
+                {d.showDescription !== false && <p className="text-sm text-gray-600 mb-4">{nextGroup.description}</p>}
+                {nextGroup.seats && <p className="text-sm font-medium text-amber-600 mb-4">{nextGroup.seats}</p>}
+                {showEnrollNow && (
+                  <button className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: accentColor }}>{enrollNowText}</button>
+                )}
+              </div>
+            </div>
+          </CC></div>
+        );
+      }
+      // Calendar mode: lesson schedule calendar preview
+      if (displayMode === "calendar") {
+        const sampleDays = [6, 9, 16, 23, 30];
+        return (
+          <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+            {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: `${accentColor}33` }}>
+              <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: `${accentColor}22`, backgroundColor: `${accentColor}08` }}>
+                <span className="font-semibold text-gray-800 text-sm">June 2025 — Live Sessions</span>
+                <div className="flex gap-1">
+                  <button className="px-2.5 py-1 text-xs rounded border font-medium" style={{ backgroundColor: accentColor, color: "#fff", borderColor: accentColor }}>List</button>
+                  <button className="px-2.5 py-1 text-xs rounded border font-medium text-gray-500 border-gray-200">Calendar</button>
+                </div>
+              </div>
+              <div className="divide-y" style={{ borderColor: `${accentColor}15` }}>
+                {sampleDays.map((day, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-9 h-9 rounded-full flex flex-col items-center justify-center shrink-0 text-white" style={{ backgroundColor: accentColor }}>
+                      <span className="text-[10px] font-bold leading-none">JUN</span>
+                      <span className="text-sm font-bold leading-none">{day}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">Session {i + 1}: {["Introduction", "Core Concepts", "Advanced Topics", "Case Studies", "Final Review"][i]}</p>
+                      <p className="text-xs text-gray-400">Mon · 10:00 AM – 11:30 AM</p>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white" style={{ backgroundColor: accentColor }}>Zoom</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CC></div>
+        );
+      }
+      // Legacy "sessions" mode fallback — show list preview
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-          <div className="space-y-3 max-w-2xl mx-auto">
-            {sampleSessions.map((s, i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}08` }}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ backgroundColor: accentColor }}>{i + 1}</div>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">{s.title}</p>
-                  <p className="text-xs text-gray-500">{s.date}</p>
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="space-y-4">
+            {sampleGroups.slice(0, 2).map((g, i) => (
+              <div key={i} className="rounded-2xl border overflow-hidden" style={{ borderColor: `${accentColor}33`, backgroundColor: `${accentColor}06` }}>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-gray-900 text-base">{g.title}</h3>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white" style={{ backgroundColor: g.statusColor }}>{g.status}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                        <span>📅 {g.dateRange}</span><span>📍 {g.location}</span>
+                      </div>
+                    </div>
+                    {showEnrollNow && <button className="flex-shrink-0 px-4 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: accentColor }}>{enrollNowText}</button>}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-3 text-center">Auto-populated from cohort live sessions</p>
-        </div>
+        </CC></div>
+      );
+    }
+    case "cohort_instance_cards_auto": {
+      // Admin preview — stacked cohort group/instance cards with sample data
+      const accentColorCICA = d.accentColor ?? "#179ca3";
+      const enrollNowTextCICA = d.enrollNowText ?? "Enroll Now";
+      const showEnrollNowCICA = d.showEnrollNow !== false;
+      const cardDisplayModeCICA = d.cardDisplayMode ?? "stacked";
+      const sampleGroupsCICA = [
+        { title: "Spring 2025 Cohort", dateRange: "Mar 3 – Apr 14, 2025", location: "Virtual / Online", hours: "12h", description: "6-week live cohort with weekly sessions and hands-on case reviews." },
+        { title: "Summer 2025 Cohort", dateRange: "Jun 2 – Jul 14, 2025", location: "Virtual / Online", hours: "12h", description: "Intensive summer cohort with daily check-ins and live Q&A sessions." },
+        { title: "Fall 2025 Cohort", dateRange: "Sep 8 – Oct 20, 2025", location: "New York, NY", hours: "16h", description: "In-person cohort with full-day workshops and networking events." },
+      ];
+      if (cardDisplayModeCICA === "embed") {
+        return (
+          <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+            {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+            <div className="space-y-8">
+              {sampleGroupsCICA.map((g, i) => (
+                <div key={i} className="rounded-2xl border overflow-hidden" style={{ borderColor: `${accentColorCICA}22` }}>
+                  <div className="flex items-center justify-between px-6 py-4 border-b" style={{ backgroundColor: `${accentColorCICA}08`, borderColor: `${accentColorCICA}22` }}>
+                    <h3 className="text-lg font-bold text-gray-900">{g.title}</h3>
+                    {showEnrollNowCICA && <button className="px-4 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: accentColorCICA }}>{enrollNowTextCICA}</button>}
+                  </div>
+                  <div className="p-6 space-y-3">
+                    <p className="text-gray-600 text-sm">{g.description}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-start gap-2 p-3 rounded-xl bg-teal-50 border border-teal-100"><span className="text-teal-600">📅</span><div><p className="text-xs text-teal-600 font-semibold uppercase">Dates</p><p className="text-sm text-gray-800">{g.dateRange}</p></div></div>
+                      <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100"><span>📍</span><div><p className="text-xs text-gray-500 font-semibold uppercase">Location</p><p className="text-sm text-gray-800">{g.location}</p></div></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CC></div>
+        );
+      }
+      return (
+        <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: d.headlineColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+          <div className="space-y-4">
+            {sampleGroupsCICA.map((g, i) => (
+              <div key={i} className="rounded-2xl border overflow-hidden" style={{ borderColor: `${accentColorCICA}33`, backgroundColor: `${accentColorCICA}06` }}>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-base mb-1">{g.title}</h3>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                        <span className="flex items-center gap-1">📅 {g.dateRange}</span>
+                        <span className="flex items-center gap-1">📍 {g.location}</span>
+                        <span className="flex items-center gap-1">⏱ {g.hours}</span>
+                      </div>
+                      {d.showDescription !== false && <p className="text-sm text-gray-600 mt-2 line-clamp-2">{g.description}</p>}
+                    </div>
+                    {showEnrollNowCICA && (
+                      <button className="flex-shrink-0 px-4 py-1.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: accentColorCICA }}>{enrollNowTextCICA}</button>
+                    )}
+                  </div>
+                </div>
+                <div className="px-5 pb-3 flex items-center gap-1 text-[11px]" style={{ color: accentColorCICA }}>▶ View details for this cohort</div>
+              </div>
+            ))}
+          </div>
+        </CC></div>
       );
     }
     case "affiliate_signup": {
@@ -1318,8 +1641,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
       const ctaText = d.ctaText ?? "Become an Affiliate";
       const benefits = d.benefits ?? ["Earn up to 30% commission", "Real-time earnings dashboard", "Unique tracking links per course", "Monthly payouts via Stripe, PayPal, or ACH"];
       return (
-        <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#f0fdf9" }}>
-          <div className="max-w-2xl mx-auto text-center">
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fdf9" }}><CC className="text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold mb-4" style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
               <span>💰</span> Affiliate Program
             </div>
@@ -1333,150 +1655,273 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
               ))}
             </div>
             <button className="px-8 py-3 rounded-xl text-white font-semibold text-base" style={{ backgroundColor: accentColor }}>{ctaText}</button>
-          </div>
-        </div>
+        </CC></div>
       );
     }
-    case "lms_course_embed": {
-      const accent = d.accentColor ?? "#179ca3";
-      const title = d.courseTitle ?? "Course Title";
-      const desc = d.courseDescription ?? "Enroll in this course to start learning.";
-      const price = d.coursePrice ?? "Free";
-      const thumb = d.courseThumbnail ?? "";
-      const ctaText = d.ctaText ?? "Enroll Now";
+    // ─── Webinar Blocks ──────────────────────────────────────────────────────────
+    case "webinar_hero": {
+      const wh_bgType = d.bgType ?? "gradient";
+      let wh_bg: React.CSSProperties = {};
+      if (wh_bgType === "color") wh_bg = { backgroundColor: d.bgColor ?? "#0e4a50" };
+      else if (wh_bgType === "gradient") wh_bg = { background: `linear-gradient(135deg, ${d.gradientFrom ?? "#0e4a50"}, ${d.gradientTo ?? "#189aa1"})` };
+      else if (wh_bgType === "image") wh_bg = { backgroundImage: `url(${d.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" };
+      const wh_accentColor = d.accentColor ?? "#4ad9e0";
+      const wh_scheduledAt = d.scheduledAt ? new Date(d.scheduledAt) : null;
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}>
-          <div className="max-w-2xl mx-auto rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-            {thumb ? (
-              <img src={thumb} alt={title} className="w-full h-48 object-cover" />
-            ) : (
-              <div className="w-full h-48 flex items-center justify-center" style={{ backgroundColor: `${accent}20` }}>
-                <span className="text-4xl">🎓</span>
+        <div className="relative px-8 py-16 overflow-hidden" style={{ ...wh_bg, color: d.textColor ?? "#fff" }}>
+          <div className="relative max-w-3xl mx-auto">
+            {d.showBadge !== false && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4 uppercase tracking-wider" style={{ backgroundColor: `${wh_accentColor}30`, color: wh_accentColor, border: `1px solid ${wh_accentColor}60` }}>
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
+                {d.badgeText ?? "LIVE WEBINAR"}
               </div>
             )}
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-3">{desc}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold" style={{ color: accent }}>{price}</span>
-                <button className="px-6 py-2.5 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: accent }}>{ctaText}</button>
-              </div>
+            <h1 className="text-4xl font-bold mb-4 leading-tight">{d.headline ?? "Join Our Live Webinar"}</h1>
+            {d.subheadline && <p className="text-xl opacity-90 mb-6">{d.subheadline}</p>}
+            <div className="flex flex-wrap gap-4 mb-8 text-sm opacity-80">
+              {d.showDate !== false && wh_scheduledAt && (
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  {wh_scheduledAt.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                </span>
+              )}
+              {d.showDuration !== false && d.durationMinutes && (
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  {d.durationMinutes} minutes
+                </span>
+              )}
             </div>
+            {d.showCountdown !== false && wh_scheduledAt && wh_scheduledAt > new Date() && (
+              <WebinarCountdownTimer targetDate={wh_scheduledAt} accentColor={wh_accentColor} textColor={d.textColor ?? "#fff"} />
+            )}
+            <a href={d.ctaLink ?? "#register"} className="inline-block mt-6 px-8 py-3 rounded-xl font-bold text-base transition-opacity hover:opacity-90" style={{ backgroundColor: wh_accentColor, color: "#0e1e2e" }}>
+              {d.ctaText ?? "Reserve Your Spot"}
+            </a>
           </div>
         </div>
       );
     }
-    case "lms_quiz_embed": {
-      const accent = d.accentColor ?? "#179ca3";
-      const quizTitle = d.quizTitle ?? "Quiz";
-      const questionCount = d.questionCount ?? 0;
-      const passingScore = d.passingScore ?? 70;
-      return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}>
-          <div className="max-w-2xl mx-auto rounded-2xl border-2 overflow-hidden bg-white" style={{ borderColor: accent }}>
-            <div className="px-6 py-4 flex items-center gap-3" style={{ backgroundColor: `${accent}15` }}>
-              <span className="text-2xl">📝</span>
-              <div>
-                <h3 className="font-bold text-gray-900">{quizTitle}</h3>
-                <p className="text-xs text-gray-500">{questionCount} questions · {passingScore}% to pass</p>
-              </div>
-            </div>
-            <div className="px-6 py-5">
-              <p className="text-sm text-gray-600 mb-4">{d.description ?? "Test your knowledge with this quiz."}</p>
-              <button className="w-full py-2.5 rounded-xl text-white font-semibold text-sm" style={{ backgroundColor: accent }}>{d.ctaText ?? "Start Quiz"}</button>
-            </div>
+
+    case "webinar_registration": {
+      const wr_accentColor = d.accentColor ?? "#189aa1";
+      const wr_layout = d.layout ?? "card";
+      const formContent = (
+        <div className="space-y-3">
+          <h2 className="text-2xl font-bold" style={{ color: "#111827" }}>{d.headline ?? "Register for Free"}</h2>
+          {d.subheadline && <p className="text-gray-500 text-sm">{d.subheadline}</p>}
+          <div className="space-y-2 mt-4">
+            <input disabled className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm bg-gray-50" placeholder="First & Last Name" />
+            <input disabled className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm bg-gray-50" placeholder="Email Address" />
+            {d.showPhone && <input disabled className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm bg-gray-50" placeholder={`Phone Number${d.requirePhone ? " *" : ""}`} />}
+            {d.showCompany && <input disabled className="w-full h-10 rounded-lg border border-gray-200 px-3 text-sm bg-gray-50" placeholder="Company / Organization" />}
           </div>
+          <button disabled className="w-full h-11 rounded-lg font-semibold text-white text-sm mt-2" style={{ backgroundColor: wr_accentColor }}>
+            {d.ctaText ?? "Register Now"}
+          </button>
+          <p className="text-[10px] text-gray-400 text-center">Your information is safe. We never share your data.</p>
         </div>
       );
-    }
-    case "lms_course_card": {
-      const accent = d.accentColor ?? "#179ca3";
-      const cards: Array<{ id?: number; title: string; description?: string; price?: string; thumbnail?: string; rating?: number; students?: number; slug?: string }> = d.cards ?? [
-        { title: "Course One", description: "A great course", price: "$49", rating: 4.8, students: 120 },
-        { title: "Course Two", description: "Another course", price: "$79", rating: 4.5, students: 85 },
-      ];
+      if (wr_layout === "card") return (
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><CC>
+          <div className="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-8" style={{ border: `1px solid ${d.borderColor ?? "#e2e8f0"}` }}>
+            {formContent}
+          </div>
+        </CC></div>
+      );
+      if (wr_layout === "split") return (
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><CC>
+          <div className="grid grid-cols-2 gap-8 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4" style={{ backgroundColor: `${wr_accentColor}20`, color: wr_accentColor }}>LIVE WEBINAR</div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">{d.headline ?? "Register for Free"}</h2>
+              {d.subheadline && <p className="text-gray-500">{d.subheadline}</p>}
+            </div>
+            <div className="bg-white rounded-2xl shadow-lg p-6" style={{ border: `1px solid ${d.borderColor ?? "#e2e8f0"}` }}>{formContent}</div>
+          </div>
+        </CC></div>
+      );
       return (
-        <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-          {d.headline && <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">{d.headline}</h2>}
-          {d.subtext && <p className="text-center text-gray-500 mb-8">{d.subtext}</p>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
-            {cards.map((c, i) => (
-              <div key={i} className="rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow bg-white">
-                {c.thumbnail ? (
-                  <img src={c.thumbnail} alt={c.title} className="w-full h-36 object-cover" />
-                ) : (
-                  <div className="w-full h-36 flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
-                    <span className="text-3xl">🎓</span>
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><CC>
+          <div className="max-w-lg mx-auto">{formContent}</div>
+        </CC></div>
+      );
+    }
+
+    case "webinar_host_bio": {
+      const whb_accentColor = d.accentColor ?? "#189aa1";
+      const whb_layout = d.layout ?? "horizontal";
+      const socialIcons: Record<string, string> = { linkedin: "in", twitter: "X", youtube: "YT", website: "🌐", email: "✉️" };
+      const bioContent = (
+        <div className="min-w-0">
+          <h3 className="text-xl font-bold" style={{ color: d.headlineColor ?? "#111827" }}>{d.name || "Host Name"}</h3>
+          {d.title && <p className="font-semibold text-sm mt-0.5" style={{ color: whb_accentColor }}>{d.title}</p>}
+          {d.credentials && <p className="text-xs text-gray-500 mt-0.5">{d.credentials}</p>}
+          {d.bio && <div className="text-gray-600 leading-relaxed mt-3 text-sm" dangerouslySetInnerHTML={{ __html: d.bio }} />}
+          {(d.socialLinks ?? []).length > 0 && (
+            <div className="flex gap-2 mt-3">
+              {(d.socialLinks as Array<{ platform: string; url: string }>).map((s, i) => (
+                <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-xs font-bold" style={{ backgroundColor: whb_accentColor }}>
+                  {socialIcons[s.platform] ?? s.platform.slice(0, 2).toUpperCase()}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+      const avatar = d.avatarUrl
+        ? <img src={d.avatarUrl} alt={d.name ?? "Host"} className="w-24 h-24 rounded-full object-cover flex-shrink-0 border-4" style={{ borderColor: `${whb_accentColor}40` }} />
+        : <div className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${whb_accentColor}20` }}><Users size={32} style={{ color: whb_accentColor }} /></div>;
+      return (
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><CC>
+          {d.headline && <h2 className="text-2xl font-bold text-center mb-8" style={{ color: d.headlineColor ?? "#111827" }}>{d.headline}</h2>}
+          {whb_layout === "centered" ? (
+            <div className="text-center">
+              <div className="flex justify-center mb-4">{avatar}</div>
+              {bioContent}
+            </div>
+          ) : (
+            <div className="flex gap-6 items-start">{avatar}{bioContent}</div>
+          )}
+        </CC></div>
+      );
+    }
+
+    case "webinar_replay": {
+      const wre_accentColor = d.accentColor ?? "#189aa1";
+      const videoUrl = d.videoUrl ?? "";
+      const getEmbedUrl = (url: string, source: string) => {
+        if (!url) return "";
+        if (source === "youtube") {
+          // Handle watch?v=, youtu.be/, shorts/, and already-embed URLs; strip query params
+          const ytMatch = url.match(/(?:[?&]v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([-\w]+)/);
+          if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+          // Fallback: already an embed or unknown format
+          return url;
+        }
+        if (source === "vimeo") {
+          const match = url.match(/vimeo\.com\/(\d+)/);
+          return match ? `https://player.vimeo.com/video/${match[1]}` : url;
+        }
+        return url;
+      };
+      const embedUrl = getEmbedUrl(videoUrl, d.videoSource ?? "youtube");
+      return (
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#0e1e2e" }}><CC>
+            <h2 className="text-3xl font-bold mb-3" style={{ color: d.textColor ?? "#fff" }}>{d.headline ?? "Watch the Replay"}</h2>
+            {d.subheadline && <p className="mb-6 opacity-80" style={{ color: d.textColor ?? "#fff" }}>{d.subheadline}</p>}
+            {embedUrl ? (
+              <div className="relative w-full rounded-xl overflow-hidden shadow-2xl" style={{ paddingBottom: "56.25%" }}>
+                <iframe src={embedUrl} className="absolute inset-0 w-full h-full" allow="autoplay; fullscreen" allowFullScreen title="Webinar Replay" />
+              </div>
+            ) : (
+              <div className="w-full rounded-xl flex items-center justify-center" style={{ paddingBottom: "56.25%", position: "relative", backgroundColor: "#1a2a3a" }}>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: `${wre_accentColor}30` }}>
+                    <svg className="w-8 h-8" fill="none" stroke={wre_accentColor} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                )}
-                <div className="p-4">
-                  <h4 className="font-semibold text-gray-900 mb-1 text-sm">{c.title}</h4>
-                  {c.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{c.description}</p>}
-                  <div className="flex items-center justify-between">
-                    {c.rating && <span className="text-xs text-amber-500 font-medium">★ {c.rating}</span>}
-                    {c.price && <span className="text-sm font-bold" style={{ color: accent }}>{c.price}</span>}
-                  </div>
+                  <p className="text-sm" style={{ color: d.textColor ?? "#fff", opacity: 0.6 }}>Add a video URL in block settings</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    case "countdown_enrollment": {
-      const accent = d.accentColor ?? "#ef4444";
-      const headline = d.headline ?? "Enrollment Closes Soon!";
-      const subtext = d.subtext ?? "Don't miss your chance to join this cohort.";
-      const ctaText = d.ctaText ?? "Enroll Before It's Too Late";
-      return (
-        <div className="px-8 py-10 text-center" style={{ backgroundColor: d.bgColor ?? "#fff1f2" }}>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4" style={{ backgroundColor: `${accent}20`, color: accent }}>
-            🔥 Limited Time
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{headline}</h2>
-          <p className="text-gray-600 mb-6">{subtext}</p>
-          <div className="flex justify-center gap-3 mb-6">
-            {[{v:"02",l:"Days"},{v:"14",l:"Hours"},{v:"37",l:"Minutes"},{v:"22",l:"Seconds"}].map(({v,l}) => (
-              <div key={l} className="w-16 h-16 rounded-xl flex flex-col items-center justify-center" style={{ backgroundColor: accent }}>
-                <span className="text-xl font-bold text-white">{v}</span>
-                <span className="text-[9px] text-white/80 uppercase tracking-wide">{l}</span>
+            )}
+            {d.showChapters && (d.chapters ?? []).length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold mb-3" style={{ color: wre_accentColor }}>CHAPTERS</h3>
+                <div className="space-y-1">
+                  {(d.chapters as Array<{ time: string; title: string }>).map((ch, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/10 cursor-pointer">
+                      <span className="text-xs font-mono w-10 flex-shrink-0" style={{ color: wre_accentColor }}>{ch.time}</span>
+                      <span className="text-sm" style={{ color: d.textColor ?? "#fff" }}>{ch.title}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-          <button className="px-8 py-3 rounded-xl text-white font-semibold" style={{ backgroundColor: accent }}>{ctaText}</button>
-        </div>
+            )}
+          </CC></div>
       );
     }
-    case "social_proof_live": {
-      const accent = d.accentColor ?? "#179ca3";
-      const headline = d.headline ?? "Join thousands of learners";
-      const enrollCount = d.enrollCount ?? "2,847";
-      const recentActivity: Array<{ name: string; action: string; time: string }> = d.recentActivity ?? [
-        { name: "Sarah M.", action: "just enrolled", time: "2 min ago" },
-        { name: "James T.", action: "completed the course", time: "5 min ago" },
-        { name: "Priya K.", action: "just enrolled", time: "8 min ago" },
-      ];
+
+    case "webinar_agenda": {
+      const wa_accentColor = d.accentColor ?? "#189aa1";
+      const agendaItems: Array<{ time: string; title: string; description: string; speaker: string }> = d.items ?? [];
       return (
-        <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#f0fdfa" }}>
-          <div className="max-w-xl mx-auto">
-            <div className="text-center mb-6">
-              <div className="text-4xl font-bold mb-1" style={{ color: accent }}>{enrollCount}</div>
-              <p className="text-gray-600 text-sm">{headline}</p>
-            </div>
-            <div className="space-y-2">
-              {recentActivity.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-gray-100 shadow-sm">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ backgroundColor: accent }}>
-                    {a.name[0]}
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+            {d.headline && <h2 className="text-3xl font-bold mb-2" style={{ color: d.headlineColor ?? "#111827" }}>{d.headline}</h2>}
+            {d.subheadline && <p className="text-gray-500 mb-8">{d.subheadline}</p>}
+            <div className="space-y-0">
+              {agendaItems.map((item, i) => (
+                <div key={i} className="flex gap-4 py-4" style={{ borderBottom: i < agendaItems.length - 1 ? `1px solid ${wa_accentColor}20` : "none" }}>
+                  <div className="w-16 flex-shrink-0">
+                    <span className="text-sm font-mono font-semibold" style={{ color: wa_accentColor }}>{item.time}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm text-gray-900">{a.name}</span>
-                    <span className="text-sm text-gray-500"> {a.action}</span>
+                    <p className="font-semibold text-gray-900">{item.title}</p>
+                    {item.description && <p className="text-sm text-gray-500 mt-0.5">{item.description}</p>}
+                    {d.showSpeaker && item.speaker && <p className="text-xs mt-1 font-medium" style={{ color: wa_accentColor }}>{item.speaker}</p>}
                   </div>
-                  <span className="text-xs text-gray-400 flex-shrink-0">{a.time}</span>
+                </div>
+              ))}
+              {agendaItems.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-8">Add agenda items in block settings.</p>
+              )}
+            </div>
+          </CC></div>
+      );
+    }
+
+    case "remaining_seats":
+      return <RemainingSeatsBlock data={d} preview={true} />;
+    case "enrollment_counter":
+      return <EnrollmentCounterBlockPreview d={d} />;
+    case "quiz_embed": {
+      const quizId = d.quizId ? Number(d.quizId) : null;
+      if (!quizId) {
+        return (
+          <div className="px-6 py-8 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-center">
+            <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+            <p className="text-sm text-gray-400">No quiz selected. Edit this block to choose a quiz.</p>
+          </div>
+        );
+      }
+      const EmbeddedQuizPlayer = React.lazy(() => import("./EmbeddedQuizPlayer"));
+      return (
+        <React.Suspense fallback={<div className="flex items-center justify-center py-8 text-gray-400"><svg className="w-5 h-5 animate-spin mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Loading quiz…</div>}>
+          <EmbeddedQuizPlayer quizId={quizId} showHeader={d.showHeader !== false} />
+        </React.Suspense>
+      );
+    }
+    case "included_items_auto": {
+      // In the block builder preview, show a static placeholder since items come from the live page context
+      const accent = d.accentColor ?? "#179ca3";
+      const mockItems = [
+        { id: 1, label: "Sample Course", type: "Course" },
+        { id: 2, label: "Sample Download", type: "Download" },
+        { id: 3, label: "Sample Community", type: "Community" },
+      ];
+      return (
+        <div className="py-10" style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
+          <div className="max-w-5xl mx-auto px-4">
+            {d.headline && <h2 className="text-2xl font-bold text-center mb-2" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+            {d.subtext && <p className="text-center text-sm mb-6 opacity-70" style={{ color: d.textColor ?? "#111827" }}>{d.subtext}</p>}
+            <div className={d.layout === "list" ? "space-y-3" : `grid grid-cols-1 sm:grid-cols-${Math.min(d.columns ?? 3, 3)} gap-4`}>
+              {mockItems.map((item) => (
+                <div key={item.id} className="rounded-xl border border-gray-200 overflow-hidden" style={{ backgroundColor: d.cardBgColor ?? "#ffffff" }}>
+                  {d.layout !== "list" && (
+                    <div className="h-24 flex items-center justify-center" style={{ backgroundColor: accent + "22" }}>
+                      <Package size={28} style={{ color: accent }} />
+                    </div>
+                  )}
+                  <div className={d.layout === "list" ? "flex items-center gap-3 px-4 py-3" : "p-4"}>
+                    {d.layout === "list" && <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: accent + "18" }}><Package size={18} style={{ color: accent }} /></div>}
+                    <div className="flex-1">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: accent }}>{item.type}</span>
+                      <p className="font-semibold text-sm" style={{ color: d.textColor ?? "#111827" }}>{item.label}</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+            <p className="text-[10px] text-gray-400 mt-3 text-center">Items populated from membership/bundle admin — ordered by your sort order</p>
           </div>
         </div>
       );
@@ -1486,16 +1931,101 @@ export function BlockPreview({ block, coursePrice, courseTitle, playerColor }: {
   }
 }
 
+// ─── Enrollment Counter Block ─────────────────────────────────────────────────
+function useCountUp(target: number, duration = 1800) {
+  const [display, setDisplay] = React.useState(0);
+  const rafRef = React.useRef<number | null>(null);
+  const startRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    if (target === 0) { setDisplay(0); return; }
+    startRef.current = null;
+    const step = (ts: number) => {
+      if (!startRef.current) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * target));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+  return display;
+}
+
+function EnrollmentCounterBlockPreview({ d }: { d: Record<string, any> }) {
+  const countType = d.countType ?? "site_users";
+  const entityId = d.entityId ? Number(d.entityId) : undefined;
+  const { data, isLoading } = trpc.funnel.getEnrollmentCount.useQuery(
+    { countType, entityId },
+    { staleTime: 60_000 }
+  );
+  const rawCount = data?.count ?? 0;
+  const offset = Number(d.countOffset ?? 0);
+  const multiplier = Number(d.countMultiplier ?? 1) || 1;
+  const finalCount = Math.max(0, Math.round(rawCount * multiplier + offset));
+  const displayCount = useCountUp(finalCount);
+
+  const accentColor = d.accentColor ?? "#179ca3";
+  const bgColor = d.bgColor ?? "#f0fafa";
+  const textColor = d.textColor ?? "#0e4a50";
+  const label = d.label ?? "Students Enrolled";
+  const subtext = d.subtext ?? "";
+  const showIcon = d.showIcon !== false;
+  const numberSize = d.numberSize ?? "5xl";
+  const align = d.align ?? "center";
+
+  const sizeMap: Record<string, string> = {
+    "3xl": "text-3xl",
+    "4xl": "text-4xl",
+    "5xl": "text-5xl",
+    "6xl": "text-6xl",
+    "7xl": "text-7xl",
+    "8xl": "text-8xl",
+  };
+  const numClass = sizeMap[numberSize] ?? "text-5xl";
+
+  const formatted = new Intl.NumberFormat("en-US").format(displayCount);
+
+  return (
+    <div
+      className="py-10"
+      style={{ backgroundColor: bgColor }}
+    >
+      <CC><div className={`flex flex-col items-${align === "left" ? "start" : align === "right" ? "end" : "center"} gap-2`}>
+        {showIcon && (
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-1" style={{ backgroundColor: `${accentColor}20` }}>
+            <Users className="w-6 h-6" style={{ color: accentColor }} />
+          </div>
+        )}
+        {isLoading ? (
+          <div className={`${numClass} font-extrabold tabular-nums`} style={{ color: accentColor }}>—</div>
+        ) : (
+          <div className={`${numClass} font-extrabold tabular-nums leading-none`} style={{ color: accentColor }}>
+            {d.prefix ?? ""}{formatted}{d.suffix ?? "+"}
+          </div>
+        )}
+        {label && (
+          <p className="text-lg font-semibold mt-1" style={{ color: textColor }}>{label}</p>
+        )}
+        {subtext && (
+          <p className="text-sm opacity-70 max-w-xs text-center" style={{ color: textColor }}>{subtext}</p>
+        )}
+      </div></CC>
+    </div>
+  );
+}
+
 function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
   const instructorId = d.instructorId ? Number(d.instructorId) : null;
   const { data: instructors } = trpc.lms.listInstructors.useQuery();
   const instructor = instructorId ? instructors?.find((i: any) => i.id === instructorId) : null;
-  const instructorProfile = instructor as (typeof instructor & { name?: string | null; website?: string | null }) | null;
-  const name = instructor?.displayName ?? instructorProfile?.name ?? d.name ?? "Instructor Name";
+  const name = instructor?.name ?? d.name ?? "Instructor Name";
   const title = instructor?.title ?? d.title ?? "";
   const bio = instructor?.bio ?? d.bio ?? "";
   const avatarUrl = instructor?.avatarUrl ?? d.avatarUrl ?? "";
-  const website = instructorProfile?.website ?? d.website ?? "";
+  const website = instructor?.website ?? d.website ?? "";
   const layout = d.layout ?? "horizontal";
   const showBio = d.showBio !== false;
   const showWebsite = d.showWebsite !== false;
@@ -1504,34 +2034,34 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
 
   if (layout === "centered") {
     return (
-      <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-        <div className="max-w-2xl mx-auto text-center">
+      <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+        <div className="text-center">
           {avatarUrl
             ? <img src={avatarUrl} alt={name} className="w-28 h-28 rounded-full object-cover mx-auto mb-4 border-4 border-teal-100" />
             : <div className="w-28 h-28 rounded-full bg-teal-100 flex items-center justify-center mx-auto mb-4"><Users size={40} className="text-teal-600" /></div>}
           <h3 className="text-2xl font-bold mb-1" style={{ color: headlineColor }}>{name}</h3>
           {title && <p className="font-semibold mb-3" style={{ color: titleColor }}>{title}</p>}
-          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(bio) }} />}
+          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: bio }} />}
           {showWebsite && website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-3 text-sm font-medium" style={{ color: titleColor }}><Globe size={14} /> {website.replace(/^https?:\/\//, "")}</a>}
         </div>
-      </div>
+      </CC></div>
     );
   }
 
   return (
-    <div className="px-8 py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}>
-      <div className="max-w-3xl mx-auto flex gap-6 items-start">
+    <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
+      <div className="flex gap-6 items-start">
         {avatarUrl
           ? <img src={avatarUrl} alt={name} className="w-24 h-24 rounded-full object-cover flex-shrink-0 border-4 border-teal-100" />
           : <div className="w-24 h-24 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0"><Users size={32} className="text-teal-600" /></div>}
         <div className="min-w-0">
           <h3 className="text-xl font-bold" style={{ color: headlineColor }}>{name}</h3>
           {title && <p className="font-semibold mb-2" style={{ color: titleColor }}>{title}</p>}
-          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(bio) }} />}
+          {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: bio }} />}
           {showWebsite && website && <a href={website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-sm font-medium" style={{ color: titleColor }}><Globe size={14} /> {website.replace(/^https?:\/\//, "")}</a>}
         </div>
       </div>
-    </div>
+    </CC></div>
   );
 }
 
@@ -1696,11 +2226,11 @@ export function CountdownV2Block({ data: d }: { data: Record<string, any> }) {
         <h2
           className="mb-2"
           style={{ color: textColor, fontSize: headlineSize, fontWeight: headlineWeight }}
-          dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }}
+          dangerouslySetInnerHTML={{ __html: d.headline }}
         />
       )}
       {d.subtext && (
-        <p className="mb-6 opacity-75 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />
+        <p className="mb-6 opacity-75 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />
       )}
       {expired ? (
         <p className="text-lg font-semibold" style={{ color: accentColor }}>
@@ -1809,9 +2339,9 @@ function LiveSessionBlockPreview({ d }: { d: Record<string, any> }) {
 
   return (
     <div
-      className="px-8 py-8"
+      className="py-6 sm:py-8"
       style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}
-    >
+    ><CC>
       <div
         className="rounded-2xl overflow-hidden shadow-md border"
         style={{ borderColor: `${accentColor}33` }}
@@ -1902,19 +2432,40 @@ function LiveSessionBlockPreview({ d }: { d: Record<string, any> }) {
           )}
         </div>
       </div>
-    </div>
+    </CC></div>
   );
 }
 
 // ─── Cohort Class Block Preview ─────────────────────────────────────────────────
 function CohortClassBlockPreview({ d }: { d: Record<string, any> }) {
   const accent = d.accentColor ?? "#179ca3";
-  const sessions: Array<{ date: string; time: string; topic: string; meetingUrl?: string }> = d.sessions ?? [];
+  const sessions: Array<{ date: string; time: string; topic: string; meetingUrl?: string; recordingUrl?: string }> = d.sessions ?? [];
   const platformLabel: Record<string, string> = { zoom: "Zoom", teams: "Teams", meet: "Google Meet", webex: "Webex", other: d.platformCustomName ?? "Meeting" };
   const platform = d.platform ?? "zoom";
+
+  const now = Date.now();
+  const replays = sessions.filter(s => s.recordingUrl);
+  const upcoming = sessions.filter(s => {
+    if (!s.date) return true;
+    return new Date(s.date).getTime() >= now - 24 * 60 * 60 * 1000;
+  });
+  const past = sessions.filter(s => {
+    if (!s.date) return false;
+    return new Date(s.date).getTime() < now - 24 * 60 * 60 * 1000;
+  });
+
+  const [activeTab, setActiveTab] = useState<"sessions" | "replays">(replays.length > 0 ? "sessions" : "sessions");
+
+  const tabs = [
+    { id: "sessions" as const, label: "Live Sessions", count: sessions.length },
+    ...(replays.length > 0 ? [{ id: "replays" as const, label: "Replays", count: replays.length }] : []),
+  ];
+
+  const isDirectVideo = (url: string) => /\.(mp4|webm|ogg|mov)([?#]|$)/i.test(url);
+
   return (
     <div className="px-6 py-8" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-start gap-4 mb-6">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white" style={{ backgroundColor: accent }}>
@@ -1925,51 +2476,107 @@ function CohortClassBlockPreview({ d }: { d: Record<string, any> }) {
             {d.description && <p className="text-sm text-gray-500 mt-1">{d.description}</p>}
           </div>
         </div>
-        {/* Class details */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          {d.startDate && (
-            <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Start Date</p>
-              <p className="text-sm font-semibold text-gray-800">{new Date(d.startDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {[
+            ...(upcoming.length > 0 ? [{ label: "Upcoming Sessions", value: upcoming.length, color: accent }] : []),
+            ...(past.length > 0 ? [{ label: "Past Sessions", value: past.length, color: "#6b7280" }] : []),
+            ...(d.startDate ? [{ label: "Start Date", value: new Date(d.startDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), color: accent }] : []),
+            ...(replays.length > 0 ? [{ label: "Recordings", value: replays.length, color: accent }] : []),
+            ...(d.maxStudents ? [{ label: "Class Size", value: `Max ${d.maxStudents}`, color: "#6b7280" }] : []),
+            ...(d.instructorName ? [{ label: "Instructor", value: d.instructorName, color: "#6b7280" }] : []),
+          ].slice(0, 4).map(stat => (
+            <div key={stat.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+              <p className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{stat.label}</p>
             </div>
-          )}
-          {d.endDate && (
-            <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">End Date</p>
-              <p className="text-sm font-semibold text-gray-800">{new Date(d.endDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</p>
-            </div>
-          )}
-          {d.maxStudents && (
-            <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Class Size</p>
-              <p className="text-sm font-semibold text-gray-800">Max {d.maxStudents} students</p>
-            </div>
-          )}
-          {d.instructorName && (
-            <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Instructor</p>
-              <p className="text-sm font-semibold text-gray-800">{d.instructorName}</p>
-            </div>
-          )}
+          ))}
         </div>
-        {/* Session schedule */}
-        {sessions.length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-sm font-bold text-gray-700 mb-3">Class Schedule</h4>
-            <div className="space-y-2">
-              {sessions.map((s, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: accent }}>{i + 1}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{s.topic || `Session ${i + 1}`}</p>
-                    <p className="text-xs text-gray-400">{s.date} {s.time && `· ${s.time}`}</p>
+        {/* Tabs */}
+        {tabs.length > 1 && (
+          <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  activeTab === tab.id
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab.id === "sessions" && (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                )}
+                {tab.id === "replays" && (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                )}
+                {tab.label}
+                <span className="text-xs px-1.5 py-0.5 rounded-full font-bold" style={{ backgroundColor: activeTab === tab.id ? `${accent}20` : "transparent", color: activeTab === tab.id ? accent : "#9ca3af" }}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Sessions tab */}
+        {activeTab === "sessions" && sessions.length > 0 && (
+          <div className="space-y-2 mb-6">
+            {sessions.map((s, i) => (
+              <div key={i} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: accent }}>{i + 1}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{s.topic || `Session ${i + 1}`}</p>
+                  <p className="text-xs text-gray-400">{s.date} {s.time && `· ${s.time}`}</p>
+                </div>
+                {s.recordingUrl && (
+                  <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ backgroundColor: `${accent}15`, color: accent }}>Recording</span>
+                )}
+                {s.meetingUrl && (
+                  <span className="text-xs px-2 py-1 rounded-full text-white" style={{ backgroundColor: accent }}>{platformLabel[platform]}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === "sessions" && sessions.length === 0 && (
+          <div className="text-center py-8 text-gray-400 text-sm">No sessions scheduled yet.</div>
+        )}
+        {/* Replays tab */}
+        {activeTab === "replays" && (
+          <div className="space-y-6 mb-6">
+            {replays.map((s, i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3 px-5 py-4">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${accent}15` }}>
+                    <svg className="w-5 h-5" style={{ color: accent }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  {s.meetingUrl && (
-                    <span className="text-xs px-2 py-1 rounded-full text-white" style={{ backgroundColor: accent }}>{platformLabel[platform]}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-bold text-gray-900">{s.topic || `Session ${sessions.indexOf(s) + 1}`}</p>
+                    {s.date && <p className="text-xs text-gray-400">{s.date} {s.time && `· ${s.time}`}</p>}
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ backgroundColor: `${accent}15`, color: accent }}>Recording</span>
+                </div>
+                <div className="aspect-video bg-black">
+                  {isDirectVideo(s.recordingUrl!) ? (
+                    <video
+                      src={s.recordingUrl}
+                      controls
+                      playsInline
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <iframe
+                      src={s.recordingUrl}
+                      className="w-full h-full border-0"
+                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      title={s.topic || `Session ${sessions.indexOf(s) + 1} Recording`}
+                    />
                   )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
         {/* CTA */}
@@ -2017,7 +2624,7 @@ function LessonAssignmentBlockPreview({ d }: { d: Record<string, any> }) {
         {d.instructions && (
           <div className="bg-gray-50 rounded-xl p-4 mb-5 border border-gray-100">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Instructions</p>
-            <div className="text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sanitize(d.instructions) }} />
+            <div className="text-sm text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: d.instructions }} />
           </div>
         )}
         {/* Submission types */}
@@ -2165,13 +2772,13 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
 
   if (displayMode === "inline") {
     return (
-      <div className="px-8 py-10" style={{ backgroundColor: bgColor }}>
-        {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-        {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+      <div className="py-8 sm:py-10" style={{ backgroundColor: bgColor }}><CC>
+        {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+        {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
         <div className="max-w-xl mx-auto bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <FormBody />
         </div>
-      </div>
+      </CC></div>
     );
   }
 
@@ -2179,9 +2786,9 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
   const triggerLabel = displayMode === "popup_click" ? (d.triggerButtonText ?? "Open Form") : null;
 
   return (
-    <div className="px-8 py-10" style={{ backgroundColor: bgColor }}>
-      {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }} />}
-      {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: sanitize(d.subtext) }} />}
+    <div className="py-8 sm:py-10" style={{ backgroundColor: bgColor }}><CC>
+      {d.headline && <h2 className="text-2xl font-bold mb-2 text-center" style={{ color: d.textColor ?? "#111827" }} dangerouslySetInnerHTML={{ __html: d.headline }} />}
+      {d.subtext && <p className="text-center text-gray-500 mb-6 text-sm" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
 
       {/* Trigger button for click mode */}
       {displayMode === "popup_click" && (
@@ -2217,7 +2824,7 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
           </div>
         </div>
       )}
-    </div>
+    </CC></div>
   );
 }
 
@@ -2245,8 +2852,9 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
   const triggerScrollPct: number = d.triggerScrollPercent ?? 50;
   const accentColor: string = d.accentColor ?? "#179ca3";
   const bgColor: string = d.bgColor ?? "#f0fdfa";
-  const upgradePlan: string = d.plan ?? d.upgradePlan ?? "pro";
-  const orgId: number | undefined = d.orgId ? Number(d.orgId) : undefined;
+  const productType = (["course", "download", "product"].includes(d.productType) ? d.productType : "course") as "course" | "download" | "product";
+  const productSlug: string = d.productSlug ?? "";
+  const productId: number | null = d.productId ? Number(d.productId) : null;
   const discountType: string = d.discountType ?? "none"; // none | percent | fixed | promo_code
   const discountValue: number = d.discountValue ?? 0;
   const promoCode: string = d.promoCode ?? "";
@@ -2265,23 +2873,28 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
     ? Math.max(0, originalPrice - discountValue * 100)
     : originalPrice;
 
-  const createCheckout = trpc.lms.upgradePromptCheckout.useMutation();
+  const createCheckout = trpc.lmsLearner.upgradePromptCheckout.useMutation();
 
   async function handleCTA() {
     if (!user) {
-      window.location.href = `/login?return=${encodeURIComponent(window.location.pathname)}`;
+      // Never redirect away from a public funnel/landing page — open login in a new tab.
+      window.open(`/login?return=${encodeURIComponent(window.location.href)}`, "_blank");
       return;
     }
+    if (!productSlug && !productId) return;
     setCheckoutLoading(true);
     try {
       const result = await createCheckout.mutateAsync({
-        plan: upgradePlan,
-        orgId,
+        productType,
+        productSlug: productSlug || undefined,
+        productId: productId || undefined,
+        promoCode: promoCode || undefined,
+        origin: window.location.origin,
       });
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank");
-      } else if (result.message) {
-        alert(result.message);
+      } else if (result.alreadyEnrolled) {
+        alert("You already have access to this product.");
       }
     } catch (err: any) {
       alert(err?.message ?? "Checkout failed. Please try again.");
@@ -2347,17 +2960,17 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
           <img src={imageUrl} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0 shadow-sm" />
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1" dangerouslySetInnerHTML={{ __html: sanitize(headline) }} />
-          <p className="text-gray-500 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitize(subheadline) }} />
+          <h3 className="font-bold text-gray-900 text-lg leading-tight mb-1" dangerouslySetInnerHTML={{ __html: headline }} />
+          <p className="text-gray-500 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: subheadline }} />
         </div>
       </div>
       {originalPrice > 0 && discountType !== "none" && (
         <div className="flex items-center gap-3">
           <span className="text-2xl font-black" style={{ color: accentColor }}>
-            ${Number(discountedPrice).toFixed(2)}
+            ${(discountedPrice / 100).toFixed(discountedPrice % 100 === 0 ? 0 : 2)}
           </span>
           {discountedPrice < originalPrice && (
-            <span className="text-base text-gray-400 line-through">${Number(originalPrice).toFixed(2)}</span>
+            <span className="text-base text-gray-400 line-through">${(originalPrice / 100).toFixed(originalPrice % 100 === 0 ? 0 : 2)}</span>
           )}
           {discountType === "percent" && discountValue > 0 && (
             <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: "#ef4444" }}>{discountValue}% OFF</span>
@@ -2388,7 +3001,7 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
   // Inline display
   if (displayMode === "inline") {
     return (
-      <div className="px-8 py-6" style={{ backgroundColor: bgColor }}>
+      <div className="px-4 sm:px-8 py-4 sm:py-6" style={{ backgroundColor: bgColor }}>
         <div className="max-w-2xl mx-auto rounded-2xl p-6 shadow-sm" style={{ border: `1.5px solid ${accentColor}33`, backgroundColor: "#fff" }}>
           <CardContent />
         </div>
@@ -2506,7 +3119,7 @@ function FileUploadBlockPreview({ d }: { d: Record<string, any> }) {
   const borderColor = d.borderColor ?? "#e2e8f0";
 
   return (
-    <div className="px-8 py-10" style={{ backgroundColor: bgColor }}>
+    <div className="py-8 sm:py-10" style={{ backgroundColor: bgColor }}><CC>
       <div className="max-w-xl mx-auto">
         {label && (
           <h3 className="text-lg font-semibold mb-2" style={{ color: "#111827" }}>{label}</h3>
@@ -2534,6 +3147,53 @@ function FileUploadBlockPreview({ d }: { d: Record<string, any> }) {
           </button>
         </div>
       </div>
+    </CC></div>
+  );
+}
+
+// ─── Webinar Countdown Timer ──────────────────────────────────────────────────
+
+/**
+ * Live countdown timer for webinar_hero blocks.
+ * Shows days / hours / minutes / seconds remaining until the target date.
+ */
+export function WebinarCountdownTimer({ targetDate, accentColor, textColor }: { targetDate: Date; accentColor: string; textColor: string }) {
+  const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
+
+  useEffect(() => {
+    function calc() {
+      const diff = targetDate.getTime() - Date.now();
+      if (diff <= 0) { setTimeLeft(null); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft({ d, h, m, s });
+    }
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+
+  if (!timeLeft) return null;
+
+  const units = [
+    { label: "Days", value: timeLeft.d },
+    { label: "Hours", value: timeLeft.h },
+    { label: "Mins", value: timeLeft.m },
+    { label: "Secs", value: timeLeft.s },
+  ];
+
+  return (
+    <div className="flex gap-3 flex-wrap">
+      {units.map(u => (
+        <div key={u.label} className="flex flex-col items-center min-w-[56px]">
+          <div className="text-3xl font-bold tabular-nums px-3 py-2 rounded-lg" style={{ backgroundColor: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}>
+            {String(u.value).padStart(2, "0")}
+          </div>
+          <span className="text-[10px] mt-1 uppercase tracking-wider opacity-70" style={{ color: textColor }}>{u.label}</span>
+        </div>
+      ))}
     </div>
   );
 }

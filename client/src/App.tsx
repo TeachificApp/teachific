@@ -110,6 +110,27 @@ import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
 import OrgLandingPageEditor from "./pages/lms/OrgLandingPageEditor";
 import DownloadLandingPageBuilder from "./pages/admin/DownloadLandingPageBuilder";
 import ProductLandingPageBuilder from "./pages/admin/ProductLandingPageBuilder";
+import { lazy, Suspense } from "react";
+const AdminDiscountCodesPage = lazy(() => import("./pages/admin/AdminDiscountCodesPage"));
+const AdminLessonComments = lazy(() => import("./pages/admin/AdminLessonComments"));
+const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotifications"));
+const AdminUserDetailPage = lazy(() => import("./pages/admin/AdminUserDetailPage"));
+const BundleLandingPageBuilder = lazy(() => import("./pages/admin/BundleLandingPageBuilder"));
+const CheckoutPageEditorPage = lazy(() => import("./pages/admin/CheckoutPageEditorPage"));
+const ContactsAdminPage = lazy(() => import("./pages/admin/ContactsAdmin"));
+const DownloadAnalyticsPage = lazy(() => import("./pages/admin/DownloadAnalytics"));
+const FulfillmentAdminPage = lazy(() => import("./pages/admin/FulfillmentAdmin"));
+const GeneralFormAnalyticsDashboard = lazy(() => import("./pages/admin/GeneralFormAnalyticsDashboard"));
+const GeneralFormBuilderPage = lazy(() => import("./pages/admin/GeneralFormBuilder"));
+const LMSAdminPage = lazy(() => import("./pages/admin/LMSAdmin"));
+const MediaRepositoryPage = lazy(() => import("./pages/admin/MediaRepository"));
+const PrintfulAdminPage = lazy(() => import("./pages/admin/PrintfulAdmin"));
+const PrintifyAdminPage = lazy(() => import("./pages/admin/PrintifyAdmin"));
+const ProductAnalyticsPage = lazy(() => import("./pages/admin/ProductAnalytics"));
+const SitePageBuilderPage = lazy(() => import("./pages/admin/SitePageBuilder"));
+const SitePagesAdminPage = lazy(() => import("./pages/admin/SitePagesAdmin"));
+const UserAnalyticsPage = lazy(() => import("./pages/admin/UserAnalytics"));
+const WidgetManagerPage = lazy(() => import("./pages/admin/WidgetManager"));
 import EmailCampaignEditor from "./pages/EmailCampaignEditor";
 
 // Sales section
@@ -415,6 +436,29 @@ function AdminRouter() {
           <Route path="/learn/:courseId" component={CoursePlayerPage} />
           <Route path="/learn/:courseId/lesson/:lessonId" component={CoursePlayerPage} />
 
+          {/* ── Platform Admin routes ── */}
+          <Route path="/admin/lms">{() => <Suspense fallback={null}><LMSAdminPage /></Suspense>}</Route>
+          <Route path="/admin/notifications">{() => <Suspense fallback={null}><AdminNotificationsPage /></Suspense>}</Route>
+          <Route path="/admin/lesson-comments">{() => <Suspense fallback={null}><AdminLessonComments /></Suspense>}</Route>
+          <Route path="/admin/users/:userId">{() => <Suspense fallback={null}><AdminUserDetailPage /></Suspense>}</Route>
+          <Route path="/admin/discount-codes">{() => <Suspense fallback={null}><AdminDiscountCodesPage /></Suspense>}</Route>
+          <Route path="/admin/fulfillment">{() => <Suspense fallback={null}><FulfillmentAdminPage /></Suspense>}</Route>
+          <Route path="/admin/product-analytics">{() => <Suspense fallback={null}><ProductAnalyticsPage /></Suspense>}</Route>
+          <Route path="/admin/user-analytics">{() => <Suspense fallback={null}><UserAnalyticsPage /></Suspense>}</Route>
+          <Route path="/admin/media-repository">{() => <Suspense fallback={null}><MediaRepositoryPage /></Suspense>}</Route>
+          <Route path="/admin/general-forms/analytics-dashboard">{() => <Suspense fallback={null}><GeneralFormAnalyticsDashboard /></Suspense>}</Route>
+          <Route path="/admin/general-forms/:id">{() => <Suspense fallback={null}><GeneralFormBuilderPage /></Suspense>}</Route>
+          <Route path="/admin/general-forms">{() => <Suspense fallback={null}><GeneralFormBuilderPage /></Suspense>}</Route>
+          <Route path="/admin/contacts">{() => <Suspense fallback={null}><ContactsAdminPage /></Suspense>}</Route>
+          <Route path="/admin/widgets">{() => <Suspense fallback={null}><WidgetManagerPage /></Suspense>}</Route>
+          <Route path="/admin/printful">{() => <Suspense fallback={null}><PrintfulAdminPage /></Suspense>}</Route>
+          <Route path="/admin/printify">{() => <Suspense fallback={null}><PrintifyAdminPage /></Suspense>}</Route>
+          <Route path="/admin/lms/site-pages/:pageId/edit">{() => <Suspense fallback={null}><SitePageBuilderPage /></Suspense>}</Route>
+          <Route path="/admin/lms/site-pages">{() => <Suspense fallback={null}><SitePagesAdminPage /></Suspense>}</Route>
+          <Route path="/admin/bundles/:bundleId/landing-builder">{() => <Suspense fallback={null}><BundleLandingPageBuilder /></Suspense>}</Route>
+          <Route path="/admin/downloads/:productId/checkout-editor">{() => <Suspense fallback={null}><CheckoutPageEditorPage /></Suspense>}</Route>
+          <Route path="/admin/downloads/analytics">{() => <Suspense fallback={null}><DownloadAnalyticsPage /></Suspense>}</Route>
+
           {/* 404 */}
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
@@ -575,6 +619,27 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/admin/downloads/reports">{() => <DashboardLayout><DigitalDownloadsReportsPage /></DashboardLayout>}</Route>
         <Route path="/admin/community">{() => { window.location.replace("/products/community"); return null; }}</Route>
         <Route path="/admin/widgets">{() => { window.location.replace("/marketing/widgets"); return null; }}</Route>
+        {/* ── New admin routes ── */}
+        <Route path="/admin/lms">{() => <Suspense fallback={null}><LMSAdminPage /></Suspense>}</Route>
+        <Route path="/admin/notifications">{() => <Suspense fallback={null}><AdminNotificationsPage /></Suspense>}</Route>
+        <Route path="/admin/lesson-comments">{() => <Suspense fallback={null}><AdminLessonComments /></Suspense>}</Route>
+        <Route path="/admin/users/:userId">{() => <Suspense fallback={null}><AdminUserDetailPage /></Suspense>}</Route>
+        <Route path="/admin/discount-codes">{() => <Suspense fallback={null}><AdminDiscountCodesPage /></Suspense>}</Route>
+        <Route path="/admin/fulfillment">{() => <Suspense fallback={null}><FulfillmentAdminPage /></Suspense>}</Route>
+        <Route path="/admin/product-analytics">{() => <Suspense fallback={null}><ProductAnalyticsPage /></Suspense>}</Route>
+        <Route path="/admin/user-analytics">{() => <Suspense fallback={null}><UserAnalyticsPage /></Suspense>}</Route>
+        <Route path="/admin/media-repository">{() => <Suspense fallback={null}><MediaRepositoryPage /></Suspense>}</Route>
+        <Route path="/admin/general-forms/analytics-dashboard">{() => <Suspense fallback={null}><GeneralFormAnalyticsDashboard /></Suspense>}</Route>
+        <Route path="/admin/general-forms/:id">{() => <Suspense fallback={null}><GeneralFormBuilderPage /></Suspense>}</Route>
+        <Route path="/admin/general-forms">{() => <Suspense fallback={null}><GeneralFormBuilderPage /></Suspense>}</Route>
+        <Route path="/admin/contacts">{() => <Suspense fallback={null}><ContactsAdminPage /></Suspense>}</Route>
+        <Route path="/admin/printful">{() => <Suspense fallback={null}><PrintfulAdminPage /></Suspense>}</Route>
+        <Route path="/admin/printify">{() => <Suspense fallback={null}><PrintifyAdminPage /></Suspense>}</Route>
+        <Route path="/admin/lms/site-pages/:pageId/edit">{() => <Suspense fallback={null}><SitePageBuilderPage /></Suspense>}</Route>
+        <Route path="/admin/lms/site-pages">{() => <Suspense fallback={null}><SitePagesAdminPage /></Suspense>}</Route>
+        <Route path="/admin/bundles/:bundleId/landing-builder">{() => <Suspense fallback={null}><BundleLandingPageBuilder /></Suspense>}</Route>
+        <Route path="/admin/downloads/:productId/checkout-editor">{() => <Suspense fallback={null}><CheckoutPageEditorPage /></Suspense>}</Route>
+        <Route path="/admin/downloads/analytics">{() => <Suspense fallback={null}><DownloadAnalyticsPage /></Suspense>}</Route>
         <Route path="/products/bundles/:id/edit">{() => <BundleEditorPage />}</Route>
         <Route path="/products/physical">{() => <DashboardLayout><PhysicalProductsAdmin /></DashboardLayout>}</Route>
         <Route path="/products/workshops">{() => <DashboardLayout><WorkshopsPage /></DashboardLayout>}</Route>

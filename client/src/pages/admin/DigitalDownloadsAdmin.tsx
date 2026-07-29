@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { UserSearchCombobox, type SelectedUser } from "@/components/UserSearchCombobox";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,11 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { PublishDomainSelect } from "@/components/PublishDomainSelect";
-import { Plus, Pencil, Trash2, Copy, Upload, FileIcon, GripVertical, ArrowLeft, ExternalLink, Eye, EyeOff, Image as ImageIcon, Link as LinkIcon, Users, UserPlus, Loader2, Sparkles, LayoutTemplate, BarChart3, ShoppingCart, Settings2, FolderOpen } from "lucide-react";
+import { ContentEmbedTab } from "@/components/admin/ContentEmbedTab";
+import { Plus, Pencil, Trash2, Copy, Upload, FileIcon, GripVertical, ArrowLeft, ExternalLink, Eye, EyeOff, Image as ImageIcon, Link as LinkIcon, Users, UserPlus, Loader2, Sparkles, LayoutTemplate, BarChart3, ShoppingCart, Settings2, FolderOpen, Workflow, Search, Code2, Save, FileText } from "lucide-react";
+import { AfterPurchaseWorkflowEditor } from "@/components/AfterPurchaseWorkflowEditor";
+import { HidePricingOptionsToggle } from "@/components/HidePricingOptionsToggle";
+import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import RichTextEditor from "@/components/RichTextEditor";
 import { DownloadSalesTab } from "@/components/ProductSalesTab";
@@ -22,6 +27,261 @@ import {
   SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Block, BlockType, BlockPreview } from "@/components/BlockPreview";
+import { BLOCK_CATALOG, BlockSettings, SortableBlock, uid } from "@/pages/admin/LandingPageBuilder";
+import DownloadAnalytics from "./DownloadAnalytics";
+import BundlesAdmin from "./BundlesAdmin";
+// ─── Member Page Block Editor ─────────────────────────────────────────────────
+function DownloadMemberPageEditor({ productId, productSlug }: { productId: number; productSlug: string }) {
+  const { data, isLoading, refetch } = trpc.downloadsAdmin.getMemberPageBlocks.useQuery({ productId });
+  const saveBlocks = trpc.downloadsAdmin.saveMemberPageBlocks.useMutation({
+    onSuccess: () => { toast.success("Member page content saved!"); refetch(); },
+    onError: (e) => toast.error(`Save failed: ${e.message}`),
+  });
+
+  const [blocksAbove, setBlocksAbove] = useState<Block[]>([]);
+  const [blocksBelow, setBlocksBelow] = useState<Block[]>([]);
+  const [selectedAboveId, setSelectedAboveId] = useState<string | null>(null);
+  const [selectedBelowId, setSelectedBelowId] = useState<string | null>(null);
+  const [addAboveOpen, setAddAboveOpen] = useState(false);
+  const [addBelowOpen, setAddBelowOpen] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (data && !initialized) {
+      setBlocksAbove(Array.isArray(data.blocksAbove) ? data.blocksAbove : []);
+      setBlocksBelow(Array.isArray(data.blocksBelow) ? data.blocksBelow : []);
+      setInitialized(true);
+    }
+  }, [data, initialized]);
+
+  const MEMBER_BLOCK_TYPES: { type: BlockType; label: string; icon: string }[] = [
+    { type: "text", label: "Rich Text", icon: "T" },
+    { type: "image", label: "Image", icon: "🖼" },
+    { type: "video", label: "Video", icon: "▶" },
+    { type: "audio", label: "Audio", icon: "🔊" },
+    { type: "bullets", label: "Bullet List", icon: "•" },
+    { type: "alert", label: "Alert / Callout", icon: "⚠" },
+    { type: "cta_standalone", label: "CTA Button", icon: "🔗" },
+    { type: "divider", label: "Divider", icon: "—" },
+    { type: "embed", label: "Embed", icon: "</>" },
+  ];
+
+  const makeAddBlock = (setter: React.Dispatch<React.SetStateAction<Block[]>>, setSelected: (id: string) => void, setOpen: (v: boolean) => void) =>
+    (type: BlockType) => {
+      const catalog = BLOCK_CATALOG.find(c => c.type === type);
+      if (!catalog) return;
+      const newBlock: Block = { id: uid(), type, data: { ...catalog.defaultData } };
+      setter(bs => [...bs, newBlock]);
+      setSelected(newBlock.id);
+      setOpen(false);
+    };
+
+  const makeUpdateBlock = (setter: React.Dispatch<React.SetStateAction<Block[]>>) =>
+    (id: string, data: Record<string, any>) =>
+      setter(bs => bs.map(b => b.id === id ? { ...b, data: { ...b.data, ...data } } : b));
+
+  const makeDeleteBlock = (setter: React.Dispatch<React.SetStateAction<Block[]>>, setSelected: (id: string | null) => void) =>
+    (id: string) => { setter(bs => bs.filter(b => b.id !== id)); setSelected(null); };
+
+  const makeMoveBlock = (setter: React.Dispatch<React.SetStateAction<Block[]>>) =>
+    (id: string, dir: -1 | 1) =>
+      setter(bs => {
+        const idx = bs.findIndex(b => b.id === id);
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= bs.length) return bs;
+        return arrayMove(bs, idx, newIdx);
+      });
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEndAbove = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setBlocksAbove(bs => {
+        const oldIdx = bs.findIndex(b => b.id === active.id);
+        const newIdx = bs.findIndex(b => b.id === over.id);
+        return arrayMove(bs, oldIdx, newIdx);
+      });
+    }
+  }, []);
+
+  const handleDragEndBelow = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setBlocksBelow(bs => {
+        const oldIdx = bs.findIndex(b => b.id === active.id);
+        const newIdx = bs.findIndex(b => b.id === over.id);
+        return arrayMove(bs, oldIdx, newIdx);
+      });
+    }
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveBlocks.mutateAsync({
+        productId,
+        blocksAbove: JSON.stringify(blocksAbove),
+        blocksBelow: JSON.stringify(blocksBelow),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedAbove = blocksAbove.find(b => b.id === selectedAboveId) ?? null;
+  const selectedBelow = blocksBelow.find(b => b.id === selectedBelowId) ?? null;
+
+  if (isLoading) return <div className="p-8 text-center text-gray-400">Loading...</div>;
+
+  const renderBlockList = (
+    blocks: Block[],
+    setter: React.Dispatch<React.SetStateAction<Block[]>>,
+    selected: Block | null,
+    setSelected: (id: string | null) => void,
+    onDelete: (id: string) => void,
+    onMove: (id: string, dir: -1 | 1) => void,
+    onUpdate: (id: string, data: Record<string, any>) => void,
+    onDragEnd: (event: DragEndEvent) => void,
+    label: string,
+    onAdd: () => void,
+  ) => (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+        <span className="text-sm font-semibold text-gray-700">{label}</span>
+        <Button size="sm" variant="outline" className="text-xs h-7 text-teal-600 border-teal-300 hover:bg-teal-50" onClick={onAdd}>
+          <Plus className="w-3 h-3 mr-1" /> Add Block
+        </Button>
+      </div>
+      <div className="flex" style={{ minHeight: 200 }}>
+        <div className="flex-1 p-3 bg-gray-50 overflow-y-auto">
+          {previewMode ? (
+            <div className="max-w-2xl mx-auto bg-white rounded-xl border border-gray-100 p-6 space-y-4">
+              {blocks.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No blocks yet</p>
+              ) : blocks.map(block => (
+                <div key={block.id}><BlockPreview block={block} /></div>
+              ))}
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                {blocks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                    <p className="text-sm">No blocks yet — click "Add Block" to get started</p>
+                  </div>
+                ) : blocks.map((block, idx) => (
+                  <SortableBlock
+                    key={block.id}
+                    block={block}
+                    isSelected={selected?.id === block.id}
+                    onSelect={() => setSelected(block.id)}
+                    onDelete={() => onDelete(block.id)}
+                    onDuplicate={() => {
+                      const copy: Block = { ...block, id: uid() };
+                      setter((bs: Block[]) => { const i = bs.findIndex(b => b.id === block.id); const next = [...bs]; next.splice(i + 1, 0, copy); return next; });
+                    }}
+                    onMoveUp={idx > 0 ? () => onMove(block.id, -1) : undefined}
+                    onMoveDown={idx < blocks.length - 1 ? () => onMove(block.id, 1) : undefined}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+        {!previewMode && selected && (
+          <div className="w-72 border-l border-gray-200 bg-white p-4 overflow-y-auto">
+            <BlockSettings
+              block={selected}
+              onChange={(data) => onUpdate(selected.id, data)}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">Member Access Page Content</h3>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Add rich content blocks that appear above and below the file download list on the member access page
+            {productSlug && <> — <a href={`/downloads/${productSlug}/files`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">Preview page ↗</a></>}.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setPreviewMode(p => !p)}
+            className={`text-xs h-8 ${previewMode ? "border-teal-500 text-teal-700 bg-teal-50" : "text-gray-500"}` }>
+            {previewMode ? <EyeOff className="w-3.5 h-3.5 mr-1" /> : <Eye className="w-3.5 h-3.5 mr-1" />}
+            {previewMode ? "Edit" : "Preview"}
+          </Button>
+          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8 text-xs font-semibold" onClick={handleSave} disabled={saving}>
+            <Save className="w-3.5 h-3.5 mr-1" />{saving ? "Saving..." : "Save All"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Above blocks */}
+      {renderBlockList(
+        blocksAbove, setBlocksAbove, selectedAbove,
+        setSelectedAboveId,
+        makeDeleteBlock(setBlocksAbove, setSelectedAboveId),
+        makeMoveBlock(setBlocksAbove),
+        makeUpdateBlock(setBlocksAbove),
+        handleDragEndAbove,
+        "Content Above Download Files",
+        () => setAddAboveOpen(true),
+      )}
+
+      {/* Visual separator representing the download files area */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 border-t border-dashed border-gray-300" />
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 border border-teal-200 rounded-full text-xs text-teal-700 font-medium">
+          <FileText className="w-3 h-3" /> Download Files Area (not editable here)
+        </div>
+        <div className="flex-1 border-t border-dashed border-gray-300" />
+      </div>
+
+      {/* Below blocks */}
+      {renderBlockList(
+        blocksBelow, setBlocksBelow, selectedBelow,
+        setSelectedBelowId,
+        makeDeleteBlock(setBlocksBelow, setSelectedBelowId),
+        makeMoveBlock(setBlocksBelow),
+        makeUpdateBlock(setBlocksBelow),
+        handleDragEndBelow,
+        "Content Below Download Files",
+        () => setAddBelowOpen(true),
+      )}
+
+      {/* Add Block Dialogs */}
+      {[{ open: addAboveOpen, setOpen: setAddAboveOpen, add: makeAddBlock(setBlocksAbove, (id) => setSelectedAboveId(id), setAddAboveOpen) },
+        { open: addBelowOpen, setOpen: setAddBelowOpen, add: makeAddBlock(setBlocksBelow, (id) => setSelectedBelowId(id), setAddBelowOpen) }]
+        .map(({ open, setOpen, add }, i) => (
+          <Dialog key={i} open={open} onOpenChange={setOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader><DialogTitle>Add Content Block</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                {MEMBER_BLOCK_TYPES.map(item => (
+                  <button key={item.type} onClick={() => add(item.type)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-sm font-medium text-gray-700 transition-colors text-left">
+                    <span className="text-base w-5 text-center">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+        ))}
+    </div>
+  );
+}
 
 // ─── Sortable Product Row ────────────────────────────────────────────────────
 function SortableProductRow({ product, onEdit, onDuplicate, onDelete }: { product: any; onEdit: (id: number) => void; onDuplicate: (id: number) => void; onDelete: (id: number) => void }) {
@@ -41,7 +301,7 @@ function SortableProductRow({ product, onEdit, onDuplicate, onDelete }: { produc
       )}
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 text-sm truncate">{product.title}</p>
-        <p className="text-xs text-gray-400">{product.isFree ? "Free" : `$${Number(product.price).toFixed(2)}`} · /{product.slug}</p>
+        <p className="text-xs text-gray-400">{product.isFree ? "Free" : `$${Number(product.price).toFixed(2)}`} · /{product.slug} · <span className="font-mono">ID: {product.id}</span></p>
       </div>
       <Badge variant={product.status === "published" ? "default" : product.status === "archived" ? "secondary" : "outline"} className="text-xs">
         {product.status}
@@ -68,6 +328,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const prevDataRef = useRef<any>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (products && products !== prevDataRef.current) {
@@ -110,13 +371,28 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
   };
 
   const activeProduct = activeDragId ? localProducts.find((p: any) => p.id === activeDragId) : null;
+  const filteredProducts = searchQuery.trim()
+    ? localProducts.filter((p: any) => p.title?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : localProducts;
 
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
 
   return (
     <div className="space-y-4">
+      {!reorderMode && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search digital products..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+          />
+        </div>
+      )}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Digital Products</h3>
+        <h3 className="text-lg font-semibold">Digital Products {searchQuery && <span className="text-sm font-normal text-gray-500">({filteredProducts.length} results)</span>}</h3>
         <div className="flex items-center gap-2">
           {localProducts.length > 1 && (
             <Button size="sm" variant={reorderMode ? "default" : "outline"} onClick={() => setReorderMode(m => !m)}>
@@ -130,7 +406,9 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
         </div>
       </div>
 
-      {localProducts.length === 0 ? (
+      {filteredProducts.length === 0 && localProducts.length > 0 ? (
+        <div className="text-center py-8 text-gray-400 text-sm">No products match "{searchQuery}"</div>
+      ) : localProducts.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <FileIcon className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
@@ -170,7 +448,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
         </DndContext>
       ) : (
         <div className="grid gap-3">
-          {localProducts.map((p: any) => (
+          {filteredProducts.map((p: any) => (
             <Card key={p.id} className="hover:border-teal-500/50 transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
                 {p.thumbnailUrl ? (
@@ -292,7 +570,8 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       status: product.status,
       thumbnailUrl: product.thumbnailUrl ?? "",
       showInLibrary: (product as any).showInLibrary ?? true,
-    });
+      brand: (product as any).brand ?? "aaus",
+    } as any);
     setSlug(product.slug ?? "");
     setMetaTitle((product as any).metaTitle ?? "");
     setMetaDescription((product as any).metaDescription ?? "");
@@ -311,6 +590,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       status: form.status,
       thumbnailUrl: form.thumbnailUrl || null,
       showInLibrary: (form as any).showInLibrary ?? true,
+      brand: (form as any).brand ?? "aaus",
     });
   };
 
@@ -323,7 +603,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/media-upload", { method: "POST", credentials: "include", body: fd });
+      const res = await fetch("/api/upload-course-image", { method: "POST", credentials: "include", body: fd });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error ?? "Upload failed"); }
       const { url } = await res.json();
       setForm((prev: any) => ({ ...prev, thumbnailUrl: url }));
@@ -341,6 +621,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       <div className="flex items-center gap-3 pb-2 border-b">
         <Button variant="ghost" size="sm" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-1" /> Back</Button>
         <h3 className="text-lg font-semibold flex-1">{product.title}</h3>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-xs font-mono font-semibold text-gray-600 select-all cursor-text" title="Product ID — use for manual grants & support">ID: {product.id}</span>
         <Badge variant={product.status === "published" ? "default" : "outline"}>{product.status}</Badge>
         {product.slug && (
           <a href={`/downloads/${product.slug}?preview=admin`} target="_blank" rel="noopener noreferrer">
@@ -348,6 +629,17 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               <Eye className="w-3 h-3 mr-1" /> Preview
             </Button>
           </a>
+        )}
+        {product.slug && (
+          <Button size="sm" variant="outline" className="text-xs gap-1 text-teal-600 border-teal-300 hover:bg-teal-50"
+            onClick={() => {
+              const url = `${window.location.origin}/checkout/${product.slug}?type=download`;
+              navigator.clipboard.writeText(url);
+              toast.success("Checkout link copied");
+            }}
+          >
+            <Copy className="w-3 h-3" /> Copy Checkout Link
+          </Button>
         )}
       </div>
 
@@ -371,6 +663,18 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
           </TabsTrigger>
           <TabsTrigger value="sales" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
             <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Sales
+          </TabsTrigger>
+          <TabsTrigger value="after-purchase" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+            <Workflow className="w-3.5 h-3.5 mr-1.5" /> After Purchase
+          </TabsTrigger>
+          <TabsTrigger value="checkout-page" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+            <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Checkout Page
+          </TabsTrigger>
+          <TabsTrigger value="embed" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+            <Code2 className="w-3.5 h-3.5 mr-1.5" /> Embed
+          </TabsTrigger>
+          <TabsTrigger value="member-page" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+            <LayoutTemplate className="w-3.5 h-3.5 mr-1.5" /> Member Page
           </TabsTrigger>
         </TabsList>
 
@@ -455,6 +759,13 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                   <option value="archived">Archived</option>
                 </select>
               </div>
+              <div className="flex items-center gap-3">
+                <Label>Brand</Label>
+                <select className="border rounded px-2 py-1 text-sm bg-background" value={(form as any).brand ?? "aaus"} onChange={(e) => setForm({ ...form, brand: e.target.value } as any)}>
+                  <option value="aaus">All About Ultrasound™</option>
+                  <option value="iheartecho">iHeartEcho™</option>
+                </select>
+              </div>
             </CardContent>
           </Card>
 
@@ -494,7 +805,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onBack}>Cancel</Button>
-            <Button onClick={handleSave} disabled={updateMut.isPending} className=" hover:">
+            <Button onClick={handleSave} disabled={updateMut.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
               {updateMut.isPending ? "Saving..." : "Save Settings"}
             </Button>
           </div>
@@ -588,6 +899,73 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
           <DownloadSalesTab productId={productId} />
           <GrantDownloadAccessDialog open={showGrantDialog} productId={productId} onClose={() => setShowGrantDialog(false)} />
         </TabsContent>
+
+        {/* After Purchase Tab */}
+        <TabsContent value="after-purchase" className="mt-4">
+          <AfterPurchaseWorkflowTab productId={productId} />
+        </TabsContent>
+
+        <TabsContent value="checkout-page" className="mt-4">
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Customise the sections shown on the hosted checkout page{product.slug && (
+                      <>{" "}at{" "}
+                        <a href={`/checkout/${product.slug}?type=download`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                          /checkout/{product.slug}
+                        </a>
+                      </>
+                    )}.
+                    Use the full-screen editor to add trust seals, testimonials, FAQs, guarantees, and more.
+                  </p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  {product.slug && (
+                    <a href={`/checkout/${product.slug}?type=download`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                      Preview
+                    </a>
+                  )}
+                  <a href={`/admin/checkout-editor/download/${productId}`}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    Open Page Editor
+                  </a>
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {["Trust Seals & Badges","Download Includes","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
+                  <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="w-2 h-2 rounded-full bg-teal-400" />
+                    <span className="text-xs text-gray-600">{s}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="embed" className="mt-4">
+          {product.slug && (
+            <ContentEmbedTab
+              entityType="download"
+              slug={product.slug}
+              title={product.title}
+              subtitle={product.subtitle}
+              thumbnailUrl={product.thumbnailUrl}
+              defaultCheckoutUrl={`${window.location.origin}/checkout/${product.slug}?type=download`}
+            />
+          )}
+        </TabsContent>
+
+        {/* Member Page Tab */}
+        <TabsContent value="member-page" className="mt-4">
+          <DownloadMemberPageEditor productId={product.id} productSlug={product.slug ?? ""} />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -595,13 +973,8 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
 // ─── Grant Download Access Dialog ──────────────────────────────────────────
 function GrantDownloadAccessDialog({ open, productId, onClose }: { open: boolean; productId: number; onClose: () => void }) {
-  const [email, setEmail] = useState("");
+  const [selectedUser, setSelectedUser] = useState<SelectedUser | null>(null);
   const [name, setName] = useState("");
-  const [searchResult, setSearchResult] = useState<{ id: number; name: string | null; email: string | null } | null | undefined>(undefined);
-  const findUser = trpc.platformAdmin.findUserByEmail.useMutation({
-    onSuccess: (data) => setSearchResult(data as any ?? null),
-    onError: () => setSearchResult(null),
-  });
   const grantAccess = trpc.downloadsAdmin.createAndGrantDownloadAccess.useMutation({
     onSuccess: (data) => {
       if (data.alreadyGranted) {
@@ -609,55 +982,37 @@ function GrantDownloadAccessDialog({ open, productId, onClose }: { open: boolean
       } else {
         toast.success(data.isNewUser ? "New account created and access granted! Invitation email sent." : "Access granted and notification email sent.");
       }
-      setEmail(""); setName(""); setSearchResult(undefined); onClose();
+      setSelectedUser(null); setName(""); onClose();
     },
     onError: (e) => toast.error(e.message),
   });
-  const handleSearch = () => {
-    if (!email.trim() || !email.includes("@")) { toast.error("Enter a valid email"); return; }
-    findUser.mutate({ email: email.trim() });
-  };
   const handleGrant = () => {
-    if (!email.trim()) { toast.error("Email is required"); return; }
-    if (searchResult === null && !name.trim()) { toast.error("Name is required for new accounts"); return; }
-    const resolvedName = (searchResult?.name ?? name.trim()) || email.split("@")[0];
-    grantAccess.mutate({ productId, email: email.trim(), name: resolvedName });
+    if (!selectedUser) { toast.error("Select a user first"); return; }
+    if (selectedUser.isNew && !name.trim()) { toast.error("Name is required for new accounts"); return; }
+    const resolvedName = (selectedUser.name ?? name.trim()) || selectedUser.email.split("@")[0];
+    grantAccess.mutate({ productId, email: selectedUser.email, name: resolvedName });
   };
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setSelectedUser(null); setName(""); onClose(); } }}>
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-600" /> Grant Download Access</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label>Student Email</Label>
-            <div className="flex gap-2">
-              <Input type="email" placeholder="student@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setSearchResult(undefined); }} />
-              <Button size="sm" variant="outline" onClick={handleSearch} disabled={findUser.isPending}>
-                {findUser.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
-              </Button>
-            </div>
+            <Label>Search Student</Label>
+            <UserSearchCombobox onSelect={setSelectedUser} placeholder="Search by name or email…" />
           </div>
-          {searchResult === null && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-3">
-              <p className="text-sm text-amber-800 font-medium">No account found. A new account will be created.</p>
-              <div className="space-y-1">
-                <Label>Full Name (for new account)</Label>
-                <Input placeholder="Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-            </div>
-          )}
-          {searchResult && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-              <p className="text-sm text-teal-800 font-medium">Found: {searchResult.name ?? searchResult.email}</p>
-              <p className="text-xs text-teal-600">{searchResult.email}</p>
+          {selectedUser?.isNew && (
+            <div className="space-y-1">
+              <Label>Full Name (for new account)</Label>
+              <Input placeholder="Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleGrant} disabled={grantAccess.isPending || searchResult === undefined}>
+          <Button variant="outline" onClick={() => { setSelectedUser(null); setName(""); onClose(); }}>Cancel</Button>
+          <Button onClick={handleGrant} disabled={grantAccess.isPending || !selectedUser}>
             {grantAccess.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />}
-            {searchResult === null ? "Create & Grant Access" : "Grant Access"}
+            {selectedUser?.isNew ? "Create & Grant Access" : "Grant Access"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -668,7 +1023,8 @@ function GrantDownloadAccessDialog({ open, productId, onClose }: { open: boolean
 // ─── File Manager ───────────────────────────────────────────────────────────
 function FileManager({ productId, files }: { productId: number; files: any[] }) {
   const utils = trpc.useUtils();
-  const uploadMut = trpc.downloadsAdmin.uploadFile.useMutation({
+  const [uploading, setUploading] = useState(false);
+  const registerFileMut = trpc.downloadsAdmin.registerUploadedFile.useMutation({
     onSuccess: () => { utils.downloadsAdmin.get.invalidate({ id: productId }); toast.success("File uploaded"); },
     onError: (e) => toast.error(e.message),
   });
@@ -680,21 +1036,24 @@ function FileManager({ productId, files }: { productId: number; files: any[] }) 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) { toast.error("File must be under 50 MB"); return; }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      uploadMut.mutate({
-        productId,
-        fileName: file.name,
-        fileBase64: base64,
-        mimeType: file.type,
-        fileSize: file.size,
-      });
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 200 * 1024 * 1024) { toast.error("File must be under 200 MB"); return; }
     e.target.value = "";
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload-digital-file", { method: "POST", body: formData, credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(err.error ?? "Upload failed");
+      }
+      const { url, fileKey, filename, size, mimeType } = await res.json();
+      registerFileMut.mutate({ productId, fileName: filename, fileUrl: url, fileKey, mimeType, fileSize: size });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const formatSize = (bytes: number) => {
@@ -709,8 +1068,8 @@ function FileManager({ productId, files }: { productId: number; files: any[] }) 
         <CardTitle className="text-sm">Files ({files.length})</CardTitle>
         <div>
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelect} />
-          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadMut.isPending}>
-            <Upload className="w-4 h-4 mr-1" /> {uploadMut.isPending ? "Uploading..." : "Upload File"}
+          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || registerFileMut.isPending}>
+            <Upload className="w-4 h-4 mr-1" /> {(uploading || registerFileMut.isPending) ? "Uploading..." : "Upload File"}
           </Button>
         </div>
       </CardHeader>
@@ -777,11 +1136,11 @@ function DownloadStudentsTab({ productId, onGrantAccess }: { productId: number; 
             </thead>
             <tbody>
               {purchasers.map((p: any) => (
-                <tr key={p.transactionId ?? p.customerEmail} className="border-t hover:bg-muted/30">
+                <tr key={p.transactionId ?? p.userEmail} className="border-t hover:bg-muted/30">
                   <td className="px-4 py-2.5">
                     <div>
-                      <p className="font-medium">{p.customerName || 'Unknown'}</p>
-                      <p className="text-xs text-muted-foreground">{p.customerEmail}</p>
+                      <p className="font-medium">{p.userName || p.userEmail || 'Unknown'}</p>
+                      <p className="text-xs text-muted-foreground">{p.userEmail}</p>
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{p.purchasedAt ? new Date(p.purchasedAt).toLocaleDateString() : '—'}</td>
@@ -814,7 +1173,7 @@ function DownloadProductAnalytics({ productId, productTitle }: { productId: numb
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{purchasers.length}</p><p className="text-xs text-muted-foreground mt-1">Total Buyers</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">${(totalRevenue / 100).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Total Revenue</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">${Number(totalRevenue).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Total Revenue</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{purchasers.length > 0 ? `$${(avgOrder / 100).toFixed(2)}` : '—'}</p><p className="text-xs text-muted-foreground mt-1">Avg. Order</p></CardContent></Card>
       </div>
       {purchasers.length > 0 && (
@@ -829,8 +1188,8 @@ function DownloadProductAnalytics({ productId, productTitle }: { productId: numb
               </tr></thead>
               <tbody>
                 {purchasers.slice(0, 10).map((p: any) => (
-                  <tr key={p.transactionId ?? p.customerEmail} className="border-t">
-                    <td className="px-4 py-2.5"><p className="font-medium">{p.customerName || 'Unknown'}</p><p className="text-xs text-muted-foreground">{p.customerEmail}</p></td>
+                  <tr key={p.transactionId ?? p.userEmail} className="border-t">
+                    <td className="px-4 py-2.5"><p className="font-medium">{p.userName || p.userEmail || 'Unknown'}</p><p className="text-xs text-muted-foreground">{p.userEmail}</p></td>
                     <td className="px-4 py-2.5 text-muted-foreground">{p.purchasedAt ? new Date(p.purchasedAt).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-2.5">{p.amountPaid != null ? `$${(Number(p.amountPaid) / 100).toFixed(2)}` : '—'}</td>
                   </tr>
@@ -844,10 +1203,46 @@ function DownloadProductAnalytics({ productId, productTitle }: { productId: numb
   );
 }
 
+// ─── After Purchase Workflow Tab ────────────────────────────────────────────
+function AfterPurchaseWorkflowTab({ productId }: { productId: number }) {
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.downloadsAdmin.getAfterPurchaseWorkflow.useQuery({ productId });
+  const saveMut = trpc.downloadsAdmin.updateAfterPurchaseWorkflow.useMutation({
+    onSuccess: () => { utils.downloadsAdmin.getAfterPurchaseWorkflow.invalidate({ productId }); toast.success("After purchase workflow saved"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const { data: hideData } = trpc.downloadsAdmin.getHidePricingOptions.useQuery({ productId });
+  const hideToggleMut = trpc.downloadsAdmin.updateHidePricingOptions.useMutation({
+    onSuccess: () => { utils.downloadsAdmin.getHidePricingOptions.invalidate({ productId }); toast.success("Setting saved"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
+        <Workflow className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-teal-800">After Purchase Workflow</p>
+          <p className="text-xs text-teal-600 mt-0.5">Configure what happens immediately after a customer completes their purchase. Actions run in order.</p>
+        </div>
+      </div>
+      <HidePricingOptionsToggle
+        value={hideData?.hidePricingOptions ?? false}
+        onChange={(v) => hideToggleMut.mutate({ productId, hidePricingOptions: v })}
+        isSaving={hideToggleMut.isPending}
+      />
+      <AfterPurchaseWorkflowEditor
+        value={data?.afterPurchaseWorkflow ?? null}
+        onChange={(workflow) => saveMut.mutate({ productId, workflow })}
+        isSaving={saveMut.isPending}
+      />
+    </div>
+  );
+}
+
 // ─── Main Export ──────────────────────────────────────────────────────────────────
-import DownloadAnalytics from "./DownloadAnalytics";
-import BundlesAdmin from "./BundlesAdmin";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DigitalDownloadsAdmin({ initialEditId }: { initialEditId?: number } = {}) {
   const [editingId, setEditingId] = useState<number | null>(initialEditId ?? null);
@@ -862,7 +1257,7 @@ export default function DigitalDownloadsAdmin({ initialEditId }: { initialEditId
       <TabsList>
         <TabsTrigger value="products">Products</TabsTrigger>
         <TabsTrigger value="bundles">Bundles</TabsTrigger>
-        <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsTrigger value="analytics">Download Access</TabsTrigger>
       </TabsList>
       <TabsContent value="products" className="mt-4">
         <ProductList onEdit={setEditingId} />

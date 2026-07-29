@@ -1294,6 +1294,156 @@ Make ALL content specific and compelling based on the product title and descript
 
       return { refundId: refund.id, status: refund.status };
     }),
+
+  // ─── Member Access Page Blocks ─────────────────────────────────────────────
+  getMemberPageBlocks: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db.select({
+        id: digitalProducts.id,
+        title: digitalProducts.title,
+        memberPageBlocksAbove: (digitalProducts as any).memberPageBlocksAbove,
+        memberPageBlocksBelow: (digitalProducts as any).memberPageBlocksBelow,
+      }).from(digitalProducts).where(eq(digitalProducts.id, input.productId)).limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      return {
+        productId: product.id,
+        productTitle: product.title,
+        blocksAbove: (product as any).memberPageBlocksAbove ? JSON.parse((product as any).memberPageBlocksAbove) : [],
+        blocksBelow: (product as any).memberPageBlocksBelow ? JSON.parse((product as any).memberPageBlocksBelow) : [],
+      };
+    }),
+
+  saveMemberPageBlocks: protectedProcedure
+    .input(z.object({
+      productId: z.number(),
+      blocksAbove: z.string(),
+      blocksBelow: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(digitalProducts).set({
+        memberPageBlocksAbove: input.blocksAbove,
+        memberPageBlocksBelow: input.blocksBelow,
+      } as any).where(eq(digitalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  // ─── After-Purchase Workflow ────────────────────────────────────────────────
+  getAfterPurchaseWorkflow: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db
+        .select({ id: digitalProducts.id, afterPurchaseWorkflow: (digitalProducts as any).afterPurchaseWorkflow })
+        .from(digitalProducts)
+        .where(eq(digitalProducts.id, input.productId))
+        .limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      return { afterPurchaseWorkflow: (product as any).afterPurchaseWorkflow ?? null };
+    }),
+
+  updateAfterPurchaseWorkflow: protectedProcedure
+    .input(z.object({ productId: z.number(), workflow: z.string().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(digitalProducts)
+        .set({ afterPurchaseWorkflow: input.workflow } as any)
+        .where(eq(digitalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  // ─── Hide Pricing Options ───────────────────────────────────────────────────
+  getHidePricingOptions: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db
+        .select({ id: digitalProducts.id, hidePricingOptions: (digitalProducts as any).hidePricingOptions })
+        .from(digitalProducts)
+        .where(eq(digitalProducts.id, input.productId))
+        .limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      return { hidePricingOptions: (product as any).hidePricingOptions ?? false };
+    }),
+
+  updateHidePricingOptions: protectedProcedure
+    .input(z.object({ productId: z.number(), hidePricingOptions: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(digitalProducts)
+        .set({ hidePricingOptions: input.hidePricingOptions } as any)
+        .where(eq(digitalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  // ─── Bundle After-Purchase Workflow + Hide Pricing Options ─────────────────
+  getBundleAfterPurchaseWorkflow: protectedProcedure
+    .input(z.object({ bundleId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [bundle] = await db
+        .select({ id: digitalBundles.id, afterPurchaseWorkflow: (digitalBundles as any).afterPurchaseWorkflow })
+        .from(digitalBundles)
+        .where(eq(digitalBundles.id, input.bundleId))
+        .limit(1);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      return { afterPurchaseWorkflow: (bundle as any).afterPurchaseWorkflow ?? null };
+    }),
+
+  updateBundleAfterPurchaseWorkflow: protectedProcedure
+    .input(z.object({ bundleId: z.number(), workflow: z.string().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(digitalBundles)
+        .set({ afterPurchaseWorkflow: input.workflow } as any)
+        .where(eq(digitalBundles.id, input.bundleId));
+      return { success: true };
+    }),
+
+  getBundleHidePricingOptions: protectedProcedure
+    .input(z.object({ bundleId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [bundle] = await db
+        .select({ id: digitalBundles.id, hidePricingOptions: (digitalBundles as any).hidePricingOptions })
+        .from(digitalBundles)
+        .where(eq(digitalBundles.id, input.bundleId))
+        .limit(1);
+      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      return { hidePricingOptions: (bundle as any).hidePricingOptions ?? false };
+    }),
+
+  updateBundleHidePricingOptions: protectedProcedure
+    .input(z.object({ bundleId: z.number(), hidePricingOptions: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(digitalBundles)
+        .set({ hidePricingOptions: input.hidePricingOptions } as any)
+        .where(eq(digitalBundles.id, input.bundleId));
+      return { success: true };
+    }),
 });
 
 // ─── Email Helper ───────────────────────────────────────────────────────────

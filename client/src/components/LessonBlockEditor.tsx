@@ -5,7 +5,7 @@
  * Reuses the same Block system (BLOCK_CATALOG, BlockPreview, BlockSettings, SortableBlock)
  * as the LandingPageBuilder.
  */
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, UniqueIdentifier,
 } from "@dnd-kit/core";
@@ -17,21 +17,25 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Block, BlockType, BlockPreview } from "@/components/BlockPreview";
-import { BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, uid } from "@/pages/lms/LandingPageBuilder";
+import { BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, uid } from "@/pages/admin/LandingPageBuilder";
 import React, { useImperativeHandle } from "react";
 import {
   X, Plus, Save, Eye, EyeOff, Copy, BookOpen, Search, ExternalLink, Layers, Globe, Loader2,
-  ChevronLeft, ChevronRight, Bookmark,
+  ChevronLeft, ChevronRight, Bookmark, GripVertical,
 } from "lucide-react";
 import { BlockTemplateLibraryProvider, OpenTemplateLibraryButton, SaveAsTemplateButton } from "@/components/BlockTemplateLibrary";
 import { cn } from "@/lib/utils";
 
 export interface LessonBlockEditorHandle {
   save: (andClose?: boolean) => Promise<void>;
+  /** Returns the current blocks array synchronously — use before saving the parent form. */
+  getBlocks: () => Block[];
   openAddBlock: () => void;
   openSaveLessonTemplate: () => void;
 }
@@ -84,11 +88,15 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   const embedded = embeddedProp || !!onBlocksChange;
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const blocksInitializedRef = useRef(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(CATALOG_CATEGORIES[0]);
   const [pickerTab, setPickerTab] = useState<PickerTab>("catalog");
   const [previewMode, setPreviewMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Resizable settings panel
+  const [settingsPanelWidth, setSettingsPanelWidth] = useState(320);
+  const isResizingPanel = useRef(false);
 
   // Refs for scroll-to-new-block
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -438,10 +446,11 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     scrollToBlock(copy.id);
   };
 
-  const handleSaveRef = React.useRef<((andClose?: boolean) => Promise<void>) | null>(null);
+  const handleSaveRef = React.useRef<(andClose?: boolean) => Promise<void>>();
 
   useImperativeHandle(ref, () => ({
     save: (andClose = false) => handleSaveRef.current?.(andClose) ?? Promise.resolve(),
+    getBlocks: () => blocksRef.current,
     openAddBlock: () => setAddMenuOpen(true),
     openSaveLessonTemplate: () => { setLessonTemplateName(""); setLessonTemplateTags(""); setSaveLessonTemplateOpen(true); },
   }));
@@ -451,8 +460,9 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     if (onBlocksChange) {
       onBlocksChange(blocks);
       toast.success("Content saved!");
+      autoSave.markClean();
       if (andClose && onSavedAndClose) onSavedAndClose();
-      else onSaved?.();
+      else if (onSaved) onSaved();
       return;
     }
     setSaving(true);
@@ -462,10 +472,11 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
         contentBlocks: JSON.stringify(blocks),
       });
       toast.success("Lesson content saved!");
+      autoSave.markClean();
       if (andClose && onSavedAndClose) {
         onSavedAndClose();
       } else {
-        onSaved?.();
+        onSaved();
       }
     } catch (e: any) {
       toast.error(`Save failed: ${e.message}`);
@@ -474,6 +485,27 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     }
   };
   handleSaveRef.current = handleSave;
+
+  const autoSave = useAutoSave({
+    onSave: async () => {
+      if (onBlocksChange) {
+        onBlocksChange(blocks);
+      } else if (lessonId) {
+        await updateLesson.mutateAsync({ id: lessonId, contentBlocks: JSON.stringify(blocks) });
+      }
+    },
+    intervalMs: 60_000,
+  });
+
+  // Mark dirty after initial render (blocks come from props, not a server load)
+  useEffect(() => {
+    if (!blocksInitializedRef.current) {
+      blocksInitializedRef.current = true;
+      return;
+    }
+    autoSave.markDirty();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks]);
 
   // Also search column_layout children so clicking a child block opens its settings
   const selectedBlock = blocks.find(b => b.id === selectedBlockId) ??
@@ -636,19 +668,19 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 <Plus className="w-3 h-3 mr-1" /> Add Block
               </Button>
             )}
-            {/* Preview in course player — opens new window at this lesson */}
+            {/* Preview as Student — opens lesson in course player in new window */}
             {courseSlug && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  const url = `https://learn.teachific.com/courses/${courseSlug}/player?lesson=${lessonId}&preview=admin`;
+                  const url = `${window.location.origin}/courses/${courseSlug}/player?lesson=${lessonId}&preview=student`;
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
                 className="text-xs h-7 border-teal-300 text-teal-700 hover:bg-teal-50"
-                title="Open lesson in course player (new window)"
+                title="Preview this lesson as a student would see it (new window)"
               >
-                <ExternalLink className="w-3 h-3 mr-1" /> Preview
+                <ExternalLink className="w-3 h-3 mr-1" /> Preview as Student
               </Button>
             )}
             <Button
@@ -663,6 +695,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               {previewMode ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
               {previewMode ? "Edit" : "Preview Blocks"}
             </Button>
+            <AutoSaveIndicator status={autoSave.status} />
             <Button
               size="sm"
               variant="outline"
@@ -701,7 +734,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
           {embedded && (
             <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
               <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide mr-1">{editorLabel ?? "Content Editor"}</span>
-              <Button size="sm" className=" hover: text-xs h-7" onClick={() => setAddMenuOpen(true)}>
+              <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
                 <Plus className="w-3 h-3 mr-1" /> Add Block
               </Button>
               <Button
@@ -716,6 +749,8 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               <OpenTemplateLibraryButton />
             </div>
           )}
+          {/* Canvas + Settings row */}
+          <div className="flex flex-1 overflow-hidden">
           {/* Left: Canvas */}
           <div ref={canvasRef} className="flex-1 overflow-y-auto bg-gray-50 p-4">
             {/* Blocks canvas */}
@@ -834,25 +869,56 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             )}
           </div>
 
-          {/* Right: Settings panel */}
+          {/* Right: Settings panel (resizable) */}
           {!previewMode && selectedBlock && (
-            <div className="w-72 shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
-              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-                <span className="text-gray-700 text-xs font-bold uppercase tracking-wide">Block Settings</span>
-                <button onClick={() => setSelectedBlockId(null)} className="text-gray-400 hover:text-gray-700">
-                  <X className="w-4 h-4" />
-                </button>
+            <>
+              {/* Resize handle */}
+              <div
+                className="w-1.5 shrink-0 cursor-col-resize bg-gray-100 hover:bg-teal-200 active:bg-teal-300 transition-colors flex items-center justify-center group"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  isResizingPanel.current = true;
+                  const startX = e.clientX;
+                  const startWidth = settingsPanelWidth;
+                  const onMove = (ev: MouseEvent) => {
+                    if (!isResizingPanel.current) return;
+                    const delta = startX - ev.clientX;
+                    setSettingsPanelWidth(Math.max(260, Math.min(700, startWidth + delta)));
+                  };
+                  const onUp = () => {
+                    isResizingPanel.current = false;
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                    document.body.style.cursor = "";
+                    document.body.style.userSelect = "";
+                  };
+                  document.addEventListener("mousemove", onMove);
+                  document.addEventListener("mouseup", onUp);
+                  document.body.style.cursor = "col-resize";
+                  document.body.style.userSelect = "none";
+                }}
+              >
+                <GripVertical className="w-3 h-3 text-gray-400 group-hover:text-teal-600" />
               </div>
-              <div className="p-3">
-                <BlockSettings
-                  block={selectedBlock}
-                  onChange={data => updateBlock(selectedBlock.id, data)}
-                  lessonId={lessonId}
-                  courseId={courseId}
-                />
+              <div style={{ width: settingsPanelWidth }} className="shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                  <span className="text-gray-700 text-xs font-bold uppercase tracking-wide">Block Settings</span>
+                  <button onClick={() => setSelectedBlockId(null)} className="text-gray-400 hover:text-gray-700">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-3">
+                  <BlockSettings
+                    block={selectedBlock}
+                    onChange={data => updateBlock(selectedBlock.id, data)}
+                    lessonId={lessonId}
+                    courseId={courseId}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           )}
+          </div>{/* end canvas+settings row */}
         </div>
       </div>
     </div>
@@ -911,25 +977,19 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 </button>
               ))}
             </div>
-            {/* Block grid or Saved templates */}
-            {activeCategory === "Saved" ? (
-              <div className="flex-1 overflow-hidden p-1">
-                <BlockTemplatesTabContent onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedBlockId(block.id); toast.success("Block template inserted!"); setAddMenuOpen(false); }} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
-                {BLOCK_CATALOG.filter(b => b.category === activeCategory).map(b => (
-                  <button
-                    key={b.type}
-                    onClick={() => { addBlock(b.type); setAddMenuOpen(false); }}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
-                  >
-                    <span className="text-teal-600 text-2xl">{b.icon}</span>
-                    <span className="text-xs leading-tight font-medium">{b.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Block grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
+              {BLOCK_CATALOG.filter(b => b.category === activeCategory).map(b => (
+                <button
+                  key={b.type}
+                  onClick={() => { addBlock(b.type); setAddMenuOpen(false); }}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
+                >
+                  <span className="text-teal-600 text-2xl">{b.icon}</span>
+                  <span className="text-xs leading-tight font-medium">{b.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -950,7 +1010,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 >
                   <option value="">— select course —</option>
                   {coursesData?.courses.map(c => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
+                    <option key={c.id} value={c.id} title={c.title}>{c.title}</option>
                   ))}
                 </select>
               </div>

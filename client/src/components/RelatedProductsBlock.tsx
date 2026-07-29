@@ -10,22 +10,23 @@
  *  - Price + CTA button always on the same row, pinned to the bottom of the card
  */
 import { Link } from "wouter";
-import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen, FileDown, Package, ExternalLink, Users } from "lucide-react";
-
-interface ManualItem {
-  type: string;
-  id: number;
-}
+import { BookOpen, FileDown, Package, ExternalLink } from "lucide-react";
+import { CourseInstanceInfo } from "@/components/CourseInstanceInfo";
+import {
+  pickManualRelatedProducts,
+  resolveRelatedProductsSelectionMode,
+  type RelatedProductFeedItem,
+  type RelatedProductManualRef,
+} from "@shared/relatedProductsBlock";
 
 interface RelatedProductsBlockData {
   headline?: string;
   subtext?: string;
-  productType?: "course" | "download" | "both" | "bundle" | "physical" | "membership" | "all";
+  productType?: "course" | "cohort" | "quiz" | "download" | "both" | "bundle" | "physical" | "all" | "webinar" | "community" | "workshop" | "app";
   selectionMode?: "auto" | "manual";
-  manualItems?: ManualItem[];
+  manualItems?: RelatedProductManualRef[];
   maxItems?: number;
   layout?: "grid" | "list";
   showPrice?: boolean;
@@ -44,9 +45,14 @@ interface Props {
   currentType?: "course" | "download";
 }
 
-function formatPrice(price: number, isFree: boolean): string {
+const INTERVAL_LABEL: Record<string, string> = { monthly: "/mo", quarterly: "/qtr", annual: "/yr" };
+function formatPrice(price: number, isFree: boolean, pricingType?: string | null, subscriptionInterval?: string | null): string {
   if (isFree || price === 0) return "Free";
-  return `$${Number(price).toFixed(2)}`;
+  if (price === -1) return "Subscription";
+  const base = `$${Number(price).toFixed(2)}`;
+  if (pricingType === "subscription") return base + (INTERVAL_LABEL[subscriptionInterval ?? "monthly"] ?? "/mo");
+  if (pricingType === "payment_plan") return base + " (plan)";
+  return base;
 }
 
 type ProductItem = {
@@ -57,44 +63,63 @@ type ProductItem = {
   price: number;
   isFree: boolean;
   imageUrl: string;
-  type: "course" | "download" | "bundle" | "physical" | "membership";
+  type: string;
   href: string;
+  pricingType?: string | null;
+  subscriptionInterval?: string | null;
+  appLabel?: string;
+  nextInstance?: { startDate?: Date | string | null; endDate?: Date | string | null; locationType?: string | null; venueName?: string | null; venueCity?: string | null; venueState?: string | null } | null;
+  primaryCohortGroup?: { name?: string | null; startDate?: Date | string | null; endDate?: Date | string | null } | null;
 };
+
+function toProductItem(p: RelatedProductFeedItem): ProductItem {
+  return {
+    id: `${p.type}-${p.id}`,
+    slug: p.slug,
+    title: p.title,
+    description: p.description ?? "",
+    price: p.price,
+    isFree: p.isFree ?? false,
+    imageUrl: p.imageUrl ?? "",
+    type: p.type,
+    href: p.href,
+    pricingType: p.pricingType ?? null,
+    subscriptionInterval: p.subscriptionInterval ?? null,
+    appLabel: p.appLabel,
+    nextInstance: (p as any).nextInstance ?? null,
+    primaryCohortGroup: (p as any).primaryCohortGroup ?? null,
+  };
+}
 
 export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) {
   const d = data;
-  const selectionMode = d.selectionMode ?? "auto";
+  const selectionMode = resolveRelatedProductsSelectionMode(d);
   const productType = d.productType ?? "both";
-  const maxItems = d.maxItems ?? 3;
+  const maxItems = Math.max(1, Math.min(12, Number(d.maxItems ?? 3) || 3));
   const layout = d.layout ?? "grid";
   const accent = d.accentColor ?? "#179ca3";
   const textColor = d.textColor ?? "#111827";
   const cardBg = d.cardBgColor ?? "#ffffff";
+  const manualRefs = d.manualItems ?? [];
 
   // ── AUTO mode queries ──────────────────────────────────────────────────────
   const needsCourses =
     selectionMode === "auto" &&
-    (productType === "course" || productType === "both" || productType === "all");
-    const needsDownloads =
+    (productType === "course" || productType === "cohort" || productType === "quiz" || productType === "both" || productType === "all");
+  const needsDownloads =
     selectionMode === "auto" &&
     (productType === "download" || productType === "both" || productType === "all");
-  const needsMemberships =
-    selectionMode === "auto" &&
-    (productType === "membership" || productType === "all");
+
   const { data: coursesData, isLoading: coursesLoading } = trpc.lms.listCourses.useQuery(
     { pageSize: maxItems + 4 },
     { enabled: needsCourses }
   );
-    const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloadsPublic.list.useQuery(
-    { page: 1, limit: maxItems + 4 },
+  const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloads.list.useQuery(
+    { limit: maxItems + 4 },
     { enabled: needsDownloads }
   );
-  const { data: membershipsData, isLoading: membershipsLoading } = trpc.lms.memberships.list.useQuery(
-    undefined,
-    { enabled: needsMemberships }
-  );
+
   // ── MANUAL mode query ──────────────────────────────────────────────────────
-  const manualRefs = d.manualItems ?? [];
   const { data: manualData, isLoading: manualLoading } = trpc.funnel.getProductsByIds.useQuery(
     { items: manualRefs },
     { enabled: selectionMode === "manual" && manualRefs.length > 0 }
@@ -103,64 +128,46 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
   const isLoading =
     selectionMode === "manual"
       ? manualLoading
-      : coursesLoading || downloadsLoading || membershipsLoading;
+      : coursesLoading || downloadsLoading;
 
   // ── Build items list ───────────────────────────────────────────────────────
   let items: ProductItem[] = [];
 
   if (selectionMode === "manual") {
-    items = (manualData ?? []).map((p) => ({
-      id: `${p.type}-${p.id}`,
-      slug: p.slug,
-      title: p.title,
-      description: p.description ?? "",
-      price: p.price,
-      isFree: p.isFree ?? false,
-      imageUrl: p.imageUrl ?? "",
-      type: p.type as ProductItem["type"],
-      href: p.href,
-    }));
+    items = pickManualRelatedProducts(manualRefs, manualData ?? [], maxItems).map(toProductItem);
   } else {
-    const courseItems: ProductItem[] = (coursesData?.courses ?? []).map((c) => ({
+    const courseItems: ProductItem[] = (coursesData?.courses ?? []).filter((c) => (c as any).type !== "quiz").map((c) => ({
       id: `course-${c.id}`,
       slug: c.slug,
       title: c.title,
-      description: (c as any).subtitle ?? c.description ?? "",
-      price: Number((c as any).price ?? 0),
-      isFree: Boolean((c as any).isFree ?? Number((c as any).price ?? 0) === 0),
+      description: c.subtitle ?? c.description ?? "",
+      price: c.price,
+      isFree: c.isFree,
       imageUrl: (c as any).coverImageUrl ?? (c as any).thumbnailUrl ?? "",
       type: "course" as const,
       href: `/courses/${c.slug}`,
+      pricingType: (c as any).pricingType ?? null,
+      subscriptionInterval: (c as any).subscriptionInterval ?? null,
     }));
 
     const downloadItems: ProductItem[] = (downloadsData?.products ?? []).map((p) => ({
       id: `download-${p.id}`,
       slug: p.slug,
       title: p.title,
-      description: (p as any).subtitle ?? p.description ?? "",
-      price: Number((p as any).price ?? 0),
-      isFree: Boolean((p as any).isFree ?? Number((p as any).price ?? 0) === 0),
+      description: p.subtitle ?? p.description ?? "",
+      price: p.price,
+      isFree: p.isFree,
       imageUrl: p.thumbnailUrl ?? "",
       type: "download" as const,
       href: `/downloads/${p.slug}`,
     }));
 
-    const membershipItems: ProductItem[] = (membershipsData ?? []).map((m: any) => ({
-      id: `membership-${m.id}`,
-      slug: String(m.id),
-      title: m.name,
-      description: m.description ?? "",
-      price: Number(m.price ?? 0),
-      isFree: !m.price || Number(m.price) === 0,
-      imageUrl: "",
-      type: "membership" as const,
-      href: `/memberships/${m.id}`,
-    }));
-
-    if (productType === "course") items = courseItems;
+    // For auto mode: filter by productType
+    if (productType === "course" || productType === "cohort" || productType === "quiz") items = courseItems;
     else if (productType === "download") items = downloadItems;
-    else if (productType === "membership") items = membershipItems;
-    else items = [...courseItems, ...downloadItems, ...membershipItems];
+    else items = [...courseItems, ...downloadItems];
+    // Note: webinar/community/workshop/app in auto mode fall through to manual mode;
+    // use Manual Pick selection mode for those types.
 
     // Exclude current product
     if (d.excludeCurrentSlug !== false && currentSlug) {
@@ -182,7 +189,7 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
           <h2
             className="text-2xl md:text-3xl font-bold text-center mb-2"
             style={{ color: textColor }}
-            dangerouslySetInnerHTML={{ __html: sanitize(d.headline) }}
+            dangerouslySetInnerHTML={{ __html: d.headline }}
           />
         )}
         {d.subtext && (
@@ -262,12 +269,17 @@ interface CardProps {
 
 function typeInfo(type: string) {
   switch (type) {
-    case "course":   return { Icon: BookOpen,  label: "Course" };
-    case "download": return { Icon: FileDown,  label: "Digital Download" };
-    case "bundle":     return { Icon: Package,   label: "Bundle" };
-    case "physical":   return { Icon: Package,   label: "Physical" };
-    case "membership": return { Icon: Users,     label: "Membership" };
-    default:         return { Icon: Package,   label: type };
+    case "course":    return { Icon: BookOpen,  label: "Course" };
+    case "cohort":    return { Icon: BookOpen,  label: "Cohort" };
+    case "quiz":      return { Icon: BookOpen,  label: "Quiz" };
+    case "download":  return { Icon: FileDown,  label: "Digital Download" };
+    case "bundle":    return { Icon: Package,   label: "Bundle" };
+    case "physical":  return { Icon: Package,   label: "Physical" };
+    case "webinar":   return { Icon: ExternalLink, label: "Webinar" };
+    case "community": return { Icon: Package,   label: "Community" };
+    case "workshop":  return { Icon: BookOpen,  label: "Workshop" };
+    case "app":       return { Icon: ExternalLink, label: "App" };
+    default:          return { Icon: Package,   label: type };
   }
 }
 
@@ -280,12 +292,18 @@ function ProductCard({ item, accent, textColor, cardBg, showPrice, showDescripti
       style={{ backgroundColor: cardBg }}
     >
       {/* Fixed-height thumbnail — never grows */}
-      <div className="h-36 flex-shrink-0 overflow-hidden">
+      <div className="h-36 flex-shrink-0 overflow-hidden relative">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: accent + "22" }}>
             <Icon size={36} style={{ color: accent, opacity: 0.6 }} />
+          </div>
+        )}
+        {/* App name overlay */}
+        {item.type === "app" && item.appLabel && (
+          <div className="absolute inset-0 flex items-end justify-start p-3 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
+            <span className="text-white font-bold text-sm leading-tight drop-shadow-md">{item.appLabel}</span>
           </div>
         )}
       </div>
@@ -317,12 +335,23 @@ function ProductCard({ item, accent, textColor, cardBg, showPrice, showDescripti
           <div className="flex-1" />
         )}
 
-        {/* Footer — price + button always on same row, pinned to bottom */}
+        {/* Instance / cohort info */}
+        {(item.type === "workshop" || item.type === "cohort") && (
+          <div className="mt-2 flex-shrink-0">
+            <CourseInstanceInfo
+              type={item.type as "workshop" | "cohort"}
+              nextInstance={item.nextInstance}
+              primaryCohortGroup={item.primaryCohortGroup}
+              accentColor={accent}
+              compact
+            />
+          </div>
+        )}
+
+        {/* Footer — free badge + button always on same row, pinned to bottom */}
         <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-gray-100 flex-shrink-0">
-          {showPrice ? (
-            <span className="text-sm font-bold whitespace-nowrap" style={{ color: accent }}>
-              {formatPrice(item.price, item.isFree)}
-            </span>
+          {item.isFree ? (
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Free</span>
           ) : (
             <span />
           )}
@@ -351,12 +380,17 @@ function ProductListRow({ item, accent, textColor, cardBg, showPrice, showDescri
       style={{ backgroundColor: cardBg }}
     >
       {/* Fixed thumbnail */}
-      <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
+      <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden relative">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: accent + "22" }}>
             <Icon size={24} style={{ color: accent, opacity: 0.6 }} />
+          </div>
+        )}
+        {item.type === "app" && item.appLabel && (
+          <div className="absolute inset-0 flex items-end justify-start p-1 bg-gradient-to-t from-black/70 via-black/20 to-transparent rounded-lg">
+            <span className="text-white font-bold text-[9px] leading-tight drop-shadow-md">{item.appLabel}</span>
           </div>
         )}
       </div>
@@ -374,14 +408,23 @@ function ProductListRow({ item, accent, textColor, cardBg, showPrice, showDescri
             {item.description.replace(/<[^>]+>/g, "").slice(0, 120)}
           </p>
         )}
+        {(item.type === "workshop" || item.type === "cohort") && (
+          <div className="mt-1">
+            <CourseInstanceInfo
+              type={item.type as "workshop" | "cohort"}
+              nextInstance={item.nextInstance}
+              primaryCohortGroup={item.primaryCohortGroup}
+              accentColor={accent}
+              compact
+            />
+          </div>
+        )}
       </div>
 
-      {/* Price + CTA — same row, right-aligned */}
+      {/* Free badge + CTA — same row, right-aligned */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        {showPrice && (
-          <span className="text-sm font-bold whitespace-nowrap" style={{ color: accent }}>
-            {formatPrice(item.price, item.isFree)}
-          </span>
+        {item.isFree && (
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Free</span>
         )}
         <Link href={item.href}>
           <button

@@ -52,3 +52,6 @@ export function getBrandDisplayConfig(_mode?: BrandMode): BrandDisplayConfig {
     accentColor: "#4ad9e0",
   };
 }
+
+// Compatibility stub - not used in Teachific but needed by ported routers
+export const BRAND_DOMAINS: Record<string, Brand> = {};

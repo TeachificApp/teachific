@@ -2,23 +2,18 @@ import { z } from "zod";
 import { eq, desc, like, or, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb, isPlatformAdmin, getOrgIdForUser } from "../db";
+import { getDb } from "../db";
 import { blockTemplates } from "../../drizzle/schema";
 
 export const blockTemplatesRouter = router({
-  /** List all saved block templates, optionally filtered by search query — scoped to org */
+  /** List all saved block templates, optionally filtered by search query */
   list: protectedProcedure
     .input(z.object({ search: z.string().optional(), blockType: z.string().optional() }))
-    .query(async ({ ctx, input }) => {
+    .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const conditions: any[] = [];
-      // Scope to org unless platform admin
-      if (!isPlatformAdmin(ctx.user.role)) {
-        const orgId = await getOrgIdForUser(ctx.user.id);
-        if (orgId) conditions.push(eq(blockTemplates.orgId, orgId));
-      }
+      const conditions = [];
       if (input.blockType) {
         conditions.push(eq(blockTemplates.blockType, input.blockType));
       }
@@ -47,7 +42,6 @@ export const blockTemplatesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
       const [inserted] = await db.insert(blockTemplates).values({
         name: input.name,
         description: input.description ?? null,
@@ -55,7 +49,6 @@ export const blockTemplatesRouter = router({
         blockData: JSON.stringify(input.blockData),
         tags: input.tags ?? null,
         createdByUserId: ctx.user.id,
-        orgId: orgId ?? null,
       });
 
       return { id: (inserted as any).insertId };
@@ -70,8 +63,7 @@ export const blockTemplatesRouter = router({
 
       const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"];
-      if (existing.createdByUserId !== ctx.user.id && !ADMIN_ROLES.includes(ctx.user.role)) {
+      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -93,8 +85,7 @@ export const blockTemplatesRouter = router({
 
       const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"];
-      if (existing.createdByUserId !== ctx.user.id && !ADMIN_ROLES.includes(ctx.user.role)) {
+      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 

@@ -4702,3 +4702,74 @@
 - [x] Add CertificatePreviewBlock.tsx component (quiz gate, PDF embed, social share)
 - [x] Add creditHours + certificateTitleOverride fields to CourseBuilderPage certificate settings UI
 - [x] Add countTowardCompletion toggle pill to SortableLessonRow (optimistic update)
+
+## Full UA Port — All Changes Since May (Jul 29 2026)
+
+### Schema Migrations
+- [ ] lmsCourses: add completionEmailEnabled, completionEmailSubject, completionEmailBody, completionRedirectUrl
+- [ ] lmsCourses: add customThankYouEnabled, customThankYouBlocks, hidePricingOptions, playerSidebarBlocks, postPurchaseRedirectUrl
+- [ ] lmsCourses: add welcomeEmailEnabled, welcomeEmailSubject, welcomeEmailBody
+- [ ] lmsCourses: add waitlistEnabled, waitlistHeading, waitlistBody, waitlistCtaLabel, waitlistCtaUrl, waitlistRedirectUrl, waitlistSuccessMessage
+- [ ] lmsCourses: add upsellEnabled, upsellHeadline, upsellDescription, upsellCourseId, upsellProductId, upsellProductType
+- [ ] lmsLessons: add lessonStatus (varchar 32, default 'published'), showVideoControls (boolean, default true)
+- [ ] lmsEnrollments: add accessExpiresAt, enrollmentType, source, stripeSubscriptionId
+- [ ] lmsQuizzes: add randomizeAnswers, randomizeQuestions, requirePassingToProgress, showGroupNames, showOnlyPercentage, showPerQuestionResult, useQuestionGroups, questionBankFolderId
+- [ ] lmsQuizQuestions: add correctAnswers, feedbackImageUrl, feedbackVideoUrl, hotspotMarkers, matchingPairs, questionImageUrl, questionVideoUrl
+- [ ] NEW lmsQuizAttempts table (attempt tracking with score, passed, timeTaken, answers)
+- [ ] NEW lmsVideoEvents table (video progress events per lesson per user)
+- [ ] NEW lmsPendingEnrollments table (pre-enrollment queue for waitlists)
+
+### Server
+- [ ] lmsRouter.ts: port video events procedures (recordVideoEvent, getVideoProgress)
+- [ ] lmsRouter.ts: port quiz attempts procedures (submitQuizAttempt, getQuizAttempts)
+- [ ] lmsRouter.ts: port waitlist procedures (joinWaitlist, leaveWaitlist, getWaitlistStatus)
+- [ ] lmsCourseBuilderRouter.ts: add new lmsCourses fields to updateCourse input
+- [ ] lmsCourseBuilderRouter.ts: add lessonStatus, showVideoControls to updateLesson input
+- [ ] lmsEnrollmentAdminRouter.ts: add accessExpiresAt, enrollmentType, source to enrollment procedures
+- [ ] server/lib/enrollmentEmail.ts: port completion email and welcome email support
+- [ ] server/_core/env.ts: sync new env vars from UA
+- [ ] server/_core/index.ts: sync new route registrations from UA
+- [ ] server/routers.ts: sync new sub-router registrations from UA
+
+### Frontend
+- [ ] LessonEffectEditor.tsx: port new effect types from UA
+- [ ] LessonEffectPlayer.tsx: port new effect types from UA
+- [ ] LessonBlockEditor.tsx: port new block types from UA
+- [ ] LessonQuizBlockEditor.tsx: port quiz randomize, media, hotspot, matching support
+- [ ] CourseBuilderPage: add waitlist settings tab/section
+- [ ] CourseBuilderPage: add upsell settings section
+- [ ] CourseBuilderPage: add completion email settings section
+- [ ] CourseBuilderPage: add welcome email settings section
+- [ ] CourseBuilderPage: add custom thank you page settings
+- [ ] CourseBuilderPage: add lessonStatus and showVideoControls to lesson row
+- [ ] App.tsx: sync new routes from UA
+- [ ] shared/const.ts, shared/brands.ts: sync constants from UA
+
+## UA Sync: All Updates Since May 2026
+- [x] Install @emoji-mart/data and @emoji-mart/react packages
+- [x] Copy updated RichTextEditor.tsx from UA (emoji picker, image resize, video trim, etc.)
+- [x] Add RichTextContent named export and backward-compat aliases
+- [x] Add afterPurchaseWorkflow, memberPageBlocksAbove/Below, hidePricingOptions columns to digital_products
+- [x] Add afterPurchaseWorkflow, hidePricingOptions columns to digital_bundles
+- [x] Add bumpMode column to order_bumps table
+- [x] Add curriculum_embed_visibility table and procedures
+- [x] Copy AfterPurchaseWorkflowEditor, HidePricingOptionsToggle, ContentEmbedTab, UserSearchCombobox
+- [x] Copy updated DigitalDownloadsAdmin (new After-Purchase, Content Embed, Hide Pricing tabs)
+- [x] Add getMemberPageBlocks, saveMemberPageBlocks, getAfterPurchaseWorkflow, updateAfterPurchaseWorkflow, etc. procedures
+- [x] Copy updated CertificateTemplatesAdmin
+- [x] Copy updated BlockPreview (video trim, MediaEmbedIframe, lesson_certificate block)
+- [x] Copy videoTrim lib, MediaEmbedIframe, RelatedProductsBlock, CourseInstanceInfo, LMSSalesTab
+- [x] Copy updated CheckoutFormBlock, EmbeddedCheckoutBlock, InlineCheckoutBlock, LessonCommentSection, ErrorBoundary
+- [x] Copy updated lessonCommentsRouter, blockTemplatesRouter, lmsHelpers, lmsQuizLandingRouter, mediaRepoRouter, productsRouter
+- [x] Copy printfulRouter, printifyRouter, printful.ts, printify.ts, bookvault.ts and wire to appRouter
+- [x] Copy updated funnelRouter, generalFormRouter and all supporting lib files
+- [x] Add all missing schema tables: bundleEnrollments, communities, workshopInstances, lmsQuizQuestionGroups, lmsQuizGroupQuestions, questionBank, emailCampaignEvents, emailSenderProfiles, userLoginEvents, userPageViewEvents, userInterests, emailSendLog, userEmailAliases, workshopWaitlistEntries, productAddonItems, bundleItems, bundlePricingOptions, adminNotifications, sitePages, siteNavMenus, siteSettings, lmsInterests, accreditation tables, diyOrganizations, labSubscriptions, etc.
+- [x] Copy analyticsRouter, emailCampaignRouter, formBuilderRouter, emailAuthRouter and other routers
+- [x] Add missing db.ts functions (getUserRoles, ensureUserRole, createFormBranchRule, searchUsersByQuery, etc.)
+- [x] Add BRAND_DOMAINS to shared/brands.ts
+- [x] Copy updated OrderBumpsAdmin (bumpMode, auto-image features)
+- [x] Add autoSave (useAutoSave hook + AutoSaveIndicator) to LandingPageBuilder
+- [x] Copy updated PhysicalProductsAdmin, CohortSchedule, CohortResourceCard
+- [x] Copy relatedProductsBlock.ts to shared directory
+- [x] Add new admin page routes to AdminRouter and SubdomainSchoolRouter in App.tsx (LMSAdmin, AdminDiscountCodesPage, FulfillmentAdmin, ProductAnalytics, UserAnalytics, MediaRepository, GeneralFormBuilder, ContactsAdmin, WidgetManager, PrintfulAdmin, PrintifyAdmin, SitePagesAdmin, SitePageBuilder, BundleLandingPageBuilder, CheckoutPageEditorPage, DownloadAnalytics, AdminNotifications, AdminLessonComments, AdminUserDetailPage)
+- [x] All 427 tests pass

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -11,8 +10,11 @@ import {
   Calendar, Clock, Video, ExternalLink, PlayCircle, FileText,
   Upload, Link2, CheckCircle, AlertCircle, BookOpen, ChevronLeft,
   Eye, Film, CheckCircle2, Download, ChevronRight, CalendarDays,
-  Plus,
+  Plus, MessageCircle, LayoutGrid, List, FolderOpen,
 } from "lucide-react";
+import { CohortResourceCard } from "@/components/cohort/CohortResourceCard";
+import { isSessionOnCalendarDay } from "@shared/cohortSessionDates";
+import RichTextEditor, { RichTextDisplay } from "@/components/RichTextEditor";
 import { Link, useParams, useLocation, useSearch } from "wouter";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -36,14 +38,17 @@ function fmtDuration(mins: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function isUpcoming(d: Date | string | null | undefined) {
+function isUpcoming(d: Date | string | null | undefined, durationMinutes?: number | null) {
   if (!d) return false;
-  return new Date(d) > new Date();
+  // A session is "upcoming/active" until it ends (start + duration)
+  const endMs = new Date(d).getTime() + ((durationMinutes ?? 60) * 60 * 1000);
+  return endMs > Date.now();
 }
 
-function isPast(d: Date | string | null | undefined) {
+function isPast(d: Date | string | null | undefined, durationMinutes?: number | null) {
   if (!d) return false;
-  return new Date(d) < new Date();
+  const endMs = new Date(d).getTime() + ((durationMinutes ?? 60) * 60 * 1000);
+  return endMs < Date.now();
 }
 
 function isDueSoon(d: Date | string | null | undefined) {
@@ -102,7 +107,7 @@ function generateIcs(sessions: any[], courseTitle: string) {
     lines.push(`DTSTART:${toIcsDate(start)}`);
     lines.push(`DTEND:${toIcsDate(end)}`);
     lines.push(`SUMMARY:${s.title}`);
-    if (s.description) lines.push(`DESCRIPTION:${s.description.replace(/\n/g, "\\n")}`);
+    if (s.description) lines.push(`DESCRIPTION:${s.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().replace(/\n/g, "\\n")}`);
     if (s.meetingUrl) lines.push(`URL:${s.meetingUrl}`);
     lines.push("END:VEVENT");
   }
@@ -198,7 +203,10 @@ function CohortCalendar({ sessions, courseTitle }: { sessions: any[]; courseTitl
   })();
 
   function sessionsOnDay(d: Date) {
-    return sessions.filter(s => sameDay(new Date(s.sessionDate), d));
+    return sessions.filter(s => {
+      const tz = s.timezone ?? "America/New_York";
+      return isSessionOnCalendarDay(s.sessionDate, d.getFullYear(), d.getMonth(), d.getDate(), tz);
+    });
   }
 
   return (
@@ -229,13 +237,15 @@ function CohortCalendar({ sessions, courseTitle }: { sessions: any[]; courseTitl
 
       {/* Month View */}
       {view === "month" && (
-        <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+        <div className="border border-gray-200 rounded-xl overflow-hidden bg-white overflow-x-auto">
+          <div className="min-w-[560px]">
           <div className="grid grid-cols-7 border-b border-gray-200">
             {DAYS.map(d => (
               <div key={d} className="text-center text-xs font-semibold text-teal-700 py-2 bg-teal-50/60">{d}</div>
             ))}
           </div>
           <MonthGrid cursor={cursor} today={today} sessionsOnDay={sessionsOnDay} onDayClick={d => { setCursor(d); setView("day"); }} />
+          </div>
         </div>
       )}
 
@@ -319,7 +329,8 @@ function WeekView({ cursor, today, sessionsOnDay, now }: { cursor: Date; today: 
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d; });
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white overflow-x-auto">
+      <div className="min-w-[560px]">
       <div className="grid grid-cols-7 border-b border-gray-200">
         {days.map((d, i) => {
           const isToday = sameDay(d, today);
@@ -343,6 +354,7 @@ function WeekView({ cursor, today, sessionsOnDay, now }: { cursor: Date; today: 
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
@@ -434,7 +446,7 @@ function CalEventChip({ session, now, compact }: { session: any; now: number; co
         )}
         <div className="flex gap-2 mt-2 flex-wrap">
           {joinable && session.meetingUrl ? (
-            <Button size="sm" className=" hover: h-7 text-xs gap-1" asChild>
+            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-7 text-xs gap-1" asChild>
               <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="w-3 h-3" /> Join Now
               </a>
@@ -478,6 +490,49 @@ export default function CohortSchedule() {
     { courseId: id },
     { enabled: !!user && id > 0 }
   );
+  // Discussion state — must be declared before any early returns (Rules of Hooks)
+  const [discBody, setDiscBody] = useState("");
+  const [discMedia, setDiscMedia] = useState<{ url: string; mimeType: string; fileName: string }[]>([]);
+  const [discUploading, setDiscUploading] = useState(false);
+  const initialTab = urlParams.get("tab") ?? "sessions";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const { data: discData, refetch: refetchDisc } = trpc.lmsLearner.getCohortDiscussions.useQuery(
+    { courseId: id },
+    { enabled: activeTab === "discussions" && !!user && id > 0 }
+  );
+  const postDisc = trpc.lmsLearner.postStudentCohortMessage.useMutation({
+    onSuccess: () => { refetchDisc(); setDiscBody(""); setDiscMedia([]); },
+    onError: (e: any) => { const toast = (window as any).__toast; if (toast) toast.error(e.message); },
+  });
+  const deleteDisc = trpc.lmsLearner.deleteStudentCohortMessage.useMutation({
+    onSuccess: () => refetchDisc(),
+    onError: (e: any) => { const toast = (window as any).__toast; if (toast) toast.error(e.message); },
+  });
+  const [replayView, setReplayView] = useState<"grid" | "list">("list");
+  const { data: notifPref, refetch: refetchNotifPref } = trpc.lmsLearner.getCohortNotifPref.useQuery(
+    undefined,
+    { enabled: activeTab === "discussions" && !!user }
+  );
+  const setNotifPref = trpc.lmsLearner.setCohortNotifPref.useMutation({
+    onSuccess: () => { refetchNotifPref(); const toast = (window as any).__toast; if (toast) toast.success(notifPref?.cohortDiscussions ? "Cohort notifications disabled" : "Cohort notifications enabled"); },
+    onError: (e: any) => { const toast = (window as any).__toast; if (toast) toast.error(e.message); },
+  });
+  const handleDiscMediaUpload = async (file: File) => {
+    setDiscUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload/cohort-media", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const json = await res.json();
+      setDiscMedia(prev => [...prev, { url: json.url, mimeType: file.type, fileName: file.name }]);
+    } catch (e: any) {
+      const toast = (window as any).__toast;
+      if (toast) toast.error(e.message ?? "Upload failed");
+    } finally {
+      setDiscUploading(false);
+    }
+  };
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -496,7 +551,7 @@ export default function CohortSchedule() {
           <BookOpen className="w-12 h-12 text-teal-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Sign in to view your cohort</h2>
           <p className="text-gray-500 mb-6">You need to be signed in and enrolled to access this cohort schedule.</p>
-          <Button asChild className=" hover:">
+          <Button asChild className="bg-teal-600 hover:bg-teal-700">
             <a href={getLoginUrl()}>Sign In</a>
           </Button>
         </Card>
@@ -540,9 +595,9 @@ export default function CohortSchedule() {
     );
   }
 
-  const { course, sessions, assignments, recordings, mySubmissions, myGroup } = data as any;
-  const upcomingSessions = sessions.filter((s: any) => isUpcoming(s.sessionDate));
-  const pastSessions = sessions.filter((s: any) => isPast(s.sessionDate));
+  const { course, sessions, assignments, recordings, resources = [], mySubmissions, myGroup } = data as any;
+  const upcomingSessions = sessions.filter((s: any) => isUpcoming(s.sessionDate, s.durationMinutes));
+  const pastSessions = sessions.filter((s: any) => isPast(s.sessionDate, s.durationMinutes));
   const pendingAssignments = assignments.filter((a: any) => a.dueDate && isUpcoming(a.dueDate));
   const overdueAssignments = assignments.filter((a: any) => a.dueDate && isPast(a.dueDate));
   const noDeadlineAssignments = assignments.filter((a: any) => !a.dueDate);
@@ -585,7 +640,7 @@ export default function CohortSchedule() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900 leading-tight">{course.title}</h1>
               {course.description && (
-                <div className="text-gray-500 text-sm mt-1 line-clamp-2" dangerouslySetInnerHTML={{ __html: sanitize(course.description) }} />
+                <div className="text-gray-500 text-sm mt-1 line-clamp-2" dangerouslySetInnerHTML={{ __html: course.description }} />
               )}
             </div>
           </div>
@@ -613,7 +668,7 @@ export default function CohortSchedule() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-        <Tabs defaultValue="sessions">
+        <Tabs defaultValue={initialTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 flex-wrap h-auto gap-1 py-1">
             <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
               <Video className="w-4 h-4" />
@@ -638,6 +693,20 @@ export default function CohortSchedule() {
               Replays
               {(recordings ?? []).length > 0 && (
                 <Badge className="ml-1 bg-teal-500 text-white text-xs px-1.5 py-0">{recordings.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+              <FolderOpen className="w-4 h-4" />
+              Resources
+              {(resources ?? []).length > 0 && (
+                <Badge className="ml-1 bg-teal-500 text-white text-xs px-1.5 py-0">{resources.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="discussions" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+              <MessageCircle className="w-4 h-4" />
+              Discussions
+              {(discData?.messages?.length ?? 0) > 0 && (
+                <Badge className="ml-1 bg-teal-500 text-white text-xs px-1.5 py-0">{discData!.messages.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -729,17 +798,161 @@ export default function CohortSchedule() {
           <TabsContent value="replays">
             {(recordings ?? []).length === 0 ? (
               <Card className="text-center py-16">
-                <Film className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">No recordings yet</p>
-                <p className="text-gray-400 text-sm mt-1">Session recordings will appear here once uploaded by your instructor.</p>
+                <CardContent className="pt-6">
+                  <Film className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No recordings yet</p>
+                  <p className="text-gray-400 text-sm mt-1">Session recordings will appear here once uploaded by your instructor.</p>
+                </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {recordings.map((rec: any) => (
-                  <RecordingCard key={rec.id} recording={rec} />
+              <div>
+                {/* Toolbar: count + grid/list toggle */}
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-gray-500">{recordings.length} recording{recordings.length !== 1 ? "s" : ""}</p>
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setReplayView("grid")}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        replayView === "grid" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"
+                      }`}
+                      title="Grid view"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setReplayView("list")}
+                      className={`p-1.5 rounded-md transition-colors ${
+                        replayView === "list" ? "bg-white shadow-sm text-teal-600" : "text-gray-400 hover:text-gray-600"
+                      }`}
+                      title="List view"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                {replayView === "grid" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {recordings.map((rec: any) => (
+                      <RecordingGridCard key={rec.id} recording={rec} courseId={id} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recordings.map((rec: any) => (
+                      <RecordingListRow key={rec.id} recording={rec} courseId={id} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+          {/* Resources Tab */}
+          <TabsContent value="resources">
+            {(resources ?? []).length === 0 ? (
+              <Card className="text-center py-16">
+                <CardContent className="pt-6">
+                  <FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No resources yet</p>
+                  <p className="text-gray-400 text-sm mt-1">Links and downloads from your instructor will appear here.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {resources.map((res: any) => (
+                  <CohortResourceCard key={res.id} resource={res} />
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Discussions Tab */}
+          <TabsContent value="discussions">
+            <div className="space-y-4">
+              {!discData?.cohortGroupId && (
+                <Card className="text-center py-16"><CardContent className="pt-6">
+                  <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">You are not assigned to a cohort group yet.</p>
+                  <p className="text-gray-400 text-sm mt-1">Discussions will appear here once you are placed in a group.</p>
+                </CardContent></Card>
+              )}
+              {discData?.cohortGroupId && (
+                <>
+                  {/* Notification toggle */}
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={() => setNotifPref.mutate({ cohortDiscussions: !(notifPref?.cohortDiscussions ?? true) })}
+                      disabled={setNotifPref.isPending}
+                      title={notifPref?.cohortDiscussions !== false ? "Disable discussion notifications" : "Enable discussion notifications"}
+                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        notifPref?.cohortDiscussions !== false
+                          ? "bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100"
+                          : "bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill={notifPref?.cohortDiscussions !== false ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                      {notifPref?.cohortDiscussions !== false ? "Notifications On" : "Notifications Off"}
+                    </button>
+                  </div>
+                  {/* Post composer */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                    <RichTextEditor value={discBody} onChange={setDiscBody} placeholder="Share something with your cohort..." minHeight={80} />
+                    {discMedia.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {discMedia.map((m, i) => (
+                          <div key={i} className="relative">
+                            {m.mimeType.startsWith('image/') ? <img src={m.url} alt={m.fileName} className="w-20 h-20 object-cover rounded-lg" /> : <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-500 text-center p-1">{m.fileName}</div>}
+                            <button onClick={() => setDiscMedia(prev => prev.filter((_, j) => j !== i))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer text-xs text-teal-600 hover:underline">
+                        {discUploading ? 'Uploading...' : '+ Add Image/Video'}
+                        <input type="file" accept="image/*,video/*" className="hidden" disabled={discUploading} onChange={e => { if (e.target.files?.[0]) handleDiscMediaUpload(e.target.files[0]); e.target.value = ''; }} />
+                      </label>
+                      <button disabled={((!discBody.trim() || discBody === '<p></p>') && discMedia.length === 0) || postDisc.isPending} onClick={() => postDisc.mutate({ courseId: id, body: (discBody && discBody !== '<p></p>') ? discBody : undefined, mediaUrls: discMedia.length > 0 ? discMedia : undefined })} className="ml-auto px-4 py-1.5 bg-teal-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                        {postDisc.isPending ? 'Posting...' : 'Post'}
+                      </button>
+                    </div>
+                  </div>
+                  {/* Messages */}
+                  <div className="space-y-3">
+                    {(discData.messages ?? []).length === 0 && <p className="text-sm text-gray-400 text-center py-8">No discussions yet. Be the first to post!</p>}
+                    {(discData.messages ?? []).map((msg: any) => (
+                      <div key={msg.id} className={`bg-white border rounded-xl p-4 space-y-2 ${msg.isPinned ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-200'}`}>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            {msg.userAvatar ? (
+                              <img src={msg.userAvatar} alt={msg.userDisplayName || msg.userName} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs font-bold text-teal-700">{(msg.userDisplayName || msg.userName || '?')[0].toUpperCase()}</span>
+                              </div>
+                            )}
+                            <span className="text-sm font-semibold text-gray-800">{msg.userDisplayName || msg.userName}</span>
+                            {msg.isAdminPost && <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">Instructor</span>}
+                            {msg.isPinned && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">📌 Pinned</span>}
+                            <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</span>
+                          </div>
+                          {msg.userId === (discData as any).currentUserId && (
+                            <button onClick={() => { if (confirm('Delete your message?')) deleteDisc.mutate({ id: msg.id, courseId: id }); }} className="text-xs text-red-400 hover:underline">Delete</button>
+                          )}
+                        </div>
+                        {msg.body && (msg.body.startsWith('<') ? <RichTextDisplay content={msg.body} className="text-sm text-gray-700" /> : <p className="text-sm text-gray-700 whitespace-pre-wrap">{msg.body}</p>)}
+                        {(msg.mediaUrls as any[])?.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {(msg.mediaUrls as any[]).map((m: any, i: number) => (
+                              m.mimeType?.startsWith('image/') ? <img key={i} src={m.url} alt={m.fileName} className="w-24 h-24 object-cover rounded-lg" /> : <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">{m.fileName}</a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -783,7 +996,7 @@ function SessionCard({ session, isUpcoming: isUpcomingProp, now }: { session: an
               </div>
             </div>
             {session.description && (
-              <p className="text-gray-500 text-sm mt-1 line-clamp-2">{session.description}</p>
+              <RichTextDisplay content={session.description} className="text-gray-500 text-sm mt-1 line-clamp-2" />
             )}
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
               <span className="flex items-center gap-1">
@@ -803,7 +1016,7 @@ function SessionCard({ session, isUpcoming: isUpcomingProp, now }: { session: an
             )}
             <div className="flex gap-2 mt-3 flex-wrap">
               {isUpcomingProp && hasMeetingLink && joinable && (
-                <Button size="sm" className=" hover: h-8 text-xs gap-1.5" asChild>
+                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-8 text-xs gap-1.5" asChild>
                   <a href={session.meetingUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="w-3.5 h-3.5" />
                     Join Live Session
@@ -914,60 +1127,225 @@ function AssignmentCard({ assignment, overdue, courseId, mySubmission, onOpen }:
   );
 }
 
-// ─── RecordingCard ────────────────────────────────────────────────────────────
+// ─── Recording Card Components ──────────────────────────────────────────────────
 
-function RecordingCard({ recording }: { recording: any }) {
-  const hasVideo = !!recording.videoUrl;
-  const hasEmbed = !!recording.embedCode;
+/**
+ * Derive a thumbnail URL from a video URL when no explicit thumbnail is stored.
+ * Supports YouTube, Vimeo, Loom, Wistia, and direct video files.
+ */
+function getAutoThumbnail(videoUrl: string | null | undefined): string | null {
+  if (!videoUrl) return null;
+  // YouTube — use hqdefault (always available)
+  const ytMatch = videoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([-\w]+)/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  // Vimeo — thumbnail requires API call; return a placeholder signal so we can lazy-fetch
+  const vimeoMatch = videoUrl.match(/vimeo\.com\/(?:video\/)?([\d]+)/);
+  if (vimeoMatch) return `__vimeo__${vimeoMatch[1]}`;
+  // Loom — use their CDN thumbnail (no API key needed)
+  const loomMatch = videoUrl.match(/loom\.com\/(?:share|embed)\/([a-f0-9]+)/);
+  if (loomMatch) return `__loom__${loomMatch[1]}`;
+  // Wistia — use their oEmbed endpoint
+  const wistiaMatch = videoUrl.match(/(?:wistia\.com\/medias\/|wistia\.net\/medias\/)([a-z0-9]+)/);
+  if (wistiaMatch) return `__wistia__${wistiaMatch[1]}`;
+  // Direct video file — use the video element's poster
+  if (/\.(mp4|webm|ogg|mov)([?#]|$)/i.test(videoUrl)) return `__video__${videoUrl}`;
+  return null;
+}
 
+/** Resolves Vimeo thumbnail via oEmbed (client-side, no auth needed) */
+function useVimeoThumbnail(videoId: string | null): string | null {
+  const [thumb, setThumb] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!videoId) return;
+    fetch(`https://vimeo.com/api/oembed.json?url=https://vimeo.com/${videoId}&width=640`)
+      .then(r => r.json())
+      .then(d => { if (d.thumbnail_url) setThumb(d.thumbnail_url); })
+      .catch(() => {});
+  }, [videoId]);
+  return thumb;
+}
+
+/** Resolves Loom thumbnail — uses their CDN directly, no API key needed */
+function useLoomThumbnail(videoId: string | null): string | null {
+  const [thumb, setThumb] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!videoId) return;
+    setThumb(`https://cdn.loom.com/sessions/thumbnails/${videoId}-with-play.gif`);
+  }, [videoId]);
+  return thumb;
+}
+
+/** Resolves Wistia thumbnail via their oEmbed endpoint */
+function useWistiaThumbnail(videoId: string | null): string | null {
+  const [thumb, setThumb] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!videoId) return;
+    fetch(`https://fast.wistia.com/oembed?url=https://home.wistia.com/medias/${videoId}`)
+      .then(r => r.json())
+      .then(d => { if (d.thumbnail_url) setThumb(d.thumbnail_url); })
+      .catch(() => {});
+  }, [videoId]);
+  return thumb;
+}
+
+/**
+ * Resolves the best thumbnail for a recording:
+ * 1. Explicit thumbnailUrl (admin-uploaded)
+ * 2. Auto-derived from videoUrl (YouTube / Vimeo / Loom / Wistia / direct video)
+ */
+function RecordingThumbnail({ recording, className }: { recording: any; className?: string }) {
+  const autoRaw = getAutoThumbnail(recording.videoUrl);
+  const isVimeo = autoRaw?.startsWith("__vimeo__") ?? false;
+  const vimeoId = isVimeo ? autoRaw!.replace("__vimeo__", "") : null;
+  const vimeoThumb = useVimeoThumbnail(vimeoId);
+  const isLoom = autoRaw?.startsWith("__loom__") ?? false;
+  const loomId = isLoom ? autoRaw!.replace("__loom__", "") : null;
+  const loomThumb = useLoomThumbnail(loomId);
+  const isWistia = autoRaw?.startsWith("__wistia__") ?? false;
+  const wistiaId = isWistia ? autoRaw!.replace("__wistia__", "") : null;
+  const wistiaThumb = useWistiaThumbnail(wistiaId);
+  const isDirectVideo = autoRaw?.startsWith("__video__") ?? false;
+  const directVideoUrl = isDirectVideo ? autoRaw!.replace("__video__", "") : null;
+  const [imgError, setImgError] = React.useState(false);
+
+  const thumbSrc = !imgError && (
+    recording.thumbnailUrl ||
+    (isVimeo ? vimeoThumb : null) ||
+    (isLoom ? loomThumb : null) ||
+    (isWistia ? wistiaThumb : null) ||
+    (!isVimeo && !isLoom && !isWistia && !isDirectVideo ? autoRaw : null)
+  );
+
+  if (thumbSrc) {
+    return (
+      <img
+        src={thumbSrc}
+        alt={recording.title}
+        className={className ?? "w-full h-full object-cover"}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  if (isDirectVideo && directVideoUrl) {
+    return (
+      <video
+        src={directVideoUrl}
+        className={className ?? "w-full h-full object-cover"}
+        preload="metadata"
+        muted
+        playsInline
+        onLoadedMetadata={(e) => { (e.target as HTMLVideoElement).currentTime = 2; }}
+      />
+    );
+  }
+  // Fallback: gradient placeholder with film icon
   return (
-    <Card className="border border-gray-200 bg-white">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-teal-100">
-            <Film className="w-5 h-5 text-teal-600" />
+    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-50 to-teal-100">
+      <Film className="w-10 h-10 text-teal-300" />
+    </div>
+  );
+}
+
+function getVideoEmbedUrl(url: string): { type: "iframe" | "video"; src: string } {
+  if (!url) return { type: "video", src: url };
+  // YouTube
+  const ytMatch = url.match(/(?:[?&]v=|youtu\.be\/|youtube\.com\/(?:shorts\/|embed\/))([-\w]+)/);
+  if (ytMatch) return { type: "iframe", src: `https://www.youtube.com/embed/${ytMatch[1]}?rel=0` };
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\.?\d+)/);
+  if (vimeoMatch) return { type: "iframe", src: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+  // Direct video file
+  if (/\.(mp4|webm|ogg|mov)([?#]|$)/i.test(url)) return { type: "video", src: url };
+  // Anything else (Loom, Wistia, custom embed URLs) — try as iframe
+  return { type: "iframe", src: url };
+}
+
+/** Grid card — thumbnail + title + progress, links to player page */
+function RecordingGridCard({ recording, courseId }: { recording: any; courseId: number }) {
+  const durationMins = recording.durationSeconds ? Math.round(recording.durationSeconds / 60) : null;
+  return (
+    <Link href={`/cohort/${courseId}/replay/${recording.id}`}>
+      <Card className="border border-gray-200 bg-white hover:border-teal-300 hover:shadow-md transition-all cursor-pointer group overflow-hidden">
+        {/* Thumbnail — absolute-positioned to fill aspect-video container correctly */}
+        <div className="w-full aspect-video bg-gradient-to-br from-teal-50 to-teal-100 relative overflow-hidden">
+          <div className="absolute inset-0">
+            <RecordingThumbnail recording={recording} className="w-full h-full object-cover" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <h3 className="font-semibold text-gray-900 text-base leading-tight">{recording.title}</h3>
-              <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs flex-shrink-0">Recording</Badge>
+          {/* Play overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+            <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+              <PlayCircle className="w-7 h-7 text-teal-600" />
             </div>
-            {recording.description && (
-              <p className="text-gray-500 text-sm mt-1 line-clamp-2">{recording.description}</p>
+          </div>
+          {/* Duration badge */}
+          {durationMins && (
+            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+              {fmtDuration(durationMins)}
+            </div>
+          )}
+        </div>
+        <CardContent className="p-3">
+          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2 group-hover:text-teal-700 transition-colors">
+            {recording.title}
+          </h3>
+          {/* Linked session name — shown when recording is tied to a specific session */}
+          {recording.linkedSessionTitle && (
+            <p className="text-teal-600 text-xs mt-1 font-medium flex items-center gap-1 truncate">
+              <BookOpen className="w-3 h-3 flex-shrink-0" />
+              {recording.linkedSessionTitle}
+            </p>
+          )}
+          {/* Session date — prefer linked session date, fall back to recording's own sessionDate */}
+          {(recording.linkedSessionDate || recording.sessionDate) && (
+            <p className="text-gray-400 text-xs mt-0.5 flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {fmtDate(recording.linkedSessionDate ?? recording.sessionDate)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+/** List row — compact single-line row, links to player page */
+function RecordingListRow({ recording, courseId }: { recording: any; courseId: number }) {
+  const durationMins = recording.durationSeconds ? Math.round(recording.durationSeconds / 60) : null;
+  return (
+    <Link href={`/cohort/${courseId}/replay/${recording.id}`}>
+      <div className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:border-teal-300 hover:bg-teal-50/30 transition-all cursor-pointer group">
+        {/* Thumbnail — 16:9 aspect box, absolute-positioned fill */}
+        <div className="w-16 aspect-video rounded-lg bg-teal-100 flex-shrink-0 overflow-hidden relative">
+          <div className="absolute inset-0">
+            <RecordingThumbnail recording={recording} className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/10 transition-colors">
+            <PlayCircle className="w-4 h-4 text-white drop-shadow opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-gray-900 text-sm truncate group-hover:text-teal-700 transition-colors">{recording.title}</p>
+          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            {recording.linkedSessionTitle && (
+              <span className="text-teal-600 text-xs font-medium flex items-center gap-0.5 truncate max-w-[180px]">
+                <BookOpen className="w-3 h-3 flex-shrink-0" />
+                {recording.linkedSessionTitle}
+              </span>
             )}
-            {recording.sessionDate && (
-              <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
-                <Calendar className="w-3.5 h-3.5" />
-                Session: {fmtDate(recording.sessionDate)}
-              </div>
-            )}
-            {hasEmbed && (
-              <div className="mt-3 rounded-lg overflow-hidden border border-gray-200"
-                dangerouslySetInnerHTML={{ __html: sanitize(recording.embedCode) }}
-              />
-            )}
-            {hasVideo && !hasEmbed && (
-              <div className="mt-3">
-                <video
-                  src={recording.videoUrl}
-                  controls
-                  className="w-full rounded-lg border border-gray-200 max-h-[360px]"
-                  preload="metadata"
-                />
-              </div>
-            )}
-            {!hasEmbed && recording.externalUrl && (
-              <Button size="sm" variant="outline" className="mt-3 h-8 text-xs gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50" asChild>
-                <a href={recording.externalUrl} target="_blank" rel="noopener noreferrer">
-                  <PlayCircle className="w-3.5 h-3.5" />
-                  Watch Recording
-                </a>
-              </Button>
+            {(recording.linkedSessionDate || recording.sessionDate) && (
+              <span className="text-gray-400 text-xs flex items-center gap-0.5">
+                <Calendar className="w-3 h-3" />
+                {fmtDate(recording.linkedSessionDate ?? recording.sessionDate)}
+              </span>
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+        {durationMins && (
+          <span className="text-xs text-gray-400 flex-shrink-0">{fmtDuration(durationMins)}</span>
+        )}
+        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
+      </div>
+    </Link>
   );
 }
 

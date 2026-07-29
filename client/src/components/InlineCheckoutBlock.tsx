@@ -36,7 +36,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export interface InlineCheckoutProduct {
   name: string;
   description: string;
-  price: number;          // dollars (e.g. 37.00)
+  price: number;          // dollars
   imageUrl?: string;
   type?: string;          // "course" | "download" | "physical" | "membership" | "other"
 }
@@ -45,7 +45,7 @@ export interface InlineCheckoutOrderBump {
   title: string;
   headline: string;
   description: string;
-  price: number;          // dollars (e.g. 27.00)
+  price: number;          // dollars
   imageUrl?: string;
   ctaText?: string;
   ctaEmoji?: string;
@@ -60,8 +60,8 @@ export interface AdditionalAccessItem {
   type: "course" | "download" | "physical" | "membership";
   /** DB product/course ID (for course/download/physical) */
   productId?: number;
-  /** Brand slug for membership grants: "teachific" | "both" */
-  brand?: "teachific" | "both";
+  /** Brand slug for membership grants: "aaus" | "iheartecho" | "both" */
+  brand?: "aaus" | "iheartecho" | "both";
 }
 
 export interface InlineCheckoutBlockData {
@@ -92,12 +92,11 @@ export interface InlineCheckoutBlockData {
   sourceType?: "funnel" | "landing_page" | "product_page" | "lms_lesson" | "other";
   sourceFunnelId?: number;
   sourceLandingPageId?: number;
-  orgId?: number;
   // Additional access items granted at no extra charge after payment
   additionalAccess?: AdditionalAccessItem[];
   // Legacy single-item fulfillment fields (deprecated — use additionalAccess)
   lmsCourseId?: number;
-  fulfillmentBrand?: "teachific" | "both";
+  fulfillmentBrand?: "aaus" | "iheartecho" | "both";
 }
 
 // ─── Submit icon renderer ────────────────────────────────────────────────────
@@ -211,6 +210,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     addedBumps.forEach(i => { if (orderBumps[i]) t += orderBumps[i].price; });
     return t;
   }, [selectedIdx, addedBumps, products, orderBumps]);
+  const totalCents = Math.round(totalAmount * 100); // convert dollars to cents for Stripe (unused here, prices sent as dollars to server)
 
   const fmt = (dollars: number) => `$${Number(dollars).toFixed(2)}`;
 
@@ -242,17 +242,10 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     setSubmitting(true);
     setCardError(null);
 
-    if (!data.orgId) {
-      toast.error("Checkout is missing organization context.");
-      setSubmitting(false);
-      return;
-    }
-
     // ── Free order: skip Stripe entirely ──
     if (totalAmount === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
-          orgId: data.orgId,
           email,
           firstName: firstName || undefined,
           lastName:  lastName  || undefined,
@@ -265,7 +258,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
           sourceLandingPageId: data.sourceLandingPageId,
           successRedirect: data.successRedirect,
           origin: window.location.origin,
-          fulfillmentCourseId: data.lmsCourseId,
+          lmsCourseId: data.lmsCourseId,
           fulfillmentBrand: data.fulfillmentBrand,
           additionalAccess: (data as any).additionalAccess ?? undefined,
         });
@@ -281,7 +274,6 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     try {
       // 1. Create PaymentIntent on server
       const intentResult = await createPaymentIntent.mutateAsync({
-        orgId: data.orgId,
         email,
         firstName: firstName || undefined,
         lastName:  lastName  || undefined,
@@ -304,7 +296,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
         origin: window.location.origin,
         // Legacy single-item fulfillment (backward compat) — these are still passed as metadata
         // for the webhook to process. additionalAccess array is resolved server-side from block data.
-        fulfillmentCourseId: data.lmsCourseId,
+        lmsCourseId: data.lmsCourseId,
         fulfillmentBrand: data.fulfillmentBrand,
         promoCode: promoCode || undefined,
       });
@@ -604,7 +596,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
                         <img
                           src={bump.imageUrl}
                           alt=""
-                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                          className="w-20 h-28 rounded-lg object-cover flex-shrink-0"
                         />
                       )}
 

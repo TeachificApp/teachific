@@ -2,6 +2,16 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { CANONICAL_FEATURE_KEYS } from "../shared/tierLimits";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  accreditationFormBranchRules,
+  accreditationFormItems,
+  accreditationFormOptions,
+  accreditationFormOrgVisibilityRules,
+  accreditationFormSections,
+  accreditationFormSubmissions,
+  accreditationFormTemplateAssignments,
+  accreditationFormTemplates,
+  accreditationReadiness,
+  accreditationReadinessNavigator,
   analyticsEvents,
   contentFolders,
   contentPackages,
@@ -19,6 +29,9 @@ import {
   platformSettings,
   scormData,
   subscriptionPlanLimits,
+  diyOrganizations,
+  labSubscriptions,
+  userRoles,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -952,4 +965,583 @@ export async function getOrCreateAccessToken(userId: number): Promise<string> {
   const token = randomBytes(32).toString("hex");
   await db.update(users).set({ accessToken: token } as any).where(eq(users.id, userId));
   return token;
+}
+
+export async function searchUsersByQuery(query: string, limit = 10): Promise<Array<{
+  id: number;
+  name: string | null;
+  displayName: string | null;
+  email: string | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  const q = `%${query.trim()}%`;
+  return db.select({
+    id: users.id,
+    name: users.name,
+    displayName: users.displayName,
+    email: users.email,
+  }).from(users)
+    .where(sql`(${users.name} LIKE ${q} OR ${users.displayName} LIKE ${q} OR ${users.email} LIKE ${q})`)
+    .limit(limit);
+}
+
+// ─── User Roles helpers ───────────────────────────────────────────────────────
+export type AppRole = "user" | "premium_user" | "diy_admin" | "diy_user" | "platform_admin" | "accreditation_manager" | "education_manager" | "education_admin" | "education_student" | "platform_owner" | "platform_moderator" | "instructor" | "team_admin" | "affiliate";
+
+export async function getUserRoles(userId: number): Promise<AppRole[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(userRoles).where(eq(userRoles.userId, userId));
+  return rows.map(r => r.role as AppRole);
+}
+
+export async function ensureUserRole(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(userRoles)
+    .where(and(eq(userRoles.userId, userId), eq(userRoles.role, "user"))).limit(1);
+  if (existing.length > 0) return;
+  await db.insert(userRoles).values({ userId, role: "user", assignedByUserId: userId });
+}
+
+/** No-op stub: Thinkific is not used in Teachific */
+export async function markThinkificEnrolled(_userId: number): Promise<void> {
+  // Not applicable in Teachific
+}
+
+
+// ─── Form Builder & Accreditation DB Helpers (ported from UA) ───────────────
+
+export async function listFormTemplates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accreditationFormTemplates).orderBy(accreditationFormTemplates.name);
+}
+
+export async function getFormTemplateById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(accreditationFormTemplates).where(eq(accreditationFormTemplates.id, id));
+  return rows[0] ?? null;
+}
+
+export async function createFormTemplate(data: InsertAccreditationFormTemplate) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(accreditationFormTemplates).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function updateFormTemplate(id: number, data: Partial<InsertAccreditationFormTemplate>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(accreditationFormTemplates).set({ ...data, updatedAt: new Date() }).where(eq(accreditationFormTemplates.id, id));
+}
+
+export async function deleteFormTemplate(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  // Cascade delete all related data
+  const sections = await db.select({ id: accreditationFormSections.id }).from(accreditationFormSections).where(eq(accreditationFormSections.templateId, id));
+  for (const s of sections) {
+    const items = await db.select({ id: accreditationFormItems.id }).from(accreditationFormItems).where(eq(accreditationFormItems.sectionId, s.id));
+    for (const item of items) {
+      await db.delete(accreditationFormOptions).where(eq(accreditationFormOptions.itemId, item.id));
+    }
+    await db.delete(accreditationFormItems).where(eq(accreditationFormItems.sectionId, s.id));
+  }
+  await db.delete(accreditationFormSections).where(eq(accreditationFormSections.templateId, id));
+  await db.delete(accreditationFormBranchRules).where(eq(accreditationFormBranchRules.templateId, id));
+  await db.delete(accreditationFormTemplates).where(eq(accreditationFormTemplates.id, id));
+}
+
+export async function getFullFormTemplate(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const template = await getFormTemplateById(id);
+  if (!template) return null;
+  const sections = await db.select().from(accreditationFormSections).where(eq(accreditationFormSections.templateId, id)).orderBy(accreditationFormSections.sortOrder);
+  const items = await db.select().from(accreditationFormItems).where(eq(accreditationFormItems.templateId, id)).orderBy(accreditationFormItems.sortOrder);
+  const itemIds = items.map(i => i.id);
+  const options = itemIds.length > 0 ? await db.select().from(accreditationFormOptions).where(inArray(accreditationFormOptions.itemId, itemIds)).orderBy(accreditationFormOptions.sortOrder) : [];
+  const branchRules = await db.select().from(accreditationFormBranchRules).where(eq(accreditationFormBranchRules.templateId, id));
+  return { template, sections, items, options, branchRules };
+}
+
+export async function createFormSection(data: InsertAccreditationFormSection) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(accreditationFormSections).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function updateFormSection(id: number, data: Partial<InsertAccreditationFormSection>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(accreditationFormSections).set(data).where(eq(accreditationFormSections.id, id));
+}
+
+export async function deleteFormSection(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const items = await db.select({ id: accreditationFormItems.id }).from(accreditationFormItems).where(eq(accreditationFormItems.sectionId, id));
+  for (const item of items) {
+    await db.delete(accreditationFormOptions).where(eq(accreditationFormOptions.itemId, item.id));
+  }
+  await db.delete(accreditationFormItems).where(eq(accreditationFormItems.sectionId, id));
+  await db.delete(accreditationFormSections).where(eq(accreditationFormSections.id, id));
+}
+
+export async function reorderFormSections(sectionOrders: { id: number; sortOrder: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  for (const { id, sortOrder } of sectionOrders) {
+    await db.update(accreditationFormSections).set({ sortOrder }).where(eq(accreditationFormSections.id, id));
+  }
+}
+
+export async function createFormItem(data: InsertAccreditationFormItem) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(accreditationFormItems).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function updateFormItem(id: number, data: Partial<InsertAccreditationFormItem>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(accreditationFormItems).set(data).where(eq(accreditationFormItems.id, id));
+}
+
+export async function deleteFormItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(accreditationFormOptions).where(eq(accreditationFormOptions.itemId, id));
+  await db.delete(accreditationFormBranchRules).where(
+    or(eq(accreditationFormBranchRules.targetItemId, id), eq(accreditationFormBranchRules.conditionItemId, id))
+  );
+  await db.delete(accreditationFormItems).where(eq(accreditationFormItems.id, id));
+}
+
+export async function reorderFormItems(itemOrders: { id: number; sortOrder: number; sectionId: number }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  for (const { id, sortOrder, sectionId } of itemOrders) {
+    await db.update(accreditationFormItems).set({ sortOrder, sectionId }).where(eq(accreditationFormItems.id, id));
+  }
+}
+
+export async function createFormOption(data: InsertAccreditationFormOption) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(accreditationFormOptions).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function updateFormOption(id: number, data: Partial<InsertAccreditationFormOption>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(accreditationFormOptions).set(data).where(eq(accreditationFormOptions.id, id));
+}
+
+export async function deleteFormOption(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(accreditationFormOptions).where(eq(accreditationFormOptions.id, id));
+}
+
+export async function replaceFormOptions(itemId: number, options: Omit<InsertAccreditationFormOption, "itemId">[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(accreditationFormOptions).where(eq(accreditationFormOptions.itemId, itemId));
+  if (options.length > 0) {
+    await db.insert(accreditationFormOptions).values(options.map(o => ({ ...o, itemId })));
+  }
+}
+
+export async function createFormBranchRule(data: InsertAccreditationFormBranchRule) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const [result] = await db.insert(accreditationFormBranchRules).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function updateFormBranchRule(id: number, data: Partial<InsertAccreditationFormBranchRule>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.update(accreditationFormBranchRules).set(data).where(eq(accreditationFormBranchRules.id, id));
+}
+
+export async function deleteFormBranchRule(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(accreditationFormBranchRules).where(eq(accreditationFormBranchRules.id, id));
+}
+
+export async function getFormBranchRulesByTemplate(templateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accreditationFormBranchRules).where(eq(accreditationFormBranchRules.templateId, templateId));
+}
+
+export async function listDiyOrganizations() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: diyOrganizations.id, name: diyOrganizations.name, accreditationTypes: diyOrganizations.accreditationTypes })
+    .from(diyOrganizations)
+    .orderBy(diyOrganizations.name);
+}
+
+export async function getOrgVisibilityRulesByTemplate(templateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accreditationFormOrgVisibilityRules).where(eq(accreditationFormOrgVisibilityRules.templateId, templateId));
+}
+
+export async function saveOrgVisibilityRules(templateId: number, rules: InsertAccreditationFormOrgVisibilityRule[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(accreditationFormOrgVisibilityRules).where(eq(accreditationFormOrgVisibilityRules.templateId, templateId));
+  if (rules.length > 0) {
+    await db.insert(accreditationFormOrgVisibilityRules).values(rules);
+  }
+}
+
+export async function deleteOrgVisibilityRule(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.delete(accreditationFormOrgVisibilityRules).where(eq(accreditationFormOrgVisibilityRules.id, id));
+}
+
+export async function getTemplateAssignments() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accreditationFormTemplateAssignments).orderBy(accreditationFormTemplateAssignments.formType);
+}
+
+export async function getActiveFormMenuItems(orgId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all active assignments, prefer org-specific over global
+  const rows = await db.select({
+    id: accreditationFormTemplateAssignments.id,
+    formType: accreditationFormTemplateAssignments.formType,
+    templateId: accreditationFormTemplateAssignments.templateId,
+    orgId: accreditationFormTemplateAssignments.orgId,
+    templateName: accreditationFormTemplates.name,
+    templateDescription: accreditationFormTemplates.description,
+  })
+    .from(accreditationFormTemplateAssignments)
+    .innerJoin(accreditationFormTemplates, eq(accreditationFormTemplateAssignments.templateId, accreditationFormTemplates.id))
+    .where(eq(accreditationFormTemplateAssignments.isActive, true))
+    .orderBy(accreditationFormTemplateAssignments.formType);
+  // Deduplicate: prefer org-specific over global for same formType
+  const seen = new Map<string, typeof rows[0]>();
+  for (const row of rows) {
+    const key = row.formType;
+    const existing = seen.get(key);
+    if (!existing || (row.orgId === orgId && existing.orgId !== orgId)) {
+      seen.set(key, row);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+export async function upsertTemplateAssignment(data: InsertAccreditationFormTemplateAssignment) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  // Deactivate any existing assignment for same formType + orgId scope
+  await db.update(accreditationFormTemplateAssignments)
+    .set({ isActive: false, updatedAt: new Date() })
+    .where(and(
+      eq(accreditationFormTemplateAssignments.formType, data.formType),
+      data.orgId
+        ? eq(accreditationFormTemplateAssignments.orgId, data.orgId)
+        : sql`${accreditationFormTemplateAssignments.orgId} IS NULL`
+    ));
+  const [result] = await db.insert(accreditationFormTemplateAssignments).values({ ...data, isActive: true });
+  return (result as any).insertId as number;
+}
+
+export async function deleteTemplateAssignment(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.delete(accreditationFormTemplateAssignments).where(eq(accreditationFormTemplateAssignments.id, id));
+}
+
+export async function createFormSubmission(data: InsertAccreditationFormSubmission) {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  const [result] = await db.insert(accreditationFormSubmissions).values(data);
+  return (result as any).insertId as number;
+}
+
+export async function getFormSubmissionById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(accreditationFormSubmissions).where(eq(accreditationFormSubmissions.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getFormSubmissionsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accreditationFormSubmissions)
+    .where(eq(accreditationFormSubmissions.submittedByUserId, userId))
+    .orderBy(desc(accreditationFormSubmissions.submittedAt));
+}
+
+export async function getFormSubmissionsByOrg(orgId: number, formType?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(accreditationFormSubmissions.orgId, orgId)];
+  if (formType) conditions.push(eq(accreditationFormSubmissions.formType, formType));
+  return db.select().from(accreditationFormSubmissions)
+    .where(and(...conditions))
+    .orderBy(desc(accreditationFormSubmissions.submittedAt));
+}
+
+export async function getFormSubmissionsByTemplate(templateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(accreditationFormSubmissions)
+    .where(eq(accreditationFormSubmissions.templateId, templateId))
+    .orderBy(desc(accreditationFormSubmissions.submittedAt));
+}
+
+export async function updateFormSubmissionStatus(id: number, status: 'draft' | 'submitted' | 'reviewed') {
+  const db = await getDb();
+  if (!db) throw new Error('DB unavailable');
+  await db.update(accreditationFormSubmissions).set({ status, updatedAt: new Date() }).where(eq(accreditationFormSubmissions.id, id));
+}
+
+export async function getActiveTemplateForFormType(formType: string, orgId?: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  // Prefer org-specific assignment, fall back to global
+  if (orgId) {
+    const orgRow = await db.select().from(accreditationFormTemplateAssignments)
+      .where(and(
+        eq(accreditationFormTemplateAssignments.formType, formType),
+        eq(accreditationFormTemplateAssignments.orgId, orgId),
+        eq(accreditationFormTemplateAssignments.isActive, true)
+      )).limit(1);
+    if (orgRow.length > 0) return orgRow[0];
+  }
+  const globalRow = await db.select().from(accreditationFormTemplateAssignments)
+    .where(and(
+      eq(accreditationFormTemplateAssignments.formType, formType),
+      eq(accreditationFormTemplateAssignments.isActive, true),
+      sql`${accreditationFormTemplateAssignments.orgId} IS NULL`
+    )).limit(1);
+  return globalRow[0];
+}
+
+export async function getFormSubmissionsForLab(filter: FormSubmissionFilter) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  // Resolve labId → adminUserId → diyOrganizations.ownerUserId → orgId
+  const labRow = await db
+    .select({ adminUserId: labSubscriptions.adminUserId })
+    .from(labSubscriptions)
+    .where(eq(labSubscriptions.id, filter.labId))
+    .limit(1);
+  const adminUserId = labRow[0]?.adminUserId;
+  if (!adminUserId) return { rows: [], total: 0 };
+  const orgRow = await db
+    .select({ orgId: diyOrganizations.id })
+    .from(diyOrganizations)
+    .where(eq(diyOrganizations.ownerUserId, adminUserId))
+    .limit(1);
+  const orgId = orgRow[0]?.orgId;
+  if (!orgId) return { rows: [], total: 0 };
+  const conditions: Parameters<typeof and>[0][] = [eq(accreditationFormSubmissions.orgId, orgId)];
+  if (filter.formType) conditions.push(eq(accreditationFormSubmissions.formType, filter.formType));
+  if (filter.templateId) conditions.push(eq(accreditationFormSubmissions.templateId, filter.templateId));
+  if (filter.submittedByUserId) conditions.push(eq(accreditationFormSubmissions.submittedByUserId, filter.submittedByUserId));
+  if (filter.status) conditions.push(eq(accreditationFormSubmissions.status, filter.status));
+  if (filter.dateFrom) conditions.push(gte(accreditationFormSubmissions.submittedAt, filter.dateFrom));
+  if (filter.dateTo) conditions.push(lte(accreditationFormSubmissions.submittedAt, filter.dateTo));
+  const whereClause = and(...conditions);
+  const countResult = await db
+    .select({ total: count() })
+    .from(accreditationFormSubmissions)
+    .where(whereClause);
+  const total = countResult[0]?.total ?? 0;
+  const rows = await db
+    .select({
+      id: accreditationFormSubmissions.id,
+      templateId: accreditationFormSubmissions.templateId,
+      formType: accreditationFormSubmissions.formType,
+      submittedByUserId: accreditationFormSubmissions.submittedByUserId,
+      reviewTargetType: accreditationFormSubmissions.reviewTargetType,
+      reviewTargetId: accreditationFormSubmissions.reviewTargetId,
+      qualityScore: accreditationFormSubmissions.qualityScore,
+      maxPossibleScore: accreditationFormSubmissions.maxPossibleScore,
+      status: accreditationFormSubmissions.status,
+      submittedAt: accreditationFormSubmissions.submittedAt,
+      updatedAt: accreditationFormSubmissions.updatedAt,
+      submitterName: users.name,
+      submitterDisplayName: users.displayName,
+      submitterEmail: users.email,
+      submitterCredentials: users.credentials,
+      templateName: accreditationFormTemplates.name,
+    })
+    .from(accreditationFormSubmissions)
+    .leftJoin(users, eq(accreditationFormSubmissions.submittedByUserId, users.id))
+    .leftJoin(accreditationFormTemplates, eq(accreditationFormSubmissions.templateId, accreditationFormTemplates.id))
+    .where(whereClause)
+    .orderBy(desc(accreditationFormSubmissions.submittedAt))
+    .limit(filter.limit ?? 50)
+    .offset(filter.offset ?? 0);
+  return { rows, total };
+}
+
+export async function getFormSubmissionWithDetails(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({
+      id: accreditationFormSubmissions.id,
+      templateId: accreditationFormSubmissions.templateId,
+      formType: accreditationFormSubmissions.formType,
+      submittedByUserId: accreditationFormSubmissions.submittedByUserId,
+      reviewTargetType: accreditationFormSubmissions.reviewTargetType,
+      reviewTargetId: accreditationFormSubmissions.reviewTargetId,
+      responses: accreditationFormSubmissions.responses,
+      qualityScore: accreditationFormSubmissions.qualityScore,
+      maxPossibleScore: accreditationFormSubmissions.maxPossibleScore,
+      status: accreditationFormSubmissions.status,
+      submittedAt: accreditationFormSubmissions.submittedAt,
+      updatedAt: accreditationFormSubmissions.updatedAt,
+      submitterName: users.name,
+      submitterDisplayName: users.displayName,
+      submitterEmail: users.email,
+      submitterCredentials: users.credentials,
+      templateName: accreditationFormTemplates.name,
+      templateFormType: accreditationFormTemplates.formType,
+    })
+    .from(accreditationFormSubmissions)
+    .leftJoin(users, eq(accreditationFormSubmissions.submittedByUserId, users.id))
+    .leftJoin(accreditationFormTemplates, eq(accreditationFormSubmissions.templateId, accreditationFormTemplates.id))
+    .where(eq(accreditationFormSubmissions.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getFormSubmissionStatsForLab(labId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const labRow = await db
+    .select({ adminUserId: labSubscriptions.adminUserId })
+    .from(labSubscriptions)
+    .where(eq(labSubscriptions.id, labId))
+    .limit(1);
+  const adminUserId = labRow[0]?.adminUserId;
+  if (!adminUserId) return null;
+  const orgRow = await db
+    .select({ orgId: diyOrganizations.id })
+    .from(diyOrganizations)
+    .where(eq(diyOrganizations.ownerUserId, adminUserId))
+    .limit(1);
+  const orgId = orgRow[0]?.orgId;
+  if (!orgId) return null;
+  const where = eq(accreditationFormSubmissions.orgId, orgId);
+  const [totalResult, byTypeResult, avgScoreResult, recentResult] = await Promise.all([
+    db.select({ total: count() }).from(accreditationFormSubmissions).where(where),
+    db
+      .select({
+        formType: accreditationFormSubmissions.formType,
+        cnt: count(),
+        avgScore: avg(accreditationFormSubmissions.qualityScore),
+      })
+      .from(accreditationFormSubmissions)
+      .where(where)
+      .groupBy(accreditationFormSubmissions.formType),
+    db
+      .select({ avgScore: avg(accreditationFormSubmissions.qualityScore) })
+      .from(accreditationFormSubmissions)
+      .where(and(where, eq(accreditationFormSubmissions.status, 'submitted'))),
+    db
+      .select({ recent: count() })
+      .from(accreditationFormSubmissions)
+      .where(and(where, gte(accreditationFormSubmissions.submittedAt, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))),
+  ]);
+  return {
+    total: totalResult[0]?.total ?? 0,
+    byType: byTypeResult,
+    avgQualityScore: Number(avgScoreResult[0]?.avgScore ?? 0),
+    last30Days: recentResult[0]?.recent ?? 0,
+  };
+}
+
+export async function getFormSubmissionStaffList(labId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const labRow = await db
+    .select({ adminUserId: labSubscriptions.adminUserId })
+    .from(labSubscriptions)
+    .where(eq(labSubscriptions.id, labId))
+    .limit(1);
+  const adminUserId = labRow[0]?.adminUserId;
+  if (!adminUserId) return [];
+  const orgRow = await db
+    .select({ orgId: diyOrganizations.id })
+    .from(diyOrganizations)
+    .where(eq(diyOrganizations.ownerUserId, adminUserId))
+    .limit(1);
+  const orgId = orgRow[0]?.orgId;
+  if (!orgId) return [];
+  const rows = await db
+    .selectDistinct({
+      userId: accreditationFormSubmissions.submittedByUserId,
+      name: users.name,
+      displayName: users.displayName,
+      credentials: users.credentials,
+    })
+    .from(accreditationFormSubmissions)
+    .leftJoin(users, eq(accreditationFormSubmissions.submittedByUserId, users.id))
+    .where(eq(accreditationFormSubmissions.orgId, orgId));
+  return rows;
+}
+
+export async function getAccreditationReadiness(labId: number, userId: number): Promise<AccreditationReadiness | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db.select().from(accreditationReadiness)
+    .where(eq(accreditationReadiness.labId, labId))
+    .orderBy(desc(accreditationReadiness.updatedAt))
+    .limit(1);
+  if (existing.length > 0) return existing[0];
+  // Auto-create a blank record
+  await db.insert(accreditationReadiness).values({
+    labId,
+    userId,
+    checklistProgress: "{}",
+    itemNotes: "{}",
+    completionPct: 0,
+  });
+  const created = await db.select().from(accreditationReadiness)
+    .where(eq(accreditationReadiness.labId, labId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function getAccreditationReadinessNavigator(userId: number): Promise<AccreditationReadinessNavigator | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db.select().from(accreditationReadinessNavigator)
+    .where(eq(accreditationReadinessNavigator.userId, userId))
+    .limit(1);
+  if (existing.length > 0) return existing[0];
+  // Auto-create a blank record
+  await db.insert(accreditationReadinessNavigator).values({
+    userId,
+    checklistProgress: "{}",
+    itemNotes: "{}",
+    completionPct: 0,
+  });
+  const created = await db.select().from(accreditationReadinessNavigator)
+    .where(eq(accreditationReadinessNavigator.userId, userId)).limit(1);
+  return created[0] ?? null;
 }

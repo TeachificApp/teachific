@@ -6,57 +6,12 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb, getOrCreateUserByEmail, getOrgIdForUser } from "../db";
-import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, membershipPlans, orgMembers, funnelSteps } from "../../drizzle/schema";
-import { eq, and, asc, desc, sql, inArray, or, like, isNotNull } from "drizzle-orm";
+import { getDb, getOrCreateUserByEmail } from "../db";
+import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, webinarRegistrations, bundleEnrollments, webinars, communities, workshops, workshopInstances, lmsCohortGroups } from "../../drizzle/schema";
+import { eq, and, asc, desc, sql, inArray, or, like, isNotNull, gte } from "drizzle-orm";
 import { evaluateBranchRules, type VisitorContext } from "../lib/funnelBranchEngine";
-
-/**
- * Check that the current user has funnel admin access.
- * Allows: platform admins (users.role = 'admin') OR org admins/super admins.
- * Returns the orgId the user is acting on.
- */
-const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin", "sub_admin"] as const;
-
-async function requireFunnelAccess(
-  userId: number,
-  platformRole: string,
-  orgIdHint?: number
-): Promise<number> {
-  const db = await getDb();
-  // Platform admins bypass org check
-  if (platformRole === "site_owner" || platformRole === "site_admin" || platformRole === "admin") {
-    if (orgIdHint) return orgIdHint;
-    const orgId = await getOrgIdForUser(userId);
-    if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
-    return orgId;
-  }
-  if (orgIdHint) {
-    const [membership] = await db
-      .select({ role: orgMembers.role })
-      .from(orgMembers)
-      .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, orgIdHint)))
-      .limit(1);
-    if (!membership || !(ORG_ADMIN_ROLES as readonly string[]).includes(membership.role)) {
-      throw new TRPCError({ code: "FORBIDDEN", message: "You do not have admin access to this organisation" });
-    }
-    return orgIdHint;
-  }
-  // No orgId hint — find the user's highest-role org
-  const memberships = await db
-    .select({ orgId: orgMembers.orgId, role: orgMembers.role })
-    .from(orgMembers)
-    .where(eq(orgMembers.userId, userId));
-  const adminMemberships = memberships.filter(m =>
-    (ORG_ADMIN_ROLES as readonly string[]).includes(m.role)
-  );
-  if (adminMemberships.length === 0) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "You need org admin access to use the Funnel Builder" });
-  }
-  const ROLE_PRIORITY: Record<string, number> = { org_super_admin: 100, org_admin: 90, sub_admin: 70 };
-  adminMemberships.sort((a, b) => (ROLE_PRIORITY[b.role] ?? 0) - (ROLE_PRIORITY[a.role] ?? 0));
-  return adminMemberships[0].orgId;
-}
+import { computeFunnelCheckoutTotalCents } from "../lib/checkoutPricing";
+import { getStripeClient } from "../lib/stripeClient";
 
 function slugify(text: string): string {
   return text
@@ -91,22 +46,38 @@ async function uniquePageSlug(
 
 export const funnelRouter = router({
   /** List all products (courses, downloads, bundles) for order bump picker */
-  listAllProducts: protectedProcedure.query(async ({ ctx }) => {
-    const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+  listAllProducts: publicProcedure.query(async () => {
     const db = await getDb();
-    const [courses, downloads, bundles, physical, memberships] = await Promise.all([
-      db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, thumbnailUrl: lmsCourses.thumbnailUrl, courseType: lmsCourses.type }).from(lmsCourses).where(eq(lmsCourses.orgId, _orgId)).orderBy(asc(lmsCourses.title)),
-      db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price, thumbnailUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).where(eq(digitalProducts.orgId, _orgId)).orderBy(asc(digitalProducts.title)),
+    const [courses, downloads, bundles, physical, webinarList, communityList, workshopList] = await Promise.all([
+      db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, thumbnailUrl: lmsCourses.thumbnailUrl, courseType: lmsCourses.type }).from(lmsCourses).orderBy(asc(lmsCourses.title)),
+      db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price, thumbnailUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).orderBy(asc(digitalProducts.title)),
       db.select({ id: digitalBundles.id, title: digitalBundles.title, price: digitalBundles.discountPrice, thumbnailUrl: digitalBundles.thumbnailUrl }).from(digitalBundles).orderBy(asc(digitalBundles.title)),
-      db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price, thumbnailUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).where(eq(physicalProducts.orgId, _orgId)).orderBy(asc(physicalProducts.title)),
-      db.select({ id: membershipPlans.id, name: membershipPlans.name, price: membershipPlans.price }).from(membershipPlans).orderBy(asc(membershipPlans.name)),
+      db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price, thumbnailUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).orderBy(asc(physicalProducts.title)),
+      db.select({ id: webinars.id, title: webinars.title, slug: webinars.slug, price: webinars.price, coverImage: webinars.coverImage, accessType: webinars.accessType }).from(webinars).where(eq(webinars.status, "published")).orderBy(asc(webinars.title)),
+      db.select({ id: communities.id, title: communities.title, slug: communities.slug, coverImage: communities.coverImage, accessType: communities.accessType }).from(communities).where(eq(communities.status, "published")).orderBy(asc(communities.title)),
+      db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, price: workshops.price, thumbnailUrl: workshops.thumbnailUrl, isFree: workshops.isFree, status: workshops.status }).from(workshops).orderBy(asc(workshops.title)),
     ]);
+    // Hardcoded app products (UltrasoundAssist + EchoAssist, Free + Premium)
+    // Use hero banner images (teal probe / teal heart) for product cards
+    const AAUS_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/ultrasound-hero-probe-3bWMAQMJw9YFHoPXwbt8bZ.webp";
+    const IHE_HERO  = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/ihe-hero-MNscA4NaWNyxrdkewtLGLG.webp";
+    const APP_PRODUCTS = [
+      { id: 1001, type: "app" as const, name: "UltrasoundAssist™ — Free", price: 0, imageUrl: AAUS_HERO, href: "https://app.allaboutultrasound.com", isFree: true, appLabel: "UltrasoundAssist™" },
+      { id: 1002, type: "app" as const, name: "UltrasoundAssist™ — Premium", price: 9.97, imageUrl: AAUS_HERO, href: "https://app.allaboutultrasound.com", isFree: false, appLabel: "UltrasoundAssist™", priceLabel: "$9.97/mo" },
+      { id: 1003, type: "app" as const, name: "EchoAssist™ — Free", price: 0, imageUrl: IHE_HERO, href: "https://app.iheartecho.com", isFree: true, appLabel: "EchoAssist™" },
+      { id: 1004, type: "app" as const, name: "EchoAssist™ — Premium", price: 9.97, imageUrl: IHE_HERO, href: "https://app.iheartecho.com", isFree: false, appLabel: "EchoAssist™", priceLabel: "$9.97/mo" },
+      { id: 1005, type: "app" as const, name: "UltrasoundAssist™ + EchoAssist™ — Bundle", price: 12.99, imageUrl: AAUS_HERO, href: "https://app.allaboutultrasound.com", isFree: false, appLabel: "UltrasoundAssist™ + EchoAssist™", priceLabel: "$12.99/mo" },
+    ];
     return [
-      ...courses.map(c => ({ id: c.id, type: (c.courseType === "cohort" ? "cohort" : c.courseType === "quiz" ? "quiz" : "course") as string, name: c.title, price: c.price ?? 0, imageUrl: c.thumbnailUrl ?? "" })),
-      ...downloads.map(d => ({ id: d.id, type: "download" as const, name: d.title, price: d.price ?? 0, imageUrl: d.thumbnailUrl ?? "" })),
-      ...bundles.map(b => ({ id: b.id, type: "bundle" as const, name: b.title, price: b.price ?? 0, imageUrl: b.thumbnailUrl ?? "" })),
-      ...physical.map(p => ({ id: p.id, type: "physical" as const, name: p.title, price: p.price ?? 0, imageUrl: p.thumbnailUrl ?? "" })),
-      ...memberships.map(m => ({ id: m.id, type: "membership" as const, name: m.name, price: Number(m.price) ?? 0, imageUrl: "" })),
+      // All prices returned in DOLLARS (DB stores cents for courses/downloads/bundles/physical/webinars)
+      ...courses.map(c => ({ id: c.id, type: (c.courseType === "cohort" ? "cohort" : c.courseType === "quiz" ? "quiz" : "course") as string, name: c.title, price: Number(c.price ?? 0) / 100, imageUrl: c.thumbnailUrl ?? "" })),
+      ...downloads.map(d => ({ id: d.id, type: "download" as const, name: d.title, price: Number(d.price ?? 0) / 100, imageUrl: d.thumbnailUrl ?? "" })),
+      ...bundles.map(b => ({ id: b.id, type: "bundle" as const, name: b.title, price: Number(b.price ?? 0) / 100, imageUrl: b.thumbnailUrl ?? "" })),
+      ...physical.map(p => ({ id: p.id, type: "physical" as const, name: p.title, price: Number(p.price ?? 0) / 100, imageUrl: p.thumbnailUrl ?? "" })),
+      ...webinarList.map(w => ({ id: w.id, type: "webinar" as const, name: w.title, price: Number(w.price ?? 0) / 100, imageUrl: w.coverImage ?? "", isFree: w.accessType === "free" })),
+      ...communityList.map(c => ({ id: c.id, type: "community" as const, name: c.title, price: 0, imageUrl: c.coverImage ?? "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp", isFree: c.accessType === "free" })),
+      ...workshopList.map(w => ({ id: w.id, type: "workshop" as const, name: w.title, price: Number(w.price ?? 0) / 100, imageUrl: w.thumbnailUrl ?? "", isFree: w.isFree })),
+      ...APP_PRODUCTS, // App products already in dollars (9.97, 12.99, etc.)
     ];
   }),
 
@@ -127,12 +98,26 @@ export const funnelRouter = router({
       const downloadIds = input.items.filter(i => i.type === "download").map(i => i.id);
       const bundleIds = input.items.filter(i => i.type === "bundle").map(i => i.id);
       const physicalIds = input.items.filter(i => i.type === "physical").map(i => i.id);
-      const membershipIds = input.items.filter(i => i.type === "membership").map(i => i.id);
+      const webinarIds = input.items.filter(i => i.type === "webinar").map(i => i.id);
+      const communityIds = input.items.filter(i => i.type === "community").map(i => i.id);
+      const workshopIds = input.items.filter(i => i.type === "workshop").map(i => i.id);
+      const appIds = input.items.filter(i => i.type === "app").map(i => i.id);
       const allLmsCourseIds = [...new Set([...courseIds, ...cohortIds])];
 
-      const [courses, downloads, bundles, physicals, memberships] = await Promise.all([
+      // Hardcoded app products registry — use hero banner images for product cards
+      const AAUS_HERO_R = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/ultrasound-hero-probe-3bWMAQMJw9YFHoPXwbt8bZ.webp";
+      const IHE_HERO_R  = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/ihe-hero-MNscA4NaWNyxrdkewtLGLG.webp";
+      const APP_REGISTRY: Record<number, { id: number; type: string; title: string; slug: string; description: string; price: number; isFree: boolean; imageUrl: string; href: string; appLabel?: string }> = {
+        1001: { id: 1001, type: "app", title: "UltrasoundAssist™ — Free", slug: "ultrasound-assist-free", description: "AI-powered ultrasound clinical intelligence, free tier.", price: 0, isFree: true, imageUrl: AAUS_HERO_R, href: "https://app.allaboutultrasound.com", appLabel: "UltrasoundAssist™" },
+        1002: { id: 1002, type: "app", title: "UltrasoundAssist™ — Premium", slug: "ultrasound-assist-premium", description: "Full access to AI-powered ultrasound clinical intelligence.", price: 9.97, isFree: false, imageUrl: AAUS_HERO_R, href: "https://app.allaboutultrasound.com", appLabel: "UltrasoundAssist™", priceLabel: "$9.97/mo" },
+        1003: { id: 1003, type: "app", title: "EchoAssist™ — Free", slug: "echo-assist-free", description: "AI-powered echocardiography clinical intelligence, free tier.", price: 0, isFree: true, imageUrl: IHE_HERO_R, href: "https://app.iheartecho.com", appLabel: "EchoAssist™" },
+        1004: { id: 1004, type: "app", title: "EchoAssist™ — Premium", slug: "echo-assist-premium", description: "Full access to AI-powered echocardiography clinical intelligence.", price: 9.97, isFree: false, imageUrl: IHE_HERO_R, href: "https://app.iheartecho.com", appLabel: "EchoAssist™", priceLabel: "$9.97/mo" },
+        1005: { id: 1005, type: "app", title: "UltrasoundAssist™ + EchoAssist™ — Bundle", slug: "ultrasound-echo-bundle", description: "Full access to both UltrasoundAssist™ and EchoAssist™ premium apps.", price: 12.99, isFree: false, imageUrl: AAUS_HERO_R, href: "https://app.allaboutultrasound.com", appLabel: "UltrasoundAssist™ + EchoAssist™", priceLabel: "$12.99/mo" },
+      };
+
+      const [courses, downloads, bundles, physicals, webinarRows, communityRows, workshopRows] = await Promise.all([
         allLmsCourseIds.length > 0
-          ? db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, price: lmsCourses.price, isFree: lmsCourses.isFree, description: lmsCourses.subtitle, imageUrl: lmsCourses.coverImageUrl, courseType: lmsCourses.type }).from(lmsCourses).where(inArray(lmsCourses.id, allLmsCourseIds))
+          ? db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, price: lmsCourses.price, isFree: lmsCourses.isFree, description: lmsCourses.subtitle, imageUrl: lmsCourses.coverImageUrl, courseType: lmsCourses.type, pricingType: lmsCourses.pricingType, subscriptionInterval: lmsCourses.subscriptionInterval }).from(lmsCourses).where(inArray(lmsCourses.id, allLmsCourseIds))
           : [],
         downloadIds.length > 0
           ? db.select({ id: digitalProducts.id, title: digitalProducts.title, slug: digitalProducts.slug, price: digitalProducts.price, isFree: digitalProducts.isFree, description: digitalProducts.subtitle, imageUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).where(inArray(digitalProducts.id, downloadIds))
@@ -143,8 +128,14 @@ export const funnelRouter = router({
         physicalIds.length > 0
           ? db.select({ id: physicalProducts.id, title: physicalProducts.title, slug: physicalProducts.slug, price: physicalProducts.price, description: physicalProducts.description, imageUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).where(inArray(physicalProducts.id, physicalIds))
           : [],
-        membershipIds.length > 0
-          ? db.select({ id: membershipPlans.id, name: membershipPlans.name, price: membershipPlans.price, description: membershipPlans.description }).from(membershipPlans).where(inArray(membershipPlans.id, membershipIds))
+        webinarIds.length > 0
+          ? db.select({ id: webinars.id, title: webinars.title, slug: webinars.slug, price: webinars.price, description: webinars.subtitle, imageUrl: webinars.coverImage, accessType: webinars.accessType }).from(webinars).where(inArray(webinars.id, webinarIds))
+          : [],
+        communityIds.length > 0
+          ? db.select({ id: communities.id, title: communities.title, slug: communities.slug, description: communities.description, imageUrl: communities.coverImage, accessType: communities.accessType }).from(communities).where(inArray(communities.id, communityIds))
+          : [],
+        workshopIds.length > 0
+          ? db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, price: workshops.price, description: workshops.subtitle, imageUrl: workshops.thumbnailUrl, isFree: workshops.isFree }).from(workshops).where(inArray(workshops.id, workshopIds))
           : [],
       ]);
 
@@ -161,11 +152,46 @@ export const funnelRouter = router({
           .where(inArray(digitalProducts.id, missingCourseIds));
       }
 
+      // Pre-fetch cohort group data before map population
+      const now = new Date();
+      const cohortCourseRows = (courses as any[]).filter((c: any) => c.courseType === "cohort");
+      const cohortGroupMap = new Map<number, { name: string; startDate: Date | null; endDate: Date | null } | null>();
+      if (cohortCourseRows.length > 0) {
+        const cohortCourseIdsArr = cohortCourseRows.map((c: any) => c.id);
+        const allGroups = await db.select({ courseId: lmsCohortGroups.courseId, name: lmsCohortGroups.name, startDate: lmsCohortGroups.startDate, endDate: lmsCohortGroups.endDate, sortOrder: lmsCohortGroups.sortOrder })
+          .from(lmsCohortGroups)
+          .where(and(inArray(lmsCohortGroups.courseId, cohortCourseIdsArr), sql`${lmsCohortGroups.status} IN ('open','active')`))
+          .orderBy(asc(lmsCohortGroups.sortOrder), asc(lmsCohortGroups.startDate));
+        for (const grp of allGroups) {
+          if (!cohortGroupMap.has(grp.courseId)) cohortGroupMap.set(grp.courseId, { name: grp.name, startDate: grp.startDate, endDate: grp.endDate });
+        }
+      }
+      // Pre-fetch workshop instance data before map population
+      const workshopIdsArr = (workshopRows as any[]).map((w: any) => w.id);
+      const workshopInstanceMap = new Map<number, { startDate: Date | null; endDate: Date | null; locationType: string | null; venueName: string | null; venueCity: string | null; venueState: string | null } | null>();
+      if (workshopIdsArr.length > 0) {
+        const allInstances = await db.select({
+          workshopId: workshopInstances.workshopId,
+          startDate: workshopInstances.startDate,
+          endDate: workshopInstances.endDate,
+          locationType: workshopInstances.locationType,
+          venueName: workshopInstances.venueName,
+          venueCity: workshopInstances.venueCity,
+          venueState: workshopInstances.venueState,
+        }).from(workshopInstances)
+          .where(and(inArray(workshopInstances.workshopId, workshopIdsArr), eq(workshopInstances.status, "published"), gte(workshopInstances.startDate, now)))
+          .orderBy(asc(workshopInstances.startDate));
+        for (const inst of allInstances) {
+          if (!workshopInstanceMap.has(inst.workshopId)) workshopInstanceMap.set(inst.workshopId, inst);
+        }
+      }
+
       // Preserve the order specified by input.items
       const map = new Map<string, object>();
       for (const c of courses as any[]) {
         const resolvedType = c.courseType === "cohort" ? "cohort" : c.courseType === "quiz" ? "quiz" : "course";
-        const entry = { ...c, type: resolvedType, isFree: c.isFree ?? false, href: `/courses/${c.slug}` };
+        const primaryCohortGroup = resolvedType === "cohort" ? (cohortGroupMap.get(c.id) ?? null) : null;
+        const entry = { ...c, type: resolvedType, isFree: c.isFree ?? false, href: `/courses/${c.slug}`, primaryCohortGroup };
         map.set(`course-${c.id}`, entry);
         map.set(`${resolvedType}-${c.id}`, entry);
       }
@@ -178,25 +204,47 @@ export const funnelRouter = router({
       for (const d of downloads as any[]) map.set(`download-${d.id}`, { ...d, type: "download", isFree: d.isFree ?? false, href: `/downloads/${d.slug}` });
       for (const b of bundles as any[]) map.set(`bundle-${b.id}`, { ...b, type: "bundle", isFree: false, price: b.price ?? 0, href: `/bundles/${b.slug}` });
       for (const p of physicals as any[]) map.set(`physical-${p.id}`, { ...p, type: "physical", isFree: false, href: `/shop/${p.slug}` });
-      for (const m of (memberships as any[])) map.set(`membership-${m.id}`, { id: m.id, title: m.name, type: "membership", isFree: false, price: Number(m.price) ?? 0, description: m.description ?? "", imageUrl: "", href: `/memberships/${m.id}` });
+      for (const w of webinarRows as any[]) map.set(`webinar-${w.id}`, { ...w, type: "webinar", isFree: w.accessType === "free", price: w.price ?? 0, href: `/webinars/${w.slug}` });
+      const COMMUNITY_FALLBACK_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp";
+      for (const c of communityRows as any[]) map.set(`community-${c.id}`, { ...c, type: "community", isFree: c.accessType === "free", price: 0, href: `/community/${c.slug}`, imageUrl: c.imageUrl ?? COMMUNITY_FALLBACK_IMG });
+      for (const w of workshopRows as any[]) {
+        const nextInstance = workshopInstanceMap.get(w.id) ?? null;
+        map.set(`workshop-${w.id}`, { ...w, type: "workshop", isFree: w.isFree ?? false, price: (w.price ?? 0) / 100, href: `/workshops/${w.slug}`, nextInstance });
+      }
+      for (const appId of appIds) {
+        const app = APP_REGISTRY[appId];
+        if (app) map.set(`app-${appId}`, app);
+      }
 
+      // Deduplicate: if the same lmsCourse id was saved under both "course" and "quiz" types
+      // (e.g., type changed in DB), only return it once.
+      const seenLmsCourseIds = new Set<number>();
       return input.items
         .map(i => map.get(`${i.type}-${i.id}`))
-        .filter(Boolean) as Array<{
+        .filter((item): item is NonNullable<typeof item> => {
+          if (!item) return false;
+          const it = item as any;
+          if (it.type === "course" || it.type === "quiz" || it.type === "cohort") {
+            if (seenLmsCourseIds.has(it.id)) return false;
+            seenLmsCourseIds.add(it.id);
+          }
+          return true;
+        }) as Array<{
           id: number; type: string; slug: string; title: string;
           description: string | null; price: number; isFree: boolean;
           imageUrl: string | null; href: string;
+          pricingType?: string | null; subscriptionInterval?: string | null;
+          appLabel?: string;
         }>;
     }),
 
   /** List all funnels */
   list: protectedProcedure.query(async ({ ctx }) => {
-    const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     const rows = await db
       .select()
       .from(funnels)
-      .where(eq(funnels.orgId, _orgId))
       .orderBy(asc(funnels.sortOrder), desc(funnels.updatedAt));
     if (rows.length === 0) return [];
     // Batch-fetch all pages in a single query instead of N+1 loop
@@ -217,7 +265,7 @@ export const funnelRouter = router({
   reorderFunnels: protectedProcedure
     .input(z.object({ funnelIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       for (let i = 0; i < input.funnelIds.length; i++) {
         await db
@@ -232,9 +280,9 @@ export const funnelRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
-      const [funnel] = await db.select().from(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
+      const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.id));
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
       const pages = await db
         .select()
@@ -256,7 +304,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const baseSlug = slugify(input.name);
       // Ensure unique slug
@@ -269,7 +317,6 @@ export const funnelRouter = router({
         slug = `${baseSlug}-${attempt}`;
       }
       const result = await db.insert(funnels).values({
-        orgId: _orgId,
         name: input.name,
         slug,
         description: input.description,
@@ -296,29 +343,31 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-            const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const { id, ...data } = input;
-      await db.update(funnels).set(data).where(and(eq(funnels.id, id), eq(funnels.orgId, _orgId)));
+      await db.update(funnels).set(data).where(eq(funnels.id, id));
       return { success: true };
     }),
+
   /** Delete a funnel and all its pages */
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       await db.delete(funnelPages).where(eq(funnelPages.funnelId, input.id));
-      await db.delete(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
+      await db.delete(funnels).where(eq(funnels.id, input.id));
       return { success: true };
     }),
+
   /** Duplicate a funnel */
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
-      const [original] = await db.select().from(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
+      const [original] = await db.select().from(funnels).where(eq(funnels.id, input.id));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
       const baseSlug = slugify(original.name + " copy");
       let slug = baseSlug;
@@ -379,7 +428,7 @@ export const funnelRouter = router({
   saveAsTemplate: protectedProcedure
     .input(z.object({ id: z.number(), templateName: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.id));
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
@@ -397,7 +446,7 @@ export const funnelRouter = router({
     }),
   /** List user-saved templates */
   listTemplates: protectedProcedure.query(async ({ ctx }) => {
-    const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     return db.select().from(funnelTemplates).orderBy(desc(funnelTemplates.createdAt));
   }),
@@ -405,7 +454,7 @@ export const funnelRouter = router({
   deleteTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       await db.delete(funnelTemplates).where(eq(funnelTemplates.id, input.id));
       return { success: true };
@@ -430,7 +479,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       // Auto-generate slug from title if not provided, then ensure it is unique within this funnel
       const basePageSlug = input.slug || slugify(input.title);
@@ -482,7 +531,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
@@ -493,7 +542,7 @@ export const funnelRouter = router({
   duplicatePage: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const [original] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.id));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
@@ -525,7 +574,7 @@ export const funnelRouter = router({
   copyPageToFunnel: protectedProcedure
     .input(z.object({ pageId: z.number(), targetFunnelId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const [original] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.pageId));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
@@ -559,7 +608,7 @@ export const funnelRouter = router({
   copyPageAsStandalone: protectedProcedure
     .input(z.object({ pageId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const [original] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.pageId));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
@@ -591,7 +640,7 @@ export const funnelRouter = router({
   deletePage: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       // Clear any nextPageId references to this page
       await db
@@ -611,7 +660,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       for (let i = 0; i < input.pageIds.length; i++) {
         await db
@@ -636,7 +685,7 @@ export const funnelRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       await db
         .update(funnelPages)
@@ -682,8 +731,7 @@ export const funnelRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No product configured for this page" });
       }
 
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
+      const stripe = getStripeClient();
 
       // Find thank you page for success redirect
       const allPages = await db.select().from(funnelPages)
@@ -708,12 +756,10 @@ export const funnelRouter = router({
           user_id: ctx.user.id.toString(),
           customer_email: ctx.user.email ?? "",
         },
+        payment_intent_data: { description: `${funnel.title} — Funnel Purchase` },
         success_url: successUrl,
         cancel_url: cancelUrl,
       });
-
-      // Track conversion
-      await db.execute(sql`UPDATE funnel_pages SET conversions = conversions + 1 WHERE id = ${page.id}`);
       return { checkoutUrl: session.url };
     }),
 
@@ -721,7 +767,7 @@ export const funnelRouter = router({
   getPageById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const [page] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.id));
       if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel page not found" });
@@ -748,7 +794,7 @@ export const funnelRouter = router({
       funnelId: z.number().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const offset = (input.page - 1) * input.limit;
 
@@ -784,7 +830,7 @@ export const funnelRouter = router({
   getLeadById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const [lead] = await db.select().from(funnelLeads).where(eq(funnelLeads.id, input.id));
       if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found" });
@@ -806,7 +852,7 @@ export const funnelRouter = router({
       tags: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const updates: any = {};
       if (input.name !== undefined) updates.name = input.name;
@@ -820,7 +866,7 @@ export const funnelRouter = router({
   deleteLeads: protectedProcedure
     .input(z.object({ ids: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       for (const id of input.ids) {
         await db.delete(funnelLeads).where(eq(funnelLeads.id, id));
@@ -834,7 +880,7 @@ export const funnelRouter = router({
   getFlowDiagram: protectedProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const pages = await db
         .select()
@@ -878,7 +924,7 @@ export const funnelRouter = router({
   listBranchRules: protectedProcedure
     .input(z.object({ pageId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       const rules = await db
         .select()
@@ -925,7 +971,7 @@ export const funnelRouter = router({
       })).default([]),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       let ruleId: number;
       if (input.id) {
@@ -963,7 +1009,7 @@ export const funnelRouter = router({
   deleteBranchRule: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       await db.delete(funnelBranchConditions).where(eq(funnelBranchConditions.ruleId, input.id));
       await db.delete(funnelBranchRules).where(eq(funnelBranchRules.id, input.id));
@@ -974,7 +1020,7 @@ export const funnelRouter = router({
   reorderBranchRules: protectedProcedure
     .input(z.object({ ruleIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       for (let i = 0; i < input.ruleIds.length; i++) {
         await db.update(funnelBranchRules).set({ priority: i }).where(eq(funnelBranchRules.id, input.ruleIds[i]));
@@ -996,7 +1042,7 @@ export const funnelRouter = router({
       customDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [existing] = await db.select({ id: funnels.id }).from(funnels)
@@ -1004,88 +1050,6 @@ export const funnelRouter = router({
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "A funnel with this slug already exists" });
       const { funnelId, ...fields } = input;
       await db.update(funnels).set(fields).where(eq(funnels.id, funnelId));
-      return { success: true };
-    }),
-
-  // ─── Step-based funnel builder ────────────────────────────────────────────
-
-  /** Get a funnel with its steps (for FunnelBuilderPage) */
-  getWithSteps: protectedProcedure
-    .input(z.object({ id: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
-      const db = await getDb();
-      const [funnel] = await db.select().from(funnels).where(and(eq(funnels.id, input.id), eq(funnels.orgId, _orgId)));
-      if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
-      const steps = await db.select().from(funnelSteps).where(eq(funnelSteps.funnelId, funnel.id)).orderBy(asc(funnelSteps.sortOrder));
-      return { ...funnel, steps };
-    }),
-
-  /** Create a new step in a funnel */
-  createStep: protectedProcedure
-    .input(z.object({
-      funnelId: z.number(),
-      name: z.string().min(1).max(255),
-      stepType: z.enum(["landing", "sales", "order", "upsell", "downsell", "thank_you", "webinar", "custom"]).default("landing"),
-      sortOrder: z.number().default(0),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
-      const db = await getDb();
-      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, input.funnelId), eq(funnels.orgId, _orgId))).limit(1);
-      if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
-      const result = await db.insert(funnelSteps).values({
-        funnelId: input.funnelId,
-        name: input.name,
-        stepType: input.stepType,
-        sortOrder: input.sortOrder,
-      });
-      return { id: result[0].insertId };
-    }),
-
-  /** Update a step */
-  updateStep: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      name: z.string().min(1).max(255).optional(),
-      stepType: z.enum(["landing", "sales", "order", "upsell", "downsell", "thank_you", "webinar", "custom"]).optional(),
-      sortOrder: z.number().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
-      const db = await getDb();
-      const [step] = await db.select({ funnelId: funnelSteps.funnelId }).from(funnelSteps).where(eq(funnelSteps.id, input.id)).limit(1);
-      if (!step) throw new TRPCError({ code: "NOT_FOUND" });
-      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, step.funnelId), eq(funnels.orgId, _orgId))).limit(1);
-      if (!funnel) throw new TRPCError({ code: "FORBIDDEN" });
-      const { id, ...fields } = input;
-      await db.update(funnelSteps).set(fields).where(eq(funnelSteps.id, id));
-      return { success: true };
-    }),
-
-  /** Delete a step */
-  deleteStep: protectedProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
-      const db = await getDb();
-      const [step] = await db.select({ funnelId: funnelSteps.funnelId }).from(funnelSteps).where(eq(funnelSteps.id, input.id)).limit(1);
-      if (!step) throw new TRPCError({ code: "NOT_FOUND" });
-      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, step.funnelId), eq(funnels.orgId, _orgId))).limit(1);
-      if (!funnel) throw new TRPCError({ code: "FORBIDDEN" });
-      await db.delete(funnelSteps).where(eq(funnelSteps.id, input.id));
-      return { success: true };
-    }),
-
-  /** Reorder steps */
-  reorderSteps: protectedProcedure
-    .input(z.object({ funnelId: z.number(), stepIds: z.array(z.number()) }))
-    .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
-      const db = await getDb();
-      const [funnel] = await db.select({ id: funnels.id }).from(funnels).where(and(eq(funnels.id, input.funnelId), eq(funnels.orgId, _orgId))).limit(1);
-      if (!funnel) throw new TRPCError({ code: "FORBIDDEN" });
-      await Promise.all(input.stepIds.map((id, idx) => db.update(funnelSteps).set({ sortOrder: idx }).where(eq(funnelSteps.id, id))));
       return { success: true };
     }),
 });
@@ -1282,8 +1246,7 @@ export const funnelPublicRouter = router({
         }
       }
 
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
+      const stripe = getStripeClient();
 
       // Find thank you page for success redirect
       const allPages = await db.select().from(funnelPages)
@@ -1301,26 +1264,31 @@ export const funnelPublicRouter = router({
       const successUrl = resolveSuccessUrl(successRedirect);
       const cancelUrl = `${input.origin}/${funnel.slug}/${page.slug}`;
 
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        customer_email: input.email,
-        allow_promotion_codes: true,
-        line_items: lineItems,
-        metadata: {
+      const funnelCheckoutMetadata = {
           type: "funnel_form_purchase",
           funnel_id: funnel.id.toString(),
           funnel_page_id: page.id.toString(),
           customer_email: input.email,
           customer_name: `${input.firstName || ""} ${input.lastName || ""}`.trim(),
           customer_phone: input.phone || "",
-          bumps_added: input.addedBumpIndexes.join(","),
+          bumps_added: input.addedBumpIndexes.length > 0 ? "1" : "",
+          bump_titles: input.addedBumpIndexes.map(i => orderBumps[i]?.title ?? "").join("|").slice(0, 490),
+          bump_prices: input.addedBumpIndexes.map(i => orderBumps[i]?.price ?? 0).join("|").slice(0, 490),
           user_id: ctx.user?.id?.toString() || "",
           product_name: selectedProduct.name?.slice(0, 490) ?? "",
           product_type: selectedProduct.productType ?? selectedProduct.type ?? "other",
           product_id: selectedProduct.productId ? selectedProduct.productId.toString() : "",
           success_url: successUrl.slice(0, 490),
-          brand_mode: checkoutBlock.data?.brandMode ?? "teachific",
-        },
+          brand_mode: checkoutBlock.data?.brandMode ?? "aaus",
+        };
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer_email: input.email,
+        allow_promotion_codes: true,
+        line_items: lineItems,
+        metadata: funnelCheckoutMetadata,
+        payment_intent_data: { metadata: funnelCheckoutMetadata, description: `${funnelCheckoutMetadata.product_name || "Funnel Product"} — Funnel Purchase` },
         success_url: successUrl,
         cancel_url: cancelUrl,
       });
@@ -1348,9 +1316,6 @@ export const funnelPublicRouter = router({
         userAgent: ua || null,
         sourcePage: input.origin ? `${input.origin}/${funnel.slug}/${page.slug}` : null,
       });
-
-      // Track conversion
-      await db.execute(sql`UPDATE funnel_pages SET conversions = conversions + 1 WHERE id = ${page.id}`);
       return { checkoutUrl: session.url };
     }),
 
@@ -1402,15 +1367,15 @@ export const funnelPublicRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid product selection" });
       }
 
-      // Calculate total amount in dollars
-      let totalAmount = Number(selectedProduct.price);
+      const { totalCents: serverTotalCents } = computeFunnelCheckoutTotalCents(checkoutBlock, {
+        selectedProductIndex: input.selectedProductIndex,
+        addedBumpIndexes: input.addedBumpIndexes,
+      });
+      let totalAmountCents = serverTotalCents;
       const bumpDetails: string[] = [];
       for (const bumpIdx of input.addedBumpIndexes) {
         const bump = orderBumps[bumpIdx];
-        if (bump && bump.price > 0) {
-          totalAmount += Number(bump.price);
-          bumpDetails.push(bump.title);
-        }
+        if (bump && bump.price > 0) bumpDetails.push(bump.title);
       }
 
       // ── FREE PRODUCT PATH ($0 total) ────────────────────────────────────────
@@ -1429,11 +1394,11 @@ export const funnelPublicRouter = router({
       };
       const successUrl = resolveSuccessUrl2(successRedirectRaw);
 
-      if (totalAmount === 0) {
+      if (totalAmountCents === 0) {
         // Free product — bypass Stripe entirely
         const customerName = `${input.firstName || ""} ${input.lastName || ""}`.trim();
-        const brandMode = (checkoutBlock.data?.brandMode as string) || "teachific";
-        const baseUrl = "https://app.teachific.com";
+        const brandMode = (checkoutBlock.data?.brandMode as string) || "aaus";
+        const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://app.allaboutultrasound.com";
 
         // 1. Create or find user account
         let resolvedUserId: number | null = ctx.user?.id ?? null;
@@ -1471,7 +1436,7 @@ export const funnelPublicRouter = router({
               to: { name: customerName || firstName, email: input.email },
               subject: `Your account is ready — set your password to access ${selectedProduct.name || "your purchase"}`,
               htmlBody: emailContent.htmlBody,
-              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${"Teachific"}`,
+              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${brandMode === "iheartecho" ? "iHeartEcho" : "All About Ultrasound"}`,
             });
             console.log(`[FreeCheckout] Sent set-password email to ${input.email} (new user ${resolvedUserId})`);
           } catch (emailErr) {
@@ -1540,12 +1505,9 @@ export const funnelPublicRouter = router({
           }
         }
 
-        // 5. Track conversion
-        await db.execute(sql`UPDATE funnel_pages SET conversions = conversions + 1 WHERE id = ${page.id}`);
-
         // 6. Send purchase confirmation email
         try {
-          const { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
+          const { sendEmail, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
           const firstName = input.firstName || customerName.split(" ")[0] || "there";
           let loginUrl = `${baseUrl}/my-courses`;
           if (productType === "course" && productId) {
@@ -1565,7 +1527,7 @@ export const funnelPublicRouter = router({
             loginUrl,
             brandMode: brandMode as any,
           });
-          await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, input.orgId ?? null);
+          await sendEmail({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText });
           console.log(`[FreeCheckout] Confirmation email sent to ${input.email}`);
         } catch (emailErr) {
           console.error(`[FreeCheckout] Failed to send confirmation email:`, emailErr);
@@ -1575,23 +1537,20 @@ export const funnelPublicRouter = router({
       }
       // ── END FREE PRODUCT PATH ────────────────────────────────────────────────
 
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
+      const stripe = getStripeClient();
 
       // Apply promo code discount if provided
-      let discountApplied = 0;
       if (input.promoCode) {
         try {
           const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode, active: true, limit: 1 });
           if (promoCodes.data.length > 0) {
             const coupon = promoCodes.data[0].coupon;
             if (coupon.percent_off) {
-              discountApplied = totalAmount * (coupon.percent_off / 100);
+              totalAmountCents -= Math.round(totalAmountCents * (coupon.percent_off / 100));
             } else if (coupon.amount_off) {
-              // amount_off from Stripe is in cents — convert to dollars
-              discountApplied = Math.min(coupon.amount_off / 100, totalAmount);
+              totalAmountCents -= Math.min(coupon.amount_off, totalAmountCents);
             }
-            totalAmount = Math.max(0.50, totalAmount - discountApplied);
+            totalAmountCents = Math.max(0, totalAmountCents);
           } else {
             throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired promo code" });
           }
@@ -1600,9 +1559,37 @@ export const funnelPublicRouter = router({
         }
       }
 
-      if (totalAmount < 0.50) {
+      // ── 100% promo intercept for funnels ──────────────────────────────────
+      if (totalAmountCents === 0) {
+        // Promo made total free — grant access directly without Stripe
+        const freeOrderRef = `free_promo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const resolvedUserId = ctx.user?.id ?? null;
+        if (resolvedUserId) {
+          const productType = selectedProduct.type;
+          const productId = selectedProduct.id;
+          if (productType === "course" || productType === "quiz" || productType === "cohort") {
+            const [ex] = await db.select({ id: lmsEnrollments.id }).from(lmsEnrollments)
+              .where(and(eq(lmsEnrollments.userId, resolvedUserId), eq(lmsEnrollments.courseId, productId))).limit(1);
+            if (!ex) await db.insert(lmsEnrollments).values({ userId: resolvedUserId, courseId: productId, orderId: null, affiliateCode: null });
+          } else if (productType === "download") {
+            const [ex] = await db.select({ id: digitalPurchases.id }).from(digitalPurchases)
+              .where(and(eq(digitalPurchases.userId, resolvedUserId), eq(digitalPurchases.productId, productId))).limit(1);
+            if (!ex) await db.insert(digitalPurchases).values({ userId: resolvedUserId, productId, stripeCheckoutSessionId: freeOrderRef });
+          } else if (productType === "bundle") {
+            const [ex] = await db.select({ id: bundleEnrollments.id }).from(bundleEnrollments)
+              .where(and(eq(bundleEnrollments.userId, resolvedUserId), eq(bundleEnrollments.bundleId, productId))).limit(1);
+            if (!ex) await db.insert(bundleEnrollments).values({ userId: resolvedUserId, bundleId: productId, stripeCheckoutSessionId: freeOrderRef });
+          }
+        }
+        const successUrl = funnel.thankYouPageUrl || `${input.origin}/`;
+        return { freeSuccess: true, successUrl, clientSecret: null, orderId: null, totalAmountCents: 0 };
+      }
+
+      if (totalAmountCents < 50) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum charge amount is $0.50" });
       }
+
+      const totalAmount = totalAmountCents / 100;
       // Build description for the payment
       let description = selectedProduct.name;
       if (bumpDetails.length > 0) {
@@ -1611,7 +1598,7 @@ export const funnelPublicRouter = router({
 
       // Create PaymentIntent (Stripe requires amount in cents)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalAmount * 100),
+        amount: totalAmountCents,
         currency: "usd",
         description,
         receipt_email: input.email,
@@ -1630,7 +1617,7 @@ export const funnelPublicRouter = router({
           product_type: selectedProduct.productType ?? selectedProduct.type ?? "other",
           product_id: selectedProduct.productId ? selectedProduct.productId.toString() : "",
           success_url: successUrl.slice(0, 490),
-          brand_mode: checkoutBlock.data?.brandMode ?? "teachific",
+          brand_mode: checkoutBlock.data?.brandMode ?? "aaus",
         },
         automatic_payment_methods: { enabled: true },
       });
@@ -1814,17 +1801,26 @@ export const funnelPublicRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
+      const stripe = getStripeClient();
       // ── Resolve product details ──────────────────────────────────────────────
       let productName = "";
-      let unitAmount = 0; // in cents
+      let unitAmount = 0; // in dollars — will be converted to cents for Stripe
       let currency = "usd";
       if (input.productType === "course" || input.productType === "quiz" || input.productType === "cohort") {
         const [course] = await db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, currency: lmsCourses.currency, isFree: lmsCourses.isFree, pricingType: lmsCourses.pricingType })
           .from(lmsCourses).where(eq(lmsCourses.id, input.productId)).limit(1);
         if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
         if (course.isFree || course.pricingType === "free" || !course.price) throw new TRPCError({ code: "BAD_REQUEST", message: "Course is free — use free enrollment" });
+        // Guard: block checkout if user is already actively enrolled
+        if (ctx.user) {
+          const [existingCourseEnr] = await db.select({ id: lmsEnrollments.id, enrollmentType: lmsEnrollments.enrollmentType, accessExpiresAt: lmsEnrollments.accessExpiresAt })
+            .from(lmsEnrollments)
+            .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id)))
+            .limit(1);
+          if (existingCourseEnr && existingCourseEnr.enrollmentType !== "free_preview" && (!existingCourseEnr.accessExpiresAt || new Date(existingCourseEnr.accessExpiresAt) > new Date())) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "You are already enrolled in this course." });
+          }
+        }
         productName = course.title;
         unitAmount = course.price;
         currency = course.currency ?? "usd";
@@ -1887,17 +1883,38 @@ export const funnelPublicRouter = router({
         try {
           const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode, active: true, limit: 1 });
           if (promoCodes.data.length > 0) {
+            const coupon = promoCodes.data[0].coupon as any;
+            let discountedAmount = Math.round(Number(unitAmount));
+            if (coupon.percent_off) discountedAmount -= Math.round(discountedAmount * (coupon.percent_off / 100));
+            else if (coupon.amount_off) discountedAmount -= Math.min(coupon.amount_off, discountedAmount);
+            if (discountedAmount <= 0) {
+              // 100% off — grant access directly
+              const userId = ctx.user?.id ?? null;
+              if (userId) {
+                const freeRef = `free_promo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                if (input.productType === "course" || input.productType === "quiz" || input.productType === "cohort") {
+                  const [ex] = await db.select({ id: lmsEnrollments.id }).from(lmsEnrollments)
+                    .where(and(eq(lmsEnrollments.userId, userId), eq(lmsEnrollments.courseId, input.productId))).limit(1);
+                  if (!ex) await db.insert(lmsEnrollments).values({ userId, courseId: input.productId, orderId: null, affiliateCode: null });
+                } else if (input.productType === "download") {
+                  const [ex] = await db.select({ id: digitalPurchases.id }).from(digitalPurchases)
+                    .where(and(eq(digitalPurchases.userId, userId), eq(digitalPurchases.productId, input.productId))).limit(1);
+                  if (!ex) await db.insert(digitalPurchases).values({ userId, productId: input.productId, stripeCheckoutSessionId: freeRef });
+                } else if (input.productType === "bundle") {
+                  const [ex] = await db.select({ id: bundleEnrollments.id }).from(bundleEnrollments)
+                    .where(and(eq(bundleEnrollments.userId, userId), eq(bundleEnrollments.bundleId, input.productId))).limit(1);
+                  if (!ex) await db.insert(bundleEnrollments).values({ userId, bundleId: input.productId, stripeCheckoutSessionId: freeRef });
+                }
+              }
+              return { checkoutUrl: null, freeSuccess: true, successUrl };
+            }
             sessionParams.discounts = [{ promotion_code: promoCodes.data[0].id }];
             delete sessionParams.allow_promotion_codes;
           }
-        } catch { /* ignore promo code errors */ }
+        } catch (e: any) { if (e instanceof TRPCError) throw e; /* ignore other promo code errors */ }
       }
       const session = await stripe.checkout.sessions.create(sessionParams);
-      // Track conversion on the funnel page if context provided
-      if (input.pageId) {
-        await db.execute(sql`UPDATE funnel_pages SET conversions = conversions + 1 WHERE id = ${input.pageId}`);
-      }
-      return { checkoutUrl: session.url };
+      return { checkoutUrl: session.url, freeSuccess: false, successUrl: null };
     }),
 });
 
@@ -1908,7 +1925,7 @@ export const funnelAdminRouter = router({
   listImportablePages: protectedProcedure
     .input(z.object({ excludeFunnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2035,7 +2052,7 @@ export const funnelAdminRouter = router({
       sourceType: z.enum(["funnel", "standalone", "course", "download"]).default("funnel"),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2119,7 +2136,7 @@ export const funnelAdminRouter = router({
   getFunnelAnalytics: protectedProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2207,7 +2224,7 @@ export const funnelAdminRouter = router({
   exportFunnelLeadsCSV: protectedProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2253,7 +2270,7 @@ export const funnelAdminRouter = router({
       conversionStatus: z.enum(["all", "lead", "registered", "purchaser"]).default("all"),
     }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2356,7 +2373,7 @@ export const funnelAdminRouter = router({
   conversionFunnel: protectedProcedure
     .input(z.object({ funnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2455,7 +2472,7 @@ export const funnelAdminRouter = router({
   exportAllContactsCSV: protectedProcedure
     .input(z.object({ funnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -2506,10 +2523,98 @@ export const funnelAdminRouter = router({
       return { csvContent, total: leads.length };
     }),
 
+  /**
+   * getEnrollmentCount — public procedure used by the EnrollmentCounter block.
+   * Returns the count for the requested entity type. No auth required so it
+   * works on public landing pages and standalone funnel pages.
+   */
+  getEnrollmentCount: publicProcedure
+    .input(z.object({
+      countType: z.enum([
+        "site_users",
+        "course", "all_courses",
+        "brand_membership",
+        "download", "all_downloads",
+        "webinar", "all_webinars",
+        "bundle", "all_bundles",
+      ]),
+      entityId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { count: 0 };
+      const { countType, entityId } = input;
+      let n = 0;
+      switch (countType) {
+        case "site_users": {
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(users);
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "course": {
+          if (!entityId) { n = 0; break; }
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(lmsEnrollments)
+            .where(eq(lmsEnrollments.courseId, entityId));
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "all_courses": {
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(lmsEnrollments);
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "brand_membership": {
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(brandMemberships)
+            .where(eq(brandMemberships.status, "active"));
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "download": {
+          if (!entityId) { n = 0; break; }
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(digitalPurchases)
+            .where(eq(digitalPurchases.productId, entityId));
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "all_downloads": {
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(digitalPurchases);
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "webinar": {
+          if (!entityId) { n = 0; break; }
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(webinarRegistrations)
+            .where(eq(webinarRegistrations.webinarId, entityId));
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "all_webinars": {
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(webinarRegistrations);
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "bundle": {
+          if (!entityId) { n = 0; break; }
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(bundleEnrollments)
+            .where(eq(bundleEnrollments.bundleId, entityId));
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        case "all_bundles": {
+          const [r] = await db.select({ c: sql<number>`COUNT(*)` }).from(bundleEnrollments);
+          n = Number(r?.c ?? 0);
+          break;
+        }
+        default:
+          n = 0;
+      }
+      return { count: n };
+    }),
+
   /** Get all funnels with their pages (including blocks) for the block picker "Copy from Other Pages" tab */
   getFunnelsWithPages: protectedProcedure
     .query(async ({ ctx }) => {
-      const _orgId = await requireFunnelAccess(ctx.user.id, ctx.user.role);
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const allFunnelsList = await db

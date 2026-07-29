@@ -64,6 +64,7 @@ export const orderBumpsAdminRouter = router({
       presentationMode: z.enum(["widget", "landing_page"]).default("widget"),
       pageBlocks: z.string().optional(), // JSON-serialized Block[]
       slug: z.string().optional(),
+      bumpMode: z.enum(["addon", "upgrade"]).default("addon").optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
@@ -88,6 +89,7 @@ export const orderBumpsAdminRouter = router({
         presentationMode: input.presentationMode,
         pageBlocks: input.pageBlocks ?? null,
         slug: input.slug ?? null,
+        bumpMode: input.bumpMode ?? "addon",
       });
       return { id: result.insertId };
     }),
@@ -115,6 +117,7 @@ export const orderBumpsAdminRouter = router({
       presentationMode: z.enum(["widget", "landing_page"]).optional(),
       pageBlocks: z.string().nullable().optional(), // JSON-serialized Block[]
       slug: z.string().nullable().optional(),
+      bumpMode: z.enum(["addon", "upgrade"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);

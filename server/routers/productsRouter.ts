@@ -1,11 +1,32 @@
+import { getStripeClient } from "../lib/stripeClient";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser } from "../db";
+import { getDb } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
+import {
+  getTitleByIsbn,
+  isBookvaultConfigured,
+  listTitles,
+  normalizeIsbn,
+  testConnection,
+} from "../bookvault";
+import { fulfillBookvaultOrder } from "../lib/fulfillBookvaultOrder";
+import { fulfillPrintfulOrder } from "../lib/fulfillPrintfulOrder";
+import {
+  getSyncProduct,
+  isPrintfulConfigured,
+  testConnection as printfulTestConnection,
+} from "../printful";
+import {
+  getProduct as getPrintifyProduct,
+  isPrintifyConfigured,
+  testConnection as printifyTestConnection,
+} from "../printify";
+
 import {
   physicalProducts,
   physicalProductPricingOptions,
@@ -76,7 +97,7 @@ export const productsPublicRouter = router({
         .where(eq(physicalProducts.slug, input.slug)).limit(1);
       if (!product) throw new TRPCError({ code: "NOT_FOUND" });
       // Allow preview for admins
-      const isAdmin = (ctx.user as any)?.role === "site_owner" || (ctx.user as any)?.role === "site_admin" || (ctx.user as any)?.role === "admin" || (ctx.user as any)?.role === "platform_admin";
+      const isAdmin = (ctx.user as any)?.role === "admin" || (ctx.user as any)?.role === "platform_admin";
       if (product.status !== "published" && !input.preview && !isAdmin) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
@@ -127,6 +148,89 @@ export const productsLearnerRouter = router({
       return !!row2;
     }),
 
+  /** Create an embedded Stripe Checkout session for a physical product (learner-facing). */
+  // NOTE: publicProcedure — guest checkout is allowed, no sign-in required.
+  createEmbeddedCheckoutSession: publicProcedure
+    .input(z.object({ productSlug: z.string(), origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db.select().from(physicalProducts)
+        .where(eq(physicalProducts.slug, input.productSlug)).limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+      if (product.status !== "published" && !product.isFree) throw new TRPCError({ code: "FORBIDDEN", message: "This product is not available." });
+      if (product.checkoutMode !== "native") throw new TRPCError({ code: "BAD_REQUEST", message: "This product uses an external checkout." });
+      const userId = ctx.user?.id ?? 0;
+      if (product.isFree || Number(product.price) === 0) {
+        // Auto-grant free product (only if user is logged in)
+        if (userId) {
+          await db.insert(physicalProductOrders).values({
+            userId,
+            productId: product.id,
+            pricingOptionId: null,
+            amountPaid: 0,
+            currency: product.currency,
+          }).onDuplicateKeyUpdate({ set: { userId } }).catch(() => {});
+        }
+        const { platformSettings } = await import("../../drizzle/schema");
+        const [settings] = await db.select({ termsUrl: platformSettings.termsUrl, privacyUrl: platformSettings.privacyUrl }).from(platformSettings).limit(1);
+        return { clientSecret: null, free: true, courseTitle: product.title, courseSubtitle: product.subtitle ?? null, courseDescription: product.description ?? null, courseThumbnail: product.thumbnailUrl ?? null, primaryColor: "#189aa1", accentColor: "#4ad9e0", gradientFrom: "#189aa1", gradientTo: "#4ad9e0", gradientDirection: "135deg", playerTheme: "light", termsUrl: settings?.termsUrl ?? "", privacyUrl: settings?.privacyUrl ?? "", productName: product.title, displayPrice: 0, pricingType: "free", isSubscription: false, billingLabel: null, currency: product.currency, minSeats: null, discountPercent: null };
+      }
+      const { platformSettings } = await import("../../drizzle/schema");
+      const [settings] = await db.select({ termsUrl: platformSettings.termsUrl, privacyUrl: platformSettings.privacyUrl }).from(platformSettings).limit(1);
+      const stripe = getStripeClient();
+      const shippingOpts = product.requiresShipping
+        ? { shipping_address_collection: { allowed_countries: ["US", "CA", "AU", "GB"] as any } }
+        : {};
+      const session = await stripe.checkout.sessions.create({
+        ui_mode: "embedded",
+        mode: "payment",
+        customer_email: ctx.user?.email ?? undefined,
+        client_reference_id: userId ? userId.toString() : undefined,
+        allow_promotion_codes: true,
+        line_items: [{
+          price_data: {
+            currency: product.currency,
+            product_data: {
+              name: product.title,
+              description: product.subtitle ?? undefined,
+              images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined,
+            },
+            unit_amount: Math.round(Number(product.price) * 100),
+          },
+          quantity: 1,
+        }],
+        metadata: { type: "physical_product", product_id: product.id.toString(), user_id: userId.toString(), customer_email: ctx.user?.email ?? "" },
+        payment_intent_data: { description: `${product.title} — Physical Product` },
+        return_url: `${input.origin}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=physical`,
+        ...shippingOpts,
+      });
+      return {
+        clientSecret: session.client_secret!,
+        free: false,
+        courseTitle: product.title,
+        courseSubtitle: product.subtitle ?? null,
+        courseDescription: product.description ?? null,
+        courseThumbnail: product.thumbnailUrl ?? null,
+        primaryColor: "#189aa1",
+        accentColor: "#4ad9e0",
+        gradientFrom: "#189aa1",
+        gradientTo: "#4ad9e0",
+        gradientDirection: "135deg",
+        playerTheme: "light",
+        termsUrl: settings?.termsUrl ?? "",
+        privacyUrl: settings?.privacyUrl ?? "",
+        productName: product.title,
+        displayPrice: Number(product.price),
+        pricingType: "one_time",
+        isSubscription: false,
+        billingLabel: null,
+        currency: product.currency,
+        minSeats: null,
+        discountPercent: null,
+      };
+    }),
+
   /** List the current user's orders */
   myOrders: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
@@ -149,13 +253,15 @@ export const productsLearnerRouter = router({
 
   /** Create a Stripe Checkout session for a physical product (native mode).
    *  Shipping address collection is always enabled for native physical products. */
-  createCheckout: protectedProcedure
+  createCheckout: publicProcedure
     .input(z.object({
       productId: z.number(),
       pricingOptionId: z.number().optional(),
       promoCode: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user?.id ?? 0;
+      const userEmail = ctx.user?.email ?? undefined;
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(physicalProducts)
@@ -184,18 +290,19 @@ export const productsLearnerRouter = router({
 
       // Free product — auto-grant
       if (product.isFree || unitAmount === 0) {
-        await db.insert(physicalProductOrders).values({
-          userId: ctx.user.id,
-          productId: product.id,
-          pricingOptionId: input.pricingOptionId ?? null,
-          amountPaid: 0,
-          currency: product.currency,
-        });
+        if (userId) {
+          await db.insert(physicalProductOrders).values({
+            userId,
+            productId: product.id,
+            pricingOptionId: input.pricingOptionId ?? null,
+            amountPaid: 0,
+            currency: product.currency,
+          });
+        }
         return { checkoutUrl: null, free: true };
       }
 
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
+      const stripe = getStripeClient();
       const origin = ctx.req.headers.origin || `https://${ctx.req.headers.host}`;
 
       // Allowed shipping countries (default to US + CA if not specified)
@@ -208,13 +315,23 @@ export const productsLearnerRouter = router({
       if (input.promoCode) {
         try {
           const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode.toUpperCase(), active: true, limit: 1 });
-          if (promoCodes.data[0]) discounts = [{ promotion_code: promoCodes.data[0].id }];
+          if (promoCodes.data[0]) {
+            discounts = [{ promotion_code: promoCodes.data[0].id }];
+            // ── 100% promo intercept for physical products ────────────────────
+            const coupon = promoCodes.data[0].coupon as any;
+            const priceCents = unitAmount;
+            const discountedCents = coupon.percent_off === 100 ? 0 : coupon.amount_off ? Math.max(0, priceCents - coupon.amount_off) : priceCents;
+            if (discountedCents === 0) {
+              if (userId) await db.insert(physicalProductOrders).values({ userId, productId: product.id, pricingOptionId: input.pricingOptionId ?? null, amountPaid: 0, currency: product.currency });
+              return { checkoutUrl: null, free: true };
+            }
+          }
         } catch { /* ignore */ }
       }
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
-        customer_email: ctx.user.email ?? undefined,
-        client_reference_id: ctx.user.id.toString(),
+        customer_email: userEmail,
+        client_reference_id: userId ? userId.toString() : undefined,
         ...(discounts ? { discounts } : { allow_promotion_codes: true }),
         // Always collect shipping address for native physical products
         shipping_address_collection: {
@@ -236,9 +353,10 @@ export const productsLearnerRouter = router({
           type: "physical_product",
           product_id: product.id.toString(),
           pricing_option_id: input.pricingOptionId?.toString() ?? "",
-          user_id: ctx.user.id.toString(),
-          customer_email: ctx.user.email ?? "",
+          user_id: userId ? userId.toString() : "",
+          customer_email: userEmail ?? "",
         },
+        payment_intent_data: { description: `${pricingLabel} — Physical Product` },
         success_url: `${origin}/product/${product.slug}?success=1`,
         cancel_url: `${origin}/product/${product.slug}`,
       });
@@ -248,24 +366,23 @@ export const productsLearnerRouter = router({
 
 // ─── Admin Router ─────────────────────────────────────────────────────────────
 export const productsAdminRouter = router({
-  /** List all products (admin) — scoped to caller's org unless platform admin */
+  /** List all products (admin) */
   list: protectedProcedure.query(async ({ ctx }) => {
-    await requireOrgAdmin(ctx.user.id, ctx.user.role);
+    if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
     const db = await getDb();
     if (!db) return [];
-    if (isPlatformAdmin(ctx.user.role)) {
-      return db.select().from(physicalProducts).orderBy(desc(physicalProducts.createdAt));
-    }
-    const orgId = await getOrgIdForUser(ctx.user.id);
-    if (!orgId) return [];
-    return db.select().from(physicalProducts).where(eq(physicalProducts.orgId, orgId)).orderBy(desc(physicalProducts.createdAt));
+    return db.select().from(physicalProducts).orderBy(desc(physicalProducts.createdAt));
   }),
 
   /** Get a single product with its pricing options */
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(physicalProducts)
@@ -281,17 +398,16 @@ export const productsAdminRouter = router({
   create: protectedProcedure
     .input(z.object({ title: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const slug = await uniqueSlug(db, slugify(input.title));
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
       const [result] = await db.insert(physicalProducts).values({
         title: input.title,
         slug,
         status: "draft",
-        orgId,
       });
       const insertId = (result as any).insertId;
       return { id: insertId, slug };
@@ -325,9 +441,12 @@ export const productsAdminRouter = router({
       metaDescription: z.string().optional().nullable(),
       slug: z.string().optional(),
       publishDomain: z.string().max(255).nullable().optional(),
+      brand: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -347,7 +466,9 @@ export const productsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(physicalProductPricingOptions)
@@ -360,7 +481,9 @@ export const productsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select().from(physicalProducts)
@@ -392,7 +515,9 @@ export const productsAdminRouter = router({
   getLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [product] = await db.select({
@@ -430,7 +555,9 @@ export const productsAdminRouter = router({
       seoImage: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(physicalProducts)
@@ -447,7 +574,9 @@ export const productsAdminRouter = router({
   saveLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number(), blocks: z.array(z.any()) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const blocksJson = JSON.stringify(input.blocks);
@@ -468,7 +597,9 @@ export const productsAdminRouter = router({
       mimeType: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const buffer = Buffer.from(input.fileBase64, "base64");
@@ -495,7 +626,9 @@ export const productsAdminRouter = router({
       ctaLabel: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Get current max sortOrder
@@ -529,7 +662,9 @@ export const productsAdminRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -542,7 +677,9 @@ export const productsAdminRouter = router({
   deletePricingOption: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(physicalProductPricingOptions)
@@ -561,7 +698,9 @@ export const productsAdminRouter = router({
       limit: z.number().min(1).max(100).default(25),
     }).optional())
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) return { orders: [], total: 0 };
       const page = input?.page ?? 1;
@@ -598,7 +737,9 @@ export const productsAdminRouter = router({
       notes: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...fields } = input;
@@ -615,7 +756,9 @@ export const productsAdminRouter = router({
       notes: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.insert(physicalProductOrders).values({
@@ -633,7 +776,9 @@ export const productsAdminRouter = router({
   getAnalytics: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) return { totalOrders: 0, totalRevenue: 0, byStatus: [] };
       const [totals] = await db.select({
@@ -658,7 +803,9 @@ export const productsAdminRouter = router({
   aiGenerateLandingPage: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -759,5 +906,561 @@ Make ALL content specific and compelling based on the product title and descript
         .where(eq(physicalProducts.id, input.productId));
 
       return { success: true, blockCount: blocks.length };
+    }),
+
+  // ─── After Purchase Workflow ──────────────────────────────────────────────
+  getAfterPurchaseWorkflow: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db
+        .select({ id: physicalProducts.id, afterPurchaseWorkflow: physicalProducts.afterPurchaseWorkflow })
+        .from(physicalProducts)
+        .where(eq(physicalProducts.id, input.productId))
+        .limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      return { afterPurchaseWorkflow: product.afterPurchaseWorkflow ?? null };
+    }),
+
+  updateAfterPurchaseWorkflow: protectedProcedure
+    .input(z.object({ productId: z.number(), workflow: z.string().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(physicalProducts)
+        .set({ afterPurchaseWorkflow: input.workflow })
+        .where(eq(physicalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  getHidePricingOptions: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [p] = await db.select({ id: physicalProducts.id, hidePricingOptions: physicalProducts.hidePricingOptions })
+        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
+      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+      return { hidePricingOptions: p.hidePricingOptions ?? false };
+    }),
+
+  updateHidePricingOptions: protectedProcedure
+    .input(z.object({ productId: z.number(), hidePricingOptions: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(physicalProducts)
+        .set({ hidePricingOptions: input.hidePricingOptions })
+        .where(eq(physicalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  getBookvaultSettings: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [p] = await db.select({ id: physicalProducts.id, bookvaultEnabled: physicalProducts.bookvaultEnabled, bookvaultIsbn: physicalProducts.bookvaultIsbn })
+        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
+      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+
+      let connection: { connected: boolean; accountName?: string | null; error?: string | null } = {
+        connected: false,
+        accountName: null,
+        error: null,
+      };
+      if (isBookvaultConfigured()) {
+        try {
+          const result = await testConnection();
+          connection = {
+            connected: true,
+            accountName:
+              (typeof result.account.Name === "string" && result.account.Name) ||
+              (typeof result.account.CompanyName === "string" && result.account.CompanyName) ||
+              null,
+            error: null,
+          };
+        } catch (err) {
+          connection = {
+            connected: false,
+            accountName: null,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      } else {
+        connection.error = "BOOKVAULT_API_KEY is not configured";
+      }
+
+      let titleMatch: { isbn: string; title: string | null } | null = null;
+      const isbn = normalizeIsbn(p.bookvaultIsbn);
+      if (isbn && connection.connected) {
+        try {
+          const title = await getTitleByIsbn(isbn);
+          titleMatch = {
+            isbn,
+            title:
+              (typeof title?.Title === "string" && title.Title) ||
+              (typeof title?.title === "string" && title.title) ||
+              null,
+          };
+        } catch {
+          titleMatch = { isbn, title: null };
+        }
+      }
+
+      return {
+        bookvaultEnabled: p.bookvaultEnabled ?? false,
+        bookvaultIsbn: p.bookvaultIsbn ?? null,
+        connection,
+        titleMatch,
+      };
+    }),
+
+  testBookvaultConnection: protectedProcedure
+    .query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isBookvaultConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "BOOKVAULT_API_KEY is not configured" });
+      }
+      const result = await testConnection();
+      return {
+        accountName:
+          (typeof result.account.Name === "string" && result.account.Name) ||
+          (typeof result.account.CompanyName === "string" && result.account.CompanyName) ||
+          "BookVault account",
+        email: typeof result.account.Email === "string" ? result.account.Email : null,
+      };
+    }),
+
+  listBookvaultTitles: protectedProcedure
+    .query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isBookvaultConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "BOOKVAULT_API_KEY is not configured" });
+      }
+      const titles = await listTitles();
+      return titles.map((t) => ({
+        isbn:
+          (typeof t.ISBN === "string" && t.ISBN) ||
+          (typeof t.isbn === "string" && t.isbn) ||
+          "",
+        title:
+          (typeof t.Title === "string" && t.Title) ||
+          (typeof t.title === "string" && t.title) ||
+          "Untitled",
+        author:
+          (typeof t.Author === "string" && t.Author) ||
+          (typeof t.author === "string" && t.author) ||
+          null,
+      })).filter((t) => t.isbn);
+    }),
+
+  retryBookvaultFulfillment: protectedProcedure
+    .input(z.object({ orderId: z.number(), force: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin" && (ctx.user as { role?: string }).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const result = await fulfillBookvaultOrder(db, input.orderId, { force: input.force ?? false });
+      if (result.error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+      }
+      if (result.skipped && result.reason === "bookvault_disabled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "BookVault is not enabled for this product" });
+      }
+      if (result.skipped && result.reason === "missing_isbn") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Product is missing a BookVault ISBN" });
+      }
+      if (result.skipped && result.reason === "api_key_not_configured") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "BOOKVAULT_API_KEY is not configured" });
+      }
+      return result;
+    }),
+
+  updateBookvaultSettings: protectedProcedure
+    .input(z.object({ productId: z.number(), bookvaultEnabled: z.boolean(), bookvaultIsbn: z.string().max(32).nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(physicalProducts)
+        .set({ bookvaultEnabled: input.bookvaultEnabled, bookvaultIsbn: input.bookvaultIsbn })
+        .where(eq(physicalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  getPrintfulSettings: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [p] = await db.select({
+        id: physicalProducts.id,
+        printfulEnabled: physicalProducts.printfulEnabled,
+        printfulStoreId: physicalProducts.printfulStoreId,
+        printfulSyncProductId: physicalProducts.printfulSyncProductId,
+        printfulSyncVariantId: physicalProducts.printfulSyncVariantId,
+      })
+        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
+      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+
+      let connection: {
+        configured: boolean;
+        connected: boolean;
+        stores: Array<{ id: number; name: string; type: string }>;
+        defaultStoreId: number | null;
+        error?: string | null;
+      } = {
+        configured: false,
+        connected: false,
+        stores: [],
+        defaultStoreId: null,
+        error: null,
+      };
+      if (isPrintfulConfigured()) {
+        connection.configured = true;
+        try {
+          const { stores } = await printfulTestConnection();
+          const { getDefaultPrintfulStoreId } = await import("../printful");
+          connection = {
+            configured: true,
+            connected: true,
+            stores,
+            defaultStoreId: getDefaultPrintfulStoreId(),
+            error: null,
+          };
+        } catch (err) {
+          connection = {
+            configured: true,
+            connected: false,
+            stores: [],
+            defaultStoreId: null,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      } else {
+        connection.error = "PRINTFUL_API_KEY is not configured";
+      }
+
+      let productMatch: { title: string | null; variantName: string | null } | null = null;
+      if (p.printfulStoreId && p.printfulSyncProductId && connection.connected) {
+        try {
+          const detail = await getSyncProduct(p.printfulStoreId, p.printfulSyncProductId);
+          const variant = detail.sync_variants?.find((v) => v.id === p.printfulSyncVariantId) ?? detail.sync_variants?.[0];
+          productMatch = {
+            title: detail.sync_product?.name ?? null,
+            variantName: variant?.name ?? null,
+          };
+        } catch {
+          productMatch = { title: null, variantName: null };
+        }
+      }
+
+      return {
+        printfulEnabled: p.printfulEnabled ?? false,
+        printfulStoreId: p.printfulStoreId ?? null,
+        printfulSyncProductId: p.printfulSyncProductId ?? null,
+        printfulSyncVariantId: p.printfulSyncVariantId ?? null,
+        connection,
+        productMatch,
+      };
+    }),
+
+  testPrintfulConnection: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isPrintfulConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTFUL_API_KEY is not configured" });
+      }
+      const { stores } = await printfulTestConnection();
+      const { getDefaultPrintfulStoreId } = await import("../printful");
+      return { stores, defaultStoreId: getDefaultPrintfulStoreId() };
+    }),
+
+  retryPrintfulFulfillment: protectedProcedure
+    .input(z.object({ orderId: z.number(), force: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin" && (ctx.user as { role?: string }).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const result = await fulfillPrintfulOrder(db, input.orderId, { force: input.force ?? false });
+      if (result.error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+      }
+      if (result.skipped && result.reason === "printful_disabled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Printful is not enabled for this product" });
+      }
+      if (result.skipped && result.reason === "missing_printful_product_link") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Product is missing Printful store/sync variant link" });
+      }
+      if (result.skipped && result.reason === "api_key_not_configured") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTFUL_API_KEY is not configured" });
+      }
+      return result;
+    }),
+
+  updatePrintfulSettings: protectedProcedure
+    .input(z.object({
+      productId: z.number(),
+      printfulEnabled: z.boolean(),
+      printfulStoreId: z.number().nullable(),
+      printfulSyncProductId: z.number().nullable(),
+      printfulSyncVariantId: z.number().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(physicalProducts)
+        .set({
+          printfulEnabled: input.printfulEnabled,
+          printfulStoreId: input.printfulStoreId,
+          printfulSyncProductId: input.printfulSyncProductId,
+          printfulSyncVariantId: input.printfulSyncVariantId,
+        })
+        .where(eq(physicalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  // ─── Checkout Page Config ──────────────────────────────────────────────────
+  getCheckoutPageConfig: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [p] = await db.select({ checkoutPageConfig: physicalProducts.checkoutPageConfig })
+        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
+      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+      return { config: p.checkoutPageConfig ?? null };
+    }),
+
+  saveCheckoutPageConfig: protectedProcedure
+    .input(z.object({ productId: z.number(), config: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      try { JSON.parse(input.config); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON config" }); }
+      await db.update(physicalProducts).set({ checkoutPageConfig: input.config }).where(eq(physicalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+  // ─── Embedded Checkout Session ────────────────────────────────────────────
+  createEmbeddedCheckoutSession: protectedProcedure
+    .input(z.object({ productSlug: z.string(), origin: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db.select().from(physicalProducts)
+        .where(eq(physicalProducts.slug, input.productSlug)).limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+      if (product.checkoutMode !== "native") throw new TRPCError({ code: "BAD_REQUEST", message: "This product uses an external checkout." });
+      if (product.isFree) {
+        return { clientSecret: null, free: true, courseTitle: product.title, courseSubtitle: product.subtitle ?? null, courseDescription: product.description ?? null, courseThumbnail: product.thumbnailUrl ?? null, primaryColor: "#189aa1", accentColor: "#4ad9e0", gradientFrom: "#189aa1", gradientTo: "#4ad9e0", gradientDirection: "135deg", playerTheme: "light", termsUrl: "", privacyUrl: "", productName: product.title, displayPrice: 0, pricingType: "free", isSubscription: false, billingLabel: null, currency: product.currency, minSeats: null, discountPercent: null };
+      }
+      const { platformSettings } = await import("../../drizzle/schema");
+      const [settings] = await db.select({ termsUrl: platformSettings.termsUrl, privacyUrl: platformSettings.privacyUrl }).from(platformSettings).limit(1);
+      const stripe = getStripeClient();
+      const shippingOpts = product.requiresShipping
+        ? { shipping_address_collection: { allowed_countries: ["US", "CA", "AU", "GB"] as any } }
+        : {};
+      const session = await stripe.checkout.sessions.create({
+        ui_mode: "embedded",
+        mode: "payment",
+        customer_email: ctx.user.email ?? undefined,
+        client_reference_id: ctx.user.id.toString(),
+        allow_promotion_codes: true,
+        line_items: [{
+          price_data: {
+            currency: product.currency,
+            product_data: {
+              name: product.title,
+              description: product.subtitle ?? undefined,
+              images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined,
+            },
+            unit_amount: Math.round(Number(product.price) * 100),
+          },
+          quantity: 1,
+        }],
+        metadata: { type: "physical_product", product_id: product.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "" },
+        payment_intent_data: { description: `${product.title} — Physical Product` },
+        return_url: `${input.origin}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=physical`,
+        ...shippingOpts,
+      });
+      return {
+        clientSecret: session.client_secret!,
+        free: false,
+        courseTitle: product.title,
+        courseSubtitle: product.subtitle ?? null,
+        courseDescription: product.description ?? null,
+        courseThumbnail: product.thumbnailUrl ?? null,
+        primaryColor: "#189aa1",
+        accentColor: "#4ad9e0",
+        gradientFrom: "#189aa1",
+        gradientTo: "#4ad9e0",
+        gradientDirection: "135deg",
+        playerTheme: "light",
+        termsUrl: settings?.termsUrl ?? "",
+        privacyUrl: settings?.privacyUrl ?? "",
+        productName: product.title,
+        displayPrice: Number(product.price),
+        pricingType: "one_time",
+        isSubscription: false,
+        billingLabel: null,
+        currency: product.currency,
+        minSeats: null,
+        discountPercent: null,
+      };
+    }),
+
+  // ─── Printify Settings ──────────────────────────────────────────────────────
+  getPrintifySettings: protectedProcedure
+    .input(z.object({ productId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [p] = await db.select().from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
+      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+      let connection: { configured: boolean; connected: boolean; shops: Array<{ id: number; title: string; sales_channel: string }>; defaultShopId: number | null; error?: string | null } = {
+        configured: false,
+        connected: false,
+        shops: [],
+        defaultShopId: null,
+        error: null,
+      };
+      if (isPrintifyConfigured()) {
+        connection.configured = true;
+        try {
+          const { shops } = await printifyTestConnection();
+          const { getDefaultPrintifyShopId } = await import("../printify");
+          connection = {
+            configured: true,
+            connected: true,
+            shops,
+            defaultShopId: getDefaultPrintifyShopId(),
+            error: null,
+          };
+        } catch (err) {
+          connection = {
+            configured: true,
+            connected: false,
+            shops: [],
+            defaultShopId: null,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      } else {
+        connection.error = "PRINTIFY_API_TOKEN is not configured";
+      }
+      let productMatch: { title: string | null; variantTitle: string | null } | null = null;
+      if (p.printifyShopId && p.printifyProductId && connection.connected) {
+        try {
+          const detail = await getPrintifyProduct(p.printifyShopId, p.printifyProductId);
+          if (detail) {
+            const variant = detail.variants.find((v) => v.id === p.printifyVariantId) ?? detail.variants[0];
+            productMatch = {
+              title: detail.title,
+              variantTitle: variant?.title ?? null,
+            };
+          }
+        } catch {
+          productMatch = { title: null, variantTitle: null };
+        }
+      }
+      return {
+        printifyEnabled: p.printifyEnabled ?? false,
+        printifyShopId: p.printifyShopId ?? null,
+        printifyProductId: p.printifyProductId ?? null,
+        printifyVariantId: p.printifyVariantId ?? null,
+        connection,
+        productMatch,
+      };
+    }),
+  testPrintifyConnection: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isPrintifyConfigured()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTIFY_API_TOKEN is not configured" });
+      }
+      const { shops } = await printifyTestConnection();
+      const { getDefaultPrintifyShopId } = await import("../printify");
+      return { shops, defaultShopId: getDefaultPrintifyShopId() };
+    }),
+  retryPrintifyFulfillment: protectedProcedure
+    .input(z.object({ orderId: z.number(), force: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin" && (ctx.user as { role?: string }).role !== "platform_admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { fulfillPrintifyOrder } = await import("../lib/fulfillPrintifyOrder");
+      const result = await fulfillPrintifyOrder(db, input.orderId, { force: input.force ?? false });
+      if (result.error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
+      }
+      if (result.skipped && result.reason === "printify_disabled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Printify is not enabled for this product" });
+      }
+      if (result.skipped && result.reason === "missing_printify_product_link") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Product is missing Printify shop/product/variant link" });
+      }
+      if (result.skipped && result.reason === "api_token_not_configured") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRINTIFY_API_TOKEN is not configured" });
+      }
+      return result;
+    }),
+  updatePrintifySettings: protectedProcedure
+    .input(z.object({
+      productId: z.number(),
+      printifyEnabled: z.boolean(),
+      printifyShopId: z.number().nullable(),
+      printifyProductId: z.string().max(64).nullable(),
+      printifyVariantId: z.number().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(physicalProducts)
+        .set({
+          printifyEnabled: input.printifyEnabled,
+          printifyShopId: input.printifyShopId,
+          printifyProductId: input.printifyProductId,
+          printifyVariantId: input.printifyVariantId,
+        })
+        .where(eq(physicalProducts.id, input.productId));
+      return { success: true };
+    }),
+
+});
+// ─── Public: checkout page config for physical products ──────────────────────
+export const productsCheckoutPublicRouter = router({
+  getPublicCheckoutPageConfig: publicProcedure
+    .input(z.object({ productSlug: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [product] = await db.select({
+        checkoutPageConfig: physicalProducts.checkoutPageConfig,
+      }).from(physicalProducts).where(eq(physicalProducts.slug, input.productSlug)).limit(1);
+      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      return {
+        config: product.checkoutPageConfig ?? null,
+        courseStats: { totalLessons: 0, totalSections: 0, hasCertificate: false },
+      };
     }),
 });

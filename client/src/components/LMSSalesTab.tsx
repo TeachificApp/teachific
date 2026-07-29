@@ -24,8 +24,8 @@ import {
 } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fmtMoney(amount: number | string, currency = "usd") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(amount));
+function fmtMoney(dollars: number, currency = "usd") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(dollars);
 }
 function fmtDate(d: Date | string | null) {
   if (!d) return "—";
@@ -75,8 +75,8 @@ function CheckoutLinksSection({ courseId }: { courseId: number }) {
                 {(link as any).sublabel && <p className="text-xs text-muted-foreground">{(link as any).sublabel}</p>}
               </div>
               <Badge variant="outline" className="text-xs shrink-0">{link.pricingType}</Badge>
-              {Number(link.price) > 0 && <span className="text-sm font-semibold text-teal-700 shrink-0">{fmtMoney(link.price)}</span>}
-              {Number(link.price) === 0 && <span className="text-sm font-semibold text-green-600 shrink-0">Free</span>}
+              {link.price > 0 && <span className="text-sm font-semibold text-teal-700 shrink-0">{fmtMoney(link.price)}</span>}
+              {link.price === 0 && <span className="text-sm font-semibold text-green-600 shrink-0">Free</span>}
             </div>
             <div className="px-4 py-3 space-y-2">
               {/* Checkout URL */}
@@ -190,7 +190,7 @@ function StudentProfileDrawer({
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{fmtDate(o.createdAt)}</span>
                       <span className="font-semibold text-foreground">{fmtMoney(o.amount, o.currency)}</span>
-                      {(o as any).stripeSubscriptionId && <span className="text-teal-600">Subscription</span>}
+                      {o.stripeSubscriptionId && <span className="text-teal-600">Subscription</span>}
                     </div>
                   </div>
                 ))}
@@ -301,7 +301,7 @@ function SalesTable({ courseId }: { courseId: number }) {
   if (!data) return null;
 
   const totalPages = Math.ceil(data.total / pageSize);
-  const runningTotal = data.orders.reduce((acc, o) => acc + (o.status === "completed" ? Number(o.amount) : 0), 0);
+  const runningTotal = data.orders.reduce((acc, o) => acc + (o.status === "paid" ? o.amount : 0), 0);
 
   return (
     <div className="space-y-4">
@@ -383,7 +383,7 @@ function SalesTable({ courseId }: { courseId: number }) {
                       >
                         <User className="h-3.5 w-3.5" />
                       </Button>
-                      {o.status === "completed" && !(o as any).stripeSubscriptionId && (
+                      {o.status === "paid" && !o.stripeSubscriptionId && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -394,7 +394,7 @@ function SalesTable({ courseId }: { courseId: number }) {
                           <RefreshCw className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      {o.status === "completed" && (o as any).stripeSubscriptionId && (
+                      {o.status === "paid" && o.stripeSubscriptionId && (
                         <Button
                           size="sm"
                           variant="ghost"

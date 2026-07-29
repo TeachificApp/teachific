@@ -20,7 +20,7 @@
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, desc, eq, gte, isNull, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
@@ -33,7 +33,11 @@ import {
   mediaAccessGrants,
   mediaViewEvents,
   mediaFolders,
+  lmsEnrollments,
 } from "../../drizzle/schema";
+import { initialScormExtractionStatus, needsScormExtraction, queueScormExtractionIfNeeded, pickScormPlaybackMode } from "../lib/scormPackage";
+import { extractAndUploadScormVersion } from "../routes/scormExtractor";
+import { buildMediaAuthQuery, signMediaViewerToken } from "../lib/mediaEmbedAccess";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,8 +50,7 @@ async function assertPlatformAdmin(ctx: { user: { id: number; role: string } }) 
     .from((await import("../../drizzle/schema")).users)
     .where(eq((await import("../../drizzle/schema")).users.id, ctx.user.id))
     .limit(1);
-  const ORG_ADMIN_ROLES_MR = ["org_super_admin", "org_admin", "sub_admin", "admin", "site_owner", "site_admin"];
-  if (!user || (!ORG_ADMIN_ROLES_MR.includes(user.role) && user.openId !== ownerId)) {
+  if (!user || (user.role !== "admin" && user.openId !== ownerId)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required" });
   }
 }
@@ -162,7 +165,25 @@ export const mediaRepoRouter = router({
         mimeType: input.mimeType,
         notes: input.notes ?? null,
         uploadedByUserId: ctx.user.id,
+        scormExtractionStatus: initialScormExtractionStatus({
+          mediaType,
+          mimeType: input.mimeType,
+          fileName: input.fileName,
+        }),
       });
+
+      const [insertedVersion] = await db
+        .select({ id: mediaVersions.id })
+        .from(mediaVersions)
+        .where(and(eq(mediaVersions.assetId, assetId), eq(mediaVersions.versionNumber, 1)))
+        .limit(1);
+      if (insertedVersion) {
+        await queueScormExtractionIfNeeded(insertedVersion.id, s3Url, slug, {
+          mediaType,
+          mimeType: input.mimeType,
+          fileName: input.fileName,
+        });
+      }
 
       return { id: assetId, slug, s3Url };
     }),
@@ -175,7 +196,7 @@ export const mediaRepoRouter = router({
       search: z.string().optional(),
       mediaType: z.enum(MEDIA_TYPES).optional(),
       access: z.enum(["public", "private"]).optional(),
-      brand: z.enum(["teachific"]).optional(),
+      brand: z.enum(["aaus", "iheartecho"]).optional(),
       folder: z.string().nullable().optional(), // null = uncategorized, string = specific folder, undefined = all
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(24),
@@ -437,6 +458,13 @@ export const mediaRepoRouter = router({
       const nextVersion = (maxRow?.max ?? 0) + 1;
 
       // Insert a new version row copying the target's S3 key/url/size/mime
+      const [asset] = await db
+        .select({ slug: mediaAssets.slug, mediaType: mediaAssets.mediaType, mimeType: mediaAssets.mimeType })
+        .from(mediaAssets)
+        .where(eq(mediaAssets.id, input.assetId))
+        .limit(1);
+      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+
       await db.insert(mediaVersions).values({
         assetId: input.assetId,
         versionNumber: nextVersion,
@@ -448,9 +476,26 @@ export const mediaRepoRouter = router({
         notes: `Reverted to v${target.versionNumber}`,
         uploadedByUserId: ctx.user.id,
         createdAt: new Date(),
+        scormExtractionStatus: initialScormExtractionStatus({
+          mediaType: asset.mediaType,
+          mimeType: target.mimeType,
+          fileName: target.fileName,
+        }),
       });
 
-      // Update asset's updatedAt so the grid reflects the change
+      const [insertedVersion] = await db
+        .select({ id: mediaVersions.id })
+        .from(mediaVersions)
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.versionNumber, nextVersion)))
+        .limit(1);
+      if (insertedVersion) {
+        await queueScormExtractionIfNeeded(insertedVersion.id, target.s3Url, asset.slug, {
+          mediaType: asset.mediaType,
+          mimeType: target.mimeType,
+          fileName: target.fileName,
+        });
+      }
+
       await db
         .update(mediaAssets)
         .set({ updatedAt: new Date() })
@@ -496,18 +541,6 @@ export const mediaRepoRouter = router({
       const s3Key = `media-repo/${asset.slug}/v${nextVersion}-${input.fileName}`;
       const { url: s3Url } = await storagePut(s3Key, buffer, input.mimeType);
 
-      await db.insert(mediaVersions).values({
-        assetId: input.assetId,
-        versionNumber: nextVersion,
-        s3Key,
-        s3Url,
-        fileName: input.fileName,
-        fileSize: input.fileSize,
-        mimeType: input.mimeType,
-        notes: input.notes ?? null,
-        uploadedByUserId: ctx.user.id,
-      });
-
       // Detect SCORM for ZIP files (inspect manifest)
       let detectedType = detectMediaType(input.mimeType);
       if (detectedType === "zip") {
@@ -518,21 +551,55 @@ export const mediaRepoRouter = router({
         } catch {}
       }
 
+      await db.insert(mediaVersions).values({
+        assetId: input.assetId,
+        versionNumber: nextVersion,
+        s3Key,
+        s3Url,
+        fileName: input.fileName,
+        fileSize: input.fileSize,
+        mimeType: input.mimeType,
+        notes: input.notes ?? null,
+        uploadedByUserId: ctx.user.id,
+        scormExtractionStatus: initialScormExtractionStatus({
+          mediaType: detectedType,
+          mimeType: input.mimeType,
+          fileName: input.fileName,
+        }),
+      });
+
       // Update asset mimeType to reflect new version
       await db
         .update(mediaAssets)
         .set({ mimeType: input.mimeType, mediaType: detectedType as any })
         .where(eq(mediaAssets.id, input.assetId));
 
-      // Invalidate SCORM cache so the new ZIP is extracted on next request
-      if (detectedType === "scorm" || detectedType === "zip") {
+      const [insertedVersion] = await db
+        .select({ id: mediaVersions.id })
+        .from(mediaVersions)
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.versionNumber, nextVersion)))
+        .limit(1);
+      if (insertedVersion) {
+        await queueScormExtractionIfNeeded(insertedVersion.id, s3Url, asset.slug, {
+          mediaType: detectedType,
+          mimeType: input.mimeType,
+          fileName: input.fileName,
+        });
+      }
+
+      // Invalidate on-the-fly SCORM cache for this slug
+      if (needsScormExtraction({ mediaType: detectedType, mimeType: input.mimeType, fileName: input.fileName })) {
         try {
           const os = await import("os");
           const pathMod = await import("path");
           const fsMod = await import("fs");
-          const cacheDir = pathMod.join(os.tmpdir(), "scorm-cache", asset.slug);
-          if (fsMod.existsSync(cacheDir)) {
-            fsMod.rmSync(cacheDir, { recursive: true, force: true });
+          const cacheRoot = pathMod.join(os.tmpdir(), "scorm-cache");
+          if (fsMod.existsSync(cacheRoot)) {
+            for (const entry of fsMod.readdirSync(cacheRoot)) {
+              if (entry.startsWith(`${asset.slug}-`)) {
+                fsMod.rmSync(pathMod.join(cacheRoot, entry), { recursive: true, force: true });
+              }
+            }
             console.log(`[SCORM] Cache invalidated for slug=${asset.slug}`);
           }
         } catch (e) {
@@ -586,6 +653,13 @@ export const mediaRepoRouter = router({
         .where(eq(mediaVersions.assetId, input.assetId));
       const nextVersion = (maxVer ?? 0) + 1;
 
+      const [asset] = await db
+        .select({ slug: mediaAssets.slug, mediaType: mediaAssets.mediaType })
+        .from(mediaAssets)
+        .where(eq(mediaAssets.id, input.assetId))
+        .limit(1);
+      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
+
       await db.insert(mediaVersions).values({
         assetId: input.assetId,
         versionNumber: nextVersion,
@@ -596,7 +670,25 @@ export const mediaRepoRouter = router({
         mimeType: version.mimeType,
         notes: `Restored from v${version.versionNumber}`,
         uploadedByUserId: ctx.user.id,
+        scormExtractionStatus: initialScormExtractionStatus({
+          mediaType: asset.mediaType,
+          mimeType: version.mimeType,
+          fileName: version.fileName,
+        }),
       });
+
+      const [insertedVersion] = await db
+        .select({ id: mediaVersions.id })
+        .from(mediaVersions)
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.versionNumber, nextVersion)))
+        .limit(1);
+      if (insertedVersion) {
+        await queueScormExtractionIfNeeded(insertedVersion.id, version.s3Url, asset.slug, {
+          mediaType: asset.mediaType,
+          mimeType: version.mimeType,
+          fileName: version.fileName,
+        });
+      }
 
       return { restored: true, newVersionNumber: nextVersion };
     }),
@@ -654,7 +746,7 @@ export const mediaRepoRouter = router({
       });
 
       // Build access URL (uses the app's canonical URL from env)
-      const origin = process.env.VITE_APP_URL || "https://app.teachific.com";
+      const origin = process.env.VITE_APP_URL || "https://app.allaboutultrasound.com";
       const accessUrl = `${origin}/media/${asset.slug}?token=${token}`;
 
       await sendEmail({
@@ -670,7 +762,7 @@ export const mediaRepoRouter = router({
               View / Embed Media
             </a>
             ${expiresAt ? `<p style="color:#6b7280;font-size:13px;margin-top:16px;">This link expires on ${expiresAt.toLocaleDateString()}.</p>` : ""}
-            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">Teachific™ — Clinical Intelligence Platform</p>
+            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">All About Ultrasound™ — Clinical Intelligence Platform</p>
           </div>
         `,
       });
@@ -888,6 +980,142 @@ export const mediaRepoRouter = router({
       return { allowed: true, asset, version: version ?? null };
     }),
 
+  /**
+   * Resolve a cookieless embed URL for SCORM/HTML media (adds ?access= for private assets).
+   * Allowed for platform admins, public assets, or enrolled learners when courseId is provided.
+   */
+  getMediaEmbedUrl: protectedProcedure
+    .input(z.object({
+      slug: z.string().min(1),
+      courseId: z.number().int().positive().optional(),
+      path: z.enum(["embed", "download", "scorm"]).default("embed"),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const [asset] = await db
+        .select()
+        .from(mediaAssets)
+        .where(and(eq(mediaAssets.slug, input.slug), isNull(mediaAssets.deletedAt)))
+        .limit(1);
+      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found" });
+
+      const basePath = `/api/media/${asset.slug}/${input.path}`;
+
+      if (asset.access === "public") {
+        return { url: basePath, isPublic: true as const };
+      }
+
+      let allowed = false;
+      try {
+        await assertPlatformAdmin(ctx);
+        allowed = true;
+      } catch {
+        if (input.courseId) {
+          const [enrollment] = await db
+            .select({ id: lmsEnrollments.id })
+            .from(lmsEnrollments)
+            .where(and(
+              eq(lmsEnrollments.userId, ctx.user.id),
+              eq(lmsEnrollments.courseId, input.courseId)
+            ))
+            .limit(1);
+          allowed = !!enrollment;
+        }
+      }
+
+      if (!allowed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "No access to this media asset" });
+      }
+
+      const access = signMediaViewerToken(asset.slug, ctx.user.id, input.courseId ?? null);
+      const authQuery = buildMediaAuthQuery({ access });
+      return { url: `${basePath}${authQuery}`, isPublic: false as const };
+    }),
+
+  /**
+   * Returns the direct S3/CDN URL for a SCORM ZIP so the browser can fetch and
+   * extract it client-side (iSpring-style).  Access is gated the same way as
+   * getMediaEmbedUrl: enrolled learners or platform admins only.
+   */
+  getScormZipUrl: protectedProcedure
+    .input(z.object({
+      slug: z.string().min(1),
+      courseId: z.number().int().positive().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [asset] = await db
+        .select()
+        .from(mediaAssets)
+        .where(and(eq(mediaAssets.slug, input.slug), isNull(mediaAssets.deletedAt)))
+        .limit(1);
+      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found" });
+      // Access check
+      let allowed = false;
+      try {
+        await assertPlatformAdmin(ctx);
+        allowed = true;
+      } catch {
+        if (asset.access === "public") {
+          allowed = true;
+        } else if (input.courseId) {
+          const [enrollment] = await db
+            .select({ id: lmsEnrollments.id })
+            .from(lmsEnrollments)
+            .where(and(
+              eq(lmsEnrollments.userId, ctx.user.id),
+              eq(lmsEnrollments.courseId, input.courseId)
+            ))
+            .limit(1);
+          allowed = !!enrollment;
+        }
+      }
+      if (!allowed) throw new TRPCError({ code: "FORBIDDEN", message: "No access to this media asset" });
+      const versions = await db
+        .select({
+          id: mediaVersions.id,
+          s3Url: mediaVersions.s3Url,
+          fileName: mediaVersions.fileName,
+          mimeType: mediaVersions.mimeType,
+          s3Key: mediaVersions.s3Key,
+          versionNumber: mediaVersions.versionNumber,
+          scormExtractedPrefix: mediaVersions.scormExtractedPrefix,
+          scormLaunchFile: mediaVersions.scormLaunchFile,
+          scormExtractionStatus: mediaVersions.scormExtractionStatus,
+          scormExtractionError: mediaVersions.scormExtractionError,
+        })
+        .from(mediaVersions)
+        .where(eq(mediaVersions.assetId, asset.id))
+        .orderBy(desc(mediaVersions.versionNumber));
+      const current = versions[0];
+      if (!current?.s3Url) throw new TRPCError({ code: "NOT_FOUND", message: "No file found for this asset" });
+
+      const access = signMediaViewerToken(asset.slug, ctx.user.id, input.courseId ?? null);
+      const authQuery = buildMediaAuthQuery({ access });
+      const strategy = pickScormPlaybackMode(current, versions);
+
+      if (strategy.mode === "server") {
+        return {
+          mode: "server" as const,
+          embedUrl: `/api/media/${asset.slug}/scorm${authQuery}`,
+          title: asset.title,
+        };
+      }
+
+      if (!strategy.zipS3Url) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No playable SCORM ZIP found for this asset" });
+      }
+
+      return {
+        mode: "clientZip" as const,
+        zipUrl: `/api/media/${asset.slug}/scorm-zip${authQuery}`,
+        title: asset.title,
+      };
+    }),
+
   // ─── Folder CRUD ──────────────────────────────────────────────────────────────
 
   /**
@@ -1022,34 +1250,170 @@ export const mediaRepoRouter = router({
     }),
 
   /**
-   * Re-trigger SCORM extraction to R2 for an existing asset.
-   * Useful when the original background extraction failed (e.g. due to URL encoding issues).
-   * Clears existing scormExtractedPrefix so the next embed request also falls back to fresh extraction.
+   * Re-trigger SCORM extraction for an existing asset.
+   * Resets status to 'pending' so the heartbeat cron picks it up within 60 seconds.
+   * Works for both failed extractions and re-uploads.
    */
   reExtractScorm: protectedProcedure
-    .input(z.object({ assetId: z.number().int() }))
+    .input(z.object({ assetId: z.number().int(), versionId: z.number().int().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertPlatformAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [version] = await db.select().from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.assetId))
-        .orderBy(desc(mediaVersions.createdAt))
-        .limit(1);
+      // If a specific versionId is provided, use that version; otherwise use the latest
+      let version;
+      if (input.versionId) {
+        const [v] = await db.select().from(mediaVersions)
+          .where(and(eq(mediaVersions.id, input.versionId), eq(mediaVersions.assetId, input.assetId)))
+          .limit(1);
+        version = v;
+      } else {
+        const [v] = await db.select().from(mediaVersions)
+          .where(eq(mediaVersions.assetId, input.assetId))
+          .orderBy(desc(mediaVersions.versionNumber))
+          .limit(1);
+        version = v;
+      }
       if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "No version found for asset" });
       const [asset] = await db.select().from(mediaAssets)
         .where(eq(mediaAssets.id, input.assetId)).limit(1);
       if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
-      // Clear stale extraction data
+      if (!needsScormExtraction({ mediaType: asset.mediaType, mimeType: version.mimeType, fileName: version.fileName, s3Url: version.s3Url })) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This asset is not a SCORM/LMS/ZIP package" });
+      }
+      // Mark as processing immediately and run extraction in background (priority — bypasses queue)
       await db.update(mediaVersions)
-        .set({ scormExtractedPrefix: null, scormLaunchFile: null })
+        .set({
+          scormExtractionStatus: "processing" as any,
+          scormExtractionError: null,
+          scormExtractionStartedAt: new Date(),
+          scormExtractedPrefix: null,
+          scormLaunchFile: null,
+        })
         .where(eq(mediaVersions.id, version.id));
-      // Fire-and-forget re-extraction
-      const { extractAndUploadScorm } = await import("../routes/scormExtractor");
-      extractAndUploadScorm(version.id, version.s3Url, asset.slug).catch((e: any) =>
-        console.error(`[ReExtract] Failed for asset ${input.assetId}:`, e)
+      console.log(`[ReExtractScorm] Priority extraction started for asset ${input.assetId} (version ${version.id})`);
+      // Fire-and-forget background extraction (bypasses the heartbeat queue)
+      extractAndUploadScormVersion(version.id, version.s3Url!, asset.slug).catch((err: any) => {
+        console.error(`[ReExtractScorm] Background extraction failed for version ${version.id}:`, err.message);
+      });
+      return { ok: true, versionId: version.id, status: "processing" };
+    }),
+
+  /**
+   * Re-extract ALL SCORM/ZIP assets — resets every version to pending so the
+   * heartbeat cron re-processes them. Use when bulk storage migration or R2
+   * key changes have broken existing extracted prefixes.
+   */
+  reExtractAllScorm: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      await assertPlatformAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      // Find all SCORM/ZIP/LMS/HTML asset IDs (all types that may need SCORM extraction)
+      const scormAssets = await db
+        .select({ id: mediaAssets.id })
+        .from(mediaAssets)
+        .where(and(inArray(mediaAssets.mediaType, ["scorm", "zip", "lms", "html"] as any), isNull(mediaAssets.deletedAt)));
+
+      if (scormAssets.length === 0) return { ok: true, count: 0 };
+
+      const assetIds = scormAssets.map(a => a.id);
+
+      // For each asset, reset the latest version to pending
+      let count = 0;
+      for (const { id: assetId } of scormAssets) {
+        const [version] = await db
+          .select({ id: mediaVersions.id })
+          .from(mediaVersions)
+          .where(eq(mediaVersions.assetId, assetId))
+          .orderBy(desc(mediaVersions.versionNumber))
+          .limit(1);
+        if (!version) continue;
+        await db.update(mediaVersions)
+          .set({
+            scormExtractionStatus: "pending" as any,
+            scormExtractionError: null,
+            scormExtractionStartedAt: null,
+            scormExtractedPrefix: null,
+            scormLaunchFile: null,
+          })
+          .where(eq(mediaVersions.id, version.id));
+        count++;
+      }
+
+      console.log(`[ReExtractAllScorm] Queued ${count} SCORM assets for heartbeat extraction`);
+      return { ok: true, count };
+    }),
+
+  /**
+   * Get SCORM extraction status for an asset's current version.
+   * Used by admin UI to show extraction progress.
+   */
+  getScormStatus: protectedProcedure
+    .input(z.object({ assetId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      await assertPlatformAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [version] = await db.select({
+        id: mediaVersions.id,
+        scormExtractionStatus: (mediaVersions as any).scormExtractionStatus,
+        scormExtractionError: (mediaVersions as any).scormExtractionError,
+        scormExtractionStartedAt: (mediaVersions as any).scormExtractionStartedAt,
+        scormExtractedPrefix: mediaVersions.scormExtractedPrefix,
+      })
+        .from(mediaVersions)
+        .where(eq(mediaVersions.assetId, input.assetId))
+        .orderBy(desc(mediaVersions.versionNumber))
+        .limit(1);
+      if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "No version found" });
+      return version;
+    }),
+
+  /** SCORM health dashboard rows (admin). */
+  listScormHealth: protectedProcedure.query(async ({ ctx }) => {
+    await assertPlatformAdmin(ctx);
+    const { listScormHealthRows } = await import("../lib/scormHealthAlerts");
+    return listScormHealthRows();
+  }),
+
+  /** Run health scan + email pass immediately (admin). */
+  runScormHealthScanNow: protectedProcedure.mutation(async ({ ctx }) => {
+    await assertPlatformAdmin(ctx);
+    const { runScormHealthAlertPass } = await import("../lib/scormHealthAlerts");
+    return runScormHealthAlertPass();
+  }),
+
+  /** Snapshot metadata for SCORM health settings (last alert, alerted IDs). */
+  getScormHealthMeta: protectedProcedure.query(async ({ ctx }) => {
+    await assertPlatformAdmin(ctx);
+    const { getScormHealthMeta } = await import("../lib/scormHealthAlerts");
+    return getScormHealthMeta();
+  }),
+
+  /**
+   * Re-extract SCORM packages flagged by health alerts only (not all SCORM assets).
+   * - unhealthy: every package currently marked unhealthy
+   * - alerted: packages from the last alert email that are still unhealthy
+   */
+  reExtractUnhealthyScorm: protectedProcedure
+    .input(
+      z.object({
+        scope: z.enum(["unhealthy", "alerted"]).default("alerted"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertPlatformAdmin(ctx);
+      const { queueScormReExtractionForAssets, resolveScormReExtractAssetIds } = await import(
+        "../lib/scormHealthAlerts"
       );
-      return { ok: true, versionId: version.id };
+      const assetIds = await resolveScormReExtractAssetIds(input.scope);
+      if (assetIds.length === 0) {
+        return { ok: true, queued: 0, skipped: 0, scope: input.scope };
+      }
+      const result = await queueScormReExtractionForAssets(assetIds);
+      return { ok: true, scope: input.scope, ...result };
     }),
 
 });

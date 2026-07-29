@@ -10,4 +10,14 @@ export const ENV = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",
+  // Printful integration
+  printfulApiKey: process.env.PRINTFUL_API_KEY ?? "",
+  printfulDefaultStoreId: process.env.PRINTFUL_DEFAULT_STORE_ID ?? "",
+  // Printify integration
+  printifyApiToken: process.env.PRINTIFY_API_TOKEN ?? "",
+  printifyDefaultShopId: process.env.PRINTIFY_DEFAULT_SHOP_ID ?? "",
+  // Bookvault integration
+  bookvaultApiKey: process.env.BOOKVAULT_API_KEY ?? "",
+  bookvaultDispatchService: process.env.BOOKVAULT_DISPATCH_SERVICE ?? "BookvaultUK",
+  bookvaultProductionLevel: process.env.BOOKVAULT_PRODUCTION_LEVEL ?? "Standard",
 };

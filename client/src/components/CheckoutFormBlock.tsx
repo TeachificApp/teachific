@@ -52,7 +52,7 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 interface CheckoutProduct {
   name: string;
   description: string;
-  price: number; // cents
+  price: number; // dollars
   imageUrl: string;
   type: string; // "course" | "quiz" | "product" | "external"
   strikethroughPrice?: string; // display-only original price, e.g. "$97"
@@ -62,7 +62,7 @@ interface OrderBump {
   title: string;
   headline: string;
   description: string;
-  price: number; // cents
+  price: number; // dollars
   imageUrl: string;
   ctaText: string;
   ctaEmoji: string;
@@ -89,7 +89,6 @@ interface CheckoutFormData {
   submitText: string;
   submitIcon?: "none" | "lock" | "shield" | "shopping-cart" | "shopping-bag" | "zap" | "star" | "heart" | "gift" | "award" | "arrow-right" | "sparkles" | "rocket" | "badge-check" | "credit-card";
   successRedirect: string;
-  orgId?: number;
 }
 
 interface CheckoutFormBlockProps {
@@ -117,9 +116,8 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
   })();
 
   // Derive initial values — logged-in user takes highest priority
-  const authUser = user as (typeof user & { firstName?: string | null; lastName?: string | null; displayName?: string | null }) | null;
-  const initFirstName = authUser?.firstName ?? authUser?.displayName?.split(" ")[0] ?? user?.name?.split(" ")[0] ?? savedLead.name?.split(" ")[0] ?? "";
-  const initLastName = authUser?.lastName ?? authUser?.displayName?.split(" ").slice(1).join(" ") ?? user?.name?.split(" ").slice(1).join(" ") ?? savedLead.name?.split(" ").slice(1).join(" ") ?? "";
+  const initFirstName = user?.firstName ?? user?.displayName?.split(" ")[0] ?? user?.name?.split(" ")[0] ?? savedLead.name?.split(" ")[0] ?? "";
+  const initLastName = user?.lastName ?? user?.displayName?.split(" ").slice(1).join(" ") ?? user?.name?.split(" ").slice(1).join(" ") ?? savedLead.name?.split(" ").slice(1).join(" ") ?? "";
   const initEmail = user?.email ?? savedLead.email ?? "";
 
   const [firstName, setFirstName] = useState(initFirstName);
@@ -129,8 +127,8 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
   // Sync state when user auth loads (handles async auth resolution)
   useEffect(() => {
     if (user) {
-      const fn = (user as any).firstName ?? (user as any).displayName?.split(" ")[0] ?? user.name?.split(" ")[0] ?? "";
-      const ln = (user as any).lastName ?? (user as any).displayName?.split(" ").slice(1).join(" ") ?? user.name?.split(" ").slice(1).join(" ") ?? "";
+      const fn = user.firstName ?? user.displayName?.split(" ")[0] ?? user.name?.split(" ")[0] ?? "";
+      const ln = user.lastName ?? user.displayName?.split(" ").slice(1).join(" ") ?? user.name?.split(" ").slice(1).join(" ") ?? "";
       if (fn) setFirstName(fn);
       if (ln) setLastName(ln);
       if (user.email) setEmail(user.email);
@@ -196,15 +194,10 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
 
     // ── Free order: skip Stripe entirely ──
     if (totalPrice === 0) {
-      if (!d.orgId) {
-        toast.error("Checkout is missing organization context.");
-        return;
-      }
       setIsCreatingIntent(true);
       try {
         const selectedProduct = products[selectedProductIdx];
         const result = await processFreeOrder.mutateAsync({
-          orgId: d.orgId,
           email,
           firstName: firstName || undefined,
           lastName:  lastName  || undefined,
@@ -217,7 +210,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
           sourceFunnelPageId: pageId,
           successRedirect: d.successRedirect,
           origin: window.location.origin,
-          fulfillmentCourseId: (d as any).lmsCourseId,
+          lmsCourseId: (d as any).lmsCourseId,
           fulfillmentBrand: (d as any).fulfillmentBrand,
           additionalAccess: (d as any).additionalAccess ?? undefined,
         });
@@ -292,7 +285,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
           className="rounded-lg px-6 py-4 mb-6 text-center text-white font-bold text-lg flex items-center justify-center gap-2"
           style={{ backgroundColor: accent }}
         >
-          <span>Complete Your Payment — ${(totalPrice / 100).toFixed(2)}</span>
+          <span>Complete Your Payment — ${Number(totalPrice).toFixed(2)}</span>
         </div>
 
         {/* Order Summary */}
@@ -315,7 +308,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
           })}
           <div className="flex justify-between font-bold border-t border-gray-200 pt-2 mt-2">
             <span>Total</span>
-            <span>${(totalPrice / 100).toFixed(2)}</span>
+            <span>${Number(totalPrice).toFixed(2)}</span>
           </div>
         </div>
 
@@ -529,7 +522,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               style={{ borderColor: accent }}
             >
               {bump.imageUrl && (
-                <img src={bump.imageUrl} alt="" className="w-16 h-20 rounded object-cover flex-shrink-0" />
+                <img src={bump.imageUrl} alt="" className="w-24 h-32 rounded-lg object-cover flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold leading-tight">{bump.headline}</p>
@@ -605,7 +598,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             })}
             <div className="flex justify-between font-bold border-t border-gray-200 pt-2 mt-2">
               <span>Total</span>
-              <span>${(totalPrice / 100).toFixed(2)}</span>
+              <span>${Number(totalPrice).toFixed(2)}</span>
             </div>
           </div>
         )}
@@ -646,7 +639,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
           ? (totalPrice === 0 ? "Processing..." : "Preparing Payment...")
           : totalPrice === 0
             ? (d.submitText || "Complete Order")
-            : `Proceed to Payment — $${(totalPrice / 100).toFixed(2)}`
+            : `Proceed to Payment — $${Number(totalPrice).toFixed(2)}`
         }
       </button>
     </form>

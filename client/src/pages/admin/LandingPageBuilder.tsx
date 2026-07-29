@@ -6,6 +6,9 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { AutoSaveIndicator } from "@/components/AutoSaveIndicator";
 import { useParams, useLocation } from "wouter";
 import {
   DndContext,
@@ -5332,14 +5335,13 @@ export default function LandingPageBuilder() {
       seoDescription: seoDescription.trim() || null,
       seoImage: seoImage.trim() || null,
     });
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try { await saveBlocks.mutateAsync({ courseId: numericCourseId, blocks }); }
-    finally { setIsSaving(false); }
-  };
-
+    };
+  // ─── Auto-save ──────────────────────────────────────────────────────────────
+  const autoSave = useAutoSave({
+    onSave: async () => { await saveBlocks.mutateAsync({ courseId: numericCourseId, blocks }); },
+    deps: [blocks, numericCourseId],
+    debounceMs: 2000,
+  });
   // ─── Cross-list DnD helpers ───────────────────────────────────────────────
   // Column drop zone IDs use the format: "col:BLOCK_ID:left" or "col:BLOCK_ID:right"
   const parseColId = (id: UniqueIdentifier): { blockId: string; side: "left" | "right" } | null => {
@@ -5683,6 +5685,7 @@ export default function LandingPageBuilder() {
               <Eye size={14} /> Preview
             </a>
           )}
+          <AutoSaveIndicator status={autoSave.status} />
           <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-4 py-1.5 h-8">
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>

@@ -63,17 +63,23 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export interface EmbeddedCheckoutProduct {
   name: string;
   description?: string;
-  price: number; // dollars (e.g. 37.00)
+  price: number; // dollars
   imageUrl?: string;
   type: "course" | "download" | "physical" | "membership" | "bundle" | "other" | "subscription";
   strikethroughPrice?: string; // display-only, e.g. "$197"
+  billingInterval?: "monthly" | "quarterly" | "annual"; // for subscription type
+}
+const EC_INTERVAL_LABEL: Record<string, string> = { monthly: "/mo", quarterly: "/qtr", annual: "/yr" };
+function ecIntervalSuffix(p: EmbeddedCheckoutProduct): string {
+  if (p.type !== "subscription") return "";
+  return EC_INTERVAL_LABEL[p.billingInterval ?? "monthly"] ?? "/mo";
 }
 
 export interface EmbeddedCheckoutOrderBump {
   title: string;
   headline?: string;
   description?: string;
-  price: number; // dollars (e.g. 27.00)
+  price: number; // dollars
   imageUrl?: string;
   ctaText?: string;
   animationStyle?: "pulse" | "glow" | "shake" | "bounce" | "none";
@@ -114,19 +120,12 @@ export interface EmbeddedCheckoutBlockData {
   sourceFunnelPageId?: number;
   sourceLandingPageId?: number;
   sourceLmsLessonId?: number;
-  orgId?: number;
 }
 
 interface EmbeddedCheckoutBlockProps {
   data: Record<string, any>;
   previewMode?: boolean; // if true, disable actual payments
   pageSlug?: string; // optional context for purchase tracking
-}
-
-type CheckoutProductType = "course" | "download" | "quiz" | "physical" | "membership" | "bundle" | "other";
-
-function normalizeCheckoutProductType(type: EmbeddedCheckoutProduct["type"]): CheckoutProductType {
-  return type === "subscription" ? "membership" : type;
 }
 
 // ─── Animated Order Bump ─────────────────────────────────────────────────────
@@ -374,7 +373,7 @@ function DetailsStep({
                   {p.strikethroughPrice && (
                     <div className="text-xs text-red-500 line-through font-medium">{p.strikethroughPrice}</div>
                   )}
-                  <span className="font-bold text-sm" style={{ color: accent }}>${Number(p.price).toFixed(2)}</span>
+                  <span className="font-bold text-sm" style={{ color: accent }}>${Number(p.price).toFixed(2)}{ecIntervalSuffix(p)}</span>
                 </div>
                 <input type="radio" className="sr-only" checked={selectedProductIdx === i} onChange={() => setSelectedProductIdx(i)} />
               </label>
@@ -397,7 +396,7 @@ function DetailsStep({
             {selectedProduct.strikethroughPrice && (
               <div className="text-sm text-red-500 line-through font-medium">{selectedProduct.strikethroughPrice}</div>
             )}
-            <span className="font-bold text-lg" style={{ color: accent }}>${Number(selectedProduct.price).toFixed(2)}</span>
+            <span className="font-bold text-lg" style={{ color: accent }}>${Number(selectedProduct.price).toFixed(2)}{ecIntervalSuffix(selectedProduct)}</span>
           </div>
         </div>
       )}
@@ -505,7 +504,7 @@ function DetailsStep({
           {selectedProduct && (
             <div className="flex justify-between text-gray-600 mb-1">
               <span>{selectedProduct.name}</span>
-              <span>${Number(selectedProduct.price).toFixed(2)}</span>
+              <span>${Number(selectedProduct.price).toFixed(2)}{ecIntervalSuffix(selectedProduct)}</span>
             </div>
           )}
           {Array.from(addedBumps).map((idx) => {
@@ -553,7 +552,7 @@ function DetailsStep({
         className="w-full py-4 rounded-xl font-bold text-white text-lg transition-all hover:opacity-90 active:scale-[0.98] shadow-md"
         style={{ backgroundColor: accent }}
       >
-        Proceed to Payment — $${Number(totalAmount).toFixed(2)}
+        Proceed to Payment — ${Number(totalAmount).toFixed(2)}
       </button>
     </form>
   );
@@ -672,6 +671,41 @@ function EmbeddedCheckoutInner({
   const [successUrl, setSuccessUrl] = useState<string>("");
   const [paymentIntentId, setPaymentIntentId] = useState<string>("");
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+  const [purchasedProductId, setPurchasedProductId] = useState<number | undefined>(undefined);
+  const [purchasedProductType, setPurchasedProductType] = useState<string | undefined>(undefined);
+  const [workflowMessage, setWorkflowMessage] = useState<string | null>(null);
+
+  // Fetch post-purchase workflow when success step is reached
+  const workflowQuery = trpc.embeddedCheckout.getPostPurchaseWorkflow.useQuery(
+    { productId: purchasedProductId, productType: purchasedProductType as any },
+    { enabled: step === "success" && !!purchasedProductId }
+  );
+
+  // Execute workflow actions when workflow data arrives
+  useEffect(() => {
+    if (step !== "success" || !workflowQuery.data?.workflow) return;
+    try {
+      const actions = JSON.parse(workflowQuery.data.workflow as string);
+      if (!Array.isArray(actions)) return;
+      let redirectDelay = 3000;
+      for (const action of actions) {
+        if (action.type === "message" && action.text) {
+          setWorkflowMessage(action.text);
+        } else if (action.type === "redirect" && action.url) {
+          const delay = (action.delaySeconds ?? 3) * 1000;
+          redirectDelay = delay;
+          setTimeout(() => { window.location.href = action.url; }, delay);
+        } else if (action.type === "email") {
+          // Email is sent server-side; no client action needed
+        } else if (action.type === "order_bump" && action.orderBumpId) {
+          // Show order bump upsell message
+          if (action.headline) setWorkflowMessage(action.headline);
+        }
+      }
+    } catch (e) {
+      // ignore parse errors
+    }
+  }, [step, workflowQuery.data]);
 
   const createPaymentIntent = trpc.embeddedCheckout.createPaymentIntent.useMutation({
     onError: (e: any) => {
@@ -707,10 +741,6 @@ function EmbeddedCheckoutInner({
     const orderBumps = d.orderBumps ?? [];
     const selectedProduct = products[formData.selectedProductIdx];
     if (!selectedProduct) return;
-    if (!d.orgId) {
-      toast.error("Checkout is missing organization context.");
-      return;
-    }
 
     const selectedBumps = Array.from(formData.addedBumps)
       .map((idx) => orderBumps[idx])
@@ -722,29 +752,32 @@ function EmbeddedCheckoutInner({
     if (formData.totalAmount === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
-          orgId: d.orgId,
           email: formData.email,
           firstName: formData.firstName || undefined,
           lastName: formData.lastName || undefined,
           phone: formData.phone || undefined,
           productName: selectedProduct.name,
-          productType: normalizeCheckoutProductType(selectedProduct.type),
+          productType: selectedProduct.type,
           productId: (selectedProduct as any).productId ?? undefined,
           sourceType: d.sourceType ?? "other",
           sourceFunnelId: d.sourceFunnelId,
           sourceFunnelPageId: d.sourceFunnelPageId,
           sourceLandingPageId: d.sourceLandingPageId,
           sourceLmsLessonId: d.sourceLmsLessonId,
-          fulfillmentCourseId: (d as any).lmsCourseId ?? undefined,
+          lmsCourseId: (d as any).lmsCourseId ?? undefined,
           fulfillmentBrand: (d as any).fulfillmentBrand ?? undefined,
           successRedirect: d.successRedirect,
           origin: window.location.origin,
           additionalAccess: (d as any).additionalAccess ?? undefined,
         });
         setSuccessUrl(result.successUrl);
+        setPurchasedProductId((selectedProduct as any).productId ?? undefined);
+        setPurchasedProductType(selectedProduct.type);
         setStep("success");
+        // Only auto-redirect if no after-purchase workflow is configured
+        // (workflow actions handle redirect if present)
         if (result.successUrl && result.successUrl !== window.location.href) {
-          setTimeout(() => { window.location.href = result.successUrl; }, 2500);
+          setTimeout(() => { window.location.href = result.successUrl; }, 4000);
         }
       } finally {
         setIsCreatingIntent(false);
@@ -753,14 +786,13 @@ function EmbeddedCheckoutInner({
     }
     try {
       const result = await createPaymentIntent.mutateAsync({
-        orgId: d.orgId,
         email: formData.email,
         firstName: formData.firstName || undefined,
         lastName: formData.lastName || undefined,
         phone: formData.phone || undefined,
         productName: selectedProduct.name,
         productPrice: selectedProduct.price,
-        productType: normalizeCheckoutProductType(selectedProduct.type),
+        productType: selectedProduct.type,
         productId: (selectedProduct as any).productId ?? undefined,
         selectedBumps,
         shippingAddress: formData.shippingAddress || undefined,
@@ -770,7 +802,7 @@ function EmbeddedCheckoutInner({
         sourceFunnelPageId: d.sourceFunnelPageId,
         sourceLandingPageId: d.sourceLandingPageId,
         sourceLmsLessonId: d.sourceLmsLessonId,
-        fulfillmentCourseId: (d as any).lmsCourseId ?? undefined,
+        lmsCourseId: (d as any).lmsCourseId ?? undefined,
         fulfillmentBrand: (d as any).fulfillmentBrand ?? undefined,
         successRedirect: d.successRedirect,
         origin: window.location.origin,
@@ -779,6 +811,8 @@ function EmbeddedCheckoutInner({
       setClientSecret(result.clientSecret);
       setSuccessUrl(result.successUrl);
       setPaymentIntentId(result.paymentIntentId);
+      setPurchasedProductId((selectedProduct as any).productId ?? undefined);
+      setPurchasedProductType(selectedProduct.type);
       setStep("payment");
     } finally {
       setIsCreatingIntent(false);
@@ -787,8 +821,10 @@ function EmbeddedCheckoutInner({
 
   const handleSuccess = () => {
     setStep("success");
+    // Workflow actions (if any) will handle redirect via useEffect
+    // Fallback: redirect to successUrl after 4s if no workflow redirect configured
     if (successUrl && successUrl !== window.location.href) {
-      setTimeout(() => { window.location.href = successUrl; }, 2500);
+      setTimeout(() => { window.location.href = successUrl; }, 4000);
     }
   };
 
@@ -872,7 +908,14 @@ function EmbeddedCheckoutInner({
         )}
 
         {step === "success" && (
-          <SuccessState message={d.successMessage} accent={accent} />
+          <>
+            <SuccessState message={workflowMessage ?? d.successMessage} accent={accent} />
+            {workflowMessage && workflowMessage !== d.successMessage && (
+              <div className="mt-4 p-4 rounded-xl text-sm text-center" style={{ backgroundColor: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}>
+                {workflowMessage}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

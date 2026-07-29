@@ -87,6 +87,7 @@ import {
   userRoles,
   userActivityLogs,
   organizations,
+  lmsQuizAttempts,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
@@ -2945,5 +2946,66 @@ export const lmsGroupRouter = router({
         .leftJoin(lmsCourses, eq(lmsCourses.id, instructorPublishRequests.courseId))
         .where(eq(instructorPublishRequests.instructorId, ctx.user.id))
         .orderBy(desc(instructorPublishRequests.requestedAt));
+    }),
+
+  // ===== getMyQuizAttempts =====
+  getMyQuizAttempts: protectedProcedure
+    .input(z.object({ courseId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const attempts = await db
+        .select({
+          id: lmsQuizAttempts.id,
+          lessonId: lmsQuizAttempts.lessonId,
+          score: lmsQuizAttempts.score,
+          passed: lmsQuizAttempts.passed,
+          totalQuestions: lmsQuizAttempts.totalQuestions,
+          correctAnswers: lmsQuizAttempts.correctAnswers,
+          timeTakenSec: lmsQuizAttempts.timeTakenSec,
+          createdAt: lmsQuizAttempts.createdAt,
+        })
+        .from(lmsQuizAttempts)
+        .where(and(eq(lmsQuizAttempts.userId, ctx.user.id), eq(lmsQuizAttempts.courseId, input.courseId)))
+        .orderBy(desc(lmsQuizAttempts.createdAt));
+      if (attempts.length === 0) return { byLesson: [] };
+      const lessonIds = Array.from(new Set(attempts.map(a => a.lessonId)));
+      const lessons = await db
+        .select({ id: lmsLessons.id, title: lmsLessons.title, type: lmsLessons.type })
+        .from(lmsLessons)
+        .where(sql`${lmsLessons.id} IN (${sql.join(lessonIds.map(id => sql`${id}`), sql`, `)})`);
+      const lessonMap = new Map(lessons.map(l => [l.id, l]));
+      const grouped = new Map<number, typeof attempts>();
+      for (const a of attempts) {
+        if (!grouped.has(a.lessonId)) grouped.set(a.lessonId, []);
+        grouped.get(a.lessonId)!.push(a);
+      }
+      const byLesson = Array.from(grouped.entries()).map(([lessonId, lessonAttempts]) => {
+        const lesson = lessonMap.get(lessonId);
+        const best = lessonAttempts.reduce((b, a) => a.score > b.score ? a : b, lessonAttempts[0]);
+        const latest = lessonAttempts[0];
+        return {
+          lessonId,
+          lessonTitle: lesson?.title ?? `Quiz (Lesson ${lessonId})`,
+          lessonType: lesson?.type ?? "quiz",
+          attemptCount: lessonAttempts.length,
+          bestScore: best.score,
+          bestPassed: best.passed,
+          latestScore: latest.score,
+          latestPassed: latest.passed,
+          latestAt: latest.createdAt,
+          attempts: lessonAttempts.map(a => ({
+            id: a.id,
+            score: a.score,
+            passed: a.passed,
+            totalQuestions: a.totalQuestions,
+            correctAnswers: a.correctAnswers,
+            timeTakenSec: a.timeTakenSec ?? null,
+            createdAt: a.createdAt,
+          })),
+        };
+      });
+      byLesson.sort((a, b) => new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime());
+      return { byLesson };
     }),
 });

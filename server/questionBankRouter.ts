@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { eq, asc, inArray } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
+import { getDb } from "./db";
+import { questionBankTags, questionBankTagMap } from "../drizzle/schema";
 import {
   getFoldersByOrg,
   getFolderById,
@@ -288,5 +291,86 @@ export const questionBankRouter = router({
       // Increment usage counts
       await incrementUsageCount(input.questionIds);
       return { questions };
+    }),
+
+  // ─── Tags ──────────────────────────────────────────────────────────────────
+
+  listTags: protectedProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    return db.select().from(questionBankTags).orderBy(asc(questionBankTags.name));
+  }),
+
+  createTag: protectedProcedure
+    .input(z.object({ name: z.string().min(1).max(100), color: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [result] = await db.insert(questionBankTags).values({
+        name: input.name.trim(),
+        color: input.color ?? "#179ca3",
+      }).$returningId();
+      return { id: result.id };
+    }),
+
+  updateTag: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1).max(100).optional(), color: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { id, ...updates } = input;
+      const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+      if (Object.keys(filtered).length > 0) {
+        await db.update(questionBankTags).set(filtered).where(eq(questionBankTags.id, id));
+      }
+      return { success: true };
+    }),
+
+  deleteTag: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(questionBankTagMap).where(eq(questionBankTagMap.tagId, input.id));
+      await db.delete(questionBankTags).where(eq(questionBankTags.id, input.id));
+      return { success: true };
+    }),
+
+  addTagToQuestion: protectedProcedure
+    .input(z.object({ questionId: z.number(), tagId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Upsert: ignore if already exists
+      const existing = await db.select().from(questionBankTagMap)
+        .where(eq(questionBankTagMap.questionId, input.questionId))
+        .limit(100);
+      if (!existing.find(r => r.tagId === input.tagId)) {
+        await db.insert(questionBankTagMap).values({ questionId: input.questionId, tagId: input.tagId });
+      }
+      return { success: true };
+    }),
+
+  removeTagFromQuestion: protectedProcedure
+    .input(z.object({ questionId: z.number(), tagId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.delete(questionBankTagMap)
+        .where(eq(questionBankTagMap.questionId, input.questionId));
+      return { success: true };
+    }),
+
+  getTagsForQuestion: protectedProcedure
+    .input(z.object({ questionId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await db
+        .select({ tag: questionBankTags })
+        .from(questionBankTagMap)
+        .innerJoin(questionBankTags, eq(questionBankTagMap.tagId, questionBankTags.id))
+        .where(eq(questionBankTagMap.questionId, input.questionId));
+      return rows.map(r => r.tag);
     }),
 });

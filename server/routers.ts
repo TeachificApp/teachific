@@ -77,6 +77,7 @@ import {
   createSupportTicket,
   getSupportTickets,
   updateSupportTicketStatus,
+  searchUsersByQuery,
 } from "./db";
 import { courseEnrollments, organizations, orgMembers, orgLandingPages, users } from "../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
@@ -146,6 +147,16 @@ import { blueprintReferralRouter } from "./routers/blueprintReferralRouter";
 import { blueprintPurchaseRouter } from "./routers/blueprintPurchaseRouter";
 import { orgMergeRouter } from "./routers/orgMergeRouter";
 import { ipSharingRouter } from "./routers/ipSharingRouter";
+import { printfulAdminRouter, printfulPublicRouter } from "./routers/printfulRouter";
+import { printifyAdminRouter } from "./routers/printifyRouter";
+import { analyticsTrackRouter, analyticsAdminRouter } from "./routers/analyticsRouter";
+import { emailCampaignRouter } from "./routers/emailCampaignRouter";
+import { formBuilderRouter } from "./routers/formBuilderRouter";
+import { sitePagesAdminRouter, sitePagesPublicRouter } from "./routers/sitePagesRouter";
+import { siteSettingsRouter } from "./routers/siteSettingsRouter";
+import { workshopPublicRouter, workshopLearnerRouter, workshopAdminRouter } from "./routers/workshopRouter";
+import { bundlePublicRouter, bundleLearnerRouter, bundleAdminRouter } from "./routers/bundleRouter";
+import { emailAuthRouter } from "./routers/emailAuthRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -263,6 +274,23 @@ export const appRouter = router({
   blueprintPurchases: blueprintPurchaseRouter,
   orgMerge: orgMergeRouter,
   ipSharing: ipSharingRouter,
+  printfulAdmin: printfulAdminRouter,
+  printfulPublic: printfulPublicRouter,
+  printifyAdmin: printifyAdminRouter,
+  analyticsTrack: analyticsTrackRouter,
+  analyticsAdmin: analyticsAdminRouter,
+  emailCampaign: emailCampaignRouter,
+  formBuilder: formBuilderRouter,
+  sitePagesAdmin: sitePagesAdminRouter,
+  sitePagesPublic: sitePagesPublicRouter,
+  siteSettings: siteSettingsRouter,
+  workshopPublic: workshopPublicRouter,
+  workshopLearner: workshopLearnerRouter,
+  workshopAdmin: workshopAdminRouter,
+  bundlePublic: bundlePublicRouter,
+  bundleLearner: bundleLearnerRouter,
+  bundleAdmin: bundleAdminRouter,
+  emailAuth: emailAuthRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
 
@@ -3362,6 +3390,11 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         await addOrgMember(input.orgId, user.id, input.role as any);
         if (input.role === "org_admin") await grantTeachificSchoolAccess(user.id);
         return { success: true, userId: user.id, name: user.name, email: user.email };
+      }),
+    searchUsers: adminProcedure
+      .input(z.object({ query: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return searchUsersByQuery(input.query, 10);
       }),
   }),
 
