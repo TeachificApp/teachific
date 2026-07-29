@@ -1258,7 +1258,7 @@ CRITICAL REQUIREMENTS:
       // Completed enrollments
       const [{ completedEnrollments }] = await db.select({ completedEnrollments: sql<number>`count(*)` }).from(lmsEnrollments).where(and(eq(lmsEnrollments.courseId, input.courseId), isNotNull(lmsEnrollments.completedAt)));
       // Active (started but not completed)
-      const [{ activeEnrollments }] = await db.select({ activeEnrollments: sql<number>`count(*)` }).from(lmsEnrollments).where(and(eq(lmsEnrollments.courseId, input.courseId), sql`${lmsEnrollments.progressPct} > 0`, isNull(lmsEnrollments.completedAt)));
+      const [{ activeEnrollments }] = await db.select({ activeEnrollments: sql<number>`count(*)` }).from(lmsEnrollments).where(and(eq(lmsEnrollments.courseId, input.courseId), sql`${lmsEnrollments.progressPercent} > 0`, isNull(lmsEnrollments.completedAt)));
       // Revenue from orders
       const orders = await db.select({ amount: lmsOrders.amount, createdAt: lmsOrders.createdAt, status: lmsOrders.status })
         .from(lmsOrders).where(and(eq(lmsOrders.courseId, input.courseId), eq(lmsOrders.status, "paid")));
@@ -1285,7 +1285,7 @@ CRITICAL REQUIREMENTS:
         return { ...s, lessons: lessonsWithStats };
       }));
       // Average progress
-      const [{ avgProgress }] = await db.select({ avgProgress: sql<number>`AVG(${lmsEnrollments.progressPct})` }).from(lmsEnrollments).where(eq(lmsEnrollments.courseId, input.courseId));
+      const [{ avgProgress }] = await db.select({ avgProgress: sql<number>`AVG(${lmsEnrollments.progressPercent})` }).from(lmsEnrollments).where(eq(lmsEnrollments.courseId, input.courseId));
       return {
         totalEnrollments: Number(totalEnrollments),
         completedEnrollments: Number(completedEnrollments),
@@ -1413,7 +1413,7 @@ CRITICAL REQUIREMENTS:
         }).from(users).where(eq(users.id, o.userId)).limit(1);
         const [enrollment] = await db!.select({
           id: lmsEnrollments.id,
-          progressPct: lmsEnrollments.progressPct,
+          progressPct: lmsEnrollments.progressPercent,
           completedAt: lmsEnrollments.completedAt,
           enrolledAt: lmsEnrollments.enrolledAt,
         }).from(lmsEnrollments)
@@ -1554,7 +1554,7 @@ CRITICAL REQUIREMENTS:
         id: lmsEnrollments.id,
         courseId: lmsEnrollments.courseId,
         enrolledAt: lmsEnrollments.enrolledAt,
-        progressPct: lmsEnrollments.progressPct,
+        progressPct: lmsEnrollments.progressPercent,
         completedAt: lmsEnrollments.completedAt,
       }).from(lmsEnrollments).where(eq(lmsEnrollments.userId, input.userId)).orderBy(desc(lmsEnrollments.enrolledAt));
       const enrichedEnrollments = await Promise.all(enrollments.map(async (e) => {
@@ -1699,7 +1699,7 @@ CRITICAL REQUIREMENTS:
         userId: ctx.user.id,
         courseId: input.courseId,
         enrollmentType: "free_preview",
-        progressPct: 0,
+        progressPercent: 0,
       });
       return { enrollmentId: (result as any).insertId, enrollmentType: "free_preview", created: true };
     }),
@@ -1967,7 +1967,7 @@ CRITICAL REQUIREMENTS:
           courseId: lmsEnrollments.courseId,
           rowDate: lmsEnrollments.enrolledAt,
           orderId: lmsEnrollments.orderId,
-          progressPct: lmsEnrollments.progressPct,
+          progressPct: lmsEnrollments.progressPercent,
           email: users.email,
           displayName: users.displayName,
           name: users.name,

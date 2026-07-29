@@ -2579,6 +2579,9 @@ export const lmsLessonProgress = mysqlTable("lms_lesson_progress", {
   completedAt: timestamp("completed_at"),
   watchTimeSeconds: int("watch_time_seconds").default(0).notNull(),
   lastAccessedAt: timestamp("last_accessed_at"),
+  quizScore: int("quiz_score"),
+  quizPassed: boolean("quiz_passed"),
+  attempts: int("attempts").default(0).notNull(),
 });
 export type LmsLessonProgress = typeof lmsLessonProgress.$inferSelect;
 export type InsertLmsLessonProgress = typeof lmsLessonProgress.$inferInsert;

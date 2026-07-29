@@ -593,7 +593,7 @@ export const lmsLearnerRouter = router({
       .from(lmsCourses)
       .where(sql`${lmsCourses.id} IN (${sql.join(courseIds.map(id => sql`${id}`), sql`, `)})`);
     const courseMap = new Map(coursesRaw.map(c => [c.id, c]));
-    return enrollments.map(e => ({ ...e, course: courseMap.get(e.courseId) ?? null }));
+    return enrollments.map(e => ({ ...e, progressPct: Number(e.progressPercent ?? 0), course: courseMap.get(e.courseId) ?? null }));
   }),
 
   /** Get full course content for enrolled user (or preview lessons) */
@@ -694,7 +694,8 @@ export const lmsLearnerRouter = router({
           .where(sql`${lmsInstructors.id} IN (${sql.join(instructorIds.map(id => sql`${id}`), sql`, `)})`);
       }
 
-      return { course, enrollment: effectiveEnrollment, sections: sectionsWithLessons, topLevelLessons, progress, isAdminPreview: !!isAdminPreview && !enrollment, instructors };
+      const enrollmentWithAlias = effectiveEnrollment ? { ...effectiveEnrollment, progressPct: Number((effectiveEnrollment as any).progressPercent ?? (effectiveEnrollment as any).progressPct ?? 0) } : null;
+      return { course, enrollment: enrollmentWithAlias, sections: sectionsWithLessons, topLevelLessons, progress, isAdminPreview: !!isAdminPreview && !enrollment, instructors };
     }),
 
   /** Get a single lesson (must be enrolled or lesson is preview) */
@@ -814,7 +815,7 @@ export const lmsLearnerRouter = router({
         const given = input.answers[String(q.id)] ?? "";
         const isCorrect = given.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
         if (isCorrect) correct++;
-        return { questionId: q.id, correct: isCorrect, correctAnswer: quiz.showCorrectAnswers ? q.correctAnswer : undefined, explanation: quiz.showCorrectAnswers ? q.explanation : undefined };
+        return { questionId: q.id, correct: isCorrect, correctAnswer: quiz.showAnswers ? q.correctAnswer : undefined, explanation: quiz.showAnswers ? q.explanation : undefined };
       });
       const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
       const passed = score >= quiz.passingScore;
@@ -1229,7 +1230,7 @@ export const lmsLearnerRouter = router({
         const existing = await db.select({ id: lmsEnrollments.id }).from(lmsEnrollments)
           .where(and(eq(lmsEnrollments.userId, user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
         if (!existing[0]) {
-          await db.insert(lmsEnrollments).values({ userId: user.id, courseId: course.id, status: "active", progressPct: 0 });
+          await db.insert(lmsEnrollments).values({ userId: user.id, courseId: course.id, status: "active", progressPercent: 0 });
           try {
             const [settings] = await db.select({ enrollmentEmailEnabled: platformSettings.enrollmentEmailEnabled, enrollmentEmailSubject: platformSettings.enrollmentEmailSubject, enrollmentEmailIntro: platformSettings.enrollmentEmailIntro }).from(platformSettings).limit(1);
             if (settings?.enrollmentEmailEnabled !== false && course.sendEnrollmentEmail) {
@@ -1676,7 +1677,8 @@ export const lmsLearnerRouter = router({
           .where(sql`${lmsInstructors.id} IN (${sql.join(instructorIds.map(id => sql`${id}`), sql`, `)})`);
       }
 
-      return { course, enrollment: effectiveEnrollment, sections: sectionsWithLessons, topLevelLessons, progress, instructors, isAdminPreview: !!isAdminPreview && !enrollment };
+      const enrollmentWithAlias2 = effectiveEnrollment ? { ...effectiveEnrollment, progressPct: Number((effectiveEnrollment as any).progressPercent ?? (effectiveEnrollment as any).progressPct ?? 0) } : null;
+      return { course, enrollment: enrollmentWithAlias2, sections: sectionsWithLessons, topLevelLessons, progress, instructors, isAdminPreview: !!isAdminPreview && !enrollment };
     }),
 
   /** Get cohort schedule (sessions + assignments) for an enrolled student */
@@ -2073,7 +2075,7 @@ export const lmsLearnerRouter = router({
         userId: ctx.user.id,
         courseId: course.id,
         enrollmentType: "free_preview",
-        progressPct: 0,
+        progressPercent: 0,
       }).$returningId();
       return { enrollmentId: result.id, enrollmentType: "free_preview", created: true };
     }),

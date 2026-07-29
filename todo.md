@@ -4682,3 +4682,9 @@
 - [x] Frontend: App.tsx — /admin/sharing-monitor route registered
 - [x] Frontend: DashboardLayout — "Sharing Monitor" link added to Platform Admin sidebar section (ShieldAlert icon)
 - [x] All 421 tests passing
+
+## Progress Tracking & Quiz Bug Fixes (from ultrasound-app review)
+- [x] Fix progressPct/progressPercent mismatch: lmsEnrollments schema uses progressPercent, server now aliases as progressPct in getMyCourses and getCoursePlayer returns
+- [x] Fix all lmsEnrollments inserts to use progressPercent (not progressPct): lmsRouter.ts (2 inserts), lmsEnrollmentAdminRouter.ts (1 insert)
+- [x] Add quizScore, quizPassed, attempts columns to lms_lesson_progress table (schema + DB migration)
+- [x] Fix showCorrectAnswers → showAnswers in quiz submission procedure (lmsRouter.ts line 817)

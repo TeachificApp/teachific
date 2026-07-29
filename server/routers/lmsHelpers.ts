@@ -249,7 +249,7 @@ export async function recalcProgress(db: Awaited<ReturnType<typeof getDb>>, enro
   const wasCompleted = !!enrollRow.completedAt;
 
   await db.update(lmsEnrollments).set({
-    progressPct: pct,
+    progressPercent: pct,
     completedAt: pct >= 100 ? new Date() : null,
   }).where(eq(lmsEnrollments.id, enrollmentId));
 
