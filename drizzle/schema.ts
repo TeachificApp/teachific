@@ -50,6 +50,19 @@ export const users = mysqlTable("users", {
   creatorTrialEndsAt: timestamp("creatorTrialEndsAt"),
   // Unsubscribe token for email campaign opt-outs (unique per user, generated on first campaign send)
   unsubscribeToken: varchar("unsubscribeToken", { length: 128 }),
+  // Extended profile fields (managed by admin)
+  displayName: varchar("displayName", { length: 255 }),
+  firstName: varchar("firstName", { length: 128 }),
+  lastName: varchar("lastName", { length: 128 }),
+  avatarUrl: text("avatarUrl"),
+  bio: text("bio"),
+  specialty: varchar("specialty", { length: 200 }),
+  credentials: varchar("credentials", { length: 200 }),
+  location: varchar("location", { length: 255 }),
+  website: varchar("website", { length: 500 }),
+  timezone: varchar("timezone", { length: 64 }),
+  isDemo: boolean("isDemo").default(false).notNull(),
+  isPremium: boolean("isPremium").default(false).notNull(),
 });
 
 export type User = typeof users.$inferSelect;
