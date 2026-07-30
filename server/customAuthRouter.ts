@@ -370,7 +370,31 @@ export const customAuthRouter = router({
         await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
       }
       const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
-      ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
+      // Set multiple cookie variants for cross-subdomain compatibility:
+      // 1. SameSite=None + Domain=.teachific.app — cross-subdomain (teachific.app → myorg.teachific.app)
+      // 2. SameSite=Lax + Domain=.teachific.app — fallback when None is blocked
+      // 3. Host-only SameSite=Lax — most reliable for email magic-link top-level navigations
+      const isProduction = process.env.NODE_ENV === "production";
+      const cookieMaxAgeMs = COOKIE_MAX_AGE * 1000;
+      if (isProduction) {
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          httpOnly: true, path: "/", maxAge: cookieMaxAgeMs,
+          secure: true, sameSite: "none", domain: ".teachific.app",
+        });
+        ctx.res.cookie(`${COOKIE_NAME}_lax`, sessionToken, {
+          httpOnly: true, path: "/", maxAge: cookieMaxAgeMs,
+          secure: true, sameSite: "lax", domain: ".teachific.app",
+        });
+        // Host-only: no domain attribute — survives email client link opens
+        ctx.res.cookie(`${COOKIE_NAME}_host`, sessionToken, {
+          httpOnly: true, path: "/", maxAge: cookieMaxAgeMs,
+          secure: true, sameSite: "lax",
+        });
+      } else {
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          httpOnly: true, path: "/", maxAge: cookieMaxAgeMs, sameSite: "lax",
+        });
+      }
       const ROLE_PRIORITY: Record<string, number> = {
         org_super_admin: 100, org_admin: 90, sub_admin: 70,
         instructor: 60, group_manager: 50, group_member: 40, member: 20, user: 10,

@@ -55,15 +55,25 @@ export function verifySessionToken(token: string): { userId: number; ts: number 
   }
 }
 
-/** Resolve a user from the custom Teachific email/password session cookie */
+/**
+ * Resolve a user from the custom Teachific email/password session cookie.
+ * Checks all three cookie variants in priority order:
+ *   1. teachific_session       (SameSite=None, cross-subdomain)
+ *   2. teachific_session_lax   (SameSite=Lax, cross-subdomain fallback)
+ *   3. teachific_session_host  (host-only, magic-link email client fallback)
+ */
 async function resolveTeachificSession(cookieHeader: string | undefined): Promise<User | null> {
   try {
-    const raw = parseCookie(cookieHeader, "teachific_session");
-    if (!raw) return null;
-    const payload = verifySessionToken(raw);
-    if (!payload) return null;
-    const user = await getUserById(payload.userId);
-    return user ?? null;
+    const VARIANTS = ["teachific_session", "teachific_session_lax", "teachific_session_host"];
+    for (const name of VARIANTS) {
+      const raw = parseCookie(cookieHeader, name);
+      if (!raw) continue;
+      const payload = verifySessionToken(raw);
+      if (!payload) continue;
+      const user = await getUserById(payload.userId);
+      if (user) return user;
+    }
+    return null;
   } catch {
     return null;
   }
