@@ -579,9 +579,31 @@ function OrgsTab() {
     { enabled: !!editOrg && activeTab === "users" }
   );
   const [addMemberEmail, setAddMemberEmail] = useState("");
-  const [addMemberRole, setAddMemberRole] = useState<"user" | "org_admin">("user");
+  const [addMemberRole, setAddMemberRole] = useState<"org_super_admin" | "org_admin" | "user">("user");
+  const [addMemberName, setAddMemberName] = useState("");
+  const [addMemberPassword, setAddMemberPassword] = useState("");
+  const [addMemberMode, setAddMemberMode] = useState<"existing" | "new">("existing");
   const addUserToOrgByEmail = trpc.platformAdmin.addUserToOrgByEmail.useMutation({
-    onSuccess: () => { refetchMembers(); setAddMemberEmail(""); toast.success("User added to org"); },
+    onSuccess: () => {
+      refetchMembers();
+      setAddMemberEmail(""); setAddMemberName(""); setAddMemberPassword(""); setAddMemberMode("existing");
+      toast.success("User added to org");
+    },
+    onError: (e) => {
+      if (e.message?.includes("No user found")) {
+        setAddMemberMode("new");
+        toast.info("No existing account found — fill in name and password to create one");
+      } else {
+        toast.error(e.message);
+      }
+    },
+  });
+  const createAndAddMember = trpc.orgs.members.createAndAdd.useMutation({
+    onSuccess: () => {
+      refetchMembers();
+      setAddMemberEmail(""); setAddMemberName(""); setAddMemberPassword(""); setAddMemberMode("existing");
+      toast.success("New user created and added to org");
+    },
     onError: (e) => toast.error(e.message),
   });
   const removeOrgMemberMut = trpc.platformAdmin.removeOrgMember.useMutation({
@@ -876,33 +898,64 @@ function OrgsTab() {
                   <Input
                     placeholder="User email address"
                     value={addMemberEmail}
-                    onChange={(e) => setAddMemberEmail(e.target.value)}
+                    onChange={(e) => { setAddMemberEmail(e.target.value); setAddMemberMode("existing"); }}
                     className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs flex-1"
                     autoComplete="off"
                     autoCorrect="off"
                     spellCheck={false}
                   />
-                  <Select value={addMemberRole} onValueChange={(v) => setAddMemberRole(v as "user" | "org_admin")}>
-                    <SelectTrigger className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs w-32">
+                  <Select value={addMemberRole} onValueChange={(v) => setAddMemberRole(v as "org_super_admin" | "org_admin" | "user")}>
+                    <SelectTrigger className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs w-36">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-gray-200">
-                      <SelectItem value="user" className="text-slate-900 text-xs">Member</SelectItem>
+                      <SelectItem value="org_super_admin" className="text-slate-900 text-xs">Super Admin</SelectItem>
                       <SelectItem value="org_admin" className="text-slate-900 text-xs">Org Admin</SelectItem>
+                      <SelectItem value="user" className="text-slate-900 text-xs">Member</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
                     size="sm"
                     className="h-8 text-xs shrink-0"
-                    disabled={addUserToOrgByEmail.isPending || !addMemberEmail.trim()}
+                    disabled={addUserToOrgByEmail.isPending || createAndAddMember.isPending || !addMemberEmail.trim()}
                     onClick={() => {
                       if (!editOrg || !addMemberEmail.trim()) return;
-                      addUserToOrgByEmail.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), role: addMemberRole });
+                      if (addMemberMode === "new") {
+                        createAndAddMember.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), name: addMemberName.trim(), password: addMemberPassword, role: addMemberRole });
+                      } else {
+                        addUserToOrgByEmail.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), role: addMemberRole });
+                      }
                     }}
                   >
-                    {addUserToOrgByEmail.isPending ? "Adding..." : "Add"}
+                    {(addUserToOrgByEmail.isPending || createAndAddMember.isPending) ? "Adding..." : (addMemberMode === "new" ? "Create & Add" : "Add")}
                   </Button>
                 </div>
+                {addMemberMode === "new" && (
+                  <div className="space-y-2 pt-1 border-t border-gray-100">
+                    <p className="text-xs text-amber-600 font-medium">No existing account found — create a new user:</p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Full name"
+                        value={addMemberName}
+                        onChange={(e) => setAddMemberName(e.target.value)}
+                        className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs flex-1"
+                      />
+                      <Input
+                        placeholder="Password"
+                        type="password"
+                        value={addMemberPassword}
+                        onChange={(e) => setAddMemberPassword(e.target.value)}
+                        className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs flex-1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs text-slate-500"
+                        onClick={() => setAddMemberMode("existing")}
+                      >Cancel</Button>
+                    </div>
+                  </div>
+                )}
               </div>
               {/* Members list */}
               <div className="rounded-md border border-gray-200 overflow-hidden">

@@ -3395,20 +3395,20 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .input(z.object({
         orgId: z.number(),
         userId: z.number(),
-        role: z.enum(["org_admin", "user"]).default("user"),
+        role: z.enum(["org_super_admin", "org_admin", "user"]).default("user"),
       }))
       .mutation(async ({ input }) => {
         const existing = await getOrgMember(input.orgId, input.userId);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member of this org" });
         await addOrgMember(input.orgId, input.userId, input.role as any);
-        if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
+        if (input.role === "org_admin" || input.role === "org_super_admin") await grantTeachificSchoolAccess(input.userId);
         return { success: true };
       }),
     addUserToOrgByEmail: adminProcedure
       .input(z.object({
         orgId: z.number(),
         email: z.string().email(),
-        role: z.enum(["org_admin", "user"]).default("user"),
+        role: z.enum(["org_super_admin", "org_admin", "user"]).default("user"),
       }))
       .mutation(async ({ input }) => {
         const user = await getUserByEmail(input.email);
@@ -3416,7 +3416,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const existing = await getOrgMember(input.orgId, user.id);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member of this org" });
         await addOrgMember(input.orgId, user.id, input.role as any);
-        if (input.role === "org_admin") await grantTeachificSchoolAccess(user.id);
+        if (input.role === "org_admin" || input.role === "org_super_admin") await grantTeachificSchoolAccess(user.id);
         return { success: true, userId: user.id, name: user.name, email: user.email };
       }),
     searchUsers: adminProcedure
