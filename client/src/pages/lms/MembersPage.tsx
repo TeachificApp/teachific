@@ -103,6 +103,20 @@ export default function MembersPage() {
     }
   };
 
+  // Reset password state
+  const [resetPwdMember, setResetPwdMember] = useState<{ userId: number; name?: string | null; email?: string | null } | null>(null);
+  const [resetPwdValue, setResetPwdValue] = useState("");
+  const [resetPwdConfirm, setResetPwdConfirm] = useState("");
+  const resetPasswordMutation = trpc.orgs.members.resetPassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password reset successfully");
+      setResetPwdMember(null);
+      setResetPwdValue("");
+      setResetPwdConfirm("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const createAndAdd = trpc.lms.members.createAndAdd.useMutation({
     onSuccess: () => {
       toast.success("Member added successfully");
@@ -325,6 +339,9 @@ export default function MembersPage() {
                         <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                           Enroll in Course
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setResetPwdMember({ userId: m.userId, name: m.name, email: m.email }); setResetPwdValue(""); setResetPwdConfirm(""); }}>
+                          Reset Password
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -381,6 +398,9 @@ export default function MembersPage() {
                       <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                         Enroll in Course
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setResetPwdMember({ userId: m.userId, name: m.name, email: m.email }); setResetPwdValue(""); setResetPwdConfirm(""); }}>
+                        Reset Password
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -404,6 +424,58 @@ export default function MembersPage() {
           ))
         )}
       </div>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetPwdMember} onOpenChange={(o) => { if (!o) { setResetPwdMember(null); setResetPwdValue(""); setResetPwdConfirm(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Set a new password for <strong>{resetPwdMember?.name ?? resetPwdMember?.email ?? "this member"}</strong>.
+            </p>
+            <div className="space-y-1.5">
+              <Label>New Password</Label>
+              <Input
+                type="password"
+                placeholder="Enter new password…"
+                value={resetPwdValue}
+                onChange={(e) => setResetPwdValue(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirm Password</Label>
+              <Input
+                type="password"
+                placeholder="Confirm new password…"
+                value={resetPwdConfirm}
+                onChange={(e) => setResetPwdConfirm(e.target.value)}
+                className={resetPwdValue && resetPwdConfirm && resetPwdValue !== resetPwdConfirm ? "border-destructive" : ""}
+                autoComplete="new-password"
+              />
+              {resetPwdValue && resetPwdConfirm && resetPwdValue !== resetPwdConfirm && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetPwdMember(null); setResetPwdValue(""); setResetPwdConfirm(""); }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!resetPwdMember || !orgId) return;
+                if (resetPwdValue.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+                if (resetPwdValue !== resetPwdConfirm) { toast.error("Passwords do not match"); return; }
+                resetPasswordMutation.mutate({ orgId, userId: resetPwdMember.userId, newPassword: resetPwdValue });
+              }}
+              disabled={resetPasswordMutation.isPending || !resetPwdValue || !resetPwdConfirm || resetPwdValue !== resetPwdConfirm}
+            >
+              {resetPasswordMutation.isPending ? "Resetting…" : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Manual Enroll Dialog */}
       <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>

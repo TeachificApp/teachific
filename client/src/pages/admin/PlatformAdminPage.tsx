@@ -1232,13 +1232,19 @@ function UsersTab() {
   const { data: orgs = [] } = trpc.platformAdmin.listOrgs.useQuery();
   const [editUser, setEditUser] = useState<typeof users[0] | null>(null);
   const [editForm, setEditForm] = useState<{ name?: string; email?: string; role?: "site_owner" | "site_admin" | "org_super_admin" | "org_admin" | "member" }>({});
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkOrgId, setBulkOrgId] = useState<number | null>(null);
   const [bulkText, setBulkText] = useState("");
   const [search, setSearch] = useState("");
 
   const updateUser = trpc.platformAdmin.updateUser.useMutation({
-    onSuccess: () => { refetch(); setEditUser(null); toast.success("User updated"); },
+    onSuccess: () => { refetch(); setEditUser(null); setNewPassword(""); setConfirmPassword(""); toast.success("User updated"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const resetPasswordMutation = trpc.users.resetPassword.useMutation({
+    onSuccess: () => { setNewPassword(""); setConfirmPassword(""); toast.success("Password reset successfully"); },
     onError: (e) => toast.error(e.message),
   });
   const deleteUser = trpc.platformAdmin.deleteUser.useMutation({
@@ -1365,7 +1371,7 @@ function UsersTab() {
       </div>
 
       {/* Edit User Dialog */}
-      <Dialog open={!!editUser} onOpenChange={(o) => !o && setEditUser(null)}>
+      <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) { setEditUser(null); setNewPassword(""); setConfirmPassword(""); } }}>
         <DialogContent className="bg-gray-50 border-gray-200 text-slate-900">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
@@ -1395,15 +1401,56 @@ function UsersTab() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Password Reset Section */}
+            <div className="pt-2 border-t border-gray-200">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Reset Password</p>
+              <div className="space-y-2">
+                <div className="space-y-1.5">
+                  <Label className="text-slate-800">New Password <span className="text-slate-400 font-normal">(leave blank to keep current)</span></Label>
+                  <Input
+                    type="password"
+                    placeholder="Enter new password…"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-white border-gray-300 text-slate-900"
+                    autoComplete="new-password"
+                  />
+                </div>
+                {newPassword && (
+                  <div className="space-y-1.5">
+                    <Label className="text-slate-800">Confirm New Password</Label>
+                    <Input
+                      type="password"
+                      placeholder="Confirm new password…"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className={`bg-white border-gray-300 text-slate-900 ${newPassword && confirmPassword && newPassword !== confirmPassword ? "border-red-400" : ""}`}
+                      autoComplete="new-password"
+                    />
+                    {newPassword && confirmPassword && newPassword !== confirmPassword && (
+                      <p className="text-xs text-red-500">Passwords do not match</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUser(null)} className="border-gray-300 text-slate-800">Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditUser(null); setNewPassword(""); setConfirmPassword(""); }} className="border-gray-300 text-slate-800">Cancel</Button>
             <Button
-              onClick={() => editUser && updateUser.mutate({ userId: editUser.id, ...editForm })}
-              disabled={updateUser.isPending}
+              onClick={async () => {
+                if (!editUser) return;
+                if (newPassword) {
+                  if (newPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+                  if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+                  await resetPasswordMutation.mutateAsync({ userId: editUser.id, newPassword });
+                }
+                updateUser.mutate({ userId: editUser.id, ...editForm });
+              }}
+              disabled={updateUser.isPending || resetPasswordMutation.isPending || (!!newPassword && newPassword !== confirmPassword)}
               className=""
             >
-              Save
+              {(updateUser.isPending || resetPasswordMutation.isPending) ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
