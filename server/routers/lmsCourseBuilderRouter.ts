@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUser, getOrgIdForUserWithFallback } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -104,14 +104,13 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Scope to the user's own org — platform admins (site_owner/site_admin) see all
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      // Safety: if not a platform admin and no org found, return empty to prevent data leak
-      if (!isPlatformAdmin && orgId === null) return { courses: [], total: 0 };
+      // Always scope to the user's own org — platform admins fall back to the primary org
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      // Safety: if no org found, return empty to prevent data leak
+      if (orgId === null) return { courses: [], total: 0 };
       const conditions: any[] = [];
-      // Always filter by orgId unless the user is a platform admin
-      if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
+      // Always filter by orgId
+      conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as "draft" | "public" | "hidden" | "private"));
       if (input.type !== "all") conditions.push(eq(lmsCourses.type, input.type as "course" | "quiz" | "download" | "cohort"));
       const offset = (input.page - 1) * input.pageSize;
@@ -141,8 +140,8 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Resolve the org this course belongs to
-      const courseOrgId = await getOrgIdForUser(ctx.user.id);
+      // Resolve the org this course belongs to (with primary org fallback for platform admins)
+      const courseOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (!courseOrgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organisation found for user" });
       const base = generateSlug(input.title);
       const slug = await uniqueSlug(db, base);
@@ -754,8 +753,11 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug })
-        .from(lmsCourses).orderBy(asc(lmsCourses.title));
+        .from(lmsCourses)
+        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
+        .orderBy(asc(lmsCourses.title));
       const sections = await db.select({ id: lmsSections.id, courseId: lmsSections.courseId, title: lmsSections.title, position: lmsSections.position })
         .from(lmsSections).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
       const sectionsByCourse = new Map<number, typeof sections>();
@@ -1273,8 +1275,11 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, type: lmsCourses.type })
-        .from(lmsCourses).orderBy(asc(lmsCourses.title));
+        .from(lmsCourses)
+        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
+        .orderBy(asc(lmsCourses.title));
       const sections = await db.select({ id: lmsSections.id, courseId: lmsSections.courseId, title: lmsSections.title, position: lmsSections.position })
         .from(lmsSections).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
       const lessons = await db.select({ id: lmsLessons.id, courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, title: lmsLessons.title, type: lmsLessons.type, position: lmsLessons.position })

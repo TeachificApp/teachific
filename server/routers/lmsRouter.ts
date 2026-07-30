@@ -27,7 +27,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgBySlug, getPrimaryOrgId } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -120,14 +120,27 @@ export const lmsPublicRouter = router({
       search: z.string().optional(),
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(50).default(12),
+      // orgSlug: when on a subdomain, pass the slug to scope to that org; absent = primary org
+      orgSlug: z.string().optional(),
     }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      // Resolve org scope: subdomain slug → org, or fall back to primary org
+      let scopeOrgId: number | null = null;
+      if (input.orgSlug) {
+        const org = await getOrgBySlug(input.orgSlug);
+        scopeOrgId = org?.id ?? null;
+      } else {
+        scopeOrgId = await getPrimaryOrgId();
+      }
+      // If we can't resolve an org, return empty (prevents cross-org leakage)
+      if (scopeOrgId === null) return { courses: [], total: 0, page: input.page, pageSize: input.pageSize };
+
       // If type is explicitly "quiz", merge lmsCourses quizzes + sonoQuizzes
       if (input.type === "quiz") {
-        const lmsConditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.type, "quiz")];
+        const lmsConditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.type, "quiz"), eq(lmsCourses.orgId, scopeOrgId)];
 
         const offset = (input.page - 1) * input.pageSize;
         const [lmsQuizRows, sqRows] = await Promise.all([
@@ -162,7 +175,7 @@ export const lmsPublicRouter = router({
 
       // If type is explicitly "download", pull from digitalProducts table and return in same shape
       if (input.type === "download") {
-        const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true)];
+        const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true), eq(digitalProducts.orgId, scopeOrgId)];
         if (input.isFree !== undefined) dpConditions.push(eq(digitalProducts.isFree, input.isFree));
         const offset = (input.page - 1) * input.pageSize;
         const [dpRows, dpCount] = await Promise.all([
@@ -191,7 +204,7 @@ export const lmsPublicRouter = router({
         return { courses: mapped, total: Number(dpCount[0]?.count ?? 0), page: input.page, pageSize: input.pageSize };
       }
 
-      const conditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true)];
+      const conditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.orgId, scopeOrgId)];
 
       if (input.type) conditions.push(eq(lmsCourses.type, input.type));
       if (input.isFree !== undefined) conditions.push(eq(lmsCourses.isFree, input.isFree));
@@ -225,7 +238,7 @@ export const lmsPublicRouter = router({
 
       // When no type filter (All Types), also include digitalProducts and sonoQuizzes
       if (!input.type) {
-        const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true)];
+        const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true), eq(digitalProducts.orgId, scopeOrgId)];
         if (input.isFree !== undefined) dpConditions.push(eq(digitalProducts.isFree, input.isFree));
         const dpRows = await db.select().from(digitalProducts).where(and(...dpConditions)).orderBy(desc(digitalProducts.createdAt));
         const dpMapped = dpRows.map(p => ({

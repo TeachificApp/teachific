@@ -4800,3 +4800,18 @@
 - [x] Backend: confirm-native endpoint returns { packageId, packageUrl } for the newly created content package
 - [x] QuestionBankImportPage: after import, show links to both the hosted package (if native) and the question bank (if bank)
 - [x] Step 3 (Done): show two action cards — "View Hosted Package" and "Go to Question Bank" — based on which modes were selected
+
+## Course Org-Scoping Fix
+- [x] Add getPrimaryOrgId() helper to db.ts (fallback for platform admins with no membership row)
+- [x] Add getOrgIdForUserWithFallback() helper to db.ts
+- [x] Fix requireOrgAdmin() in db.ts to use primary org fallback for platform admins
+- [x] Fix lmsCourseBuilderRouter.ts listCourses: remove isPlatformAdmin bypass, always scope to org
+- [x] Fix lmsCourseBuilderRouter.ts createCourse: use getOrgIdForUserWithFallback
+- [x] Fix lmsCourseBuilderRouter.ts listCoursesWithSections: add org scoping
+- [x] Fix lmsCourseBuilderRouter.ts listCoursesWithLessons: add org scoping
+- [x] Fix lmsAdminRouter.ts getCoursesWithLandingBlocks: remove isPlatformAdmin bypass
+- [x] Fix lmsAdminRouter.ts getDownloadsWithLandingBlocks: remove isPlatformAdmin bypass
+- [x] Fix lmsAdminRouter.ts getProductsWithLandingBlocks: remove isPlatformAdmin bypass
+- [x] Fix lmsAdminRouter.ts listCourses: remove isPlatformAdmin bypass
+- [x] Fix routers/lmsRouter.ts public listCourses: add orgSlug input + scope to org
+- [x] Fix lmsRouter.ts (main) listCourses: use getOrgIdForUserWithFallback

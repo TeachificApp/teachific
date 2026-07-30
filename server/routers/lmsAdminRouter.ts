@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, asc, like, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb, getOrgIdForUser, requireOrgAdmin } from "../db";
+import { getDb, getOrgIdForUser, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
@@ -37,13 +37,12 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      if (!isPlatformAdmin && orgId === null) return [];
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (orgId === null) return [];
       const courses = await db
         .select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type })
         .from(lmsCourses)
-        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
+        .where(eq(lmsCourses.orgId, orgId))
         .orderBy(asc(lmsCourses.title));
       const result = [];
       for (const course of courses) {
@@ -65,13 +64,12 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      if (!isPlatformAdmin && orgId === null) return [];
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (orgId === null) return [];
       const products = await db
         .select({ id: digitalProducts.id, title: digitalProducts.title, landingBlocks: digitalProducts.salesPageBlocksJson })
         .from(digitalProducts)
-        .where(orgId !== null ? eq(digitalProducts.orgId, orgId) : undefined)
+        .where(eq(digitalProducts.orgId, orgId))
         .orderBy(asc(digitalProducts.title));
       return products.filter(p => {
         const blocks = p.landingBlocks;
@@ -85,13 +83,12 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      if (!isPlatformAdmin && orgId === null) return [];
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (orgId === null) return [];
       const products = await db
         .select({ id: physicalProducts.id, title: physicalProducts.title, landingBlocks: physicalProducts.landingBlocks })
         .from(physicalProducts)
-        .where(orgId !== null ? eq(physicalProducts.orgId, orgId) : undefined)
+        .where(eq(physicalProducts.orgId, orgId))
         .orderBy(asc(physicalProducts.title));
       return products.filter(p => p.landingBlocks && p.landingBlocks.length > 2);
     }),
@@ -284,13 +281,11 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Scope to the user's own org — platform admins (site_owner/site_admin) see all
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      // Safety: if not a platform admin and no org found, return empty to prevent data leak
-      if (!isPlatformAdmin && orgId === null) return { courses: [], total: 0 };
+      // Always scope to the user's own org — platform admins fall back to the primary org
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (orgId === null) return { courses: [], total: 0 };
       const conditions: any[] = [];
-      if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
+      conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as any));
       if (input.type !== "all") conditions.push(eq(lmsCourses.type, input.type as any));
       if (input.search) conditions.push(like(lmsCourses.title, `%${input.search}%`));

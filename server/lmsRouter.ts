@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { getOrgIdForUser, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
@@ -2347,7 +2347,9 @@ export const lmsRouter = router({
   listCourses: protectedProcedure
     .input(z.object({ orgId: z.number().optional(), pageSize: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = input?.orgId ?? await getTeachificOrgId() ?? await requireOrgId(ctx.user.id);
+      // Always scope to the user's own org; platform admins fall back to the primary org
+      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) return { courses: [], total: 0 };
       const all = await getCoursesByOrg(orgId);
       return { courses: all, total: (all as any[]).length };
     }),

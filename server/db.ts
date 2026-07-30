@@ -295,6 +295,39 @@ export async function getOrgIdForUser(userId: number): Promise<number | null> {
 }
 
 /**
+ * Returns the ID of the primary (platform) org.
+ * Used as fallback for site_owner/site_admin users who have no orgMembers row.
+ */
+export async function getPrimaryOrgId(): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.isPrimary, true))
+    .limit(1);
+  return result[0]?.id ?? null;
+}
+
+/**
+ * Returns the org ID for a user, with a fallback to the primary org for platform admins.
+ * This ensures site_owner/site_admin always see their own platform org's content,
+ * even if they have no orgMembers row.
+ */
+export async function getOrgIdForUserWithFallback(
+  userId: number,
+  userRole: string
+): Promise<number | null> {
+  const orgId = await getOrgIdForUser(userId);
+  if (orgId !== null) return orgId;
+  // For platform admins with no membership row, fall back to the primary org
+  if (userRole === "site_owner" || userRole === "site_admin") {
+    return getPrimaryOrgId();
+  }
+  return null;
+}
+
+/**
  * Shared helper: verify the current user has org admin access.
  * - Platform admins (users.role === 'admin') are always allowed.
  * - Org admins/super admins are allowed for their own org.
@@ -313,7 +346,8 @@ export async function requireOrgAdmin(
   // Platform admins bypass org check
   if (platformRole === "site_owner" || platformRole === "site_admin" || platformRole === "admin") {
     if (orgIdHint) return orgIdHint;
-    const orgId = await getOrgIdForUser(userId);
+    // Use fallback to primary org for platform admins with no membership row
+    const orgId = await getOrgIdForUserWithFallback(userId, platformRole);
     if (!orgId) {
       const { TRPCError } = await import("@trpc/server");
       throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
