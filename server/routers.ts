@@ -1713,10 +1713,34 @@ export const appRouter = router({
               }
             } catch (e: any) { failed++; errors.push(`${u.email}: ${e.message}`); }
           }
-          return { total: input.users.length, created, updated, failed, errors };
+                    return { total: input.users.length, created, updated, failed, errors };
+        }),
+      // Org admin (or platform admin) manually sets a member's password
+      resetPassword: orgAdminProcedure
+        .input(z.object({
+          orgId: z.number(),
+          userId: z.number(),
+          newPassword: z.string().min(6, "Password must be at least 6 characters"),
+        }))
+        .mutation(async ({ input, ctx }) => {
+          // Verify caller is an admin of this org (or a platform admin)
+          if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
+            const membership = await getOrgMember(input.orgId, ctx.user.id);
+            if (!membership || (membership.role !== "org_admin" && membership.role !== "org_super_admin")) {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can reset member passwords" });
+            }
+            // Verify target user is actually a member of this org
+            const targetMembership = await getOrgMember(input.orgId, input.userId);
+            if (!targetMembership) throw new TRPCError({ code: "NOT_FOUND", message: "User is not a member of this organization" });
+          }
+          const bcrypt = await import("bcryptjs");
+          const passwordHash = await bcrypt.default.hash(input.newPassword, 10);
+          const db2 = await getDb();
+          if (!db2) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+          await db2.update(users).set({ passwordHash, emailVerified: true }).where(eq(users.id, input.userId));
+          return { success: true };
         }),
     }),
-
     // ── Embed configuration ───────────────────────────────────────────────────
     getEmbedConfig: protectedProcedure
       .input(z.object({ orgId: z.number() }))

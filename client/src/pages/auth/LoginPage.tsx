@@ -64,7 +64,7 @@ export default function LoginPage() {
   const handleMagicLinkSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    requestMagicLink.mutate({ email: magicEmail, redirectTo: returnTo || undefined });
+    requestMagicLink.mutate({ email: magicEmail, redirectTo: returnTo || undefined, origin: window.location.origin });
   };
   const login = trpc.customAuth.login.useMutation({
     onSuccess: (data) => {
