@@ -899,7 +899,7 @@ function OrgsTab() {
                   <Input
                     placeholder="User email address"
                     value={addMemberEmail}
-                    onChange={(e) => { setAddMemberEmail(e.target.value); setAddMemberMode("existing"); }}
+                    onChange={(e) => { const v = e.target.value; setAddMemberEmail(v); if (v !== addMemberEmail) setAddMemberMode("existing"); }}
                     className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs flex-1"
                     autoComplete="off"
                     autoCorrect="off"
@@ -915,49 +915,58 @@ function OrgsTab() {
                       <SelectItem value="user" className="text-slate-900 text-xs">Member</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button
-                    size="sm"
-                    className="h-8 text-xs shrink-0"
-                    disabled={
-                      addUserToOrgByEmail.isPending || createAndAddMember.isPending || !addMemberEmail.trim() ||
-                      (addMemberMode === "new" && (!addMemberName.trim() || addMemberPassword.length < 6))
-                    }
-                    onClick={() => {
-                      if (!editOrg || !addMemberEmail.trim()) return;
-                      if (addMemberMode === "new") {
-                        if (!addMemberName.trim()) { toast.error("Please enter a full name"); return; }
-                        if (addMemberPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-                        createAndAddMember.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), name: addMemberName.trim(), password: addMemberPassword, role: addMemberRole });
-                      } else {
+                  {addMemberMode !== "new" && (
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs shrink-0"
+                      disabled={addUserToOrgByEmail.isPending || !addMemberEmail.trim()}
+                      onClick={() => {
+                        if (!editOrg || !addMemberEmail.trim()) return;
                         addUserToOrgByEmail.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), role: addMemberRole });
-                      }
-                    }}
-                  >
-                    {(addUserToOrgByEmail.isPending || createAndAddMember.isPending) ? "Adding..." : (addMemberMode === "new" ? "Create & Add" : "Add")}
-                  </Button>
+                      }}
+                    >
+                      {addUserToOrgByEmail.isPending ? "Checking..." : "Add"}
+                    </Button>
+                  )}
                 </div>
                 {addMemberMode === "new" && (
                   <div className="space-y-2 pt-1 border-t border-gray-100">
-                    <p className="text-xs text-amber-600 font-medium">No existing account found — create a new user (password min. 6 chars):</p>
+                    <p className="text-xs text-amber-600 font-medium">No existing account for <strong>{addMemberEmail}</strong> — enter name &amp; password to create one (min. 6 chars):</p>
                     <div className="flex gap-2">
                       <Input
                         placeholder="Full name"
                         value={addMemberName}
                         onChange={(e) => setAddMemberName(e.target.value)}
                         className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs flex-1"
+                        autoFocus
                       />
                       <Input
-                        placeholder="Password"
+                        placeholder="Password (min. 6 chars)"
                         type="password"
                         value={addMemberPassword}
                         onChange={(e) => setAddMemberPassword(e.target.value)}
                         className="bg-gray-50 border-gray-300 text-slate-900 h-8 text-xs flex-1"
                       />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs"
+                        disabled={createAndAddMember.isPending || !addMemberName.trim() || addMemberPassword.length < 6}
+                        onClick={() => {
+                          if (!editOrg) return;
+                          if (!addMemberName.trim()) { toast.error("Please enter a full name"); return; }
+                          if (addMemberPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+                          createAndAddMember.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), name: addMemberName.trim(), password: addMemberPassword, role: addMemberRole });
+                        }}
+                      >
+                        {createAndAddMember.isPending ? "Creating..." : "Create & Add"}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-8 text-xs text-slate-500"
-                        onClick={() => setAddMemberMode("existing")}
+                        onClick={() => { setAddMemberMode("existing"); setAddMemberName(""); setAddMemberPassword(""); }}
                       >Cancel</Button>
                     </div>
                   </div>

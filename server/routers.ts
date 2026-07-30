@@ -1610,15 +1610,18 @@ export const appRouter = router({
           courseIds: z.array(z.number()).optional(),
         }))
         .mutation(async ({ input, ctx }) => {
+          console.log("[createAndAdd] START", { orgId: input.orgId, email: input.email, name: input.name, role: input.role, callerRole: ctx.user.role, callerId: ctx.user.id });
           if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
             const membership = await getOrgMember(input.orgId, ctx.user.id);
-            if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+            if (!membership) { console.log("[createAndAdd] FORBIDDEN: caller not member of org"); throw new TRPCError({ code: "FORBIDDEN" }); }
             // Only site owners/admins or existing org_super_admins can assign org_super_admin
             if (input.role === "org_super_admin" && membership.role !== "org_super_admin") {
+              console.log("[createAndAdd] FORBIDDEN: cannot assign org_super_admin");
               throw new TRPCError({ code: "FORBIDDEN", message: "Only super admins can assign the super admin role" });
             }
           }
           const existing = await getUserByEmail(input.email);
+          console.log("[createAndAdd] existing user?", existing ? `yes id=${existing.id}` : "no");
           let userId: number;
           if (existing) {
             userId = existing.id;
@@ -1627,17 +1630,23 @@ export const appRouter = router({
               const orgRole = input.role === "org_super_admin" ? "org_super_admin" : input.role === "org_admin" ? "org_admin" : "member";
               await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
               if (orgRole === "org_admin" || orgRole === "org_super_admin") await grantTeachificSchoolAccess(existing.id);
+            } else {
+              console.log("[createAndAdd] user already a member, skipping addOrgMember");
             }
           } else {
+            console.log("[createAndAdd] creating new user...");
             const bcrypt = await import("bcryptjs");
             const passwordHash = await bcrypt.default.hash(input.password, 10);
             const openId = `manual_${nanoid(20)}`;
             await createManualUser({ openId, name: input.name, email: input.email, loginMethod: "email", role: "user", passwordHash });
             const newUser = await getUserByEmail(input.email);
-            if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+            console.log("[createAndAdd] newUser after createManualUser:", newUser ? `id=${newUser.id}` : "NOT FOUND");
+            if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create user" });
             userId = newUser.id;
             const orgRole = input.role === "org_super_admin" ? "org_super_admin" : input.role === "org_admin" ? "org_admin" : "member";
+            console.log("[createAndAdd] calling addOrgMember", { orgId: input.orgId, userId, orgRole });
             await addOrgMember(input.orgId, userId, orgRole, ctx.user.id);
+            console.log("[createAndAdd] addOrgMember done");
             if (orgRole === "org_admin" || orgRole === "org_super_admin") await grantTeachificSchoolAccess(userId);
           }
           if (input.courseIds?.length) {
