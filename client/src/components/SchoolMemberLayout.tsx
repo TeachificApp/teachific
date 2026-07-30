@@ -52,7 +52,9 @@ export default function SchoolMemberLayout({ children, orgSlug }: SchoolMemberLa
     { enabled: !!orgBySlug?.id }
   );
 
-  const primaryColor = theme?.primaryColor ?? "#24abbc";
+  // primaryColor is injected as --org-primary CSS variable by SubdomainThemeProvider.
+  // We still read it here for inline style fallbacks in non-subdomain contexts.
+  const primaryColor = theme?.primaryColor ?? "#189aa1";
   const schoolName = orgBySlug?.name ?? "Learning Portal";
 
   // If not logged in, redirect to login
@@ -76,7 +78,7 @@ export default function SchoolMemberLayout({ children, orgSlug }: SchoolMemberLa
           ) : (
             <div
               className="h-7 w-7 rounded-md flex items-center justify-center text-white font-bold text-xs"
-              style={{ backgroundColor: primaryColor }}
+              style={{ backgroundColor: 'var(--org-primary)' }}
             >
               {schoolName[0]}
             </div>
@@ -111,7 +113,7 @@ export default function SchoolMemberLayout({ children, orgSlug }: SchoolMemberLa
                   ? "text-white font-medium"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
-              style={isActive ? { backgroundColor: primaryColor } : {}}
+              style={isActive ? { backgroundColor: 'var(--org-primary)' } : {}}
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
@@ -125,7 +127,7 @@ export default function SchoolMemberLayout({ children, orgSlug }: SchoolMemberLa
         <div className="flex items-center gap-2.5 px-3 py-2">
           <Avatar className="h-7 w-7">
             <AvatarImage src={undefined} />
-            <AvatarFallback className="text-xs" style={{ backgroundColor: primaryColor + "30", color: primaryColor }}>
+            <AvatarFallback className="text-xs" style={{ backgroundColor: 'color-mix(in srgb, var(--org-primary) 18%, transparent)', color: 'var(--org-primary)' }}>
               {user.name?.[0]?.toUpperCase() ?? "U"}
             </AvatarFallback>
           </Avatar>

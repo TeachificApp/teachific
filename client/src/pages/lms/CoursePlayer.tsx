@@ -112,7 +112,7 @@ function QuizRunner({ lesson, courseSlug, onComplete, submitQuizLabel = "Submit 
       </div>
       {!submitted && (
         <Button
-          className="bg-teal-500 hover:bg-teal-400 text-white font-semibold"
+          className="text-white font-semibold" style={{ backgroundColor: "var(--org-primary)" }}
           onClick={handleSubmit}
           disabled={Object.keys(answers).length < questions.length || submitQuiz.isPending}
         >
@@ -142,7 +142,7 @@ function InlineLessonQuiz({ data }: { data: { title?: string; questions?: any[];
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-      <div className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-500 flex items-center gap-2">
+      <div className="px-5 py-3 flex items-center gap-2" style={{ background: "linear-gradient(to right, var(--org-primary), var(--org-accent))" }}>
         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
         <h3 className="text-white font-semibold text-sm">{data.title || "Knowledge Check"}</h3>
         <span className="ml-auto text-teal-100 text-xs">{questions.length} question{questions.length !== 1 ? "s" : ""}{data.requirePassToComplete !== false ? ` · Pass: ${data.passingScore ?? 70}%` : ""}</span>
@@ -195,7 +195,7 @@ function InlineLessonQuiz({ data }: { data: { title?: string; questions?: any[];
         ))}
         {!submitted && (
           <button
-            className="mt-2 px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+            className="mt-2 px-5 py-2 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 org-btn"
             disabled={Object.keys(selected).length < shuffled.length}
             onClick={() => setSubmitted(true)}
           >
@@ -232,7 +232,7 @@ function InlineLessonFlashcardDeck({ data }: { data: { title?: string; cards?: a
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-      <div className="px-5 py-3 bg-gradient-to-r from-teal-600 to-teal-500 flex items-center gap-2">
+      <div className="px-5 py-3 flex items-center gap-2" style={{ background: "linear-gradient(to right, var(--org-primary), var(--org-accent))" }}>
         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
         <h3 className="text-white font-semibold text-sm">{data.title || "Flashcard Deck"}</h3>
         <span className="ml-auto text-teal-100 text-xs">{deck.length} cards · {known.size} known</span>
@@ -245,7 +245,7 @@ function InlineLessonFlashcardDeck({ data }: { data: { title?: string; cards?: a
             <span>{progress}% known</span>
           </div>
           <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-teal-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full transition-all" style={{ backgroundColor: "var(--org-primary)", width: `${progress}%` }} />
           </div>
         </div>
         {/* Flashcard */}
@@ -588,7 +588,7 @@ function MobileSidebarContent({
   const enrolledAt = enrollment?.enrolledAt ? new Date(enrollment.enrolledAt) : new Date();
   const daysSinceEnroll = Math.floor((Date.now() - enrolledAt.getTime()) / 86400000);
     const dripBypassed = !course.isDrip;
-  const primaryColor = course.primaryColor ?? "#0d9488";
+  const primaryColor = course.primaryColor ?? "var(--org-primary)";
   const allLessons = [...topLevelLessons, ...sections.flatMap((s: any) => s.lessons)];
   return (
     <>
@@ -987,8 +987,8 @@ export default function CoursePlayer() {
     }),
   }));
   // ── Course Color Scheme ──────────────────────────────────────────────────────
-  const primaryColor = course.primaryColor ?? "#0d9488";
-  const accentColor = course.accentColor ?? "#0f766e";
+  const primaryColor = course.primaryColor ?? "var(--org-primary)";
+  const accentColor = course.accentColor ?? "var(--org-accent)";
   const gradientStart = course.gradientFrom ?? primaryColor;
   const gradientEnd = course.gradientTo ?? accentColor;
   const gradientDirection = course.gradientDirection ?? "to right";
@@ -1205,7 +1205,7 @@ export default function CoursePlayer() {
 
       {/* Admin Preview Banner */}
       {(isPreviewMode || adminPreviewStudent) && (
-        <div className="bg-teal-700 text-white text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-2 shrink-0 z-50">
+        <div className="text-white text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-2 shrink-0 z-50" style={{ backgroundColor: "var(--org-primary)" }}>
           <Eye className="w-4 h-4" />
           <span>Student Preview — viewing as a student</span>
           {isAdmin && !isPreviewMode && (

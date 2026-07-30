@@ -87,7 +87,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
               <img src={AAUS_LOGO} alt="All About Ultrasound" className="w-7 sm:w-8 h-7 sm:h-8 rounded-full" />
               <div className="flex flex-col leading-none">
                 <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 hidden sm:block">All About Ultrasound™ | iHeartEcho™</span>
-                <span className="text-xs sm:text-sm font-bold text-[#189aa1]">Learning Platform</span>
+                <span className="text-xs sm:text-sm font-bold org-text">Learning Platform</span>
               </div>
             </div>
           </Link>
@@ -134,9 +134,9 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                   className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   {(user as any)?.avatarUrl ? (
-                    <img src={(user as any).avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full object-cover shrink-0 border border-[#189aa1]/30" />
+                    <img src={(user as any).avatarUrl} alt="Avatar" className="w-7 h-7 rounded-full object-cover shrink-0 border" style={{ borderColor: 'color-mix(in srgb, var(--org-primary) 30%, transparent)' }} />
                   ) : (
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: "linear-gradient(135deg, #189aa1 0%, #4ad9e0 100%)" }}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: 'linear-gradient(135deg, var(--org-primary) 0%, var(--org-accent) 100%)' }}>
                       {((user as any)?.displayName || (user as any)?.name || "U").charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -165,7 +165,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                         className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                         onClick={() => setAccountOpen(false)}
                       >
-                        <LayoutDashboard className="w-3.5 h-3.5 text-teal-600" /> My Dashboard
+                        <LayoutDashboard className="w-3.5 h-3.5 org-text" /> My Dashboard
                       </a>
                       <SiteNavProfileLinks
                         items={profileNavItems}
@@ -230,7 +230,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
             ) : (
               <a
                 href={getLoginUrl()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors org-btn"
               >
                 <LogIn className="w-3.5 h-3.5" /> Sign In
               </a>

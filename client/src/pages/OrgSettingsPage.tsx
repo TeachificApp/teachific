@@ -2821,7 +2821,7 @@ function OrgMembersTab({ orgId, orgName }: { orgId?: number; orgName: string }) 
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [newRole, setNewRole] = useState<"org_admin" | "user">("user");
+  const [newRole, setNewRole] = useState<"org_super_admin" | "org_admin" | "user">("user");
   const [editMember, setEditMember] = useState<DetailUserRow | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<{ userId: number; name: string } | null>(null);
   const [enrollDialogOpen, setEnrollDialogOpen] = useState<{ userId: number; name: string } | null>(null);
@@ -3029,7 +3029,7 @@ function OrgMembersTab({ orgId, orgName }: { orgId?: number; orgName: string }) 
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select value={newRole} onValueChange={(v) => setNewRole(v as "org_admin" | "user")}>
+              <Select value={newRole} onValueChange={(v) => setNewRole(v as "org_super_admin" | "org_admin" | "user")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

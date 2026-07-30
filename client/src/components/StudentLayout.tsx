@@ -51,7 +51,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}
             >
               <span className="text-foreground">teach</span>
-              <span style={{ color: "#24abbc" }}>ific</span>
+              <span style={{ color: 'var(--org-primary)' }}>ific</span>
               <span className="text-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
             </span>
           </button>

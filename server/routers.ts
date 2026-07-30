@@ -1606,13 +1606,17 @@ export const appRouter = router({
           name: z.string().min(1),
           email: z.string().email(),
           password: z.string().min(6),
-          role: z.enum(["org_admin", "user"]).default("user"),
+          role: z.enum(["org_super_admin", "org_admin", "user"]).default("user"),
           courseIds: z.array(z.number()).optional(),
         }))
         .mutation(async ({ input, ctx }) => {
           if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
             const membership = await getOrgMember(input.orgId, ctx.user.id);
             if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+            // Only site owners/admins or existing org_super_admins can assign org_super_admin
+            if (input.role === "org_super_admin" && membership.role !== "org_super_admin") {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Only super admins can assign the super admin role" });
+            }
           }
           const existing = await getUserByEmail(input.email);
           let userId: number;
@@ -1620,9 +1624,9 @@ export const appRouter = router({
             userId = existing.id;
             const existingMember = await getOrgMember(input.orgId, existing.id);
             if (!existingMember) {
-              const orgRole = input.role === "org_admin" ? "org_admin" : "member";
+              const orgRole = input.role === "org_super_admin" ? "org_super_admin" : input.role === "org_admin" ? "org_admin" : "member";
               await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
-              if (orgRole === "org_admin") await grantTeachificSchoolAccess(existing.id);
+              if (orgRole === "org_admin" || orgRole === "org_super_admin") await grantTeachificSchoolAccess(existing.id);
             }
           } else {
             const bcrypt = await import("bcryptjs");
@@ -1632,9 +1636,9 @@ export const appRouter = router({
             const newUser = await getUserByEmail(input.email);
             if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
             userId = newUser.id;
-            const orgRole = input.role === "org_admin" ? "org_admin" : "member";
+            const orgRole = input.role === "org_super_admin" ? "org_super_admin" : input.role === "org_admin" ? "org_admin" : "member";
             await addOrgMember(input.orgId, userId, orgRole, ctx.user.id);
-            if (orgRole === "org_admin") await grantTeachificSchoolAccess(userId);
+            if (orgRole === "org_admin" || orgRole === "org_super_admin") await grantTeachificSchoolAccess(userId);
           }
           if (input.courseIds?.length) {
             const { getEnrollment: getEnr } = await import("./lmsDb");

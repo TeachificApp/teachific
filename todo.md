@@ -4815,3 +4815,24 @@
 - [x] Fix lmsAdminRouter.ts listCourses: remove isPlatformAdmin bypass
 - [x] Fix routers/lmsRouter.ts public listCourses: add orgSlug input + scope to org
 - [x] Fix lmsRouter.ts (main) listCourses: use getOrgIdForUserWithFallback
+
+## Phase 9: Org-Level Color Theming System
+- [ ] Create OrgThemeContext with CSS variable injection
+- [ ] Extend SubdomainThemeProvider to inject --org-primary, --org-accent, --org-button, --org-button-text CSS variables
+- [ ] Add CSS variable declarations to index.css with teal defaults
+- [ ] Add LMS admin OrgThemeProvider that fetches theme for the current org
+- [ ] Replace hardcoded teal in CoursePlayer.tsx with CSS variables
+- [ ] Replace hardcoded teal in LMSLayout.tsx with CSS variables
+- [ ] Replace hardcoded teal in SchoolMemberLayout.tsx with CSS variables
+- [ ] Replace hardcoded teal in StudentLayout.tsx with CSS variables
+- [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables
+- [ ] Replace hardcoded teal in CourseOverviewPage.tsx with CSS variables
+- [ ] Replace hardcoded teal in SchoolPage.tsx with CSS variables
+- [ ] Update BrandingPage to include buttonColor and buttonTextColor fields
+- [ ] Wire getCoursePlayer to include org primaryColor as fallback
+
+## Bug Fix: Superadmin Role Assignment for Second User
+- [x] Extend createAndAdd backend procedure to accept org_super_admin role
+- [x] Add guard: only site_owner/site_admin or existing org_super_admin can assign org_super_admin
+- [x] Fix newRole state type in OrgSettingsPage to include org_super_admin
+- [x] Fix onValueChange cast in role Select to include org_super_admin

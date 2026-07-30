@@ -43,6 +43,11 @@
 }
 
 :root {
+  /* Org theme CSS variables — overridden by OrgThemeProvider per-org */
+  --org-primary: #189aa1;
+  --org-accent: #4ad9e0;
+  --org-button: #189aa1;
+  --org-button-text: #ffffff;
   /* Teachific™ brand: exact colors from teachific.app screenshot */
   /* Primary teal: #24abbc */
   --primary: oklch(0.6809 0.1100 208.1);
@@ -444,4 +449,34 @@
 
 .animate-bounce-in {
   animation: bounceIn 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* ─── Org Theme Utility Classes ──────────────────────────────────────────────
+ * Use these instead of hardcoded teal-* classes so org branding propagates.
+ * The CSS variables are set by OrgThemeProvider / SubdomainThemeProvider.
+ * ─────────────────────────────────────────────────────────────────────────── */
+.org-btn {
+  background-color: var(--org-button);
+  color: var(--org-button-text);
+  transition: filter 0.15s ease;
+}
+.org-btn:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+.org-text {
+  color: var(--org-primary);
+}
+.org-bg {
+  background-color: var(--org-primary);
+  color: var(--org-button-text);
+}
+.org-bg-light {
+  background-color: color-mix(in srgb, var(--org-primary) 12%, transparent);
+}
+.org-border {
+  border-color: var(--org-primary);
+}
+.org-ring:focus {
+  outline: 2px solid var(--org-primary);
+  outline-offset: 2px;
 }
