@@ -918,10 +918,15 @@ function OrgsTab() {
                   <Button
                     size="sm"
                     className="h-8 text-xs shrink-0"
-                    disabled={addUserToOrgByEmail.isPending || createAndAddMember.isPending || !addMemberEmail.trim()}
+                    disabled={
+                      addUserToOrgByEmail.isPending || createAndAddMember.isPending || !addMemberEmail.trim() ||
+                      (addMemberMode === "new" && (!addMemberName.trim() || addMemberPassword.length < 6))
+                    }
                     onClick={() => {
                       if (!editOrg || !addMemberEmail.trim()) return;
                       if (addMemberMode === "new") {
+                        if (!addMemberName.trim()) { toast.error("Please enter a full name"); return; }
+                        if (addMemberPassword.length < 6) { toast.error("Password must be at least 6 characters"); return; }
                         createAndAddMember.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), name: addMemberName.trim(), password: addMemberPassword, role: addMemberRole });
                       } else {
                         addUserToOrgByEmail.mutate({ orgId: editOrg.id, email: addMemberEmail.trim(), role: addMemberRole });
@@ -933,7 +938,7 @@ function OrgsTab() {
                 </div>
                 {addMemberMode === "new" && (
                   <div className="space-y-2 pt-1 border-t border-gray-100">
-                    <p className="text-xs text-amber-600 font-medium">No existing account found — create a new user:</p>
+                    <p className="text-xs text-amber-600 font-medium">No existing account found — create a new user (password min. 6 chars):</p>
                     <div className="flex gap-2">
                       <Input
                         placeholder="Full name"
