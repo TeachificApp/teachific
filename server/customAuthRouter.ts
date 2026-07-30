@@ -153,10 +153,16 @@ export const customAuthRouter = router({
       }
 
       if (!user.emailVerified) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Please verify your email address before logging in. Check your inbox for the verification link." });
+        // Only block login if this is a self-registered account with a pending verification token.
+        // Admin-created accounts (no emailVerificationToken) are auto-verified on first login.
+        if (user.emailVerificationToken) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Please verify your email address before logging in. Check your inbox for the verification link." });
+        }
+        // Auto-verify admin-created or legacy accounts
+        await db.update(users).set({ emailVerified: true, lastSignedIn: new Date() }).where(eq(users.id, user.id));
+      } else {
+        await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
       }
-
-      await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
 
       const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
       ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
