@@ -576,7 +576,7 @@ function OrgsTab() {
   // Users tab state
   const { data: orgMembersData = [], refetch: refetchMembers } = trpc.platformAdmin.getOrgMembers.useQuery(
     { orgId: editOrg?.id ?? 0 },
-    { enabled: !!editOrg && activeTab === "users" }
+    { enabled: !!editOrg }
   );
   const [addMemberEmail, setAddMemberEmail] = useState("");
   const [addMemberRole, setAddMemberRole] = useState<"org_super_admin" | "org_admin" | "user">("user");
@@ -623,6 +623,7 @@ function OrgsTab() {
   });
   const handleOpenEdit = (org: typeof orgs[0]) => {
     setEditOrg(org);
+    setActiveTab("details");
     setEditForm({
       name: org.name,
       slug: org.slug,
@@ -732,7 +733,7 @@ function OrgsTab() {
             </DialogTitle>
             <DialogDescription className="text-slate-700">Update organization details and subscription plan.</DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="details" onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-gray-100 border border-gray-200 w-full">
               <TabsTrigger value="details" className="flex-1 text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900">Details</TabsTrigger>
               <TabsTrigger value="subscription" className="flex-1 text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900">Subscription</TabsTrigger>
