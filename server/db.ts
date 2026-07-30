@@ -217,7 +217,8 @@ export async function getAllOrgs() {
     .from(organizations)
     .leftJoin(orgSubscriptions, eq(orgSubscriptions.orgId, organizations.id))
     .leftJoin(users, eq(users.id, organizations.ownerId))
-    .orderBy(desc(organizations.createdAt));
+    // isPrimary orgs first so site_owner always auto-selects the platform org
+    .orderBy(desc(organizations.isPrimary), desc(organizations.createdAt));
   return rows;
 }
 

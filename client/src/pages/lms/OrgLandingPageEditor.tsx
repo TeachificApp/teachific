@@ -99,11 +99,14 @@ export default function OrgLandingPageEditor() {
   const [isPublished, setIsPublished] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const hasLoaded = useRef(false);
+  // Track which orgId we last loaded blocks for — reset when org changes
+  const loadedForOrgId = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!data || hasLoaded.current) return;
-    hasLoaded.current = true;
+    if (!data) return;
+    // Only reload if we haven't loaded for this specific org yet
+    if (loadedForOrgId.current === orgId) return;
+    loadedForOrgId.current = orgId ?? null;
     setIsPublished(data.landingPage?.isPublished ?? true);
     // Parse blocksJson if present, otherwise fall back to default blocks
     if (data.landingPage?.blocksJson) {
@@ -116,7 +119,7 @@ export default function OrgLandingPageEditor() {
       } catch (_) { /* fall through to defaults */ }
     }
     setBlocks(makeDefaultBlocks(data.org?.name ?? "Our School"));
-  }, [data]);
+  }, [data, orgId]);
 
   // ── Save mutation ────────────────────────────────────────────────────────────
   const utils = trpc.useUtils();
