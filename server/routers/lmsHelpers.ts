@@ -75,12 +75,18 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Shared helpers (used by all LMS sub-routers) ────────────────────────────
 
+// Roles that have LMS admin access (matches the users table enum)
+const ADMIN_ROLES = ["site_owner", "site_admin", "org_super_admin", "org_admin"] as const;
+
 export async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  if (ctx.user.role !== "admin") {
+  if (!(ADMIN_ROLES as readonly string[]).includes(ctx.user.role)) {
+    // Re-fetch from DB in case the session role is stale
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    if (!u || u.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+    if (!u || !(ADMIN_ROLES as readonly string[]).includes(u.role)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+    }
   }
 }
 
@@ -290,7 +296,7 @@ export async function assertCourseOwnership(
   ctx: { user: { id: number; role: string } },
   courseId: number
 ): Promise<void> {
-  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
+  const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);
   if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -312,7 +318,7 @@ export async function assertSectionOwnership(
   ctx: { user: { id: number; role: string } },
   sectionId: number
 ): Promise<void> {
-  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
+  const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);
   if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -340,7 +346,7 @@ export async function assertLessonOwnership(
   ctx: { user: { id: number; role: string } },
   lessonId: number
 ): Promise<void> {
-  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
+  const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);
   if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
