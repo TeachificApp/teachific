@@ -191,10 +191,11 @@ export default defineConfig({
           if (id.includes('node_modules/lucide-react')) {
             return 'vendor-icons';
           }
-          // Vendor: tiptap rich text editor (large, no circular deps)
-          if (id.includes('node_modules/@tiptap/') || id.includes('node_modules/prosemirror')) {
-            return 'vendor-tiptap';
-          }
+          // NOTE: tiptap/prosemirror must NOT be in a separate chunk — prosemirror-state has
+          // a temporal dead zone circular dependency with @tiptap/core that causes
+          // "Cannot access 'nt' before initialization" at runtime in production builds.
+          // They are intentionally left to fall through to vendor-misc.
+
           // Vendor: codemirror code editor (large, no circular deps)
           if (id.includes('node_modules/@codemirror/') || id.includes('node_modules/@lezer/')) {
             return 'vendor-codemirror';
