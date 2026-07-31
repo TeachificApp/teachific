@@ -738,6 +738,12 @@ function DashboardLayoutContent({
                 <CreditCard className="mr-2 h-4 w-4" />
                 Billing
               </DropdownMenuItem>
+              {isOwner && (
+                <DropdownMenuItem onClick={() => setLocation("/link-organization")} className="cursor-pointer">
+                  <Link2 className="mr-2 h-4 w-4" />
+                  Link Organization
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               {(user as any)?.impersonatedBy && (
                 <>
