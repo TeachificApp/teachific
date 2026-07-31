@@ -6324,52 +6324,7 @@ export default function LMSAdmin() {
         {editingCourseId ? (
           <CourseEditor courseId={editingCourseId} onBack={() => setEditingCourseId(null)} />
         ) : (
-          <div className="flex gap-5">
-            {/* Sidebar Nav */}
-            <aside className="w-52 flex-shrink-0">
-              <nav className="space-y-4">
-                {LMS_NAV_GROUPS.map((group) => {
-                  const colors = GROUP_COLORS[group.color];
-                  return (
-                    <div key={group.label}>
-                      <div className="flex items-center gap-1.5 px-2 mb-1.5">
-                        <div className={cn("w-1.5 h-1.5 rounded-full", colors.dot)} />
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{group.label}</span>
-                      </div>
-                      <div className="space-y-0.5">
-                        {group.items.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = activeTab === item.value;
-                          const isDanger = (item as any).danger;
-                          return (
-                            <button
-                              key={item.value}
-                              onClick={() => { if ((item as any).href) { window.location.href = (item as any).href; return; } setActiveTab(item.value); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                              className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                                isActive
-                                  ? isDanger
-                                    ? "bg-red-600 text-white shadow-sm"
-                                    : cn(colors.activeBg, colors.activeText, "shadow-sm")
-                                  : isDanger
-                                    ? "text-red-500 hover:bg-red-50"
-                                    : "text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm"
-                              )}
-                            >
-                              <Icon className="w-4 h-4 flex-shrink-0" />
-                              <span className="truncate">{item.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </nav>
-            </aside>
-
-            {/* Main Content */}
-            <main className="flex-1 min-w-0">
+          <div className="w-full">
               {activeTab === "courses"     && <CoursesTab onEdit={setEditingCourseId} typeFilter="course" />}
               {activeTab === "quizzes"     && <CoursesTab onEdit={setEditingCourseId} typeFilter="quiz" />}
               {activeTab === "cohorts"     && <CoursesTab onEdit={setEditingCourseId} typeFilter="cohort" />}
@@ -6393,8 +6348,7 @@ export default function LMSAdmin() {
               {activeTab === "publish_requests" && <PublishRequestsTab />}
               {activeTab === "trash"             && <TrashTab />}
               {activeTab === "lms_settings"      && <LMSPublishDomainSettings />}
-            </main>
-          </div>
+            </div>
         )}
           </div>
     </div>
