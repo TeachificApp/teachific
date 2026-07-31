@@ -433,7 +433,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
     create.mutate({
       title: courseTitle,
       subtitle: aiPreview?.subtitle || undefined,
-      type
+      type,
       pricingType: "free",
       isFree: true,
       price: 0,
