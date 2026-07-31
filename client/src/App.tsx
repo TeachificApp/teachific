@@ -608,8 +608,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/admin/products/:productId/landing-builder">{() => <ProductLandingPageBuilder />}</Route>
         <Route path="/lms/webinars/:webinarId/page-builder" component={PageBuilderPage} />
         {/* ── Missing admin routes (added to match main router) ── */}
-        <Route path="/lms/manage/:tab" component={CourseBuilderPage} />
-        <Route path="/lms/manage" component={CourseBuilderPage} />
+        <Route path="/lms/manage/:tab">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
+        <Route path="/lms/manage">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/downloads">{() => <DashboardLayout><DigitalDownloadsAdminPage /></DashboardLayout>}</Route>
         <Route path="/lms/webinars/reports">{() => <DashboardLayout><WebinarReportsPage /></DashboardLayout>}</Route>
         <Route path="/lms/members">{() => { window.location.replace("/members/users"); return null; }}</Route>
