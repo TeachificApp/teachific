@@ -29,6 +29,7 @@ import {
   Box,
   Building2,
   ChevronDown,
+  ChevronRight,
   ClipboardList,
   Code2,
   CreditCard,
@@ -516,7 +517,7 @@ function DashboardLayoutContent({
   const isSubItemActive = (sub: NavSubItem) =>
     location === sub.path || (sub.path !== "/" && location.startsWith(sub.path));
 
-  // Find active item for header breadcrumb
+  // Find active item and active sub-item for header breadcrumb
   const allItems = navGroups.flatMap((g) => g.items);
   const activeItem =
     allItems.find((i) => {
@@ -524,6 +525,10 @@ function DashboardLayoutContent({
       if (itemPath === "/lms") return location === "/lms" || location === "/";
       return location.startsWith(itemPath) && itemPath !== "/lms";
     }) ?? allItems.find((i) => i.path === "/lms");
+  // Find the active sub-item (for breadcrumb parent > child display)
+  const activeSubItem = activeItem?.subItems?.find((sub) =>
+    location === sub.path || (sub.path !== "/" && location.startsWith(sub.path))
+  );
 
   return (
     <>
@@ -695,7 +700,20 @@ function DashboardLayoutContent({
             {activeItem && (
               <div className="flex items-center gap-2">
                 <activeItem.icon className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold text-sm">{activeItem.label}</span>
+                {activeSubItem ? (
+                  <>
+                    <button
+                      onClick={() => setLocation(activeItem.path)}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {activeItem.label}
+                    </button>
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                    <span className="font-semibold text-sm">{activeSubItem.label}</span>
+                  </>
+                ) : (
+                  <span className="font-semibold text-sm">{activeItem.label}</span>
+                )}
               </div>
             )}
           </div>
