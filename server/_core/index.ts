@@ -20,6 +20,9 @@ import stripeWebhookRouter from "../stripeWebhookRoutes";
 import { embeddedCheckoutWebhookRouter } from "../embeddedCheckoutWebhook";
 import blueprintPurchaseWebhookRouter from "../blueprintPurchaseWebhook";
 import { registerEmailTrackingRoutes } from "../routes/emailTrackingRoutes";
+import processRichTextHtmlRouter from "../processRichTextHtmlRoute";
+import reconstructMathRouter from "../reconstructMathRoute";
+import uploadCourseImageRouter from "../uploadCourseImageRoute";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -179,6 +182,15 @@ async function startServer() {
 
   // Email open/click tracking + one-click unsubscribe (GET /api/email/open, /api/email/click, /api/unsubscribe)
   registerEmailTrackingRoutes(app);
+
+  // Rich-text HTML processing — uploads embedded base64 images to S3
+  app.use("/api/process-rich-text-html", processRichTextHtmlRouter);
+
+  // Math equation reconstruction — uses LLM to convert ChatGPT plain-text equations to LaTeX
+  app.use("/api/reconstruct-math", reconstructMathRouter);
+
+  // Course image upload — used by RichTextEditor for pasted/dropped images
+  app.use("/api/upload-course-image", uploadCourseImageRouter);
 
   // tRPC API
   app.use(

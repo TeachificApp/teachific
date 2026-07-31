@@ -22,6 +22,9 @@
  */
 
 import { useEditor, EditorContent, Node, mergeAttributes } from "@tiptap/react";
+import { Mathematics } from "@tiptap/extension-mathematics";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import StarterKit from "@tiptap/starter-kit";
 import { ImageResize } from "tiptap-extension-resize-image";
 import Link from "@tiptap/extension-link";
@@ -678,6 +681,7 @@ export function RichTextEditor({
       TableRow,
       CustomTableHeader,
       CustomTableCell,
+      Mathematics,
     ],
     content: value,
     editable: !disabled,
@@ -694,6 +698,33 @@ export function RichTextEditor({
         try {
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, "text/html");
+          // ── Convert ChatGPT / Wikipedia MathML to TipTap math nodes ──────────
+          // ChatGPT wraps each equation in <span class="math"> or similar, with
+          // a <math> element that contains <annotation encoding="application/x-tex">
+          // holding the raw LaTeX.  We replace the whole math container with a
+          // TipTap-compatible node that the Mathematics extension can parse.
+          doc.body.querySelectorAll<HTMLElement>("math").forEach((mathEl) => {
+            const annotation = mathEl.querySelector('annotation[encoding="application/x-tex"]');
+            const latex = annotation?.textContent?.trim() ?? "";
+            if (!latex) return;
+            // Determine display mode: MathML uses display="block" for block equations
+            const isBlock = mathEl.getAttribute("display") === "block" ||
+              mathEl.closest(".math-display, .katex-display, [data-display='block']") !== null;
+            // Build the replacement element that the Mathematics extension parses
+            const replacement = isBlock
+              ? Object.assign(doc.createElement("div"), {
+                  dataset: { type: "block-math", latex },
+                })
+              : Object.assign(doc.createElement("span"), {
+                  dataset: { type: "inline-math", latex },
+                });
+            replacement.setAttribute("data-type", isBlock ? "block-math" : "inline-math");
+            replacement.setAttribute("data-latex", latex);
+            // Replace the outermost math container (could be wrapped in a <span class="math">)
+            const container = mathEl.closest(".math, .math-inline, .math-display") ?? mathEl;
+            container.replaceWith(replacement);
+          });
+          // ── Strip non-standard attributes from other editors ──────────────────
           const nonStandardAttrs = [
             "containerstyle", "wrapperstyle", "containerStyle", "wrapperStyle",
           ];
@@ -1376,6 +1407,20 @@ export function RichTextEditor({
 
           <Sep />
 
+          {/* Math / Formula */}
+          <ToolbarBtn
+            title="Insert math formula (LaTeX). Wrap inline: $formula$  Block: $$formula$$"
+            active={editor.isActive("math")}
+            onClick={() => {
+              // Insert a block math placeholder the user can edit
+              editor.chain().focus().insertContent("$$\\frac{a}{b}$$").run();
+            }}
+          >
+            <span className="font-serif font-bold text-xs leading-none select-none" style={{ fontFamily: 'Georgia, serif', letterSpacing: '-0.5px' }}>∑</span>
+          </ToolbarBtn>
+
+          <Sep />
+
           {/* Emoji Picker */}
           <div className="relative">
             <ToolbarBtn title="Insert emoji" onClick={() => setEmojiPickerOpen(p => !p)}>
@@ -1472,6 +1517,11 @@ export function RichTextEditor({
         .rte-content .tiptap table.table-borderless tr:nth-child(even) td { background-color: transparent; }
         .rte-content .tableWrapper { overflow-x: auto; }
         .rte-content .resize-cursor { cursor: col-resize; }
+        /* KaTeX math rendering inside TipTap editor */
+        .rte-content .tiptap .math-node { display: inline-block; cursor: pointer; border-radius: 3px; padding: 0 2px; transition: background 0.1s; }
+        .rte-content .tiptap .math-node:hover { background: rgba(20,144,150,0.08); }
+        .rte-content .tiptap .math-node.ProseMirror-selectednode { background: rgba(20,144,150,0.18); outline: 2px solid #149096; }
+        .rte-content .tiptap .math-node.math-block { display: block; text-align: center; margin: 0.75em 0; padding: 0.5em 0; }
       `}</style>
 
       {/* ── Dialogs ── */}
