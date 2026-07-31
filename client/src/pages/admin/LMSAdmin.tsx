@@ -2466,7 +2466,7 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
         disabled={saving}
         onClick={() => onSave({
           title: title.trim(), subtitle: subtitle.trim() || undefined,
-          description: description || undefined, status
+          description: description || undefined, status,
           pricingType,
           isFree: pricingType === "free",
           hasCertificate,
