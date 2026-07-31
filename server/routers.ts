@@ -2030,10 +2030,35 @@ export const appRouter = router({
           await db
             .update(orgLinks)
             .set({ status: "accepted", acceptedByUserId: ctx.user.id })
-            .where(eq(orgLinks.id, link.id));
+                        .where(eq(orgLinks.id, link.id));
           return { ok: true };
         }),
-
+      listPending: ownerProcedure
+        .input(z.object({ orgId: z.number() }))
+        .query(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) return [];
+          const rows = await db
+            .select({
+              link: orgLinks,
+              linkedOrg: { id: organizations.id, name: organizations.name, slug: organizations.slug, logoUrl: organizations.logoUrl },
+            })
+            .from(orgLinks)
+            .innerJoin(organizations, or(
+              and(eq(orgLinks.primaryOrgId, input.orgId), eq(organizations.id, orgLinks.linkedOrgId)),
+              and(eq(orgLinks.linkedOrgId, input.orgId), eq(organizations.id, orgLinks.primaryOrgId))
+            ))
+            .where(and(
+              or(eq(orgLinks.primaryOrgId, input.orgId), eq(orgLinks.linkedOrgId, input.orgId)),
+              eq(orgLinks.status, "pending")
+            ));
+          return rows.map(r => ({
+            linkId: r.link.id,
+            linkedOrg: r.linkedOrg,
+            createdAt: r.link.createdAt,
+            inviteTokenExpiry: r.link.inviteTokenExpiry,
+          }));
+        }),
       list: protectedProcedure
         .input(z.object({ orgId: z.number() }))
         .query(async ({ ctx, input }) => {
