@@ -138,7 +138,7 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
       <span className="text-gray-400">{TYPE_ICONS[course.type]}</span>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
-        <p className="text-xs text-gray-400">{course.brand === "aaus" ? "All About Ultrasound™" : "iHeartEcho™"} · {course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`} · <span className="font-mono">ID: {course.id}</span></p>
+        <p className="text-xs text-gray-400">{course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`} · <span className="font-mono">ID: {course.id}</span></p>
       </div>
       <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
       <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(course.id)}>
@@ -392,7 +392,6 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [type, setType] = useState<"course" | "quiz" | "download" | "cohort">(defaultType);
-  const [brand, setBrand] = useState<"aaus" | "iheartecho">("aaus");
   const [pricingType, setPricingType] = useState<"free"|"one_time"|"subscription"|"payment_plan">("one_time");
   const [price, setPrice] = useState("");
   const [subscriptionInterval, setSubscriptionInterval] = useState<"monthly"|"quarterly"|"annual">("monthly");
@@ -434,8 +433,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
     create.mutate({
       title: courseTitle,
       subtitle: aiPreview?.subtitle || undefined,
-      type,
-      brand,
+      type
       pricingType: "free",
       isFree: true,
       price: 0,
@@ -489,16 +487,6 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       <SelectItem value="quiz">Quiz</SelectItem>
                       <SelectItem value="download">Download</SelectItem>
                       <SelectItem value="cohort">Cohort</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-sm">Brand</Label>
-                  <Select value={brand} onValueChange={v => setBrand(v as any)}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-                      <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -603,16 +591,6 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                         <SelectContent>
                           <SelectItem value="course">Course</SelectItem>
                           <SelectItem value="quiz">Quiz</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-sm">Brand</Label>
-                      <Select value={brand} onValueChange={v => setBrand(v as any)}>
-                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-                          <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -790,7 +768,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
               disabled={!title.trim() || create.isPending}
               onClick={() => create.mutate({
                 title: title.trim(), subtitle: subtitle.trim() || undefined,
-                type, brand, pricingType,
+                type, pricingType,
                 isFree: pricingType === "free",
                 price: pricingType === "free" ? 0 : parseFloat(price || "0"),
                 subscriptionInterval: pricingType === "subscription" ? subscriptionInterval : undefined,
@@ -1768,7 +1746,6 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
   const [subtitle, setSubtitle] = useState(course.subtitle ?? "");
   const [description, setDescription] = useState(course.description ?? "");
   const [status, setStatus] = useState(course.status);
-  const [brand, setBrand] = useState(course.brand);
   const [courseType, setCourseType] = useState<"course" | "quiz" | "download" | "cohort" | "workshop">(course.type ?? "course");
   const [enrollmentCloseDate, setEnrollmentCloseDate] = useState<string>(
     course.enrollmentCloseDate ? new Date(course.enrollmentCloseDate).toISOString().split("T")[0] : ""
@@ -1883,7 +1860,7 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
             }
             onSave({
               title: title.trim(), subtitle: subtitle.trim() || undefined,
-              description: description || undefined, status, brand, type: courseType,
+              description: description || undefined, status, type: courseType,
               enrollmentCloseDate: courseType === "cohort" ? (enrollmentCloseDate || null) : null,
               pricingType,
               isFree: pricingType === "free",
@@ -1939,16 +1916,6 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
               <SelectItem value="hidden">Hidden</SelectItem>
               <SelectItem value="private">Private (invite only)</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-sm">Brand</Label>
-          <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-              <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2499,7 +2466,7 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
         disabled={saving}
         onClick={() => onSave({
           title: title.trim(), subtitle: subtitle.trim() || undefined,
-          description: description || undefined, status, brand,
+          description: description || undefined, status
           pricingType,
           isFree: pricingType === "free",
           hasCertificate,
@@ -7557,35 +7524,8 @@ export default function LMSAdmin() {
   const activeGroupColor = activeItem?.groupColor ?? "teal";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-2">
-            <a href={getAdminUrl("/platform-admin")} className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
-              <ChevronLeft className="w-3 h-3" /> Platform Admin
-            </a>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center shadow-sm">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">LMS Management</h1>
-                <p className="text-xs text-gray-400">Education Library · Courses · Products · Enrollments</p>
-              </div>
-            </div>
-            <a href="/education-library" target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="outline" className="h-8 text-xs text-teal-600 border-teal-200 hover:bg-teal-50">
-                <LinkIcon className="w-3 h-3 mr-1.5" /> View Education Library
-              </Button>
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-5">
+    <div className="w-full">
+      <div className="py-2">
         {editingCourseId ? (
           <CourseEditor courseId={editingCourseId} onBack={() => setEditingCourseId(null)} onTypeChangedToWorkshop={handleTypeChangedToWorkshop} />
         ) : (
@@ -7684,7 +7624,6 @@ function CommunityFormInline({
     description: community?.description ?? "",
     privacy: community?.privacy ?? "public",
     accessType: community?.accessType ?? "free",
-    brand: community?.brand ?? "all_about_ultrasound",
     accentColor: community?.accentColor ?? "#189aa1",
     status: community?.status ?? "published",
   });
@@ -7728,16 +7667,6 @@ function CommunityFormInline({
             <SelectContent>
               <SelectItem value="free">Free</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-xs font-medium text-gray-600 mb-1 block">Brand</Label>
-          <Select value={form.brand} onValueChange={v => setForm(f => ({ ...f, brand: v }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all_about_ultrasound">All About Ultrasound™</SelectItem>
-              <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
             </SelectContent>
           </Select>
         </div>

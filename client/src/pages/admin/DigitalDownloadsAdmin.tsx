@@ -570,7 +570,6 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       status: product.status,
       thumbnailUrl: product.thumbnailUrl ?? "",
       showInLibrary: (product as any).showInLibrary ?? true,
-      brand: (product as any).brand ?? "aaus",
     } as any);
     setSlug(product.slug ?? "");
     setMetaTitle((product as any).metaTitle ?? "");
@@ -590,7 +589,6 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       status: form.status,
       thumbnailUrl: form.thumbnailUrl || null,
       showInLibrary: (form as any).showInLibrary ?? true,
-      brand: (form as any).brand ?? "aaus",
     });
   };
 
@@ -760,11 +758,6 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                 </select>
               </div>
               <div className="flex items-center gap-3">
-                <Label>Brand</Label>
-                <select className="border rounded px-2 py-1 text-sm bg-background" value={(form as any).brand ?? "aaus"} onChange={(e) => setForm({ ...form, brand: e.target.value } as any)}>
-                  <option value="aaus">All About Ultrasound™</option>
-                  <option value="iheartecho">iHeartEcho™</option>
-                </select>
               </div>
             </CardContent>
           </Card>

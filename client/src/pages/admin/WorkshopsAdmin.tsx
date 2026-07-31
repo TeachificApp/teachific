@@ -147,7 +147,6 @@ function WorkshopsList({ onEdit }: { onEdit: (id: number) => void }) {
               <TableRow className="bg-gray-50">
                 <TableHead>Title</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Brand</TableHead>
                 <TableHead>Instances</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -166,7 +165,6 @@ function WorkshopsList({ onEdit }: { onEdit: (id: number) => void }) {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-xs text-gray-500 uppercase">{w.brand}</span>
                   </TableCell>
                   <TableCell>
                     <span className="text-xs text-gray-600">{w.instanceCount ?? 0} instances</span>
@@ -242,7 +240,6 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
   const [subtitle, setSubtitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"draft" | "public" | "hidden" | "private" | "archived">("draft");
-  const [brand, setBrand] = useState<"aaus" | "iheartecho">("aaus");
   const [price, setPrice] = useState(0);
   const [compareAtPrice, setCompareAtPrice] = useState<number | "">("");
   const [isFree, setIsFree] = useState(false);
@@ -301,7 +298,6 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
     setSubtitle(w.subtitle ?? "");
     setDescription(w.description ?? "");
     setStatus((w.status as any) ?? "draft");
-    setBrand((w.brand as any) ?? "aaus");
     setPrice((w.price ?? 0) / 100);
     setCompareAtPrice(w.compareAtPrice != null ? w.compareAtPrice / 100 : "");
     setIsFree(w.isFree ?? false);
@@ -372,7 +368,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
     updateMutation.mutate({
       id: workshopId,
       title, slug, subtitle: subtitle || null, description: description || null,
-      status, brand, price: Math.round(price * 100),
+      status, price: Math.round(price * 100),
       compareAtPrice: compareAtPrice !== "" ? Math.round(Number(compareAtPrice) * 100) : null,
       isFree, curriculumEnabled, showInLibrary, isFeatured,
       publishDomain: publishDomain || null,
@@ -571,7 +567,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-sm">Status & Brand</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Status</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -584,16 +580,6 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                       <SelectItem value="hidden">Hidden</SelectItem>
                       <SelectItem value="private">Private</SelectItem>
                       <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Brand</Label>
-                  <Select value={brand} onValueChange={v => setBrand(v as any)}>
-                    <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aaus">All About Ultrasound</SelectItem>
-                      <SelectItem value="iheartecho">iHeartEcho</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

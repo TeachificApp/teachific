@@ -68,6 +68,8 @@ import {
   Layers,
   Merge,
   ShieldAlert,
+  Plus,
+  Network,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -319,6 +321,18 @@ const navGroups: NavGroup[] = [
         icon: ShieldAlert,
         label: "Sharing Monitor",
         path: "/admin/sharing-monitor",
+        adminOnly: true,
+      },
+      {
+        icon: Plus,
+        label: "Create Organization",
+        path: "/create-organization",
+        adminOnly: true,
+      },
+      {
+        icon: Network,
+        label: "Link Organization",
+        path: "/link-organization",
         adminOnly: true,
       },
     ],

@@ -4836,3 +4836,18 @@
 - [x] Add guard: only site_owner/site_admin or existing org_super_admin can assign org_super_admin
 - [x] Fix newRole state type in OrgSettingsPage to include org_super_admin
 - [x] Fix onValueChange cast in role Select to include org_super_admin
+
+## OrgSwitcher Fix + Profile Page Build-out (Jul 31, 2026)
+- [x] Fix OrgSwitcher visibility: show for site_owner even when allOrgs is loading (avoid null return during loading)
+- [x] Fix OrgSwitcher: for site_owner, adminOrgs comes from platformAdmin.listOrgs (allOrgs) — ensure it's non-empty before rendering
+- [x] Add "Create New Organization" and "Link Organization" as explicit sidebar nav items for site owners (ownerOnly)
+- [x] Build full ProfilePage: name, email, avatar upload, bio, specialty, credentials, location, website, timezone
+- [x] ProfilePage: password change section (current password + new password + confirm)
+- [x] ProfilePage: linked organizations list (for site owners — shows orgs they own)
+- [ ] ProfilePage: account deletion option with confirmation
+- [x] Backend: auth.updateMe procedure (protectedProcedure, updates own profile fields)
+- [ ] Backend: users.changePassword procedure (protectedProcedure, verifies current password then updates)
+- [ ] Backend: users.uploadAvatar procedure (protectedProcedure, uploads to S3 and updates avatarUrl)
+## New Issues (Jul 31 - Additional)
+- [x] Fix LMS Management: remove standalone page header/sidebar, render inside main DashboardLayout
+- [x] Remove all Brand selectors (showing "Teachific™") from course/content settings pages

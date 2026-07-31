@@ -124,7 +124,7 @@ function BundleList({ onEdit }: { onEdit: (id: number) => void }) {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{b.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{b.brand === "iheartecho" ? "iHeartEcho" : "All About Ultrasound"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5"></p>
                 </div>
                 <Badge variant={b.status === "published" ? "default" : "secondary"} className="text-xs">
                   {b.status}
@@ -155,7 +155,6 @@ function BundleList({ onEdit }: { onEdit: (id: number) => void }) {
 
 function CreateBundleDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: number) => void }) {
   const [title, setTitle] = useState("");
-  const [brand, setBrand] = useState<"all_about_ultrasound" | "iheartecho">("all_about_ultrasound");
   const [description, setDescription] = useState("");
   const utils = trpc.useUtils();
   const createMut = trpc.bundlesAdmin.create.useMutation({
@@ -179,23 +178,13 @@ function CreateBundleDialog({ open, onClose, onCreated }: { open: boolean; onClo
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Complete Ultrasound Resource Pack" />
           </div>
           <div>
-            <Label>Brand</Label>
-            <Select value={brand} onValueChange={(v) => setBrand(v as any)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all_about_ultrasound">All About Ultrasound</SelectItem>
-                <SelectItem value="iheartecho">iHeartEcho</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
             <Label>Description (optional)</Label>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of what's included" rows={3} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => createMut.mutate({ title, brand, description: description || undefined })} disabled={!title || createMut.isPending}>
+          <Button onClick={() => createMut.mutate({ title, description: description || undefined })} disabled={!title || createMut.isPending}>
             {createMut.isPending ? "Creating..." : "Create Bundle"}
           </Button>
         </DialogFooter>
@@ -235,7 +224,6 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [publishDomain, setPublishDomain] = useState("");
-  const [brand, setBrand] = useState("all_about_ultrasound");
   const [collectShippingAddress, setCollectShippingAddress] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -255,7 +243,6 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
     setMetaTitle((data.bundle as any).metaTitle ?? "");
     setMetaDescription((data.bundle as any).metaDescription ?? "");
     setPublishDomain((data.bundle as any).publishDomain ?? "");
-    setBrand((data.bundle as any).brand ?? "all_about_ultrasound");
     setCollectShippingAddress((data.bundle as any).collectShippingAddress ?? false);
     setInitialized(true);
   }
@@ -299,7 +286,6 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
       metaTitle: metaTitle || undefined,
       metaDescription: metaDescription || undefined,
       publishDomain: publishDomain || undefined,
-      brand: brand || undefined,
       collectShippingAddress,
     });
   };
@@ -392,13 +378,6 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1" placeholder="What's included in this bundle..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Brand</Label>
-                  <select className="mt-1 border rounded px-2 py-2 text-sm bg-background w-full" value={brand} onChange={(e) => setBrand(e.target.value)}>
-                    <option value="all_about_ultrasound">All About Ultrasound</option>
-                    <option value="iheartecho">iHeartEcho</option>
-                  </select>
-                </div>
                 <div>
                   <Label>Status</Label>
                   <Select value={status} onValueChange={(v) => setStatus(v as any)}>

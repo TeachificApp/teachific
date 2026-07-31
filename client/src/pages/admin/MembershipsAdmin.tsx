@@ -837,7 +837,6 @@ function MembershipSettingsTab({
     compareAtPrice: plan.compareAtPrice ? String(plan.compareAtPrice / 100) : "",
     trialDays: String(plan.trialDays ?? 0),
     accentColor: plan.accentColor ?? "#189aa1",
-    brand: (plan as any).brand ?? "all_about_ultrasound",
     coverImage: plan.coverImage ?? "",
     slug: plan.slug ?? "",
     metaTitle: plan.metaTitle ?? "",
@@ -885,7 +884,6 @@ function MembershipSettingsTab({
       compareAtPrice: form.compareAtPrice ? Math.round(parseFloat(form.compareAtPrice) * 100) : null,
       trialDays: parseInt(form.trialDays || "0", 10),
       accentColor: form.accentColor,
-      brand: form.brand,
       coverImage: form.coverImage || null,
       slug: form.slug || undefined,
       metaTitle: form.metaTitle || null,
@@ -919,13 +917,6 @@ function MembershipSettingsTab({
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Brand</Label>
-              <select className="mt-1 border rounded px-2 py-2 text-sm bg-background w-full" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })}>
-                <option value="all_about_ultrasound">All About Ultrasound</option>
-                <option value="iheartecho">iHeartEcho</option>
-              </select>
-            </div>
             <div>
               <Label>Accent Color</Label>
               <div className="flex items-center gap-2 mt-1">

@@ -451,6 +451,33 @@ export const appRouter = router({
         const { url } = await storagePut(key, buffer, mime);
         return { url };
       }),
+    // Self-service profile update
+    updateMe: protectedProcedure
+      .input(z.object({
+        name: z.string().min(1).max(255).optional(),
+        displayName: z.string().max(255).optional(),
+        firstName: z.string().max(128).optional(),
+        lastName: z.string().max(128).optional(),
+        bio: z.string().max(2000).optional(),
+        avatarUrl: z.string().optional(),
+        timezone: z.string().max(64).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db2 = await getDb();
+        if (!db2) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        const { users: usersTable } = await import("../drizzle/schema");
+        const updateData: Record<string, unknown> = {};
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.displayName !== undefined) updateData.displayName = input.displayName || null;
+        if (input.firstName !== undefined) updateData.firstName = input.firstName || null;
+        if (input.lastName !== undefined) updateData.lastName = input.lastName || null;
+        if (input.bio !== undefined) updateData.bio = input.bio || null;
+        if (input.avatarUrl !== undefined) updateData.avatarUrl = input.avatarUrl || null;
+        if (input.timezone !== undefined) updateData.timezone = input.timezone || null;
+        await db2.update(usersTable).set(updateData).where(eq(usersTable.id, ctx.user.id));
+        const updated = await db2.select().from(usersTable).where(eq(usersTable.id, ctx.user.id)).limit(1);
+        return updated[0];
+      }),
   }),
 
   // ── Resolved Branding (public) ─────────────────────────────────────────────
