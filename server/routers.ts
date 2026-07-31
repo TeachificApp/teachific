@@ -1935,10 +1935,39 @@ export const appRouter = router({
     // ── Org Linking ──────────────────────────────────────────────────────────
     // Site owner initiates a link to another org by sending an invite token
     link: router({
+      // Look up orgs owned/administered by a given email (for the link flow)
+      lookupOrgs: ownerProcedure
+        .input(z.object({ email: z.string().email() }))
+        .query(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) return [];
+          const targetUser = await getUserByEmail(input.email);
+          if (!targetUser) return [];
+          const isSiteAdmin = targetUser.role === "site_owner" || targetUser.role === "site_admin";
+          if (isSiteAdmin) {
+            const owned = await db
+              .select()
+              .from(organizations)
+              .where(eq(organizations.ownerId, targetUser.id));
+            return owned.map(o => ({ id: o.id, name: o.name, slug: o.slug, logoUrl: o.logoUrl, isPrimary: o.isPrimary }));
+          }
+          const memberships = await db
+            .select({ org: organizations })
+            .from(orgMembers)
+            .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+            .where(
+              and(
+                eq(orgMembers.userId, targetUser.id),
+                or(eq(orgMembers.role, "org_super_admin"), eq(orgMembers.role, "org_admin"))
+              )
+            );
+          return memberships.map(m => ({ id: m.org.id, name: m.org.name, slug: m.org.slug, logoUrl: m.org.logoUrl, isPrimary: m.org.isPrimary }));
+        }),
       initiate: ownerProcedure
         .input(z.object({
           primaryOrgId: z.number(),
           linkedOrgEmail: z.string().email(), // email of the target org's admin
+          targetOrgId: z.number().optional(), // specific org to link (when target owns multiple)
           origin: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
@@ -1951,20 +1980,46 @@ export const appRouter = router({
           const targetUser = await getUserByEmail(input.linkedOrgEmail);
           if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "No user found with that email" });
           // Find an org where the target user is an admin
-          const targetMemberships = await db
-            .select({ org: organizations, role: orgMembers.role })
-            .from(orgMembers)
-            .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
-            .where(
-              and(
-                eq(orgMembers.userId, targetUser.id),
-                or(eq(orgMembers.role, "org_super_admin"), eq(orgMembers.role, "org_admin"))
-              )
-            );
-          if (targetMemberships.length === 0) {
+          // For site_owner / site_admin, look up their orgs directly via ownerId (they are not in orgMembers)
+          let linkedOrg: typeof organizations.$inferSelect | undefined;
+          const isSiteAdminTarget = targetUser.role === "site_owner" || targetUser.role === "site_admin";
+          if (input.targetOrgId) {
+            // Caller specified which org to link — verify the target user has access
+            const orgRows = await db.select().from(organizations).where(eq(organizations.id, input.targetOrgId)).limit(1);
+            linkedOrg = orgRows[0];
+          } else if (isSiteAdminTarget) {
+            // Find their primary org first, then any owned org
+            const primaryOrgs = await db
+              .select()
+              .from(organizations)
+              .where(and(eq(organizations.ownerId, targetUser.id), eq(organizations.isPrimary, true)))
+              .limit(1);
+            if (primaryOrgs[0]) {
+              linkedOrg = primaryOrgs[0];
+            } else {
+              const anyOwned = await db
+                .select()
+                .from(organizations)
+                .where(eq(organizations.ownerId, targetUser.id))
+                .limit(1);
+              linkedOrg = anyOwned[0];
+            }
+          } else {
+            const targetMemberships = await db
+              .select({ org: organizations, role: orgMembers.role })
+              .from(orgMembers)
+              .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+              .where(
+                and(
+                  eq(orgMembers.userId, targetUser.id),
+                  or(eq(orgMembers.role, "org_super_admin"), eq(orgMembers.role, "org_admin"))
+                )
+              );
+            linkedOrg = targetMemberships[0]?.org;
+          }
+          if (!linkedOrg) {
             throw new TRPCError({ code: "NOT_FOUND", message: "That user is not an admin of any organization" });
           }
-          const linkedOrg = targetMemberships[0].org;
           // Check not already linked
           const existing = await db
             .select()
@@ -1992,7 +2047,8 @@ export const appRouter = router({
             inviteTokenExpiry: expiry,
             status: "pending",
           });
-          // Send invite email
+          // Always send email verification — even for self-links (same owner, different orgs)
+          // The target admin must click the link to verify and accept
           await sendEmail({
             to: input.linkedOrgEmail,
             subject: `Organization link invitation from ${primaryOrg.name}`,

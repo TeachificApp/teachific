@@ -4851,3 +4851,9 @@
 ## New Issues (Jul 31 - Additional)
 - [x] Fix LMS Management: remove standalone page header/sidebar, render inside main DashboardLayout
 - [x] Remove all Brand selectors (showing "Teachific™") from course/content settings pages
+
+## Link Organization Flow Fixes
+- [x] Link Organization: always send email verification to target org admin (no auto-accept, even for same-email self-links)
+- [x] Link Organization: fix site_owner/site_admin org lookup via organizations.ownerId
+- [x] Link Organization: add lookupOrgs procedure + org picker when target owns multiple orgs
+- [x] Link Organization: accept flow requires clicking email link (login + verify)
