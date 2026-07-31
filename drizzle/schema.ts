@@ -5735,3 +5735,27 @@ export const bundlePricingOptions = mysqlTable("bundle_pricing_options", {
   sortOrder: int("sort_order").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// ─── Org Links ────────────────────────────────────────────────────────────────
+export const orgLinks = mysqlTable("org_links", {
+  id: int("id").autoincrement().primaryKey(),
+  primaryOrgId: int("primaryOrgId").notNull(),
+  linkedOrgId: int("linkedOrgId").notNull(),
+  initiatedByUserId: int("initiatedByUserId").notNull(),
+  acceptedByUserId: int("acceptedByUserId"),
+  inviteToken: varchar("inviteToken", { length: 128 }).notNull().unique(),
+  inviteTokenExpiry: timestamp("inviteTokenExpiry").notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "rejected", "revoked"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type OrgLink = typeof orgLinks.$inferSelect;
+export type InsertOrgLink = typeof orgLinks.$inferInsert;
+
+// ─── User Active Org ──────────────────────────────────────────────────────────
+export const userActiveOrg = mysqlTable("user_active_org", {
+  userId: int("userId").primaryKey(),
+  orgId: int("orgId").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type UserActiveOrg = typeof userActiveOrg.$inferSelect;

@@ -79,8 +79,8 @@ import {
   updateSupportTicketStatus,
   searchUsersByQuery,
 } from "./db";
-import { courseEnrollments, organizations, orgMembers, orgLandingPages, users } from "../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { courseEnrollments, organizations, orgMembers, orgLandingPages, users, orgLinks, userActiveOrg } from "../drizzle/schema";
+import { eq, sql, and, or, ne } from "drizzle-orm";
 import {
   getOrgSubscription,
   upsertOrgSubscription,
@@ -1805,10 +1805,248 @@ export const appRouter = router({
         if (Object.keys(updates).length > 0) {
           await db.update(organizations).set(updates).where(eq(organizations.id, input.orgId));
         }
+                return { ok: true };
+      }),
+
+    // ── Multi-Org Management ─────────────────────────────────────────────────
+    // Create an additional org (site owner only) — creates the org and returns its details
+    createAdditional: ownerProcedure
+      .input(z.object({
+        name: z.string().min(2).max(100),
+        slug: z.string().min(3).max(50).regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Check slug uniqueness
+        const existing = await db
+          .select({ id: organizations.id })
+          .from(organizations)
+          .where(eq(organizations.slug, input.slug))
+          .limit(1);
+        if (existing.length > 0) throw new TRPCError({ code: "CONFLICT", message: "That URL slug is already taken. Please choose a different one." });
+        // Create the org
+        const result = await db.insert(organizations).values({
+          name: input.name,
+          slug: input.slug,
+          ownerId: ctx.user.id,
+        });
+        const newOrgId = (result as any).insertId as number;
+        // Add the site owner as org_super_admin of the new org
+        await addOrgMember(newOrgId, ctx.user.id, "org_super_admin");
+        return { orgId: newOrgId, slug: input.slug, name: input.name };
+      }),
+
+    // Returns all orgs where the user is an admin (org_admin, org_super_admin)
+    // or site owner — used for the org switcher. Regular members are excluded.
+    myAdminOrgs: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      if (isSiteAdmin) {
+        // Site admins/owners can see all orgs they own
+        const owned = await db
+          .select({ org: organizations })
+          .from(organizations)
+          .where(eq(organizations.ownerId, ctx.user.id));
+        return owned.map(r => ({ ...r.org, memberRole: "site_owner" as string }));
+      }
+      // For org admins: only return orgs where they have admin-level role
+      const rows = await db
+        .select({ org: organizations, role: orgMembers.role })
+        .from(orgMembers)
+        .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+        .where(
+          and(
+            eq(orgMembers.userId, ctx.user.id),
+            or(
+              eq(orgMembers.role, "org_super_admin"),
+              eq(orgMembers.role, "org_admin")
+            )
+          )
+        );
+      return rows.map(r => ({ ...r.org, memberRole: r.role as string }));
+    }),
+
+    // Get/set the user's active org preference (admin-only)
+    getActiveOrg: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const rows = await db
+        .select()
+        .from(userActiveOrg)
+        .where(eq(userActiveOrg.userId, ctx.user.id))
+        .limit(1);
+      return rows[0] ?? null;
+    }),
+
+    setActiveOrg: protectedProcedure
+      .input(z.object({ orgId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        // Verify the user has admin-level access to the target org
+        const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+        if (!isSiteAdmin) {
+          const membership = await db
+            .select({ role: orgMembers.role })
+            .from(orgMembers)
+            .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)))
+            .limit(1);
+          const role = membership[0]?.role;
+          if (role !== "org_admin" && role !== "org_super_admin") {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can switch organizations" });
+          }
+        }
+        await db
+          .insert(userActiveOrg)
+          .values({ userId: ctx.user.id, orgId: input.orgId })
+          .onDuplicateKeyUpdate({ set: { orgId: input.orgId } });
         return { ok: true };
       }),
-  }),
 
+    // ── Org Linking ──────────────────────────────────────────────────────────
+    // Site owner initiates a link to another org by sending an invite token
+    link: router({
+      initiate: ownerProcedure
+        .input(z.object({
+          primaryOrgId: z.number(),
+          linkedOrgEmail: z.string().email(), // email of the target org's admin
+          origin: z.string().optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+          // Verify caller is admin of primaryOrg
+          const primaryOrg = await getOrgById(input.primaryOrgId);
+          if (!primaryOrg) throw new TRPCError({ code: "NOT_FOUND", message: "Primary org not found" });
+          // Find the target user by email
+          const targetUser = await getUserByEmail(input.linkedOrgEmail);
+          if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "No user found with that email" });
+          // Find an org where the target user is an admin
+          const targetMemberships = await db
+            .select({ org: organizations, role: orgMembers.role })
+            .from(orgMembers)
+            .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+            .where(
+              and(
+                eq(orgMembers.userId, targetUser.id),
+                or(eq(orgMembers.role, "org_super_admin"), eq(orgMembers.role, "org_admin"))
+              )
+            );
+          if (targetMemberships.length === 0) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "That user is not an admin of any organization" });
+          }
+          const linkedOrg = targetMemberships[0].org;
+          // Check not already linked
+          const existing = await db
+            .select()
+            .from(orgLinks)
+            .where(
+              and(
+                or(
+                  and(eq(orgLinks.primaryOrgId, input.primaryOrgId), eq(orgLinks.linkedOrgId, linkedOrg.id)),
+                  and(eq(orgLinks.primaryOrgId, linkedOrg.id), eq(orgLinks.linkedOrgId, input.primaryOrgId))
+                ),
+                ne(orgLinks.status, "revoked")
+              )
+            )
+            .limit(1);
+          if (existing[0]) {
+            throw new TRPCError({ code: "CONFLICT", message: "These organizations are already linked or have a pending link" });
+          }
+          const token = nanoid(48);
+          const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+          await db.insert(orgLinks).values({
+            primaryOrgId: input.primaryOrgId,
+            linkedOrgId: linkedOrg.id,
+            initiatedByUserId: ctx.user.id,
+            inviteToken: token,
+            inviteTokenExpiry: expiry,
+            status: "pending",
+          });
+          // Send invite email
+          await sendEmail({
+            to: input.linkedOrgEmail,
+            subject: `Organization link invitation from ${primaryOrg.name}`,
+            html: `<p>You have been invited to link your organization <strong>${linkedOrg.name}</strong> with <strong>${primaryOrg.name}</strong> on Teachific.</p><p>This allows you to switch between both organizations from your dashboard.</p><p><a href="${input.origin ?? ""}/org-link/accept?token=${token}">Accept Link Invitation</a></p><p>This link expires in 7 days.</p>`,
+          });
+          return { ok: true, linkedOrgName: linkedOrg.name, linkedOrgId: linkedOrg.id };
+        }),
+
+      accept: protectedProcedure
+        .input(z.object({ token: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+          const links = await db
+            .select()
+            .from(orgLinks)
+            .where(and(eq(orgLinks.inviteToken, input.token), eq(orgLinks.status, "pending")))
+            .limit(1);
+          const link = links[0];
+          if (!link) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid or expired link invitation" });
+          if (new Date() > link.inviteTokenExpiry) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "This link invitation has expired" });
+          }
+          // Verify the accepting user is an admin of the linked org
+          const membership = await db
+            .select({ role: orgMembers.role })
+            .from(orgMembers)
+            .where(and(eq(orgMembers.orgId, link.linkedOrgId), eq(orgMembers.userId, ctx.user.id)))
+            .limit(1);
+          const role = membership[0]?.role;
+          const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+          if (!isSiteAdmin && role !== "org_admin" && role !== "org_super_admin") {
+            throw new TRPCError({ code: "FORBIDDEN", message: "You must be an admin of the linked organization to accept" });
+          }
+          await db
+            .update(orgLinks)
+            .set({ status: "accepted", acceptedByUserId: ctx.user.id })
+            .where(eq(orgLinks.id, link.id));
+          return { ok: true };
+        }),
+
+      list: protectedProcedure
+        .input(z.object({ orgId: z.number() }))
+        .query(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) return [];
+          // Return all accepted links for this org
+          const rows = await db
+            .select({
+              link: orgLinks,
+              primaryOrg: { id: organizations.id, name: organizations.name, slug: organizations.slug, logoUrl: organizations.logoUrl },
+            })
+            .from(orgLinks)
+            .innerJoin(organizations, or(
+              and(eq(orgLinks.primaryOrgId, input.orgId), eq(organizations.id, orgLinks.linkedOrgId)),
+              and(eq(orgLinks.linkedOrgId, input.orgId), eq(organizations.id, orgLinks.primaryOrgId))
+            ))
+            .where(and(
+              or(eq(orgLinks.primaryOrgId, input.orgId), eq(orgLinks.linkedOrgId, input.orgId)),
+              eq(orgLinks.status, "accepted")
+            ));
+          return rows.map(r => ({
+            linkId: r.link.id,
+            linkedOrg: r.primaryOrg,
+            linkedAt: r.link.updatedAt,
+          }));
+        }),
+
+      revoke: ownerProcedure
+        .input(z.object({ linkId: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+          await db
+            .update(orgLinks)
+            .set({ status: "revoked" })
+            .where(eq(orgLinks.id, input.linkId));
+          return { ok: true };
+        }),
+    }),
+  }),
   // ── Content Packages ──────────────────────────────────────────────────────
   packages: router({
     list: protectedProcedure

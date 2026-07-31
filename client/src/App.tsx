@@ -195,6 +195,8 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
 import MagicLinkVerifyPage from "./pages/auth/MagicLinkVerifyPage";
 import JoinGroupPage from "./pages/JoinGroupPage";
+import CreateOrganizationPage from "./pages/CreateOrganizationPage";
+import LinkOrganizationPage from "./pages/LinkOrganizationPage";
 
 
 
@@ -719,6 +721,9 @@ function FullScreenEditorRouter() {
       <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>
       <Route path="/lms/webinars/:id/edit">{() => <WebinarEditorPage />}</Route>
       <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
+      <Route path="/create-organization" component={CreateOrganizationPage} />
+      <Route path="/link-organization" component={LinkOrganizationPage} />
+      <Route path="/org-link/accept" component={LinkOrganizationPage} />
       <Route component={NotFound} />
     </Switch>
   );

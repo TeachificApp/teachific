@@ -76,6 +76,7 @@ import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
 import { ProductSwitcher } from "./ProductSwitcher";
+import { OrgSwitcher } from "./OrgSwitcher";
 
 // ─── Impersonation Banner ────────────────────────────────────────────────────
 function ImpersonationBanner({ userName }: { userName: string }) {
@@ -536,7 +537,8 @@ function DashboardLayoutContent({
               )}
             </div>
           </SidebarHeader>
-
+          {/* Org switcher — shown to org admins with multiple orgs or linked orgs */}
+          <OrgSwitcher isCollapsed={isCollapsed} />
           {/* Nav items */}
           <SidebarContent className="py-2 px-0 overflow-y-auto">
             {navGroups.map((group, groupIdx) => {
