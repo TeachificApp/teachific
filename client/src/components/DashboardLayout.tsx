@@ -164,19 +164,19 @@ const navGroups: NavGroup[] = [
         label: "LMS Management",
         path: "/lms/manage",
         subItems: [
-          { label: "Courses", path: "/lms/manage?tab=courses" },
-          { label: "Cohorts", path: "/lms/manage?tab=cohorts" },
-          { label: "Digital Downloads", path: "/lms/manage?tab=downloads" },
-          { label: "Webinars", path: "/lms/manage?tab=webinars" },
-          { label: "Memberships", path: "/lms/manage?tab=memberships" },
-          { label: "Bundles", path: "/lms/manage?tab=bundles" },
-          { label: "Physical Products", path: "/lms/manage?tab=products" },
+          { label: "Courses", path: "/lms/manage/courses" },
+          { label: "Cohorts", path: "/lms/manage/cohorts" },
+          { label: "Digital Downloads", path: "/lms/manage/downloads" },
+          { label: "Webinars", path: "/lms/manage/webinars" },
+          { label: "Memberships", path: "/lms/manage/memberships" },
+          { label: "Bundles", path: "/lms/manage/bundles" },
+          { label: "Physical Products", path: "/lms/manage/products" },
           { label: "Workshops", path: "/products/workshops" },
           { label: "Forms", path: "/lms/forms" },
-          { label: "Community", path: "/lms/manage?tab=communities" },
-          { label: "Categories", path: "/lms/manage?tab=collections" },
+          { label: "Community", path: "/lms/manage/communities" },
+          { label: "Categories", path: "/lms/manage/collections" },
           { label: "Media Library", path: "/media-library" },
-          { label: "Question Bank", path: "/lms/manage?tab=question_bank" },
+          { label: "Question Bank", path: "/lms/manage/question_bank" },
           { label: "Teachific Studio™", path: "/studio" },
         ],
       },
@@ -738,7 +738,7 @@ function DashboardLayoutContent({
                 <CreditCard className="mr-2 h-4 w-4" />
                 Billing
               </DropdownMenuItem>
-              {isOwner && (
+              {isAdmin && (
                 <DropdownMenuItem onClick={() => setLocation("/link-organization")} className="cursor-pointer">
                   <Link2 className="mr-2 h-4 w-4" />
                   Link Organization

@@ -306,6 +306,7 @@ function AdminRouter() {
           <Route path="/admin">{() => { window.location.replace("/platform-admin"); return null; }}</Route>
 
           {/* ── Products ── */}
+          <Route path="/lms/manage/:tab" component={CourseBuilderPage} />
           <Route path="/lms/manage" component={CourseBuilderPage} />
           <Route path="/lms/courses">{() => <CoursesPage />}</Route>
           <Route path="/lms/courses/new" component={CourseEditorPage} />
@@ -607,6 +608,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/admin/products/:productId/landing-builder">{() => <ProductLandingPageBuilder />}</Route>
         <Route path="/lms/webinars/:webinarId/page-builder" component={PageBuilderPage} />
         {/* ── Missing admin routes (added to match main router) ── */}
+        <Route path="/lms/manage/:tab" component={CourseBuilderPage} />
         <Route path="/lms/manage" component={CourseBuilderPage} />
         <Route path="/lms/downloads">{() => <DashboardLayout><DigitalDownloadsAdminPage /></DashboardLayout>}</Route>
         <Route path="/lms/webinars/reports">{() => <DashboardLayout><WebinarReportsPage /></DashboardLayout>}</Route>
@@ -697,6 +699,10 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/privacy" component={OrgPoliciesPage} />
         <Route path="/help" component={HelpPage} />
 
+        {/* Link Organization — must be before catch-all so it doesn't fall through to school page */}
+        <Route path="/link-organization" component={LinkOrganizationPage} />
+        <Route path="/org-link/accept" component={LinkOrganizationPage} />
+        <Route path="/create-organization" component={CreateOrganizationPage} />
         {/* Default: show landing page if published, otherwise fall back to SchoolPage */}
         <Route>{() => <OrgLandingPage subdomainOrg={schoolSubdomain} fallback={<SchoolPage subdomainOrg={schoolSubdomain} />} />}</Route>
       </Switch>

@@ -6303,16 +6303,38 @@ const GROUP_COLORS: Record<string, { bg: string; text: string; activeBg: string;
 };
 
 // ─── Main LMSAdmin Component ──────────────────────────────────────────────────
-
-export default function LMSAdmin() {
-  const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-  const urlTab = urlParams?.get("tab") ?? null;
-  const urlEditCourse = urlParams?.get("editCourse") ?? null;
-  const urlEditDownload = urlParams?.get("editDownload") ?? null;
-  const urlEditProduct = urlParams?.get("editProduct") ?? null;
-  const [activeTab, setActiveTab] = useState(urlTab || (urlEditDownload ? "downloads" : urlEditProduct ? "products" : "courses"));
+export default function LMSAdmin({ tab: tabProp }: { tab?: string } = {}) {
+  const [location] = useLocation();
+  // Derive active tab from route path (/lms/manage/:tab) or legacy ?tab= query param
+  const getTabFromLocation = () => {
+    // Route-based: /lms/manage/courses → "courses"
+    const pathMatch = location.match(/^\/lms\/manage\/([^/?]+)/);
+    if (pathMatch) return pathMatch[1];
+    // Prop-based (when rendered with explicit tab)
+    if (tabProp) return tabProp;
+    // Legacy query param fallback
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const qTab = params.get("tab");
+      if (qTab) return qTab;
+      const editDownload = params.get("editDownload");
+      const editProduct = params.get("editProduct");
+      if (editDownload) return "downloads";
+      if (editProduct) return "products";
+    }
+    return "courses";
+  };
+  const urlEditCourse = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("editCourse") : null;
+  const [activeTab, setActiveTab] = useState(() => getTabFromLocation());
   const [editingCourseId, setEditingCourseId] = useState<number | null>(urlEditCourse ? Number(urlEditCourse) : null);
-
+  // Sync activeTab whenever the route location changes
+  useEffect(() => {
+    const newTab = getTabFromLocation();
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+      setEditingCourseId(null);
+    }
+  }, [location]);
   // Flatten all tabs to find active group color
   const allItems = LMS_NAV_GROUPS.flatMap(g => g.items.map(i => ({ ...i, groupColor: g.color })));
   const activeItem = allItems.find(i => i.value === activeTab);
