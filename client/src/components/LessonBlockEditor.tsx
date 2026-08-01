@@ -662,7 +662,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             {!previewMode && (
               <Button
                 size="sm"
-                className="bg-teal-500 hover:bg-teal-600 text-white text-xs h-7 font-semibold"
+                className="bg-[#189aa1] hover:bg-[#147f86] text-white text-xs h-7 font-semibold"
                 onClick={() => setAddMenuOpen(true)}
               >
                 <Plus className="w-3 h-3 mr-1" /> Add Block
@@ -708,7 +708,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             </Button>
             <Button
               size="sm"
-              className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-7 font-semibold"
+              className="bg-[#189aa1] hover:bg-[#147f86] text-white text-xs h-7 font-semibold"
               onClick={() => handleSave(true)}
               disabled={saving}
             >
@@ -734,7 +734,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
           {embedded && (
             <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
               <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide mr-1">{editorLabel ?? "Content Editor"}</span>
-              <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
+              <Button size="sm" className="bg-[#189aa1] hover:bg-[#147f86] text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
                 <Plus className="w-3 h-3 mr-1" /> Add Block
               </Button>
               <Button
@@ -1173,7 +1173,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 disabled={!importUrl.trim() || scrapeUrlMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#189aa1] hover:bg-[#147f86] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {scrapeUrlMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                 {scrapeUrlMutation.isPending ? "Scraping..." : "Scrape"}
@@ -1226,7 +1226,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                     setAddMenuOpen(false);
                     toast.success(`Imported ${toAdd.length} block${toAdd.length !== 1 ? "s" : ""} from URL!`);
                   }}
-                  className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-2 bg-[#189aa1] hover:bg-[#147f86] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                 >
                   Import {importSelectedBlocks.size} Selected Block{importSelectedBlocks.size !== 1 ? "s" : ""}
                 </button>
@@ -1274,7 +1274,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 blockData: JSON.parse(JSON.stringify(saveTemplateDialogBlock.data ?? {})),
               });
             }}
-            className="text-sm bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm bg-[#189aa1] hover:bg-[#147f86] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveBlockTemplateMutation.isPending ? "Saving..." : "Save Template"}
           </button>
@@ -1324,7 +1324,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 tags: lessonTemplateTags.trim() || undefined,
               });
             }}
-            className="text-sm bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm bg-[#189aa1] hover:bg-[#147f86] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveLessonTemplateMutation.isPending ? "Saving..." : "Save Template"}
           </button>

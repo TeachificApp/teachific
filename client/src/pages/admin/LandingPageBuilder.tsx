@@ -599,8 +599,8 @@ function InstructorBlockSettings({ d, set, inlineMediaRef, uploading, handleFile
       <div>
         <label className="text-xs text-gray-500 block mb-1">Source</label>
         <div className="grid grid-cols-2 gap-1">
-          <button onClick={() => set("mode", "profile")} className={`py-1.5 text-xs rounded border ${mode === "profile" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Saved Profile</button>
-          <button onClick={() => set("mode", "manual")} className={`py-1.5 text-xs rounded border ${mode === "manual" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Manual Entry</button>
+          <button onClick={() => set("mode", "profile")} className={`py-1.5 text-xs rounded border ${mode === "profile" ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Saved Profile</button>
+          <button onClick={() => set("mode", "manual")} className={`py-1.5 text-xs rounded border ${mode === "manual" ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Manual Entry</button>
         </div>
       </div>
 
@@ -665,8 +665,8 @@ function InstructorBlockSettings({ d, set, inlineMediaRef, uploading, handleFile
       <div>
         <label className="text-xs text-gray-500 block mb-1">Layout</label>
         <div className="grid grid-cols-2 gap-1">
-          <button onClick={() => set("layout", "horizontal")} className={`py-1.5 text-xs rounded border ${(d.layout ?? "horizontal") === "horizontal" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Horizontal</button>
-          <button onClick={() => set("layout", "centered")} className={`py-1.5 text-xs rounded border ${d.layout === "centered" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Centered</button>
+          <button onClick={() => set("layout", "horizontal")} className={`py-1.5 text-xs rounded border ${(d.layout ?? "horizontal") === "horizontal" ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Horizontal</button>
+          <button onClick={() => set("layout", "centered")} className={`py-1.5 text-xs rounded border ${d.layout === "centered" ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Centered</button>
         </div>
       </div>
 
@@ -1717,7 +1717,7 @@ function SuccessRedirectPicker({
           <button key={m} onClick={() => handleModeChange(m)}
             className={`text-xs rounded px-2 py-1.5 border transition-colors ${
               mode === m
-                ? "bg-teal-600 text-white border-teal-600"
+                ? "bg-[#189aa1] text-white border-[#189aa1]"
                 : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
             }`}>
             {m === "url" ? "Custom URL" : m === "dashboard" ? "Student Dashboard" : "Funnel Step"}
@@ -2157,8 +2157,8 @@ function SortableCarouselItem({
       </div>
       {/* Media type toggle */}
       <div className="grid grid-cols-2 gap-1">
-        <button onClick={() => onUpdate("mediaType", "image")} className={`py-1 text-xs rounded border ${item.mediaType === "image" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Image</button>
-        <button onClick={() => onUpdate("mediaType", "video")} className={`py-1 text-xs rounded border ${item.mediaType === "video" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Video</button>
+        <button onClick={() => onUpdate("mediaType", "image")} className={`py-1 text-xs rounded border ${item.mediaType === "image" ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Image</button>
+        <button onClick={() => onUpdate("mediaType", "video")} className={`py-1 text-xs rounded border ${item.mediaType === "video" ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Video</button>
       </div>
       {/* URL input + upload button */}
       <div className="flex gap-1">
@@ -2221,7 +2221,7 @@ function SortableChecklistItem({
         type="button"
         onClick={() => onChange({ ...item, crossed: !item.crossed })}
         className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold transition-colors ${
-          item.crossed ? "bg-red-400 hover:bg-red-500" : "bg-teal-500 hover:bg-teal-600"
+          item.crossed ? "bg-red-400 hover:bg-red-500" : "bg-[#189aa1] hover:bg-[#147f86]"
         }`}
         title={item.crossed ? "Crossed out — click to make normal" : "Normal — click to cross out"}
       >{item.crossed ? "✗" : "✓"}</button>
@@ -2278,7 +2278,7 @@ function ColumnBlockList({ side, blocks, onUpdate, lessonId, courseId }: {
         <div className="bg-gray-50 border border-gray-200 rounded p-2 space-y-1 mb-2">
           <div className="flex gap-1 flex-wrap">
             {CATALOG_CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => setAddCat(cat)} className={`text-[10px] px-2 py-0.5 rounded-full border ${addCat === cat ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-500"}`}>{cat}</button>
+              <button key={cat} onClick={() => setAddCat(cat)} className={`text-[10px] px-2 py-0.5 rounded-full border ${addCat === cat ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-500"}`}>{cat}</button>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
@@ -2441,7 +2441,7 @@ function AIContentBlockSettings({
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim()}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gradient-to-r from-[#189aa1] to-[#17a2b8] hover:from-[#147f86] hover:to-[#138496] text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isGenerating ? (
               <><Loader2 size={13} className="animate-spin" /> Generating...</>
@@ -2563,7 +2563,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Background Type</label>
             <div className="grid grid-cols-2 gap-1">
               {(["color", "gradient", "image", "video"] as const).map(t => (
-                <button key={t} onClick={() => set("bgType", t)} className={`py-1 text-xs rounded border ${bgType === t ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                <button key={t} onClick={() => set("bgType", t)} className={`py-1 text-xs rounded border ${bgType === t ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
                   {t === "color" ? "Solid Color" : t === "gradient" ? "Gradient" : t === "image" ? "Image" : "Video"}
                 </button>
               ))}
@@ -2615,7 +2615,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   <label className="text-xs text-gray-500 block mb-1">Placement</label>
                   <div className="flex gap-1">
                     {(["left", "center", "right"] as const).map(pos => (
-                      <button key={pos} onClick={() => set("inlineMediaPlacement", pos)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.inlineMediaPlacement === pos ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{pos}</button>
+                      <button key={pos} onClick={() => set("inlineMediaPlacement", pos)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.inlineMediaPlacement === pos ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{pos}</button>
                     ))}
                   </div>
                 </div>
@@ -2740,7 +2740,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   {(btn.behavior ?? "url") === "send_email" && (
                     <HeroSendEmailSettings btn={btn} idx={idx} setBtn={setBtn} setBtnMulti={setBtnMulti} />
                   )}
-                  <div><label className="text-xs text-gray-400 block mb-0.5">Style</label><div className="flex gap-1">{(["filled", "outline"] as const).map(s => <button key={s} onClick={() => setBtn(idx, "style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${btn.style === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
+                  <div><label className="text-xs text-gray-400 block mb-0.5">Style</label><div className="flex gap-1">{(["filled", "outline"] as const).map(s => <button key={s} onClick={() => setBtn(idx, "style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${btn.style === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
                   <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-16 flex-shrink-0">Color</label><input type="color" value={btn.color} onChange={e => setBtn(idx, "color", e.target.value)} className="w-7 h-7 rounded cursor-pointer border border-gray-200" /><DebouncedInput value={btn.color} onChange={v => setBtn(idx, "color", v)} className="h-7 text-xs flex-1" /></div>
                   {btn.style !== "outline" && <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-16 flex-shrink-0">Text</label><input type="color" value={btn.textColor} onChange={e => setBtn(idx, "textColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border border-gray-200" /><DebouncedInput value={btn.textColor} onChange={v => setBtn(idx, "textColor", v)} className="h-7 text-xs flex-1" /></div>}
                   <div><label className="text-xs text-gray-400 block mb-0.5">Animation</label><Select value={btn.animation ?? "none"} onValueChange={v => setBtn(idx, "animation", v)}><SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="pulse">Pulse</SelectItem><SelectItem value="bounce">Bounce</SelectItem><SelectItem value="shake">Shake</SelectItem><SelectItem value="glow">Glow</SelectItem></SelectContent></Select></div>
@@ -2844,12 +2844,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             {/* Alignment */}
             <div>
               <label className="text-xs text-gray-500 block mb-1">Alignment</label>
-              <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+              <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
             </div>
             {/* Width */}
             <div>
               <label className="text-xs text-gray-500 block mb-1">Image Width</label>
-              <div className="flex flex-wrap gap-1 mb-1">{(["auto","25%","33%","50%","75%","100%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "auto") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+              <div className="flex flex-wrap gap-1 mb-1">{(["auto","25%","33%","50%","75%","100%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "auto") === w ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
               <DebouncedInput value={d.maxWidth ?? "auto"} onChange={v => set("maxWidth", v)} className="h-8 text-sm" placeholder="auto, 100%, 600px, etc." />
             </div>
             <div><label className="text-xs text-gray-500 block mb-1">Height</label><DebouncedInput value={d.height ?? ""} onChange={v => set("height", v)} className="h-8 text-sm" placeholder="auto, 300px, etc." /></div>
@@ -2862,7 +2862,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
               <div><label className="text-xs text-gray-500 block mb-1">Border Radius (px)</label><Input type="number" value={d.borderRadius ?? 0} onChange={e => set("borderRadius", Number(e.target.value))} className="h-8 text-sm" min={0} max={999} /></div>
               {!d.noBorder && <>
                 <div><label className="text-xs text-gray-500 block mb-1">Border Width (px)</label><Input type="number" value={d.borderWidth ?? 0} onChange={e => set("borderWidth", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Border Style</label><div className="flex gap-1">{(["solid","dashed","dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
+                <div><label className="text-xs text-gray-500 block mb-1">Border Style</label><div className="flex gap-1">{(["solid","dashed","dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
                 <BSColorField data={d} onSet={set} label="Border Color" field="borderColor" />
               </>}
             </div>
@@ -2895,12 +2895,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           {/* Alignment */}
           <div>
             <label className="text-xs text-gray-500 block mb-1">Alignment</label>
-            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
           </div>
           {/* Width */}
           <div>
             <label className="text-xs text-gray-500 block mb-1">Width</label>
-            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
             <DebouncedInput value={d.maxWidth ?? "100%"} onChange={v => set("maxWidth", v)} className="h-8 text-sm" placeholder="100%, 600px, etc." />
           </div>
           <BSTextField data={d} onSet={set} label="Caption" field="caption" />
@@ -3912,7 +3912,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="flex gap-2">
               {["lock","circle","none"].map(s => (
                 <button key={s} onClick={() => set("iconStyle", s)}
-                  className={`flex-1 py-1 rounded text-xs font-medium border ${(d.iconStyle ?? "lock") === s ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                  className={`flex-1 py-1 rounded text-xs font-medium border ${(d.iconStyle ?? "lock") === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "bg-white text-gray-600 border-gray-200"}`}>
                   {s === "lock" ? "🔒 Lock" : s === "circle" ? "⭕ Circle" : "— None"}
                 </button>
               ))}
@@ -3928,7 +3928,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="flex gap-1">
               {(["left", "center", "right"] as const).map(a => (
                 <button key={a} onClick={() => set("headlineAlign", a)}
-                  className={`flex-1 py-1 rounded text-xs font-medium border capitalize ${(d.headlineAlign ?? "left") === a ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                  className={`flex-1 py-1 rounded text-xs font-medium border capitalize ${(d.headlineAlign ?? "left") === a ? "bg-[#189aa1] text-white border-[#189aa1]" : "bg-white text-gray-600 border-gray-200"}`}>
                   {a === "left" ? "⬅ Left" : a === "center" ? "⬛ Center" : "➡ Right"}
                 </button>
               ))}
@@ -4027,7 +4027,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Selection Mode</label>
             <div className="flex gap-1">
               {(["auto", "manual"] as const).map(m => (
-                <button key={m} onClick={() => set("selectionMode", m)} className={`flex-1 py-1 text-xs rounded border capitalize ${selMode === m ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{m === "auto" ? "Automated" : "Manual Pick"}</button>
+                <button key={m} onClick={() => set("selectionMode", m)} className={`flex-1 py-1 text-xs rounded border capitalize ${selMode === m ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{m === "auto" ? "Automated" : "Manual Pick"}</button>
               ))}
             </div>
           </div>
@@ -4071,7 +4071,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                           : [...manualItems, { type: p.type, id: p.id }];
                         set("manualItems", next);
                       }}>
-                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? "bg-teal-600 border-teal-600" : "border-gray-300"}`}>
+                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? "bg-[#189aa1] border-[#189aa1]" : "border-gray-300"}`}>
                         {isSelected && <svg viewBox="0 0 10 8" className="w-2.5 h-2.5 fill-white"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>}
                       </div>
                       {p.imageUrl && <img src={p.imageUrl} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />}
@@ -4092,7 +4092,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Layout</label>
             <div className="flex gap-1">
               {(["grid", "list"] as const).map(l => (
-                <button key={l} onClick={() => set("layout", l)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.layout ?? "grid") === l ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{l}</button>
+                <button key={l} onClick={() => set("layout", l)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.layout ?? "grid") === l ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{l}</button>
               ))}
             </div>
           </div>
@@ -4137,7 +4137,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
         </div>
       );
     case "divider":
-      return (<div className="space-y-3"><div><label className="text-xs text-gray-500 block mb-1">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.style ?? "solid") === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div><BSColorField data={d} onSet={set} label="Color" field="color" /><div><label className="text-xs text-gray-500 block mb-1">Thickness (px)</label><Input type="number" value={d.thickness ?? 1} onChange={e => set("thickness", Number(e.target.value))} className="h-8 text-sm" min={1} max={10} /></div><div><label className="text-xs text-gray-500 block mb-1">Rounding (px)</label><Input type="number" value={d.borderRadius ?? 0} onChange={e => set("borderRadius", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div><div><label className="text-xs text-gray-500 block mb-1">Vertical Spacing (px)</label><Input type="number" value={d.spacing ?? 32} onChange={e => set("spacing", Number(e.target.value))} className="h-8 text-sm" min={0} max={200} /></div></div>);
+      return (<div className="space-y-3"><div><label className="text-xs text-gray-500 block mb-1">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.style ?? "solid") === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div><BSColorField data={d} onSet={set} label="Color" field="color" /><div><label className="text-xs text-gray-500 block mb-1">Thickness (px)</label><Input type="number" value={d.thickness ?? 1} onChange={e => set("thickness", Number(e.target.value))} className="h-8 text-sm" min={1} max={10} /></div><div><label className="text-xs text-gray-500 block mb-1">Rounding (px)</label><Input type="number" value={d.borderRadius ?? 0} onChange={e => set("borderRadius", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div><div><label className="text-xs text-gray-500 block mb-1">Vertical Spacing (px)</label><Input type="number" value={d.spacing ?? 32} onChange={e => set("spacing", Number(e.target.value))} className="h-8 text-sm" min={0} max={200} /></div></div>);
     case "two_column": {
       const COLUMN_TYPES = [
         { value: "rich_text", label: "Rich Text" },
@@ -4208,7 +4208,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
         </div>
         {d.showDividers && (<div className="space-y-2 pl-4 border-l-2 border-teal-100">
           <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-14">Color</label><input type="color" value={d.dividerColor ?? "#e5e7eb"} onChange={e => set("dividerColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border" /><DebouncedInput value={d.dividerColor ?? "#e5e7eb"} onChange={v => set("dividerColor", v)} className="h-7 text-xs flex-1" /></div>
-          <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-14">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("dividerStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.dividerStyle === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
+          <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-14">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("dividerStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.dividerStyle === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
           <div><label className="text-xs text-gray-400 block mb-0.5">Width (px)</label><Input type="number" value={d.dividerWidth ?? 1} onChange={e => set("dividerWidth", Number(e.target.value))} className="h-7 text-xs" min={1} max={10} /></div>
           <div><label className="text-xs text-gray-400 block mb-0.5">Rounding (px)</label><Input type="number" value={d.dividerRadius ?? 0} onChange={e => set("dividerRadius", Number(e.target.value))} className="h-7 text-xs" min={0} max={20} /></div>
         </div>)}
@@ -4357,12 +4357,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           {/* Alignment */}
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Alignment</label>
-            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
           </div>
           {/* Width */}
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Width</label>
-            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
             <DebouncedInput value={d.maxWidth ?? "100%"} onChange={v => set("maxWidth", v)} className="h-8 text-xs" placeholder="100%, 600px, etc." />
           </div>
           {/* Pass-through credentials */}
@@ -4910,7 +4910,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             {(["full","xl","lg","md","sm"] as const).map(w => {
               const labels: Record<string, string> = { full: "Full", xl: "XL (1280)", lg: "LG (1024)", md: "MD (768)", sm: "SM (640)" };
               return (
-                <button key={w} onClick={() => set("contentWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.contentWidth ?? "full") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{labels[w]}</button>
+                <button key={w} onClick={() => set("contentWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.contentWidth ?? "full") === w ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{labels[w]}</button>
               );
             })}
           </div>
@@ -4956,7 +4956,7 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
             <>
               <span>Drag blocks here</span>
               <button onClick={e => { e.stopPropagation(); setPickerOpen(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-500 text-white text-[10px] font-medium hover:bg-teal-600 transition-colors">
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#189aa1] text-white text-[10px] font-medium hover:bg-[#147f86] transition-colors">
                 <Plus size={10} /> Add Block
               </button>
             </>
@@ -5077,7 +5077,7 @@ function ColumnBlockPickerDialog({ open, onOpenChange, onAddBlock }: {
                           </div>
                         </div>
                         <button onClick={() => { onAddBlock(block); onOpenChange(false); }}
-                          className="shrink-0 px-2.5 py-1 text-xs bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors">Add</button>
+                          className="shrink-0 px-2.5 py-1 text-xs bg-[#189aa1] text-white rounded-lg hover:bg-[#147f86] transition-colors">Add</button>
                       </div>
                     );
                   })}
@@ -5871,7 +5871,7 @@ export default function LandingPageBuilder() {
               <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center"><Plus size={24} /></div>
               <button
                 onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-[#189aa1] hover:bg-[#147f86] text-white rounded-lg transition-colors"
               >
                 <Plus size={16} /> Add Your First Block
               </button>
@@ -6001,7 +6001,7 @@ export default function LandingPageBuilder() {
           {/* Drag handle */}
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-teal-400 active:bg-teal-500 z-10 transition-colors"
+            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#1db5bd] active:bg-[#189aa1] z-10 transition-colors"
             title="Drag to resize panel"
           />
           {selectedBlock ? (
@@ -6070,7 +6070,7 @@ export default function LandingPageBuilder() {
                 <button
                   onClick={handleSaveSeo}
                   disabled={saveSeoMutation.isPending}
-                  className="w-full text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-1.5 transition-colors disabled:opacity-50"
+                  className="w-full text-xs font-semibold text-white bg-[#189aa1] hover:bg-[#147f86] rounded-lg py-1.5 transition-colors disabled:opacity-50"
                 >
                   {seoSaved ? "✓ Saved!" : saveSeoMutation.isPending ? "Saving…" : "Save Preview Settings"}
                 </button>
@@ -6255,7 +6255,7 @@ export default function LandingPageBuilder() {
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 disabled={!importUrl.trim() || scrapeUrlMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#189aa1] hover:bg-[#147f86] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {scrapeUrlMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                 {scrapeUrlMutation.isPending ? "Scraping..." : "Scrape"}
@@ -6308,7 +6308,7 @@ export default function LandingPageBuilder() {
                     setAddMenuOpen(false);
                     toast.success(`Imported ${toAdd.length} block${toAdd.length !== 1 ? "s" : ""} from URL!`);
                   }}
-                  className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-2 bg-[#189aa1] hover:bg-[#147f86] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                 >
                   Import {importSelectedBlocks.size} Selected Block{importSelectedBlocks.size !== 1 ? "s" : ""}
                 </button>
@@ -6371,7 +6371,7 @@ export default function LandingPageBuilder() {
                 { onSuccess: () => { setSaveTemplateDialogBlock(null); } }
               );
             }}
-            className="bg-teal-600 hover:bg-teal-700 text-white text-sm"
+            className="bg-[#189aa1] hover:bg-[#147f86] text-white text-sm"
           >
             {saveBlockTemplateMutation.isPending ? "Saving…" : "Save Template"}
           </Button>
@@ -6745,12 +6745,12 @@ function ScormEmbedBlockSettings({ d, set, dataRef, onChangeRef }: {
       {/* Alignment */}
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Alignment</label>
-        <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+        <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
       </div>
       {/* Width */}
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Width</label>
-        <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+        <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
         <DebouncedInput value={d.maxWidth ?? "100%"} onChange={v => set("maxWidth", v)} className="h-7 text-xs" placeholder="100%, 600px, etc." />
       </div>
 
@@ -6888,7 +6888,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
             <button
               key={s}
               onClick={() => set("source", s)}
-              className={`flex-1 py-1.5 text-xs rounded border capitalize transition-colors ${sourceMode === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:border-teal-300"}`}
+              className={`flex-1 py-1.5 text-xs rounded border capitalize transition-colors ${sourceMode === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600 hover:border-teal-300"}`}
             >
               {s === "url" ? "URL / Embed" : s === "upload" ? "Upload" : "Media Library"}
             </button>
@@ -7037,7 +7037,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       <div><label className="text-xs text-gray-500 block mb-1">Border Width (px)</label><Input type="number" value={d.borderWidth ?? 0} onChange={e => set("borderWidth", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div>
       <div>
         <label className="text-xs text-gray-500 block mb-1">Border Style</label>
-        <div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div>
+        <div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div>
       </div>
       <BSColorField data={d} onSet={set} label="Border Color" field="borderColor" />
       <div className="border border-gray-100 rounded p-2 space-y-2">
@@ -7453,7 +7453,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
               onClick={() => toggleSubmissionType(opt.value)}
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                 submissionTypes.includes(opt.value)
-                  ? "bg-teal-600 text-white border-teal-600"
+                  ? "bg-[#189aa1] text-white border-[#189aa1]"
                   : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
               }`}
             >
