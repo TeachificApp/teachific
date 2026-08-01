@@ -61,6 +61,9 @@ import { BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, uid } 
 import { useLearnLink } from "@/hooks/useLearnLink";
 import { getAdminUrl } from "@/hooks/useSubdomain";
 import { PublishDomainSelect } from "@/components/PublishDomainSelect";
+import WebinarsPage from "@/pages/admin/WebinarsPage";
+import MembershipsPage from "@/pages/products/MembershipsPage";
+import BundlesPage from "@/pages/products/BundlesPage";
 /** Convenience alias used in LandingPageEditor */
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
@@ -6325,6 +6328,8 @@ export default function LMSAdmin({ tab: tabProp }: { tab?: string } = {}) {
     return "courses";
   };
   const urlEditCourse = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("editCourse") : null;
+  const urlEditDownload = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("editDownload") : null;
+  const urlEditProduct = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("editProduct") : null;
   const [activeTab, setActiveTab] = useState(() => getTabFromLocation());
   const [editingCourseId, setEditingCourseId] = useState<number | null>(urlEditCourse ? Number(urlEditCourse) : null);
   // Sync activeTab whenever the route location changes
@@ -6352,9 +6357,9 @@ export default function LMSAdmin({ tab: tabProp }: { tab?: string } = {}) {
               {activeTab === "cohorts"     && <CoursesTab onEdit={setEditingCourseId} typeFilter="cohort" />}
               {activeTab === "downloads"   && <DigitalDownloadsAdmin initialEditId={urlEditDownload ? Number(urlEditDownload) : undefined} />}
               {activeTab === "products"    && <PhysicalProductsAdmin initialEditId={urlEditProduct ? Number(urlEditProduct) : undefined} />}
-              {activeTab === "webinars"    && <LMSComingSoonTab icon={Radio} title="Webinars" description="Host and manage live webinar sessions with registration, reminders, and replay access." color="teal" />}
-              {activeTab === "bundles"     && <LMSComingSoonTab icon={Layers} title="Bundles" description="Package courses, downloads, products, and quizzes together and sell them as a single bundle at a special price." color="teal" />}
-              {activeTab === "memberships" && <LMSComingSoonTab icon={Award} title="Memberships" description="Create membership tiers that unlock course access, community features, and exclusive content on a recurring basis." color="teal" />}
+              {activeTab === "webinars"    && <WebinarsPage />}
+              {activeTab === "bundles"     && <BundlesPage />}
+              {activeTab === "memberships" && <MembershipsPage />}
               {activeTab === "communities" && <CommunitiesTab />}
               {activeTab === "orderbumps"  && <OrderBumpsAdmin />}
               {activeTab === "collections" && <CollectionsTab />}
