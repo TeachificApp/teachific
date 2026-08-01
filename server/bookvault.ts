@@ -1,6 +1,9 @@
 /**
  * BookVault API v3 helper
  * Docs: https://help.bookvault.app/api-setup
+ *
+ * All exported functions accept an optional `apiKey` parameter.
+ * When provided, it takes precedence over the global env var.
  */
 import { ENV } from "./_core/env";
 
@@ -67,14 +70,19 @@ export interface BookvaultOrderResult {
   [key: string]: unknown;
 }
 
-function getApiKey(): string {
-  const key = (process.env.BOOKVAULT_API_KEY ?? ENV.bookvaultApiKey).trim();
-  if (!key) throw new Error("BOOKVAULT_API_KEY is not configured");
-  return key.startsWith("bv_") ? key : `bv_${key}`;
+/** Resolve the API key: org key takes precedence over env var */
+function resolveApiKey(apiKey?: string | null): string {
+  const raw = (apiKey ?? process.env.BOOKVAULT_API_KEY ?? ENV.bookvaultApiKey ?? "").trim();
+  if (!raw) throw new Error("Bookvault API key is not configured for this organisation");
+  return raw.startsWith("bv_") ? raw : `bv_${raw}`;
 }
 
-function authHeader(): string {
-  return `basic ${getApiKey()}`;
+function authHeader(apiKey?: string | null): string {
+  return `basic ${resolveApiKey(apiKey)}`;
+}
+
+export function isBookvaultConfigured(apiKey?: string | null): boolean {
+  return Boolean((apiKey ?? process.env.BOOKVAULT_API_KEY ?? ENV.bookvaultApiKey ?? "").trim());
 }
 
 async function parseResponseBody(res: Response): Promise<unknown> {
@@ -104,9 +112,10 @@ function extractError(body: unknown, status: number, path: string): string {
 async function bookvaultFetch<T>(
   path: string,
   options: RequestInit = {},
+  apiKey?: string | null,
 ): Promise<T> {
   const headers: Record<string, string> = {
-    Authorization: authHeader(),
+    Authorization: authHeader(apiKey),
     Accept: "application/json",
     ...(options.body ? { "Content-Type": "application/json" } : {}),
     ...(options.headers as Record<string, string> ?? {}),
@@ -129,14 +138,14 @@ async function bookvaultFetch<T>(
 }
 
 /** Verify API credentials by loading account details */
-export async function testConnection(): Promise<{ connected: true; account: BookvaultAccount }> {
-  const account = await bookvaultFetch<BookvaultAccount>("/Account");
+export async function testConnection(apiKey?: string | null): Promise<{ connected: true; account: BookvaultAccount }> {
+  const account = await bookvaultFetch<BookvaultAccount>("/Account", {}, apiKey);
   return { connected: true, account };
 }
 
 /** List titles available on the BookVault account */
-export async function listTitles(): Promise<BookvaultTitle[]> {
-  const result = await bookvaultFetch<BookvaultTitle[] | { Titles?: BookvaultTitle[] }>("/Titles");
+export async function listTitles(apiKey?: string | null): Promise<BookvaultTitle[]> {
+  const result = await bookvaultFetch<BookvaultTitle[] | { Titles?: BookvaultTitle[] }>("/Titles", {}, apiKey);
   if (Array.isArray(result)) return result;
   if (result && typeof result === "object" && Array.isArray(result.Titles)) {
     return result.Titles;
@@ -145,14 +154,13 @@ export async function listTitles(): Promise<BookvaultTitle[]> {
 }
 
 /** Look up a single title by ISBN */
-export async function getTitleByIsbn(isbn: string): Promise<BookvaultTitle | null> {
+export async function getTitleByIsbn(isbn: string, apiKey?: string | null): Promise<BookvaultTitle | null> {
   const normalized = isbn.replace(/[^0-9X]/gi, "");
   try {
-    // The BookVault /Title endpoint returns the title object directly at the top level.
-    // The object has a "Title" property that is a string (the book title), not a nested object.
-    // We must return the full result object, not result.Title.
     const result = await bookvaultFetch<BookvaultTitle>(
       `/Title?ISBN=${encodeURIComponent(normalized)}`,
+      {},
+      apiKey,
     );
     return result ?? null;
   } catch (err) {
@@ -163,7 +171,7 @@ export async function getTitleByIsbn(isbn: string): Promise<BookvaultTitle | nul
 }
 
 /** Submit a print order to BookVault */
-export async function createOrder(payload: BookvaultCreateOrderPayload): Promise<BookvaultOrderResult> {
+export async function createOrder(payload: BookvaultCreateOrderPayload, apiKey?: string | null): Promise<BookvaultOrderResult> {
   const body: BookvaultCreateOrderPayload = {
     ...payload,
     ProductionLevel: payload.ProductionLevel ?? ENV.bookvaultProductionLevel,
@@ -175,18 +183,18 @@ export async function createOrder(payload: BookvaultCreateOrderPayload): Promise
   return bookvaultFetch<BookvaultOrderResult>("/Order", {
     method: "POST",
     body: JSON.stringify(body),
-  });
+  }, apiKey);
 }
 
 /** Fetch an existing order by our DocRef or BookVault PodRef */
-export async function getOrder(params: { docRef?: string; podRef?: string }): Promise<BookvaultOrderResult | null> {
+export async function getOrder(params: { docRef?: string; podRef?: string }, apiKey?: string | null): Promise<BookvaultOrderResult | null> {
   const search = new URLSearchParams();
   if (params.docRef) search.set("DocRef", params.docRef);
   if (params.podRef) search.set("PodRef", params.podRef);
   if (!search.toString()) throw new Error("docRef or podRef is required");
 
   try {
-    return await bookvaultFetch<BookvaultOrderResult>(`/Order?${search.toString()}`);
+    return await bookvaultFetch<BookvaultOrderResult>(`/Order?${search.toString()}`, {}, apiKey);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (/not found|404/i.test(message)) return null;
@@ -195,13 +203,9 @@ export async function getOrder(params: { docRef?: string; podRef?: string }): Pr
 }
 
 export function buildDocRef(orderId: number): string {
-  return `aaus-ppo-${orderId}`;
+  return `teachific-ppo-${orderId}`;
 }
 
 export function normalizeIsbn(isbn: string | null | undefined): string {
   return (isbn ?? "").replace(/[^0-9X]/gi, "");
-}
-
-export function isBookvaultConfigured(): boolean {
-  return Boolean((process.env.BOOKVAULT_API_KEY ?? ENV.bookvaultApiKey).trim());
 }

@@ -1,11 +1,14 @@
 /**
  * Printify API v1 helper
  * Docs: https://developers.printify.com/
+ *
+ * All exported functions accept an optional `apiKey` parameter.
+ * When provided, it takes precedence over the global env var.
  */
 import { ENV } from "./_core/env";
 
 const BASE_URL = "https://api.printify.com/v1";
-const USER_AGENT = process.env.PRINTIFY_USER_AGENT ?? "UltrasoundAssist/1.0";
+const USER_AGENT = process.env.PRINTIFY_USER_AGENT ?? "Teachific/1.0";
 
 export interface PrintifyShop {
   id: number;
@@ -78,26 +81,27 @@ interface PaginatedResponse<T> {
   next_page_url?: string | null;
 }
 
-function getToken(): string {
-  const token = (process.env.PRINTIFY_API_TOKEN ?? ENV.printifyApiToken).trim();
-  if (!token) throw new Error("PRINTIFY_API_TOKEN is not configured");
+/** Resolve the API token: org key takes precedence over env var */
+function resolveToken(apiKey?: string | null): string {
+  const token = (apiKey ?? process.env.PRINTIFY_API_TOKEN ?? ENV.printifyApiToken ?? "").trim();
+  if (!token) throw new Error("Printify API key is not configured for this organisation");
   return token;
 }
 
-export function isPrintifyConfigured(): boolean {
-  return Boolean((process.env.PRINTIFY_API_TOKEN ?? ENV.printifyApiToken).trim());
+export function isPrintifyConfigured(apiKey?: string | null): boolean {
+  return Boolean((apiKey ?? process.env.PRINTIFY_API_TOKEN ?? ENV.printifyApiToken ?? "").trim());
 }
 
 export function getDefaultPrintifyShopId(): number | null {
-  const raw = (process.env.PRINTIFY_DEFAULT_SHOP_ID ?? ENV.printifyDefaultShopId).trim();
+  const raw = (process.env.PRINTIFY_DEFAULT_SHOP_ID ?? ENV.printifyDefaultShopId ?? "").trim();
   if (!raw) return null;
   const id = Number.parseInt(raw, 10);
   return Number.isFinite(id) ? id : null;
 }
 
-async function printifyFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function printifyFetch<T>(path: string, options: RequestInit = {}, apiKey?: string | null): Promise<T> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${getToken()}`,
+    Authorization: `Bearer ${resolveToken(apiKey)}`,
     "User-Agent": USER_AGENT,
     Accept: "application/json",
     ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -126,14 +130,14 @@ async function printifyFetch<T>(path: string, options: RequestInit = {}): Promis
   return body as T;
 }
 
-export async function listShops(): Promise<PrintifyShop[]> {
-  const result = await printifyFetch<PrintifyShop[] | PaginatedResponse<PrintifyShop>>("/shops.json");
+export async function listShops(apiKey?: string | null): Promise<PrintifyShop[]> {
+  const result = await printifyFetch<PrintifyShop[] | PaginatedResponse<PrintifyShop>>("/shops.json", {}, apiKey);
   if (Array.isArray(result)) return result;
   return result.data ?? [];
 }
 
-export async function testConnection(): Promise<{ shops: PrintifyShop[] }> {
-  const shops = await listShops();
+export async function testConnection(apiKey?: string | null): Promise<{ shops: PrintifyShop[] }> {
+  const shops = await listShops(apiKey);
   return { shops };
 }
 
@@ -162,9 +166,12 @@ export async function listProducts(
   shopId: number,
   page = 1,
   limit = 50,
+  apiKey?: string | null,
 ): Promise<{ products: PrintifyProductSummary[]; currentPage: number; lastPage: number; total: number }> {
   const result = await printifyFetch<PaginatedResponse<Record<string, unknown>>>(
     `/shops/${shopId}/products.json?page=${page}&limit=${limit}`,
+    {},
+    apiKey,
   );
   const products = (result.data ?? []).map((p) => mapProductSummary(shopId, p));
   return {
@@ -175,10 +182,12 @@ export async function listProducts(
   };
 }
 
-export async function getProduct(shopId: number, productId: string): Promise<PrintifyProductDetail | null> {
+export async function getProduct(shopId: number, productId: string, apiKey?: string | null): Promise<PrintifyProductDetail | null> {
   try {
     const raw = await printifyFetch<Record<string, unknown>>(
       `/shops/${shopId}/products/${productId}.json`,
+      {},
+      apiKey,
     );
     const summary = mapProductSummary(shopId, raw);
     return {
@@ -195,24 +204,28 @@ export async function getProduct(shopId: number, productId: string): Promise<Pri
 export async function createOrder(
   shopId: number,
   payload: PrintifyCreateOrderPayload,
+  apiKey?: string | null,
 ): Promise<PrintifyOrderResult> {
   return printifyFetch<PrintifyOrderResult>(`/shops/${shopId}/orders.json`, {
     method: "POST",
     body: JSON.stringify(payload),
-  });
+  }, apiKey);
 }
 
-export async function getOrder(shopId: number, orderId: string): Promise<Record<string, unknown>> {
-  return printifyFetch<Record<string, unknown>>(`/shops/${shopId}/orders/${orderId}.json`);
+export async function getOrder(shopId: number, orderId: string, apiKey?: string | null): Promise<Record<string, unknown>> {
+  return printifyFetch<Record<string, unknown>>(`/shops/${shopId}/orders/${orderId}.json`, {}, apiKey);
 }
 
 export async function listOrders(
   shopId: number,
   page = 1,
   limit = 20,
+  apiKey?: string | null,
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
   return printifyFetch<PaginatedResponse<Record<string, unknown>>>(
     `/shops/${shopId}/orders.json?page=${page}&limit=${limit}`,
+    {},
+    apiKey,
   );
 }
 

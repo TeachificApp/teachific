@@ -1,6 +1,9 @@
 /**
  * Printful API v1 helper
  * Docs: https://developers.printful.com/docs/
+ *
+ * All exported functions accept an optional `apiKey` parameter.
+ * When provided, it takes precedence over the global env var.
  */
 import { ENV } from "./_core/env";
 
@@ -149,21 +152,26 @@ export interface PrintfulShippingRate {
   maxDeliveryDays: number;
 }
 
-function getApiKey(): string {
-  const apiKey = (process.env.PRINTFUL_API_KEY ?? ENV.printfulApiKey).trim();
-  if (!apiKey) throw new Error("PRINTFUL_API_KEY is not configured");
-  return apiKey;
+/** Resolve the API key: org key takes precedence over env var */
+function resolveApiKey(apiKey?: string | null): string {
+  const key = (apiKey ?? process.env.PRINTFUL_API_KEY ?? ENV.printfulApiKey ?? "").trim();
+  if (!key) throw new Error("Printful API key is not configured for this organisation");
+  return key;
+}
+
+export function isPrintfulConfigured(apiKey?: string | null): boolean {
+  return Boolean((apiKey ?? process.env.PRINTFUL_API_KEY ?? ENV.printfulApiKey ?? "").trim());
 }
 
 async function printfulFetch<T>(
   path: string,
   options: RequestInit = {},
-  storeId?: number
+  storeId?: number,
+  apiKey?: string | null,
 ): Promise<T> {
-  const apiKey = getApiKey();
-
+  const key = resolveApiKey(apiKey);
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${apiKey}`,
+    Authorization: `Bearer ${key}`,
     "Content-Type": "application/json",
     ...(storeId ? { "X-PF-Store-Id": String(storeId) } : {}),
     ...(options.headers as Record<string, string> ?? {}),
@@ -181,19 +189,21 @@ async function printfulFetch<T>(
 }
 
 /** List all stores connected to this API key */
-export async function listStores(): Promise<PrintfulStore[]> {
-  return printfulFetch<PrintfulStore[]>("/stores");
+export async function listStores(apiKey?: string | null): Promise<PrintfulStore[]> {
+  return printfulFetch<PrintfulStore[]>("/stores", {}, undefined, apiKey);
 }
 
 /** List sync products in a store */
 export async function listSyncProducts(
   storeId: number,
   offset = 0,
-  limit = 100
+  limit = 100,
+  apiKey?: string | null,
 ): Promise<{ paging: { total: number; limit: number; offset: number }; result: PrintfulSyncProduct[] }> {
+  const key = resolveApiKey(apiKey);
   const raw = await fetch(`${BASE_URL}/store/products?limit=${limit}&offset=${offset}`, {
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${key}`,
       "X-PF-Store-Id": String(storeId),
     },
   });
@@ -208,9 +218,10 @@ export async function listSyncProducts(
 /** Get a single sync product with all its variants */
 export async function getSyncProduct(
   storeId: number,
-  syncProductId: number
+  syncProductId: number,
+  apiKey?: string | null,
 ): Promise<{ sync_product: PrintfulSyncProduct; sync_variants: PrintfulSyncVariant[] }> {
-  return printfulFetch(`/store/products/${syncProductId}`, {}, storeId);
+  return printfulFetch(`/store/products/${syncProductId}`, {}, storeId, apiKey);
 }
 
 /** List orders in a store */
@@ -218,13 +229,15 @@ export async function listOrders(
   storeId: number,
   status?: string,
   offset = 0,
-  limit = 20
+  limit = 20,
+  apiKey?: string | null,
 ): Promise<{ paging: { total: number; limit: number; offset: number }; result: PrintfulOrder[] }> {
+  const key = resolveApiKey(apiKey);
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (status) params.set("status", status);
   const raw = await fetch(`${BASE_URL}/orders?${params}`, {
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${key}`,
       "X-PF-Store-Id": String(storeId),
     },
   });
@@ -237,13 +250,13 @@ export async function listOrders(
 }
 
 /** Get a single order */
-export async function getOrder(storeId: number, orderId: number): Promise<PrintfulOrder> {
-  return printfulFetch<PrintfulOrder>(`/orders/${orderId}`, {}, storeId);
+export async function getOrder(storeId: number, orderId: number, apiKey?: string | null): Promise<PrintfulOrder> {
+  return printfulFetch<PrintfulOrder>(`/orders/${orderId}`, {}, storeId, apiKey);
 }
 
 /** Cancel an order */
-export async function cancelOrder(storeId: number, orderId: number): Promise<PrintfulOrder> {
-  return printfulFetch<PrintfulOrder>(`/orders/${orderId}`, { method: "DELETE" }, storeId);
+export async function cancelOrder(storeId: number, orderId: number, apiKey?: string | null): Promise<PrintfulOrder> {
+  return printfulFetch<PrintfulOrder>(`/orders/${orderId}`, { method: "DELETE" }, storeId, apiKey);
 }
 
 /** Calculate shipping rates for a recipient + items */
@@ -256,7 +269,8 @@ export async function calculateShipping(
     state_code?: string;
     zip?: string;
   },
-  items: Array<{ quantity: number; variant_id: number }>
+  items: Array<{ quantity: number; variant_id: number }>,
+  apiKey?: string | null,
 ): Promise<PrintfulShippingRate[]> {
   return printfulFetch<PrintfulShippingRate[]>(
     "/shipping/rates",
@@ -264,7 +278,8 @@ export async function calculateShipping(
       method: "POST",
       body: JSON.stringify({ recipient, items }),
     },
-    storeId
+    storeId,
+    apiKey,
   );
 }
 
@@ -301,25 +316,22 @@ export async function createOrder(
     gift?: { subject: string; message: string } | null;
     packing_slip?: { email?: string; phone?: string; message?: string; logo_url?: string } | null;
   },
-  confirm = false
+  confirm = false,
+  apiKey?: string | null,
 ): Promise<PrintfulOrder> {
   const path = confirm ? "/orders?confirm=true" : "/orders";
-  return printfulFetch<PrintfulOrder>(path, { method: "POST", body: JSON.stringify(orderData) }, storeId);
-}
-
-export function isPrintfulConfigured(): boolean {
-  return Boolean((process.env.PRINTFUL_API_KEY ?? ENV.printfulApiKey).trim());
+  return printfulFetch<PrintfulOrder>(path, { method: "POST", body: JSON.stringify(orderData) }, storeId, apiKey);
 }
 
 export function getDefaultPrintfulStoreId(): number | null {
-  const raw = (process.env.PRINTFUL_DEFAULT_STORE_ID ?? ENV.printfulDefaultStoreId).trim();
+  const raw = (process.env.PRINTFUL_DEFAULT_STORE_ID ?? ENV.printfulDefaultStoreId ?? "").trim();
   if (!raw) return null;
   const id = Number.parseInt(raw, 10);
   return Number.isFinite(id) ? id : null;
 }
 
-export async function testConnection(): Promise<{ stores: PrintfulStore[] }> {
-  const stores = await listStores();
+export async function testConnection(apiKey?: string | null): Promise<{ stores: PrintfulStore[] }> {
+  const stores = await listStores(apiKey);
   return { stores };
 }
 

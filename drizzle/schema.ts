@@ -119,6 +119,10 @@ export const organizations = mysqlTable("organizations", {
   customCss: longtext("customCss"),
   // Bring-Your-Own SendGrid key (Builder+ plan only, stored encrypted)
   ownSendGridKeyEncrypted: text("ownSendGridKeyEncrypted"),
+  // Print-on-demand API keys (org-scoped, stored as-is — no global env var fallback)
+  printifyApiKey: text("printifyApiKey"),
+  printfulApiKey: text("printfulApiKey"),
+  bookvaultApiKey: text("bookvaultApiKey"),
   // Embed configuration
   embedAllowedDomains: text("embedAllowedDomains"), // JSON array of allowed domains
   embedDefaultTheme: mysqlEnum("embedDefaultTheme", ["light", "dark", "auto"]).default("auto").notNull(),
