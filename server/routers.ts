@@ -157,6 +157,7 @@ import { siteSettingsRouter } from "./routers/siteSettingsRouter";
 import { workshopPublicRouter, workshopLearnerRouter, workshopAdminRouter } from "./routers/workshopRouter";
 import { bundlePublicRouter, bundleLearnerRouter, bundleAdminRouter } from "./routers/bundleRouter";
 import { emailAuthRouter } from "./routers/emailAuthRouter";
+import { widgetAdminRouter } from "./routers/widgetAdminRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -291,6 +292,7 @@ export const appRouter = router({
   bundleLearner: bundleLearnerRouter,
   bundleAdmin: bundleAdminRouter,
   emailAuth: emailAuthRouter,
+  widgetAdmin: widgetAdminRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
 

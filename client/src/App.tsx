@@ -23,6 +23,7 @@ import OrgAnalyticsPage from "./pages/analytics/OrgAnalyticsPage";
 import FileDetailPage from "./pages/FileDetailPage";
 import PlayerPage from "./pages/PlayerPage";
 import EmbedPage from "./pages/EmbedPage";
+import WidgetRenderer from "./pages/WidgetRenderer";
 import QuizzesPage from "./pages/QuizzesPage";
 import QuizBuilderPage from "./pages/QuizBuilderPage";
 import QuizPlayerPage from "./pages/QuizPlayerPage";
@@ -207,6 +208,7 @@ function BareRouter() {
   return (
       <Switch>
         <Route path="/embed/:id" component={EmbedPage} />
+        <Route path="/widget/:token" component={WidgetRenderer} />
         <Route path="/learn/:courseId/overview" component={CourseOverviewPage} />
         <Route path="/learn/:courseId" component={CoursePlayerPage} />
         <Route path="/learn/:courseId/lesson/:lessonId" component={CoursePlayerPage} />
@@ -782,6 +784,7 @@ function Router() {
   const isBare =
     path === "/" ||
     path.startsWith("/embed/") ||
+    path.startsWith("/widget/") ||
     path.startsWith("/learn/") ||
     path.startsWith("/school") ||
     path.startsWith("/p/") ||

@@ -5771,3 +5771,29 @@ export const userActiveOrg = mysqlTable("user_active_org", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type UserActiveOrg = typeof userActiveOrg.$inferSelect;
+
+// ─── Embed Widgets ────────────────────────────────────────────────────────────
+export const embedWidgets = mysqlTable("embed_widgets", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 200 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull().default(""),
+  subtitle: text("subtitle"),
+  layout: mysqlEnum("layout", ["grid", "carousel", "list"]).default("grid").notNull(),
+  theme: mysqlEnum("theme", ["light", "dark", "brand"]).default("light").notNull(),
+  cardStyle: mysqlEnum("card_style", ["standard", "compact", "minimal"]).default("standard").notNull(),
+  showPrice: boolean("show_price").default(true).notNull(),
+  showEnrollButton: boolean("show_enroll_button").default(true).notNull(),
+  showCourseDetails: boolean("show_course_details").default(false).notNull(),
+  buttonText: varchar("button_text", { length: 100 }).default("Enroll Now").notNull(),
+  buttonUrl: varchar("button_url", { length: 500 }).default("").notNull(),
+  maxCards: int("max_cards").default(6).notNull(),
+  itemsJson: text("items_json").notNull().default("[]"),
+  isActive: boolean("is_active").default(true).notNull(),
+  viewCount: int("view_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type EmbedWidget = typeof embedWidgets.$inferSelect;
+export type InsertEmbedWidget = typeof embedWidgets.$inferInsert;
