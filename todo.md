@@ -203,6 +203,13 @@
 - [ ] Dashboard/Home: stat cards wrap to 2-col grid on mobile
 - [ ] Navigation: hamburger opens full-screen nav drawer on mobile
 
+## Member Management Fixes
+- [x] Fix isAdmin role check in AdminUserDetailPage (was checking for "admin" but roles are site_owner/site_admin)
+- [x] Fix back button URL in AdminUserDetailPage (was hardcoded to allaboutultrasound.com)
+- [x] Fix invoice template branding (now shows Teachific™ instead of All About Ultrasound)
+- [x] Build adminUserRouter with all required procedures (getUserDetail, getUserAppRoles, grantAppRole, revokeAppRole, enrollInCourse, unenrollFromCourse, cancelLmsEnrollmentSubscription, refundPayment, updateEnrollmentExpiry, resendEnrollmentEmail, syncStripeSubscription, listCohortGroups, listWorkshopInstances, updateUserRole, grantBrandMembership, cancelNativeMembership, revokeNativeMembership, resendMembershipConfirmation, cancelMembershipSubscription, getUserEmailHistory, getUserActivityLog, getUserLoginHistory, getUserCourseProgress, listEmailAliases, addEmailAlias, removeEmailAlias, searchUsersForMerge, mergeUsers, sendPasswordReset, setPassword, updateUserProfile, listAllCourses, listCoupons, createCoupon, deactivateCoupon, deactivatePromoCode, getSalesAnalytics, listAllSales, resendAccessEmail)
+- [x] Register adminUserRouter in routers.ts
+
 ## Bug Fix: Iframe Embed Broken on External Sites
 - [ ] Proxy content bytes through server instead of redirecting to S3 (avoids S3 X-Frame-Options blocks)
 - [ ] Add X-Frame-Options: ALLOWALL and correct CORS headers to content proxy responses

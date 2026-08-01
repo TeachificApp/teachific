@@ -2164,8 +2164,8 @@ function AdminInvoiceView({ t, fmtCurrency, fmtDate }: { t: any; fmtCurrency: (c
       <div className="bg-gradient-to-r from-[#0e4a50] to-[#189aa1] px-5 py-4 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-base font-bold tracking-tight">All About Ultrasound, Inc.</p>
-            <p className="text-xs text-teal-100 mt-0.5">dba iHeartEcho</p>
+            <p className="text-base font-bold tracking-tight">Teachific™</p>
+            <p className="text-xs text-teal-100 mt-0.5">teachific.app</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-teal-100">Receipt / Invoice</p>
@@ -2242,8 +2242,8 @@ function AdminInvoiceView({ t, fmtCurrency, fmtDate }: { t: any; fmtCurrency: (c
       </div>
       {/* Footer */}
       <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-center">
-        <p className="text-[10px] text-gray-400">All About Ultrasound, Inc. dba iHeartEcho &bull; allaboutultrasound.com</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">For support, contact hello@allaboutultrasound.com</p>
+        <p className="text-[10px] text-gray-400">Teachific™ &bull; teachific.app</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">For support, contact support@teachific.app</p>
       </div>
     </div>
   );
@@ -3706,7 +3706,7 @@ export default function AdminUserDetailPage() {
 
   const [mergeOpen, setMergeOpen] = useState(false);
 
-  const isAdmin = !loading && !!adminUser && adminUser.role === "admin";
+  const isAdmin = !loading && !!adminUser && (adminUser.role === "site_owner" || adminUser.role === "site_admin" || adminUser.role === "org_admin" || adminUser.role === "org_super_admin");
   const { data, isLoading, error, refetch } = trpc.adminUser.getUserDetail.useQuery(
     { userId: userId! },
     { enabled: !!userId && isAdmin, retry: false }
@@ -3722,7 +3722,7 @@ export default function AdminUserDetailPage() {
     );
   }
 
-  if (!adminUser || adminUser.role !== "admin") {
+  if (!adminUser || !(adminUser.role === "site_owner" || adminUser.role === "site_admin" || adminUser.role === "org_admin" || adminUser.role === "org_super_admin")) {
     navigate("/");
     return null;
   }
@@ -3751,7 +3751,7 @@ export default function AdminUserDetailPage() {
           <div className="max-w-5xl mx-auto">
             <div className="flex items-center gap-3 mb-1">
               <button
-                onClick={() => { window.location.href = "https://app.allaboutultrasound.com/admin/members?tab=all-members"; }}
+                onClick={() => navigate("/admin/users")}
                 className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-[#189aa1] transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" /> All Users
