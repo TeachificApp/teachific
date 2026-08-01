@@ -735,7 +735,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
 
 // ─── Lesson Row ──────────────────────────────────────────────────────────────
 
-function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp, onMoveDown, onToggleStatus }: {
+function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp, onMoveDown, onToggleStatus, onToggleCountTowardCompletion }: {
   lesson: any;
   onEdit: (lesson: any) => void;
   onQuiz: (lesson: any) => void;
@@ -1204,7 +1204,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
               <Button size="sm" variant="outline" className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => setAddSectionOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Section
               </Button>
-              <Button size="sm" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-sm" onClick={() => setAiCourseGenOpen(true)}>
+              <Button size="sm" className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white border-0 shadow-sm" onClick={() => setAiCourseGenOpen(true)}>
                 <Sparkles className="w-4 h-4 mr-1" /> AI Generate Course
               </Button>
             </div>
@@ -3449,7 +3449,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-violet-600" />
+            <Sparkles className="w-5 h-5 text-teal-600" />
             AI Course Generator
           </DialogTitle>
           <DialogDescription>
@@ -3465,7 +3465,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
                 placeholder="e.g. A beginner's guide to digital marketing covering SEO, social media, email campaigns, and paid advertising. Designed for small business owners with no prior marketing experience."
-                className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm resize-none h-28 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm resize-none h-28 focus:outline-none focus:ring-2 focus:ring-teal-400"
               />
               <p className="text-xs text-gray-400 mt-1">Be specific — include the target audience, skill level, and key topics to cover.</p>
             </div>
@@ -3478,7 +3478,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                     onChange={e => setNumSections(Number(e.target.value))}
                     className="flex-1 accent-violet-600"
                   />
-                  <span className="text-sm font-semibold text-violet-700 w-6 text-center">{numSections}</span>
+                  <span className="text-sm font-semibold text-teal-700 w-6 text-center">{numSections}</span>
                 </div>
               </div>
               <div>
@@ -3489,11 +3489,11 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                     onChange={e => setNumLessonsPerSection(Number(e.target.value))}
                     className="flex-1 accent-violet-600"
                   />
-                  <span className="text-sm font-semibold text-violet-700 w-6 text-center">{numLessonsPerSection}</span>
+                  <span className="text-sm font-semibold text-teal-700 w-6 text-center">{numLessonsPerSection}</span>
                 </div>
               </div>
             </div>
-            <div className="bg-violet-50 border border-violet-100 rounded-lg px-4 py-3 text-xs text-violet-700">
+            <div className="bg-teal-50 border border-teal-100 rounded-lg px-4 py-3 text-xs text-teal-700">
               <strong>This will generate:</strong> {numSections} modules × {numLessonsPerSection} lessons = <strong>{numSections * numLessonsPerSection} lessons</strong> with full text content, ready to edit.
             </div>
           </div>
@@ -3502,15 +3502,15 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
         {step === "generating" && (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-violet-600 animate-pulse" />
+              <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-teal-600 animate-pulse" />
               </div>
             </div>
             <div className="text-center">
               <p className="font-semibold text-gray-800">Generating your course...</p>
               <p className="text-sm text-gray-500 mt-1">AI is creating {numSections * numLessonsPerSection} lessons with full content. This may take 30–60 seconds.</p>
             </div>
-            <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+            <Loader2 className="w-5 h-5 animate-spin text-teal-500" />
           </div>
         )}
 
@@ -3551,7 +3551,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
             <>
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
+                className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white"
                 disabled={!prompt.trim()}
                 onClick={handleGenerate}
               >

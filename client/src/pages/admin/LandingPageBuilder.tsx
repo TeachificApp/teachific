@@ -2395,7 +2395,7 @@ function AIContentBlockSettings({
       <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
         <button
           onClick={() => setMode("prompt")}
-          className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${mode === "prompt" ? "bg-white shadow text-violet-700" : "text-gray-500 hover:text-gray-700"}`}
+          className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${mode === "prompt" ? "bg-white shadow text-teal-700" : "text-gray-500 hover:text-gray-700"}`}
         >
           <Sparkles size={11} className="inline mr-1" />AI Prompt
         </button>
@@ -2414,7 +2414,7 @@ function AIContentBlockSettings({
             <select
               value={contentType}
               onChange={e => setContentType(e.target.value)}
-              className="w-full h-8 text-xs border border-gray-200 rounded-md px-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+              className="w-full h-8 text-xs border border-gray-200 rounded-md px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
             >
               <option value="lesson">Full Lesson</option>
               <option value="explanation">Explanation</option>
@@ -2430,7 +2430,7 @@ function AIContentBlockSettings({
               value={prompt}
               onChange={e => setPrompt(e.target.value)}
               placeholder="Describe what content to generate, e.g. 'Explain the fundamentals of cardiac anatomy for beginner nursing students'"
-              className="w-full rounded-md border border-gray-200 px-2.5 py-2 text-xs resize-none h-24 focus:outline-none focus:ring-2 focus:ring-violet-400"
+              className="w-full rounded-md border border-gray-200 px-2.5 py-2 text-xs resize-none h-24 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
           {data.html && (
@@ -2441,7 +2441,7 @@ function AIContentBlockSettings({
           <button
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim()}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isGenerating ? (
               <><Loader2 size={13} className="animate-spin" /> Generating...</>
@@ -2463,7 +2463,7 @@ function AIContentBlockSettings({
       {mode === "edit" && (
         <div className="space-y-3">
           {!data.html && (
-            <div className="bg-violet-50 border border-violet-100 rounded-md px-3 py-2 text-xs text-violet-600 flex items-center gap-1.5">
+            <div className="bg-teal-50 border border-teal-100 rounded-md px-3 py-2 text-xs text-teal-600 flex items-center gap-1.5">
               <Sparkles size={12} />
               Use the AI Prompt tab to generate content first, or start typing below.
             </div>
@@ -2480,7 +2480,7 @@ function AIContentBlockSettings({
           </div>
           <button
             onClick={() => setMode("prompt")}
-            className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+            className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
           >
             <Sparkles size={11} /> Regenerate with AI
           </button>
