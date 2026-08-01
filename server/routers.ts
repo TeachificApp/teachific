@@ -1936,7 +1936,7 @@ export const appRouter = router({
     // Site owner initiates a link to another org by sending an invite token
     link: router({
       // Look up orgs owned/administered by a given email (for the link flow)
-      lookupOrgs: ownerProcedure
+      lookupOrgs: orgAdminProcedure
         .input(z.object({ email: z.string().email() }))
         .query(async ({ ctx, input }) => {
           const db = await getDb();
@@ -1963,7 +1963,7 @@ export const appRouter = router({
             );
           return memberships.map(m => ({ id: m.org.id, name: m.org.name, slug: m.org.slug, logoUrl: m.org.logoUrl, isPrimary: m.org.isPrimary }));
         }),
-      initiate: ownerProcedure
+      initiate: orgAdminProcedure
         .input(z.object({
           primaryOrgId: z.number(),
           linkedOrgEmail: z.string().email(), // email of the target org's admin
@@ -2089,7 +2089,7 @@ export const appRouter = router({
                         .where(eq(orgLinks.id, link.id));
           return { ok: true };
         }),
-      listPending: ownerProcedure
+      listPending: orgAdminProcedure
         .input(z.object({ orgId: z.number() }))
         .query(async ({ ctx, input }) => {
           const db = await getDb();
@@ -2142,7 +2142,7 @@ export const appRouter = router({
           }));
         }),
 
-      revoke: ownerProcedure
+      revoke: orgAdminProcedure
         .input(z.object({ linkId: z.number() }))
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
