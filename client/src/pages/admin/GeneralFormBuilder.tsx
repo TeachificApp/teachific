@@ -232,14 +232,14 @@ function statusBadge(status: string) {
 
 // All custom domains hosted on this platform
 const CUSTOM_DOMAINS = [
-  "app.allaboutultrasound.com",
-  "members.allaboutultrasound.com",
-  "learn.allaboutultrasound.com",
+  "teachific.app",
+  "teachific.app",
+  "teachific.app/learn",
   "accreditation.iheartecho.com",
   "ultrasound-urcfdrve.manus.space",
   "ultrasoundassist.manus.space",
 ];
-const DEFAULT_HOST_DOMAIN = "app.allaboutultrasound.com";
+const DEFAULT_HOST_DOMAIN = "teachific.app";
 
 function getPublicUrl(slug: string, hostDomain?: string | null) {
   const domain = hostDomain || DEFAULT_HOST_DOMAIN;

@@ -501,7 +501,7 @@ export async function reconcileLmsCheckoutFromStripeSession(
     }
     const courseTitle = course?.title ?? `Course #${courseId}`;
     const stripeLink = `https://dashboard.stripe.com/payments/${paymentIntentFromSession}`;
-    const adminEmail = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@allaboutultrasound.com";
+    const adminEmail = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@teachific.app";
     // Notify owner via in-app notification
     await notifyOwner({
       title: "⚠️ Duplicate LMS Payment — Action Required",
@@ -602,7 +602,7 @@ export async function reconcileLmsCheckoutFromStripeSession(
         } catch { /* optional */ }
         // For new guest accounts, include a set-password URL so they can create a permanent login
         const setPasswordUrl = newUserResetToken
-          ? `https://app.allaboutultrasound.com/auth/reset-password?token=${newUserResetToken}`
+          ? `https://teachific.app/auth/reset-password?token=${newUserResetToken}`
           : null;
         if (course.type === "quiz") {
           await sendQuizAccessEmail({

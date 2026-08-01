@@ -332,8 +332,8 @@ export default function FormEmbedSharePanel({
                   </Select>
                   {domainMode === "allowlist" && (
                     <div>
-                      <Label className="text-xs">Allowed domains (one per line, wildcards supported e.g. *.allaboutultrasound.com)</Label>
-                      <Textarea value={allowedDomainsText} onChange={e => setAllowedDomainsText(e.target.value)} rows={5} className="mt-1 font-mono text-xs" placeholder={"allaboutultrasound.com\n*.allaboutultrasound.com\niheartecho.com"} />
+                      <Label className="text-xs">Allowed domains (one per line, wildcards supported e.g. *.teachific.app)</Label>
+                      <Textarea value={allowedDomainsText} onChange={e => setAllowedDomainsText(e.target.value)} rows={5} className="mt-1 font-mono text-xs" placeholder={"teachific.app\n*.teachific.app"} />
                     </div>
                   )}
                 </TabsContent>

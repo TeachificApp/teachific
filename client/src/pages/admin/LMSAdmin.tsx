@@ -115,7 +115,7 @@ const LESSON_TYPE_LABELS: Record<string, string> = {
 /** @param slug - either a bare slug ("my-course") or a full path ("my-course/overview") */
 function SsoLearnLinkButton({ slug, label }: { slug: string; label?: string }) {
   const path = slug.startsWith("/") ? slug : `/courses/${slug}`;
-  const url = `https://learn.allaboutultrasound.com${path}`;
+  const url = `https://teachific.app/learn${path}`;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
       <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500 hover:bg-gray-50" title="View landing page">
@@ -2565,7 +2565,7 @@ function FreePreviewLinkPanel({ courseId }: { courseId: number }) {
   if (isLoading) return null;
   if (!data || data.lessons.length === 0) return null;
   // Use ?open_preview=1 so the registration modal auto-opens when the visitor lands on the page
-  const previewUrl = `https://learn.allaboutultrasound.com/courses/${data.courseSlug}?open_preview=1`;
+  const previewUrl = `https://teachific.app/learn/courses/${data.courseSlug}?open_preview=1`;
   const handleCopy = () => {
     navigator.clipboard.writeText(previewUrl)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
@@ -6755,7 +6755,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           <div className="space-y-3 py-2">
             <div>
               <Label className="text-xs">Destination URL *</Label>
-              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://learn.allaboutultrasound.com/courses/..." className="mt-1 text-sm" />
+              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://teachific.app/learn/courses/..." className="mt-1 text-sm" />
             </div>
             <div>
               <Label className="text-xs">Custom Slug (optional)</Label>
@@ -12856,13 +12856,13 @@ function LMSPublishDomainSettings() {
                 value={courseDomain}
                 onChange={setCourseDomain}
                 label="Courses Default Domain"
-                description="Course landing pages will be served at this domain (e.g. learn.allaboutultrasound.com/course-slug)."
+                description="Course landing pages will be served at this domain (e.g. teachific.app/learn/course-slug)."
               />
               <DomainSelect
                 value={funnelDomain}
                 onChange={setFunnelDomain}
                 label="Funnels Default Domain"
-                description="Funnel pages will be served at this domain (e.g. allaboutultrasound.com/funnel-slug)."
+                description="Funnel pages will be served at this domain (e.g. teachific.app/funnel-slug)."
               />
               <DomainSelect
                 value={downloadDomain}
@@ -12889,14 +12889,14 @@ function LMSPublishDomainSettings() {
                     <span className="w-5 h-5 rounded bg-teal-100 flex items-center justify-center text-teal-600 text-xs">⚖️</span>
                     Legal &amp; Compliance URLs
                   </p>
-                  <p className="text-xs text-gray-400 mb-4">These links appear on the hosted checkout page as required agreement checkboxes. Leave blank to use the default All About Ultrasound links.</p>
+                  <p className="text-xs text-gray-400 mb-4">These links appear on the hosted checkout page as required agreement checkboxes. Leave blank to use the default Teachific links.</p>
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium text-gray-700">Terms of Service URL</Label>
                       <Input
                         value={termsUrl}
                         onChange={e => { setTermsUrl(e.target.value); setDirty(true); }}
-                        placeholder="https://www.allaboutultrasound.com/terms"
+                        placeholder="https://teachific.app/terms"
                         className="text-sm"
                       />
                     </div>
@@ -12905,7 +12905,7 @@ function LMSPublishDomainSettings() {
                       <Input
                         value={privacyUrl}
                         onChange={e => { setPrivacyUrl(e.target.value); setDirty(true); }}
-                        placeholder="https://www.allaboutultrasound.com/privacy-policy.html"
+                        placeholder="https://teachific.app/privacy-policy.html"
                         className="text-sm"
                       />
                     </div>

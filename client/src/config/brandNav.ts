@@ -203,7 +203,7 @@ const IHE_NAV_GROUPS: NavGroup[] = [
   {
     label: "Community",
     items: [
-      { path: "/community/all-about-ultrasound", label: "iHeartEcho™ Community", icon: MessageCircle },
+      { path: "/community/all-about-ultrasound", label: "Teachific™ Community", icon: MessageCircle },
     ],
   },
   {
@@ -260,26 +260,15 @@ const IHE_HIDDEN_NAV: NavItem[] = [
 ];
 
 // ─── Exported config getter ─────────────────────────────────────────────────────
-export function getBrandNavConfig(brand: Brand): BrandNavConfig {
-  if (brand === "iheartecho") {
-    return {
-      navGroups: IHE_NAV_GROUPS,
-      hiddenNavItems: IHE_HIDDEN_NAV,
-      logoUrl: "/manus-storage/iheartecho-logo_f9d91cd4.webp",
-      logoAlt: "iHeartEcho\u2122",
-      title: "iHeartEcho\u2122",
-      subtitle: "EchoAssist\u2122 Clinical Intelligence",
-      bgColor: "#0e1e2e",
-      accentColor: "#4ad9e0",
-    };
-  }
+export function getBrandNavConfig(_brand?: Brand): BrandNavConfig {
+  // Teachific is a single-brand multi-tenant platform — always return Teachific config
   return {
     navGroups: AAUS_NAV_GROUPS,
     hiddenNavItems: AAUS_HIDDEN_NAV,
-    logoUrl: "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp",
-    logoAlt: "All About Ultrasound\u2122",
-    title: "All About Ultrasound\u2122",
-    subtitle: "UltrasoundAssist\u2122 Clinical Intelligence",
+    logoUrl: "",
+    logoAlt: "Teachific™",
+    title: "Teachific™",
+    subtitle: "SCORM & LMS Hosting Platform",
     bgColor: "#0e1e2e",
     accentColor: "#4ad9e0",
   };

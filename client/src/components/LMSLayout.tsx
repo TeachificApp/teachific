@@ -1,8 +1,8 @@
 /**
- * LMSLayout — Dedicated layout for the learn.allaboutultrasound.com subdomain.
+ * LMSLayout — Dedicated layout for the teachific.app/learn subdomain.
  * No sidebar — navigation is handled via the top header only.
  *
- * My Dashboard and My Profile redirect to members.allaboutultrasound.com
+ * My Dashboard and My Profile redirect to the platform home
  * (the single hub for profile/subscriptions across all apps).
  */
 import { useState } from "react";
@@ -18,11 +18,11 @@ import { getLoginUrl } from "@/const";
 import NameCollectionModal from "@/components/NameCollectionModal";
 
 const AAUS_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp";
-const MEMBERS_URL = "https://members.allaboutultrasound.com";
+const MEMBERS_URL = "/";
 import { getAdminUrl, APP_URL } from "@/hooks/useSubdomain";
 import { useSiteNavMenu } from "@/hooks/useSiteNavMenu";
 import { SiteNavHeaderLinks, SiteNavProfileLinks } from "@/components/SiteNavLinks";
-const AAUS_APP_URL = "https://app.allaboutultrasound.com";
+const AAUS_APP_URL = "/";
 
 interface NavItem {
   label: string;
@@ -32,8 +32,8 @@ interface NavItem {
   external?: boolean;
 }
 
-const AAUS_SITE_URL = "https://www.allaboutultrasound.com";
-const IHE_SITE_URL = "https://www.iheartecho.com";
+const AAUS_SITE_URL = "https://teachific.app";
+const IHE_SITE_URL = "https://teachific.app";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Education Library", href: "/education-library", icon: <BookOpen className="w-4 h-4" /> },
@@ -84,9 +84,9 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
           {/* Logo + branding */}
           <Link href="/">
             <div className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none shrink-0">
-              <img src={AAUS_LOGO} alt="All About Ultrasound" className="w-7 sm:w-8 h-7 sm:h-8 rounded-full" />
+              <img src={AAUS_LOGO} alt="Teachific" className="w-7 sm:w-8 h-7 sm:h-8 rounded-full" />
               <div className="flex flex-col leading-none">
-                <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 hidden sm:block">All About Ultrasound™ | iHeartEcho™</span>
+                <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 hidden sm:block">Teachific™ | Teachific™</span>
                 <span className="text-xs sm:text-sm font-bold org-text">Learning Platform</span>
               </div>
             </div>
@@ -106,7 +106,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
-              All About Ultrasound™
+              Teachific™
             </a>
             <a
               href={IHE_SITE_URL}
@@ -114,7 +114,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
-              iHeartEcho™
+              Teachific™
             </a>
           </nav>
 
@@ -264,7 +264,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <ExternalLink className="w-4 h-4" /> All About Ultrasound™
+                <ExternalLink className="w-4 h-4" /> Teachific™
               </a>
               <a
                 href={IHE_SITE_URL}
@@ -273,7 +273,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <ExternalLink className="w-4 h-4" /> iHeartEcho™
+                <ExternalLink className="w-4 h-4" /> Teachific™
               </a>
             </div>
           </div>

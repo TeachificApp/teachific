@@ -594,8 +594,8 @@ function DropOffEmailPanel({ formId }: { formId: number }) {
               value={brand} onChange={e => setBrand(e.target.value as "aaus" | "ihe")}
               className="h-7 text-xs border border-gray-200 rounded px-2"
             >
-              <option value="aaus">All About Ultrasound</option>
-              <option value="ihe">iHeartEcho</option>
+              <option value="aaus">Teachific</option>
+              <option value="ihe">Platform</option>
             </select>
           </div>
           <div className="space-y-1">

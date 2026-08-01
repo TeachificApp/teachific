@@ -596,7 +596,7 @@ export async function scormExtractHeartbeatHandler(req: Request, res: Response):
       return;
     }
 
-    // ── Detect pre-extracted HTML URLs (old-style iHeartEcho content) ──────────
+    // ── Detect pre-extracted HTML URLs (old-style Teachific content) ──────────
     // These are SCORM packages where the ZIP was already extracted on the old server
     // and the stored URL points directly to an HTML file (e.g. .../FolderName/index.html).
     // We cannot re-extract these — instead, mark them as done with a special prefix

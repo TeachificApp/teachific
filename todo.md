@@ -4885,3 +4885,20 @@
 ## Lesson Settings Improvements
 - [x] Frontend: add Count toward completion toggle to lesson settings tab
 - [x] Frontend: add Purchase Terms Override section to course settings tab
+
+## Brand Removal & Org-Scoped Branding
+- [x] Replace useBrand.ts with Teachific-only config (remove aaus/iheartecho detection)
+- [x] Update brandNav.ts getBrandNavConfig to always return Teachific config
+- [x] Fix Layout.tsx footer (remove brand conditionals, show Teachific branding)
+- [x] Fix LMSLayout.tsx (replace hardcoded AAUS/IHE URLs with teachific.app)
+- [x] Fix EmailBlockEditor.tsx copyright text (remove iHeartEcho reference)
+- [x] Fix GetAppBanner.tsx (remove iHeartEcho brand reference)
+- [x] Fix RoleGuard.tsx (replace allaboutultrasound.com support email)
+- [x] Fix CertificateTemplatesAdmin.tsx (replace allaboutultrasound.com footer)
+- [x] Fix FormEmbedSharePanel.tsx (replace allaboutultrasound.com placeholder)
+- [x] Fix sitePageDomain.ts (replace hardcoded AAUS/IHE domain returns)
+- [x] Fix 17 server files (replace allaboutultrasound.com/iheartecho.com URLs and emails)
+- [x] Fix AdminUserDetailPage.tsx (remove BRAND_CONFIG, grant dialogs, invoice template)
+- [x] Add orgBranding to getUserDetail return (fetches org name, logo, website, supportEmail)
+- [x] Wire AdminInvoiceView to use orgBranding (shows org's own name/logo/website/support)
+- [x] Make invoices org-scoped: invoice header/footer shows org's name, logo, website, support email

@@ -113,7 +113,7 @@ export async function fulfillPrintfulOrder(
           state_code: order.shippingState?.trim() || undefined,
           zip,
           country_code: country,
-          email: email || "orders@allaboutultrasound.com",
+          email: email || "orders@teachific.app",
           phone: "0000000000",
         },
         items: [{

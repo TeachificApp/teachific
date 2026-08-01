@@ -1,10 +1,9 @@
 /**
- * Brand detection for multi-tenant architecture.
- * Detects whether the user is on the AAUS or iHeartEcho app based on hostname.
+ * Org-scoped branding for Teachific.
+ * Brand detection has been removed — this is a single-brand multi-tenant platform.
+ * Org-specific branding (name, logo, domain) is fetched from the database at runtime.
  */
-
-export type Brand = "aaus" | "iheartecho";
-
+export type Brand = "teachific";
 export interface BrandConfig {
   brand: Brand;
   name: string;
@@ -16,42 +15,28 @@ export interface BrandConfig {
   logoText: string;
 }
 
-const BRAND_CONFIGS: Record<Brand, BrandConfig> = {
-  aaus: {
-    brand: "aaus",
-    name: "All About Ultrasound™",
-    shortName: "All About Ultrasound",
-    tagline: "General & Vascular Ultrasound Clinical Intelligence",
-    primaryColor: "#0d9488", // teal-600
-    accentColor: "#14b8a6", // teal-500
-    domain: "app.allaboutultrasound.com",
-    logoText: "UltrasoundAssist™",
-  },
-  iheartecho: {
-    brand: "iheartecho",
-    name: "iHeartEcho™",
-    shortName: "iHeartEcho",
-    tagline: "Echocardiography Clinical Intelligence",
-    primaryColor: "#189aa1", // teal brand
-    accentColor: "#4ad9e0", // aqua accent
-    domain: "app.iheartecho.com",
-    logoText: "EchoAssist™",
-  },
+const TEACHIFIC_CONFIG: BrandConfig = {
+  brand: "teachific",
+  name: "Teachific™",
+  shortName: "Teachific",
+  tagline: "SCORM & LMS Hosting Platform",
+  primaryColor: "#189aa1",
+  accentColor: "#4ad9e0",
+  domain: "teachific.app",
+  logoText: "Teachific™",
 };
 
-/** Detect brand from current hostname */
+/** Always returns the Teachific platform config */
 export function detectBrand(): Brand {
-  const hostname = window.location.hostname.toLowerCase();
-  if (hostname.includes("iheartecho")) return "iheartecho";
-  return "aaus";
+  return "teachific";
 }
 
-/** Get the full brand config for the current hostname */
+/** Get the platform brand config */
 export function getBrandConfig(): BrandConfig {
-  return BRAND_CONFIGS[detectBrand()];
+  return TEACHIFIC_CONFIG;
 }
 
-/** Hook to get brand info (stable — hostname doesn't change during session) */
+/** Hook to get brand info */
 export function useBrand(): BrandConfig {
-  return getBrandConfig();
+  return TEACHIFIC_CONFIG;
 }

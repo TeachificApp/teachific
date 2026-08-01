@@ -49,8 +49,8 @@ const DEFAULT_TEMPLATE: Omit<CertTemplate, "id" | "createdAt"> = {
   accentColor: "#c9a84c",
   textColor: "#0e1e2e",
   fontFamily: "Helvetica",
-  footerText: "www.allaboutultrasound.com  ·  © All About Ultrasound™",
-  organizationName: "All About Ultrasound",
+  footerText: "teachific.app  ·  © Teachific™",
+  organizationName: "Teachific",
   layout: "classic",
   pdfTemplateUrl: null,
   isDefault: false,
@@ -180,7 +180,7 @@ function TemplateEditor({
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Footer</p>
         <div>
           <Label>Footer Text</Label>
-          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="www.allaboutultrasound.com  ·  © All About Ultrasound™" />
+          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="teachific.app  ·  © Teachific™" />
         </div>
       </div>
 
@@ -437,8 +437,8 @@ function StandalonePdfPanel() {
             accentColor: "#c9a84c",
             textColor: "#0e1e2e",
             fontFamily: "Helvetica",
-            footerText: "www.allaboutultrasound.com  ·  © All About Ultrasound™",
-            organizationName: "All About Ultrasound",
+            footerText: "teachific.app  ·  © Teachific™",
+            organizationName: "Teachific",
             layout: "classic",
             isDefault: true,
             isActive: true,

@@ -799,7 +799,7 @@ export default function ThinkificImporter() {
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Custom Domain (optional)</label>
               <Input
-                placeholder="e.g. allaboutultrasound.com"
+                placeholder="e.g. teachific.app"
                 value={salesPageDomain}
                 onChange={e => setSalesPageDomain(e.target.value)}
                 className="h-8 text-xs"

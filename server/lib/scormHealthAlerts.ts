@@ -23,7 +23,7 @@ import {
 import { desc, inArray } from "drizzle-orm";
 
 function appBaseUrl(): string {
-  return (process.env.VITE_APP_URL || ENV.appUrl || "https://app.allaboutultrasound.com").replace(/\/$/, "");
+  return (process.env.VITE_APP_URL || ENV.appUrl || "https://teachific.app").replace(/\/$/, "");
 }
 
 export async function resolveScormAlertEmail(): Promise<string | null> {

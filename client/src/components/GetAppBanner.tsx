@@ -37,7 +37,7 @@ export default function GetAppBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [location] = useLocation();
   const isIHE = useMemo(() => isIHeartEchoDomain(), []);
-  const appName = isIHE ? "iHeartEcho™" : "UltrasoundAssist™";
+  const appName = "Teachific™";
   const appIcon = isIHE ? IHE_ICON : AAUS_ICON;
 
   useEffect(() => {
@@ -100,7 +100,7 @@ export default function GetAppBanner() {
       setDeferredPrompt(null);
     } else {
       // Fallback: link to the app URL for manual install
-      window.open(import.meta.env.VITE_APP_URL || "https://app.allaboutultrasound.com", "_blank");
+      window.open(import.meta.env.VITE_APP_URL || "https://teachific.app", "_blank");
     }
   }
 

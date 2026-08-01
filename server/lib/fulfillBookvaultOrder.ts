@@ -120,7 +120,7 @@ export async function fulfillBookvaultOrder(
       Postcode: postcode,
       Country: { ISO_Code: country },
       TelNumber: "0000000000",
-      Email: email || "orders@allaboutultrasound.com",
+      Email: email || "orders@teachific.app",
     },
     DispatchRequest: dispatchRequest,
     OrderLines: [{ Quantity: 1, ISBN: isbn }],

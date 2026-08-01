@@ -3,9 +3,9 @@
  *
  * Pixel IDs are stored in the DB (site_settings table) and fetched via tRPC.
  * The correct pixel is chosen based on the current hostname:
- *   - app.allaboutultrasound.com  → aaus pixel
+ *   - teachific.app  → aaus pixel
  *   - app.iheartecho.com          → ihe pixel
- *   - learn.allaboutultrasound.com → learn pixel
+ *   - teachific.app/learn → learn pixel
  */
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
@@ -66,7 +66,7 @@ export function MetaPixel() {
     } else if (isIHeartEchoDomain()) {
       pixelId = pixelIds.ihe;
     } else {
-      // Default: AAUS (app.allaboutultrasound.com and any other domain)
+      // Default: AAUS (teachific.app and any other domain)
       pixelId = pixelIds.aaus;
     }
 

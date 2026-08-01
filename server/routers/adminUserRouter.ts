@@ -32,6 +32,7 @@ import { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } from "../db";
 import {
   users,
   orgMembers,
+  organizations,
   lmsCourses,
   lmsEnrollments,
   lmsLessonProgress,
@@ -228,6 +229,49 @@ export const adminUserRouter = router({
         .from(userEmailAliases)
         .where(eq(userEmailAliases.userId, input.userId));
 
+      // Org branding info for org-scoped invoices
+      let orgBranding: {
+        name: string;
+        logoUrl: string | null;
+        website: string | null;
+        supportEmail: string | null;
+        supportName: string | null;
+      } = {
+        name: "Teachific™",
+        logoUrl: null,
+        website: "teachific.app",
+        supportEmail: "support@teachific.app",
+        supportName: null,
+      };
+      if (orgId) {
+        const [org] = await db
+          .select({
+            name: organizations.name,
+            logoUrl: organizations.logoUrl,
+            customDomain: organizations.customDomain,
+            customSubdomain: organizations.customSubdomain,
+            customSenderEmail: organizations.customSenderEmail,
+            customSenderName: organizations.customSenderName,
+          })
+          .from(organizations)
+          .where(eq(organizations.id, orgId))
+          .limit(1);
+        if (org) {
+          const website = org.customDomain
+            ? org.customDomain
+            : org.customSubdomain
+            ? `${org.customSubdomain}.teachific.app`
+            : `teachific.app`;
+          orgBranding = {
+            name: org.name,
+            logoUrl: org.logoUrl ?? null,
+            website,
+            supportEmail: org.customSenderEmail ?? "support@teachific.app",
+            supportName: org.customSenderName ?? null,
+          };
+        }
+      }
+
       return {
         user: {
           id: user.id,
@@ -270,6 +314,7 @@ export const adminUserRouter = router({
         digitalPurchases: [],
         bundleEnrollments: bundleEnrollRows,
         emailAliases: emailAliasRows,
+        orgBranding,
       };
     }),
 
@@ -429,10 +474,8 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // For Teachific, brand memberships map to isPremium flag or org membership
-      if (input.tier === "premium" || input.brand === "aaus") {
-        await db.update(users).set({ isPremium: true }).where(eq(users.id, input.userId));
-      }
+      // Grant premium access within the org context
+      await db.update(users).set({ isPremium: true }).where(eq(users.id, input.userId));
       return { success: true };
     }),
 

@@ -97,7 +97,7 @@ async function sendVerificationEmail(to: string, token: string, name: string, br
 }
 
 async function sendPasswordResetEmail(to: string, token: string, name: string, brandMode?: BrandMode, origin?: string) {
-  const appUrl = origin ?? process.env.VITE_APP_URL ?? "https://app.allaboutultrasound.com";
+  const appUrl = origin ?? process.env.VITE_APP_URL ?? "https://teachific.app";
   const resetUrl = `${appUrl}/reset-password?token=${token}`;
   const firstName = name || "there";
   const { subject, htmlBody, previewText } = buildPasswordResetEmail({ firstName, resetUrl, brandMode });
@@ -164,7 +164,7 @@ export const emailAuthRouter = router({
           const origin = ctx.req.headers.origin as string | undefined;
           await sendVerificationEmail(email, verificationToken, input.firstName, brandMode, origin);
           // Send welcome email asynchronously (don't block activation)
-          const appUrlActivate = process.env.VITE_APP_URL ?? "https://app.allaboutultrasound.com";
+          const appUrlActivate = process.env.VITE_APP_URL ?? "https://teachific.app";
           const welcomeActivate = buildWelcomeEmail({
             firstName: input.firstName,
             loginUrl: `${appUrlActivate}/login`,
@@ -233,7 +233,7 @@ export const emailAuthRouter = router({
       await sendVerificationEmail(email, verificationToken, input.firstName, brandModeReg, originReg);
 
       // Send welcome email asynchronously (don't block registration)
-      const appUrl = process.env.VITE_APP_URL ?? "https://app.allaboutultrasound.com";
+      const appUrl = process.env.VITE_APP_URL ?? "https://teachific.app";
       const welcomePayload = buildWelcomeEmail({
         firstName: input.firstName,
         loginUrl: `${appUrl}/login`,

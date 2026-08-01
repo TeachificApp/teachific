@@ -1,5 +1,5 @@
 /**
- * RichTextEditor — TipTap-based WYSIWYG editor for All About Ultrasound™
+ * RichTextEditor — TipTap-based WYSIWYG editor for Teachific™
  *
  * Features:
  *  - Full text formatting: bold, italic, underline, strikethrough, code

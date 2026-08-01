@@ -22,7 +22,7 @@ export function getEmailCampaignAppUrl(): string {
     }
     return `https://${canonical.replace(/\/$/, "")}`;
   }
-  return "https://app.allaboutultrasound.com";
+  return "https://teachific.app";
 }
 
 function buildClickTrackingUrl(

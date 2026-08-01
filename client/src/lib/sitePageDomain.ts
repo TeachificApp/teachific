@@ -19,23 +19,23 @@ export function getSitePageDomain(): SitePageDomain | string {
     return host as SitePageDomain;
   }
 
-  if (isLearnDomain()) return "learn.allaboutultrasound.com";
-  if (isMembersDomain()) return "members.allaboutultrasound.com";
-  if (isAccreditationDomain()) return "accreditation.iheartecho.com";
-  if (host === "app.iheartecho.net") return "app.iheartecho.net";
-  if (isIHeartEchoDomain()) return "app.iheartecho.com";
-  if (isMarketingStagingDomain()) return "allaboutultrasound.com";
+  if (isLearnDomain()) return "teachific.app/learn";
+  if (isMembersDomain()) return window.location.hostname;
+  if (isAccreditationDomain()) return window.location.hostname;
+  if (host === "app.teachific.net") return "app.teachific.net";
+  if (isIHeartEchoDomain()) return "teachific.app";
+  if (isMarketingStagingDomain()) return "teachific.app";
 
-  if (host === "app.allaboutultrasound.com" || host.startsWith("app.")) {
-    return "app.allaboutultrasound.com";
+  if (host === "teachific.app" || host.startsWith("app.")) {
+    return "teachific.app";
   }
 
   if (host === "localhost" || host.endsWith(".localhost")) {
     const params = new URLSearchParams(window.location.search);
     const forced = params.get("siteDomain");
     if (forced && DOMAIN_VALUES.has(forced)) return forced;
-    if (isLearnDomain()) return "learn.allaboutultrasound.com";
-    return "app.allaboutultrasound.com";
+    if (isLearnDomain()) return "teachific.app/learn";
+    return "teachific.app";
   }
 
   return host;

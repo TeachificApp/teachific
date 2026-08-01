@@ -2803,7 +2803,7 @@ ${pageText}`;
         widget,
         settings: parseEmbedSettings(widget.settingsJson),
         allowedDomains: parseAllowedDomains(widget.allowedDomains),
-        hostDomain: template?.hostDomain ?? "app.allaboutultrasound.com",
+        hostDomain: template?.hostDomain ?? "teachific.app",
         publicSlug: template?.publicSlug ?? null,
       };
     }),

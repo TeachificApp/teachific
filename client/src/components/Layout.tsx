@@ -1,5 +1,5 @@
 /*
-  All About Ultrasound™ Layout — Sidebar Navigation
+  Teachific™ Layout — Sidebar Navigation
   Brand: Teal #189aa1, Aqua #4ad9e0, Dark sidebar
   Fonts: Merriweather headings, Open Sans body
 */
@@ -246,7 +246,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ...group,
     items: group.items.map((item: { path: string; label: string; icon?: any; external?: boolean }) => {
       if (item.path === "__LEARN_FETAL_ECHO_URL__")
-        return { ...item, path: learnLinks?.learnFetalEchoUrl || "https://www.allaboutultrasound.net/fetal-echo-preview-access-pass" };
+        return { ...item, path: learnLinks?.learnFetalEchoUrl || "https://teachific.app" };
       if (item.path === "__LEARN_ECHO_URL__")
         return { ...item, path: learnLinks?.learnEchoUrl || "" };
       if (item.path === "__LEARN_POCUS_URL__")
@@ -254,9 +254,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       if (item.path === "__LEARN_VASCULAR_URL__")
         return { ...item, path: learnLinks?.learnVascularUrl || "" };
       if (item.path === "__LEARN_ACS_URL__")
-        return { ...item, path: "https://learn.allaboutultrasound.com/education-library?collection=acs" };
+        return { ...item, path: "https://teachific.app/learn/education-library?collection=acs" };
       if (item.path === "__LEARN_PEDS_ECHO_URL__")
-        return { ...item, path: "https://www.allaboutultrasound.net/pediatric-echo-cross-training-2cfdb" };
+        return { ...item, path: "https://teachific.app" };
       return item;
     // Hide Learn links if no URL is configured yet
     }).filter((item: { path: string; label: string; icon?: any; external?: boolean }) =>
@@ -362,7 +362,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* AAUS Store */}
         <div className="px-3 pb-2">
           <a
-            href="https://store.allaboutultrasound.com"
+            href="https://teachific.app"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-150 group w-full"
@@ -375,22 +375,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         {/* Footer */}
         <div className="px-4 py-3 border-t border-white/10">
-          {brandConfig.brand === "iheartecho" ? (
-            <a href="https://www.iheartecho.com" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-[#4ad9e0] hover:text-white transition-colors mb-1">
-              <ExternalLink className="w-3 h-3" />
-              www.iheartecho.com
-            </a>
-          ) : (
-            <a href="https://www.allaboutultrasound.com" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-[#4ad9e0] hover:text-white transition-colors mb-1">
-              <ExternalLink className="w-3 h-3" />
-              www.allaboutultrasound.com
-            </a>
-          )}
-          <div className="text-xs text-white/30">
-            {brandConfig.brand === "iheartecho" ? "© iHeartEcho™" : "© All About Ultrasound™"}
-          </div>
+          <a href="https://teachific.app" target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-[#4ad9e0] hover:text-white transition-colors mb-1">
+            <ExternalLink className="w-3 h-3" />
+            teachific.app
+          </a>
+          <div className="text-xs text-white/30">© Teachific™</div>
         </div>
       </aside>
 
@@ -534,7 +524,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {/* Profile section */}
                       <div className="px-2 py-1.5">
                         <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Profile</div>
-                        <a href="https://members.allaboutultrasound.com/my-dashboard" onClick={() => setAccountOpen(false)}
+                        <a href="https://teachific.app/my-dashboard" onClick={() => setAccountOpen(false)}
                           className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs md:text-sm text-gray-700 hover:bg-[#f0fbfc] hover:text-[#189aa1] transition-all text-left">
                           <GraduationCap className="w-3.5 h-3.5 text-[#189aa1]" />
                           My Dashboard
@@ -624,7 +614,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {roles.includes("affiliate") && (
                         <div className="px-2 py-1.5 border-t border-gray-100">
                           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Affiliate</div>
-                          <a href="https://members.allaboutultrasound.com/affiliate-dashboard" onClick={() => setAccountOpen(false)}
+                          <a href="https://teachific.app/affiliate-dashboard" onClick={() => setAccountOpen(false)}
                             className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-all text-left">
                             <DollarSign className="w-3.5 h-3.5 text-purple-500" />
                             <span className="flex-1">Affiliate Dashboard</span>

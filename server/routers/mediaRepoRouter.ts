@@ -746,7 +746,7 @@ export const mediaRepoRouter = router({
       });
 
       // Build access URL (uses the app's canonical URL from env)
-      const origin = process.env.VITE_APP_URL || "https://app.allaboutultrasound.com";
+      const origin = process.env.VITE_APP_URL || "https://teachific.app";
       const accessUrl = `${origin}/media/${asset.slug}?token=${token}`;
 
       await sendEmail({
@@ -762,7 +762,7 @@ export const mediaRepoRouter = router({
               View / Embed Media
             </a>
             ${expiresAt ? `<p style="color:#6b7280;font-size:13px;margin-top:16px;">This link expires on ${expiresAt.toLocaleDateString()}.</p>` : ""}
-            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">All About Ultrasound™ — Clinical Intelligence Platform</p>
+            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">Teachific™ — Clinical Intelligence Platform</p>
           </div>
         `,
       });

@@ -86,7 +86,7 @@ const TYPE_GROUPS: { label: string; types: ItemType[] }[] = [
 
 function buildEmbedCode(token: string, origin: string): string {
   const widgetUrl = `${origin}/widget/${token}`;
-  return `<!-- All About Ultrasound Content Widget -->
+  return `<!-- Teachific Content Widget -->
 <iframe
   id="aau-widget-${token.slice(0, 8)}"
   src="${widgetUrl}"

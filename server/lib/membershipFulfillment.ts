@@ -405,8 +405,8 @@ async function sendMembershipWelcomeEmail(opts: {
   planId: number;
   primaryCourseSlug?: string | null;
 }): Promise<void> {
-  const baseUrl = "https://app.allaboutultrasound.com";
-  const learnBase = "https://learn.allaboutultrasound.com";
+  const baseUrl = "https://teachific.app";
+  const learnBase = "https://teachific.app/learn";
   const firstName = opts.name.split(" ")[0] || "there";
   const destination = opts.primaryCourseSlug
     ? `${learnBase}/courses/${opts.primaryCourseSlug}/player`
@@ -447,7 +447,7 @@ async function sendMembershipWelcomeEmail(opts: {
       to: { name: opts.name, email: opts.email },
       subject,
       htmlBody: enhancedBody,
-      previewText: `Access your ${opts.planTitle} membership on All About Ultrasound`,
+      previewText: `Access your ${opts.planTitle} membership on Teachific`,
     });
     return;
   }
@@ -751,7 +751,7 @@ export async function cancelDuplicateStripeSubscriptions(opts: {
       console.warn(`[MembershipFulfillment] Duplicate subscription detected: ${sub.id} (active alongside ${opts.keepSubscriptionId}) — admin notified, no auto-cancel`);
     }
     if (duplicates.length > 0) {
-      const adminEmail = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@allaboutultrasound.com";
+      const adminEmail = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@teachific.app";
       const keepLink = `https://dashboard.stripe.com/subscriptions/${opts.keepSubscriptionId}`;
       const dupLinks = duplicates.map(id => `<a href="https://dashboard.stripe.com/subscriptions/${id}">${id}</a>`).join("<br>");
       // In-app notification

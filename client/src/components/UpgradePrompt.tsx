@@ -232,7 +232,7 @@ export default function UpgradePrompt({ eligible }: UpgradePromptProps) {
         {/* Brand footer */}
         <div className="px-6 py-2 text-center" style={{ background: "#0e1e2e" }}>
           <p className="text-xs text-white/40">
-            All About Ultrasound™ · UltrasoundAssist™
+            Teachific™ · UltrasoundAssist™
           </p>
         </div>
       </div>

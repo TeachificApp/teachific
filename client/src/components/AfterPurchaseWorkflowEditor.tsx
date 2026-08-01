@@ -228,7 +228,7 @@ function SendEmailEditor({
           <Label className="text-xs font-medium text-gray-700">From Name (optional)</Label>
           <Input
             className="mt-1"
-            placeholder="All About Ultrasound"
+            placeholder="Teachific"
             value={action.fromName ?? ""}
             onChange={(e) => onChange({ ...action, fromName: e.target.value })}
           />

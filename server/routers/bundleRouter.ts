@@ -231,7 +231,7 @@ export const bundleLearnerRouter = router({
         return { alreadyEnrolled: false, checkoutUrl: null, enrolled: true };
       }
       const stripe = getStripeClient();
-      const origin = ctx.req.headers.origin || "https://app.allaboutultrasound.com";
+      const origin = ctx.req.headers.origin || "https://teachific.app";
       const isSubscription = isStructured
         ? selectedOption.pricingType === "subscription"
         : selectedOption?.type === "subscription";

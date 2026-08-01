@@ -114,7 +114,7 @@ export async function fulfillPrintifyOrder(
       address_to: {
         first_name: first,
         last_name: last,
-        email: email || "orders@allaboutultrasound.com",
+        email: email || "orders@teachific.app",
         phone: "0000000000",
         country,
         region: order.shippingState?.trim() || "",

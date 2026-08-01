@@ -17,7 +17,7 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 
 // ─── App hero images (same URLs as funnelRouter) ──────────────────────────────
-// Wide hero banner images — same as used on the AAUS and iHeartEcho home pages
+// Wide hero banner images
 const AAUS_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/ultrasound-hero-probe-3bWMAQMJw9YFHoPXwbt8bZ.webp";
 const IHE_HERO  = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/ihe-hero-MNscA4NaWNyxrdkewtLGLG.webp";
 

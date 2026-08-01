@@ -37,19 +37,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Layout from "@/components/Layout";
 import { SdmsCmeUserTab } from "@/components/admin/SdmsCmeUserTab";
 
-// ─── Brand config ─────────────────────────────────────────────────────────────
-const BRAND_CONFIG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  aaus:       { label: "All About Ultrasound™", color: "#189aa1", bg: "bg-teal-50",  border: "border-teal-200" },
-  iheartecho: { label: "iHeartEcho™",           color: "#e05c8a", bg: "bg-pink-50",  border: "border-pink-200" },
-};
-
+// ─── Org-scoped badge ─────────────────────────────────────────────────────────────
 function BrandBadge({ brand }: { brand?: string | null }) {
   if (!brand) return null;
-  const cfg = BRAND_CONFIG[brand] ?? { label: brand, color: "#6b7280", bg: "bg-gray-50", border: "border-gray-200" };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfg.bg} ${cfg.border}`}
-      style={{ color: cfg.color }}>
-      {cfg.label}
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-teal-50 border-teal-200 text-teal-700">
+      {brand}
     </span>
   );
 }
@@ -237,7 +230,7 @@ function ProfileTab({ userId, data, refetch }: { userId: number; data: any; refe
   const [showNewPw, setShowNewPw] = useState(false);
 
   const [grantOpen, setGrantOpen] = useState(false);
-  const [grantBrand, setGrantBrand] = useState<"aaus" | "iheartecho">("aaus");
+  const [grantBrand, setGrantBrand] = useState<string>("premium");
   const [grantTier, setGrantTier] = useState<"free" | "premium">("premium");
   const [grantExpiry, setGrantExpiry] = useState("");
   const [grantNotify, setGrantNotify] = useState(true);
@@ -460,7 +453,7 @@ function ProfileTab({ userId, data, refetch }: { userId: number; data: any; refe
         <DialogContent>
           <DialogHeader><DialogTitle>Grant Brand Membership</DialogTitle><DialogDescription>Manually grant access to a brand app for this user.</DialogDescription></DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1.5"><Label>Brand</Label><Select value={grantBrand} onValueChange={(v) => setGrantBrand(v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="aaus">All About Ultrasound™</SelectItem><SelectItem value="iheartecho">iHeartEcho™</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1.5"><Label>Access Type</Label><Select value={grantBrand} onValueChange={(v) => setGrantBrand(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="premium">Premium Access</SelectItem><SelectItem value="standard">Standard Access</SelectItem></SelectContent></Select></div>
             <div className="space-y-1.5"><Label>Tier</Label><Select value={grantTier} onValueChange={(v) => setGrantTier(v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="premium">Premium</SelectItem><SelectItem value="free">Free</SelectItem></SelectContent></Select></div>
             <div className="space-y-1.5"><Label>Expiry Date (optional)</Label><Input type="date" value={grantExpiry} onChange={e => setGrantExpiry(e.target.value)} /></div>
             <div className="flex items-center gap-2 pt-1">
@@ -1609,7 +1602,7 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
 // ─── Subscriptions Tab ────────────────────────────────────────────────────────
 function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any; refetch: () => void }) {
   const [grantOpen, setGrantOpen] = useState(false);
-  const [grantBrand, setGrantBrand] = useState<"aaus" | "iheartecho">("aaus");
+  const [grantBrand, setGrantBrand] = useState<string>("premium");
   const [grantTier, setGrantTier] = useState<"free" | "premium">("premium");
   const [grantExpiry, setGrantExpiry] = useState("");
   const [cancelConfirm, setCancelConfirm] = useState<{ membershipId: number; stripeSubId: string } | null>(null);
@@ -1993,8 +1986,8 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
               <Select value={grantBrand} onValueChange={(v) => setGrantBrand(v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="aaus">All About Ultrasound™</SelectItem>
-                  <SelectItem value="iheartecho">iHeartEcho™</SelectItem>
+                  <SelectItem value="premium">Premium Access</SelectItem>
+                  <SelectItem value="standard">Standard Access</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2148,7 +2141,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
 }
 
 // ─── Admin Invoice View Component ───────────────────────────────────────────
-function AdminInvoiceView({ t, fmtCurrency, fmtDate }: { t: any; fmtCurrency: (c: number, cur?: string) => string; fmtDate: (d: Date | string) => string }) {
+function AdminInvoiceView({ t, fmtCurrency, fmtDate, orgBranding }: { t: any; fmtCurrency: (c: number, cur?: string) => string; fmtDate: (d: Date | string) => string; orgBranding?: { name?: string | null; logoUrl?: string | null; website?: string | null; supportEmail?: string | null } }) {
   const lineItems: Array<{ name: string; amount: number; qty: number }> = (() => {
     if (Array.isArray(t.lineItems) && t.lineItems.length > 0) return t.lineItems;
     return [{ name: t.productName || 'Purchase', amount: t.amountPaid, qty: 1 }];
@@ -2164,8 +2157,12 @@ function AdminInvoiceView({ t, fmtCurrency, fmtDate }: { t: any; fmtCurrency: (c
       <div className="bg-gradient-to-r from-[#0e4a50] to-[#189aa1] px-5 py-4 text-white">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-base font-bold tracking-tight">Teachific™</p>
-            <p className="text-xs text-teal-100 mt-0.5">teachific.app</p>
+            {orgBranding?.logoUrl ? (
+              <img src={orgBranding.logoUrl} alt={orgBranding.name ?? 'Logo'} className="h-8 object-contain mb-1" />
+            ) : (
+              <p className="text-base font-bold tracking-tight">{orgBranding?.name ?? 'Teachific™'}</p>
+            )}
+            <p className="text-xs text-teal-100 mt-0.5">{orgBranding?.website ?? 'teachific.app'}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-teal-100">Receipt / Invoice</p>
@@ -2242,8 +2239,8 @@ function AdminInvoiceView({ t, fmtCurrency, fmtDate }: { t: any; fmtCurrency: (c
       </div>
       {/* Footer */}
       <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-center">
-        <p className="text-[10px] text-gray-400">Teachific™ &bull; teachific.app</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">For support, contact support@teachific.app</p>
+        <p className="text-[10px] text-gray-400">{orgBranding?.name ?? 'Teachific™'} &bull; {orgBranding?.website ?? 'teachific.app'}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">For support, contact {orgBranding?.supportEmail ?? 'support@teachific.app'}</p>
       </div>
     </div>
   );
@@ -2442,7 +2439,7 @@ function TransactionsTab({ userId, data: userData, refetch }: { userId: number; 
                 <input
                   value={invoiceForm.description}
                   onChange={e => setInvoiceForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="e.g. iHeartEcho Lifetime Premium Access"
+                  placeholder="e.g. Annual Premium Access"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
@@ -2565,7 +2562,7 @@ function TransactionsTab({ userId, data: userData, refetch }: { userId: number; 
               <DialogTitle>Invoice / Receipt</DialogTitle>
               <DialogDescription>Official payment record</DialogDescription>
             </DialogHeader>
-            <AdminInvoiceView t={viewInvoice} fmtCurrency={fmtCurrency} fmtDate={fmtDate} />
+            <AdminInvoiceView t={viewInvoice} fmtCurrency={fmtCurrency} fmtDate={fmtDate} orgBranding={userData?.orgBranding} />
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" size="sm" onClick={() => {
                 const el = document.getElementById('admin-invoice-print-area');

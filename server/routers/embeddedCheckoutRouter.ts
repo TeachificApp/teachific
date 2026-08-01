@@ -343,7 +343,7 @@ export const embeddedCheckoutRouter = router({
 
       // ── Auto-create account for guests ──────────────────────────────────────
       const brandMode = "aaus"; // default; could be extended via input if needed
-      const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://app.allaboutultrasound.com";
+      const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://teachific.app";
       if (!userId) {
         try {
           const nameParts = (customerName || "").split(" ");
@@ -368,7 +368,7 @@ export const embeddedCheckoutRouter = router({
                 to: { name: customerName || firstName, email: input.email },
                 subject: `Your account is ready — set your password to access ${input.productName || "your purchase"}`,
                 htmlBody: emailContent.htmlBody,
-                previewText: `Set your password to access your ${input.productName || "purchase"} on All About Ultrasound`,
+                previewText: `Set your password to access your ${input.productName || "purchase"} on Teachific`,
               });
               console.log(`[FreeOrder] Sent set-password email to ${input.email} (new user ${userId})`);
             } catch (emailErr) {
