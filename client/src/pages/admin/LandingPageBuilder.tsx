@@ -55,7 +55,7 @@ import {
   ChevronDown, ChevronUp, Copy, FolderOpen, BookMarked, Upload, Code,
   ShoppingCart, Package, Link, Mail, Phone, MapPin, Bookmark, BookmarkPlus, Music, UserPlus, Search,
   SlidersHorizontal, Radio, Clock, Loader2, ArrowLeftRight,
-  Table2, LayoutList, FileText,
+  Table2, LayoutList, FileText, Sparkles,
 } from "lucide-react";
 import AudioBlockEditor from "@/components/AudioBlockEditor";
 import CarouselBlock from "@/components/CarouselBlock";
@@ -103,6 +103,8 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
   // ── Content
   { type: "text", label: "Text / Rich Text", icon: <Type size={14} />, category: "Content",
     defaultData: { html: "<p>Add your content here. Click to edit.</p>", align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" } },
+  { type: "ai_content", label: "AI Generate Content", icon: <Sparkles size={14} />, category: "Content",
+    defaultData: { html: "", prompt: "", contentType: "lesson", align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" } },
   { type: "image", label: "Image", icon: <Image size={14} />, category: "Content",
     defaultData: { url: "", alt: "", caption: "", align: "center", maxWidth: "auto", linkUrl: "", openInNewTab: true, showShadow: true, noBorder: false } },
   { type: "video", label: "Video Embed", icon: <Video size={14} />, category: "Content",
@@ -2349,6 +2351,149 @@ function FormEmbedFormPicker({ d, set }: { d: Record<string, any>; set: (field: 
       {selectedId && d.formSlug && (
         <p className="text-[10px] text-teal-600">✓ Public slug: <code>{d.formSlug}</code></p>
       )}
+    </div>
+  );
+}
+
+
+// ─── AI Content Block Settings ────────────────────────────────────────────────
+function AIContentBlockSettings({
+  data,
+  onSet,
+  onSetMany,
+}: {
+  data: Record<string, any>;
+  onSet: (key: string, value: any) => void;
+  onSetMany: (updates: Record<string, any>) => void;
+}) {
+  const [prompt, setPrompt] = React.useState(data.prompt ?? "");
+  const [contentType, setContentType] = React.useState<string>(data.contentType ?? "lesson");
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [mode, setMode] = React.useState<"prompt" | "edit">(data.html ? "edit" : "prompt");
+
+  const generateContent = trpc.lmsAdmin.generateLessonContent.useMutation({
+    onSuccess: (result) => {
+      onSetMany({ html: result.content, prompt, contentType });
+      setMode("edit");
+      setIsGenerating(false);
+    },
+    onError: (e) => {
+      toast.error(`AI generation failed: ${e.message}`);
+      setIsGenerating(false);
+    },
+  });
+
+  const handleGenerate = () => {
+    if (!prompt.trim()) { toast.error("Please enter a prompt."); return; }
+    setIsGenerating(true);
+    generateContent.mutate({ prompt: prompt.trim(), contentType: contentType as any, existingContent: data.html || undefined });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Mode toggle */}
+      <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+        <button
+          onClick={() => setMode("prompt")}
+          className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${mode === "prompt" ? "bg-white shadow text-violet-700" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          <Sparkles size={11} className="inline mr-1" />AI Prompt
+        </button>
+        <button
+          onClick={() => setMode("edit")}
+          className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${mode === "edit" ? "bg-white shadow text-gray-800" : "text-gray-500 hover:text-gray-700"}`}
+        >
+          Edit Content
+        </button>
+      </div>
+
+      {mode === "prompt" && (
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Content Type</label>
+            <select
+              value={contentType}
+              onChange={e => setContentType(e.target.value)}
+              className="w-full h-8 text-xs border border-gray-200 rounded-md px-2 focus:outline-none focus:ring-2 focus:ring-violet-400"
+            >
+              <option value="lesson">Full Lesson</option>
+              <option value="explanation">Explanation</option>
+              <option value="summary">Summary</option>
+              <option value="outline">Outline</option>
+              <option value="exercise">Exercise / Activity</option>
+              <option value="section">Module Overview</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Prompt *</label>
+            <textarea
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe what content to generate, e.g. 'Explain the fundamentals of cardiac anatomy for beginner nursing students'"
+              className="w-full rounded-md border border-gray-200 px-2.5 py-2 text-xs resize-none h-24 focus:outline-none focus:ring-2 focus:ring-violet-400"
+            />
+          </div>
+          {data.html && (
+            <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-700">
+              ⚠ Generating new content will replace the existing content in this block.
+            </div>
+          )}
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || !prompt.trim()}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {isGenerating ? (
+              <><Loader2 size={13} className="animate-spin" /> Generating...</>
+            ) : (
+              <><Sparkles size={13} /> Generate Content</>
+            )}
+          </button>
+          {data.html && (
+            <button
+              onClick={() => setMode("edit")}
+              className="w-full text-xs text-gray-500 hover:text-gray-700 underline"
+            >
+              View / edit existing content instead
+            </button>
+          )}
+        </div>
+      )}
+
+      {mode === "edit" && (
+        <div className="space-y-3">
+          {!data.html && (
+            <div className="bg-violet-50 border border-violet-100 rounded-md px-3 py-2 text-xs text-violet-600 flex items-center gap-1.5">
+              <Sparkles size={12} />
+              Use the AI Prompt tab to generate content first, or start typing below.
+            </div>
+          )}
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Content</label>
+            <RichTextEditor
+              value={data.html ?? ""}
+              onChange={(html) => onSet("html", html)}
+              minHeight={200}
+              maxHeight={500}
+              placeholder="Start typing or use AI Prompt to generate content..."
+            />
+          </div>
+          <button
+            onClick={() => setMode("prompt")}
+            className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+          >
+            <Sparkles size={11} /> Regenerate with AI
+          </button>
+        </div>
+      )}
+
+      {/* Styling */}
+      <div className="border-t border-gray-100 pt-3 space-y-2">
+        <p className="text-xs font-medium text-gray-500">Styling</p>
+        <BSAlignField data={data} onSet={onSet} label="Text Alignment" field="align" />
+        <BSColorField data={data} onSet={onSet} label="Background" field="bgColor" />
+        <BSColorField data={data} onSet={onSet} label="Text Color" field="textColor" />
+      </div>
     </div>
   );
 }
@@ -4742,6 +4887,14 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <BSColorField data={d} onSet={set} label="Background Color" field="bgColor" />
           <BSColorField data={d} onSet={set} label="Headline Color" field="headlineColor" />
         </div>
+      );
+    case "ai_content":
+      return (
+        <AIContentBlockSettings
+          data={d}
+          onSet={set}
+          onSetMany={setMany}
+        />
       );
      default:
       return <p className="text-xs text-gray-400">No settings for this block type.</p>;

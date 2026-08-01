@@ -931,6 +931,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
   const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [addLessonSection, setAddLessonSection] = useState<number | null>(null);
   const [addLessonAtCourseLevel, setAddLessonAtCourseLevel] = useState(false);
+  const [aiCourseGenOpen, setAiCourseGenOpen] = useState(false);
   const [editLesson, setEditLesson] = useState<any>(null);
   // No pendingLessonId needed — AddLessonDialog now passes the full lesson object directly
   const [quizLesson, setQuizLesson] = useState<any>(null);
@@ -1196,12 +1197,15 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
         <TabsContent value="curriculum" className="mt-4">
           <div className="space-y-4">
             {/* Quick-add buttons at the top */}
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
               <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setAddLessonAtCourseLevel(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Lesson (No Section)
               </Button>
               <Button size="sm" variant="outline" className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => setAddSectionOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Section
+              </Button>
+              <Button size="sm" className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-sm" onClick={() => setAiCourseGenOpen(true)}>
+                <Sparkles className="w-4 h-4 mr-1" /> AI Generate Course
               </Button>
             </div>
             {/* Single unified DndContext for all drag operations */}
@@ -1449,6 +1453,13 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
         <SaveSectionTemplateDialog
           section={saveAsTemplateSection}
           onClose={() => setSaveAsTemplateSection(null)}
+        />
+      )}
+      {aiCourseGenOpen && (
+        <AICourseGeneratorDialog
+          courseId={courseId}
+          onClose={() => setAiCourseGenOpen(false)}
+          onGenerated={() => { setAiCourseGenOpen(false); refetch(); }}
         />
       )}
 
@@ -3403,6 +3414,169 @@ function MediaPickerDialog({ open, onClose, onSelect }: { open: boolean; onClose
   );
 }
 
+
+// ─── AI Course Generator Dialog ───────────────────────────────────────────────
+function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
+  courseId: number;
+  onClose: () => void;
+  onGenerated: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [numSections, setNumSections] = useState(4);
+  const [numLessonsPerSection, setNumLessonsPerSection] = useState(3);
+  const [preview, setPreview] = useState<null | { courseTitle: string; sections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }> }>(null);
+  const [step, setStep] = useState<"prompt" | "generating" | "done">("prompt");
+
+  const generate = trpc.lmsAdmin.generateCourseOutline.useMutation({
+    onSuccess: (data) => {
+      setPreview(data);
+      setStep("done");
+    },
+    onError: (e) => {
+      toast.error(`AI generation failed: ${e.message}`);
+      setStep("prompt");
+    },
+  });
+
+  const handleGenerate = () => {
+    if (!prompt.trim()) { toast.error("Please enter a course description."); return; }
+    setStep("generating");
+    generate.mutate({ courseId, prompt: prompt.trim(), numSections, numLessonsPerSection });
+  };
+
+  return (
+    <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-violet-600" />
+            AI Course Generator
+          </DialogTitle>
+          <DialogDescription>
+            Describe your course and AI will generate a complete curriculum with modules and lesson content.
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === "prompt" && (
+          <div className="space-y-5 py-2">
+            <div>
+              <Label className="text-sm font-medium">Course Description *</Label>
+              <textarea
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                placeholder="e.g. A beginner's guide to digital marketing covering SEO, social media, email campaigns, and paid advertising. Designed for small business owners with no prior marketing experience."
+                className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm resize-none h-28 focus:outline-none focus:ring-2 focus:ring-violet-400"
+              />
+              <p className="text-xs text-gray-400 mt-1">Be specific — include the target audience, skill level, and key topics to cover.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Number of Modules</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <input
+                    type="range" min={1} max={12} value={numSections}
+                    onChange={e => setNumSections(Number(e.target.value))}
+                    className="flex-1 accent-violet-600"
+                  />
+                  <span className="text-sm font-semibold text-violet-700 w-6 text-center">{numSections}</span>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Lessons per Module</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <input
+                    type="range" min={1} max={10} value={numLessonsPerSection}
+                    onChange={e => setNumLessonsPerSection(Number(e.target.value))}
+                    className="flex-1 accent-violet-600"
+                  />
+                  <span className="text-sm font-semibold text-violet-700 w-6 text-center">{numLessonsPerSection}</span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-violet-50 border border-violet-100 rounded-lg px-4 py-3 text-xs text-violet-700">
+              <strong>This will generate:</strong> {numSections} modules × {numLessonsPerSection} lessons = <strong>{numSections * numLessonsPerSection} lessons</strong> with full text content, ready to edit.
+            </div>
+          </div>
+        )}
+
+        {step === "generating" && (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-violet-600 animate-pulse" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-gray-800">Generating your course...</p>
+              <p className="text-sm text-gray-500 mt-1">AI is creating {numSections * numLessonsPerSection} lessons with full content. This may take 30–60 seconds.</p>
+            </div>
+            <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+          </div>
+        )}
+
+        {step === "done" && preview && (
+          <div className="space-y-4 py-2">
+            <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+              <p className="text-sm text-green-700">
+                <strong>{preview.sections.length} modules</strong> and <strong>{preview.sections.reduce((a, s) => a + s.lessons.length, 0)} lessons</strong> have been added to your course curriculum.
+              </p>
+            </div>
+            {preview.courseTitle && (
+              <p className="text-xs text-gray-500">Suggested course title: <strong className="text-gray-700">{preview.courseTitle}</strong></p>
+            )}
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {preview.sections.map((section, si) => (
+                <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-3 py-2 flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Module {si + 1}</span>
+                    <span className="text-sm font-semibold text-gray-800">{section.title}</span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {section.lessons.map((lesson, li) => (
+                      <div key={lesson.id} className="px-3 py-1.5 flex items-center gap-2">
+                        <span className="text-xs text-gray-400 w-5">{li + 1}.</span>
+                        <span className="text-sm text-gray-700">{lesson.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="mt-2">
+          {step === "prompt" && (
+            <>
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white"
+                disabled={!prompt.trim()}
+                onClick={handleGenerate}
+              >
+                <Sparkles className="w-4 h-4 mr-1" /> Generate Course
+              </Button>
+            </>
+          )}
+          {step === "generating" && (
+            <Button variant="outline" disabled>Please wait...</Button>
+          )}
+          {step === "done" && (
+            <>
+              <Button variant="outline" onClick={() => { setStep("prompt"); setPreview(null); }}>
+                Generate Again
+              </Button>
+              <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={onGenerated}>
+                <CheckCircle className="w-4 h-4 mr-1" /> View Curriculum
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
   courseId: number;
   sectionId?: number;

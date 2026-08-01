@@ -4,7 +4,7 @@
  * Extracted into its own file to break the circular dependency between CoursePlayer and LandingPageBuilder.
  */
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Award, BookOpen, ChevronDown, Globe, Image, Package, Upload, Video } from "lucide-react";
+import { Award, BookOpen, ChevronDown, Globe, Image, Package, Upload, Video, Sparkles, Loader2 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import CarouselBlock from "@/components/CarouselBlock";
 import InlineCheckoutBlock from "@/components/InlineCheckoutBlock";
@@ -95,7 +95,8 @@ export type BlockType =
   | "enrollment_counter"
   | "quiz_embed"
   | "remaining_seats"
-  | "included_items_auto";
+  | "included_items_auto"
+  | "ai_content";
 
 export interface Block {
   id: string;
@@ -1926,6 +1927,21 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
         </div>
       );
     }
+    case "ai_content":
+      return (
+        <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff", color: d.textColor ?? "#1a1a1a" }}>
+          <CC style={{ textAlign: d.align ?? "left" }}>
+            {d.html ? (
+              <div className="prose" dangerouslySetInnerHTML={{ __html: d.html }} />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 py-8 text-gray-400">
+                <Sparkles className="w-6 h-6 text-violet-400" />
+                <p className="text-sm">AI-generated content will appear here</p>
+              </div>
+            )}
+          </CC>
+        </div>
+      );
     default:
       return <div className="px-8 py-4 text-gray-400 text-sm text-center">Block preview not available</div>;
   }

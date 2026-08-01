@@ -4857,3 +4857,13 @@
 - [x] Link Organization: fix site_owner/site_admin org lookup via organizations.ownerId
 - [x] Link Organization: add lookupOrgs procedure + org picker when target owns multiple orgs
 - [x] Link Organization: accept flow requires clicking email link (login + verify)
+
+## AI Content Generation
+- [x] Backend: generateCourseOutline procedure — prompt → sections + lessons bulk-inserted
+- [x] Backend: generateLessonContent procedure — prompt → rich text HTML content
+- [x] Frontend: AI Course Generator modal in curriculum editor (Add Section area)
+- [x] Frontend: ai_content BlockType added to BlockType union in BlockPreview.tsx
+- [x] Frontend: ai_content block added to BLOCK_CATALOG in LandingPageBuilder.tsx
+- [x] Frontend: AIContentBlock component — prompt input → AI call → editable rich text output
+- [x] Frontend: AIContentBlock rendered in BlockPreview and BlockSettings
+- [x] Frontend: AIContentBlock rendered in LessonBlockEditor block list

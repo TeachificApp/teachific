@@ -1342,4 +1342,181 @@ export const lmsCourseBuilderRouter = router({
       }
       return { success: true, updated: input.items.length };
     }),
+
+  // ─── AI: Generate Course Outline ─────────────────────────────────────────────
+  generateCourseOutline: protectedProcedure
+    .input(z.object({
+      courseId: z.number(),
+      prompt: z.string().min(5).max(2000),
+      numSections: z.number().int().min(1).max(20).default(4),
+      numLessonsPerSection: z.number().int().min(1).max(15).default(3),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const systemPrompt = `You are an expert instructional designer and course creator. You produce well-structured, educationally sound course outlines in United States English. Always respond with valid JSON matching the requested schema exactly.`;
+
+      const userPrompt = `Create a complete course outline based on this description:
+"${input.prompt}"
+
+Requirements:
+- Exactly ${input.numSections} sections (modules)
+- Exactly ${input.numLessonsPerSection} lessons per section
+- Each lesson must have a clear title and 2-4 paragraphs of instructional HTML content using <h2>, <p>, <ul>, <li>, <strong> tags
+- Content should be educational, detailed, and ready to use as lesson material
+- Use United States English spelling throughout
+
+Return JSON with this exact shape:
+{
+  "courseTitle": "string",
+  "sections": [
+    {
+      "title": "string",
+      "lessons": [
+        { "title": "string", "content": "string (HTML)" }
+      ]
+    }
+  ]
+}`;
+
+      let outline: { courseTitle: string; sections: Array<{ title: string; lessons: Array<{ title: string; content: string }> }> };
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "course_outline",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  courseTitle: { type: "string" },
+                  sections: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        lessons: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              title: { type: "string" },
+                              content: { type: "string" },
+                            },
+                            required: ["title", "content"],
+                            additionalProperties: false,
+                          },
+                        },
+                      },
+                      required: ["title", "lessons"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["courseTitle", "sections"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+        const raw = response.choices?.[0]?.message?.content ?? "{}";
+        outline = typeof raw === "string" ? JSON.parse(raw) : raw;
+      } catch (e: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI generation failed: ${e?.message ?? "unknown error"}` });
+      }
+
+      if (!outline?.sections?.length) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an empty outline. Please try again with a more detailed prompt." });
+      }
+
+      const posResult = await db
+        .select({ maxPos: max(lmsSections.position) })
+        .from(lmsSections)
+        .where(eq(lmsSections.courseId, input.courseId));
+      let sectionPosition = (posResult[0]?.maxPos ?? -1) + 1;
+
+      const createdSections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }> = [];
+
+      for (const sectionData of outline.sections) {
+        const [sectionResult] = await db
+          .insert(lmsSections)
+          .values({ courseId: input.courseId, title: sectionData.title, position: sectionPosition++ })
+          .$returningId();
+        const sectionId = sectionResult.id;
+        const createdLessons: Array<{ id: number; title: string }> = [];
+        let lessonPosition = 0;
+
+        for (const lessonData of sectionData.lessons) {
+          const heroBlock = JSON.stringify([{
+            id: `hero-auto-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            type: "hero",
+            data: { headline: lessonData.title, headline2: "", subheadline: "", hideButtons: true, buttons: [], bgType: "color", bgColor: "#149096", textColor: "#ffffff", align: "left", heroMinHeight: 150 },
+          }, {
+            id: `text-auto-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            type: "text",
+            data: { html: lessonData.content, align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" },
+          }]);
+
+          const [lessonResult] = await db
+            .insert(lmsLessons)
+            .values({ courseId: input.courseId, sectionId, title: lessonData.title, type: "text", position: lessonPosition++, content: lessonData.content, contentBlocks: heroBlock })
+            .$returningId();
+          createdLessons.push({ id: lessonResult.id, title: lessonData.title });
+        }
+        createdSections.push({ id: sectionId, title: sectionData.title, lessons: createdLessons });
+      }
+
+      return { success: true, courseTitle: outline.courseTitle, sections: createdSections };
+    }),
+
+  // ─── AI: Generate Lesson Content ─────────────────────────────────────────────
+  generateLessonContent: protectedProcedure
+    .input(z.object({
+      prompt: z.string().min(5).max(2000),
+      existingContent: z.string().optional(),
+      contentType: z.enum(["lesson", "section", "outline", "summary", "explanation", "exercise"]).default("lesson"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+
+      const systemPrompt = `You are an expert instructional designer and content writer. You write clear, engaging educational content in United States English. Always return well-formatted HTML content using tags like <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>. Do not include <html>, <head>, or <body> tags — return only the inner content HTML.`;
+
+      const existingNote = input.existingContent
+        ? `\n\nExisting content to expand or improve upon:\n${input.existingContent.replace(/<[^>]+>/g, "").slice(0, 500)}`
+        : "";
+
+      const typeInstructions: Record<string, string> = {
+        lesson: "Write a complete lesson with an introduction, main content sections, key takeaways, and a summary.",
+        section: "Write a module overview that introduces the topic and outlines what learners will cover.",
+        outline: "Write a structured outline with headings and brief descriptions for each point.",
+        summary: "Write a concise summary of the key concepts.",
+        explanation: "Write a clear, detailed explanation suitable for learners new to the topic.",
+        exercise: "Write a practical exercise or activity with clear instructions and expected outcomes.",
+      };
+
+      const userPrompt = `${typeInstructions[input.contentType] ?? typeInstructions.lesson}\n\nTopic / instructions: ${input.prompt}${existingNote}\n\nReturn only the HTML content (no markdown code fences, no outer HTML tags).`;
+
+      try {
+        const response = await invokeLLM({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        });
+        const content = response.choices?.[0]?.message?.content ?? "";
+        const cleaned = content.replace(/^```html?\n?/i, "").replace(/\n?```$/i, "").trim();
+        return { success: true, content: cleaned };
+      } catch (e: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI generation failed: ${e?.message ?? "unknown error"}` });
+      }
+    }),
 });
