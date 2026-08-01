@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getOrgSubdomainUrl } from "@/hooks/useSubdomain";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,8 +46,14 @@ export function OrgSwitcher({ isCollapsed }: OrgSwitcherProps) {
 
   const handleSwitch = async (id: number) => {
     if (!hasOrganizations || id === orgId) { setOpen(false); return; }
-    await setSelectedOrgId(id);
+    const org = adminOrgs.find((o: any) => o.id === id);
     setOpen(false);
+    // Linked orgs belong to a different admin — navigate to their subdomain
+    if (org?.isLinked && org?.slug) {
+      window.location.href = getOrgSubdomainUrl(org.slug, "/lms");
+      return;
+    }
+    await setSelectedOrgId(id);
     window.location.href = "/lms";
   };
 
@@ -115,7 +122,9 @@ export function OrgSwitcher({ isCollapsed }: OrgSwitcherProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{org.name}</p>
                 {org.slug && (
-                  <p className="text-[10px] text-muted-foreground truncate">{org.slug}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {org.slug}{org.isLinked ? " · Linked" : ""}
+                  </p>
                 )}
               </div>
               {org.id === orgId && (

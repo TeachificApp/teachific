@@ -63,7 +63,7 @@ export function useOrgScope() {
     if (!linkedOrgsData || linkedOrgsData.length === 0) return baseAdminOrgs;
     const existingIds = new Set(baseAdminOrgs.map((o: any) => o.id));
     const extras = linkedOrgsData
-      .map((l: any) => l.linkedOrg)
+      .map((l: any) => ({ ...l.linkedOrg, isLinked: true }))
       .filter((o: any) => o && !existingIds.has(o.id));
     return [...baseAdminOrgs, ...extras];
   }, [baseAdminOrgs, linkedOrgsData]);
