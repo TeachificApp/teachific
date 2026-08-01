@@ -54,6 +54,8 @@ export async function getActiveEnrollment(
       and(
         eq(lmsEnrollments.userId, userId),
         eq(lmsEnrollments.courseId, courseId),
+        // Exclude suspended/cancelled enrollments — payment failed or subscription ended
+        inArray(lmsEnrollments.status, ["active", "completed"]),
         activeEnrollmentCondition(),
       ),
     )

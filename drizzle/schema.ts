@@ -2635,7 +2635,7 @@ export const lmsEnrollments = mysqlTable("lms_enrollments", {
   orgId: int("orgId").notNull(),
   userId: int("user_id").notNull(),
   courseId: int("course_id").notNull(),
-  status: mysqlEnum("status", ["active", "completed", "cancelled", "expired"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "completed", "cancelled", "expired", "suspended"]).default("active").notNull(),
   enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
   expiresAt: timestamp("expires_at"),

@@ -13,7 +13,7 @@ import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions } from "../drizzle/schema";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments } from "../drizzle/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
@@ -550,8 +550,26 @@ router.post(
           const orgId = parseInt(subscription.metadata?.org_id ?? "0");
           const productType = subscription.metadata?.product_type as string | undefined;
           const userId = parseInt(subscription.metadata?.user_id ?? "0");
+          const contentType = subscription.metadata?.content_type as string | undefined;
+          const contentId = parseInt(subscription.metadata?.content_id ?? "0");
 
-          // ── Platform app subscription cancelled ──────────────────────────────
+          // ── LMS course subscription cancelled ────────────────────────────────────────────────
+          if (contentType === "course" && contentId && userId) {
+            const db = await getDb();
+            if (db) {
+              await db.update(lmsEnrollments)
+                .set({ status: "cancelled" })
+                .where(and(
+                  eq(lmsEnrollments.userId, userId),
+                  eq(lmsEnrollments.courseId, contentId),
+                  eq(lmsEnrollments.stripeSubscriptionId, subscription.id),
+                ));
+              console.log(`[Stripe Webhook] LMS enrollment cancelled for user ${userId} course ${contentId} (sub ${subscription.id})`);
+            }
+            break;
+          }
+
+          // ── Platform app subscription cancelled ────────────────────────────────────
           if (productType && userId) {
             const db = await getDb();
             if (db) {
@@ -595,8 +613,26 @@ router.post(
           const userId = parseInt(subscription.metadata?.user_id ?? "0");
           const orgId = parseInt(subscription.metadata?.org_id ?? "0");
           const item = subscription.items.data[0];
+          const contentType = subscription.metadata?.content_type as string | undefined;
+          const contentId = parseInt(subscription.metadata?.content_id ?? "0");
 
-          // ── Platform app renewal: re-confirm access ───────────────────────────
+          // ── LMS course subscription renewal: restore access if suspended ─────────────────────────────────
+          if (contentType === "course" && contentId && userId) {
+            const db = await getDb();
+            if (db) {
+              await db.update(lmsEnrollments)
+                .set({ status: "active" })
+                .where(and(
+                  eq(lmsEnrollments.userId, userId),
+                  eq(lmsEnrollments.courseId, contentId),
+                  eq(lmsEnrollments.stripeSubscriptionId, subscriptionId),
+                ));
+              console.log(`[Stripe Webhook] LMS enrollment restored to active for user ${userId} course ${contentId} (renewal, sub ${subscriptionId})`);
+            }
+            break;
+          }
+
+          // ── Platform app renewal: re-confirm access ───────────────────────────────────────
           if (productType && userId && (productType === "studio" || productType === "creator" || productType === "quiz_creator")) {
             const accessTier = subscription.metadata?.access_tier as string;
             if (accessTier) {
@@ -701,6 +737,24 @@ router.post(
           const productType = subscription.metadata?.product_type as string | undefined;
           const userId = parseInt(subscription.metadata?.user_id ?? "0");
           const orgId = parseInt(subscription.metadata?.org_id ?? "0");
+          const contentType = subscription.metadata?.content_type as string | undefined;
+          const contentId = parseInt(subscription.metadata?.content_id ?? "0");
+
+          // ── LMS course subscription payment failed — suspend access ─────────────────────────────────
+          if (contentType === "course" && contentId && userId) {
+            const db = await getDb();
+            if (db) {
+              await db.update(lmsEnrollments)
+                .set({ status: "suspended" })
+                .where(and(
+                  eq(lmsEnrollments.userId, userId),
+                  eq(lmsEnrollments.courseId, contentId),
+                  eq(lmsEnrollments.stripeSubscriptionId, subscriptionId),
+                ));
+              console.warn(`[Stripe Webhook] LMS enrollment suspended for user ${userId} course ${contentId} (payment failed, sub ${subscriptionId})`);
+            }
+            break;
+          }
 
           // Platform app payment failed — log but don't revoke access immediately (Stripe retries)
           if (productType && userId) {

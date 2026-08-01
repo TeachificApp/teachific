@@ -13,7 +13,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, eq, desc, or, isNull } from "drizzle-orm";
+import { and, eq, desc, or, isNull, inArray } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { ENV } from "../_core/env";
@@ -400,12 +400,16 @@ export const lmsCheckoutPublicRouter = router({
       // Order bumps (placement: during_checkout)
       const bumps = await fetchOrderBumps(db, input.contentType, content.id);
 
-      // Check if user already has access
+      // Check if user already has access (only active/completed enrollments count — not suspended/cancelled)
       let hasAccess = false;
       if (ctx.user && input.contentType === "course") {
-        const [existing] = await db.select({ id: lmsEnrollments.id })
+        const [existing] = await db.select({ id: lmsEnrollments.id, status: lmsEnrollments.status })
           .from(lmsEnrollments)
-          .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, content.id)))
+          .where(and(
+            eq(lmsEnrollments.userId, ctx.user.id),
+            eq(lmsEnrollments.courseId, content.id),
+            inArray(lmsEnrollments.status, ["active", "completed"]),
+          ))
           .limit(1);
         hasAccess = !!existing;
       }
@@ -639,9 +643,18 @@ export const lmsCheckoutLearnerRouter = router({
       let session: any;
 
       if (pricingType === "subscription") {
+        // subscription_data.metadata is propagated to the Subscription object so webhooks
+        // (invoice.paid, invoice.payment_failed, customer.subscription.deleted) can identify
+        // which user/course the subscription belongs to and grant/revoke access accordingly.
+        const subscriptionMeta = {
+          user_id:      ctx.user.id.toString(),
+          org_id:       content.orgId.toString(),
+          content_type: input.contentType,
+          content_id:   content.id.toString(),
+        };
         const trialOpts = effectiveTrialDays && effectiveTrialDays > 0
-          ? { subscription_data: { trial_period_days: effectiveTrialDays } }
-          : {};
+          ? { subscription_data: { trial_period_days: effectiveTrialDays, metadata: subscriptionMeta } }
+          : { subscription_data: { metadata: subscriptionMeta } };
         session = await stripe.checkout.sessions.create({
           mode: "subscription",
           customer_email: ctx.user.email ?? undefined,
@@ -788,6 +801,8 @@ async function grantAccess(db: any, contentType: ContentType, content: any, user
         status: "active",
         enrollmentType: "full",
         orderId: orderResult.id,
+        stripeSubscriptionId: stripeSubscriptionId ?? null,
+        source: stripeSubscriptionId ? "stripe_subscription" : "stripe",
       });
       break;
     }
