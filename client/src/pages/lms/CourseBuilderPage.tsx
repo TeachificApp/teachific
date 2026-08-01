@@ -1595,6 +1595,12 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
   const [defaultMarkComplete, setDefaultMarkComplete] = useState<boolean>(course.defaultMarkComplete !== 0);
   const [playerTheme, setPlayerTheme] = useState<"light" | "dark">(course.playerTheme ?? "light");
   const [playerColor, setPlayerColor] = useState(course.playerColor ?? "#00b4b4");
+  // Purchase Terms Override
+  const [purchaseTermsAgreement, setPurchaseTermsAgreement] = useState<string>((course as any).purchaseTermsAgreement ?? "");
+  const [purchaseTermsLink1Label, setPurchaseTermsLink1Label] = useState<string>((course as any).purchaseTermsLink1Label ?? "");
+  const [purchaseTermsLink1Url, setPurchaseTermsLink1Url] = useState<string>((course as any).purchaseTermsLink1Url ?? "");
+  const [purchaseTermsLink2Label, setPurchaseTermsLink2Label] = useState<string>((course as any).purchaseTermsLink2Label ?? "");
+  const [purchaseTermsLink2Url, setPurchaseTermsLink2Url] = useState<string>((course as any).purchaseTermsLink2Url ?? "");
   // Custom labels — parse from JSON string stored in DB
   const initLabels = (() => { try { return course.customLabels ? JSON.parse(course.customLabels) : {}; } catch { return {}; } })();
   const [labelLesson, setLabelLesson] = useState<string>(initLabels.lesson ?? "");
@@ -2195,6 +2201,43 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           </div>
         </div>
       </div>
+      {/* Purchase Terms Override */}
+      <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <span className="text-base">📋</span> Purchase Terms Override
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">Override the checkout terms checkbox text for this course only. Leave all fields blank to use the platform-level default.</p>
+        </div>
+        <div>
+          <Label className="text-xs text-gray-600">Agreement sentence</Label>
+          <Input
+            value={purchaseTermsAgreement}
+            onChange={e => setPurchaseTermsAgreement(e.target.value)}
+            placeholder="e.g. I have reviewed and agree to the"
+            className="mt-1 text-sm"
+          />
+          <p className="text-xs text-gray-400 mt-1">Text before the two links.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs text-gray-600">Link 1 label</Label>
+            <Input value={purchaseTermsLink1Label} onChange={e => setPurchaseTermsLink1Label(e.target.value)} placeholder="e.g. Terms of Service" className="mt-1 text-sm h-8" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-600">Link 1 URL</Label>
+            <Input value={purchaseTermsLink1Url} onChange={e => setPurchaseTermsLink1Url(e.target.value)} placeholder="https://example.com/terms" className="mt-1 text-sm h-8" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-600">Link 2 label</Label>
+            <Input value={purchaseTermsLink2Label} onChange={e => setPurchaseTermsLink2Label(e.target.value)} placeholder="e.g. Privacy Policy" className="mt-1 text-sm h-8" />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-600">Link 2 URL</Label>
+            <Input value={purchaseTermsLink2Url} onChange={e => setPurchaseTermsLink2Url(e.target.value)} placeholder="https://example.com/privacy" className="mt-1 text-sm h-8" />
+          </div>
+        </div>
+      </div>
       <Button
         className="bg-[#189aa1] hover:bg-[#147f86] text-white"
         disabled={saving}
@@ -2229,6 +2272,11 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           sendEnrollmentEmail,
           playerColor: playerColor || null,
           customLabels: buildCustomLabels(),
+          purchaseTermsAgreement: purchaseTermsAgreement.trim() || null,
+          purchaseTermsLink1Label: purchaseTermsLink1Label.trim() || null,
+          purchaseTermsLink1Url: purchaseTermsLink1Url.trim() || null,
+          purchaseTermsLink2Label: purchaseTermsLink2Label.trim() || null,
+          purchaseTermsLink2Url: purchaseTermsLink2Url.trim() || null,
         })}
       >
         {saving ? "Saving..." : "Save Settings"}
@@ -3875,6 +3923,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
   const [showInstructor, setShowInstructor] = useState<"inherit" | "show" | "hide">(lesson.showInstructor ?? "inherit");
   const [isPrerequisite, setIsPrerequisite] = useState<boolean>(!!lesson.isPrerequisite);
   const [commentsEnabled, setCommentsEnabled] = useState<boolean>(!!(lesson as any).commentsEnabled);
+  const [countTowardCompletion, setCountTowardCompletion] = useState<boolean>(lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0);
   const [meetingLink, setMeetingLink] = useState<string>((lesson as any).meetingLink ?? "");
   const [liveStartAt, setLiveStartAt] = useState<string>((lesson as any).liveStartAt ? new Date((lesson as any).liveStartAt).toISOString().slice(0, 16) : "");
   const [liveEndAt, setLiveEndAt] = useState<string>((lesson as any).liveEndAt ? new Date((lesson as any).liveEndAt).toISOString().slice(0, 16) : "");
@@ -3899,6 +3948,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
     setShowInstructor(lessonShallow.showInstructor ?? "inherit");
     setIsPrerequisite(!!lessonShallow.isPrerequisite);
     setCommentsEnabled(!!(lessonShallow as any).commentsEnabled);
+    setCountTowardCompletion(lessonShallow.countTowardCompletion !== false && lessonShallow.countTowardCompletion !== 0);
     setMeetingLink((lessonShallow as any).meetingLink ?? "");
     setLiveStartAt((lessonShallow as any).liveStartAt ? new Date((lessonShallow as any).liveStartAt).toISOString().slice(0, 16) : "");
     setLiveEndAt((lessonShallow as any).liveEndAt ? new Date((lessonShallow as any).liveEndAt).toISOString().slice(0, 16) : "");
@@ -3949,6 +3999,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
       showInstructor,
       isPrerequisite,
       commentsEnabled,
+      countTowardCompletion,
       meetingLink: meetingLink.trim() || null,
       liveStartAt: liveStartAt ? new Date(liveStartAt).getTime() : null,
       liveEndAt: liveEndAt ? new Date(liveEndAt).getTime() : null,
@@ -4145,6 +4196,19 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <div className="flex items-center gap-2">
             <Switch checked={commentsEnabled} onCheckedChange={setCommentsEnabled} id="edit-comments-enabled" />
             <Label htmlFor="edit-comments-enabled" className="text-sm">Enable student discussion / comments on this lesson</Label>
+          </div>
+          {/* Count toward completion */}
+          <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between bg-gray-50">
+            <div className="space-y-0.5 flex-1 min-w-0 pr-4">
+              <p className="text-sm font-semibold text-gray-800">Count toward completion</p>
+              <p className="text-xs text-gray-500">When off, this lesson is excluded from the progress percentage and certificate eligibility check. Useful for optional or bonus lessons.</p>
+            </div>
+            <Switch
+              checked={countTowardCompletion}
+              onCheckedChange={v => { setCountTowardCompletion(v); setIsDirty(true); }}
+              id="edit-count-toward-completion"
+              className="shrink-0"
+            />
           </div>
           {/* Live meeting link */}
           <div className="border border-teal-100 rounded-lg p-4 space-y-2 bg-teal-50/40">

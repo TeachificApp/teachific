@@ -2537,6 +2537,12 @@ export const lmsCourses = mysqlTable("lms_courses", {
   playerSidebarBlocks: longtext("player_sidebar_blocks"),
   brand: varchar("brand", { length: 128 }),
   checkoutPageConfig: longtext("checkout_page_config"), // JSON string of CheckoutPageConfig
+  // Purchase Terms Override
+  purchaseTermsAgreement: varchar("purchase_terms_agreement", { length: 1024 }),
+  purchaseTermsLink1Label: varchar("purchase_terms_link1_label", { length: 255 }),
+  purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
+  purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
+  purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
