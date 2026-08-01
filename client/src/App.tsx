@@ -462,6 +462,10 @@ function AdminRouter() {
           <Route path="/admin/downloads/:productId/checkout-editor">{() => <Suspense fallback={null}><CheckoutPageEditorPage /></Suspense>}</Route>
           <Route path="/admin/downloads/analytics">{() => <Suspense fallback={null}><DownloadAnalyticsPage /></Suspense>}</Route>
 
+          {/* Org linking — must be in AdminRouter so main domain links work */}
+          <Route path="/link-organization" component={LinkOrganizationPage} />
+          <Route path="/org-link/accept" component={LinkOrganizationPage} />
+          <Route path="/create-organization" component={CreateOrganizationPage} />
           {/* 404 */}
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />

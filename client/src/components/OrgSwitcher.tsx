@@ -48,11 +48,13 @@ export function OrgSwitcher({ isCollapsed }: OrgSwitcherProps) {
     if (!hasOrganizations || id === orgId) { setOpen(false); return; }
     const org = adminOrgs.find((o: any) => o.id === id);
     setOpen(false);
-    // Linked orgs belong to a different admin — navigate to their subdomain
-    if (org?.isLinked && org?.slug) {
+    // Always navigate to the org's own subdomain so the subdomain context is set correctly.
+    // This handles both linked orgs and own orgs when switching from a subdomain.
+    if (org?.slug) {
       window.location.href = getOrgSubdomainUrl(org.slug, "/lms");
       return;
     }
+    // Fallback for orgs without a slug (shouldn't happen in practice)
     await setSelectedOrgId(id);
     window.location.href = "/lms";
   };
