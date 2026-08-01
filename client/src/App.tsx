@@ -747,6 +747,10 @@ function Router() {
     // if the blueprint query returns NOT_FOUND. The BlueprintLandingPage handles this gracefully.
     // However, to avoid breaking existing org subdomains, we use a URL param hint:
     // blueprint referral links always include ?ref=1 in the URL they generate.
+    // Special platform subdomains — not org school portals
+    if (subdomain === "studio-app") {
+      return <StudioDashboard />;
+    }
     const isBlueprintReferral = window.location.search.includes('ref=1') || 
       window.location.pathname === '/' && window.location.search.includes('blueprint');
     if (isBlueprintReferral) {
