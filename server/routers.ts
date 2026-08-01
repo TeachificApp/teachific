@@ -149,6 +149,7 @@ import { orgMergeRouter } from "./routers/orgMergeRouter";
 import { ipSharingRouter } from "./routers/ipSharingRouter";
 import { printfulAdminRouter, printfulPublicRouter } from "./routers/printfulRouter";
 import { printifyAdminRouter } from "./routers/printifyRouter";
+import { bookvaultAdminRouter } from "./routers/bookvaultAdminRouter";
 import { analyticsTrackRouter, analyticsAdminRouter } from "./routers/analyticsRouter";
 import { emailCampaignRouter } from "./routers/emailCampaignRouter";
 import { formBuilderRouter } from "./routers/formBuilderRouter";
@@ -278,6 +279,7 @@ export const appRouter = router({
   printfulAdmin: printfulAdminRouter,
   printfulPublic: printfulPublicRouter,
   printifyAdmin: printifyAdminRouter,
+  bookvaultAdmin: bookvaultAdminRouter,
   analyticsTrack: analyticsTrackRouter,
   analyticsAdmin: analyticsAdminRouter,
   emailCampaign: emailCampaignRouter,

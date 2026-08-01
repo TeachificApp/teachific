@@ -274,6 +274,9 @@ const navGroups: NavGroup[] = [
         adminOnly: true,
         subItems: [
           { label: "All Integrations", path: "/integrations" },
+          { label: "Printify", path: "/admin/printify" },
+          { label: "Printful", path: "/admin/printful" },
+          { label: "Bookvault", path: "/admin/bookvault" },
           { label: "Import from Thinkific", path: "/integrations/thinkific" },
           { label: "Import from Teachable", path: "/integrations/teachable" },
           { label: "Import from Kajabi", path: "/integrations/kajabi" },

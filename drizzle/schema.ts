@@ -3577,6 +3577,23 @@ export const physicalProducts = mysqlTable("physical_products", {
   landingFeatures: longtext("landing_features"),
   landingBlocks: longtext("landing_blocks"),
   orgId: int("org_id"),
+  // ── Printify fulfillment ──────────────────────────────────────────────────
+  printifyShopId: int("printify_shop_id"),
+  printifyProductId: varchar("printify_product_id", { length: 128 }),
+  printifyVariantId: int("printify_variant_id"),
+  printifyEnabled: boolean("printify_enabled").default(false).notNull(),
+  // ── Printful fulfillment ──────────────────────────────────────────────────
+  printfulStoreId: int("printful_store_id"),
+  printfulSyncProductId: int("printful_sync_product_id"),
+  printfulSyncVariantId: int("printful_sync_variant_id"),
+  printfulEnabled: boolean("printful_enabled").default(false).notNull(),
+  // ── Bookvault (print-on-demand books) ────────────────────────────────────
+  bookvaultEnabled: boolean("bookvault_enabled").default(false).notNull(),
+  bookvaultIsbn: varchar("bookvault_isbn", { length: 32 }),
+  // ── SEO / meta ────────────────────────────────────────────────────────────
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  metaImage: text("meta_image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -3884,6 +3901,22 @@ export const physicalProductOrders = mysqlTable("physical_product_orders", {
   trackingNumber: varchar("tracking_number", { length: 255 }),
   trackingCarrier: varchar("tracking_carrier", { length: 100 }),
   notes: text("notes"),
+  // ── Bookvault fulfillment tracking ────────────────────────────────────────
+  bookvaultDocRef: varchar("bookvault_doc_ref", { length: 64 }),
+  bookvaultPodRef: varchar("bookvault_pod_ref", { length: 64 }),
+  bookvaultStatus: varchar("bookvault_status", { length: 64 }),
+  bookvaultError: text("bookvault_error"),
+  bookvaultSubmittedAt: timestamp("bookvault_submitted_at"),
+  // ── Printify fulfillment tracking ─────────────────────────────────────────
+  printifyOrderId: varchar("printify_order_id", { length: 64 }),
+  printifyStatus: varchar("printify_status", { length: 64 }),
+  printifySubmittedAt: timestamp("printify_submitted_at"),
+  printifyError: text("printify_error"),
+  // ── Printful fulfillment tracking ─────────────────────────────────────────
+  printfulOrderId: varchar("printful_order_id", { length: 64 }),
+  printfulStatus: varchar("printful_status", { length: 64 }),
+  printfulSubmittedAt: timestamp("printful_submitted_at"),
+  printfulError: text("printful_error"),
   orderedAt: timestamp("ordered_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

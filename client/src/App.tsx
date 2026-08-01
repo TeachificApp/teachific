@@ -127,6 +127,7 @@ const LMSAdminPage = lazy(() => import("./pages/admin/LMSAdmin"));
 const MediaRepositoryPage = lazy(() => import("./pages/admin/MediaRepository"));
 const PrintfulAdminPage = lazy(() => import("./pages/admin/PrintfulAdmin"));
 const PrintifyAdminPage = lazy(() => import("./pages/admin/PrintifyAdmin"));
+const BookvaultAdminPage = lazy(() => import("./pages/admin/BookvaultAdmin"));
 const ProductAnalyticsPage = lazy(() => import("./pages/admin/ProductAnalytics"));
 const SitePageBuilderPage = lazy(() => import("./pages/admin/SitePageBuilder"));
 const SitePagesAdminPage = lazy(() => import("./pages/admin/SitePagesAdmin"));
@@ -645,6 +646,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/admin/contacts">{() => <Suspense fallback={null}><ContactsAdminPage /></Suspense>}</Route>
         <Route path="/admin/printful">{() => <Suspense fallback={null}><PrintfulAdminPage /></Suspense>}</Route>
         <Route path="/admin/printify">{() => <Suspense fallback={null}><PrintifyAdminPage /></Suspense>}</Route>
+        <Route path="/admin/bookvault">{() => <Suspense fallback={null}><BookvaultAdminPage /></Suspense>}</Route>
         <Route path="/admin/lms/site-pages/:pageId/edit">{() => <Suspense fallback={null}><SitePageBuilderPage /></Suspense>}</Route>
         <Route path="/admin/lms/site-pages">{() => <Suspense fallback={null}><SitePagesAdminPage /></Suspense>}</Route>
         <Route path="/admin/bundles/:bundleId/landing-builder">{() => <Suspense fallback={null}><BundleLandingPageBuilder /></Suspense>}</Route>
