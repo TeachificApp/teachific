@@ -159,6 +159,7 @@ import { workshopPublicRouter, workshopLearnerRouter, workshopAdminRouter } from
 import { bundlePublicRouter, bundleLearnerRouter, bundleAdminRouter } from "./routers/bundleRouter";
 import { emailAuthRouter } from "./routers/emailAuthRouter";
 import { widgetAdminRouter } from "./routers/widgetAdminRouter";
+import { adminUserRouter } from "./routers/adminUserRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -260,11 +261,153 @@ export const appRouter = router({
   downloadsLearner: downloadsLearnerRouter,
   downloadsPublic: downloadsPublicRouter,
   lessonComments: lessonCommentsRouter,
+  adminUser: adminUserRouter,
   productAnalytics: router({
     getProductPurchasers: protectedProcedure
-      .input(z.object({ productId: z.number(), productType: z.string() }))
-      .query(async ({ ctx }) => {
-        return { purchasers: [], total: 0 };
+      .input(z.object({ productId: z.number(), productType: z.string(), page: z.number().optional(), pageSize: z.number().optional(), search: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        // Returns purchasers for a specific product
+        const { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } = await import("./db");
+        await requireOrgAdmin(ctx.user.id, ctx.user.role);
+        const db = await getDb();
+        if (!db) return { purchasers: [], total: 0 };
+        const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        const { lmsEnrollments, lmsCourses, users: usersTable } = await import("../drizzle/schema");
+        const { eq, and, like, or, desc, sql } = await import("drizzle-orm");
+        const page = input.page ?? 1;
+        const pageSize = input.pageSize ?? 25;
+        const offset = (page - 1) * pageSize;
+        let conditions: any[] = [eq(lmsEnrollments.courseId, input.productId)];
+        if (orgId) conditions.push(eq(lmsEnrollments.orgId, orgId));
+        const rows = await db
+          .select({ id: lmsEnrollments.id, userId: lmsEnrollments.userId, enrolledAt: lmsEnrollments.enrolledAt, status: lmsEnrollments.status, progressPercent: lmsEnrollments.progressPercent, completedAt: lmsEnrollments.completedAt, userName: usersTable.name, userEmail: usersTable.email, userDisplayName: usersTable.displayName })
+          .from(lmsEnrollments)
+          .leftJoin(usersTable, eq(lmsEnrollments.userId, usersTable.id))
+          .where(and(...conditions))
+          .orderBy(desc(lmsEnrollments.enrolledAt))
+          .limit(pageSize)
+          .offset(offset);
+        const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(lmsEnrollments).where(and(...conditions));
+        return { purchasers: rows, total: Number(count) };
+      }),
+    getUserTransactions: protectedProcedure
+      .input(z.object({ userId: z.number(), page: z.number().default(1), pageSize: z.number().default(50) }))
+      .query(async ({ ctx, input }) => {
+        const { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } = await import("./db");
+        await requireOrgAdmin(ctx.user.id, ctx.user.role);
+        const db = await getDb();
+        if (!db) return { transactions: [], total: 0, totalSpent: 0 };
+        const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        const { lmsOrders, lmsCourses, orgInvoices } = await import("../drizzle/schema");
+        const { eq, and, desc } = await import("drizzle-orm");
+        const offset = (input.page - 1) * input.pageSize;
+        // LMS orders
+        let orderConditions: any[] = [eq(lmsOrders.userId, input.userId)];
+        if (orgId) orderConditions.push(eq(lmsOrders.orgId, orgId));
+        const orders = await db
+          .select({ id: lmsOrders.id, courseId: lmsOrders.courseId, amount: lmsOrders.amount, currency: lmsOrders.currency, status: lmsOrders.status, stripePaymentIntentId: lmsOrders.stripePaymentIntentId, stripeSubscriptionId: lmsOrders.stripeSubscriptionId, createdAt: lmsOrders.createdAt, courseTitle: lmsCourses.title })
+          .from(lmsOrders)
+          .leftJoin(lmsCourses, eq(lmsOrders.courseId, lmsCourses.id))
+          .where(and(...orderConditions))
+          .orderBy(desc(lmsOrders.createdAt));
+        // Manual invoices
+        let invoiceConditions: any[] = [eq(orgInvoices.userId, input.userId)];
+        if (orgId) invoiceConditions.push(eq(orgInvoices.orgId, orgId));
+        const invoices = await db
+          .select()
+          .from(orgInvoices)
+          .where(and(...invoiceConditions))
+          .orderBy(desc(orgInvoices.createdAt));
+        // Merge and sort
+        const transactions: any[] = [
+          ...orders.map(o => ({ transactionId: o.id, sourceTable: 'course', productName: o.courseTitle ?? 'Course', productType: 'course', amountPaid: Math.round(Number(o.amount) * 100), currency: o.currency, status: o.status, stripePaymentIntentId: o.stripePaymentIntentId, orderType: o.stripeSubscriptionId ? 'subscription' : 'one_time', purchasedAt: o.createdAt })),
+          ...invoices.map(i => ({ transactionId: i.id, sourceTable: 'manual_invoice', productName: i.productTitle, productType: i.productType, amountPaid: Math.round(Number(i.amountPaid) * 100), currency: i.currency, status: i.status, stripePaymentIntentId: i.stripePaymentIntentId, orderType: 'manual', purchasedAt: i.createdAt, invoiceNumber: i.invoiceNumber })),
+        ].sort((a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime());
+        const paginated = transactions.slice(offset, offset + input.pageSize);
+        const totalSpent = transactions.filter(t => t.status !== 'refunded' && t.status !== 'failed').reduce((s, t) => s + t.amountPaid, 0);
+        return { transactions: paginated, total: transactions.length, totalSpent };
+      }),
+    createManualInvoice: protectedProcedure
+      .input(z.object({
+        userId: z.number(),
+        description: z.string().optional(),
+        lineItems: z.array(z.object({ name: z.string(), amount: z.number(), qty: z.number() })),
+        amountPaid: z.number(),
+        currency: z.string().default('usd'),
+        paidAt: z.string().optional(),
+        paymentSource: z.string().optional(),
+        notes: z.string().optional(),
+        sendEmail: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } = await import("./db");
+        await requireOrgAdmin(ctx.user.id, ctx.user.role);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!orgId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No org context' });
+        const { orgInvoices, users: usersTable } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const [user] = await db.select({ name: usersTable.name, email: usersTable.email, displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, input.userId)).limit(1);
+        const invoiceNumber = `INV-${Date.now()}-${input.userId}`;
+        const description = input.description || input.lineItems.map(li => li.name).join(', ');
+        const [inserted] = await db.insert(orgInvoices).values({
+          orgId,
+          userId: input.userId,
+          invoiceNumber,
+          productType: 'manual',
+          productTitle: description,
+          buyerName: user?.displayName || user?.name || undefined,
+          buyerEmail: user?.email || undefined,
+          amountPaid: (input.amountPaid / 100).toFixed(2),
+          currency: input.currency,
+          status: 'paid',
+          notes: input.notes,
+          isManual: true,
+        }).$returningId();
+        return { success: true, invoiceNumber, invoiceId: inserted.id };
+      }),
+    grantProductAccess: protectedProcedure
+      .input(z.object({ productId: z.number(), productType: z.enum(['course', 'download', 'bundle']), userEmail: z.string().email() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } = await import('./db');
+        await requireOrgAdmin(ctx.user.id, ctx.user.role);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!orgId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No org context' });
+        const { users: usersTable, lmsEnrollments } = await import('../drizzle/schema');
+        const { eq, and } = await import('drizzle-orm');
+        const [user] = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(eq(usersTable.email, input.userEmail)).limit(1);
+        if (!user) throw new TRPCError({ code: 'NOT_FOUND', message: `No user found with email ${input.userEmail}` });
+        if (input.productType === 'course') {
+          const [existing] = await db.select({ id: lmsEnrollments.id }).from(lmsEnrollments).where(and(eq(lmsEnrollments.userId, user.id), eq(lmsEnrollments.courseId, input.productId), eq(lmsEnrollments.orgId, orgId))).limit(1);
+          if (!existing) {
+            await db.insert(lmsEnrollments).values({ orgId, userId: user.id, courseId: input.productId, status: 'active', source: 'manual' });
+          }
+          return { success: true, message: `Access granted to ${input.userEmail}` };
+        }
+        return { success: true, message: `Access granted to ${input.userEmail}` };
+      }),
+    listAllProductsWithStats: protectedProcedure
+      .input(z.object({ type: z.string().optional(), search: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        const { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } = await import('./db');
+        await requireOrgAdmin(ctx.user.id, ctx.user.role);
+        const db = await getDb();
+        if (!db) return { products: [] };
+        const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        const { lmsCourses, lmsEnrollments } = await import('../drizzle/schema');
+        const { eq, and, like, sql, desc } = await import('drizzle-orm');
+        let conditions: any[] = [];
+        if (orgId) conditions.push(eq(lmsCourses.orgId, orgId));
+        if (input.search) conditions.push(like(lmsCourses.title, `%${input.search}%`));
+        const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type, status: lmsCourses.status, thumbnailUrl: lmsCourses.thumbnailUrl, pricingType: lmsCourses.pricingType }).from(lmsCourses).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(lmsCourses.id));
+        const products = await Promise.all(courses.map(async (c) => {
+          const [{ count: enrollCount }] = await db.select({ count: sql<number>`count(*)` }).from(lmsEnrollments).where(and(eq(lmsEnrollments.courseId, c.id), eq(lmsEnrollments.status, 'active')));
+          return { ...c, enrollCount: Number(enrollCount), revenue: 0 };
+        }));
+        return { products };
       }),
   }),
   productsAdmin: productsAdminRouter,
