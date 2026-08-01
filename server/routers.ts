@@ -833,6 +833,47 @@ export const appRouter = router({
             subscription: subscription ?? null,
           };
         }
+        // Not a direct member — check if the user's org has an accepted link to this subdomain org
+        const subdomainOrgData = await getOrgBySlug(subdomain);
+        if (subdomainOrgData) {
+          const userOrgIds = rows.map(r => r.org.id);
+          if (userOrgIds.length > 0) {
+            const linkedRow = await db
+              .select()
+              .from(orgLinks)
+              .where(
+                and(
+                  eq(orgLinks.status, "accepted"),
+                  or(
+                    and(
+                      eq(orgLinks.linkedOrgId, subdomainOrgData.id),
+                      sql`${orgLinks.primaryOrgId} IN (${sql.raw(userOrgIds.join(","))})`
+                    ),
+                    and(
+                      eq(orgLinks.primaryOrgId, subdomainOrgData.id),
+                      sql`${orgLinks.linkedOrgId} IN (${sql.raw(userOrgIds.join(","))})`
+                    )
+                  )
+                )
+              )
+              .limit(1);
+            if (linkedRow.length > 0) {
+              // Use the user's highest role from their own orgs
+              const ROLE_PRIORITY_LINK: Record<string, number> = {
+                org_super_admin: 100, org_admin: 90, sub_admin: 70,
+                instructor: 60, group_manager: 50, group_member: 40, member: 20, user: 10,
+              };
+              const sortedRows = [...rows].sort((a, b) => (ROLE_PRIORITY_LINK[b.role] ?? 0) - (ROLE_PRIORITY_LINK[a.role] ?? 0));
+              const userRole = sortedRows[0]?.role ?? "org_admin";
+              const subscription = await getOrgSubscription(subdomainOrgData.id);
+              return {
+                org: subdomainOrgData,
+                role: userRole as "org_super_admin" | "org_admin" | "site_owner" | "site_admin" | "sub_admin" | "instructor" | "member" | "user",
+                subscription: subscription ?? null,
+              };
+            }
+          }
+        }
       }
       // Role priority: org_super_admin > org_admin > sub_admin > instructor > member/user
       const ROLE_PRIORITY: Record<string, number> = {
