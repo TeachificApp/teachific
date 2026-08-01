@@ -4867,3 +4867,14 @@
 - [x] Frontend: AIContentBlock component — prompt input → AI call → editable rich text output
 - [x] Frontend: AIContentBlock rendered in BlockPreview and BlockSettings
 - [x] Frontend: AIContentBlock rendered in LessonBlockEditor block list
+## Purchase Terms 3-Tier Hierarchy
+- [x] Schema: add purchaseTerms columns to orgPaymentSettings table
+- [x] Schema: purchaseTerms columns already exist on lmsCourses table
+- [x] Backend: extend updateOrgPaymentSettings to accept/save purchaseTerms fields
+- [x] Backend: extend getOrgPaymentSettings to return purchaseTerms fields
+- [x] Frontend: add Purchase Terms Override card to OrgSettingsPage Payment tab
+- [x] Backend: lmsCheckoutRouter imports orgPaymentSettings, resolves terms (course > org > platform)
+- [x] Frontend: HostedCheckoutPage renders resolved custom terms text with custom links
+## Lesson Settings Improvements
+- [x] Frontend: add Count toward completion toggle to lesson settings tab
+- [x] Frontend: add Purchase Terms Override section to course settings tab

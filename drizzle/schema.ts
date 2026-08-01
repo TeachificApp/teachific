@@ -1990,6 +1990,12 @@ export const orgPaymentSettings = mysqlTable("org_payment_settings", {
   invoicePrefix: varchar("invoicePrefix", { length: 20 }),
   nextInvoiceNumber: int("nextInvoiceNumber").default(1).notNull(),
   purchaseDescriptionTemplate: varchar("purchaseDescriptionTemplate", { length: 255 }),
+  // Org-level purchase terms override (overrides platform default; course-level overrides this)
+  purchaseTermsAgreement: varchar("purchase_terms_agreement", { length: 1024 }),
+  purchaseTermsLink1Label: varchar("purchase_terms_link1_label", { length: 255 }),
+  purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
+  purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
+  purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

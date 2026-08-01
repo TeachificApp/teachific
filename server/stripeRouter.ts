@@ -378,6 +378,11 @@ export const stripeRouter = router({
         invoicePrefix: settings.invoicePrefix ?? "",
         nextInvoiceNumber: settings.nextInvoiceNumber ?? 1,
         purchaseDescriptionTemplate: settings.purchaseDescriptionTemplate ?? "",
+        purchaseTermsAgreement: settings.purchaseTermsAgreement ?? "",
+        purchaseTermsLink1Label: settings.purchaseTermsLink1Label ?? "",
+        purchaseTermsLink1Url: settings.purchaseTermsLink1Url ?? "",
+        purchaseTermsLink2Label: settings.purchaseTermsLink2Label ?? "",
+        purchaseTermsLink2Url: settings.purchaseTermsLink2Url ?? "",
       };
     }),
 
@@ -395,6 +400,12 @@ export const stripeRouter = router({
         invoicePrefix: z.string().max(20).optional().nullable(),
         nextInvoiceNumber: z.number().int().min(1).optional(),
         purchaseDescriptionTemplate: z.string().max(255).optional().nullable(),
+        // Org-level purchase terms override
+        purchaseTermsAgreement: z.string().max(1024).optional().nullable(),
+        purchaseTermsLink1Label: z.string().max(255).optional().nullable(),
+        purchaseTermsLink1Url: z.string().max(1024).optional().nullable(),
+        purchaseTermsLink2Label: z.string().max(255).optional().nullable(),
+        purchaseTermsLink2Url: z.string().max(1024).optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -418,6 +429,11 @@ export const stripeRouter = router({
       if (input.invoicePrefix !== undefined) updateData.invoicePrefix = input.invoicePrefix || null;
       if (input.nextInvoiceNumber !== undefined) updateData.nextInvoiceNumber = input.nextInvoiceNumber;
       if (input.purchaseDescriptionTemplate !== undefined) updateData.purchaseDescriptionTemplate = input.purchaseDescriptionTemplate || null;
+      if (input.purchaseTermsAgreement !== undefined) updateData.purchaseTermsAgreement = input.purchaseTermsAgreement || null;
+      if (input.purchaseTermsLink1Label !== undefined) updateData.purchaseTermsLink1Label = input.purchaseTermsLink1Label || null;
+      if (input.purchaseTermsLink1Url !== undefined) updateData.purchaseTermsLink1Url = input.purchaseTermsLink1Url || null;
+      if (input.purchaseTermsLink2Label !== undefined) updateData.purchaseTermsLink2Label = input.purchaseTermsLink2Label || null;
+      if (input.purchaseTermsLink2Url !== undefined) updateData.purchaseTermsLink2Url = input.purchaseTermsLink2Url || null;
       if (Object.keys(updateData).length > 0) {
         await db
           .update(orgPaymentSettings)

@@ -39,6 +39,7 @@ import {
   workshops,
   workshopRegistrations,
   bundles,
+  orgPaymentSettings,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
 import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
@@ -374,11 +375,23 @@ export const lmsCheckoutPublicRouter = router({
       if (!content.isAvailable) throw new TRPCError({ code: "NOT_FOUND", message: "Content not available" });
 
       // Fetch org
-      const [org] = await db.select().from(organizations)
+            const [org] = await db.select().from(organizations)
         .where(eq(organizations.id, content.orgId)).limit(1);
-
       // Platform settings for terms/privacy fallback
       const [settings] = await db.select().from(platformSettings).limit(1);
+      // Org-level purchase terms (overrides platform default; course-level overrides this)
+      const [orgPaySettings] = await db.select().from(orgPaymentSettings)
+        .where(eq(orgPaymentSettings.orgId, content.orgId)).limit(1);
+      // Course-level purchase terms (only for course content type)
+      const courseRow = input.contentType === "course"
+        ? await db.select({ purchaseTermsAgreement: lmsCourses.purchaseTermsAgreement, purchaseTermsLink1Label: lmsCourses.purchaseTermsLink1Label, purchaseTermsLink1Url: lmsCourses.purchaseTermsLink1Url, purchaseTermsLink2Label: lmsCourses.purchaseTermsLink2Label, purchaseTermsLink2Url: lmsCourses.purchaseTermsLink2Url }).from(lmsCourses).where(eq(lmsCourses.id, content.id)).limit(1).then((r: any[]) => r[0] ?? null)
+        : null;
+      // Resolve terms: course > org > platform (termsUrl/privacyUrl as fallback)
+      const resolvedTermsAgreement = courseRow?.purchaseTermsAgreement || orgPaySettings?.purchaseTermsAgreement || null;
+      const resolvedTermsLink1Label = courseRow?.purchaseTermsLink1Label || orgPaySettings?.purchaseTermsLink1Label || null;
+      const resolvedTermsLink1Url = courseRow?.purchaseTermsLink1Url || orgPaySettings?.purchaseTermsLink1Url || (settings as any)?.termsUrl || null;
+      const resolvedTermsLink2Label = courseRow?.purchaseTermsLink2Label || orgPaySettings?.purchaseTermsLink2Label || null;
+      const resolvedTermsLink2Url = courseRow?.purchaseTermsLink2Url || orgPaySettings?.purchaseTermsLink2Url || (settings as any)?.privacyUrl || null;
 
       // Checkout page config
       const checkoutPageRow = await getCheckoutPageRow(db, input.contentType, content.id);
@@ -435,6 +448,12 @@ export const lmsCheckoutPublicRouter = router({
           privacyUrl: (settings as any)?.privacyUrl ?? null,
           termsOfService: org.termsOfService ?? (settings as any)?.termsOfService ?? null,
           privacyPolicy: org.privacyPolicy ?? (settings as any)?.privacyPolicy ?? null,
+          // Resolved purchase terms (3-tier: course > org > platform)
+          purchaseTermsAgreement: resolvedTermsAgreement,
+          purchaseTermsLink1Label: resolvedTermsLink1Label,
+          purchaseTermsLink1Url: resolvedTermsLink1Url,
+          purchaseTermsLink2Label: resolvedTermsLink2Label,
+          purchaseTermsLink2Url: resolvedTermsLink2Url,
         } : null,
         checkoutConfig,
         hasAccess,

@@ -2151,6 +2151,12 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
   const [invoicePrefix, setInvoicePrefix] = useState("");
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState(1);
   const [purchaseDescriptionTemplate, setPurchaseDescriptionTemplate] = useState("");
+  // Org-level purchase terms override
+  const [orgTermsAgreement, setOrgTermsAgreement] = useState("");
+  const [orgTermsLink1Label, setOrgTermsLink1Label] = useState("");
+  const [orgTermsLink1Url, setOrgTermsLink1Url] = useState("");
+  const [orgTermsLink2Label, setOrgTermsLink2Label] = useState("");
+  const [orgTermsLink2Url, setOrgTermsLink2Url] = useState("");
 
   const { data: paymentSettings, isLoading } = trpc.billing.getOrgPaymentSettings.useQuery(
     { orgId: orgId! },
@@ -2179,6 +2185,11 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
       setInvoicePrefix((paymentSettings as any).invoicePrefix ?? "");
       setNextInvoiceNumber((paymentSettings as any).nextInvoiceNumber ?? 1);
       setPurchaseDescriptionTemplate((paymentSettings as any).purchaseDescriptionTemplate ?? "");
+      setOrgTermsAgreement((paymentSettings as any).purchaseTermsAgreement ?? "");
+      setOrgTermsLink1Label((paymentSettings as any).purchaseTermsLink1Label ?? "");
+      setOrgTermsLink1Url((paymentSettings as any).purchaseTermsLink1Url ?? "");
+      setOrgTermsLink2Label((paymentSettings as any).purchaseTermsLink2Label ?? "");
+      setOrgTermsLink2Url((paymentSettings as any).purchaseTermsLink2Url ?? "");
       setInitialized(true);
     }
   }, [paymentSettings, initialized]);
@@ -2205,6 +2216,11 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
       invoicePrefix: invoicePrefix || null,
       nextInvoiceNumber,
       purchaseDescriptionTemplate: purchaseDescriptionTemplate || null,
+      purchaseTermsAgreement: orgTermsAgreement || null,
+      purchaseTermsLink1Label: orgTermsLink1Label || null,
+      purchaseTermsLink1Url: orgTermsLink1Url || null,
+      purchaseTermsLink2Label: orgTermsLink2Label || null,
+      purchaseTermsLink2Url: orgTermsLink2Url || null,
     });
   };
 
@@ -2462,6 +2478,92 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
               {saveSettings.isPending ? "Saving..." : <><Check className="h-4 w-4" /> Save Invoice Settings</>}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Org-level Purchase Terms Override ─────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: "#24abbc15" }}>
+              <FileText className="h-5 w-5" style={{ color: "#24abbc" }} />
+            </div>
+            <div>
+              <CardTitle className="text-base">Purchase Terms Override</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Override the checkout terms checkbox text for all courses in this org. Leave blank to use the platform-level default.
+                Individual course settings override this.
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {isLoading ? (
+            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="orgTermsAgreement">Agreement sentence</Label>
+                <Input
+                  id="orgTermsAgreement"
+                  placeholder="e.g. I have reviewed and agree to the"
+                  value={orgTermsAgreement}
+                  onChange={e => setOrgTermsAgreement(e.target.value)}
+                  maxLength={1024}
+                />
+                <p className="text-xs text-muted-foreground">Text before the two links.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="orgTermsLink1Label">Link 1 label</Label>
+                  <Input
+                    id="orgTermsLink1Label"
+                    placeholder="e.g. Terms of Service"
+                    value={orgTermsLink1Label}
+                    onChange={e => setOrgTermsLink1Label(e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="orgTermsLink1Url">Link 1 URL</Label>
+                  <Input
+                    id="orgTermsLink1Url"
+                    placeholder="https://example.com/terms"
+                    value={orgTermsLink1Url}
+                    onChange={e => setOrgTermsLink1Url(e.target.value)}
+                    maxLength={1024}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="orgTermsLink2Label">Link 2 label</Label>
+                  <Input
+                    id="orgTermsLink2Label"
+                    placeholder="e.g. Privacy Policy"
+                    value={orgTermsLink2Label}
+                    onChange={e => setOrgTermsLink2Label(e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="orgTermsLink2Url">Link 2 URL</Label>
+                  <Input
+                    id="orgTermsLink2Url"
+                    placeholder="https://example.com/privacy"
+                    value={orgTermsLink2Url}
+                    onChange={e => setOrgTermsLink2Url(e.target.value)}
+                    maxLength={1024}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button onClick={handleSave} disabled={saveSettings.isPending} className="gap-2">
+                  {saveSettings.isPending ? "Saving..." : <><Check className="h-4 w-4" /> Save Terms Settings</>}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </TabsContent>

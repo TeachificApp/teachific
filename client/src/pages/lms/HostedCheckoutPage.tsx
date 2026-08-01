@@ -619,7 +619,7 @@ export default function HostedCheckoutPage() {
               </div>
             )}
 
-            {/* Terms */}
+            {/* Terms — 3-tier: course > org > platform */}
             <div className="flex items-start gap-2.5">
               <Checkbox
                 id="terms"
@@ -628,18 +628,38 @@ export default function HostedCheckoutPage() {
                 className="mt-0.5"
               />
               <Label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                I agree to the{" "}
-                {org?.termsUrl ? (
-                  <a href={org.termsUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
-                    Terms of Service
-                  </a>
-                ) : "Terms of Service"}{" "}
-                and{" "}
-                {org?.privacyUrl ? (
-                  <a href={org.privacyUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
-                    Privacy Policy
-                  </a>
-                ) : "Privacy Policy"}.
+                {(org as any)?.purchaseTermsAgreement ? (
+                  <>
+                    {(org as any).purchaseTermsAgreement}{" "}
+                    {(org as any)?.purchaseTermsLink1Url && (
+                      <a href={(org as any).purchaseTermsLink1Url} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                        {(org as any).purchaseTermsLink1Label || "Terms"}
+                      </a>
+                    )}
+                    {(org as any)?.purchaseTermsLink1Url && (org as any)?.purchaseTermsLink2Url && " and "}
+                    {(org as any)?.purchaseTermsLink2Url && (
+                      <a href={(org as any).purchaseTermsLink2Url} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                        {(org as any).purchaseTermsLink2Label || "Privacy Policy"}
+                      </a>
+                    )}
+                    .
+                  </>
+                ) : (
+                  <>
+                    I agree to the{" "}
+                    {org?.termsUrl ? (
+                      <a href={org.termsUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                        Terms of Service
+                      </a>
+                    ) : "Terms of Service"}{" "}
+                    and{" "}
+                    {org?.privacyUrl ? (
+                      <a href={org.privacyUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+                        Privacy Policy
+                      </a>
+                    ) : "Privacy Policy"}.
+                  </>
+                )}
               </Label>
             </div>
 
