@@ -6,19 +6,11 @@ import { getSubdomain } from "@/hooks/useSubdomain";
 /**
  * useOrgScope — resolves the active org for the current user.
  *
- * Subdomain override (highest priority):
- *   - If on an org subdomain (e.g. myorg.teachific.app), auto-select that org
- *     by matching the slug, ignoring any saved activeOrgPref.
- *
- * Platform admins (site_owner / site_admin):
- *   - Fetches ALL orgs via platformAdmin.listOrgs
- *   - Also fetches accepted org links and merges linked orgs into the list
- *   - Auto-selects the org with isPrimary = true (platform school org)
- *
- * Regular users (org_admin / user):
- *   - Fetches their own orgs via orgs.myOrgs
- *   - Also fetches accepted org links and merges linked orgs into the list
- *   - Auto-selects the first one
+ * Priority order:
+ * 1. Subdomain override: if on an org subdomain (e.g. myorg.teachific.app),
+ *    always use that org's ID regardless of saved preferences.
+ * 2. Saved activeOrgPref: if the user has a saved active org preference.
+ * 3. Default: first org in the list.
  */
 export function useOrgScope() {
   const { user } = useAuth();
@@ -51,16 +43,21 @@ export function useOrgScope() {
     enabled: !!user && !isPlatformAdmin,
   });
 
-  // Active org preference from server (ignored when on a subdomain)
+  // Active org preference from server (only used when NOT on a subdomain)
   const { data: activeOrgPref } = trpc.orgs.getActiveOrg.useQuery(undefined, {
     enabled: !!user && !subdomainSlug,
   });
 
+  // Determine the "primary" org ID for linked-orgs lookup.
+  // On a subdomain: use the subdomain org's ID so we get its links.
+  // Otherwise: use selectedOrgId.
+  const linkedOrgsQueryId = selectedOrgId;
+
   // Linked orgs for the currently selected org (accepted links only)
   const { data: linkedOrgsData } = trpc.orgs.link.list.useQuery(
-    { orgId: selectedOrgId! },
+    { orgId: linkedOrgsQueryId! },
     {
-      enabled: !!selectedOrgId && (isPlatformAdmin || !!(myAdminOrgs && myAdminOrgs.length > 0)),
+      enabled: !!linkedOrgsQueryId && (isPlatformAdmin || !!(myAdminOrgs && myAdminOrgs.length > 0)),
     }
   );
 
@@ -74,22 +71,33 @@ export function useOrgScope() {
 
   // Merge linked orgs into adminOrgs (deduplicated by id)
   const adminOrgs = useMemo(() => {
-    if (!linkedOrgsData || linkedOrgsData.length === 0) return baseAdminOrgs;
-    const existingIds = new Set(baseAdminOrgs.map((o: any) => o.id));
-    const extras = linkedOrgsData
-      .map((l: any) => ({ ...l.linkedOrg, isLinked: true }))
-      .filter((o: any) => o && !existingIds.has(o.id));
+    const extras: any[] = [];
+    if (linkedOrgsData && linkedOrgsData.length > 0) {
+      const existingIds = new Set(baseAdminOrgs.map((o: any) => o.id));
+      linkedOrgsData
+        .map((l: any) => ({ ...l.linkedOrg, isLinked: true }))
+        .filter((o: any) => o && !existingIds.has(o.id))
+        .forEach((o: any) => extras.push(o));
+    }
+    // Also include subdomainOrg if it's not already in the list
+    if (subdomainOrg) {
+      const allIds = new Set([...baseAdminOrgs.map((o: any) => o.id), ...extras.map((o: any) => o.id)]);
+      if (!allIds.has(subdomainOrg.id)) {
+        extras.push({ ...subdomainOrg, isLinked: true });
+      }
+    }
     return [...baseAdminOrgs, ...extras];
-  }, [baseAdminOrgs, linkedOrgsData]);
+  }, [baseAdminOrgs, linkedOrgsData, subdomainOrg]);
 
-  // Subdomain override: always select the org matching the current subdomain slug
+  // ── Subdomain override (highest priority) ──
+  // When on an org subdomain, always force selectedOrgId to that org's ID.
   useEffect(() => {
-    if (!subdomainOrg || !subdomainSlug) return;
+    if (!subdomainSlug || !subdomainOrg) return;
     if (selectedOrgId === subdomainOrg.id) return;
     setSelectedOrgIdState(subdomainOrg.id);
-  }, [subdomainOrg, subdomainSlug, selectedOrgId]);
+  }, [subdomainSlug, subdomainOrg, selectedOrgId]);
 
-  // Auto-select for platform admins (skipped when subdomain override is active)
+  // ── Auto-select for platform admins (no subdomain) ──
   useEffect(() => {
     if (subdomainSlug) return; // subdomain takes priority
     if (!isPlatformAdmin || !allOrgs || allOrgs.length === 0) return;
@@ -102,7 +110,7 @@ export function useOrgScope() {
     setSelectedOrgIdState(primary ? primary.id : (allOrgs as any[])[0].id);
   }, [isPlatformAdmin, allOrgs, selectedOrgId, activeOrgPref, adminOrgs, subdomainSlug]);
 
-  // Auto-select for org admins (skipped when subdomain override is active)
+  // ── Auto-select for org admins (no subdomain) ──
   useEffect(() => {
     if (subdomainSlug) return; // subdomain takes priority
     if (isPlatformAdmin || !myAdminOrgs || myAdminOrgs.length === 0) return;
@@ -114,7 +122,7 @@ export function useOrgScope() {
     setSelectedOrgIdState((myAdminOrgs as any[])[0].id);
   }, [isPlatformAdmin, myAdminOrgs, selectedOrgId, activeOrgPref, adminOrgs, subdomainSlug]);
 
-  // Fallback for regular members (skipped when subdomain override is active)
+  // ── Fallback for regular members (no subdomain) ──
   useEffect(() => {
     if (subdomainSlug) return; // subdomain takes priority
     if (isPlatformAdmin) return;
@@ -130,7 +138,6 @@ export function useOrgScope() {
       try {
         await setActiveOrg.mutateAsync({ orgId });
         utils.orgs.getActiveOrg.invalidate();
-        // Refresh linked orgs for the new active org
         utils.orgs.link.list.invalidate({ orgId });
       } catch { /* non-critical */ }
     }
