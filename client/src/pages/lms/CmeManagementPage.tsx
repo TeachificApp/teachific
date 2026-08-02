@@ -136,7 +136,7 @@ function CmeFormsList({ onSelect }: { onSelect: (courseId: number, courseTitle: 
                   </span>
                 </TableCell>
                 <TableCell>
-                  <CmeStatusBadge status={item.form?.cardioservStatus} />
+                  <CmeStatusBadge status={item.form?.cmeStatus} />
                 </TableCell>
                 <TableCell>
                   <span className="text-xs text-slate-500">
@@ -189,7 +189,7 @@ function CmeFormEditor({
   const emailInitialized = useRef(false);
   if (formData && !emailInitialized.current) {
     emailInitialized.current = true;
-    const orgName = formData.org?.cardioservOrgName ?? formData.org?.name ?? "Our Organization";
+    const orgName = formData.org?.cmeOrgName ?? formData.org?.name ?? "Our Organization";
     const title = formData.form?.activityTitle ?? courseTitle;
     setEmailSubject(`CME Activity Planning Form — ${title}`);
     setEmailBody(
@@ -216,7 +216,7 @@ function CmeFormEditor({
     onError: (e) => toast.error(e.message),
   });
 
-  const sendToCardioserv = trpc.cme.sendToCardioserv.useMutation({
+  const sendToCme = trpc.cme.sendToCme.useMutation({
     onSuccess: () => {
       utils.cme.getCmeActivityForm.invalidate({ courseId });
       utils.cme.listCmeActivityForms.invalidate({});
@@ -302,7 +302,7 @@ function CmeFormEditor({
     );
   }
 
-  const isApproved = formData?.form?.cardioservStatus === "approved";
+  const isApproved = formData?.form?.cmeStatus === "approved";
 
   return (
     <div className="space-y-5">
@@ -316,7 +316,7 @@ function CmeFormEditor({
           <div>
             <h2 className="text-lg font-semibold text-slate-800">{courseTitle}</h2>
             <div className="flex items-center gap-2 mt-0.5">
-              <CmeStatusBadge status={formData?.form?.cardioservStatus} />
+              <CmeStatusBadge status={formData?.form?.cmeStatus} />
               {formData?.form?.lastSentAt && (
                 <span className="text-xs text-slate-400">
                   Last sent {new Date(formData.form.lastSentAt).toLocaleDateString()}
@@ -705,13 +705,13 @@ function CmeFormEditor({
               onClick={() => {
                 // Save first, then send
                 saveForm.mutate({ courseId, data: formFields as any });
-                sendToCardioserv.mutate({ courseId, subject: emailSubject, body: emailBody });
+                sendToCme.mutate({ courseId, subject: emailSubject, body: emailBody });
               }}
-              disabled={sendToCardioserv.isPending || !emailSubject.trim()}
+              disabled={sendToCme.isPending || !emailSubject.trim()}
               className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
-              {sendToCardioserv.isPending ? "Sending…" : "Send to CardioServ"}
+              {sendToCme.isPending ? "Sending…" : "Send to CardioServ"}
             </Button>
           </DialogFooter>
         </DialogContent>

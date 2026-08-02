@@ -53,11 +53,11 @@ async function assertCmeEnabled(orgId: number, platformRole: string): Promise<vo
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   const [org] = await db
-    .select({ cardioservCmeEnabled: organizations.cardioservCmeEnabled })
+    .select({ cmeEnabled: organizations.cmeEnabled })
     .from(organizations)
     .where(eq(organizations.id, orgId))
     .limit(1);
-  if (!org?.cardioservCmeEnabled) {
+  if (!org?.cmeEnabled) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "CardioServ CME processing is not enabled for this organisation. Contact your platform administrator.",
@@ -296,9 +296,9 @@ export const cmeActivityFormRouter = router({
           slug: organizations.slug,
           logoUrl: organizations.logoUrl,
           isActive: organizations.isActive,
-          cardioservCmeEnabled: organizations.cardioservCmeEnabled,
-          cardioservContactEmail: organizations.cardioservContactEmail,
-          cardioservOrgName: organizations.cardioservOrgName,
+          cmeEnabled: organizations.cmeEnabled,
+          cmeContactEmail: organizations.cmeContactEmail,
+          cmeOrgName: organizations.cmeOrgName,
           createdAt: organizations.createdAt,
         })
         .from(organizations)
@@ -320,7 +320,7 @@ export const cmeActivityFormRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db
         .update(organizations)
-        .set({ cardioservCmeEnabled: input.enabled } as any)
+        .set({ cmeEnabled: input.enabled } as any)
         .where(eq(organizations.id, input.orgId));
       return { success: true };
     }),
@@ -329,8 +329,8 @@ export const cmeActivityFormRouter = router({
   updateOrgCmeConfig: protectedProcedure
     .input(z.object({
       orgId: z.number().int().positive(),
-      cardioservContactEmail: z.string().email().optional().nullable(),
-      cardioservOrgName: z.string().max(255).optional().nullable(),
+      cmeContactEmail: z.string().email().optional().nullable(),
+      cmeOrgName: z.string().max(255).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
@@ -341,8 +341,8 @@ export const cmeActivityFormRouter = router({
       await db
         .update(organizations)
         .set({
-          cardioservContactEmail: input.cardioservContactEmail ?? null,
-          cardioservOrgName: input.cardioservOrgName ?? null,
+          cmeContactEmail: input.cmeContactEmail ?? null,
+          cmeOrgName: input.cmeOrgName ?? null,
         } as any)
         .where(eq(organizations.id, input.orgId));
       return { success: true };
@@ -387,7 +387,7 @@ export const cmeActivityFormRouter = router({
           attestationDate: cmeActivityForms.attestationDate,
           updatedAt: cmeActivityForms.updatedAt,
           lastSentAt: cmeActivityForms.lastSentAt,
-          cardioservStatus: cmeActivityForms.cardioservStatus,
+          cmeStatus: cmeActivityForms.cmeStatus,
           approvedAt: cmeActivityForms.approvedAt,
         })
         .from(cmeActivityForms)
@@ -404,9 +404,9 @@ export const cmeActivityFormRouter = router({
           form.learningObjectives?.trim() &&
           form.attestationDate?.trim());
         const isStarted = !!form;
-        let cardioservStatus = form?.cardioservStatus ?? "draft";
-        if (cardioservStatus === "approved" && form?.approvedAt && (now - form.approvedAt) > TWO_YEARS_MS) {
-          cardioservStatus = "expired";
+        let cmeStatus = form?.cmeStatus ?? "draft";
+        if (cmeStatus === "approved" && form?.approvedAt && (now - form.approvedAt) > TWO_YEARS_MS) {
+          cmeStatus = "expired";
         }
         return {
           ...course,
@@ -414,7 +414,7 @@ export const cmeActivityFormRouter = router({
           formUpdatedAt: form?.updatedAt ?? null,
           formProposedDate: form?.proposedDate ?? null,
           lastSentAt: form?.lastSentAt ?? null,
-          cardioservStatus,
+          cmeStatus,
           approvedAt: form?.approvedAt ?? null,
         };
       });
@@ -435,7 +435,7 @@ export const cmeActivityFormRouter = router({
 
       // Get org info for defaults
       const [org] = await db
-        .select({ name: organizations.name, cardioservOrgName: organizations.cardioservOrgName })
+        .select({ name: organizations.name, cmeOrgName: organizations.cmeOrgName })
         .from(organizations)
         .where(eq(organizations.id, orgId))
         .limit(1);
@@ -461,7 +461,7 @@ export const cmeActivityFormRouter = router({
 
       const titleCreditMatch = course.title?.match(/(\d+(?:\.\d+)?)\s*(?:CME|CE|credit)/i);
       const derivedCredits = course.creditHours ?? (titleCreditMatch ? titleCreditMatch[1] : "");
-      const orgDisplayName = org?.cardioservOrgName ?? org?.name ?? "Our Organization";
+      const orgDisplayName = org?.cmeOrgName ?? org?.name ?? "Our Organization";
 
       const defaults = {
         id: null,
@@ -502,7 +502,7 @@ export const cmeActivityFormRouter = router({
         createdAt: null,
         updatedAt: null,
         lastSentAt: null,
-        cardioservStatus: "draft",
+        cmeStatus: "draft",
         approvedAt: null,
       };
 
@@ -523,11 +523,11 @@ export const cmeActivityFormRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [org] = await db
-        .select({ name: organizations.name, cardioservOrgName: organizations.cardioservOrgName })
+        .select({ name: organizations.name, cmeOrgName: organizations.cmeOrgName })
         .from(organizations)
         .where(eq(organizations.id, orgId))
         .limit(1);
-      const orgName = org?.cardioservOrgName ?? org?.name ?? "Our Organization";
+      const orgName = org?.cmeOrgName ?? org?.name ?? "Our Organization";
       const generated = await aiGenerateCmeContent(input.courseTitle, input.creditHours ?? null, orgName);
       return generated;
     }),
@@ -585,7 +585,7 @@ export const cmeActivityFormRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const [org] = await db
-        .select({ name: organizations.name, cardioservOrgName: organizations.cardioservOrgName })
+        .select({ name: organizations.name, cmeOrgName: organizations.cmeOrgName })
         .from(organizations)
         .where(eq(organizations.id, orgId))
         .limit(1);
@@ -606,7 +606,7 @@ export const cmeActivityFormRouter = router({
         ))
         .limit(1);
 
-      const orgName = org?.cardioservOrgName ?? org?.name ?? "Organization";
+      const orgName = org?.cmeOrgName ?? org?.name ?? "Organization";
       const formData = existing ?? { activityTitle: course.title };
       const htmlBuffer = await generateCmePdfBuffer(formData as any, orgName);
 
@@ -634,8 +634,8 @@ export const cmeActivityFormRouter = router({
       const [org] = await db
         .select({
           name: organizations.name,
-          cardioservOrgName: organizations.cardioservOrgName,
-          cardioservContactEmail: organizations.cardioservContactEmail,
+          cmeOrgName: organizations.cmeOrgName,
+          cmeContactEmail: organizations.cmeContactEmail,
           customSenderEmail: organizations.customSenderEmail,
           customSenderName: organizations.customSenderName,
         })
@@ -659,7 +659,7 @@ export const cmeActivityFormRouter = router({
         ))
         .limit(1);
 
-      const orgName = org?.cardioservOrgName ?? org?.name ?? "Organization";
+      const orgName = org?.cmeOrgName ?? org?.name ?? "Organization";
       const formData = form ?? { activityTitle: course.title };
       const htmlBuffer = await generateCmePdfBuffer(formData as any, orgName);
 
@@ -670,8 +670,8 @@ export const cmeActivityFormRouter = router({
       const ccList: Array<{ name: string; email: string }> = [
         { name: "Judith Buckland", email: "j.buckland@cardioserv.net" },
       ];
-      if (org?.cardioservContactEmail) {
-        ccList.push({ name: senderName, email: org.cardioservContactEmail });
+      if (org?.cmeContactEmail) {
+        ccList.push({ name: senderName, email: org.cmeContactEmail });
       }
 
       const htmlBody = `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body style="font-family:Arial,sans-serif;font-size:15px;color:#1e293b;line-height:1.7;max-width:640px;margin:0 auto;padding:24px;">
@@ -758,7 +758,7 @@ ${input.body.split('\n').map(line => line.trim() ? `<p style="margin:0 0 12px;">
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const approvedAt = input.status === "approved" ? Date.now() : null;
       await db.update(cmeActivityForms)
-        .set({ cardioservStatus: input.status, approvedAt } as any)
+        .set({ cmeStatus: input.status, approvedAt } as any)
         .where(and(
           eq(cmeActivityForms.orgId, orgId),
           eq(cmeActivityForms.courseId, input.courseId)
@@ -772,20 +772,20 @@ ${input.body.split('\n').map(line => line.trim() ? `<p style="margin:0 0 12px;">
     .query(async ({ ctx, input }) => {
       const orgId = await resolveOrgId(ctx.user.id, ctx.user.role, input.orgId);
       const db = await getDb();
-      if (!db) return { enabled: false, cardioservOrgName: null, cardioservContactEmail: null };
+      if (!db) return { enabled: false, cmeOrgName: null, cmeContactEmail: null };
       const [org] = await db
         .select({
-          cardioservCmeEnabled: organizations.cardioservCmeEnabled,
-          cardioservOrgName: organizations.cardioservOrgName,
-          cardioservContactEmail: organizations.cardioservContactEmail,
+          cmeEnabled: organizations.cmeEnabled,
+          cmeOrgName: organizations.cmeOrgName,
+          cmeContactEmail: organizations.cmeContactEmail,
         })
         .from(organizations)
         .where(eq(organizations.id, orgId))
         .limit(1);
       return {
-        enabled: !!(org as any)?.cardioservCmeEnabled,
-        cardioservOrgName: (org as any)?.cardioservOrgName ?? null,
-        cardioservContactEmail: (org as any)?.cardioservContactEmail ?? null,
+        enabled: !!(org as any)?.cmeEnabled,
+        cmeOrgName: (org as any)?.cmeOrgName ?? null,
+        cmeContactEmail: (org as any)?.cmeContactEmail ?? null,
       };
     }),
 

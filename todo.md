@@ -4919,3 +4919,12 @@
 - [x] Add CME tab to WorkshopsAdmin
 - [x] Add CME tab to DigitalDownloadsAdmin
 - [x] Add CME tab to BundlesAdmin
+
+## CME Variable Rename (cardioserv → cme)
+- [x] Rename DB columns: cardioservCmeEnabled → cmeEnabled, cardioservOrgName → cmeOrgName, cardioservContactEmail → cmeContactEmail (organizations table)
+- [x] Rename DB column: cardioservStatus → cmeStatus (cme_activity_forms table)
+- [x] Add cmeEnabled, cmeOrgName, cmeContactEmail columns to organizations table in schema.ts
+- [x] Rename cmeStatus column in cmeActivityForms in schema.ts
+- [x] Rename all cardioserv variable/property names in cmeActivityFormRouter.ts
+- [x] Rename procedure names: sendToCardioserv → sendToCme, toggleOrgCardioserv → toggleOrgCme, updateOrgCardioservConfig → updateOrgCmeConfig, listOrgsWithCardioservStatus → listOrgsWithCmeStatus
+- [x] Rename all cardioserv variable names in CmeFormTab.tsx, CmeActivityFormDialog.tsx, CmeSettingsSection.tsx, PlatformAdminPage.tsx, CmeManagementPage.tsx

@@ -123,6 +123,10 @@ export const organizations = mysqlTable("organizations", {
   printifyApiKey: text("printifyApiKey"),
   printfulApiKey: text("printfulApiKey"),
   bookvaultApiKey: text("bookvaultApiKey"),
+  // CME Processing (enabled per-org by platform admin)
+  cmeEnabled: boolean("cmeEnabled").default(false).notNull(),
+  cmeOrgName: varchar("cmeOrgName", { length: 255 }),
+  cmeContactEmail: varchar("cmeContactEmail", { length: 320 }),
   // Embed configuration
   embedAllowedDomains: text("embedAllowedDomains"), // JSON array of allowed domains
   embedDefaultTheme: mysqlEnum("embedDefaultTheme", ["light", "dark", "auto"]).default("auto").notNull(),
@@ -5872,7 +5876,7 @@ export const cmeActivityForms = mysqlTable("cme_activity_forms", {
   attestationDate: varchar("attestationDate", { length: 64 }),
   attestationTitle: varchar("attestationTitle", { length: 256 }),
   signatureDataUrl: longtext("signatureDataUrl"),
-  cardioservStatus: varchar("cardioservStatus", { length: 32 }).notNull().default("draft"),
+  cmeStatus: varchar("cmeStatus", { length: 32 }).notNull().default("draft"),
   approvedAt: bigint("approvedAt", { mode: "number" }),
   lastSentAt: bigint("lastSentAt", { mode: "number" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

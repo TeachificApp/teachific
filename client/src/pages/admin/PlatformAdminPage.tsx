@@ -1231,8 +1231,8 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
 
   // Sync form when org data loads
   if (org && contactEmail === "" && cmeOrgName === "") {
-    if (org.cardioservContactEmail) setContactEmail(org.cardioservContactEmail);
-    if (org.cardioservOrgName) setCmeOrgName(org.cardioservOrgName);
+    if (org.cmeContactEmail) setContactEmail(org.cmeContactEmail);
+    if (org.cmeOrgName) setCmeOrgName(org.cmeOrgName);
   }
 
   if (isLoading) return <div className="py-6 text-center text-slate-400 text-sm">Loading…</div>;
@@ -1244,7 +1244,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
           <div className="flex items-center gap-2 mb-1">
             <GraduationCap className="w-4 h-4 text-sky-600" />
             <span className="font-semibold text-slate-800 text-sm">CardioServ CME Processing</span>
-            {org?.cardioservCmeEnabled ? (
+            {org?.cmeEnabled ? (
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Enabled</Badge>
             ) : (
               <Badge className="bg-slate-100 text-slate-500 border-slate-200 text-xs">Disabled</Badge>
@@ -1255,14 +1255,14 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
           </p>
         </div>
         <Switch
-          checked={!!org?.cardioservCmeEnabled}
+          checked={!!org?.cmeEnabled}
           onCheckedChange={(checked) => toggleCme.mutate({ orgId, enabled: checked })}
           disabled={toggleCme.isPending}
           className="mt-1 shrink-0"
         />
       </div>
 
-      {org?.cardioservCmeEnabled && (
+      {org?.cmeEnabled && (
         <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-white">
           <h4 className="text-sm font-semibold text-slate-700">CardioServ Configuration</h4>
           <div className="space-y-1.5">
@@ -1288,7 +1288,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
           </div>
           <Button
             size="sm"
-            onClick={() => updateConfig.mutate({ orgId, cardioservContactEmail: contactEmail || null, cardioservOrgName: cmeOrgName || null })}
+            onClick={() => updateConfig.mutate({ orgId, cmeContactEmail: contactEmail || null, cmeOrgName: cmeOrgName || null })}
             disabled={updateConfig.isPending}
             className="bg-sky-600 hover:bg-sky-700 text-white"
           >
