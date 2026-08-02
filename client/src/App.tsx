@@ -49,6 +49,7 @@ import OrgLandingPage from "./pages/lms/OrgLandingPage";
 import SchoolMyCoursesPage from "./pages/lms/SchoolMyCoursesPage";
 import SchoolProfilePage from "./pages/lms/SchoolProfilePage";
 import FormsPage from "./pages/lms/FormsPage";
+import CmeManagementPage from "./pages/lms/CmeManagementPage";
 import FormBuilderPage from "./pages/lms/FormBuilderPage";
 import FormResponsesPage from "./pages/lms/FormResponsesPage";
 import FormAnalyticsPage from "./pages/lms/FormAnalyticsPage";
@@ -334,6 +335,7 @@ function AdminRouter() {
           <Route path="/products/bundles/:id/edit">{() => <BundleEditorPage />}</Route>
           <Route path="/products/physical">{() => <PhysicalProductsAdmin />}</Route>
           <Route path="/products/workshops" component={WorkshopsPage} />
+          <Route path="/lms/cme" component={CmeManagementPage} />
           <Route path="/lms/forms" component={FormsPage} />
           <Route path="/lms/forms/:id/responses" component={FormResponsesPage} />
           <Route path="/lms/forms/:id/analytics" component={FormAnalyticsPage} />
@@ -559,6 +561,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/products/memberships">{() => <DashboardLayout><MembershipsPage /></DashboardLayout>}</Route>
         <Route path="/products/memberships/:id/edit">{() => <MembershipEditorPage />}</Route>
         <Route path="/products/bundles">{() => <DashboardLayout><BundlesPage /></DashboardLayout>}</Route>
+        <Route path="/lms/cme">{() => <CmeManagementPage />}</Route>
         <Route path="/lms/forms">{() => <DashboardLayout><FormsPage /></DashboardLayout>}</Route>
         <Route path="/lms/forms/:id/responses">{() => <DashboardLayout><FormResponsesPage /></DashboardLayout>}</Route>
         <Route path="/lms/forms/:id/analytics">{() => <DashboardLayout><FormAnalyticsPage /></DashboardLayout>}</Route>

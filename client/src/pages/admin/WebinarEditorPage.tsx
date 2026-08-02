@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import CheckoutPageEditor from "@/components/CheckoutPageEditor";
+import CmeFormTab from "@/components/CmeFormTab";
 
 function slugify(str: string) {
   return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -67,7 +68,7 @@ const POST_WEBINAR_ACTIONS = [
 ];
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
-type TabId = "details" | "video" | "schedule" | "ai_viewers" | "sales_page" | "funnel" | "checkout_page";
+type TabId = "details" | "video" | "schedule" | "ai_viewers" | "sales_page" | "funnel" | "checkout_page" | "cme";
 
 const tabs = [
   { id: "details" as const, label: "Details", icon: FileText },
@@ -77,6 +78,7 @@ const tabs = [
   { id: "sales_page" as const, label: "Sales Page", icon: Globe },
   { id: "funnel" as const, label: "Funnel", icon: GitBranch },
   { id: "checkout_page" as const, label: "Checkout Page", icon: Globe },
+  { id: "cme" as const, label: "CME", icon: FileText },
 ];
 
 export default function WebinarEditorPage() {
@@ -871,6 +873,16 @@ export default function WebinarEditorPage() {
               contentId={webinar.id}
               orgId={webinar.orgId ?? 1}
               contentSlug={webinar.slug}
+            />
+          </div>
+        )}
+        {activeTab === "cme" && webinar && (
+          <div className="max-w-3xl mx-auto">
+            <CmeFormTab
+              courseId={webinar.id}
+              productType="webinar"
+              orgId={webinar.orgId ?? undefined}
+              productTitle={webinar.title}
             />
           </div>
         )}

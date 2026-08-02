@@ -37,6 +37,8 @@ import { PublishDomainSelect } from "@/components/PublishDomainSelect";
 import CheckoutPageEditor from "@/components/CheckoutPageEditor";
 import { AfterPurchaseWorkflowEditor } from "@/components/AfterPurchaseWorkflowEditor";
 import { HidePricingOptionsToggle } from "@/components/HidePricingOptionsToggle";
+import CmeFormTab from "@/components/CmeFormTab";
+import { FileText } from "lucide-react";
 
 const ITEM_TYPE_ICONS: Record<string, typeof BookOpen> = {
   course: BookOpen,
@@ -358,6 +360,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
           <TabsTrigger value="after-purchase" className="text-xs"><Workflow className="w-3.5 h-3.5 mr-1" />After Purchase</TabsTrigger>
           <TabsTrigger value="checkout-page" className="text-xs"><DollarSign className="w-3.5 h-3.5 mr-1" />Checkout Page</TabsTrigger>
           <TabsTrigger value="widget" className="text-xs"><Code className="w-3.5 h-3.5 mr-1" />Widget Code</TabsTrigger>
+          <TabsTrigger value="cme" className="text-xs"><FileText className="w-3.5 h-3.5 mr-1" />CME</TabsTrigger>
         </TabsList>
 
         {/* Settings Tab */}
@@ -589,6 +592,15 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
         {/* Widget Code Tab */}
         <TabsContent value="widget" className="pt-2">
           <IncludedItemsWidgetCodePanel source="bundle" id={bundle.id} title={bundle.title} />
+        </TabsContent>
+        {/* CME Tab */}
+        <TabsContent value="cme" className="pt-2">
+          <CmeFormTab
+            courseId={bundle.id}
+            productType="bundle"
+            orgId={(bundle as any).orgId ?? undefined}
+            productTitle={bundle.title}
+          />
         </TabsContent>
       </Tabs>
 

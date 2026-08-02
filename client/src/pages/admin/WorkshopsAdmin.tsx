@@ -31,6 +31,7 @@ import { PublishDomainSelect } from "@/components/PublishDomainSelect";
 import { ContentEmbedTab } from "@/components/admin/ContentEmbedTab";
 import { AfterPurchaseWorkflowEditor } from "@/components/AfterPurchaseWorkflowEditor";
 import { HidePricingOptionsToggle } from "@/components/HidePricingOptionsToggle";
+import CmeFormTab from "@/components/CmeFormTab";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function fmtDate(ts: number | Date | null | undefined) {
@@ -528,6 +529,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
           <TabsTrigger value="checkout-page" className="text-xs"><DollarSign className="w-3.5 h-3.5 mr-1" />Checkout Page</TabsTrigger>
           <TabsTrigger value="waitlist" className="text-xs"><Users className="w-3.5 h-3.5 mr-1" />Waitlist</TabsTrigger>
           <TabsTrigger value="embed" className="text-xs"><Code2 className="w-3.5 h-3.5 mr-1" />Embed</TabsTrigger>
+          <TabsTrigger value="cme" className="text-xs"><FileText className="w-3.5 h-3.5 mr-1" />CME</TabsTrigger>
         </TabsList>
 
         {/* ── Settings Tab ── */}
@@ -1100,10 +1102,17 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                 ? [inst.venueCity, inst.venueState].filter(Boolean).join(", ")
                 : inst.locationType === "virtual" ? "Virtual" : null,
             }))}
+                    />
+        </TabsContent>
+        <TabsContent value="cme" className="space-y-4 mt-4">
+          <CmeFormTab
+            courseId={workshop.id}
+            productType="workshop"
+            orgId={(workshop as any).orgId ?? undefined}
+            productTitle={workshop.title}
           />
         </TabsContent>
       </Tabs>
-
       {/* ── Instance Dialog ── */}
       <Dialog open={instanceDialogOpen} onOpenChange={setInstanceDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

@@ -5834,3 +5834,62 @@ export const embedWidgets = mysqlTable("embed_widgets", {
 });
 export type EmbedWidget = typeof embedWidgets.$inferSelect;
 export type InsertEmbedWidget = typeof embedWidgets.$inferInsert;
+
+// ─── CardioServ CME Activity Forms ───────────────────────────────────────────
+export const cmeActivityForms = mysqlTable("cme_activity_forms", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  courseId: int("courseId").notNull(),
+  productType: varchar("productType", { length: 32 }).notNull().default("lms_course"),
+  activityTitle: varchar("activityTitle", { length: 512 }),
+  activityType: varchar("activityType", { length: 64 }),
+  proposedDate: varchar("proposedDate", { length: 128 }),
+  activityLengthHours: varchar("activityLengthHours", { length: 32 }),
+  cmeCreditsRequested: varchar("cmeCreditsRequested", { length: 32 }),
+  offerMocCredit: varchar("offerMocCredit", { length: 32 }),
+  offeredMoreThanOnce: varchar("offeredMoreThanOnce", { length: 32 }),
+  activityStructure: varchar("activityStructure", { length: 64 }),
+  targetAudience: varchar("targetAudience", { length: 64 }),
+  estimatedLearners: varchar("estimatedLearners", { length: 64 }),
+  practiceGapDescription: text("practiceGapDescription"),
+  practiceGapReasons: text("practiceGapReasons"),
+  improvementTypes: text("improvementTypes"),
+  improvementKnowledgeText: text("improvementKnowledgeText"),
+  improvementCompetenceText: text("improvementCompetenceText"),
+  improvementPerformanceText: text("improvementPerformanceText"),
+  learnerOutcomes: text("learnerOutcomes"),
+  learningObjectives: text("learningObjectives"),
+  deliveryDescription: text("deliveryDescription"),
+  activityIncludes: text("activityIncludes"),
+  assessmentMethods: text("assessmentMethods"),
+  facultyJson: text("facultyJson"),
+  contentStatus: varchar("contentStatus", { length: 64 }),
+  contentAvailableDate: varchar("contentAvailableDate", { length: 128 }),
+  marketingChannels: text("marketingChannels"),
+  marketingMentionsCme: varchar("marketingMentionsCme", { length: 32 }),
+  registrationFee: varchar("registrationFee", { length: 32 }),
+  attestationName: varchar("attestationName", { length: 256 }),
+  attestationDate: varchar("attestationDate", { length: 64 }),
+  attestationTitle: varchar("attestationTitle", { length: 256 }),
+  signatureDataUrl: longtext("signatureDataUrl"),
+  cardioservStatus: varchar("cardioservStatus", { length: 32 }).notNull().default("draft"),
+  approvedAt: bigint("approvedAt", { mode: "number" }),
+  lastSentAt: bigint("lastSentAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CmeActivityForm = typeof cmeActivityForms.$inferSelect;
+export type InsertCmeActivityForm = typeof cmeActivityForms.$inferInsert;
+
+// ─── CME Send History ─────────────────────────────────────────────────────────
+export const cmeSendHistory = mysqlTable("cme_send_history", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  courseId: int("courseId").notNull(),
+  sentAt: bigint("sentAt", { mode: "number" }).notNull(),
+  subject: varchar("subject", { length: 512 }).notNull(),
+  sentBy: varchar("sentBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CmeSendHistory = typeof cmeSendHistory.$inferSelect;
+export type InsertCmeSendHistory = typeof cmeSendHistory.$inferInsert;

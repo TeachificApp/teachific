@@ -31,6 +31,7 @@ import { Block, BlockType, BlockPreview } from "@/components/BlockPreview";
 import { BLOCK_CATALOG, BlockSettings, SortableBlock, uid } from "@/pages/admin/LandingPageBuilder";
 import DownloadAnalytics from "./DownloadAnalytics";
 import BundlesAdmin from "./BundlesAdmin";
+import CmeFormTab from "@/components/CmeFormTab";
 // ─── Member Page Block Editor ─────────────────────────────────────────────────
 function DownloadMemberPageEditor({ productId, productSlug }: { productId: number; productSlug: string }) {
   const { data, isLoading, refetch } = trpc.downloadsAdmin.getMemberPageBlocks.useQuery({ productId });
@@ -674,6 +675,9 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
           <TabsTrigger value="member-page" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
             <LayoutTemplate className="w-3.5 h-3.5 mr-1.5" /> Member Page
           </TabsTrigger>
+          <TabsTrigger value="cme" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+            <FileText className="w-3.5 h-3.5 mr-1.5" /> CME
+          </TabsTrigger>
         </TabsList>
 
         {/* Settings Tab */}
@@ -958,6 +962,15 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         {/* Member Page Tab */}
         <TabsContent value="member-page" className="mt-4">
           <DownloadMemberPageEditor productId={product.id} productSlug={product.slug ?? ""} />
+        </TabsContent>
+        {/* CME Tab */}
+        <TabsContent value="cme" className="mt-4">
+          <CmeFormTab
+            courseId={product.id}
+            productType="download"
+            orgId={(product as any).orgId ?? undefined}
+            productTitle={product.title}
+          />
         </TabsContent>
       </Tabs>
     </div>

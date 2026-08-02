@@ -174,6 +174,7 @@ const navGroups: NavGroup[] = [
           { label: "Physical Products", path: "/lms/manage/products" },
           { label: "Workshops", path: "/products/workshops" },
           { label: "Forms", path: "/lms/forms" },
+          { label: "CME Management", path: "/lms/cme" },
           { label: "Community", path: "/lms/manage/communities" },
           { label: "Categories", path: "/lms/manage/collections" },
           { label: "Media Library", path: "/media-library" },

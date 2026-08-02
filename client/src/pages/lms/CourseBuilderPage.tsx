@@ -64,6 +64,7 @@ import { PublishDomainSelect } from "@/components/PublishDomainSelect";
 import WebinarsPage from "@/pages/admin/WebinarsPage";
 import MembershipsPage from "@/pages/products/MembershipsPage";
 import BundlesPage from "@/pages/products/BundlesPage";
+import CmeFormTab from "@/components/CmeFormTab";
 /** Convenience alias used in LandingPageEditor */
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
@@ -1185,6 +1186,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
           <TabsTrigger value="sales" className="text-xs">Sales</TabsTrigger>
           <TabsTrigger value="checkout_page" className="text-xs">Checkout Page</TabsTrigger>
           <TabsTrigger value="embed" className="text-xs">Embed</TabsTrigger>
+          <TabsTrigger value="cme" className="text-xs">CME</TabsTrigger>
         </TabsList>
 
         {/* Settings Tab */}
@@ -1377,9 +1379,18 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
               defaultHeight={700}
             />
           </div>
+                </TabsContent>
+        {/* CME Tab */}
+        <TabsContent value="cme" className="mt-4">
+          <CmeFormTab
+            courseId={courseId}
+            productType={course.type === "quiz" ? "course" : (course.type as any) ?? "course"}
+            orgId={course.orgId ?? undefined}
+            productTitle={course.title}
+            creditHours={(course as any).creditHours ?? null}
+          />
         </TabsContent>
       </Tabs>
-
       {/* Dialogs */}
       <AddSectionDialog open={addSectionOpen} courseId={courseId} onClose={() => setAddSectionOpen(false)} onCreated={(newSection) => {
         setAddSectionOpen(false);

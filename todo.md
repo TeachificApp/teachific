@@ -4902,3 +4902,20 @@
 - [x] Add orgBranding to getUserDetail return (fetches org name, logo, website, supportEmail)
 - [x] Wire AdminInvoiceView to use orgBranding (shows org's own name/logo/website/support)
 - [x] Make invoices org-scoped: invoice header/footer shows org's name, logo, website, support email
+
+## CardioServ CME Processing System
+- [x] Add cmeActivityForms, cmeSendHistory tables to schema.ts
+- [x] Add cardioservCmeEnabled column to organizations table
+- [x] Run database migrations for CME tables
+- [x] Build cmeActivityFormRouter with all procedures (getCmeStatus, listForms, getForm, createForm, updateForm, deleteForm, generateWithAI, exportDocx, exportPdf, sendToCardioserv, listOrgsWithCmeStatus, toggleOrgCme)
+- [x] Register cmeActivityFormRouter as "cme" in appRouter
+- [x] Add OrgCmePanel to PlatformAdminPage (platform admin can enable/disable CME per org)
+- [x] Build CmeManagementPage at /lms/cme (org-level CME management with forms list and editor)
+- [x] Add CME nav item to DashboardLayout sidebar under LMS Management
+- [x] Register /lms/cme route in App.tsx
+- [x] Create reusable CmeFormTab component for product editors
+- [x] Add CME tab to CourseBuilderPage (courses and cohorts)
+- [x] Add CME tab to WebinarEditorPage
+- [x] Add CME tab to WorkshopsAdmin
+- [x] Add CME tab to DigitalDownloadsAdmin
+- [x] Add CME tab to BundlesAdmin

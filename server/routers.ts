@@ -160,6 +160,7 @@ import { bundlePublicRouter, bundleLearnerRouter, bundleAdminRouter } from "./ro
 import { emailAuthRouter } from "./routers/emailAuthRouter";
 import { widgetAdminRouter } from "./routers/widgetAdminRouter";
 import { adminUserRouter } from "./routers/adminUserRouter";
+import { cmeActivityFormRouter } from "./routers/cmeActivityFormRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -262,6 +263,7 @@ export const appRouter = router({
   downloadsPublic: downloadsPublicRouter,
   lessonComments: lessonCommentsRouter,
   adminUser: adminUserRouter,
+  cme: cmeActivityFormRouter,
   productAnalytics: router({
     getProductPurchasers: protectedProcedure
       .input(z.object({ productId: z.number(), productType: z.string(), page: z.number().optional(), pageSize: z.number().optional(), search: z.string().optional() }))

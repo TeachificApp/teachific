@@ -739,6 +739,7 @@ function OrgsTab() {
               <TabsTrigger value="subscription" className="flex-1 text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900">Subscription</TabsTrigger>
               <TabsTrigger value="limits" className="flex-1 text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900">Limit Overrides</TabsTrigger>
               <TabsTrigger value="users" className="flex-1 text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900">Users</TabsTrigger>
+              <TabsTrigger value="cme" className="flex-1 text-slate-700 data-[state=active]:bg-white data-[state=active]:text-slate-900">CME</TabsTrigger>
             </TabsList>
 
             {/* Details Tab */}
@@ -1035,6 +1036,11 @@ function OrgsTab() {
                 </Table>
               </div>
             </TabsContent>
+
+            {/* CME Tab */}
+            <TabsContent value="cme" className="space-y-4 mt-4">
+              {editOrg && <OrgCmePanel orgId={editOrg.id} orgName={editOrg.name} />}
+            </TabsContent>
           </Tabs>
           <DialogFooter className="gap-2 flex-wrap mt-2">
             <Button variant="outline" onClick={() => setEditOrg(null)} className="border-gray-300 text-slate-800">Cancel</Button>
@@ -1201,6 +1207,95 @@ function OrgsTab() {
           </div>
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+// ─── Org CME Panel ──────────────────────────────────────────────────────────
+function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
+  const utils = trpc.useUtils();
+  const { data: orgs, isLoading } = trpc.cme.listOrgsWithCmeStatus.useQuery();
+  const org = orgs?.find(o => o.id === orgId);
+
+  const toggleCme = trpc.cme.toggleOrgCme.useMutation({
+    onSuccess: () => { utils.cme.listOrgsWithCmeStatus.invalidate(); toast.success("CME setting updated"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const updateConfig = trpc.cme.updateOrgCmeConfig.useMutation({
+    onSuccess: () => { utils.cme.listOrgsWithCmeStatus.invalidate(); toast.success("CME config saved"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const [contactEmail, setContactEmail] = useState("");
+  const [cmeOrgName, setCmeOrgName] = useState("");
+
+  // Sync form when org data loads
+  if (org && contactEmail === "" && cmeOrgName === "") {
+    if (org.cardioservContactEmail) setContactEmail(org.cardioservContactEmail);
+    if (org.cardioservOrgName) setCmeOrgName(org.cardioservOrgName);
+  }
+
+  if (isLoading) return <div className="py-6 text-center text-slate-400 text-sm">Loading…</div>;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-sky-200 bg-sky-50">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <GraduationCap className="w-4 h-4 text-sky-600" />
+            <span className="font-semibold text-slate-800 text-sm">CardioServ CME Processing</span>
+            {org?.cardioservCmeEnabled ? (
+              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Enabled</Badge>
+            ) : (
+              <Badge className="bg-slate-100 text-slate-500 border-slate-200 text-xs">Disabled</Badge>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 max-w-sm">
+            When enabled, org admins can submit CME Activity Planning Forms to CardioServ for credit approval on their courses, webinars, workshops, downloads, and products.
+          </p>
+        </div>
+        <Switch
+          checked={!!org?.cardioservCmeEnabled}
+          onCheckedChange={(checked) => toggleCme.mutate({ orgId, enabled: checked })}
+          disabled={toggleCme.isPending}
+          className="mt-1 shrink-0"
+        />
+      </div>
+
+      {org?.cardioservCmeEnabled && (
+        <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-white">
+          <h4 className="text-sm font-semibold text-slate-700">CardioServ Configuration</h4>
+          <div className="space-y-1.5">
+            <Label className="text-slate-700 text-xs">Org Name for CME Forms</Label>
+            <Input
+              value={cmeOrgName}
+              onChange={(e) => setCmeOrgName(e.target.value)}
+              placeholder={orgName}
+              className="bg-white border-gray-300 text-slate-900 h-8 text-sm"
+            />
+            <p className="text-xs text-slate-400">Name shown on CME activity forms sent to CardioServ. Defaults to org name if blank.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-slate-700 text-xs">Org Contact Email (CC on submissions)</Label>
+            <Input
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="cme@yourorg.com"
+              type="email"
+              className="bg-white border-gray-300 text-slate-900 h-8 text-sm"
+            />
+            <p className="text-xs text-slate-400">This email is CC'd on every CME form sent to CardioServ.</p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => updateConfig.mutate({ orgId, cardioservContactEmail: contactEmail || null, cardioservOrgName: cmeOrgName || null })}
+            disabled={updateConfig.isPending}
+            className="bg-sky-600 hover:bg-sky-700 text-white"
+          >
+            {updateConfig.isPending ? "Saving…" : "Save CME Config"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
