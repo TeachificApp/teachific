@@ -2,7 +2,7 @@
  * CmeSettingsSection.tsx
  * Compact CME settings section for embedding in product editor Settings tabs.
  *
- * Shows a "CME not enabled" notice if CardioServ CME is not enabled for the org.
+ * Shows a "CME not enabled" notice if CME is not enabled for the org.
  * When enabled, shows credit hours, form status badge, and an "Open CME Form" button
  * that opens the full CmeActivityFormDialog.
  */
@@ -66,7 +66,7 @@ export default function CmeSettingsSection({
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
             <FileText className="w-4 h-4 text-teal-600" />
-            CardioServ CME
+            CME
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -85,12 +85,12 @@ export default function CmeSettingsSection({
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2 text-gray-500">
             <FileText className="w-4 h-4" />
-            CardioServ CME
+            CME
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            CardioServ CME processing is not enabled for your organization.
+            CME processing is not enabled for your organization.
             Contact your platform administrator to enable it.
           </p>
         </CardContent>
@@ -109,7 +109,7 @@ export default function CmeSettingsSection({
           <CardTitle className="text-sm flex items-center justify-between">
             <span className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-teal-600" />
-              CardioServ CME Activity Form
+              CME Activity Form
             </span>
             <FormStatusBadge status={formStatus} />
           </CardTitle>
@@ -121,7 +121,7 @@ export default function CmeSettingsSection({
               <p className="font-medium">{creditHours ?? cmeStatus?.creditHours ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">CardioServ Status</p>
+              <p className="text-xs text-muted-foreground mb-0.5">CME Status</p>
               <p className="font-medium capitalize">{cmeStatus}</p>
             </div>
             {lastSentAt && (

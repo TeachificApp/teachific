@@ -4928,3 +4928,18 @@
 - [x] Rename all cardioserv variable/property names in cmeActivityFormRouter.ts
 - [x] Rename procedure names: sendToCardioserv → sendToCme, toggleOrgCardioserv → toggleOrgCme, updateOrgCardioservConfig → updateOrgCmeConfig, listOrgsWithCardioservStatus → listOrgsWithCmeStatus
 - [x] Rename all cardioserv variable names in CmeFormTab.tsx, CmeActivityFormDialog.tsx, CmeSettingsSection.tsx, PlatformAdminPage.tsx, CmeManagementPage.tsx
+
+## Newsletter Subscribe & Email Campaigns (Org-Scoped)
+- [x] Add DB schema: newsletter_subscribers (with orgId), email_campaigns, email_lists, email_events tables
+- [x] Run database migrations for newsletter/campaign tables
+- [x] Port sendgridContacts.ts helper (org-scoped list naming)
+- [x] Build newsletterRouter (subscribe, unsubscribeByToken, listSubscribers, updateSubscriber)
+- [x] Build emailCampaignRouter (CRUD campaigns, sender profiles, lists, analytics, send)
+- [x] Register newsletter and emailCampaign routers in appRouter
+- [x] Build NewsletterSubscribe public page (org-branded, no hardcoded brand names)
+- [x] Build NewsletterInlineWidget component (embeddable subscribe form)
+- [x] Build EmailCampaignDashboard page at /lms/email-campaigns
+- [x] Build EmailCampaignEditor page (compose, audience, send)
+- [x] Add Email Campaigns nav item to DashboardLayout sidebar
+- [x] Register /subscribe and /lms/email-campaigns routes in App.tsx
+- [ ] Register SendGrid webhook for open/click/unsubscribe tracking

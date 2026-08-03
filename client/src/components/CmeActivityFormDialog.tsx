@@ -5,9 +5,9 @@
  * Usage:
  *   <CmeFormTab courseId={courseId} productType="course" orgId={orgId} />
  *
- * Shows a "CME not enabled" message if CardioServ CME is not enabled for the org.
+ * Shows a "CME not enabled" message if CME is not enabled for the org.
  * When enabled, shows the full CME Activity Planning Form with AI generation,
- * DOCX/PDF download, and CardioServ submission.
+ * DOCX/PDF download, and CME provider submission.
  */
 import React, { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
@@ -177,12 +177,12 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
     onError: (e) => toast.error(e.message),
   });
 
-  const sendToCardioServ = trpc.cme.sendCmeFormToCardioServ.useMutation({
+  const sendCmeForm = trpc.cme.sendCmeForm.useMutation({
     onSuccess: () => {
       utils.cme.getCmeSendHistory.invalidate({ courseId, orgId });
       utils.cme.getCmeActivityForm.invalidate({ courseId, productType, orgId });
       setShowSendDialog(false);
-      toast.success("Form sent to CardioServ!");
+      toast.success("CME form sent successfully!");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -215,8 +215,8 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
   };
 
   const handleSend = () => {
-    if (!sendEmail) { toast.error("Enter CardioServ email address"); return; }
-    sendToCardioServ.mutate({ courseId, productType, orgId, recipientEmail: sendEmail, formData: form });
+    if (!sendEmail) { toast.error("Enter recipient email address"); return; }
+    sendCmeForm.mutate({ courseId, productType, orgId, recipientEmail: sendEmail, formData: form });
   };
 
   const setField = (key: keyof FormData, value: string) => {
@@ -240,9 +240,9 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           <FileText className="w-7 h-7 text-slate-400" />
         </div>
         <div>
-          <h3 className="font-semibold text-slate-800 mb-1">CardioServ CME Not Enabled</h3>
+          <h3 className="font-semibold text-slate-800 mb-1">CME Not Enabled</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
-            CardioServ CME processing is not enabled for your organisation.
+            CME processing is not enabled for your organisation.
             Contact your platform administrator to enable it.
           </p>
         </div>
@@ -269,7 +269,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
             <FileText className="w-5 h-5 text-sky-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800">CardioServ CME Activity Form</h3>
+            <h3 className="font-semibold text-slate-800">CME Activity Form</h3>
             <p className="text-xs text-muted-foreground">Activity Planning &amp; Proposal Form</p>
           </div>
         </div>
@@ -304,7 +304,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           <Download className="w-3.5 h-3.5" /> PDF
         </Button>
         <Button size="sm" onClick={() => setShowSendDialog(v => !v)} className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
-          <Send className="w-3.5 h-3.5" /> Send to CardioServ
+          <Send className="w-3.5 h-3.5" /> Send CME Form
         </Button>
       </div>
 
@@ -312,7 +312,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
       {showSendDialog && (
         <Card className="border-sky-200 bg-sky-50">
           <CardContent className="pt-4 pb-4 space-y-3">
-            <p className="text-sm font-medium text-sky-800">Send PDF to CardioServ</p>
+            <p className="text-sm font-medium text-sky-800">Send PDF to CME Provider</p>
             <div className="flex gap-2">
               <Input
                 value={sendEmail}
@@ -320,8 +320,8 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
                 placeholder={cmeStatus.cmeContactEmail ?? "cme@example.com"}
                 className="bg-white text-sm"
               />
-              <Button size="sm" onClick={handleSend} disabled={sendToCardioServ.isPending} className="bg-sky-600 hover:bg-sky-700 text-white whitespace-nowrap">
-                {sendToCardioServ.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Send"}
+              <Button size="sm" onClick={handleSend} disabled={sendCmeForm.isPending} className="bg-sky-600 hover:bg-sky-700 text-white whitespace-nowrap">
+                {sendCmeForm.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Send"}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowSendDialog(false)}>Cancel</Button>
             </div>

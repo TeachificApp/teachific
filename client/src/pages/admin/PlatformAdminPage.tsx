@@ -1243,7 +1243,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <GraduationCap className="w-4 h-4 text-sky-600" />
-            <span className="font-semibold text-slate-800 text-sm">CardioServ CME Processing</span>
+            <span className="font-semibold text-slate-800 text-sm">CME Processing</span>
             {org?.cmeEnabled ? (
               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Enabled</Badge>
             ) : (
@@ -1251,7 +1251,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
             )}
           </div>
           <p className="text-xs text-slate-500 max-w-sm">
-            When enabled, org admins can submit CME Activity Planning Forms to CardioServ for credit approval on their courses, webinars, workshops, downloads, and products.
+            When enabled, org admins can submit CME Activity Planning Forms to the CME provider for credit approval on their courses, webinars, workshops, downloads, and products.
           </p>
         </div>
         <Switch
@@ -1264,7 +1264,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
 
       {org?.cmeEnabled && (
         <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-white">
-          <h4 className="text-sm font-semibold text-slate-700">CardioServ Configuration</h4>
+          <h4 className="text-sm font-semibold text-slate-700">CME Configuration</h4>
           <div className="space-y-1.5">
             <Label className="text-slate-700 text-xs">Org Name for CME Forms</Label>
             <Input
@@ -1273,7 +1273,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
               placeholder={orgName}
               className="bg-white border-gray-300 text-slate-900 h-8 text-sm"
             />
-            <p className="text-xs text-slate-400">Name shown on CME activity forms sent to CardioServ. Defaults to org name if blank.</p>
+            <p className="text-xs text-slate-400">Name shown on CME activity forms. Defaults to org name if blank. Defaults to org name if blank.</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-slate-700 text-xs">Org Contact Email (CC on submissions)</Label>
@@ -1284,7 +1284,7 @@ function OrgCmePanel({ orgId, orgName }: { orgId: number; orgName: string }) {
               type="email"
               className="bg-white border-gray-300 text-slate-900 h-8 text-sm"
             />
-            <p className="text-xs text-slate-400">This email is CC'd on every CME form sent to CardioServ.</p>
+            <p className="text-xs text-slate-400">This email is CC'd on every CME form sent.</p>
           </div>
           <Button
             size="sm"

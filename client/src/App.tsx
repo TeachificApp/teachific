@@ -100,6 +100,9 @@ import RecordPage from "./pages/RecordPage";
 
 import WebsitePage from "./pages/marketing/WebsitePage";
 import EmailCampaignsPage from "./pages/marketing/EmailCampaignsPage";
+import EmailCampaignDashboard from "./pages/marketing/EmailCampaignDashboard";
+import NewsletterSubscribe from "./pages/marketing/NewsletterSubscribe";
+import NewsletterSubscribersPage from "./pages/marketing/NewsletterSubscribersPage";
 import FunnelsPage from "./pages/marketing/FunnelsPage";
 import FunnelBuilderPage from "./pages/marketing/FunnelBuilderPage";
 import FunnelBuilder from "./pages/marketing/FunnelBuilder";
@@ -240,6 +243,7 @@ function BareRouter() {
         {/* Platform-level legal policies — independent of any org */}
         <Route path="/help" component={HelpPage} />
         <Route path="/unsubscribe" component={UnsubscribePage} />
+        <Route path="/subscribe" component={NewsletterSubscribe} />
         <Route path="/policies" component={PlatformPoliciesPage} />
         <Route path="/terms" component={PlatformPoliciesPage} />
         <Route path="/privacy" component={PlatformPoliciesPage} />
@@ -350,8 +354,9 @@ function AdminRouter() {
 
           {/* ── Marketing ── */}
           <Route path="/marketing/website" component={WebsitePage} />
-          <Route path="/marketing/email" component={EmailCampaignsPage} />
+          <Route path="/marketing/email" component={EmailCampaignDashboard} />
           <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
+          <Route path="/marketing/newsletter" component={NewsletterSubscribersPage} />
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
           <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
           <Route path="/marketing/funnels" component={FunnelsPage} />
@@ -571,7 +576,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/products/categories">{() => <DashboardLayout><CategoriesPage /></DashboardLayout>}</Route>
         <Route path="/media-library">{() => <DashboardLayout><MediaLibraryPage /></DashboardLayout>}</Route>
         <Route path="/marketing/website">{() => <DashboardLayout><WebsitePage /></DashboardLayout>}</Route>
-        <Route path="/marketing/email">{() => <DashboardLayout><EmailCampaignsPage /></DashboardLayout>}</Route>
+        <Route path="/marketing/email">{() => <EmailCampaignDashboard />}</Route>
+        <Route path="/marketing/newsletter">{() => <NewsletterSubscribersPage />}</Route>
         <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
         <Route path="/marketing/funnels">{() => <DashboardLayout><FunnelsPage /></DashboardLayout>}</Route>
         <Route path="/marketing/affiliates">{() => <DashboardLayout><AffiliatesPage /></DashboardLayout>}</Route>

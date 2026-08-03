@@ -32,6 +32,7 @@ import {
   diyOrganizations,
   labSubscriptions,
   userRoles,
+  userActiveOrg,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -263,6 +264,22 @@ export async function getOrgsByUserId(userId: number) {
 export async function getOrgIdForUser(userId: number): Promise<number | null> {
   const db = await getDb();
   if (!db) return null;
+  // Check if user has an explicitly selected active org (from org switcher)
+  const [activeRow] = await db
+    .select({ orgId: userActiveOrg.orgId })
+    .from(userActiveOrg)
+    .where(eq(userActiveOrg.userId, userId))
+    .limit(1);
+  if (activeRow?.orgId) {
+    // Verify the user still has membership in this org
+    const [membership] = await db
+      .select({ orgId: orgMembers.orgId })
+      .from(orgMembers)
+      .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, activeRow.orgId)))
+      .limit(1);
+    if (membership) return membership.orgId;
+    // Active org no longer valid — fall through to membership-based resolution
+  }
   // Get all memberships ordered by role priority
   const allMemberships = await db
     .select({ orgId: orgMembers.orgId, role: orgMembers.role, isPrimary: organizations.isPrimary })
@@ -318,13 +335,22 @@ export async function getOrgIdForUserWithFallback(
   userId: number,
   userRole: string
 ): Promise<number | null> {
-  const orgId = await getOrgIdForUser(userId);
-  if (orgId !== null) return orgId;
-  // For platform admins with no membership row, fall back to the primary org
+  // For platform admins, check userActiveOrg first (respects org switcher)
   if (userRole === "site_owner" || userRole === "site_admin") {
+    const db = await getDb();
+    if (db) {
+      const [activeRow] = await db
+        .select({ orgId: userActiveOrg.orgId })
+        .from(userActiveOrg)
+        .where(eq(userActiveOrg.userId, userId))
+        .limit(1);
+      if (activeRow?.orgId) return activeRow.orgId;
+    }
+    // No active org preference — fall back to primary org
     return getPrimaryOrgId();
   }
-  return null;
+  const orgId = await getOrgIdForUser(userId);
+  return orgId;
 }
 
 /**

@@ -221,7 +221,7 @@ function CmeFormEditor({
       utils.cme.getCmeActivityForm.invalidate({ courseId });
       utils.cme.listCmeActivityForms.invalidate({});
       setSendDialogOpen(false);
-      toast.success("CME form sent to CardioServ");
+      toast.success("CME form sent successfully");
     },
     onError: (e) => toast.error(e.message),
   });
@@ -235,7 +235,7 @@ function CmeFormEditor({
     onError: (e) => toast.error(e.message),
   });
 
-  const updateStatus = trpc.cme.updateCardioServStatus.useMutation({
+  const updateStatus = trpc.cme.updateCmeStatus.useMutation({
     onSuccess: () => {
       utils.cme.getCmeActivityForm.invalidate({ courseId });
       utils.cme.listCmeActivityForms.invalidate({});
@@ -360,7 +360,7 @@ function CmeFormEditor({
             className="gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white"
           >
             <Send className="w-3.5 h-3.5" />
-            Send to CardioServ
+            Send CME Form
           </Button>
         </div>
       </div>
@@ -368,7 +368,7 @@ function CmeFormEditor({
       {isApproved && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
           <CheckCircle className="w-4 h-4 shrink-0" />
-          <span>This CME activity has been approved by CardioServ.
+          <span>This CME activity has been approved.
             {formData?.form?.approvedAt && ` Approved on ${new Date(formData.form.approvedAt).toLocaleDateString()}.`}
           </span>
         </div>
@@ -673,7 +673,7 @@ function CmeFormEditor({
           className="gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white"
         >
           <Send className="w-3.5 h-3.5" />
-          Send to CardioServ
+          Send CME Form
         </Button>
       </div>
 
@@ -683,10 +683,10 @@ function CmeFormEditor({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="w-4 h-4 text-sky-600" />
-              Send CME Form to CardioServ
+              Send CME Form
             </DialogTitle>
             <DialogDescription>
-              This will email the completed CME Activity Planning Form to CardioServ (don@cardioserv.net) with your org's contact email CC'd.
+              This will email the completed CME Activity Planning Form to the CME provider with your org's contact email CC'd.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -711,7 +711,7 @@ function CmeFormEditor({
               className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
-              {sendToCme.isPending ? "Sending…" : "Send to CardioServ"}
+              {sendToCme.isPending ? "Sending…" : "Send CME Form"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -722,7 +722,7 @@ function CmeFormEditor({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Update CME Status</DialogTitle>
-            <DialogDescription>Update the CardioServ approval status for this activity.</DialogDescription>
+            <DialogDescription>Update the CME approval status for this activity.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Label className="text-slate-700 text-xs font-semibold">New Status</Label>
@@ -831,7 +831,7 @@ export default function CmeManagementPage() {
               <h1 className="text-xl font-bold text-slate-900">CME Management</h1>
             </div>
             <p className="text-sm text-slate-500">
-              Manage CardioServ CME Activity Planning Forms for your courses, webinars, and other educational activities.
+              Manage CME Activity Planning Forms for your courses, webinars, and other educational activities.
             </p>
           </div>
         </div>
@@ -843,9 +843,9 @@ export default function CmeManagementPage() {
               <div className="flex items-start gap-3">
                 <Lock className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-amber-800">CardioServ CME Processing Not Enabled</h3>
+                  <h3 className="font-semibold text-amber-800">CME Processing Not Enabled</h3>
                   <p className="text-sm text-amber-700 mt-1">
-                    CardioServ CME credit processing has not been enabled for your organization. Please contact the platform administrator to enable this feature.
+                    CME credit processing has not been enabled for your organization. Please contact the platform administrator to enable this feature.
                   </p>
                 </div>
               </div>
@@ -863,7 +863,7 @@ export default function CmeManagementPage() {
               </CardTitle>
               {!selectedCourse && (
                 <CardDescription className="text-slate-500 text-sm">
-                  Courses with certificates enabled are eligible for CME credit processing. Click "Create Form" or "Edit Form" to manage the CardioServ Activity Planning Form for each course.
+                  Courses with certificates enabled are eligible for CME credit processing. Click "Create Form" or "Edit Form" to manage the CME Activity Planning Form for each course.
                 </CardDescription>
               )}
             </CardHeader>

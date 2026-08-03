@@ -5839,7 +5839,7 @@ export const embedWidgets = mysqlTable("embed_widgets", {
 export type EmbedWidget = typeof embedWidgets.$inferSelect;
 export type InsertEmbedWidget = typeof embedWidgets.$inferInsert;
 
-// ─── CardioServ CME Activity Forms ───────────────────────────────────────────
+// ─── CME Activity Forms ──────────────────────────────────────────────────────
 export const cmeActivityForms = mysqlTable("cme_activity_forms", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
@@ -5897,3 +5897,25 @@ export const cmeSendHistory = mysqlTable("cme_send_history", {
 });
 export type CmeSendHistory = typeof cmeSendHistory.$inferSelect;
 export type InsertCmeSendHistory = typeof cmeSendHistory.$inferInsert;
+
+// ─── Newsletter Subscribers ───────────────────────────────────────────────────
+// Org-scoped newsletter subscriber list. Each org has its own subscriber base.
+// orgId = null means platform-level (site owner) subscribers.
+export const newsletterSubscribers = mysqlTable("newsletter_subscribers", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId"),                                    // null = platform-level
+  email: varchar("email", { length: 320 }).notNull(),
+  firstName: varchar("firstName", { length: 100 }),
+  lastName: varchar("lastName", { length: 100 }),
+  profession: varchar("profession", { length: 200 }),
+  interests: text("interests"),                           // JSON array of interest tags
+  source: varchar("source", { length: 100 }).default("subscribe_page").notNull(),
+  isActive: tinyint("isActive").default(1).notNull(),
+  unsubscribeToken: varchar("unsubscribeToken", { length: 64 }),
+  subscribedAt: bigint("subscribedAt", { mode: "number" }),
+  unsubscribedAt: bigint("unsubscribedAt", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+export type InsertNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
