@@ -74,6 +74,7 @@ import {
   mediaUploadResponses,
   lmsCheckoutTemplates,
   curriculumEmbedVisibility,
+  organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
@@ -426,6 +427,12 @@ export const lmsCourseBuilderRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.id)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      // Fetch org slug/domain for building org-scoped URLs (preview links, etc.)
+      const [org] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
       // Batch fetch sections + all lessons in 2 parallel queries (avoids N+1)
       // Strip heavy content columns (contentBlocks, content, videoContent) from the list —
       // they are fetched on-demand by getLessonsWithBlocks when the editor opens a lesson.
@@ -476,7 +483,7 @@ export const lmsCourseBuilderRouter = router({
         }
       }
       const sectionsWithLessons = sections.map(s => ({ ...s, lessons: lessonsBySectionId.get(s.id) ?? [] }));
-      return { ...course, sections: sectionsWithLessons, topLevelLessons, landingPage: landingPage[0] ?? null, courseInstructors: cis };
+      return { ...course, sections: sectionsWithLessons, topLevelLessons, landingPage: landingPage[0] ?? null, courseInstructors: cis, orgSlug: org?.slug ?? null, orgCustomDomain: org?.customDomain ?? null, orgDomainVerificationStatus: org?.domainVerificationStatus ?? null };
     }),
 
   // ── Sections ──

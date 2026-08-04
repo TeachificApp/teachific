@@ -4943,3 +4943,14 @@
 - [x] Add Email Campaigns nav item to DashboardLayout sidebar
 - [x] Register /subscribe and /lms/email-campaigns routes in App.tsx
 - [ ] Register SendGrid webhook for open/click/unsubscribe tracking
+
+## Fix: All org links scoped to org subdomain (not learn.teachific.com)
+- [ ] Update useLearnLink hook to use org's own subdomain
+- [ ] Update getCourse procedure to return orgSlug + customDomain
+- [ ] Update getLandingPageBlocks to return orgSlug + customDomain
+- [ ] Fix LandingPageBuilder preview link to use org subdomain
+- [ ] Fix server: enrollmentEmail.ts to use org subdomain
+- [ ] Fix server: embeddedCheckoutWebhook.ts to use org subdomain
+- [ ] Fix server: stripeWebhookRoutes.ts to use org subdomain
+- [ ] Fix server: lmsRouter.ts discussion URL to use org subdomain
+- [ ] Fix DashboardLayout "Teachific Learn" sidebar link to use org subdomain

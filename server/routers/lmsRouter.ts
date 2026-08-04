@@ -96,6 +96,7 @@ import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsQuizLandingRouter } from "./lmsQuizLandingRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
@@ -1993,7 +1994,17 @@ export const lmsLearnerRouter = router({
           const courseName = course?.title ?? "your cohort course";
           const groupName = group?.name ?? "";
           const snippet = input.body ? (input.body.length > 200 ? input.body.slice(0, 200) + "…" : input.body) : "[media attachment]";
-          const discussionUrl = `https://learn.teachific.com/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
+          // Resolve org base URL for org-scoped discussion link
+          let discussionOrgBase = "https://teachific.app";
+          try {
+            const [courseOrg] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+            if (courseOrg?.orgId) {
+              const [orgInfo] = await db.select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
+                .from(organizations).where(eq(organizations.id, courseOrg.orgId)).limit(1);
+              if (orgInfo?.slug) discussionOrgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
+            }
+          } catch { /* keep default */ }
+          const discussionUrl = `${discussionOrgBase}/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
           // Collect admins + cohort staff (exclude the poster)
           const adminUsers = await db.select({ id: users.id, email: users.email, name: users.name, displayName: users.displayName, notificationPrefs: users.notificationPrefs })
             .from(users).where(eq(users.role, "admin"));

@@ -21,6 +21,7 @@ import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscr
 import { eq, and, inArray } from "drizzle-orm";
 import { sendEmail, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
+import { getOrgBaseUrl } from "./lib/orgUrl";
 
 const router = express.Router();
 
@@ -276,16 +277,26 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
 
     // Send Teachific-branded confirmation email to buyer
     const buyerFirstName = (purchase.name ?? purchase.email).split(/[\s@]/)[0] ?? "there";
-    let loginUrl = `https://learn.teachific.com/my-courses`;
+    // Resolve org base URL for org-scoped links
+    let orgBase: string | null = null;
+    if (purchase.orgId) {
+      try {
+        const [orgInfo] = await db.select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
+          .from(organizations).where(eq(organizations.id, purchase.orgId)).limit(1);
+        if (orgInfo?.slug) orgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
+      } catch { /* keep default */ }
+    }
+    const fallbackBase = orgBase ?? "https://teachific.app";
+    let loginUrl = `${fallbackBase}/my-courses`;
     if (purchase.fulfillmentCourseId) {
       try {
         const { lmsCourses } = await import("../drizzle/schema");
         const [courseRow] = await db.select({ slug: lmsCourses.slug }).from(lmsCourses)
           .where(eq(lmsCourses.id, purchase.fulfillmentCourseId)).limit(1);
-        if (courseRow?.slug) loginUrl = `https://learn.teachific.com/courses/${courseRow.slug}`;
+        if (courseRow?.slug) loginUrl = `${fallbackBase}/courses/${courseRow.slug}`;
       } catch { /* keep default */ }
     } else if (purchase.productType === "download") {
-      loginUrl = `https://learn.teachific.com/my-downloads`;
+      loginUrl = `${fallbackBase}/my-downloads`;
     }
     const orderBumpsForEmail = purchase.orderBumps
       ? (() => { try { return JSON.parse(purchase.orderBumps); } catch { return []; } })()

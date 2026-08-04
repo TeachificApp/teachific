@@ -28,11 +28,13 @@ export type ContentType = "course" | "download" | "bundle" | "quiz";
  * Format: /auth/access?token=<accessToken>&next=<destination>
  * Falls back to the destination URL if no token is provided.
  */
-function buildAccessUrl(destination: string, accessToken?: string | null): string {
+import { getOrgBaseUrl } from "./orgUrl";
+
+function buildAccessUrl(destination: string, accessToken?: string | null, orgBaseUrl?: string | null): string {
   if (!accessToken) return destination;
   const encoded = encodeURIComponent(destination);
-  // Use learn subdomain for LMS auto-login so the session cookie is scoped correctly
-  return `https://learn.teachific.com/auth/access?token=${accessToken}&next=${encoded}`;
+  const base = orgBaseUrl ?? "https://teachific.app";
+  return `${base}/auth/access?token=${accessToken}&next=${encoded}`;
 }
 
 function emailWrapper(content: string): string {
@@ -134,11 +136,16 @@ export async function sendEnrollmentEmail(opts: {
   accessToken?: string | null;
   /** Org ID — routes email via org's own SendGrid key/sender when set */
   orgId?: number | null;
+  /** Org slug — used to build org-scoped URLs instead of learn.teachific.com */
+  orgSlug?: string | null;
+  orgCustomDomain?: string | null;
+  orgDomainVerificationStatus?: string | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Welcome to "${opts.courseTitle}" 🎉`;
-  const courseDestination = `https://learn.teachific.com/courses/${opts.courseSlug}`;
-  const courseUrl = buildAccessUrl(courseDestination, opts.accessToken);
+  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const courseDestination = orgBase ? `${orgBase}/courses/${opts.courseSlug}` : `https://teachific.app/courses/${opts.courseSlug}`;
+  const courseUrl = buildAccessUrl(courseDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
@@ -183,11 +190,15 @@ export async function sendDownloadAccessEmail(opts: {
   accessToken?: string | null;
   /** Org ID — routes email via org's own SendGrid key/sender when set */
   orgId?: number | null;
+  orgSlug?: string | null;
+  orgCustomDomain?: string | null;
+  orgDomainVerificationStatus?: string | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Your download is ready: "${opts.productTitle}"`;
-  const filesDestination = `https://app.teachific.com/downloads/${opts.productSlug}/files`;
-  const filesUrl = buildAccessUrl(filesDestination, opts.accessToken);
+  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const filesDestination = orgBase ? `${orgBase}/downloads/${opts.productSlug}/files` : `https://teachific.app/downloads/${opts.productSlug}/files`;
+  const filesUrl = buildAccessUrl(filesDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
@@ -231,11 +242,15 @@ export async function sendBundleAccessEmail(opts: {
   accessToken?: string | null;
   /** Org ID — routes email via org's own SendGrid key/sender when set */
   orgId?: number | null;
+  orgSlug?: string | null;
+  orgCustomDomain?: string | null;
+  orgDomainVerificationStatus?: string | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been granted access to "${opts.bundleTitle}"`;
-  const bundleDestination = `https://app.teachific.com/downloads/bundle/${opts.bundleSlug}`;
-  const bundleUrl = buildAccessUrl(bundleDestination, opts.accessToken);
+  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const bundleDestination = orgBase ? `${orgBase}/downloads/bundle/${opts.bundleSlug}` : `https://teachific.app/downloads/bundle/${opts.bundleSlug}`;
+  const bundleUrl = buildAccessUrl(bundleDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
@@ -278,11 +293,15 @@ export async function sendQuizAccessEmail(opts: {
   accessToken?: string | null;
   /** Org ID — routes email via org's own SendGrid key/sender when set */
   orgId?: number | null;
+  orgSlug?: string | null;
+  orgCustomDomain?: string | null;
+  orgDomainVerificationStatus?: string | null;
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been invited to "${opts.quizTitle}"`;
-  const appDestination = `https://app.teachific.com`;
-  const appUrl = buildAccessUrl(appDestination, opts.accessToken);
+  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const appDestination = orgBase ?? `https://teachific.app`;
+  const appUrl = buildAccessUrl(appDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";

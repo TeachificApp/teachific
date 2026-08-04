@@ -69,6 +69,7 @@ import type { BlockType, Block } from "@/components/BlockPreview";
 export type { BlockType, Block } from "@/components/BlockPreview";
 export { BlockPreview };
 import UserParamTagsHelper from "@/components/UserParamTagsHelper";
+import { getOrgBaseUrl } from "@/lib/orgUrl";
 
 export function uid() { return Math.random().toString(36).slice(2, 10); }
 
@@ -5379,7 +5380,7 @@ export default function LandingPageBuilder() {
     lpUtils.lmsAdmin.getLandingPageBlocks.invalidate({ courseId: numericCourseId });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [numericCourseId, refreshKey]);
-  const [courseInfo, setCourseInfo] = useState<{ title: string; slug: string; price?: number } | null>(null);
+  const [courseInfo, setCourseInfo] = useState<{ title: string; slug: string; price?: number; orgSlug?: string | null; orgCustomDomain?: string | null; orgDomainVerificationStatus?: string | null } | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [templatesInitialTab, setTemplatesInitialTab] = useState<"page" | "block">("page");
   const [activeCat, setActiveCat] = useState<string>("Layout");
@@ -5446,7 +5447,7 @@ export default function LandingPageBuilder() {
   useEffect(() => {
     if (!lpData || hasLoaded) return;
     setHasLoaded(true);
-    setCourseInfo({ title: lpData.courseTitle, slug: lpData.courseSlug, price: lpData.coursePrice });
+    setCourseInfo({ title: lpData.courseTitle, slug: lpData.courseSlug, price: lpData.coursePrice, orgSlug: (lpData as any).orgSlug, orgCustomDomain: (lpData as any).orgCustomDomain, orgDomainVerificationStatus: (lpData as any).orgDomainVerificationStatus });
     // Initialize SEO fields once per page load
     if (!seoInitialized.current) {
       seoInitialized.current = true;
@@ -5834,7 +5835,7 @@ export default function LandingPageBuilder() {
             <Bookmark size={14} /> Save as Template
           </button>
           {courseInfo?.slug && (
-            <a href={`https://learn.teachific.com/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+            <a href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
               <Eye size={14} /> Preview
             </a>
           )}
@@ -6063,7 +6064,7 @@ export default function LandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || courseInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'learn.teachific.com'}</p>
+                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
                     </div>
                   </div>
                 )}

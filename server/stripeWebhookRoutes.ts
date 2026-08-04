@@ -18,6 +18,7 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 import { sendPurchaseConfirmationEmail } from "./routers/downloadsRouter";
+import { getOrgBaseUrl } from "./lib/orgUrl";
 
 // ─── Invoice row helper ───────────────────────────────────────────────────────
 async function createInvoiceRow(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, opts: {
@@ -181,13 +182,23 @@ router.post(
                     await createEnrollment({ courseId, userId: user.id, orgId, amountPaid });
                     console.log(`[Stripe Webhook] User ${user.id} enrolled in course ${courseId}`);
                     const course = await getCourseById(courseId).catch(() => null);
+                    // Resolve org base URL for org-scoped link
+                    let courseOrgBase = "https://teachific.app";
+                    try {
+                      const dbOrg = await getDb();
+                      if (dbOrg) {
+                        const [orgInfo] = await dbOrg.select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
+                          .from(organizations).where(eq(organizations.id, orgId)).limit(1);
+                        if (orgInfo?.slug) courseOrgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
+                      }
+                    } catch { /* keep default */ }
                     // Send buyer confirmation via org sender if available
                     const { subject: enrollSubj, htmlBody: enrollHtml, previewText: enrollPreview } =
                       buildFunnelPurchaseConfirmationEmail({
                         firstName: (user.name ?? "there").split(" ")[0],
                         productName: course?.title ?? "your course",
                         amountPaid,
-                        loginUrl: `https://learn.teachific.com/courses/${course?.slug ?? courseId}`,
+                        loginUrl: `${courseOrgBase}/courses/${course?.slug ?? courseId}`,
                       });
                     await sendEmailViaOrg({
                       to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },

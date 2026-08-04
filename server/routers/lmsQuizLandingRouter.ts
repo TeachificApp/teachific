@@ -75,6 +75,7 @@ import {
   lmsQuizQuestionGroups,
   lmsQuizGroupQuestions,
   questionBank,
+  organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
@@ -440,7 +441,16 @@ Rules:
         price: lmsCourses.price,
         metaTitle: lmsCourses.metaTitle,
         metaDescription: lmsCourses.metaDescription,
+        orgId: lmsCourses.orgId,
       }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      // Fetch org slug/domain so the LandingPageBuilder preview uses the org's own subdomain
+      const [org] = course?.orgId
+        ? await db.select({
+            slug: organizations.slug,
+            customDomain: organizations.customDomain,
+            domainVerificationStatus: organizations.domainVerificationStatus,
+          }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1)
+        : [undefined];
       const parsedBlocks = lp?.blocks ? (() => { try { return JSON.parse(lp.blocks); } catch(e) { console.error('[getLandingPageBlocks] JSON parse error:', e); return null; } })() : null;
 
       return {
@@ -452,6 +462,9 @@ Rules:
         courseTitle: course?.title ?? "",
         courseSlug: course?.slug ?? "",
         coursePrice: course?.price ?? 0,
+        orgSlug: org?.slug ?? null,
+        orgCustomDomain: org?.customDomain ?? null,
+        orgDomainVerificationStatus: org?.domainVerificationStatus ?? null,
         // Per-page SEO overrides (null = no override set)
         seoTitle: lp?.seoTitle ?? null,
         seoDescription: lp?.seoDescription ?? null,

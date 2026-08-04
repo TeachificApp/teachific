@@ -914,13 +914,16 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
 }
 
 // ─── Course Editor ────────────────────────────────────────────────────────────
-
 function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => void }) {
   const [, navigate] = useLocation();
-  const { openLearnLink } = useLearnLink();
-  
   const utils = trpc.useUtils();
   const { data: course, isLoading, refetch } = trpc.lmsAdmin.getCourse.useQuery({ id: courseId });
+  // Use org-scoped learn link so preview opens on the org's own subdomain
+  const { openLearnLink } = useLearnLink(
+    (course as any)?.orgSlug,
+    (course as any)?.orgCustomDomain,
+    (course as any)?.orgDomainVerificationStatus,
+  );
   const initialTab = (() => { try { return new URLSearchParams(window.location.search).get("tab") ?? "settings"; } catch { return "settings"; } })();
   const [activeTab, setActiveTab] = useState(initialTab);
   // Track which tabs have been visited to lazy-mount heavy editors
@@ -5840,7 +5843,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           <div className="space-y-3 py-2">
             <div>
               <Label className="text-xs">Destination URL *</Label>
-              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://learn.teachific.com/courses/..." className="mt-1 text-sm" />
+              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://your-school.teachific.app/courses/..." className="mt-1 text-sm" />
             </div>
             <div>
               <Label className="text-xs">Custom Slug (optional)</Label>

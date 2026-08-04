@@ -133,7 +133,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/lms" },
-      { icon: GraduationCap, label: "Teachific Learn", path: "https://learn.teachific.app", external: true },
+      { icon: GraduationCap, label: "My School", path: "__ORG_HOME__", external: true },
     ],
   },
 
@@ -591,7 +591,10 @@ function DashboardLayoutContent({
                                 if (hasSubItems && !isCollapsed) {
                                   toggleGroup(item.path);
                                 } else if (item.external) {
-                                  window.open(item.path, "_blank", "noopener,noreferrer");
+                                  const resolvedPath = item.path === "__ORG_HOME__"
+                                    ? (orgSlug ? getOrgBaseUrl(orgSlug, orgs?.[0]?.customDomain, orgs?.[0]?.domainVerificationStatus) : "https://teachific.app")
+                                    : item.path;
+                                  window.open(resolvedPath, "_blank", "noopener,noreferrer");
                                 } else {
                                   setLocation(getItemPath(item));
                                 }
