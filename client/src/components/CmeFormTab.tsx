@@ -63,6 +63,9 @@ interface FormData {
   marketingChannels?: string;
   marketingMentionsCme?: string;
   registrationFee?: string;
+  originalReleaseDate?: string;
+  mostRecentReviewDate?: string;
+  expirationDate?: string;
   attestationName?: string;
   attestationDate?: string;
   attestationTitle?: string;
@@ -140,6 +143,9 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         marketingChannels: formData.marketingChannels ?? "",
         marketingMentionsCme: formData.marketingMentionsCme ?? "Yes",
         registrationFee: formData.registrationFee ?? "",
+        originalReleaseDate: formData.originalReleaseDate ?? "",
+        mostRecentReviewDate: formData.mostRecentReviewDate ?? "",
+        expirationDate: formData.expirationDate ?? "",
         attestationName: formData.attestationName ?? "",
         attestationDate: formData.attestationDate ?? "",
         attestationTitle: formData.attestationTitle ?? "",
@@ -562,6 +568,29 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           <div className="space-y-1">
             <Label className="text-xs">Registration Fee</Label>
             <Input value={form.registrationFee ?? ""} onChange={e => setField("registrationFee", e.target.value)} placeholder="e.g. Free, $49, $149" className="text-sm" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Activity Dates */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-slate-700">Activity Dates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Original Release Date</Label>
+              <Input type="date" value={form.originalReleaseDate ?? ""} onChange={e => setField("originalReleaseDate", e.target.value)} className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Most Recent Review Date</Label>
+              <Input type="date" value={form.mostRecentReviewDate ?? ""} onChange={e => setField("mostRecentReviewDate", e.target.value)} className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Expiration Date</Label>
+              <Input type="date" value={form.expirationDate ?? ""} onChange={e => setField("expirationDate", e.target.value)} className="text-sm" />
+            </div>
           </div>
         </CardContent>
       </Card>

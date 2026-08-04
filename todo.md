@@ -4962,3 +4962,9 @@
 - [ ] Conditionally hide CME Management nav item in DashboardLayout when org.cmeEnabled is false
 - [ ] Conditionally hide CME tab in CourseBuilderPage when org.cmeEnabled is false
 - [ ] Expose cmeEnabled in myContext or a dedicated org features query for the client
+
+## CME Activity Planning Form - Date Fields
+- [ ] Add originalReleaseDate, mostRecentReviewDate, expirationDate to cmeActivityForms schema
+- [ ] Run migration for new CME date fields
+- [ ] Update cmeActivityFormRouter to read/write new date fields
+- [ ] Add date picker UI fields to CmeFormTab component
