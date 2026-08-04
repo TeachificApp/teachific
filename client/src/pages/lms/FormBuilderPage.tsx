@@ -109,6 +109,7 @@ type FieldType =
   | "email"
   | "number"
   | "date"
+  | "time"
   | "scale"
   | "richtext"
   | "info"
@@ -163,6 +164,7 @@ const FIELD_TYPES: Array<{ type: FieldType; label: string; icon: React.ReactNode
   { type: "email", label: "Email", icon: <AtSign className="h-4 w-4" />, group: "Text" },
   { type: "number", label: "Number", icon: <Hash className="h-4 w-4" />, group: "Text" },
   { type: "date", label: "Date", icon: <Calendar className="h-4 w-4" />, group: "Text" },
+  { type: "time", label: "Time", icon: <Clock className="h-4 w-4" />, group: "Text" },
   { type: "dropdown", label: "Dropdown", icon: <ChevronDown className="h-4 w-4" />, group: "Choice" },
   { type: "radio", label: "Multiple Choice", icon: <Circle className="h-4 w-4" />, group: "Choice" },
   { type: "checkbox", label: "Checkboxes", icon: <CheckSquare className="h-4 w-4" />, group: "Choice" },

@@ -176,6 +176,15 @@ function FieldRenderer({
         />
       )}
 
+      {field.type === "time" && (
+        <Input
+          type="time"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-36 ${error ? "border-red-400" : ""}`}
+        />
+      )}
+
       {field.type === "long_answer" && (
         <Textarea
           placeholder={field.placeholder ?? ""}

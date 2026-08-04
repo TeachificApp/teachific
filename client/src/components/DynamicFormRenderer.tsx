@@ -16,7 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, ChevronRight, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RichTextDisplay } from "@/components/RichTextEditor";
 import { toast } from "sonner";
 import { FormSuccessOutcomeView } from "@/components/FormSuccessOutcomeView";
@@ -211,13 +212,20 @@ function FieldWrapper({ item, isRequired, children }: { item: FormItem; isRequir
   return (
     <div className="space-y-1.5">
       {item.itemType !== "heading" && item.itemType !== "info" && (
-        <Label className="text-sm font-semibold text-gray-700">
+        <Label className="text-sm font-semibold text-gray-700 flex items-center gap-1">
           {item.label}
-          {showRequired && <span className="text-red-500 ml-1">*</span>}
+          {showRequired && <span className="text-red-500 ml-0.5">*</span>}
+          {item.helpText && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                {item.helpText}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </Label>
-      )}
-      {item.helpText && (
-        <p className="text-xs text-gray-500">{item.helpText}</p>
       )}
       {children}
     </div>
@@ -404,6 +412,44 @@ function ScaleField({ item, value, onChange, readOnly }: {
   );
 }
 
+function DateField({ item, value, onChange, readOnly }: {
+  item: FormItem;
+  value: string;
+  onChange: (v: string) => void;
+  readOnly: boolean;
+}) {
+  return (
+    <FieldWrapper item={item}>
+      <Input
+        type="date"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={readOnly}
+        className="text-sm w-48"
+      />
+    </FieldWrapper>
+  );
+}
+
+function TimeField({ item, value, onChange, readOnly }: {
+  item: FormItem;
+  value: string;
+  onChange: (v: string) => void;
+  readOnly: boolean;
+}) {
+  return (
+    <FieldWrapper item={item}>
+      <Input
+        type="time"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        disabled={readOnly}
+        className="text-sm w-36"
+      />
+    </FieldWrapper>
+  );
+}
+
 function HeadingField({ item }: { item: FormItem }) {
   return (
     <div className="pt-2">
@@ -451,6 +497,8 @@ function FormItemField({ item, response, onChange, readOnly, isRequired }: {
     case "checkbox": return <CheckboxField item={item} values={arrVal} onChange={onChange as (v: string[]) => void} readOnly={readOnly} />;
     case "select": return <SelectField item={item} value={strVal} onChange={onChange as (v: string) => void} readOnly={readOnly} />;
     case "scale": return <ScaleField item={item} value={strVal} onChange={onChange as (v: string) => void} readOnly={readOnly} />;
+    case "date": return <DateField item={item} value={strVal} onChange={onChange as (v: string) => void} readOnly={readOnly} />;
+    case "time": return <TimeField item={item} value={strVal} onChange={onChange as (v: string) => void} readOnly={readOnly} />;
     case "heading": return <HeadingField item={item} />;
     case "info": return <InfoField item={item} />;
     default: return <TextField item={item} value={strVal} onChange={onChange as (v: string) => void} readOnly={readOnly} />;

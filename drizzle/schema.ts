@@ -1461,7 +1461,7 @@ export type InsertForm = typeof forms.$inferInsert;
 export const formFields = mysqlTable("form_fields", {
   id: int("id").autoincrement().primaryKey(),
   formId: int("formId").notNull(),
-  // Field type: short_answer, long_answer, dropdown, radio, checkbox, email, number, date, section_break, statement, page_break, scale, richtext, info
+  // Field type: short_answer, long_answer, dropdown, radio, checkbox, email, number, date, time, section_break, statement, page_break, scale, richtext, info
   type: varchar("type", { length: 50 }).notNull(),
   label: text("label").notNull(),
   placeholder: text("placeholder"),

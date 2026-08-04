@@ -99,6 +99,7 @@ import {
   ChevronRight,
   MousePointer,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { PublishDomainSelect } from "@/components/PublishDomainSelect";
 import RichTextEditor, { RichTextDisplay } from "@/components/RichTextEditor";
 import FormEmbedSharePanel from "@/components/admin/FormEmbedSharePanel";
@@ -1675,6 +1676,11 @@ function ShareTab({ formId, template, onRefetch }: { formId: number; template: a
   const [slugEditing, setSlugEditing] = useState(false);
   const [slugInput, setSlugInput] = useState(template.publicSlug ?? "");
   const [copied, setCopied] = useState<string | null>(null);
+  const { data: fullFormData } = trpc.generalForm.getForm.useQuery({ id: formId });
+  const formItems = useMemo(
+    () => (fullFormData?.items ?? []).filter((it: any) => !['heading', 'paragraph', 'section_break', 'rich_text', 'richtext', 'info'].includes(it.itemType)),
+    [fullFormData]
+  );
 
   const updateSlug = trpc.generalForm.updateSlug.useMutation({
     onSuccess: () => { toast.success("Slug updated"); setSlugEditing(false); onRefetch(); },
@@ -1803,11 +1809,87 @@ function ShareTab({ formId, template, onRefetch }: { formId: number; template: a
         </CardContent>
       </Card>
 
+            {/* QR Code */}
+      {publicUrl && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Download className="w-4 h-4" /> QR Code</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-gray-500">Scan or download to share the form offline — on print materials, slides, or signage.</p>
+            <div className="flex items-start gap-4">
+              <div className="bg-white border border-gray-200 rounded-lg p-3 shrink-0">
+                <QRCodeSVG value={publicUrl} size={120} />
+              </div>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    const svg = document.querySelector(".qr-download-target svg") as SVGElement | null;
+                    if (!svg) return;
+                    const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `form-qr-${template.publicSlug ?? formId}.svg`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5" /> Download SVG
+                </Button>
+                <p className="text-xs text-gray-400">Right-click the QR code and choose "Save image" to download as PNG.</p>
+              </div>
+            </div>
+            <div className="qr-download-target hidden">
+              <QRCodeSVG value={publicUrl} size={300} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Pre-populate Link */}
+      {publicUrl && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Link2 className="w-4 h-4" /> Pre-populate Link</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-gray-500">
+              Append URL parameters to auto-fill form fields. Use the field IDs below to construct your link.
+            </p>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 font-mono text-xs text-gray-700 break-all">
+              {publicUrl}?field_<span className="text-teal-600">ID</span>=value&amp;field_<span className="text-teal-600">ID2</span>=value2
+            </div>
+            <p className="text-xs font-semibold text-gray-600 mt-2">Field ID Reference</p>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Field ID</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Label</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">Type</th>
+                    <th className="text-left px-3 py-2 font-semibold text-gray-600">URL Param</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formItems.map((it: any) => (
+                    <tr key={it.id} className="border-b border-gray-100 last:border-0">
+                      <td className="px-3 py-2 font-mono text-teal-700">{it.id}</td>
+                      <td className="px-3 py-2 text-gray-700">{it.label || <span className="italic text-gray-400">(unlabeled)</span>}</td>
+                      <td className="px-3 py-2 text-gray-500">{it.itemType}</td>
+                      <td className="px-3 py-2">
+                        <code className="bg-gray-100 px-1 rounded text-teal-600">?field_{it.id}=value</code>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <FormEmbedSharePanel formId={formId} publicUrl={publicUrl} hostDomain={template.hostDomain || DEFAULT_HOST_DOMAIN} />
     </div>
   );
 }
-
 // ─── Results Settings (saved filters + form actions) ─────────────────────────
 function ResultsSettingsPanel({ formId }: { formId: number }) {
   const { data: formData } = trpc.generalForm.getForm.useQuery({ id: formId });

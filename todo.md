@@ -4968,3 +4968,22 @@
 - [ ] Run migration for new CME date fields
 - [ ] Update cmeActivityFormRouter to read/write new date fields
 - [ ] Add date picker UI fields to CmeFormTab component
+## Form Builder Updates (Ported from Ultrasound-App, Aug 4 2026)
+- [ ] DynamicFormRenderer: add DateField and TimeField components
+- [ ] DynamicFormRenderer: add date/time cases to item switch statement
+- [ ] DynamicFormRenderer: update FieldWrapper to show ℹ tooltip icon on helpText (inline after label)
+- [ ] FormBuilderPage (org-scoped): add "time" to FieldType union and FIELD_TYPES array
+- [ ] FormPlayerPage: add time field rendering (type="time" input)
+- [ ] GeneralFormBuilder: add QR code section to Share panel (below public URL card)
+- [ ] GeneralFormBuilder: add pre-populate link reference table to Share panel
+
+## Form Builder Updates (Ported from Ultrasound-App, Aug 4 2026)
+- [x] DynamicFormRenderer: Add DateField component (input[type=date])
+- [x] DynamicFormRenderer: Add TimeField component (input[type=time])
+- [x] DynamicFormRenderer: Update FieldWrapper to show helpText as inline tooltip icon (Info icon) instead of plain text below label
+- [x] FormBuilderPage (org-scoped): Add "time" to FieldType union
+- [x] FormBuilderPage (org-scoped): Add Time field type to FIELD_TYPES array (Clock icon, Text group)
+- [x] FormPlayerPage (public form renderer): Add time field rendering (input[type=time])
+- [x] GeneralFormBuilder (platform admin): Add QR Code card to Share tab (scannable + downloadable SVG)
+- [x] GeneralFormBuilder (platform admin): Add Pre-populate Link card to Share tab (URL format + field ID reference table)
+- [x] Schema comment updated to include "time" field type
