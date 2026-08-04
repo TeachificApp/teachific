@@ -2504,14 +2504,15 @@ function OrgPaymentSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="orgTermsAgreement">Agreement sentence</Label>
-                <Input
+                <Textarea
                   id="orgTermsAgreement"
                   placeholder="e.g. I have reviewed and agree to the"
                   value={orgTermsAgreement}
                   onChange={e => setOrgTermsAgreement(e.target.value)}
-                  maxLength={1024}
+                  maxLength={2048}
+                  rows={3}
                 />
-                <p className="text-xs text-muted-foreground">Text before the two links.</p>
+                <p className="text-xs text-muted-foreground">Text shown before the links in the checkout agreement checkbox. Supports basic HTML (e.g. &lt;strong&gt;, &lt;em&gt;, &lt;a&gt;).</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">

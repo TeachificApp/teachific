@@ -382,16 +382,23 @@ export const lmsCheckoutPublicRouter = router({
       // Org-level purchase terms (overrides platform default; course-level overrides this)
       const [orgPaySettings] = await db.select().from(orgPaymentSettings)
         .where(eq(orgPaymentSettings.orgId, content.orgId)).limit(1);
-      // Course-level purchase terms (only for course content type)
-      const courseRow = input.contentType === "course"
-        ? await db.select({ purchaseTermsAgreement: lmsCourses.purchaseTermsAgreement, purchaseTermsLink1Label: lmsCourses.purchaseTermsLink1Label, purchaseTermsLink1Url: lmsCourses.purchaseTermsLink1Url, purchaseTermsLink2Label: lmsCourses.purchaseTermsLink2Label, purchaseTermsLink2Url: lmsCourses.purchaseTermsLink2Url }).from(lmsCourses).where(eq(lmsCourses.id, content.id)).limit(1).then((r: any[]) => r[0] ?? null)
-        : null;
-      // Resolve terms: course > org > platform (termsUrl/privacyUrl as fallback)
-      const resolvedTermsAgreement = courseRow?.purchaseTermsAgreement || orgPaySettings?.purchaseTermsAgreement || null;
-      const resolvedTermsLink1Label = courseRow?.purchaseTermsLink1Label || orgPaySettings?.purchaseTermsLink1Label || null;
-      const resolvedTermsLink1Url = courseRow?.purchaseTermsLink1Url || orgPaySettings?.purchaseTermsLink1Url || (settings as any)?.termsUrl || null;
-      const resolvedTermsLink2Label = courseRow?.purchaseTermsLink2Label || orgPaySettings?.purchaseTermsLink2Label || null;
-      const resolvedTermsLink2Url = courseRow?.purchaseTermsLink2Url || orgPaySettings?.purchaseTermsLink2Url || (settings as any)?.privacyUrl || null;
+      // Content-level purchase terms (fetched for all content types that support overrides)
+      let contentTermsRow: { purchaseTermsAgreement: string | null; purchaseTermsLink1Label: string | null; purchaseTermsLink1Url: string | null; purchaseTermsLink2Label: string | null; purchaseTermsLink2Url: string | null } | null = null;
+      if (input.contentType === "course") {
+        contentTermsRow = await db.select({ purchaseTermsAgreement: lmsCourses.purchaseTermsAgreement, purchaseTermsLink1Label: lmsCourses.purchaseTermsLink1Label, purchaseTermsLink1Url: lmsCourses.purchaseTermsLink1Url, purchaseTermsLink2Label: lmsCourses.purchaseTermsLink2Label, purchaseTermsLink2Url: lmsCourses.purchaseTermsLink2Url }).from(lmsCourses).where(eq(lmsCourses.id, content.id)).limit(1).then((r: any[]) => r[0] ?? null);
+      } else if (input.contentType === "download") {
+        contentTermsRow = await db.select({ purchaseTermsAgreement: digitalProducts.purchaseTermsAgreement, purchaseTermsLink1Label: digitalProducts.purchaseTermsLink1Label, purchaseTermsLink1Url: digitalProducts.purchaseTermsLink1Url, purchaseTermsLink2Label: digitalProducts.purchaseTermsLink2Label, purchaseTermsLink2Url: digitalProducts.purchaseTermsLink2Url }).from(digitalProducts).where(eq(digitalProducts.id, content.id)).limit(1).then((r: any[]) => r[0] ?? null);
+      } else if (input.contentType === "webinar") {
+        contentTermsRow = await db.select({ purchaseTermsAgreement: webinars.purchaseTermsAgreement, purchaseTermsLink1Label: webinars.purchaseTermsLink1Label, purchaseTermsLink1Url: webinars.purchaseTermsLink1Url, purchaseTermsLink2Label: webinars.purchaseTermsLink2Label, purchaseTermsLink2Url: webinars.purchaseTermsLink2Url }).from(webinars).where(eq(webinars.id, content.id)).limit(1).then((r: any[]) => r[0] ?? null);
+      } else if (input.contentType === "workshop") {
+        contentTermsRow = await db.select({ purchaseTermsAgreement: workshops.purchaseTermsAgreement, purchaseTermsLink1Label: workshops.purchaseTermsLink1Label, purchaseTermsLink1Url: workshops.purchaseTermsLink1Url, purchaseTermsLink2Label: workshops.purchaseTermsLink2Label, purchaseTermsLink2Url: workshops.purchaseTermsLink2Url }).from(workshops).where(eq(workshops.id, content.id)).limit(1).then((r: any[]) => r[0] ?? null);
+      }
+      // Resolve terms: content-level > org-level > platform (termsUrl/privacyUrl as fallback)
+      const resolvedTermsAgreement = contentTermsRow?.purchaseTermsAgreement || orgPaySettings?.purchaseTermsAgreement || null;
+      const resolvedTermsLink1Label = contentTermsRow?.purchaseTermsLink1Label || orgPaySettings?.purchaseTermsLink1Label || null;
+      const resolvedTermsLink1Url = contentTermsRow?.purchaseTermsLink1Url || orgPaySettings?.purchaseTermsLink1Url || (settings as any)?.termsUrl || null;
+      const resolvedTermsLink2Label = contentTermsRow?.purchaseTermsLink2Label || orgPaySettings?.purchaseTermsLink2Label || null;
+      const resolvedTermsLink2Url = contentTermsRow?.purchaseTermsLink2Url || orgPaySettings?.purchaseTermsLink2Url || (settings as any)?.privacyUrl || null;
 
       // Checkout page config
       const checkoutPageRow = await getCheckoutPageRow(db, input.contentType, content.id);

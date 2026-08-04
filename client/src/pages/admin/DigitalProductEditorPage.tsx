@@ -196,6 +196,12 @@ export default function DigitalProductEditorPage() {
   const [defaultAccessDays, setDefaultAccessDays] = useState<number | null>(null);
   const [defaultMaxDownloads, setDefaultMaxDownloads] = useState<number | null>(null);
   const [salesPageBlocks, setSalesPageBlocks] = useState<Block[]>([]);
+  // Checkout purchase terms override
+  const [purchaseTermsAgreement, setPurchaseTermsAgreement] = useState("");
+  const [purchaseTermsLink1Label, setPurchaseTermsLink1Label] = useState("");
+  const [purchaseTermsLink1Url, setPurchaseTermsLink1Url] = useState("");
+  const [purchaseTermsLink2Label, setPurchaseTermsLink2Label] = useState("");
+  const [purchaseTermsLink2Url, setPurchaseTermsLink2Url] = useState("");
   const [priceList, setPriceList] = useState<PriceForm[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -216,6 +222,11 @@ export default function DigitalProductEditorPage() {
       setThumbnailUrl(product.thumbnailUrl ?? "");
       setDefaultAccessDays(product.defaultAccessDays ?? null);
       setDefaultMaxDownloads(product.defaultMaxDownloads ?? null);
+      setPurchaseTermsAgreement((product as any).purchaseTermsAgreement ?? "");
+      setPurchaseTermsLink1Label((product as any).purchaseTermsLink1Label ?? "");
+      setPurchaseTermsLink1Url((product as any).purchaseTermsLink1Url ?? "");
+      setPurchaseTermsLink2Label((product as any).purchaseTermsLink2Label ?? "");
+      setPurchaseTermsLink2Url((product as any).purchaseTermsLink2Url ?? "");
       try {
         const blocks = product.salesPageBlocksJson
           ? JSON.parse(product.salesPageBlocksJson as string)
@@ -353,6 +364,11 @@ export default function DigitalProductEditorPage() {
           isPublished,
           defaultAccessDays,
           defaultMaxDownloads,
+          purchaseTermsAgreement: purchaseTermsAgreement.trim() || null,
+          purchaseTermsLink1Label: purchaseTermsLink1Label.trim() || null,
+          purchaseTermsLink1Url: purchaseTermsLink1Url.trim() || null,
+          purchaseTermsLink2Label: purchaseTermsLink2Label.trim() || null,
+          purchaseTermsLink2Url: purchaseTermsLink2Url.trim() || null,
         });
         for (const p of priceList) {
           await upsertPrice.mutateAsync({ ...p, productId: productId! });
@@ -733,6 +749,48 @@ export default function DigitalProductEditorPage() {
                 <p className="text-xs text-muted-foreground">
                   Limit how many times a buyer can download the file.
                 </p>
+              </div>
+            </div>
+
+            {/* ── Checkout Terms Override ─────────────────────────────── */}
+            <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/20">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-muted-foreground" /> Checkout Terms Override
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Override the checkout agreement checkbox for this product. Leave blank to use the org-level default.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Agreement sentence</Label>
+                <Textarea
+                  value={purchaseTermsAgreement}
+                  onChange={e => setPurchaseTermsAgreement(e.target.value)}
+                  placeholder="e.g. I have reviewed and agree to the"
+                  rows={3}
+                  maxLength={2048}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Text before the links. Supports basic HTML (&lt;strong&gt;, &lt;em&gt;, &lt;a&gt;).</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 1 label</Label>
+                  <Input value={purchaseTermsLink1Label} onChange={e => setPurchaseTermsLink1Label(e.target.value)} placeholder="e.g. Terms of Service" className="text-sm h-8" maxLength={255} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 1 URL</Label>
+                  <Input value={purchaseTermsLink1Url} onChange={e => setPurchaseTermsLink1Url(e.target.value)} placeholder="https://example.com/terms" className="text-sm h-8" maxLength={1024} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 2 label</Label>
+                  <Input value={purchaseTermsLink2Label} onChange={e => setPurchaseTermsLink2Label(e.target.value)} placeholder="e.g. Privacy Policy" className="text-sm h-8" maxLength={255} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 2 URL</Label>
+                  <Input value={purchaseTermsLink2Url} onChange={e => setPurchaseTermsLink2Url(e.target.value)} placeholder="https://example.com/privacy" className="text-sm h-8" maxLength={1024} />
+                </div>
               </div>
             </div>
 

@@ -863,6 +863,12 @@ export const workshopAdminRouter = router({
         publishDomain: z.string().nullish(),
         afterPurchaseWorkflow: z.string().nullish(),
         checkoutPageConfig: z.string().nullish(),
+        // Checkout purchase terms override (content-level > org-level > platform default)
+        purchaseTermsAgreement: z.string().max(2048).nullish(),
+        purchaseTermsLink1Label: z.string().max(255).nullish(),
+        purchaseTermsLink1Url: z.string().max(1024).nullish(),
+        purchaseTermsLink2Label: z.string().max(255).nullish(),
+        purchaseTermsLink2Url: z.string().max(1024).nullish(),
       })
     )
     .mutation(async ({ input }) => {

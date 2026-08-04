@@ -4987,3 +4987,32 @@
 - [x] GeneralFormBuilder (platform admin): Add QR Code card to Share tab (scannable + downloadable SVG)
 - [x] GeneralFormBuilder (platform admin): Add Pre-populate Link card to Share tab (URL format + field ID reference table)
 - [x] Schema comment updated to include "time" field type
+
+## Checkout Terms & Agreement (Org-Scoped, Aug 4 2026)
+- [ ] Add purchaseTerms columns to digitalProducts schema
+- [ ] Add purchaseTerms columns to webinars schema
+- [ ] Add purchaseTerms columns to workshops schema
+- [ ] Run SQL migration for new columns
+- [ ] Extend lmsCheckoutRouter to resolve per-content terms for download/webinar/workshop
+- [ ] Add purchaseTerms fields to downloadsRouter.update input schema
+- [ ] Add purchaseTerms fields to workshopAdminRouter.update input schema
+- [ ] Upgrade org-level agreement sentence from Input to Textarea in OrgSettingsPage
+- [ ] Upgrade course-level agreement sentence from Input to Textarea in CourseBuilderPage
+- [ ] Add HTML rendering for agreement text in HostedCheckoutPage
+- [ ] Add Checkout Terms Override card to DigitalProductEditorPage
+- [ ] Add Checkout Terms Override card to WebinarEditorPage
+- [ ] Add Checkout Terms Override card to WorkshopsAdmin
+
+## Checkout Terms & Agreement (Ported from Ultrasound-App, Aug 4 2026)
+- [x] Add purchaseTerms columns to digitalProducts, webinars, workshops schema
+- [x] Run SQL migration for new columns
+- [x] Extend lmsCheckoutRouter to resolve per-content terms for all 4 content types
+- [x] Add purchaseTerms fields to downloadsRouter.update input schema
+- [x] Add purchaseTerms fields to workshopRouter.update input schema
+- [x] Upgrade org-level agreement sentence from Input to Textarea (OrgSettingsPage)
+- [x] Upgrade course-level agreement sentence from Input to Textarea (CourseBuilderPage)
+- [x] Render purchaseTermsAgreement as HTML in HostedCheckoutPage (dangerouslySetInnerHTML)
+- [x] Add Checkout Terms Override card to DigitalProductEditorPage (Access tab)
+- [x] Add Checkout Terms Override card to WebinarEditorPage (Details tab)
+- [x] Add Checkout Terms Override card to WorkshopsAdmin (Settings tab)
+- [x] Write vitest tests for checkout terms resolution hierarchy (10 tests)

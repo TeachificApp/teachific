@@ -539,6 +539,12 @@ export const downloadsAdminRouter = router({
       metaTitle: z.string().nullable().optional(),
       metaDescription: z.string().nullable().optional(),
       showInLibrary: z.boolean().optional(),
+      // Checkout purchase terms override (content-level > org-level > platform default)
+      purchaseTermsAgreement: z.string().max(2048).nullable().optional(),
+      purchaseTermsLink1Label: z.string().max(255).nullable().optional(),
+      purchaseTermsLink1Url: z.string().max(1024).nullable().optional(),
+      purchaseTermsLink2Label: z.string().max(255).nullable().optional(),
+      purchaseTermsLink2Url: z.string().max(1024).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);

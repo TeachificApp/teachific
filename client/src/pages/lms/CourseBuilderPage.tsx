@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -2230,13 +2231,15 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
         </div>
         <div>
           <Label className="text-xs text-gray-600">Agreement sentence</Label>
-          <Input
+          <Textarea
             value={purchaseTermsAgreement}
             onChange={e => setPurchaseTermsAgreement(e.target.value)}
             placeholder="e.g. I have reviewed and agree to the"
             className="mt-1 text-sm"
+            rows={3}
+            maxLength={2048}
           />
-          <p className="text-xs text-gray-400 mt-1">Text before the two links.</p>
+          <p className="text-xs text-gray-400 mt-1">Text shown before the links in the checkout agreement checkbox. Supports basic HTML (e.g. &lt;strong&gt;, &lt;em&gt;, &lt;a&gt;).</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>

@@ -122,6 +122,12 @@ export default function WebinarEditorPage() {
     postWebinarMessage: "Thank you for attending!",
     postWebinarDelaySeconds: 300,
     isPublished: false,
+    // Checkout purchase terms override
+    purchaseTermsAgreement: "",
+    purchaseTermsLink1Label: "",
+    purchaseTermsLink1Url: "",
+    purchaseTermsLink2Label: "",
+    purchaseTermsLink2Url: "",
   });
 
   const [salesBlocks, setSalesBlocks] = useState<any[]>([]);
@@ -157,6 +163,11 @@ export default function WebinarEditorPage() {
         postWebinarMessage: webinar.postWebinarMessage ?? "Thank you for attending!",
         postWebinarDelaySeconds: webinar.postWebinarDelaySeconds ?? 300,
         isPublished: webinar.isPublished ?? false,
+        purchaseTermsAgreement: (webinar as any).purchaseTermsAgreement ?? "",
+        purchaseTermsLink1Label: (webinar as any).purchaseTermsLink1Label ?? "",
+        purchaseTermsLink1Url: (webinar as any).purchaseTermsLink1Url ?? "",
+        purchaseTermsLink2Label: (webinar as any).purchaseTermsLink2Label ?? "",
+        purchaseTermsLink2Url: (webinar as any).purchaseTermsLink2Url ?? "",
       });
       if (webinar.salesPageBlocksJson) {
         setSalesBlocks(
@@ -195,6 +206,11 @@ export default function WebinarEditorPage() {
       aiViewersPeakAt: Number(form.aiViewersPeakAt),
       postWebinarDelaySeconds: Number(form.postWebinarDelaySeconds),
       salesPageBlocksJson: salesBlocks,
+      purchaseTermsAgreement: form.purchaseTermsAgreement.trim() || null,
+      purchaseTermsLink1Label: form.purchaseTermsLink1Label.trim() || null,
+      purchaseTermsLink1Url: form.purchaseTermsLink1Url.trim() || null,
+      purchaseTermsLink2Label: form.purchaseTermsLink2Label.trim() || null,
+      purchaseTermsLink2Url: form.purchaseTermsLink2Url.trim() || null,
     });
   };
 
@@ -474,6 +490,48 @@ export default function WebinarEditorPage() {
                 <p className="text-xs text-muted-foreground">
                   {Math.floor(form.postWebinarDelaySeconds / 60)} minutes into the webinar
                 </p>
+              </div>
+            </div>
+
+            {/* ── Checkout Terms Override ─────────────────────────────── */}
+            <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/20">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-muted-foreground" /> Checkout Terms Override
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Override the checkout agreement checkbox for this webinar. Leave blank to use the org-level default.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Agreement sentence</Label>
+                <Textarea
+                  value={form.purchaseTermsAgreement}
+                  onChange={e => setForm(f => ({ ...f, purchaseTermsAgreement: e.target.value }))}
+                  placeholder="e.g. I have reviewed and agree to the"
+                  rows={3}
+                  maxLength={2048}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">Text before the links. Supports basic HTML (&lt;strong&gt;, &lt;em&gt;, &lt;a&gt;).</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 1 label</Label>
+                  <Input value={form.purchaseTermsLink1Label} onChange={e => setForm(f => ({ ...f, purchaseTermsLink1Label: e.target.value }))} placeholder="e.g. Terms of Service" className="text-sm h-8" maxLength={255} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 1 URL</Label>
+                  <Input value={form.purchaseTermsLink1Url} onChange={e => setForm(f => ({ ...f, purchaseTermsLink1Url: e.target.value }))} placeholder="https://example.com/terms" className="text-sm h-8" maxLength={1024} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 2 label</Label>
+                  <Input value={form.purchaseTermsLink2Label} onChange={e => setForm(f => ({ ...f, purchaseTermsLink2Label: e.target.value }))} placeholder="e.g. Privacy Policy" className="text-sm h-8" maxLength={255} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Link 2 URL</Label>
+                  <Input value={form.purchaseTermsLink2Url} onChange={e => setForm(f => ({ ...f, purchaseTermsLink2Url: e.target.value }))} placeholder="https://example.com/privacy" className="text-sm h-8" maxLength={1024} />
+                </div>
               </div>
             </div>
           </div>

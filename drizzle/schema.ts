@@ -1003,6 +1003,12 @@ export const digitalProducts = mysqlTable("digital_products", {
   memberPageBlocksBelow: longtext("member_page_blocks_below"),
   // Hide additional pricing options on the landing page
   hidePricingOptions: boolean("hide_pricing_options").default(false).notNull(),
+  // Checkout purchase terms override (content-level > org-level > platform default)
+  purchaseTermsAgreement: varchar("purchase_terms_agreement", { length: 2048 }),
+  purchaseTermsLink1Label: varchar("purchase_terms_link1_label", { length: 255 }),
+  purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
+  purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
+  purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
@@ -1107,6 +1113,12 @@ export const webinars = mysqlTable("webinars", {
   stripeProductId: varchar("stripe_product_id", { length: 255 }),
   stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
   isPublished: boolean("isPublished").default(false),
+  // Checkout purchase terms override (content-level > org-level > platform default)
+  purchaseTermsAgreement: varchar("purchase_terms_agreement", { length: 2048 }),
+  purchaseTermsLink1Label: varchar("purchase_terms_link1_label", { length: 255 }),
+  purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
+  purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
+  purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
@@ -4506,6 +4518,12 @@ export const workshops = mysqlTable("workshops", {
   instructorBio: text("instructor_bio"),
   instructorImageUrl: varchar("instructor_image_url", { length: 1024 }),
   tags: json("tags"),
+  // Checkout purchase terms override (content-level > org-level > platform default)
+  purchaseTermsAgreement: varchar("purchase_terms_agreement", { length: 2048 }),
+  purchaseTermsLink1Label: varchar("purchase_terms_link1_label", { length: 255 }),
+  purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
+  purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
+  purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
