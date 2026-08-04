@@ -4954,3 +4954,11 @@
 - [ ] Fix server: stripeWebhookRoutes.ts to use org subdomain
 - [ ] Fix server: lmsRouter.ts discussion URL to use org subdomain
 - [ ] Fix DashboardLayout "Teachific Learn" sidebar link to use org subdomain
+
+## Org Branding & CME Feature Flag
+
+- [ ] Expand BrandingPage: add favicon upload, student logo, button color, page bg color, invoice/email branding JSON
+- [ ] Apply org branding (primaryColor, logo, font) to landing pages (LandingPageBuilder block renderer)
+- [ ] Conditionally hide CME Management nav item in DashboardLayout when org.cmeEnabled is false
+- [ ] Conditionally hide CME tab in CourseBuilderPage when org.cmeEnabled is false
+- [ ] Expose cmeEnabled in myContext or a dedicated org features query for the client

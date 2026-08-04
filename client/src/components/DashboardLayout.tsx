@@ -646,7 +646,11 @@ function DashboardLayoutContent({
                                     Preview Site
                                   </button>
                                 )}
-                                {item.subItems!.map((sub) => {
+                                {item.subItems!.filter((sub) => {
+                                  // Hide CME Management unless org has CME enabled (platform admins always see it)
+                                  if (sub.path === "/lms/cme" && !isAdmin && !orgs?.[0]?.cmeEnabled) return false;
+                                  return true;
+                                }).map((sub) => {
                                   const subActive = isSubItemActive(sub);
                                   return (
                                     <button

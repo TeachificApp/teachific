@@ -918,6 +918,11 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: course, isLoading, refetch } = trpc.lmsAdmin.getCourse.useQuery({ id: courseId });
+  // CME feature flag — only show CME tab if org has CME enabled (platform admins always see it)
+  const { user: authUser } = useAuth();
+  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
+  const isPlatformAdmin = authUser?.role === "site_admin" || authUser?.role === "site_owner";
+  const cmeEnabled = isPlatformAdmin || (myOrgs?.[0]?.cmeEnabled ?? false);
   // Use org-scoped learn link so preview opens on the org's own subdomain
   const { openLearnLink } = useLearnLink(
     (course as any)?.orgSlug,
@@ -1189,7 +1194,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
           <TabsTrigger value="sales" className="text-xs">Sales</TabsTrigger>
           <TabsTrigger value="checkout_page" className="text-xs">Checkout Page</TabsTrigger>
           <TabsTrigger value="embed" className="text-xs">Embed</TabsTrigger>
-          <TabsTrigger value="cme" className="text-xs">CME</TabsTrigger>
+          {cmeEnabled && <TabsTrigger value="cme" className="text-xs">CME</TabsTrigger>}
         </TabsList>
 
         {/* Settings Tab */}
