@@ -626,9 +626,12 @@ export const cmeActivityFormRouter = router({
       orgId: z.number().int().positive().optional(),
       courseId: z.number().int().positive(),
       productType: z.string().optional(),
-      // subject+body used by CmeManagementPage; recipientEmail+formData used by CmeFormTab/CmeActivityFormDialog
+      // subject+body used by CmeManagementPage; toEmails/recipientEmail+formData used by CmeFormTab/CmeActivityFormDialog
       subject: z.string().min(1).max(512).optional(),
       body: z.string().min(1).optional(),
+      // toEmails: full editable recipient list (from multi-email chip UI)
+      toEmails: z.array(z.string().email()).optional(),
+      // recipientEmail: legacy single-recipient fallback
       recipientEmail: z.string().email().optional(),
       formData: z.record(z.unknown()).optional(),
     }))
@@ -670,12 +673,30 @@ export const cmeActivityFormRouter = router({
       const senderEmail = org?.customSenderEmail ?? process.env.SENDGRID_FROM_EMAIL ?? "admin@teachific.app";
       const senderName = org?.customSenderName ?? orgName;
 
-      // Build CC list: CME provider staff + org's contact email
-      const ccList: Array<{ name: string; email: string }> = [
-        { name: "Judith Buckland", email: "j.buckland@cardioserv.net" },
-      ];
-      if (org?.cmeContactEmail) {
-        ccList.push({ name: senderName, email: org.cmeContactEmail });
+      // Build TO and CC lists
+      // If toEmails is provided (from the multi-email chip UI), use it as the full recipient list
+      // Otherwise fall back to legacy single recipientEmail or default Cardioserv address
+      let toList: Array<{ name: string; email: string }>;
+      let ccList: Array<{ name: string; email: string }> = [];
+
+      if (input.toEmails && input.toEmails.length > 0) {
+        // Multi-email mode: all emails in toEmails go to TO
+        toList = input.toEmails.map(email => ({ name: email, email }));
+      } else if (input.recipientEmail) {
+        // Legacy single-recipient mode
+        toList = [{ name: input.recipientEmail, email: input.recipientEmail }];
+        // Keep Cardioserv as CC in legacy mode
+        ccList = [{ name: "Judith Buckland", email: "j.buckland@cardioserv.net" }];
+        if (org?.cmeContactEmail) {
+          ccList.push({ name: senderName, email: org.cmeContactEmail });
+        }
+      } else {
+        // Default: send to Cardioserv primary
+        toList = [{ name: "Don Gerig", email: "don@cardioserv.net" }];
+        ccList = [{ name: "Judith Buckland", email: "j.buckland@cardioserv.net" }];
+        if (org?.cmeContactEmail) {
+          ccList.push({ name: senderName, email: org.cmeContactEmail });
+        }
       }
 
       const htmlBody = `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body style="font-family:Arial,sans-serif;font-size:15px;color:#1e293b;line-height:1.7;max-width:640px;margin:0 auto;padding:24px;">
@@ -693,8 +714,8 @@ ${input.body.split('\n').map(line => line.trim() ? `<p style="margin:0 0 12px;">
 
       const payload = {
         personalizations: [{
-          to: [{ name: "Don Gerig", email: "don@cardioserv.net" }],
-          cc: ccList,
+          to: toList,
+          ...(ccList.length > 0 ? { cc: ccList } : {}),
           subject: input.subject,
         }],
         from: { name: senderName, email: senderEmail },

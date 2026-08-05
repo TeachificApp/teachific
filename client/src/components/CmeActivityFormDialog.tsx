@@ -66,6 +66,9 @@ interface FormData {
   attestationName?: string;
   attestationDate?: string;
   attestationTitle?: string;
+  originalReleaseDate?: string;
+  mostRecentReviewDate?: string;
+  expirationDate?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -106,14 +109,44 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
   const [form, setForm] = useState<FormData>({});
   const [showHistory, setShowHistory] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [sendEmail, setSendEmail] = useState("");
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [sendEmailInput, setSendEmailInput] = useState("");
+  const [sendEmailList, setSendEmailList] = useState<string[]>([]);
+
+  // Build default email list when send dialog opens
+  const openSendDialog = () => {
+    if (!showSendDialog) {
+      const defaults: string[] = ["don@cardioserv.net", "j.buckland@cardioserv.net"];
+      if (cmeStatus?.cmeContactEmail && !defaults.includes(cmeStatus.cmeContactEmail)) {
+        defaults.push(cmeStatus.cmeContactEmail);
+      }
+      setSendEmailList(defaults);
+      setSendEmailInput("");
+    }
+    setShowSendDialog(v => !v);
+  };
+
+  const addSendEmail = () => {
+    const email = sendEmailInput.trim();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast.error("Invalid email address"); return; }
+    if (sendEmailList.includes(email)) { toast.error("Email already in list"); return; }
+    setSendEmailList(prev => [...prev, email]);
+    setSendEmailInput("");
+  };
+
+  const removeSendEmail = (email: string) => {
+    setSendEmailList(prev => prev.filter(e => e !== email));
+  };
 
   // Populate form when data loads
   useEffect(() => {
     if (formData) {
       setForm({
         activityTitle: formData.activityTitle ?? productTitle ?? "",
+        originalReleaseDate: (formData as any).originalReleaseDate ?? "",
+        mostRecentReviewDate: (formData as any).mostRecentReviewDate ?? "",
+        expirationDate: (formData as any).expirationDate ?? "",
         activityType: formData.activityType ?? "",
         proposedDate: formData.proposedDate ?? "",
         activityLengthHours: formData.activityLengthHours ?? creditHours ?? "",
@@ -215,8 +248,8 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
   };
 
   const handleSend = () => {
-    if (!sendEmail) { toast.error("Enter recipient email address"); return; }
-    sendCmeForm.mutate({ courseId, productType, orgId, recipientEmail: sendEmail, formData: form });
+    if (sendEmailList.length === 0) { toast.error("Add at least one recipient email"); return; }
+    sendCmeForm.mutate({ courseId, productType, orgId, toEmails: sendEmailList, formData: form });
   };
 
   const setField = (key: keyof FormData, value: string) => {
@@ -303,7 +336,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={downloadPdf.isPending} className="gap-1.5">
           <Download className="w-3.5 h-3.5" /> PDF
         </Button>
-        <Button size="sm" onClick={() => setShowSendDialog(v => !v)} className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
+        <Button size="sm" onClick={openSendDialog} className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
           <Send className="w-3.5 h-3.5" /> Send CME Form
         </Button>
       </div>
@@ -313,15 +346,30 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <Card className="border-sky-200 bg-sky-50">
           <CardContent className="pt-4 pb-4 space-y-3">
             <p className="text-sm font-medium text-sky-800">Send PDF to CME Provider</p>
+            <p className="text-xs text-sky-700">Edit the recipient list below. Defaults are pre-filled; remove or add as needed.</p>
+            {/* Email chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {sendEmailList.map(email => (
+                <span key={email} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-xs font-medium border border-sky-200">
+                  {email}
+                  <button type="button" onClick={() => removeSendEmail(email)} className="ml-0.5 text-sky-500 hover:text-sky-800 leading-none" aria-label={`Remove ${email}`}>×</button>
+                </span>
+              ))}
+            </div>
+            {/* Add email input */}
             <div className="flex gap-2">
               <Input
-                value={sendEmail}
-                onChange={e => setSendEmail(e.target.value)}
-                placeholder={cmeStatus.cmeContactEmail ?? "cme@example.com"}
+                value={sendEmailInput}
+                onChange={e => setSendEmailInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSendEmail(); } }}
+                placeholder="Add email address…"
                 className="bg-white text-sm"
               />
-              <Button size="sm" onClick={handleSend} disabled={sendCmeForm.isPending} className="bg-sky-600 hover:bg-sky-700 text-white whitespace-nowrap">
-                {sendCmeForm.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Send"}
+              <Button size="sm" variant="outline" onClick={addSendEmail} className="whitespace-nowrap">Add</Button>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={handleSend} disabled={sendCmeForm.isPending || sendEmailList.length === 0} className="bg-sky-600 hover:bg-sky-700 text-white whitespace-nowrap">
+                {sendCmeForm.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : `Send to ${sendEmailList.length} recipient${sendEmailList.length !== 1 ? 's' : ''}`}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowSendDialog(false)}>Cancel</Button>
             </div>
@@ -405,6 +453,18 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
             <div className="space-y-1">
               <Label className="text-xs">Estimated # of Learners</Label>
               <Input value={form.estimatedLearners ?? ""} onChange={e => setField("estimatedLearners", e.target.value)} placeholder="e.g. 500" className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Original Release Date</Label>
+              <Input type="date" value={form.originalReleaseDate ?? ""} onChange={e => setField("originalReleaseDate", e.target.value)} className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Most Recent Review Date</Label>
+              <Input type="date" value={form.mostRecentReviewDate ?? ""} onChange={e => setField("mostRecentReviewDate", e.target.value)} className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Expiration Date</Label>
+              <Input type="date" value={form.expirationDate ?? ""} onChange={e => setField("expirationDate", e.target.value)} className="text-sm" />
             </div>
           </div>
         </CardContent>

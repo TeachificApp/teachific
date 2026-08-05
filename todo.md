@@ -5016,3 +5016,9 @@
 - [x] Add Checkout Terms Override card to WebinarEditorPage (Details tab)
 - [x] Add Checkout Terms Override card to WorkshopsAdmin (Settings tab)
 - [x] Write vitest tests for checkout terms resolution hierarchy (10 tests)
+
+## CME / Cardioserv Updates (Aug 4, 2026)
+- [x] Add three date fields to CmeActivityFormDialog (Original Release Date, Most Recent Review Date, Expiration Date)
+- [x] Upgrade Send to Cardioserv to editable multi-email chip list in CmeActivityFormDialog
+- [x] Upgrade Send to Cardioserv to editable multi-email chip list in CmeFormTab
+- [x] Update sendCmeForm server procedure to accept toEmails array
