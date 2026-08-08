@@ -304,7 +304,9 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           </div>
           <div>
             <h3 className="font-semibold text-slate-800">CME Activity Form</h3>
-            <p className="text-xs text-muted-foreground">Activity Planning &amp; Proposal Form</p>
+            <p className="text-xs text-muted-foreground">
+              {(cmeStatus as any)?.orgName ? `${(cmeStatus as any).orgName} · ` : ""}Activity Planning &amp; Proposal Form
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

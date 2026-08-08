@@ -809,6 +809,7 @@ ${input.body.split('\n').map(line => line.trim() ? `<p style="margin:0 0 12px;">
         .limit(1);
       return {
         enabled: !!(org as any)?.cmeEnabled,
+        orgName: (org as any)?.cmeOrgName ?? null,
         cmeOrgName: (org as any)?.cmeOrgName ?? null,
         cmeContactEmail: (org as any)?.cmeContactEmail ?? null,
       };
