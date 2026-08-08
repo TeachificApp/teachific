@@ -663,6 +663,8 @@ export const courseLessons = mysqlTable("course_lessons", {
   dripDays: int("dripDays"), // null = available immediately
   dripDate: timestamp("dripDate"), // specific release date
   dripType: mysqlEnum("dripType", ["immediate", "days_after_enrollment", "specific_date"]).default("immediate").notNull(),
+  // Drip-out (expiry): lesson becomes unavailable after N days from enrollment
+  dripOutDays: int("dripOutDays"), // null = never expires
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -5918,6 +5920,34 @@ export const cmeSendHistory = mysqlTable("cme_send_history", {
 });
 export type CmeSendHistory = typeof cmeSendHistory.$inferSelect;
 export type InsertCmeSendHistory = typeof cmeSendHistory.$inferInsert;
+
+// ─── CME Financial Disclosures ────────────────────────────────────────────────
+// Per-faculty financial disclosure forms for CME activities.
+// Org-scoped: each disclosure belongs to an org + course + faculty member.
+// Faculty receive a token-based link to complete the form (no login required).
+export const cmeFinancialDisclosures = mysqlTable("cme_financial_disclosures", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  courseId: int("courseId").notNull(),
+  facultyName: varchar("facultyName", { length: 255 }).notNull(),
+  facultyEmail: varchar("facultyEmail", { length: 255 }).notNull(),
+  // Unique token for the public disclosure form link (no login required)
+  token: varchar("token", { length: 128 }).notNull(),
+  // Status: pending (sent, not submitted), submitted, viewed
+  status: varchar("status", { length: 32 }).default("pending").notNull(),
+  // JSON arrays stored as text
+  rolesJson: text("rolesJson"),
+  relationshipsJson: text("relationshipsJson"),
+  hasRelationships: varchar("hasRelationships", { length: 8 }),
+  attestationName: varchar("attestationName", { length: 255 }),
+  attestationDate: varchar("attestationDate", { length: 32 }),
+  submittedAt: bigint("submittedAt", { mode: "number" }),
+  pdfUrl: varchar("pdfUrl", { length: 1024 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CmeFinancialDisclosure = typeof cmeFinancialDisclosures.$inferSelect;
+export type InsertCmeFinancialDisclosure = typeof cmeFinancialDisclosures.$inferInsert;
 
 // ─── Newsletter Subscribers ───────────────────────────────────────────────────
 // Org-scoped newsletter subscriber list. Each org has its own subscriber base.

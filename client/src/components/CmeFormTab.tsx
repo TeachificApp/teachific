@@ -24,8 +24,17 @@ import {
   FileText, Sparkles, Download, Send, CheckCircle, Clock, XCircle,
   AlertCircle, Loader2, ChevronDown, ChevronUp, History
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Copy, Link2, Users, CheckCircle2, Mail } from "lucide-react";
 
 type ProductType = "course" | "webinar" | "workshop" | "download" | "bundle" | "cohort";
+
+interface FacultyMember {
+  name: string;
+  credentials?: string;
+  role?: string;
+  email?: string;
+}
 
 interface CmeFormTabProps {
   courseId: number;
@@ -113,6 +122,60 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
   const [sendEmailInput, setSendEmailInput] = useState("");
   const [sendEmailList, setSendEmailList] = useState<string[]>([]);
 
+  // ── Disclosure state ──
+  const [viewSubmission, setViewSubmission] = useState<any | null>(null);
+  const [addDisclosureOpen, setAddDisclosureOpen] = useState(false);
+  const [newFacultyName, setNewFacultyName] = useState("");
+  const [newFacultyEmail, setNewFacultyEmail] = useState("");
+  const [bulkSending, setBulkSending] = useState(false);
+
+  // Disclosure records for this course
+  const { data: disclosures = [], refetch: refetchDisclosures } = trpc.cmeDisclosure.listDisclosures.useQuery(
+    { courseId, orgId },
+    { enabled: !!cmeStatus?.enabled }
+  );
+
+  const createDisclosure = trpc.cmeDisclosure.createDisclosure.useMutation({
+    onSuccess: () => {
+      refetchDisclosures();
+      setAddDisclosureOpen(false);
+      setNewFacultyName("");
+      setNewFacultyEmail("");
+      toast.success("Disclosure record created");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const sendDisclosureEmail = trpc.cmeDisclosure.sendDisclosureEmail.useMutation({
+    onSuccess: (data) => {
+      refetchDisclosures();
+      toast.success("Disclosure email sent");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteDisclosure = trpc.cmeDisclosure.deleteDisclosure.useMutation({
+    onSuccess: () => { refetchDisclosures(); toast.success("Disclosure removed"); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const getDisclosureUrl = (token: string) => `${window.location.origin}/cme-disclosure/${token}`;
+
+  const handleBulkSendDisclosures = async () => {
+    const pending = (disclosures as any[]).filter((d) => d.status !== "submitted");
+    if (pending.length === 0) { toast.info("All faculty have submitted their disclosures"); return; }
+    setBulkSending(true);
+    let sent = 0;
+    for (const d of pending) {
+      try {
+        await sendDisclosureEmail.mutateAsync({ disclosureId: d.id, orgId, origin: window.location.origin });
+        sent++;
+      } catch {}
+    }
+    setBulkSending(false);
+    toast.success(`Sent disclosure emails to ${sent} faculty member${sent !== 1 ? "s" : ""}`);
+  };
+
   // Build default email list when send dialog opens
   const openSendDialog = () => {
     if (!showSendDialog) {
@@ -141,41 +204,42 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
 
   // Populate form when data loads
   useEffect(() => {
-    if (formData) {
+    if (formData?.form) {
+      const fd = formData.form;
       setForm({
-        activityTitle: formData.activityTitle ?? productTitle ?? "",
-        activityType: formData.activityType ?? "",
-        proposedDate: formData.proposedDate ?? "",
-        activityLengthHours: formData.activityLengthHours ?? creditHours ?? "",
-        cmeCreditsRequested: formData.cmeCreditsRequested ?? creditHours ?? "",
-        offerMocCredit: formData.offerMocCredit ?? "No",
-        offeredMoreThanOnce: formData.offeredMoreThanOnce ?? "No",
-        activityStructure: formData.activityStructure ?? "Enduring Material",
-        targetAudience: formData.targetAudience ?? "Sonographers, Echocardiographers, Cardiologists",
-        estimatedLearners: formData.estimatedLearners ?? "",
-        practiceGapDescription: formData.practiceGapDescription ?? "",
-        practiceGapReasons: formData.practiceGapReasons ?? "",
-        improvementTypes: formData.improvementTypes ?? "Knowledge,Competence,Performance",
-        improvementKnowledgeText: formData.improvementKnowledgeText ?? "",
-        improvementCompetenceText: formData.improvementCompetenceText ?? "",
-        improvementPerformanceText: formData.improvementPerformanceText ?? "",
-        learnerOutcomes: formData.learnerOutcomes ?? "",
-        learningObjectives: formData.learningObjectives ?? "",
-        deliveryDescription: formData.deliveryDescription ?? "",
-        activityIncludes: formData.activityIncludes ?? "Online modules, Video lectures, Knowledge assessments",
-        assessmentMethods: formData.assessmentMethods ?? "Post-test, Learner evaluation survey",
-        facultyJson: formData.facultyJson ?? "",
-        contentStatus: formData.contentStatus ?? "Complete",
-        contentAvailableDate: formData.contentAvailableDate ?? "",
-        marketingChannels: formData.marketingChannels ?? "",
-        marketingMentionsCme: formData.marketingMentionsCme ?? "Yes",
-        registrationFee: formData.registrationFee ?? "",
-        originalReleaseDate: formData.originalReleaseDate ?? "",
-        mostRecentReviewDate: formData.mostRecentReviewDate ?? "",
-        expirationDate: formData.expirationDate ?? "",
-        attestationName: formData.attestationName ?? "",
-        attestationDate: formData.attestationDate ?? "",
-        attestationTitle: formData.attestationTitle ?? "",
+        activityTitle: (fd as any).activityTitle ?? productTitle ?? "",
+        activityType: (fd as any).activityType ?? "",
+        proposedDate: (fd as any).proposedDate ?? "",
+        activityLengthHours: (fd as any).activityLengthHours ?? creditHours ?? "",
+        cmeCreditsRequested: (fd as any).cmeCreditsRequested ?? creditHours ?? "",
+        offerMocCredit: (fd as any).offerMocCredit ?? "No",
+        offeredMoreThanOnce: (fd as any).offeredMoreThanOnce ?? "No",
+        activityStructure: (fd as any).activityStructure ?? "Enduring Material",
+        targetAudience: (fd as any).targetAudience ?? "",
+        estimatedLearners: (fd as any).estimatedLearners ?? "",
+        practiceGapDescription: (fd as any).practiceGapDescription ?? "",
+        practiceGapReasons: (fd as any).practiceGapReasons ?? "",
+        improvementTypes: (fd as any).improvementTypes ?? "Knowledge,Competence,Performance",
+        improvementKnowledgeText: (fd as any).improvementKnowledgeText ?? "",
+        improvementCompetenceText: (fd as any).improvementCompetenceText ?? "",
+        improvementPerformanceText: (fd as any).improvementPerformanceText ?? "",
+        learnerOutcomes: (fd as any).learnerOutcomes ?? "",
+        learningObjectives: (fd as any).learningObjectives ?? "",
+        deliveryDescription: (fd as any).deliveryDescription ?? "",
+        activityIncludes: (fd as any).activityIncludes ?? "Online modules, Video lectures, Knowledge assessments",
+        assessmentMethods: (fd as any).assessmentMethods ?? "Post-test, Learner evaluation survey",
+        facultyJson: (fd as any).facultyJson ?? "",
+        contentStatus: (fd as any).contentStatus ?? "Complete",
+        contentAvailableDate: (fd as any).contentAvailableDate ?? "",
+        marketingChannels: (fd as any).marketingChannels ?? "",
+        marketingMentionsCme: (fd as any).marketingMentionsCme ?? "Yes",
+        registrationFee: (fd as any).registrationFee ?? "",
+        originalReleaseDate: (fd as any).originalReleaseDate ?? "",
+        mostRecentReviewDate: (fd as any).mostRecentReviewDate ?? "",
+        expirationDate: (fd as any).expirationDate ?? "",
+        attestationName: (fd as any).attestationName ?? "",
+        attestationDate: (fd as any).attestationDate ?? "",
+        attestationTitle: (fd as any).attestationTitle ?? "",
       });
     }
   }, [formData, productTitle, creditHours]);
@@ -550,6 +614,113 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           <p className="text-xs text-muted-foreground mt-1">JSON array of faculty members with name, credentials, and role.</p>
         </CardContent>
       </Card>
+
+      {/* Section 6b: Financial Disclosures */}
+      <Card className="border-sky-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Users className="w-4 h-4 text-sky-600" /> Financial Disclosures
+            </CardTitle>
+            <div className="flex gap-2">
+              {(disclosures as any[]).length > 0 && (
+                <Button size="sm" variant="outline" onClick={handleBulkSendDisclosures} disabled={bulkSending} className="gap-1.5 text-xs h-7">
+                  {bulkSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                  Send All Pending
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => setAddDisclosureOpen(true)} className="gap-1.5 text-xs h-7">
+                + Add Faculty
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(disclosures as any[]).some((d) => d.status !== "submitted") && (
+            <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-800">
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>Some faculty have not yet submitted their financial disclosures. Disclosures must be completed before sending the CME form to CardioServ.</span>
+            </div>
+          )}
+          {(disclosures as any[]).length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">No disclosure records yet. Add faculty members to send them the financial disclosure form.</p>
+          )}
+          {(disclosures as any[]).map((d) => (
+            <div key={d.id} className="flex items-center justify-between p-2.5 rounded-md border bg-white gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-800 truncate">{d.facultyName}</p>
+                <p className="text-xs text-muted-foreground truncate">{d.facultyEmail}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {d.status === "submitted" ? (
+                  <Badge className="bg-green-100 text-green-700 border-green-200 text-xs gap-1"><CheckCircle2 className="w-3 h-3" /> Submitted</Badge>
+                ) : (
+                  <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs gap-1"><Clock className="w-3 h-3" /> Pending</Badge>
+                )}
+                {d.status === "submitted" && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setViewSubmission(d)}>View</Button>
+                )}
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { navigator.clipboard.writeText(getDisclosureUrl(d.token)); toast.success("Link copied"); }} title="Copy link">
+                  <Link2 className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-sky-600" disabled={sendDisclosureEmail.isPending} onClick={() => sendDisclosureEmail.mutate({ disclosureId: d.id, orgId, origin: window.location.origin })} title="Send email">
+                  <Mail className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-red-500" onClick={() => { if (confirm("Remove this disclosure record?")) deleteDisclosure.mutate({ disclosureId: d.id, orgId }); }}>×</Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Add Faculty Dialog */}
+      <Dialog open={addDisclosureOpen} onOpenChange={setAddDisclosureOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="text-base">Add Faculty Member</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Full Name</Label>
+              <Input value={newFacultyName} onChange={e => setNewFacultyName(e.target.value)} placeholder="Dr. Jane Smith" className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Email Address</Label>
+              <Input type="email" value={newFacultyEmail} onChange={e => setNewFacultyEmail(e.target.value)} placeholder="faculty@example.com" className="text-sm" />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={() => { if (!newFacultyName.trim() || !newFacultyEmail.trim()) { toast.error("Name and email are required"); return; } createDisclosure.mutate({ courseId, orgId, facultyName: newFacultyName.trim(), facultyEmail: newFacultyEmail.trim() }); }} disabled={createDisclosure.isPending} className="bg-sky-600 hover:bg-sky-700 text-white">
+                {createDisclosure.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Create & Send"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setAddDisclosureOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Submission Modal */}
+      <Dialog open={!!viewSubmission} onOpenChange={() => setViewSubmission(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle className="text-base">Disclosure Submission — {viewSubmission?.facultyName}</DialogTitle></DialogHeader>
+          {viewSubmission && (
+            <div className="space-y-3 pt-2 text-sm">
+              <div><span className="font-medium text-slate-600">Email:</span> {viewSubmission.facultyEmail}</div>
+              <div><span className="font-medium text-slate-600">Submitted:</span> {viewSubmission.submittedAt ? new Date(viewSubmission.submittedAt).toLocaleString() : "—"}</div>
+              <div><span className="font-medium text-slate-600">Roles:</span> {viewSubmission.rolesJson ? JSON.parse(viewSubmission.rolesJson).join(", ") : "—"}</div>
+              <div>
+                <span className="font-medium text-slate-600">Financial Relationships:</span>{" "}
+                {viewSubmission.hasRelationships === "no" ? "None declared" : (
+                  <ul className="mt-1 space-y-1">{(viewSubmission.relationshipsJson ? JSON.parse(viewSubmission.relationshipsJson) : []).map((r: any, i: number) => (<li key={i} className="text-xs text-slate-700">• {r.company} — {r.relationship}{r.ended ? " (ended)" : ""}</li>))}</ul>
+                )}
+              </div>
+              <div><span className="font-medium text-slate-600">Attestation:</span> {viewSubmission.attestationName} — {viewSubmission.attestationDate}</div>
+              {viewSubmission.pdfUrl && (
+                <Button size="sm" variant="outline" onClick={() => window.open(viewSubmission.pdfUrl, "_blank")} className="gap-1.5">
+                  <FileText className="w-3.5 h-3.5" /> Download PDF
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Section 7: Content Readiness */}
       <Card>

@@ -600,20 +600,23 @@ function MobileSidebarContent({
               const active = lesson.id === selectedLessonId;
               const dripLocked = !dripBypassed && (lesson.dripDays ?? 0) > 0 && daysSinceEnroll < lesson.dripDays;
               const prereqLocked = prereqLockedIds.has(lesson.id);
-              const lessonLocked = dripLocked || prereqLocked;
+              const lessonExpired = !dripBypassed && lesson.isExpired;
+              const lessonLocked = dripLocked || prereqLocked || lessonExpired;
               const lessonUnlockDate = dripLocked ? new Date(enrolledAt.getTime() + lesson.dripDays * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+              const lessonExpiryDate = lesson.expiresAt ? new Date(lesson.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : null;
               return (
                 <button key={lesson.id} onClick={() => { if (!lessonLocked) setSelectedLessonId(lesson.id); }} disabled={lessonLocked}
                   className={cn("w-full text-left px-3 py-2.5 flex items-center gap-3 text-xs transition-all border-l-4",
-                    active ? "bg-teal-50 text-teal-900 border-teal-500" : lessonLocked ? "text-gray-400 cursor-not-allowed border-transparent" : done ? "text-gray-500 hover:bg-gray-50 border-transparent" : "text-gray-700 hover:bg-gray-50 border-transparent")}>
+                    active ? "bg-teal-50 text-teal-900 border-teal-500" : lessonExpired ? "text-red-400 cursor-not-allowed border-transparent bg-red-50/30" : lessonLocked ? "text-gray-400 cursor-not-allowed border-transparent" : done ? "text-gray-500 hover:bg-gray-50 border-transparent" : "text-gray-700 hover:bg-gray-50 border-transparent")}>
                   <span className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0",
-                    active ? "bg-teal-500 text-white" : lessonLocked ? "bg-gray-100 text-gray-400" : done ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500")}>
+                    active ? "bg-teal-500 text-white" : lessonExpired ? "bg-red-100 text-red-400" : lessonLocked ? "bg-gray-100 text-gray-400" : done ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500")}>
                     {lessonLocked ? <Lock className="w-3 h-3" /> : done ? "✓" : String(idx + 1).padStart(2, "0")}
                   </span>
                   <div className="flex-1 min-w-0">
                     <span className="leading-snug font-semibold uppercase tracking-wide truncate block">{lesson.title}</span>
                     {dripLocked && lessonUnlockDate && <span className="text-[10px] text-gray-400 font-normal normal-case">Unlocks {lessonUnlockDate}</span>}
                     {prereqLocked && !dripLocked && <span className="text-[10px] text-orange-500 font-normal normal-case">Complete prerequisite lesson first</span>}
+                    {lessonExpired && lessonExpiryDate && <span className="text-[10px] text-red-400 font-normal normal-case">Expired {lessonExpiryDate}</span>}
                   </div>
                 </button>
               );

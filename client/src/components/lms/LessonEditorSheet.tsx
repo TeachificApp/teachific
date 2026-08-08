@@ -80,6 +80,7 @@ interface Lesson {
   // Drip
   dripDays?: number | null;
   dripDate?: Date | string | null;
+  dripOutDays?: number | null;
   dripType?: string | null;
 }
 
@@ -1115,6 +1116,7 @@ export function LessonEditorSheet({
         // Drip
         dripDays: lesson.dripDays ?? null,
         dripDate: lesson.dripDate ? new Date(lesson.dripDate).toISOString().split("T")[0] : "",
+        dripOutDays: (lesson as any).dripOutDays ?? null,
         dripType: lesson.dripType ?? "immediate",
       });
       setDurationInput(lesson.durationSeconds ? formatSeconds(lesson.durationSeconds) : "");
@@ -1383,15 +1385,28 @@ export function LessonEditorSheet({
                     className="mt-2"
                   />
                 )}
-                {form.dripType === "specific_date" && (
-                  <Input
-                    type="date"
-                    value={form.dripDate ?? ""}
-                    onChange={(e) => set("dripDate", e.target.value)}
-                    className="mt-2"
-                  />
-                )}
-              </div>
+              {form.dripType === "specific_date" && (
+                <Input
+                  type="date"
+                  value={form.dripDate ?? ""}
+                  onChange={(e) => set("dripDate", e.target.value)}
+                  className="mt-2"
+                />
+              )}
+            </div>
+            {/* Drip-out (expiry) */}
+            <div>
+              <Label>Lesson Expiry (Drip-Out)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">Lesson becomes unavailable after this many days from enrollment. Leave blank to never expire.</p>
+              <Input
+                type="number"
+                min={1}
+                value={form.dripOutDays ?? ""}
+                onChange={(e) => set("dripOutDays", e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="e.g. 90 (never expires if blank)"
+                className="mt-1"
+              />
+            </div>
             </TabsContent>
 
             {showRichTextAddOn && (

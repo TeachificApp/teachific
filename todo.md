@@ -5022,3 +5022,25 @@
 - [x] Upgrade Send to Cardioserv to editable multi-email chip list in CmeActivityFormDialog
 - [x] Upgrade Send to Cardioserv to editable multi-email chip list in CmeFormTab
 - [x] Update sendCmeForm server procedure to accept toEmails array
+
+## CME & Course Updates Port (Aug 8, 2026)
+
+### CME Financial Disclosure System
+- [x] Add cme_financial_disclosures DB table (orgId, courseId, facultyName, facultyEmail, token, status, rolesJson, relationshipsJson, attestationName, attestationDate, submittedAt, pdfUrl)
+- [x] Build cmeDisclosureRouter: createDisclosure, sendDisclosureEmail, getDisclosureByToken, submitDisclosure, getDisclosureStatus, listDisclosures, getDisclosurePdf
+- [x] Build public CmeDisclosureForm page at /cme-disclosure/:token (no login required)
+- [x] Add disclosure management UI to CmeFormTab: send button per faculty, status badge, copy link, view submission modal, bulk send button
+- [x] Add disclosure warning banner in Send CME Form dialog if any faculty has not submitted
+
+### CME Form Fixes
+- [x] Fix CME form Section 1 right-column field hydration (activityStructure, offeredMoreThanOnce, estimatedLearners not populating)
+- [ ] Faculty picker: allow pulling from org instructors list or adding a new instructor
+
+### Lesson Drip-Out (Expiry)
+- [x] Add dripOutDays column to lmsLessons schema and run migration
+- [x] Backend: enforce lesson expiry in getLesson procedure (block access after dripOutDays from enrollment)
+- [x] Course player: show "Expired" badge with expiry date on expired lessons
+- [x] Lesson editor: add dripOutDays input in lesson settings panel
+
+### Rich Text Editor
+- [ ] Fix emoji paste to stay inline with text (not split into paragraphs)

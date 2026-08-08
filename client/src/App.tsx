@@ -178,6 +178,7 @@ import SupportPage from "./pages/SupportPage";
 import PlatformPoliciesPage from "./pages/PlatformPoliciesPage";
 import HelpPage from "./pages/HelpPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
+import CmeDisclosureForm from "./pages/CmeDisclosureForm";
 
 import QuizCreatorPage from "./pages/QuizCreatorPage";
 import PublicQuizPlayerPage from "./pages/PublicQuizPlayerPage";
@@ -244,6 +245,7 @@ function BareRouter() {
         <Route path="/help" component={HelpPage} />
         <Route path="/unsubscribe" component={UnsubscribePage} />
         <Route path="/subscribe" component={NewsletterSubscribe} />
+        <Route path="/cme-disclosure/:token" component={CmeDisclosureForm} />
         <Route path="/policies" component={PlatformPoliciesPage} />
         <Route path="/terms" component={PlatformPoliciesPage} />
         <Route path="/privacy" component={PlatformPoliciesPage} />
@@ -814,6 +816,7 @@ function Router() {
     path === "/privacy" ||
     path === "/help" ||
     path.startsWith("/community/") ||
+    path.startsWith("/cme-disclosure/") ||
     path.startsWith("/quiz/");
   return isBare ? <BareRouter /> : <AdminRouter />;
 }

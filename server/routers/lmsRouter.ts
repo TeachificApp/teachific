@@ -710,7 +710,20 @@ export const lmsLearnerRouter = router({
       }
 
       const enrollmentWithAlias = effectiveEnrollment ? { ...effectiveEnrollment, progressPct: Number((effectiveEnrollment as any).progressPercent ?? (effectiveEnrollment as any).progressPct ?? 0) } : null;
-      return { course, enrollment: enrollmentWithAlias, sections: sectionsWithLessons, topLevelLessons, progress, isAdminPreview: !!isAdminPreview && !enrollment, instructors };
+
+      // Compute drip-out expiry for each lesson (based on enrollment date)
+      const enrolledAtMs = enrollment?.enrolledAt ? new Date(enrollment.enrolledAt).getTime() : null;
+      const addExpiryInfo = (lesson: any) => {
+        if (lesson.dripOutDays != null && enrolledAtMs) {
+          const expiresAtMs = enrolledAtMs + lesson.dripOutDays * 24 * 60 * 60 * 1000;
+          return { ...lesson, isExpired: Date.now() > expiresAtMs, expiresAt: new Date(expiresAtMs).toISOString() };
+        }
+        return { ...lesson, isExpired: false, expiresAt: null };
+      };
+      const enrichedSections = sectionsWithLessons.map(s => ({ ...s, lessons: s.lessons.map(addExpiryInfo) }));
+      const enrichedTopLevel = topLevelLessons.map(addExpiryInfo);
+
+      return { course, enrollment: enrollmentWithAlias, sections: enrichedSections, topLevelLessons: enrichedTopLevel, progress, isAdminPreview: !!isAdminPreview && !enrollment, instructors };
     }),
 
   /** Get a single lesson (must be enrolled or lesson is preview) */
@@ -749,6 +762,17 @@ export const lmsLearnerRouter = router({
         // Free preview enrollees can only access preview lessons
         if (pm === "none" && enrollment?.enrollmentType === "free_preview") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Full course enrollment required to access this lesson" });
+        }
+        // Drip-out: block access after dripOutDays from enrollment
+        if ((lesson as any).dripOutDays != null && enrollment) {
+          const enrolledAt = enrollment.enrolledAt ? new Date(enrollment.enrolledAt).getTime() : null;
+          if (enrolledAt) {
+            const expiresAt = enrolledAt + ((lesson as any).dripOutDays as number) * 24 * 60 * 60 * 1000;
+            if (Date.now() > expiresAt) {
+              const expiryDate = new Date(expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+              throw new TRPCError({ code: "FORBIDDEN", message: `This lesson expired on ${expiryDate}` });
+            }
+          }
         }
       }
 
