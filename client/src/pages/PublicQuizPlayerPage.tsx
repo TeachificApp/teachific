@@ -4,6 +4,14 @@ import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award } from "lucide-react";
 import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, BranchRule, DrawConfig } from "@/quiz-creator/types/quiz";
 import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInteractions";
+import {
+  ImageComparisonPlayer,
+  DragSortPlayer,
+  BranchingPlayer,
+  FillBlankPlayer as InteractiveFillBlankPlayer,
+  AnnotationPlayer,
+  FlashcardPlayer,
+} from "@/components/InteractiveQuizQuestions";
 
 type Answer = string | boolean | string[] | Record<string, string>;
 
@@ -849,6 +857,21 @@ export default function PublicQuizPlayerPage() {
           {q.type === "drag_words" && <DragWordsQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "likert" && <LikertQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "essay" && <EssayQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} data={q.data as EssayData} />}
+          {q.type === "image_comparison" && (
+            <ImageComparisonPlayer question={q as any} submitted={submitted} />
+          )}
+          {q.type === "drag_sort" && (
+            <DragSortPlayer question={q as any} submitted={submitted} answer={answers[q.id]} onAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />
+          )}
+          {q.type === "branching" && (
+            <BranchingPlayer question={q as any} submitted={submitted} answer={answers[q.id]} onAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />
+          )}
+          {q.type === "annotation" && (
+            <AnnotationPlayer question={q as any} submitted={submitted} answer={answers[q.id]} onAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />
+          )}
+          {q.type === "flashcard" && (
+            <FlashcardPlayer question={q as any} submitted={submitted} />
+          )}
         </div>
 
         {/* Navigation */}

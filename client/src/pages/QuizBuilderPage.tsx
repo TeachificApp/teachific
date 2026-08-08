@@ -24,13 +24,27 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
 
-type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer" | "essay";
+type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer" | "essay"
+  | "image_comparison" | "drag_sort" | "branching" | "fill_blank" | "annotation" | "flashcard";
 type Choice = { text: string; isCorrect: boolean; feedback?: string };
-type Question = { id: string; type: QuestionType; text: string; points: number; choices: Choice[]; correctFeedback?: string; incorrectFeedback?: string };
+type Question = {
+  id: string; type: QuestionType; text: string; points: number; choices: Choice[];
+  correctFeedback?: string; incorrectFeedback?: string;
+  // interactive fields
+  comparisonImageA?: string | null; comparisonImageB?: string | null;
+  comparisonLabelA?: string | null; comparisonLabelB?: string | null;
+  dragItems?: string | null; branchingConfig?: string | null;
+  fillBlankTemplate?: string | null; fillBlankAnswers?: string | null;
+  annotationImageUrl?: string | null; annotationTargetZones?: string | null;
+  flashcardFront?: string | null; flashcardBack?: string | null;
+};
 
 const QT_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Multiple Choice", true_false: "True/False",
   multiple_select: "Multiple Select", short_answer: "Short Answer", essay: "Essay",
+  image_comparison: "Image Compare", drag_sort: "Drag & Sort",
+  branching: "Branching", fill_blank: "Fill in Blank",
+  annotation: "Annotation", flashcard: "Flashcard",
 };
 
 function QuestionCard({ q, idx, onChange, onDelete }: { q: Question; idx: number; onChange: (q: Question) => void; onDelete: () => void }) {
@@ -322,7 +336,7 @@ export default function QuizBuilderPage() {
               <CardContent className="py-12 text-center">
                 <p className="text-muted-foreground mb-4">No questions yet. Add questions manually or import from Excel.</p>
                 <div className="flex gap-2 justify-center flex-wrap">
-                  {(["multiple_choice", "true_false", "multiple_select", "short_answer"] as QuestionType[]).map((t) => (
+                  {(["multiple_choice", "true_false", "multiple_select", "short_answer", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard"] as QuestionType[]).map((t) => (
                     <Button key={t} variant="outline" size="sm" onClick={() => addQuestion(t)}><Plus className="h-3.5 w-3.5 mr-1" />{QT_LABELS[t]}</Button>
                   ))}
                 </div>
@@ -338,7 +352,7 @@ export default function QuizBuilderPage() {
             </>
           )}
           <div className="flex gap-2 flex-wrap">
-            {(["multiple_choice", "true_false", "multiple_select", "short_answer", "essay"] as QuestionType[]).map((t) => (
+            {(["multiple_choice", "true_false", "multiple_select", "short_answer", "essay", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard"] as QuestionType[]).map((t) => (
               <Button key={t} variant="outline" size="sm" onClick={() => addQuestion(t)}><Plus className="h-3.5 w-3.5 mr-1" />{QT_LABELS[t]}</Button>
             ))}
           </div>

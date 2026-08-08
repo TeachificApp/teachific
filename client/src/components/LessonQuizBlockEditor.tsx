@@ -19,13 +19,16 @@ import {
   FolderOpen, Tag, Crosshair, Shuffle, CheckSquare, ToggleLeft, AlignLeft,
   ChevronDown, ChevronUp, GripVertical, X, Loader2,
 } from "lucide-react";
+import { InteractiveQuestionEditorPanel } from "@/components/InteractiveQuestionEditorPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-export type QuestionType = "mcq" | "truefalse" | "multiselect" | "hotspot" | "matching";
+export type QuestionType =
+  | "mcq" | "truefalse" | "multiselect" | "hotspot" | "matching"
+  | "image_comparison" | "drag_sort" | "branching" | "fill_blank" | "annotation" | "flashcard";
 
 export interface HotspotMarker {
   id: string;
@@ -56,6 +59,19 @@ export interface QuizQuestion {
   feedbackVideoUrl?: string;
   imageUrl?: string;
   videoUrl?: string;
+  // interactive question type fields
+  comparisonImageA?: string | null;
+  comparisonImageB?: string | null;
+  comparisonLabelA?: string | null;
+  comparisonLabelB?: string | null;
+  dragItems?: string | null;
+  branchingConfig?: string | null;
+  fillBlankTemplate?: string | null;
+  fillBlankAnswers?: string | null;
+  annotationImageUrl?: string | null;
+  annotationTargetZones?: string | null;
+  flashcardFront?: string | null;
+  flashcardBack?: string | null;
 }
 
 export interface LessonQuizData {
@@ -86,6 +102,12 @@ const QUESTION_TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   multiselect: <CheckSquare size={12} />,
   hotspot: <Crosshair size={12} />,
   matching: <Shuffle size={12} />,
+  image_comparison: <ImageIcon size={12} />,
+  drag_sort: <GripVertical size={12} />,
+  branching: <ChevronDown size={12} />,
+  fill_blank: <AlignLeft size={12} />,
+  annotation: <Crosshair size={12} />,
+  flashcard: <ToggleLeft size={12} />,
 };
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
@@ -94,6 +116,12 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiselect: "Multi-Select",
   hotspot: "Hotspot",
   matching: "Matching",
+  image_comparison: "Image Compare",
+  drag_sort: "Drag & Sort",
+  branching: "Branching",
+  fill_blank: "Fill in Blank",
+  annotation: "Annotation",
+  flashcard: "Flashcard",
 };
 
 const EMPTY_QUESTION: QuizQuestion = {
@@ -108,7 +136,7 @@ const EMPTY_QUESTION: QuizQuestion = {
 
 // ─── Hotspot Editor ────────────────────────────────────────────────────────────
 
-function HotspotEditor({
+export function HotspotEditor({
   imageUrl,
   markers,
   onImageUpload,
@@ -230,7 +258,7 @@ function HotspotEditor({
 
 // ─── Matching Editor ───────────────────────────────────────────────────────────
 
-function MatchingEditor({
+export function MatchingEditor({
   pairs,
   onChange,
 }: {
@@ -585,7 +613,7 @@ function QuestionEditor({
       <div>
         <Label className="text-xs text-gray-600 mb-1 block">Question Type</Label>
         <div className="flex flex-wrap gap-1">
-          {(["mcq", "truefalse", "multiselect", "hotspot", "matching"] as QuestionType[]).map(t => (
+          {(["mcq", "truefalse", "multiselect", "hotspot", "matching", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard"] as QuestionType[]).map(t => (
             <button
               key={t}
               type="button"
@@ -614,7 +642,7 @@ function QuestionEditor({
       </div>
 
       {/* Question image (not for hotspot — hotspot has its own) */}
-      {qType !== "hotspot" && handleFileUpload && (
+      {qType !== "hotspot" && qType !== "image_comparison" && qType !== "annotation" && qType !== "flashcard" && qType !== "branching" && qType !== "drag_sort" && handleFileUpload && (
         <div>
           <Label className="text-xs text-gray-600">Question Image (optional)</Label>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -634,7 +662,7 @@ function QuestionEditor({
       )}
 
       {/* Question video URL */}
-      {qType !== "hotspot" && qType !== "matching" && (
+      {qType !== "hotspot" && qType !== "matching" && qType !== "image_comparison" && qType !== "annotation" && qType !== "flashcard" && qType !== "branching" && qType !== "drag_sort" && qType !== "fill_blank" && (
         <div>
           <Label className="text-xs text-gray-600">Question Video URL (optional)</Label>
           <div className="flex items-center gap-2 mt-1">
@@ -802,6 +830,18 @@ function QuestionEditor({
         <MatchingEditor
           pairs={q.matchingPairs ?? []}
           onChange={(pairs) => setQ(prev => ({ ...prev, matchingPairs: pairs }))}
+        />
+      )}
+
+      {/* Interactive question types */}
+      {(["image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard"] as QuestionType[]).includes(qType) && (
+        <InteractiveQuestionEditorPanel
+          question={q as any}
+          onChange={(updates) => setQ(prev => ({ ...prev, ...updates }))}
+          onUploadImage={handleFileUpload ? async (file: File) => {
+            const url = await handleFileUpload(file, "interactiveImage", "quiz_interactive");
+            return url;
+          } : undefined}
         />
       )}
 

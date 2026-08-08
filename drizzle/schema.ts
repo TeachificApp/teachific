@@ -2721,7 +2721,10 @@ export const lmsQuizQuestions = mysqlTable("lms_quiz_questions", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
   quizId: int("quiz_id").notNull(),
-  type: mysqlEnum("type", ["multiple_choice", "true_false", "short_answer", "matching", "hotspot"]).default("multiple_choice").notNull(),
+  type: mysqlEnum("type", [
+    "multiple_choice", "true_false", "short_answer", "matching", "hotspot",
+    "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard",
+  ]).default("multiple_choice").notNull(),
   question: longtext("question").notNull(),
   explanation: longtext("explanation"),
   position: int("position").default(0).notNull(),
@@ -2735,6 +2738,24 @@ export const lmsQuizQuestions = mysqlTable("lms_quiz_questions", {
   feedbackVideoUrl: varchar("feedback_video_url", { length: 1024 }),
   hotspotMarkers: longtext("hotspot_markers"),       // JSON array of {x,y,label,isCorrect}
   matchingPairs: longtext("matching_pairs"),         // JSON array of {left,right}
+  // image_comparison fields
+  comparisonImageA: varchar("comparison_image_a", { length: 1024 }),
+  comparisonImageB: varchar("comparison_image_b", { length: 1024 }),
+  comparisonLabelA: varchar("comparison_label_a", { length: 255 }),
+  comparisonLabelB: varchar("comparison_label_b", { length: 255 }),
+  // drag_sort fields
+  dragItems: longtext("drag_items"),                 // JSON: [{id,text,imageUrl?}]
+  // branching fields
+  branchingConfig: longtext("branching_config"),     // JSON: {scenario, choices:[{text,outcome,isCorrect}]}
+  // fill_blank fields
+  fillBlankTemplate: longtext("fill_blank_template"), // Template with ___ placeholders
+  fillBlankAnswers: longtext("fill_blank_answers"),   // JSON: string[][] (accepted answers per blank)
+  // annotation fields
+  annotationImageUrl: varchar("annotation_image_url", { length: 1024 }),
+  annotationTargetZones: longtext("annotation_target_zones"), // JSON: [{x,y,radius,label}]
+  // flashcard fields
+  flashcardFront: longtext("flashcard_front"),
+  flashcardBack: longtext("flashcard_back"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 export type LmsQuizQuestion = typeof lmsQuizQuestions.$inferSelect;

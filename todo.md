@@ -5044,3 +5044,13 @@
 
 ### Rich Text Editor
 - [ ] Fix emoji paste to stay inline with text (not split into paragraphs)
+
+## Interactive Quiz Question Types (Ported from Ultrasound-App)
+- [x] Add interactive question columns to lmsQuizQuestions schema (image_comparison, drag_sort, branching, fill_blank, annotation, flashcard)
+- [x] Run DB migration for new columns
+- [x] Copy InteractiveQuizQuestions.tsx player/editor components into scorm-host
+- [x] Copy InteractiveQuestionEditorPanel.tsx into scorm-host
+- [x] Extend LessonQuizBlockEditor to support 6 new types in editor palette
+- [x] Extend PublicQuizPlayerPage to render all 6 new types
+- [x] Extend QuizBuilderPage to support 6 new types
+- [x] All question types scoped per org (orgId filtering)
