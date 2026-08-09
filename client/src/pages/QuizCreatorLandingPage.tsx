@@ -609,7 +609,7 @@ export default function QuizCreatorLandingPage() {
             <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
             <Link href="/register" className="hover:text-white transition-colors">Register</Link>
           </div>
-          <p className="text-white/30 text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved.</p>
+          <p className="text-white/30 text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand</p>
         </div>
       </footer>
     </div>

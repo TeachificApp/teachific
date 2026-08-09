@@ -1034,7 +1034,7 @@ function LandingFooter() {
         </div>
 
         <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved.</p>
+          <p className="text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand</p>
           <p className="text-xs">Built for educators, by educators.</p>
         </div>
       </div>

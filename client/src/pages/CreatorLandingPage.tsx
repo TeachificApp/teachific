@@ -667,7 +667,7 @@ export default function CreatorLandingPage() {
             <a href="#" className="hover:text-white transition-colors">Terms</a>
           </div>
           <p className="text-sm text-white/30">
-            © {new Date().getFullYear()} Teachific™. All rights reserved.
+            © {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand
           </p>
         </div>
       </footer>

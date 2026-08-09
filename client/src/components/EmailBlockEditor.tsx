@@ -284,7 +284,7 @@ export function emailBlockToHtml(block: Block): string {
     case "footer": {
       const bg = (d.bgColor as string) ?? "#0e1e2e";
       const textColor = (d.textColor as string) ?? "#ffffff";
-      const copyright = (d.copyrightText as string) ?? `\u00a9 ${new Date().getFullYear()} Teachific\u2122. All rights reserved.`;
+      const copyright = (d.copyrightText as string) ?? `\u00a9 ${new Date().getFullYear()} Teachific\u2122. All rights reserved. Teachific\u2122 is a <a href="https://www.soundmedianow.com" style="color:inherit">SoundMedia, Inc.</a> brand.`;
       // Support both d.links (array) and d.footerLinks (legacy key)
       const links = ((d.links ?? d.footerLinks) as { text: string; url: string }[] | undefined) ?? [];
       const linksHtml = links
