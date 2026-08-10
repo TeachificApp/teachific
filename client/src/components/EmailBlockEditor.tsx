@@ -1241,7 +1241,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(EMAIL_CATALOG_CATEGORIES[0]);
-  const [rightPanelWidth, setRightPanelWidth] = useState(300);
+  const [rightPanelWidth, setRightPanelWidth] = useState(480);
   const rightPanelDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
 
@@ -1336,7 +1336,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
     const onMove = (ev: MouseEvent) => {
       if (!rightPanelDragRef.current) return;
       const delta = rightPanelDragRef.current.startX - ev.clientX;
-      const newWidth = Math.min(700, Math.max(240, rightPanelDragRef.current.startWidth + delta));
+      const newWidth = Math.min(800, Math.max(280, rightPanelDragRef.current.startWidth + delta));
       setRightPanelWidth(newWidth);
     };
     const onUp = () => {

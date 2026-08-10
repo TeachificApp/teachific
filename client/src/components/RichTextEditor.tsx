@@ -1427,7 +1427,7 @@ export function RichTextEditor({
               <Smile className="w-3.5 h-3.5" />
             </ToolbarBtn>
             {emojiPickerOpen && (
-              <div className="absolute top-9 right-0 z-50 shadow-xl rounded-xl overflow-hidden" style={{ minWidth: 320 }}>
+              <div className="absolute bottom-full right-0 mb-1 z-50 shadow-xl rounded-xl overflow-hidden" style={{ minWidth: 320 }}>
                 <Picker
                   data={data}
                   onEmojiSelect={(emoji: any) => {

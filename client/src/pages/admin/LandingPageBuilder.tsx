@@ -5341,7 +5341,7 @@ export default function LandingPageBuilder() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Right panel resizable width
-  const [rightPanelWidth, setRightPanelWidth] = useState(288);
+  const [rightPanelWidth, setRightPanelWidth] = useState(380);
   const rightPanelDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const handleRightPanelMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -5349,7 +5349,7 @@ export default function LandingPageBuilder() {
     const onMove = (ev: MouseEvent) => {
       if (!rightPanelDragRef.current) return;
       const delta = rightPanelDragRef.current.startX - ev.clientX;
-      const newWidth = Math.min(700, Math.max(240, rightPanelDragRef.current.startWidth + delta));
+      const newWidth = Math.min(800, Math.max(280, rightPanelDragRef.current.startWidth + delta));
       setRightPanelWidth(newWidth);
     };
     const onUp = () => {
@@ -7693,4 +7693,3 @@ function UpgradePromptBlockSettings({ d, set }: { d: Record<string, any>; set: (
     </div>
   );
 }
-
