@@ -602,6 +602,26 @@ export function RichTextEditor({
   courseId,
 }: RichTextEditorProps) {
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
+  // Drag-to-resize state
+  const [editorHeight, setEditorHeight] = useState(minHeight);
+  const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const handleResizeDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startY: e.clientY, startHeight: editorHeight };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const delta = ev.clientY - dragRef.current.startY;
+      const newH = Math.max(minHeight, dragRef.current.startHeight + delta);
+      setEditorHeight(newH);
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
@@ -1448,12 +1468,25 @@ export function RichTextEditor({
       <EditorContent
         editor={editor}
         className="rte-content px-4 py-3 text-sm text-gray-800 focus:outline-none"
-        style={{ minHeight, maxHeight, overflowY: "auto" }}
+        style={{ height: editorHeight, minHeight, overflowY: "auto" }}
       />
 
       {/* Hidden file inputs */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={insertImageFile} />
       <input ref={videoFileInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoFileSelect} />
+      {/* Drag-to-resize handle */}
+      {!disabled && (
+        <div
+          onMouseDown={handleResizeDragStart}
+          className="flex items-center justify-center h-3 bg-gray-50 border-t border-gray-100 cursor-ns-resize hover:bg-teal-50 hover:border-teal-200 transition-colors group select-none"
+          title="Drag to resize editor"
+        >
+          <div className="flex gap-0.5">
+            <div className="w-5 h-0.5 rounded-full bg-gray-300 group-hover:bg-teal-400 transition-colors" />
+            <div className="w-5 h-0.5 rounded-full bg-gray-300 group-hover:bg-teal-400 transition-colors" />
+          </div>
+        </div>
+      )}
 
       {/* Scoped styles */}
       <style>{`
