@@ -34,6 +34,12 @@ import { Plus, Eye, EyeOff, ChevronDown, ChevronRight, Search, RefreshCw, Sparkl
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   BlockTemplateLibraryProvider,
   OpenTemplateLibraryButton,
   useBlockTemplateLibrary,
@@ -1169,9 +1175,9 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
   const { saveAsTemplate } = useBlockTemplateLibrary();
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState("");
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(EMAIL_CATALOG_CATEGORIES));
+  const [activeCategory, setActiveCategory] = useState(EMAIL_CATALOG_CATEGORIES[0]);
   const [rightPanelWidth, setRightPanelWidth] = useState(300);
   const rightPanelDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
@@ -1215,7 +1221,8 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
     const block = defaultBlock(type);
     setBlocks((prev) => [...prev, block]);
     setSelectedId(block.id);
-    setCatalogOpen(false);
+    setAddMenuOpen(false);
+    setCatalogSearch("");
   };
 
   // Register the template-insert handler with the outer wrapper once on mount
@@ -1292,60 +1299,6 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
 
   return (
     <div className="flex" style={{ minHeight: 500, height: '100%' }}>
-      {/* Block catalog sidebar */}
-      {catalogOpen && (
-        <div className="w-56 border-r border-gray-200 bg-gray-50 flex flex-col shrink-0 overflow-hidden">
-          <div className="p-2 border-b border-gray-200 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-600">Add Block</span>
-            <button onClick={() => setCatalogOpen(false)} className="text-gray-400 hover:text-gray-700 text-xs">✕</button>
-          </div>
-          <div className="p-2 border-b border-gray-200">
-            <div className="relative">
-              <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-gray-400" />
-              <Input
-                value={catalogSearch}
-                onChange={(e) => setCatalogSearch(e.target.value)}
-                placeholder="Search blocks…"
-                className="pl-7 h-7 text-xs"
-              />
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {grouped.map(({ cat, items }) => (
-              <div key={cat}>
-                <button
-                  className="flex items-center gap-1 w-full text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 py-1 hover:text-gray-700"
-                  onClick={() =>
-                    setOpenCategories((prev) => {
-                      const next = new Set(prev);
-                      next.has(cat) ? next.delete(cat) : next.add(cat);
-                      return next;
-                    })
-                  }
-                >
-                  {openCategories.has(cat) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                  {cat}
-                </button>
-                {openCategories.has(cat) && (
-                  <div className="space-y-0.5 ml-1">
-                    {items.map((b) => (
-                      <button
-                        key={b.type}
-                        className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors"
-                        onClick={() => addBlock(b.type)}
-                      >
-                        <span className="text-gray-400 shrink-0">{b.icon}</span>
-                        {b.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Canvas */}
       <div
         className="flex-1 overflow-y-auto bg-gray-100 p-4"
@@ -1361,7 +1314,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
           <Button
             size="sm"
             className="bg-teal-600 hover:bg-teal-700 text-white"
-            onClick={() => setCatalogOpen((v) => !v)}
+            onClick={() => setAddMenuOpen(true)}
           >
             <Plus className="w-4 h-4 mr-1" /> Add Block
           </Button>
@@ -1380,7 +1333,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
         {blocks.length === 0 ? (
           <div
             className="email-canvas-bg flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 cursor-pointer hover:border-teal-400 hover:text-teal-500 transition-colors"
-            onClick={() => setCatalogOpen(true)}
+            onClick={() => setAddMenuOpen(true)}
           >
             <Plus className="w-8 h-8 mb-2" />
             <p className="text-sm font-medium">Click to add your first block</p>
@@ -1420,7 +1373,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
               size="sm"
               variant="outline"
               className="border-dashed border-teal-400 text-teal-600 hover:bg-teal-50 hover:border-teal-500"
-              onClick={() => setCatalogOpen((v) => !v)}
+              onClick={() => setAddMenuOpen(true)}
             >
               <Plus className="w-4 h-4 mr-1" /> Add Block
             </Button>
@@ -1476,6 +1429,64 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
           </div>
         </>
       )}
+      {/* Block Picker Modal */}
+      <Dialog open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); if (!open) setCatalogSearch(""); }}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="text-teal-700 flex items-center gap-2">
+              <Plus className="w-5 h-5" /> Add Email Block
+            </DialogTitle>
+          </DialogHeader>
+          {/* Search */}
+          <div className="relative shrink-0">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <Input
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              placeholder="Search blocks…"
+              className="pl-9 h-9 text-sm"
+              autoFocus
+            />
+          </div>
+          {/* Category tabs */}
+          {!catalogSearch && (
+            <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-none bg-gray-50 shrink-0 -mx-4 sm:-mx-6 px-4 sm:px-6">
+              {EMAIL_CATALOG_CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
+                    activeCategory === cat
+                      ? "text-teal-700 border-b-2 border-teal-500 bg-white"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Block grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
+            {(catalogSearch
+              ? EMAIL_BLOCK_CATALOG.filter(b =>
+                  b.label.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                  b.category.toLowerCase().includes(catalogSearch.toLowerCase())
+                )
+              : EMAIL_BLOCK_CATALOG.filter(b => b.category === activeCategory)
+            ).map(b => (
+              <button
+                key={b.type}
+                onClick={() => addBlock(b.type)}
+                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
+              >
+                <span className="text-teal-600 text-2xl">{b.icon}</span>
+                <span className="text-xs leading-tight font-medium">{b.label}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

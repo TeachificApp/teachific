@@ -5144,3 +5144,7 @@
 - [x] Update AiFullEmailGenerator: rename Course Launch to Course/Product Promo, add product picker
 - [x] Inject selected product title, description, and landing page URL into AI prompt
 - [x] Update generateFullEmailContent to use product context in system prompt
+
+## Email Campaign Block Picker Popup
+- [x] Convert EmailBlockEditor Add Block from sidebar panel to Dialog modal popup (matching lesson editor style)
+- [x] Modal shows block categories as tabs, grid of block icons, search, and closes on block selection
