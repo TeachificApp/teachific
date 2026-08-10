@@ -1617,6 +1617,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
   const [playerColor, setPlayerColor] = useState(course.playerColor ?? "#00b4b4");
   // Purchase Terms Override
   const [purchaseTermsAgreement, setPurchaseTermsAgreement] = useState<string>((course as any).purchaseTermsAgreement ?? "");
+  const [enrollmentClosed, setEnrollmentClosed] = useState<boolean>((course as any).enrollmentClosed ?? false);
   const [purchaseTermsLink1Label, setPurchaseTermsLink1Label] = useState<string>((course as any).purchaseTermsLink1Label ?? "");
   const [purchaseTermsLink1Url, setPurchaseTermsLink1Url] = useState<string>((course as any).purchaseTermsLink1Url ?? "");
   const [purchaseTermsLink2Label, setPurchaseTermsLink2Label] = useState<string>((course as any).purchaseTermsLink2Label ?? "");
@@ -1701,6 +1702,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
             playerTheme,
             playerColor: playerColor || null,
             customLabels: buildCustomLabels(),
+            enrollmentClosed,
           })}
         >
           {saving ? "Saving..." : "Save Settings"}
@@ -1741,18 +1743,29 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           </Select>
           <p className="text-xs text-gray-400 mt-1">Changing this moves the content to a different section of the Education Library.</p>
         </div>
-        {courseType === "cohort" && (
-          <div>
-            <Label className="text-sm">Enrollment Close Date</Label>
-            <Input
-              type="date"
-              value={enrollmentCloseDate}
-              onChange={e => setEnrollmentCloseDate(e.target.value)}
-              className="mt-1"
-            />
-            <p className="text-xs text-gray-400 mt-1">Leave blank to keep enrollment open indefinitely. After this date, new students cannot enroll.</p>
-          </div>
-        )}
+      {courseType === "cohort" && (
+        <div>
+          <Label className="text-sm">Enrollment Close Date</Label>
+          <Input
+            type="date"
+            value={enrollmentCloseDate}
+            onChange={e => setEnrollmentCloseDate(e.target.value)}
+            className="mt-1"
+          />
+          <p className="text-xs text-gray-400 mt-1">Leave blank to keep enrollment open indefinitely. After this date, new students cannot enroll.</p>
+        </div>
+      )}
+      <div className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 bg-orange-50">
+        <Switch
+          id="enrollment-closed-switch"
+          checked={enrollmentClosed}
+          onCheckedChange={setEnrollmentClosed}
+        />
+        <div>
+          <Label htmlFor="enrollment-closed-switch" className="text-sm font-medium text-orange-800 cursor-pointer">Enrollment Closed</Label>
+          <p className="text-xs text-orange-600 mt-0.5">When enabled, new students cannot enroll in this course. Existing enrollments are not affected.</p>
+        </div>
+      </div>
       </div>
 
       {/* Cover Image */}

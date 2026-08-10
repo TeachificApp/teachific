@@ -127,6 +127,15 @@ export const organizations = mysqlTable("organizations", {
   cmeEnabled: boolean("cmeEnabled").default(false).notNull(),
   cmeOrgName: varchar("cmeOrgName", { length: 255 }),
   cmeContactEmail: varchar("cmeContactEmail", { length: 320 }),
+  // Google Drive per-org CME integration
+  cmeDriveClientId: varchar("cmeDriveClientId", { length: 512 }),
+  cmeDriveClientSecret: varchar("cmeDriveClientSecret", { length: 512 }),
+  cmeDriveRefreshToken: text("cmeDriveRefreshToken"),
+  cmeDriveAccessToken: text("cmeDriveAccessToken"),
+  cmeDriveTokenExpiresAt: bigint("cmeDriveTokenExpiresAt", { mode: "number" }),
+  cmeDriveFolderId: varchar("cmeDriveFolderId", { length: 255 }),
+  cmeDriveFolderName: varchar("cmeDriveFolderName", { length: 255 }),
+  cmeDriveEnabled: boolean("cmeDriveEnabled").default(false).notNull(),
   // Embed configuration
   embedAllowedDomains: text("embedAllowedDomains"), // JSON array of allowed domains
   embedDefaultTheme: mysqlEnum("embedDefaultTheme", ["light", "dark", "auto"]).default("auto").notNull(),
@@ -1121,6 +1130,7 @@ export const webinars = mysqlTable("webinars", {
   purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
   purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
   purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
+  enrollmentClosed: boolean("enrollment_closed").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
@@ -2571,6 +2581,7 @@ export const lmsCourses = mysqlTable("lms_courses", {
   purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
   purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
   purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
+  enrollmentClosed: boolean("enrollment_closed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
@@ -4547,6 +4558,7 @@ export const workshops = mysqlTable("workshops", {
   purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
   purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
   purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
+  enrollmentClosed: boolean("enrollment_closed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

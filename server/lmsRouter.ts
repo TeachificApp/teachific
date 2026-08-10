@@ -382,6 +382,17 @@ export const lmsRouter = router({
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
         const existing = await getEnrollment(input.courseId, ctx.user.id);
         if (existing) return existing;
+        // Check enrollmentClosed before creating enrollment
+        const { getDb } = await import("./db");
+        const { lmsCourses } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (db) {
+          const [course] = await db.select({ enrollmentClosed: lmsCourses.enrollmentClosed }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          if (course?.enrollmentClosed) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment is closed for this course." });
+          }
+        }
         return createEnrollment({
           courseId: input.courseId,
           userId: ctx.user.id,

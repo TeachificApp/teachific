@@ -24,6 +24,7 @@ import {
   lmsPageTemplates,
   blockTemplates,
   courseLessons,
+  cmeActivityForms,
 } from "../../drizzle/schema";
 
 async function assertAdmin(ctx: { user: { id: number; role: string } }) {
@@ -290,8 +291,15 @@ const _lmsAdminBaseRouter = router({
       if (input.type !== "all") conditions.push(eq(lmsCourses.type, input.type as any));
       if (input.search) conditions.push(like(lmsCourses.title, `%${input.search}%`));
       const offset = (input.page - 1) * input.pageSize;
-      const rows = await db.select()
+      const rows = await db.select({
+        ...lmsCourses,
+        cmeStatus: cmeActivityForms.cmeStatus,
+      })
         .from(lmsCourses)
+        .leftJoin(cmeActivityForms, and(
+          eq(cmeActivityForms.courseId, lmsCourses.id),
+          eq(cmeActivityForms.orgId, lmsCourses.orgId),
+        ))
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(desc(lmsCourses.createdAt))
         .limit(input.pageSize)

@@ -20,6 +20,7 @@ import { z } from "zod";
 import { eq, and, desc, lte, sql } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
+import { invokeLLM } from "../_core/llm";
 import {
   users,
   emailTemplates,
@@ -1751,5 +1752,69 @@ export const emailCampaignRouter = router({
         await addToEmailList(widget.listId, input.email, input.name, { source: "lead_capture_widget", sourceId: String(input.widgetId) });
       }
       return { ok: true };
+    }),
+
+  /**
+   * generateEmailBlockContent — AI-powered per-block content generator.
+   * Given a block type and a user prompt, returns AI-generated content
+   * that can be applied to the block in EmailBlockEditor.
+   */
+  generateEmailBlockContent: protectedProcedure
+    .input(z.object({
+      blockType: z.string(),
+      prompt: z.string().min(1).max(1000),
+      existingContent: z.record(z.unknown()).optional(),
+      orgName: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const systemPrompt = `You are an expert email copywriter for ${input.orgName ?? "an organization"}.
+Generate concise, engaging email block content based on the user's prompt.
+Return ONLY a JSON object with the appropriate fields for the block type.
+
+Block type: "${input.blockType}"
+
+For "text" blocks: return { "content": "<p>Your text here</p>" }
+For "heading" blocks: return { "text": "Your heading here" }
+For "button" blocks: return { "text": "Button Label", "url": "#" }
+For "image" blocks: return { "alt": "Image description" }
+For "countdown" blocks: return { "headline": "Headline", "subtext": "Subtext" }
+For "divider" blocks: return {}
+For any other block: return { "content": "Generated content" }
+
+Existing content for context: ${JSON.stringify(input.existingContent ?? {})}`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: input.prompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "email_block_content",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                content: { type: "string" },
+                text: { type: "string" },
+                url: { type: "string" },
+                alt: { type: "string" },
+                headline: { type: "string" },
+                subtext: { type: "string" },
+              },
+              required: [],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const raw = response.choices?.[0]?.message?.content ?? "{}";
+      try {
+        return { ok: true, data: JSON.parse(raw) };
+      } catch {
+        return { ok: true, data: { content: raw } };
+      }
     }),
 });

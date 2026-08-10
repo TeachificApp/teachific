@@ -30,7 +30,8 @@ import {
   type Block,
   type BlockType,
 } from "@/pages/admin/LandingPageBuilder";
-import { Plus, Eye, EyeOff, ChevronDown, ChevronRight, Search, RefreshCw } from "lucide-react";
+import { Plus, Eye, EyeOff, ChevronDown, ChevronRight, Search, RefreshCw, Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import {
   BlockTemplateLibraryProvider,
@@ -916,6 +917,71 @@ function defaultBlock(type: BlockType): Block {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
+
+// ─── AI Block Generator ───────────────────────────────────────────────────────
+function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Record<string, any>) => void }) {
+  const [prompt, setPrompt] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const generateMutation = trpc.emailCampaign.generateEmailBlockContent.useMutation({
+    onSuccess: (result) => {
+      if (result.ok && result.data && Object.keys(result.data).length > 0) {
+        onApply({ ...block.data, ...result.data });
+        setPrompt("");
+        setIsOpen(false);
+      }
+    },
+  });
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-800 font-medium mb-3 px-2 py-1.5 rounded-md border border-teal-200 bg-teal-50 hover:bg-teal-100 w-full transition-colors"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        AI Generate Content
+      </button>
+    );
+  }
+
+  return (
+    <div className="mb-3 p-2.5 rounded-md border border-teal-200 bg-teal-50 space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-700">
+        <Sparkles className="w-3.5 h-3.5" />
+        AI Generate Content
+      </div>
+      <Textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder={`Describe what you want for this ${block.type} block...`}
+        className="text-xs min-h-[60px] resize-none"
+        rows={3}
+      />
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          className="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-xs h-7"
+          disabled={!prompt.trim() || generateMutation.isPending}
+          onClick={() => generateMutation.mutate({ blockType: block.type, prompt: prompt.trim(), existingContent: block.data })}
+        >
+          {generateMutation.isPending ? "Generating..." : "Generate"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs h-7"
+          onClick={() => { setIsOpen(false); setPrompt(""); }}
+        >
+          Cancel
+        </Button>
+      </div>
+      {generateMutation.isError && (
+        <p className="text-xs text-red-500">{generateMutation.error.message}</p>
+      )}
+    </div>
+  );
+}
+
 interface EmailBlockEditorProps {
   initialBlocks: Block[];
   onChange: (blocks: Block[]) => void;
@@ -1192,18 +1258,25 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
             className="border-l border-gray-200 bg-white shrink-0"
             style={{ width: rightPanelWidth, position: 'sticky', top: 0, maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', alignSelf: 'flex-start' }}
           >
-            <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                Block Settings
-              </span>
-              <button
-                className="text-gray-400 hover:text-gray-700 text-xs"
-                onClick={() => setSelectedId(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-3">
+              <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                  Block Settings
+                </span>
+                <button
+                  className="text-gray-400 hover:text-gray-700 text-xs"
+                  onClick={() => setSelectedId(null)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-3">
+                {/* AI Generate button for text/heading/button blocks */}
+                {["text", "heading", "button", "countdown"].includes(selectedBlock.type) && (
+                  <AiBlockGenerator
+                    block={selectedBlock}
+                    onApply={(data) => updateBlock(selectedBlock.id, data)}
+                  />
+                )}
               {/* For email-specific auto-content blocks, use a simple inline editor
                   instead of BlockSettings (which requires tRPC course/lesson context) */}
               {["included_items_auto", "cohort_sessions_auto", "related_products"].includes(selectedBlock.type) ? (

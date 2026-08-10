@@ -5054,3 +5054,68 @@
 - [x] Extend PublicQuizPlayerPage to render all 6 new types
 - [x] Extend QuizBuilderPage to support 6 new types
 - [x] All question types scoped per org (orgId filtering)
+
+## Ultrasound-App Port: Aug 8-10 Updates (Org-Scoped)
+
+### CME Status Badges
+- [ ] Add CME status badge (draft/pending_approval/approved/expiring_soon/expired) to LMS Management course list rows
+- [ ] Add CME status badge to webinar list rows
+- [ ] Add CME status badge to workshop list rows
+- [ ] Add CME status badge to cohort list rows
+- [ ] Add CME status badge to quiz list rows
+
+### Enrollment Closed
+- [ ] Add enrollmentClosed column to lmsCourses, webinars, workshops, lmsQuizzes, digitalProducts, bundles, memberships
+- [ ] Run DB migration for enrollmentClosed columns
+- [ ] Backend: block new enrollments when enrollmentClosed is set (all product types)
+- [ ] Admin: add Enrollment Closed status option to all product status dropdowns
+- [ ] Student-facing: show "Enrollment Closed" CTA and block checkout when enrollmentClosed is set
+
+### Quiz Creator Consolidation
+- [ ] Add LMS quiz products tab to Quiz Creator (show all org quizzes in one place)
+- [ ] Add cross-quiz results view filtered by type and user
+- [ ] Add per-category question draw config to Quiz Creator
+- [ ] Wire lesson quiz result submission to also write to standaloneQuizAttempts table
+
+### Standalone Quiz Lesson Type
+- [ ] Add standalone quiz lesson type to course builder Add Lesson dialog
+- [ ] Add standalone quiz lesson type to webinar/cohort/workshop builders
+- [ ] Lesson editor: show quiz selector when lesson type is standalone_quiz
+- [ ] Course player: render standalone quiz lesson using QuizPlayer component
+
+### Question Bank Improvements
+- [ ] Fix folder creation UI in Question Bank admin (folder name input + create button)
+- [ ] Add folder+tags selector to AI Generate panel in Question Bank
+- [ ] Add SCORM/ZIP/.quiz import to Question Bank with auto-folder creation
+- [ ] Add Extract to Question Bank button to Media Repository file rows for SCORM/ZIP/.quiz files
+
+### Google Drive Per-Org CME Integration
+- [ ] Port googleDriveCme.ts helper (org-scoped: each org has its own Google Drive credentials)
+- [ ] Add Google Drive OAuth columns to organizations table (per-org credentials)
+- [ ] Add Google Drive tab to CME Management page (per-org setup)
+- [ ] Wire CME form PDF save to also upload to org's Google Drive folder (if configured)
+
+### AI Email Block Generator
+- [ ] Add generateEmailBlock backend procedure (LLM + optional image generation)
+- [ ] Add per-block AI regenerate button/panel to EmailBlockEditor
+
+### Revenue Sharing (Stripe Connect)
+- [ ] Add Stripe Connect account columns to instructors/revenue_partners tables (per-org)
+- [ ] Build revenue sharing config UI (per product: instructor split %)
+- [ ] Backend: on purchase, split payment via Stripe Connect separate charges & transfers
+- [ ] Admin: revenue sharing dashboard showing payouts per instructor per org
+
+## Recent Ultrasound-App Port (Aug 10, 2026)
+
+- [x] webinarAdmin router: created with all 14 procedures (list with CME status join, create, update, delete, getById, getRegistrations, getStats, getAfterPurchaseWorkflow, updateAfterPurchaseWorkflow, getHidePricingOptions, updateHidePricingOptions, getCheckoutPageConfig, saveCheckoutPageConfig, setEnrollmentClosed)
+- [x] enrollmentClosed: added to lmsCourses, webinars, workshops schema (migration applied)
+- [x] enrollmentClosed: backend enforcement in lms.enrollments.enroll (throws FORBIDDEN if closed)
+- [x] enrollmentClosed: UI toggle in CourseBuilderPage settings tab
+- [x] Google Drive per-org CME: server/lib/googleDriveCme.ts (uploadCmePdfToDrive, listCmeDriveFiles, exchangeCodeForTokens) — org-scoped credentials in organizations table
+- [x] Google Drive per-org CME: wired into sendCmeForm procedure (non-blocking upload after email send)
+- [x] AI email block generator: emailCampaign.generateEmailBlockContent procedure (invokeLLM with JSON schema output)
+- [x] AI email block generator: AiBlockGenerator component in EmailBlockEditor (Sparkles button, prompt textarea, apply to block)
+- [ ] CME status badges on LMS Management list rows (courses, webinars, workshops, cohorts, quizzes) — listCourses already joins cmeActivityForms; webinarAdmin.list also joins; UI badges pending
+- [ ] Standalone quiz lesson type in course/webinar/cohort/workshop builders
+- [ ] Question Bank: folder creation UI + AI generate with folder+tags
+- [ ] Revenue sharing: Stripe Connect + instructor/affiliate payouts per org

@@ -32,6 +32,7 @@ import {
   organizations,
 } from "../../drizzle/schema";
 import { storagePut } from "../storage";
+import { uploadCmePdfToDrive } from "../lib/googleDriveCme";
 import { invokeLLM } from "../_core/llm";
 import { sendEmail } from "../_core/email";
 
@@ -766,7 +767,21 @@ ${input.body.split('\n').map(line => line.trim() ? `<p style="margin:0 0 12px;">
       } as any);
 
       console.log(`[CME Email] Sent "${input.subject}" to don@cardioserv.net for course ${course.title} (org ${orgId})`);
-      return { success: true, lastSentAt: now };
+
+      // Optionally upload PDF to org's Google Drive (non-blocking — failure doesn't break email send)
+      let driveFileId: string | null = null;
+      let driveWebViewLink: string | null = null;
+      try {
+        const driveResult = await uploadCmePdfToDrive(orgId, htmlBuffer, filename);
+        if (driveResult) {
+          driveFileId = driveResult.fileId;
+          driveWebViewLink = driveResult.webViewLink;
+        }
+      } catch (driveErr) {
+        console.warn(`[CME Drive] Upload failed (non-fatal): ${driveErr}`);
+      }
+
+      return { success: true, lastSentAt: now, driveFileId, driveWebViewLink };
     }),
 
   // ── Update CME status ──────────────────────────────────────────────

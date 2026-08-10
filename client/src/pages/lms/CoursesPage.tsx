@@ -308,6 +308,20 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
     published: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
     archived: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
   };
+  const CME_STATUS_COLORS: Record<string, string> = {
+    draft: "bg-gray-100 text-gray-500 border border-gray-200",
+    pending_approval: "bg-amber-100 text-amber-700 border border-amber-200",
+    approved: "bg-green-100 text-green-700 border border-green-200",
+    expiring_soon: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+    expired: "bg-red-100 text-red-600 border border-red-200",
+  };
+  const CME_STATUS_LABELS: Record<string, string> = {
+    draft: "CME: Draft",
+    pending_approval: "CME: Pending",
+    approved: "CME: Approved",
+    expiring_soon: "CME: Expiring",
+    expired: "CME: Expired",
+  };
 
   // ── AI wizard handlers ────────────────────────────────────────────────────
   const handleAiStep1 = () => {
@@ -555,6 +569,16 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
                             <Badge className={`text-[10px] px-1.5 py-0 ${statusColor[course.status ?? "draft"] ?? statusColor.draft}`}>
                               {course.status ?? "draft"}
                             </Badge>
+                            {(course as any).cmeStatus && (course as any).cmeStatus !== "draft" && (
+                              <Badge className={`text-[10px] px-1.5 py-0 ${CME_STATUS_COLORS[(course as any).cmeStatus] ?? CME_STATUS_COLORS.draft}`}>
+                                {CME_STATUS_LABELS[(course as any).cmeStatus] ?? "CME"}
+                              </Badge>
+                            )}
+                            {(course as any).enrollmentClosed && (
+                              <Badge className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-700 border border-orange-200">
+                                Enrollment Closed
+                              </Badge>
+                            )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                                 <Button variant="ghost" size="icon" className="h-7 w-7">
