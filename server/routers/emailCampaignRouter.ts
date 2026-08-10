@@ -37,6 +37,7 @@ import {
   workshopInstances,
   workshops,
   bundles,
+  orgThemes,
 } from "../../drizzle/schema";
 import { addToEmailList, ensureAllContactsList } from "../lib/emailListHelper";
 import { getOrgIdForUser } from "../db";
@@ -206,6 +207,16 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
     .where(eq(emailCampaigns.id, campaignId))
     .limit(1);
   if (!campaign) return;
+  // Fetch org accent color for link styling
+  let orgAccentColor: string | null = null;
+  if (campaign.orgId) {
+    const [theme] = await db
+      .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
+      .from(orgThemes)
+      .where(eq(orgThemes.orgId, campaign.orgId))
+      .limit(1);
+    orgAccentColor = theme?.buttonColor ?? theme?.primaryColor ?? null;
+  }
 
   let filter: AudienceFilter;
   try {
@@ -245,7 +256,7 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
   for (const recipient of recipients) {
     const variant = pickAbVariant(recipient.email, filter.abTest, campaignId);
     const subject = variant?.subject?.trim() || campaign.subject;
-    let html = normalizeCampaignEmailHtml(variant?.htmlBody?.trim() || campaign.htmlBody);
+    let html = normalizeCampaignEmailHtml(variant?.htmlBody?.trim() || campaign.htmlBody, orgAccentColor);
 
     let unsubscribePageUrl: string | undefined;
     let listUnsubscribeApiUrl: string | undefined;

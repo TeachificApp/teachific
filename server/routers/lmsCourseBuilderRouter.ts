@@ -24,6 +24,7 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
 import { getDb, getOrCreateAccessToken, getOrgIdForUser, getOrgIdForUserWithFallback } from "../db";
 import { invokeLLM } from "../_core/llm";
+import { generateImage } from "../_core/imageGeneration";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
@@ -1530,6 +1531,23 @@ Return JSON with this exact shape:
         return { success: true, content: cleaned };
       } catch (e: any) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI generation failed: ${e?.message ?? "unknown error"}` });
+      }
+    }),
+
+  /**
+   * generateImage — generate an image from a text prompt using the built-in image service.
+   * Returns a public S3 URL for the generated image.
+   */
+  generateImage: protectedProcedure
+    .input(z.object({
+      prompt: z.string().min(1).max(1000),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        const { url } = await generateImage({ prompt: input.prompt });
+        return { success: true, url: url ?? "" };
+      } catch (e: any) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Image generation failed: ${e?.message ?? "unknown error"}` });
       }
     }),
 });

@@ -34,18 +34,20 @@ export function wrapInBrandedCampaignEmail(
   headerSubtext?: string | null,
   headerColor?: string | null,
   headerEnabled?: boolean | null,
+  accentColor?: string | null,
 ): string {
   const w = EMAIL_CAMPAIGN_CONTAINER_WIDTH_PX;
   const preview = previewText
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
     : "";
-  const title = headerTitle ?? "All About Ultrasound™";
-  const subtext = headerSubtext ?? "ECHOCARDIOGRAPHY CLINICAL COMPANION";
+  const title = headerTitle ?? "Teachific™";
+  const subtext = headerSubtext ?? "";
   const showHeader = headerEnabled !== false;
   const bgColor = headerColor || null;
   const headerBg = bgColor
     ? `background:${bgColor};`
     : "background:linear-gradient(135deg,#0e1e2e 0%,#0e4a50 60%,#189aa1 100%);";
+  const resolvedAccentColor = accentColor ?? "#189aa1";
   const headerRow = showHeader ? `
       <tr>
         <td style="${headerBg}padding:28px 32px;">
@@ -58,7 +60,7 @@ export function wrapInBrandedCampaignEmail(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>All About Ultrasound™</title>
+  <title>${title}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f7f8;font-family:'Open Sans',Arial,sans-serif;">
 ${preview}
@@ -74,9 +76,9 @@ ${preview}
       <tr>
         <td style="background:#f4f7f8;padding:20px 32px;border-top:1px solid #e5eaec;">
           <p style="margin:0;font-size:11px;color:#8a9bb0;text-align:center;line-height:1.6;">
-            © ${new Date().getFullYear()} All About Ultrasound™<br/>
-            You are receiving this email because you have an account on All About Ultrasound™.<br/>
-            <a href="{{UNSUBSCRIBE_URL}}" style="color:#189aa1;text-decoration:none;">Unsubscribe</a> · <a href="https://app.allaboutultrasound.com/profile" style="color:#189aa1;text-decoration:none;">Manage preferences</a>
+            © ${new Date().getFullYear()} ${title}<br/>
+            You are receiving this email because you have an account with ${title}.<br/>
+            <a href="{{UNSUBSCRIBE_URL}}" style="color:${resolvedAccentColor};text-decoration:none;">Unsubscribe</a>
           </p>
         </td>
       </tr>
@@ -118,12 +120,27 @@ function normalizeImgTag(attrs: string): string {
  * - Upgrade legacy 600px containers to 750px
  * - Apply default width to images that have no explicit width set
  */
-export function normalizeCampaignEmailHtml(html: string): string {
+export function normalizeCampaignEmailHtml(html: string, accentColor?: string | null): string {
   const w = EMAIL_CAMPAIGN_CONTAINER_WIDTH_PX;
   let out = html
     .replace(/max-width:\s*600px/gi, `max-width:${w}px`)
     .replace(/\bwidth=["']600["']/gi, `width="${w}"`);
 
   out = out.replace(/<img\b([^>]*)>/gi, (_match, attrs: string) => normalizeImgTag(attrs));
+  // Inject org accent color on <a> tags that don't already have an explicit color in their style
+  if (accentColor) {
+    out = out.replace(/<a\b([^>]*)>/gi, (_match: string, attrs: string) => {
+      const styleMatch = attrs.match(/\bstyle=["']([^"']*)["']/i);
+      if (styleMatch && /\bcolor\s*:/i.test(styleMatch[1])) return `<a${attrs}>`;
+      if (styleMatch) {
+        const newAttrs = attrs.replace(
+          /\bstyle=["']([^"']*)["']/i,
+          (_m: string, s: string) => `style="${s};color:${accentColor};"`
+        );
+        return `<a${newAttrs}>`;
+      }
+      return `<a${attrs} style="color:${accentColor};">`;
+    });
+  }
   return out;
 }
