@@ -150,15 +150,43 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
   const [prompt, setPrompt] = useState("");
   const [tone, setTone] = useState("professional");
   const [includeEmoji, setIncludeEmoji] = useState(false);
+  const [emailType, setEmailType] = useState("general");
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [selectedProductType, setSelectedProductType] = useState<"course" | "workshop" | "cohort" | "webinar" | "download">("course");
+
+  const { data: promoProducts } = trpc.emailCampaign.getProductsForEmailPromo.useQuery(undefined, {
+    enabled: open && emailType === "promo",
+  });
+
+  // Flatten all products into a single list for the picker
+  const allProducts = promoProducts ? [
+    ...(promoProducts.courses ?? []).map(p => ({ ...p, kind: "course" as const })),
+    ...(promoProducts.workshops ?? []).map(p => ({ ...p, kind: "workshop" as const })),
+    ...(promoProducts.cohorts ?? []).map(p => ({ ...p, kind: "cohort" as const })),
+    ...(promoProducts.webinars ?? []).map(p => ({ ...p, kind: "webinar" as const })),
+    ...(promoProducts.downloads ?? []).map(p => ({ ...p, kind: "download" as const })),
+  ] : [];
+
+  const selectedProduct = allProducts.find(p => String(p.id) === selectedProductId);
+
   const generateMutation = trpc.emailCampaign.generateFullEmailContent.useMutation({
     onSuccess: (result) => {
       if (result.ok && result.blocks && result.blocks.length > 0) {
         onApplyBlocks(result.blocks as Block[]);
         setOpen(false);
         setPrompt("");
+        setSelectedProductId("");
       }
     },
   });
+
+  function handleGenerate() {
+    let finalPrompt = prompt.trim();
+    if (emailType === "promo" && selectedProduct) {
+      finalPrompt = `Write a promotional email for the following course/product:\n\nTitle: ${selectedProduct.title}\nDescription: ${selectedProduct.description || "(no description provided)"}\nLanding Page URL: ${selectedProduct.url}\n\nAdditional instructions: ${finalPrompt || "Highlight the key benefits and include a clear call-to-action button linking to the landing page."}`;
+    }
+    generateMutation.mutate({ prompt: finalPrompt, tone, includeEmoji, emailType });
+  }
 
   return (
     <>
@@ -171,7 +199,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setOpen(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-teal-600" />
               <h3 className="text-base font-semibold text-gray-900">AI Generate Email</h3>
@@ -179,11 +207,59 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
             </div>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-gray-700 block mb-1">Describe your email</label>
+                <label className="text-xs font-medium text-gray-700 block mb-1">Email Type</label>
+                <select
+                  value={emailType}
+                  onChange={e => { setEmailType(e.target.value); setSelectedProductId(""); }}
+                  className="w-full h-8 rounded-md border border-gray-200 bg-white px-2 text-xs"
+                >
+                  <option value="general">General / Announcement</option>
+                  <option value="promo">Course / Product Promo</option>
+                  <option value="welcome">Welcome Email</option>
+                  <option value="newsletter">Newsletter</option>
+                  <option value="event">Event / Webinar Invite</option>
+                  <option value="followup">Follow-up / Re-engagement</option>
+                </select>
+              </div>
+
+              {emailType === "promo" && (
+                <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
+                  <label className="text-xs font-semibold text-teal-700 block">Select Course / Product to Promote</label>
+                  {allProducts.length === 0 ? (
+                    <p className="text-xs text-gray-400">Loading your courses and products…</p>
+                  ) : (
+                    <select
+                      value={selectedProductId}
+                      onChange={e => setSelectedProductId(e.target.value)}
+                      className="w-full h-8 rounded-md border border-teal-200 bg-white px-2 text-xs"
+                    >
+                      <option value="">— Select a product —</option>
+                      {allProducts.map(p => (
+                        <option key={`${p.kind}-${p.id}`} value={String(p.id)}>
+                          [{p.kind.charAt(0).toUpperCase() + p.kind.slice(1)}] {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {selectedProduct && (
+                    <div className="text-xs text-teal-700 space-y-0.5">
+                      {selectedProduct.description && <p className="line-clamp-2 text-gray-600">{selectedProduct.description}</p>}
+                      <p className="font-mono text-[10px] text-teal-600 truncate">{selectedProduct.url}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-medium text-gray-700 block mb-1">
+                  {emailType === "promo" ? "Additional instructions (optional)" : "Describe your email"}
+                </label>
                 <Textarea
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
-                  placeholder="e.g. A welcome email for new students who just enrolled in our echo course, with a warm greeting, what to expect, and a CTA to start the first lesson."
+                  placeholder={emailType === "promo"
+                    ? "e.g. Emphasize the limited-time discount, mention the 3 key benefits, and add urgency."
+                    : "e.g. A welcome email for new students who just enrolled in our echo course, with a warm greeting, what to expect, and a CTA to start the first lesson."}
                   className="text-sm min-h-[100px] resize-none"
                   rows={4}
                 />
@@ -220,8 +296,8 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
             <div className="flex gap-2 mt-4">
               <Button
                 className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
-                disabled={!prompt.trim() || generateMutation.isPending}
-                onClick={() => generateMutation.mutate({ prompt: prompt.trim(), tone, includeEmoji })}
+                disabled={(emailType === "promo" ? !selectedProductId : !prompt.trim()) || generateMutation.isPending}
+                onClick={handleGenerate}
               >
                 {generateMutation.isPending ? "Generating…" : "Generate Email"}
               </Button>

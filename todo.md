@@ -5127,3 +5127,20 @@
 - [x] Add emoji toggle to EmailCampaignEditor AI generator dialog
 - [x] Add emoji toggle to EmailBlockEditor per-block AI panel
 - [x] Update emailCampaignRouter generateEmailBlockContent to accept includeEmoji flag
+
+## Recent UA Sync (Aug 10, 2026)
+
+- [ ] Add lmsQuizQuestionGroups and lmsQuizGroupQuestions DB tables
+- [ ] Add quiz question groups router procedures (CRUD + assign questions)
+- [ ] Add quiz question groups UI in QuizBuilderPage (per-category draw config)
+- [x] Update CoursePlayer drip-out to client-side expiry calculation
+- [ ] Upgrade EmailBlockEditor AI block panel (Wand2 per-block, tone, image gen)
+- [ ] Fix questionBankExport archiver CJS import
+- [ ] Add ai_content to EMAIL_SAFE_TYPES in EmailBlockEditor
+
+## AI Email Generator - Course/Product Promo (Aug 10, 2026)
+
+- [x] Add getProductsForEmailPromo procedure to emailCampaignRouter (org-scoped: courses, workshops, cohorts, webinars, downloads)
+- [x] Update AiFullEmailGenerator: rename Course Launch to Course/Product Promo, add product picker
+- [x] Inject selected product title, description, and landing page URL into AI prompt
+- [x] Update generateFullEmailContent to use product context in system prompt

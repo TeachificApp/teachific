@@ -39,6 +39,8 @@ import {
   bundles,
 } from "../../drizzle/schema";
 import { addToEmailList, ensureAllContactsList } from "../lib/emailListHelper";
+import { getOrgIdForUser } from "../db";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import { resolveRecipients } from "../lib/emailCampaignAudienceResolver";
 import {
   AudienceFilterSchema,
@@ -1832,15 +1834,28 @@ Existing content for context: ${JSON.stringify(input.existingContent ?? {})}`;
       tone: z.string().optional(),
       includeEmoji: z.boolean().optional(),
       orgName: z.string().optional(),
+      emailType: z.string().optional(), // "general" | "promo" | "welcome" | "newsletter" | "event" | "followup"
     }))
     .mutation(async ({ input }) => {
       const emojiInstruction = input.includeEmoji
         ? "Include 1–3 relevant emojis naturally within the text (inline, not at the start of every line)."
         : "Do NOT include any emojis.";
+
+      const emailTypeInstructions: Record<string, string> = {
+        promo: "This is a PROMOTIONAL email. Focus on the product's benefits, create excitement, include a strong call-to-action button that links to the product landing page URL provided in the prompt. Use persuasive but authentic language.",
+        welcome: "This is a WELCOME email. Be warm, friendly, and helpful. Set expectations, provide next steps, and make the reader feel valued.",
+        newsletter: "This is a NEWSLETTER. Organize content into clear sections, use headings to separate topics, keep a consistent editorial voice.",
+        event: "This is an EVENT/WEBINAR INVITE. Lead with the event details (date, time, topic), create urgency, and include a clear registration CTA.",
+        followup: "This is a FOLLOW-UP / RE-ENGAGEMENT email. Be personal, acknowledge the gap, offer value, and include a gentle CTA.",
+        general: "This is a general announcement email. Be clear and concise.",
+      };
+      const emailTypeHint = emailTypeInstructions[input.emailType ?? "general"] ?? emailTypeInstructions.general;
+
       const systemPrompt = `You are an expert email copywriter for ${input.orgName ?? "an organization"}.
 Generate a complete email as a JSON array of blocks. Each block has a "type" and "data" object.
 
 Tone: ${input.tone ?? "professional"}
+Email type guidance: ${emailTypeHint}
 ${emojiInstruction}
 
 Available block types and their data shapes:
@@ -1852,7 +1867,8 @@ Available block types and their data shapes:
 - { "type": "alert", "data": { "content": "Alert message", "variant": "info" } }
 
 Return ONLY a JSON object: { "blocks": [ ...array of blocks... ] }
-The email should have: a greeting/headline, 2–4 body paragraphs, and a call-to-action button.`;
+The email should have: a greeting/headline, 2–4 body paragraphs, and a call-to-action button.
+For promotional emails: use the product URL from the prompt in the cta_standalone block's "url" field.`;
 
       const response = await invokeLLM({
         messages: [
@@ -1877,4 +1893,82 @@ The email should have: a greeting/headline, 2–4 body paragraphs, and a call-to
         return { ok: true, blocks: [{ id: Math.random().toString(36).slice(2, 10), type: "text", data: { content: `<p>${raw}</p>` } }] };
       }
     }),
+  /**
+   * getProductsForEmailPromo — returns org-scoped products for the AI email promo picker.
+   * Returns courses, workshops, cohort groups, webinars, and digital downloads for the current org.
+   */
+  getProductsForEmailPromo: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const orgId = await getOrgIdForUser(ctx.user.id);
+    if (!orgId) return { courses: [], workshops: [], cohorts: [], webinars: [], downloads: [], orgBaseUrl: "" };
+
+    // Get org info for URL building
+    const { organizations } = await import("../../drizzle/schema");
+    const [org] = await db
+      .select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1);
+    const orgBaseUrl = org ? getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus) : "";
+
+    const [courses, workshopRows, cohortRows] = await Promise.all([
+      db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, description: lmsCourses.subtitle, type: lmsCourses.type })
+        .from(lmsCourses)
+        .where(and(eq(lmsCourses.orgId, orgId), sql`${lmsCourses.status} != 'archived'`))
+        .orderBy(lmsCourses.title)
+        .limit(200),
+      db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, description: workshops.shortDescription })
+        .from(workshops)
+        .where(and(eq(workshops.orgId, orgId), sql`${workshops.status} != 'archived'`))
+        .orderBy(workshops.title)
+        .limit(100),
+      db.select({ id: lmsCohortGroups.id, name: lmsCohortGroups.name, slug: lmsCohortGroups.slug, description: lmsCohortGroups.description })
+        .from(lmsCohortGroups)
+        .where(eq(lmsCohortGroups.orgId, orgId))
+        .orderBy(lmsCohortGroups.name)
+        .limit(100),
+    ]);
+
+    const webinarRows = await db.execute(sql`SELECT id, title, slug, description FROM webinars WHERE orgId = ${orgId} AND status != 'archived' ORDER BY title LIMIT 100`);
+    const downloadRows = await db.execute(sql`SELECT id, title, slug, description FROM digital_products WHERE orgId = ${orgId} AND visibility != 'archived' ORDER BY title LIMIT 100`);
+    const webinarList: any[] = (webinarRows as any)?.rows ?? (Array.isArray(webinarRows) ? webinarRows : []);
+    const downloadList: any[] = (downloadRows as any)?.rows ?? (Array.isArray(downloadRows) ? downloadRows : []);
+
+    return {
+      orgBaseUrl,
+      courses: courses.map(c => ({
+        id: c.id,
+        title: c.title,
+        description: c.description ?? "",
+        url: `${orgBaseUrl}/courses/${c.slug}`,
+        type: c.type as string,
+      })),
+      workshops: workshopRows.map(w => ({
+        id: w.id,
+        title: w.title,
+        description: w.description ?? "",
+        url: `${orgBaseUrl}/workshops/${w.slug}`,
+      })),
+      cohorts: cohortRows.map((c: any) => ({
+        id: c.id,
+        title: c.name,
+        description: c.description ?? "",
+        url: `${orgBaseUrl}/cohorts/${c.slug ?? c.id}`,
+      })),
+      webinars: webinarList.map((w: any) => ({
+        id: w.id,
+        title: w.title,
+        description: w.description ?? "",
+        url: `${orgBaseUrl}/webinars/${w.slug}`,
+      })),
+      downloads: downloadList.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        description: d.description ?? "",
+        url: `${orgBaseUrl}/downloads/${d.slug}`,
+      })),
+    };
+  }),
+
 });

@@ -664,17 +664,20 @@ function MobileSidebarContent({
                         const active = lesson.id === selectedLessonId;
                         const dripLocked = !dripBypassed && (lesson.dripDays ?? 0) > 0 && daysSinceEnroll < lesson.dripDays;
                         const prereqLocked = prereqLockedIds.has(lesson.id);
-                        const lessonLocked = dripLocked || prereqLocked;
+                        const lessonExpired = !dripBypassed && lesson.isExpired;
+                        const lessonLocked = dripLocked || prereqLocked || lessonExpired;
                         const lessonUnlockDate = dripLocked ? new Date(enrolledAt.getTime() + lesson.dripDays * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+                        const lessonExpiryDate = lesson.expiresAt ? new Date(lesson.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
                         return (
                           <button key={lesson.id} onClick={() => { if (!lessonLocked) setSelectedLessonId(lesson.id); }} disabled={lessonLocked}
                             className={cn("w-full text-left px-2 py-1.5 flex items-center gap-2 text-[11px] transition-colors rounded",
-                              active ? "font-semibold" : lessonLocked ? "text-gray-400 cursor-not-allowed" : done ? "text-gray-400" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50")}
+                              active ? "font-semibold" : lessonExpired ? "text-red-400 cursor-not-allowed" : lessonLocked ? "text-gray-400 cursor-not-allowed" : done ? "text-gray-400" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50")}
                             style={active ? { color: primaryColor, backgroundColor: `${primaryColor}12` } : undefined}>
                             <LessonIcon type={lesson.type} done={done} locked={lessonLocked} color={primaryColor} />
                             <div className="flex-1 min-w-0">
                               <span className="truncate block">{lesson.title}</span>
                               {dripLocked && lessonUnlockDate && <span className="text-[10px] text-gray-400">Unlocks {lessonUnlockDate}</span>}
+                              {lessonExpired && lessonExpiryDate && <span className="text-[10px] text-red-400">Expired {lessonExpiryDate}</span>}
                               {prereqLocked && !dripLocked && <span className="text-[10px] text-orange-500">Complete prerequisite lesson first</span>}
                             </div>
                             {lesson.durationMinutes && !lessonLocked && <span className="text-[10px] text-gray-400 shrink-0">{lesson.durationMinutes}m</span>}
