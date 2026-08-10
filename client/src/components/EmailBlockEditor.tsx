@@ -1095,6 +1095,39 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
   const [prompt, setPrompt] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [includeEmoji, setIncludeEmoji] = useState(false);
+  const [emailPurpose, setEmailPurpose] = useState("body");
+  const [tone, setTone] = useState("professional");
+
+  const EMAIL_PURPOSES = [
+    { value: "intro", label: "Intro / Opening" },
+    { value: "body", label: "Body Content" },
+    { value: "cta", label: "Call to Action" },
+    { value: "feature", label: "Feature Highlight" },
+    { value: "testimonial", label: "Testimonial / Social Proof" },
+    { value: "closing", label: "Closing / Sign-off" },
+    { value: "announcement", label: "Announcement" },
+    { value: "promo", label: "Promotional / Offer" },
+  ];
+
+  const TONES = [
+    { value: "professional", label: "Professional" },
+    { value: "friendly", label: "Friendly" },
+    { value: "urgent", label: "Urgent" },
+    { value: "educational", label: "Educational" },
+    { value: "celebratory", label: "Celebratory" },
+  ];
+
+  const placeholderByPurpose: Record<string, string> = {
+    intro: "e.g. Warm opening for a welcome email to new subscribers",
+    body: "e.g. Explain the 3 key benefits of our new course on cardiac imaging",
+    cta: "e.g. Encourage readers to register for the upcoming live webinar",
+    feature: "e.g. Highlight the interactive case studies included in the course",
+    testimonial: "e.g. A quote from a student who improved their echo skills",
+    closing: "e.g. Friendly sign-off with a reminder about the enrollment deadline",
+    announcement: "e.g. Announce the launch of our new CME-accredited workshop series",
+    promo: "e.g. Limited-time 20% discount on the Advanced Echo bundle",
+  };
+
   const generateMutation = trpc.emailCampaign.generateEmailBlockContent.useMutation({
     onSuccess: (result) => {
       if (result.ok && result.data && Object.keys(result.data).length > 0) {
@@ -1116,17 +1149,42 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
       </button>
     );
   }
-
   return (
     <div className="mb-3 p-2.5 rounded-md border border-teal-200 bg-teal-50 space-y-2">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-700">
         <Sparkles className="w-3.5 h-3.5" />
-        AI Generate Content
+        AI Generate Email Content
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <div>
+          <label className="text-[10px] font-medium text-gray-500 block mb-0.5">Purpose</label>
+          <select
+            value={emailPurpose}
+            onChange={e => setEmailPurpose(e.target.value)}
+            className="w-full h-7 rounded border border-gray-200 bg-white px-1.5 text-xs"
+          >
+            {EMAIL_PURPOSES.map(p => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] font-medium text-gray-500 block mb-0.5">Tone</label>
+          <select
+            value={tone}
+            onChange={e => setTone(e.target.value)}
+            className="w-full h-7 rounded border border-gray-200 bg-white px-1.5 text-xs"
+          >
+            {TONES.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <Textarea
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        placeholder={`Describe what you want for this ${block.type} block...`}
+        placeholder={placeholderByPurpose[emailPurpose] ?? "Describe what email content to generate…"}
         className="text-xs min-h-[60px] resize-none"
         rows={3}
       />
@@ -1135,7 +1193,12 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
           size="sm"
           className="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-xs h-7"
           disabled={!prompt.trim() || generateMutation.isPending}
-          onClick={() => generateMutation.mutate({ blockType: block.type, prompt: prompt.trim(), existingContent: block.data, includeEmoji })}
+          onClick={() => generateMutation.mutate({
+            blockType: block.type,
+            prompt: `[Email purpose: ${emailPurpose}, Tone: ${tone}] ${prompt.trim()}`,
+            existingContent: block.data,
+            includeEmoji,
+          })}
         >
           {generateMutation.isPending ? "Generating..." : "Generate"}
         </Button>
