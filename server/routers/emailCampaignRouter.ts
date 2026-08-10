@@ -1765,11 +1765,15 @@ export const emailCampaignRouter = router({
       prompt: z.string().min(1).max(1000),
       existingContent: z.record(z.unknown()).optional(),
       orgName: z.string().optional(),
+      includeEmoji: z.boolean().optional(),
     }))
     .mutation(async ({ input }) => {
+      const emojiInstruction = input.includeEmoji
+        ? "\nInclude 1–3 relevant emojis naturally within the generated text (inline, not at the start of every line)."
+        : "\nDo NOT include any emojis.";
       const systemPrompt = `You are an expert email copywriter for ${input.orgName ?? "an organization"}.
 Generate concise, engaging email block content based on the user's prompt.
-Return ONLY a JSON object with the appropriate fields for the block type.
+Return ONLY a JSON object with the appropriate fields for the block type.${emojiInstruction}
 
 Block type: "${input.blockType}"
 
@@ -1815,6 +1819,62 @@ Existing content for context: ${JSON.stringify(input.existingContent ?? {})}`;
         return { ok: true, data: JSON.parse(raw) };
       } catch {
         return { ok: true, data: { content: raw } };
+      }
+    }),
+
+  /**
+   * generateFullEmailContent — AI-powered full-email generator.
+   * Given a prompt and tone, returns a list of blocks that form a complete email.
+   */
+  generateFullEmailContent: protectedProcedure
+    .input(z.object({
+      prompt: z.string().min(1).max(2000),
+      tone: z.string().optional(),
+      includeEmoji: z.boolean().optional(),
+      orgName: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const emojiInstruction = input.includeEmoji
+        ? "Include 1–3 relevant emojis naturally within the text (inline, not at the start of every line)."
+        : "Do NOT include any emojis.";
+      const systemPrompt = `You are an expert email copywriter for ${input.orgName ?? "an organization"}.
+Generate a complete email as a JSON array of blocks. Each block has a "type" and "data" object.
+
+Tone: ${input.tone ?? "professional"}
+${emojiInstruction}
+
+Available block types and their data shapes:
+- { "type": "text", "data": { "content": "<p>HTML text</p>" } }
+- { "type": "heading", "data": { "text": "Heading text", "level": 2 } }
+- { "type": "spacer", "data": { "height": 16 } }
+- { "type": "divider", "data": {} }
+- { "type": "cta_standalone", "data": { "text": "Button label", "url": "#", "align": "center" } }
+- { "type": "alert", "data": { "content": "Alert message", "variant": "info" } }
+
+Return ONLY a JSON object: { "blocks": [ ...array of blocks... ] }
+The email should have: a greeting/headline, 2–4 body paragraphs, and a call-to-action button.`;
+
+      const response = await invokeLLM({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: input.prompt },
+        ],
+      });
+
+      const raw = response.choices?.[0]?.message?.content ?? "{}";
+      try {
+        // Try to extract JSON from the response (LLM may wrap in markdown code blocks)
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+        const blocks = (parsed.blocks ?? []).map((b: any) => ({
+          id: Math.random().toString(36).slice(2, 10),
+          type: b.type,
+          data: b.data ?? {},
+        }));
+        return { ok: true, blocks };
+      } catch {
+        // Fallback: return a single text block with the raw content
+        return { ok: true, blocks: [{ id: Math.random().toString(36).slice(2, 10), type: "text", data: { content: `<p>${raw}</p>` } }] };
       }
     }),
 });

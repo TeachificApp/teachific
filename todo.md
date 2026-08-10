@@ -5119,3 +5119,11 @@
 - [ ] Standalone quiz lesson type in course/webinar/cohort/workshop builders
 - [ ] Question Bank: folder creation UI + AI generate with folder+tags
 - [ ] Revenue sharing: Stripe Connect + instructor/affiliate payouts per org
+
+## Emoji & Email Campaign Updates (Aug 10, 2026)
+
+- [x] Add emoji font fallbacks to index.css body font-family
+- [x] Add emoji font fallbacks to RichTextEditor TipTap CSS
+- [x] Add emoji toggle to EmailCampaignEditor AI generator dialog
+- [x] Add emoji toggle to EmailBlockEditor per-block AI panel
+- [x] Update emailCampaignRouter generateEmailBlockContent to accept includeEmoji flag

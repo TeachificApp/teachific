@@ -1458,6 +1458,14 @@ export function RichTextEditor({
       {/* Scoped styles */}
       <style>{`
         .rte-content .tiptap { outline: none; }
+        /* Emoji font fallbacks — ensures colored emoji render inline with text */
+        .rte-content .tiptap,
+        .rte-content .tiptap * { font-family: inherit, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"; }
+        .rte-content .tiptap p,
+        .rte-content .tiptap li,
+        .rte-content .tiptap h1,
+        .rte-content .tiptap h2,
+        .rte-content .tiptap h3 { font-family: inherit; }
         .rte-content .tiptap p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           float: left;

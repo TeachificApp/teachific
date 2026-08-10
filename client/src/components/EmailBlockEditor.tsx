@@ -144,6 +144,96 @@ const EMAIL_CATALOG_CATEGORIES = [
   "Auto Content",
 ];
 
+// ─── AI Full-Email Generator Dialog ──────────────────────────────────────────
+function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [tone, setTone] = useState("professional");
+  const [includeEmoji, setIncludeEmoji] = useState(false);
+  const generateMutation = trpc.emailCampaign.generateFullEmailContent.useMutation({
+    onSuccess: (result) => {
+      if (result.ok && result.blocks && result.blocks.length > 0) {
+        onApplyBlocks(result.blocks as Block[]);
+        setOpen(false);
+        setPrompt("");
+      }
+    },
+  });
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-800 font-medium px-2.5 py-1.5 rounded-md border border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors whitespace-nowrap"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        AI Generate Email
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-teal-600" />
+              <h3 className="text-base font-semibold text-gray-900">AI Generate Email</h3>
+              <button onClick={() => setOpen(false)} className="ml-auto text-gray-400 hover:text-gray-700">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-700 block mb-1">Describe your email</label>
+                <Textarea
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                  placeholder="e.g. A welcome email for new students who just enrolled in our echo course, with a warm greeting, what to expect, and a CTA to start the first lesson."
+                  className="text-sm min-h-[100px] resize-none"
+                  rows={4}
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Tone</label>
+                  <select
+                    value={tone}
+                    onChange={e => setTone(e.target.value)}
+                    className="w-full h-8 rounded-md border border-gray-200 bg-white px-2 text-xs"
+                  >
+                    <option value="professional">Professional</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="educational">Educational</option>
+                    <option value="celebratory">Celebratory</option>
+                  </select>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeEmoji}
+                  onChange={e => setIncludeEmoji(e.target.checked)}
+                  className="w-4 h-4 rounded accent-teal-600"
+                />
+                <span className="text-sm text-gray-700">😊 Include emojis in generated text</span>
+              </label>
+            </div>
+            {generateMutation.isError && (
+              <p className="text-xs text-red-500 mt-2">{generateMutation.error.message}</p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <Button
+                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                disabled={!prompt.trim() || generateMutation.isPending}
+                onClick={() => generateMutation.mutate({ prompt: prompt.trim(), tone, includeEmoji })}
+              >
+                {generateMutation.isPending ? "Generating…" : "Generate Email"}
+              </Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Block → Email HTML renderer ─────────────────────────────────────────────
 // Converts the shared {id, type, data} block format to inline-CSS email HTML.
 export function emailBlockToHtml(block: Block): string {
@@ -922,6 +1012,7 @@ function defaultBlock(type: BlockType): Block {
 function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Record<string, any>) => void }) {
   const [prompt, setPrompt] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [includeEmoji, setIncludeEmoji] = useState(false);
   const generateMutation = trpc.emailCampaign.generateEmailBlockContent.useMutation({
     onSuccess: (result) => {
       if (result.ok && result.data && Object.keys(result.data).length > 0) {
@@ -962,7 +1053,7 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
           size="sm"
           className="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-xs h-7"
           disabled={!prompt.trim() || generateMutation.isPending}
-          onClick={() => generateMutation.mutate({ blockType: block.type, prompt: prompt.trim(), existingContent: block.data })}
+          onClick={() => generateMutation.mutate({ blockType: block.type, prompt: prompt.trim(), existingContent: block.data, includeEmoji })}
         >
           {generateMutation.isPending ? "Generating..." : "Generate"}
         </Button>
@@ -975,9 +1066,18 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
           Cancel
         </Button>
       </div>
-      {generateMutation.isError && (
-        <p className="text-xs text-red-500">{generateMutation.error.message}</p>
-      )}
+        {generateMutation.isError && (
+          <p className="text-xs text-red-500">{generateMutation.error.message}</p>
+        )}
+        <label className="flex items-center gap-1.5 cursor-pointer mt-1">
+          <input
+            type="checkbox"
+            checked={includeEmoji}
+            onChange={e => setIncludeEmoji(e.target.checked)}
+            className="w-3.5 h-3.5 rounded accent-teal-600"
+          />
+          <span className="text-xs text-teal-700">😊 Include emojis</span>
+        </label>
     </div>
   );
 }
@@ -1190,6 +1290,12 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
             <Plus className="w-4 h-4 mr-1" /> Add Block
           </Button>
           <OpenTemplateLibraryButton />
+          <AiFullEmailGenerator
+            onApplyBlocks={(newBlocks) => {
+              setBlocks((prev) => [...prev, ...newBlocks]);
+              setSelectedId(null);
+            }}
+          />
           <span className="text-xs text-gray-400 ml-auto">
             {blocks.length} block{blocks.length !== 1 ? "s" : ""}
           </span>
