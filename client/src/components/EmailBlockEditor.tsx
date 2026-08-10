@@ -570,7 +570,7 @@ export function emailBlockToHtml(block: Block): string {
             const feats = (plan.features ?? []).map((f: string) =>
               `<tr><td style="padding:3px 0;"><table cellpadding="0" cellspacing="0"><tr><td style="width:16px;color:${accent};font-size:13px;font-weight:bold;">✓</td><td style="padding-left:6px;color:#4a6070;font-size:12px;">${f}</td></tr></table></td></tr>`
             ).join("");
-            return `<td style="width:50%;vertical-align:top;padding:8px;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5eaec;border-radius:8px;padding:16px;"><tr><td><strong style="color:#0e1e2e;font-size:15px;">${plan.title}</strong><br/><span style="color:${accent};font-size:13px;font-weight:600;">$${((plan.price ?? 0) / 100).toFixed(0)}/${plan.billingInterval}</span><table width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">${feats}</table></td></tr></table></td>`;
+            return `<td style="width:50%;vertical-align:top;padding:8px;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5eaec;border-radius:8px;padding:16px;"><tr><td><strong style="color:#0e1e2e;font-size:15px;">${plan.title}</strong><br/><span style="color:${accent};font-size:13px;font-weight:600;">$${Number(plan.price ?? 0).toFixed(2)}/${plan.billingInterval}</span><table width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;">${feats}</table></td></tr></table></td>`;
           }).join("");
           itemsHtml = `<tr>${cardsHtml}</tr>`;
         } else {
@@ -578,7 +578,7 @@ export function emailBlockToHtml(block: Block): string {
             const feats = (plan.features ?? []).slice(0, 4).map((f: string) =>
               `<span style="color:#4a6070;font-size:12px;">✓ ${f}</span>`
             ).join(" &nbsp;·&nbsp; ");
-            return `<tr><td style="padding:10px 0;border-bottom:1px solid #e5eaec;"><strong style="color:#0e1e2e;font-size:14px;display:block;">${plan.title}</strong><span style="color:${accent};font-size:12px;font-weight:600;">$${((plan.price ?? 0) / 100).toFixed(0)}/${plan.billingInterval}</span>${feats ? `<br/><span style="color:#4a6070;font-size:12px;">${feats}</span>` : ""}</td></tr>`;
+            return `<tr><td style="padding:10px 0;border-bottom:1px solid #e5eaec;"><strong style="color:#0e1e2e;font-size:14px;display:block;">${plan.title}</strong><span style="color:${accent};font-size:12px;font-weight:600;">$${Number(plan.price ?? 0).toFixed(2)}/${plan.billingInterval}</span>${feats ? `<br/><span style="color:#4a6070;font-size:12px;">${feats}</span>` : ""}</td></tr>`;
           }).join("");
         }
       } else {
@@ -626,12 +626,12 @@ export function emailBlockToHtml(block: Block): string {
       if (sourceMode === "database" && resolvedBundles.length > 0) {
         if (viewMode === "card") {
           const cardsHtml = resolvedBundles.map((b) =>
-            `<td style="width:50%;vertical-align:top;padding:8px;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5eaec;border-radius:8px;overflow:hidden;"><tr><td>${b.imageUrl ? `<img src="${b.imageUrl}" alt="${b.title}" style="width:100%;height:120px;object-fit:cover;display:block;" />` : ""}</td></tr><tr><td style="padding:14px;"><strong style="color:#0e1e2e;font-size:14px;display:block;">${b.title}</strong>${b.description ? `<p style="color:#4a6070;font-size:12px;margin:4px 0;">${b.description}</p>` : ""}<span style="color:${accent};font-size:13px;font-weight:600;">$${((b.price ?? 0) / 100).toFixed(0)}</span><br/><a href="${b.link || '#'}" style="display:inline-block;margin-top:8px;background:${accent};color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;">${ctaText}</a></td></tr></table></td>`
+            `<td style="width:50%;vertical-align:top;padding:8px;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5eaec;border-radius:8px;overflow:hidden;"><tr><td>${b.imageUrl ? `<img src="${b.imageUrl}" alt="${b.title}" style="width:100%;height:120px;object-fit:cover;display:block;" />` : ""}</td></tr><tr><td style="padding:14px;"><strong style="color:#0e1e2e;font-size:14px;display:block;">${b.title}</strong>${b.description ? `<p style="color:#4a6070;font-size:12px;margin:4px 0;">${b.description}</p>` : ""}<span style="color:${accent};font-size:13px;font-weight:600;">$${Number(b.price ?? 0).toFixed(2)}</span><br/><a href="${b.link || '#'}" style="display:inline-block;margin-top:8px;background:${accent};color:#fff;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;">${ctaText}</a></td></tr></table></td>`
           ).join("");
           productsHtml = `<tr>${cardsHtml}</tr>`;
         } else {
           productsHtml = resolvedBundles.map((b) =>
-            `<tr><td style="padding:10px 0;border-bottom:1px solid #e5eaec;"><table cellpadding="0" cellspacing="0" width="100%"><tr>${b.imageUrl ? `<td style="width:64px;vertical-align:top;padding-right:12px;"><img src="${b.imageUrl}" alt="${b.title}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;display:block;" /></td>` : ""}<td style="vertical-align:top;"><strong style="color:#0e1e2e;font-size:14px;display:block;">${b.title}</strong>${b.description ? `<p style="color:#4a6070;font-size:13px;margin:2px 0;">${b.description}</p>` : ""}<span style="color:${accent};font-size:13px;font-weight:600;">$${((b.price ?? 0) / 100).toFixed(0)}</span></td><td style="vertical-align:middle;text-align:right;white-space:nowrap;"><a href="${b.link || '#'}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;">${ctaText}</a></td></tr></table></td></tr>`
+            `<tr><td style="padding:10px 0;border-bottom:1px solid #e5eaec;"><table cellpadding="0" cellspacing="0" width="100%"><tr>${b.imageUrl ? `<td style="width:64px;vertical-align:top;padding-right:12px;"><img src="${b.imageUrl}" alt="${b.title}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;display:block;" /></td>` : ""}<td style="vertical-align:top;"><strong style="color:#0e1e2e;font-size:14px;display:block;">${b.title}</strong>${b.description ? `<p style="color:#4a6070;font-size:13px;margin:2px 0;">${b.description}</p>` : ""}<span style="color:${accent};font-size:13px;font-weight:600;">$${Number(b.price ?? 0).toFixed(2)}</span></td><td style="vertical-align:middle;text-align:right;white-space:nowrap;"><a href="${b.link || '#'}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;">${ctaText}</a></td></tr></table></td></tr>`
           ).join("");
         }
       } else {
@@ -888,7 +888,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
                     <input type="checkbox" className="mt-0.5" checked={selectedIds.includes(plan.id)} onChange={() => toggleId(plan.id)} />
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-800 leading-tight">{plan.title}</p>
-                      <p className="text-[10px] text-gray-400">${((plan.price ?? 0) / 100).toFixed(0)}/{plan.billingInterval} · {(plan.featureBullets as string[])?.length ?? 0} features</p>
+                      <p className="text-[10px] text-gray-400">${Number(plan.price ?? 0).toFixed(2)}/{plan.billingInterval} · {(plan.featureBullets as string[])?.length ?? 0} features</p>
                     </div>
                   </label>
                 ))}
@@ -1040,7 +1040,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-800 leading-tight">{b.title}</p>
                       {b.subtitle && <p className="text-[10px] text-gray-400 truncate">{b.subtitle}</p>}
-                      <p className="text-[10px] text-gray-400">${((b.price ?? 0) / 100).toFixed(0)}</p>
+                      <p className="text-[10px] text-gray-400">${Number(b.price ?? 0).toFixed(2)}</p>
                     </div>
                   </label>
                 ))}
