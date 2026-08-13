@@ -1020,6 +1020,7 @@ export const digitalProducts = mysqlTable("digital_products", {
   purchaseTermsLink1Url: varchar("purchase_terms_link1_url", { length: 1024 }),
   purchaseTermsLink2Label: varchar("purchase_terms_link2_label", { length: 255 }),
   purchaseTermsLink2Url: varchar("purchase_terms_link2_url", { length: 1024 }),
+  enrollmentClosed: boolean("enrollment_closed").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
@@ -1413,6 +1414,7 @@ export const memberships = mysqlTable("memberships", {
   stripePriceId: varchar("stripe_price_id", { length: 255 }),
   stripeProductId: varchar("stripe_product_id", { length: 255 }),
   stripePaymentLinkUrl: varchar("stripe_payment_link_url", { length: 2048 }),
+  enrollmentClosed: boolean("enrollment_closed").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Membership = typeof memberships.$inferSelect;
@@ -1429,6 +1431,7 @@ export const bundles = mysqlTable("bundles", {
   salePrice: float("salePrice"),
   courseIds: text("courseIds").notNull(),
   isActive: boolean("isActive").default(true).notNull(),
+  enrollmentClosed: boolean("enrollment_closed").default(false).notNull(),
   totalEnrollments: int("totalEnrollments").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

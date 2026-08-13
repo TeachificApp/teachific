@@ -99,6 +99,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(editorSource).toContain("EMAIL_SAFE_TYPES.includes(b.type)");
   });
 
+  it("blocks enrollment-closed products in hosted checkout and shows a learner-facing status", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const checkoutSource = readFileSync(new URL("./routers/lmsCheckoutRouter.ts", import.meta.url), "utf8");
+    const checkoutPageSource = readFileSync(new URL("../client/src/pages/lms/HostedCheckoutPage.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('export const digitalProducts = mysqlTable("digital_products"');
+    expect(schemaSource).toContain('enrollmentClosed: boolean("enrollment_closed").default(false).notNull()');
+    expect(checkoutSource).toContain("if (content.enrollmentClosed)");
+    expect(checkoutSource).toContain("Enrollment is closed for this item.");
+    expect(checkoutPageSource).toContain("const enrollmentClosed = content?.enrollmentClosed === true;");
+    expect(checkoutPageSource).toContain("Enrollment is closed");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

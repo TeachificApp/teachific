@@ -151,6 +151,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: row.stripeProductId,
         pricingOptions,
         isAvailable: row.status !== "draft" && row.status !== "archived",
+        enrollmentClosed: row.enrollmentClosed === true,
       };
     }
     case "download": {
@@ -172,6 +173,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: primaryPrice?.stripeProductId ?? null,
         pricingOptions: prices.map(p => ({ ...p, pricingType: p.type })),
         isAvailable: row.visibility === "published",
+        enrollmentClosed: row.enrollmentClosed === true,
       };
     }
     case "physical_product": {
@@ -211,6 +213,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: row.stripeProductId ?? null,
         pricingOptions: [],
         isAvailable: row.isPublished === true,
+        enrollmentClosed: row.enrollmentClosed === true,
       };
     }
     case "membership": {
@@ -230,6 +233,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: row.stripeProductId ?? null,
         pricingOptions: [],
         isAvailable: row.isActive === true,
+        enrollmentClosed: row.enrollmentClosed === true,
       };
     }
     case "membership_plan": {
@@ -267,6 +271,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: row.stripeProductId ?? null,
         pricingOptions: [],
         isAvailable: row.status === "published",
+        enrollmentClosed: row.enrollmentClosed === true,
         startDate: row.startDate,
         endDate: row.endDate,
         location: row.location,
@@ -293,6 +298,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: null,
         pricingOptions: [],
         isAvailable: row.isActive === true,
+        enrollmentClosed: row.enrollmentClosed === true,
       };
     }
     default:
@@ -448,6 +454,7 @@ export const lmsCheckoutPublicRouter = router({
           subscriptionInterval: content.subscriptionInterval ?? null,
           trialDays: content.trialDays ?? null,
           orgId: content.orgId,
+          enrollmentClosed: content.enrollmentClosed === true,
         },
         pricingOptions: enrichedPricingOptions,
         orderBumps: bumps,
@@ -497,6 +504,9 @@ export const lmsCheckoutLearnerRouter = router({
 
       const content = await resolveContentBySlug(db, input.contentType, input.slug);
       if (!content) throw new TRPCError({ code: "NOT_FOUND", message: "Content not found" });
+      if (content.enrollmentClosed) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment is closed for this item." });
+      }
 
       // Resolve effective pricing
       let effectivePrice = Number(content.price);

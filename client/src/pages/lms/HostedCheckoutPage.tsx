@@ -235,6 +235,7 @@ export default function HostedCheckoutPage() {
   const pricingOptions = (data?.pricingOptions ?? []) as any[];
   const allBumps = (data?.orderBumps ?? []) as any[];
   const hasAccess = data?.hasAccess ?? false;
+  const enrollmentClosed = content?.enrollmentClosed === true;
 
   const primaryColor = (checkoutConfig as any)?.primaryColor ?? content?.primaryColor ?? "#179ca3";
   const accentColor  = (checkoutConfig as any)?.accentColor  ?? content?.accentColor  ?? "#0d9488";
@@ -297,9 +298,13 @@ export default function HostedCheckoutPage() {
     ? ((checkoutConfig?.trustBadges as any)?.badges ?? []).filter((b: any) => b.enabled)
     : [];
 
-  const canSubmit = termsAccepted && !isRedirecting && !createSession.isPending;
+  const canSubmit = !enrollmentClosed && termsAccepted && !isRedirecting && !createSession.isPending;
 
   const handleCheckout = () => {
+    if (enrollmentClosed) {
+      toast.error("Enrollment is closed for this item.");
+      return;
+    }
     if (!user) {
       window.location.href = getLoginUrl(window.location.pathname);
       return;
@@ -678,7 +683,12 @@ export default function HostedCheckoutPage() {
             )}
 
             {/* CTA */}
-            {!user ? (
+            {enrollmentClosed ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+                <p className="font-semibold text-amber-900">Enrollment is closed</p>
+                <p className="mt-1 text-sm text-amber-800">New enrollments are not available for this item at this time.</p>
+              </div>
+            ) : !user ? (
               <div className="space-y-3">
                 <EnrollmentGate
                   isLoading={authLoading}

@@ -5066,11 +5066,11 @@
 - [x] Add CME status badge to quiz list rows through the shared LMS management list
 
 ### Enrollment Closed
-- [ ] Add enrollmentClosed column to lmsCourses, webinars, workshops, lmsQuizzes, digitalProducts, bundles, memberships
-- [ ] Run DB migration for enrollmentClosed columns
-- [ ] Backend: block new enrollments when enrollmentClosed is set (all product types)
-- [ ] Admin: add Enrollment Closed status option to all product status dropdowns
-- [ ] Student-facing: show "Enrollment Closed" CTA and block checkout when enrollmentClosed is set
+- [x] Add enrollmentClosed columns to active course, webinar, workshop, digital product, bundle, and membership models
+- [x] Run DB migrations for newly added product enrollmentClosed columns
+- [x] Backend: block hosted-checkout enrollment when enrollmentClosed is set for supported product types
+- [ ] Admin: add Enrollment Closed status controls to all product editors
+- [x] Student-facing: show "Enrollment Closed" CTA and block hosted checkout when enrollmentClosed is set
 
 ### Quiz Creator Consolidation
 - [ ] Add LMS quiz products tab to Quiz Creator (show all org quizzes in one place)
