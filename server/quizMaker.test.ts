@@ -9,6 +9,7 @@ vi.mock("./db", () => {
   const quizzesStore: any[] = [];
 
   return {
+    requireOrgAdmin: () => Promise.resolve(1),
     getDb: () => {
       // Return a mock db object with chainable query methods
       const mockDb = {

@@ -98,6 +98,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(slideEditorSource).toContain("QuestionEditor");
   });
 
+  it("resolves an active organization and verifies ownership in the active QuizMaker router", () => {
+    const routerSource = readFileSync(new URL("../server/quizMakerRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("resolveQuizMakerOrg");
+    expect(routerSource).toContain("requireQuizMakerAccess");
+    expect(routerSource).toContain("requireQuizMakerQuestionAccess");
+    expect(routerSource).toContain("requireQuizMakerChoiceAccess");
+    expect(routerSource).not.toContain("orgId: 0");
+    expect(routerSource).toContain("const orgId = await resolveQuizMakerOrg(ctx)");
+  });
+
   it("protects Quiz Creator authoring with organization ownership helpers", () => {
     const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function requireQuizAdmin");

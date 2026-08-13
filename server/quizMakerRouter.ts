@@ -1,8 +1,56 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, requireOrgAdmin } from "./db";
+import { TRPCError } from "@trpc/server";
 import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts } from "../drizzle/schema";
 import { eq, and, asc, desc } from "drizzle-orm";
+
+type QuizMakerContext = { user: { id: number; role: string } };
+
+async function resolveQuizMakerOrg(ctx: QuizMakerContext) {
+  return requireOrgAdmin(ctx.user.id, ctx.user.role);
+}
+
+/**
+ * Resolves a QuizMaker quiz into an organisation and verifies authoring access.
+ * Legacy owner-only records with orgId 0 are adopted into the caller's active
+ * authorised organisation on first access; they are never exposed to other users.
+ */
+async function requireQuizMakerAccess(ctx: QuizMakerContext, quizId: number) {
+  const db = (await getDb())!;
+  const [quiz] = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).limit(1);
+  if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
+
+  if (quiz.orgId && quiz.orgId > 0) {
+    await requireOrgAdmin(ctx.user.id, ctx.user.role, quiz.orgId);
+    return quiz;
+  }
+
+  if (quiz.userId !== ctx.user.id) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this quiz" });
+  }
+  const orgId = await resolveQuizMakerOrg(ctx);
+  await db.update(quizzes).set({ orgId }).where(eq(quizzes.id, quizId));
+  return { ...quiz, orgId };
+}
+
+async function requireQuizMakerQuestionAccess(ctx: QuizMakerContext, questionId: number) {
+  const db = (await getDb())!;
+  const [question] = await db.select({ id: quizQuestions.id, quizId: quizQuestions.quizId })
+    .from(quizQuestions).where(eq(quizQuestions.id, questionId)).limit(1);
+  if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
+  await requireQuizMakerAccess(ctx, question.quizId);
+  return question;
+}
+
+async function requireQuizMakerChoiceAccess(ctx: QuizMakerContext, choiceId: number) {
+  const db = (await getDb())!;
+  const [choice] = await db.select({ id: quizAnswerChoices.id, questionId: quizAnswerChoices.questionId })
+    .from(quizAnswerChoices).where(eq(quizAnswerChoices.id, choiceId)).limit(1);
+  if (!choice) throw new TRPCError({ code: "NOT_FOUND", message: "Answer choice not found" });
+  await requireQuizMakerQuestionAccess(ctx, choice.questionId);
+  return choice;
+}
 
 // ─── QuizMaker Web Editor Router ─────────────────────────────────────────────
 // Full CRUD for standalone quizzes owned by a user (userId-based, not org-based)
@@ -13,10 +61,11 @@ export const quizMakerRouter = router({
   /** List all quizzes owned by the current user */
   listQuizzes: protectedProcedure.query(async ({ ctx }) => {
     const db = (await getDb())!;
+    const orgId = await resolveQuizMakerOrg(ctx);
     const rows = await db
       .select()
       .from(quizzes)
-      .where(eq(quizzes.userId, ctx.user.id))
+      .where(eq(quizzes.orgId, orgId))
       .orderBy(desc(quizzes.updatedAt));
     return rows;
   }),
@@ -26,11 +75,7 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       const questions = await db
         .select()
@@ -70,10 +115,11 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      const orgId = await resolveQuizMakerOrg(ctx);
       const [result] = await db.insert(quizzes).values({
         title: input.title,
         description: input.description || null,
-        orgId: 0,
+        orgId,
         createdBy: ctx.user.id,
         userId: ctx.user.id,
         passingScore: 70,
@@ -106,11 +152,7 @@ export const quizMakerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const { quizId, ...data } = input;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, quizId);
 
       const updateData: any = {};
       if (data.title !== undefined) updateData.title = data.title;
@@ -135,11 +177,7 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, input.quizId);
 
       const questions = await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, input.quizId));
       for (const q of questions) {
@@ -168,11 +206,7 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, input.quizId);
 
       const existing = await db
         .select()
@@ -240,6 +274,7 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      await requireQuizMakerQuestionAccess(ctx, input.questionId);
       const { questionId, ...data } = input;
       const updateData: any = {};
       for (const [key, val] of Object.entries(data)) {
@@ -256,6 +291,7 @@ export const quizMakerRouter = router({
     .input(z.object({ questionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      await requireQuizMakerQuestionAccess(ctx, input.questionId);
       await db.delete(quizAnswerChoices).where(eq(quizAnswerChoices.questionId, input.questionId));
       await db.delete(quizQuestions).where(eq(quizQuestions.id, input.questionId));
       return { success: true };
@@ -271,6 +307,12 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      await requireQuizMakerAccess(ctx, input.quizId);
+      const ownedQuestions = await db.select({ id: quizQuestions.id }).from(quizQuestions)
+        .where(eq(quizQuestions.quizId, input.quizId));
+      if (ownedQuestions.length !== input.questionIds.length || ownedQuestions.some((question) => !input.questionIds.includes(question.id))) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "All reordered questions must belong to this quiz" });
+      }
       for (let i = 0; i < input.questionIds.length; i++) {
         await db
           .update(quizQuestions)
@@ -293,6 +335,7 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      await requireQuizMakerQuestionAccess(ctx, input.questionId);
       const existing = await db
         .select()
         .from(quizAnswerChoices)
@@ -319,6 +362,7 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      await requireQuizMakerChoiceAccess(ctx, input.choiceId);
       const { choiceId, ...data } = input;
       const updateData: any = {};
       for (const [key, val] of Object.entries(data)) {
@@ -335,6 +379,7 @@ export const quizMakerRouter = router({
     .input(z.object({ choiceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      await requireQuizMakerChoiceAccess(ctx, input.choiceId);
       await db.delete(quizAnswerChoices).where(eq(quizAnswerChoices.id, input.choiceId));
       return { success: true };
     }),
@@ -357,11 +402,7 @@ export const quizMakerRouter = router({
 
       if (input.quizId) {
         // Update existing
-        const [existing] = await db
-          .select()
-          .from(quizzes)
-          .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-        if (!existing) throw new Error("Quiz not found");
+        await requireQuizMakerAccess(ctx, input.quizId);
 
         // Parse settings to apply quiz-level fields
         const updateFields: any = {
@@ -386,11 +427,12 @@ export const quizMakerRouter = router({
         return { id: input.quizId };
       } else {
         // Create new
+        const orgId = await resolveQuizMakerOrg(ctx);
         const [result] = await db.insert(quizzes).values({
           title: input.title,
           description: input.description || null,
           instructions: input.questionsJson,
-          orgId: 0,
+          orgId,
           createdBy: ctx.user.id,
           userId: ctx.user.id,
           passingScore: 70,
@@ -411,11 +453,7 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, input.quizId);
       await db.update(quizzes).set({ isPublished: true }).where(eq(quizzes.id, input.quizId));
       return { success: true };
     }),
@@ -425,17 +463,13 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       const [newQuiz] = await db.insert(quizzes).values({
         title: `${quiz.title} (Copy)`,
         description: quiz.description,
         instructions: quiz.instructions,
-        orgId: 0,
+        orgId: quiz.orgId,
         createdBy: ctx.user.id,
         userId: ctx.user.id,
         passingScore: quiz.passingScore,
@@ -502,11 +536,7 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       // Generate a unique share token if one doesn't exist
       let token = quiz.shareToken;
@@ -514,18 +544,13 @@ export const quizMakerRouter = router({
         token = generateShareToken();
       }
 
-      // Find the user's org to associate the quiz with their subdomain
+      // Use the quiz's authorised organization for its learner-facing subdomain.
       let orgSlug: string | null = null;
-      const [membership] = await db
-        .select({ orgId: orgMembers.orgId })
-        .from(orgMembers)
-        .where(eq(orgMembers.userId, ctx.user.id))
-        .limit(1);
-      if (membership) {
+      if (quiz.orgId) {
         const [org] = await db
           .select({ slug: organizations.slug })
           .from(organizations)
-          .where(eq(organizations.id, membership.orgId));
+          .where(eq(organizations.id, quiz.orgId));
         if (org) {
           orgSlug = org.slug;
           // Store the orgId on the quiz so it's associated with the subdomain
@@ -533,7 +558,7 @@ export const quizMakerRouter = router({
             isPublished: true,
             shareToken: token,
             publishedAt: new Date(),
-            orgId: membership.orgId,
+            orgId: quiz.orgId,
           }).where(eq(quizzes.id, input.quizId));
         } else {
           await db.update(quizzes).set({
@@ -558,11 +583,7 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, input.quizId);
 
       await db.update(quizzes).set({
         isPublished: false,

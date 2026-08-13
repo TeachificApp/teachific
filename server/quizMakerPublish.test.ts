@@ -8,6 +8,7 @@ const quizzesStore: any[] = [];
 
 vi.mock("./db", () => {
   return {
+    requireOrgAdmin: () => Promise.resolve(1),
     getDb: () => {
       const mockDb = {
         select: () => ({
