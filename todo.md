@@ -5178,3 +5178,9 @@
 - [x] Add the org-scoped media library picker to Question Bank question, answer-choice, and answer-feedback media fields
 - [x] Keep direct URL entry available while preserving selected media URLs in Question Bank updates
 - [x] Add regression coverage for Question Bank media picker wiring
+
+## Question Bank AI Generation Parity (Aug 13, 2026)
+- [x] Add an org-admin-gated AI question generator for the active Question Bank
+- [x] Let authors direct generated questions into the selected org-owned Question Bank with existing tag selection
+- [x] Add Question Bank UI for topic, count, question type, difficulty, bank, and tags
+- [x] Add regression coverage for org-scoped AI question generation

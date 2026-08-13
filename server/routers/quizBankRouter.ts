@@ -24,6 +24,7 @@ import {
 } from "../../drizzle/schema";
 import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
+import { invokeLLM } from "../_core/llm";
 
 // ─── Question type enum ───────────────────────────────────────────────────────
 const QUESTION_TYPES = ["mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"] as const;
@@ -499,6 +500,121 @@ export const quizBankRouter = router({
       }).where(eq(quizImportJobs.id, input.jobId));
 
       return { importedCount, skippedCount, errors };
+    }),
+
+  generateQuestions: protectedProcedure
+    .input(z.object({
+      bankId: z.number(),
+      topic: z.string().min(3).max(2_000),
+      count: z.number().int().min(1).max(10).default(5),
+      questionType: z.enum(["mc", "tf", "ms", "short_answer", "numeric"]).default("mc"),
+      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      tagIds: z.array(z.number()).default([]),
+      additionalInstructions: z.string().max(2_000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const bank = await requireBankAccess(ctx, input.bankId);
+      if (input.tagIds.length > 0) {
+        const tags = await (await db()).select({ id: quizBankTags.id, orgId: quizBankTags.orgId })
+          .from(quizBankTags).where(inArray(quizBankTags.id, input.tagIds));
+        if (tags.length !== input.tagIds.length || tags.some((tag) => tag.orgId !== bank.orgId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected tags belong to another organisation." });
+        }
+      }
+
+      const typeGuidance: Record<string, string> = {
+        mc: "multiple-choice with exactly four answer choices and exactly one correct answer",
+        tf: "true/false with True and False answer choices",
+        ms: "multiple-select with four answer choices and one or more correct answers",
+        short_answer: "short-answer with one concise expected answer",
+        numeric: "numeric with one precise numeric correct answer",
+      };
+
+      const response = await invokeLLM({
+        model: "gpt-5-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You create accurate, educational assessment questions. Return only JSON matching the supplied schema. Do not mention brands, organisations, or platform names unless the author explicitly provides them.",
+          },
+          {
+            role: "user",
+            content: `Create ${input.count} ${input.difficulty}-difficulty ${typeGuidance[input.questionType]} questions about: ${input.topic}. ${input.additionalInstructions ? `Additional author instructions: ${input.additionalInstructions}` : ""} Include a short explanation for every question.`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "generated_question_bank_items",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                questions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      questionText: { type: "string" },
+                      explanationText: { type: "string" },
+                      choices: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            choiceText: { type: "string" },
+                            isCorrect: { type: "boolean" },
+                            feedbackText: { type: "string" },
+                          },
+                          required: ["choiceText", "isCorrect", "feedbackText"],
+                          additionalProperties: false,
+                        },
+                      },
+                    },
+                    required: ["questionText", "explanationText", "choices"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["questions"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.choices[0]?.message?.content ?? "{}") as { questions?: Array<{ questionText: string; explanationText: string; choices: Array<{ choiceText: string; isCorrect: boolean; feedbackText: string }> }> };
+      const generated = (parsed.questions ?? []).slice(0, input.count);
+      if (generated.length === 0) throw new TRPCError({ code: "BAD_GATEWAY", message: "No questions were generated. Please try again." });
+
+      const createdIds: number[] = [];
+      for (const generatedQuestion of generated) {
+        const [result] = await (await db()).insert(quizBankQuestions).values({
+          orgId: bank.orgId,
+          bankId: input.bankId,
+          questionType: input.questionType,
+          questionText: generatedQuestion.questionText,
+          explanationText: generatedQuestion.explanationText,
+          difficulty: input.difficulty,
+          points: "1",
+        } as any);
+        const questionId = result.insertId;
+        createdIds.push(questionId);
+        if (generatedQuestion.choices.length > 0) {
+          await (await db()).insert(quizAnswerChoices).values(generatedQuestion.choices.map((choice, index) => ({
+            questionId,
+            choiceText: choice.choiceText,
+            isCorrect: choice.isCorrect,
+            feedbackText: choice.feedbackText,
+            sortOrder: index,
+          })));
+        }
+        if (input.tagIds.length > 0) {
+          await (await db()).insert(quizQuestionTags).values(input.tagIds.map((tagId) => ({ questionId, tagId })));
+        }
+      }
+      await (await db()).update(quizBanks).set({ questionCount: sql`question_count + ${createdIds.length}` }).where(eq(quizBanks.id, input.bankId));
+      return { createdIds, count: createdIds.length };
     }),
 });
 

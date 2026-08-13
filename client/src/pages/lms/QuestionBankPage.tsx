@@ -19,7 +19,7 @@ import {
   Plus, Search, Filter, Upload, Tag, Trash2, Edit2, Copy,
   Image, Video, FileText, ChevronDown, ChevronRight, CheckSquare,
   Circle, ToggleLeft, Grid, Puzzle, AlignLeft, Hash, Star,
-  BarChart2, Download, RefreshCw, X, Check, AlertCircle, Eye
+  BarChart2, Download, RefreshCw, X, Check, AlertCircle, Eye, Sparkles
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -517,6 +517,13 @@ export default function QuestionBankPage() {
   const [showImport, setShowImport] = useState(false);
   const [showTagManager, setShowTagManager] = useState(false);
   const [newTagName, setNewTagName] = useState("");
+  const [showAiGenerate, setShowAiGenerate] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiCount, setAiCount] = useState(5);
+  const [aiQuestionType, setAiQuestionType] = useState<"mc" | "tf" | "ms" | "short_answer" | "numeric">("mc");
+  const [aiDifficulty, setAiDifficulty] = useState<Difficulty>("medium");
+  const [aiTagIds, setAiTagIds] = useState<number[]>([]);
+  const [aiInstructions, setAiInstructions] = useState("");
 
   const utils = trpc.useUtils();
 
@@ -548,6 +555,18 @@ export default function QuestionBankPage() {
   });
   const deleteTag = trpc.quizBank.deleteTag.useMutation({
     onSuccess: () => { utils.quizBank.listTags.invalidate(); toast.success("Tag deleted"); }
+  });
+  const generateQuestions = trpc.quizBank.generateQuestions.useMutation({
+    onSuccess: (result) => {
+      utils.quizBank.listQuestions.invalidate();
+      utils.quizBank.listBanks.invalidate();
+      setShowAiGenerate(false);
+      setAiTopic("");
+      setAiInstructions("");
+      setAiTagIds([]);
+      toast.success(`${result.count} AI-generated question${result.count === 1 ? "" : "s"} added to this bank`);
+    },
+    onError: (error) => toast.error(error.message),
   });
 
   const handleSaveQuestion = (q: any) => {
@@ -621,6 +640,9 @@ export default function QuestionBankPage() {
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
                   <Upload className="w-4 h-4 mr-2" /> Import
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowAiGenerate(true)}>
+                  <Sparkles className="w-4 h-4 mr-2" /> AI Generate
                 </Button>
                 <Button
                   variant="outline"
@@ -787,6 +809,73 @@ export default function QuestionBankPage() {
               onCancel={() => setEditingQuestion(null)}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Question Generator */}
+      <Dialog open={showAiGenerate} onOpenChange={setShowAiGenerate}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> AI Question Generator</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Generate questions directly in <strong>{selectedBank?.name}</strong>. Generated questions remain within this organization and Question Bank.</p>
+            <div>
+              <Label htmlFor="ai-question-topic">Topic or learning objective</Label>
+              <Textarea id="ai-question-topic" value={aiTopic} onChange={(event) => setAiTopic(event.target.value)} placeholder="Example: Apply Doppler ultrasound principles to identify mitral regurgitation severity" rows={3} />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label>Question type</Label>
+                <Select value={aiQuestionType} onValueChange={(value) => setAiQuestionType(value as typeof aiQuestionType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mc">Multiple Choice</SelectItem>
+                    <SelectItem value="tf">True / False</SelectItem>
+                    <SelectItem value="ms">Multiple Select</SelectItem>
+                    <SelectItem value="short_answer">Short Answer</SelectItem>
+                    <SelectItem value="numeric">Numeric</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Difficulty</Label>
+                <Select value={aiDifficulty} onValueChange={(value) => setAiDifficulty(value as Difficulty)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="ai-question-count">Number of questions</Label>
+                <Input id="ai-question-count" type="number" min={1} max={10} value={aiCount} onChange={(event) => setAiCount(Math.max(1, Math.min(10, Number(event.target.value) || 1)))} />
+              </div>
+            </div>
+            {tags.length > 0 && (
+              <div>
+                <Label>Apply tags</Label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {tags.map((tag) => {
+                    const active = aiTagIds.includes(tag.id);
+                    return <button key={tag.id} type="button" onClick={() => setAiTagIds(active ? aiTagIds.filter((id) => id !== tag.id) : [...aiTagIds, tag.id])} className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}>{tag.name}</button>;
+                  })}
+                </div>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="ai-question-instructions">Additional instructions <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Textarea id="ai-question-instructions" value={aiInstructions} onChange={(event) => setAiInstructions(event.target.value)} placeholder="Include a short rationale; avoid trick questions; use terminology appropriate for the intended learners." rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAiGenerate(false)}>Cancel</Button>
+            <Button disabled={!selectedBankId || aiTopic.trim().length < 3 || generateQuestions.isPending} onClick={() => generateQuestions.mutate({ bankId: selectedBankId!, topic: aiTopic.trim(), count: aiCount, questionType: aiQuestionType, difficulty: aiDifficulty, tagIds: aiTagIds, additionalInstructions: aiInstructions.trim() || undefined })}>
+              {generateQuestions.isPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Generate Questions
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
