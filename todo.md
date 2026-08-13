@@ -4945,6 +4945,7 @@
 - [ ] Register SendGrid webhook for open/click/unsubscribe tracking
 
 ## Fix: All org links scoped to org subdomain (not learn.teachific.com)
+- [x] Scope public download catalogs and automatic related-product download feeds by organization subdomain
 - [ ] Update useLearnLink hook to use org's own subdomain
 - [ ] Update getCourse procedure to return orgSlug + customDomain
 - [ ] Update getLandingPageBlocks to return orgSlug + customDomain

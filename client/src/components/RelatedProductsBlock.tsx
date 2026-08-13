@@ -11,6 +11,7 @@
  */
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { getSubdomain } from "@/hooks/useSubdomain";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BookOpen, FileDown, Package, ExternalLink } from "lucide-react";
 import { CourseInstanceInfo } from "@/components/CourseInstanceInfo";
@@ -101,6 +102,7 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
   const textColor = d.textColor ?? "#111827";
   const cardBg = d.cardBgColor ?? "#ffffff";
   const manualRefs = d.manualItems ?? [];
+  const orgSlug = getSubdomain() ?? undefined;
 
   // ── AUTO mode queries ──────────────────────────────────────────────────────
   const needsCourses =
@@ -111,11 +113,11 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
     (productType === "download" || productType === "both" || productType === "all");
 
   const { data: coursesData, isLoading: coursesLoading } = trpc.lms.listCourses.useQuery(
-    { pageSize: maxItems + 4 },
+    { pageSize: maxItems + 4, orgSlug },
     { enabled: needsCourses }
   );
   const { data: downloadsData, isLoading: downloadsLoading } = trpc.downloads.list.useQuery(
-    { limit: maxItems + 4 },
+    { limit: maxItems + 4, orgSlug },
     { enabled: needsDownloads }
   );
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser } from "../db";
+import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser, getOrgBySlug, getPrimaryOrgId } from "../db";
 import {
   digitalProducts,
   digitalProductFiles,
@@ -39,6 +39,7 @@ export const downloadsPublicRouter = router({
       page: z.number().min(1).default(1),
       limit: z.number().min(1).max(50).default(12),
       search: z.string().optional(),
+      orgSlug: z.string().min(1).max(100).optional(),
     }).optional())
     .query(async ({ input }) => {
       const db = await getDb();
@@ -47,7 +48,16 @@ export const downloadsPublicRouter = router({
       const limit = input?.limit ?? 12;
       const offset = (page - 1) * limit;
 
-      const conditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true)];
+      const scopeOrgId = input?.orgSlug
+        ? (await getOrgBySlug(input.orgSlug))?.id ?? null
+        : await getPrimaryOrgId();
+      if (scopeOrgId === null) return { products: [], total: 0 };
+
+      const conditions = [
+        eq(digitalProducts.status, "published"),
+        eq(digitalProducts.showInLibrary, true),
+        eq(digitalProducts.orgId, scopeOrgId),
+      ];
       if (input?.search) {
         conditions.push(sql`${digitalProducts.title} LIKE ${"%%" + input.search + "%%"}`);
       }
