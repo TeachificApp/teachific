@@ -319,6 +319,8 @@ export interface QuizMeta {
   // Question Groups / Pools
   groups?: QuestionGroup[];
   drawConfig?: DrawConfig;
+  // Teachific visual authoring workspace preference
+  editorViewMode?: "form" | "slides";
 }
 
 export interface QuizFile {

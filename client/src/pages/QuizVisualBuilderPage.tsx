@@ -7,10 +7,11 @@ import { QuestionEditor } from "@/quiz-creator/components/QuestionEditor";
 import { QuizSettings } from "@/quiz-creator/components/QuizSettings";
 import { QuizPreview } from "@/quiz-creator/components/QuizPreview";
 import { CloudQuizBrowser } from "@/quiz-creator/components/CloudQuizBrowser";
+import { SlideViewEditor } from "@/quiz-creator/components/SlideViewEditor";
 import BrandingPanel from "@/quiz-creator/components/BrandingPanel";
 import QuizAnalyticsPanel from "@/quiz-creator/components/QuizAnalyticsPanel";
 import { useQuizStore } from "@/quiz-creator/store/quizStore";
-import { ArrowLeft, BarChart3, Eye, Loader2, Palette } from "lucide-react";
+import { ArrowLeft, BarChart3, Eye, ListChecks, Loader2, Palette, PanelsTopLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { QuizFile } from "@/quiz-creator/types/quiz";
 
@@ -24,7 +25,7 @@ export default function QuizVisualBuilderPage() {
   const params = useParams<{ quizId: string }>();
   const [, navigate] = useLocation();
   const quizId = Number(params.quizId);
-  const { loadQuiz, activeQuestionId } = useQuizStore();
+  const { loadQuiz, activeQuestionId, quiz, updateMeta } = useQuizStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -45,6 +46,8 @@ export default function QuizVisualBuilderPage() {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
+  const viewMode = quiz.meta.editorViewMode ?? "form";
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-muted/40">
       <EditorToolbar onPreview={() => setShowPreview(true)} onSettings={() => setShowSettings(true)} onCloudOpen={() => setShowCloud(true)} />
@@ -53,6 +56,14 @@ export default function QuizVisualBuilderPage() {
           <ArrowLeft className="mr-1 h-4 w-4" /> Back to Teachific Quiz Creator
         </Button>
         <div className="min-w-0 flex-1 truncate text-sm font-medium">{data?.title ?? "Quiz workspace"}</div>
+        <div className="hidden items-center rounded-lg border bg-muted/40 p-0.5 sm:flex">
+          <Button variant={viewMode === "form" ? "secondary" : "ghost"} size="sm" onClick={() => updateMeta({ editorViewMode: "form" })}>
+            <ListChecks className="mr-1 h-4 w-4" /> Form
+          </Button>
+          <Button variant={viewMode === "slides" ? "secondary" : "ghost"} size="sm" onClick={() => updateMeta({ editorViewMode: "slides" })}>
+            <PanelsTopLeft className="mr-1 h-4 w-4" /> Slides
+          </Button>
+        </div>
         <Button variant="ghost" size="sm" disabled={!activeQuestionId} onClick={() => setShowPreview(true)}>
           <Eye className="mr-1 h-4 w-4" /> Preview
         </Button>
@@ -65,7 +76,7 @@ export default function QuizVisualBuilderPage() {
       </div>
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <QuestionList />
-        <QuestionEditor />
+        {viewMode === "slides" ? <SlideViewEditor /> : <QuestionEditor />}
         {sidePanel !== "none" && (
           <aside className="w-[380px] shrink-0 overflow-y-auto border-l bg-background">
             {sidePanel === "branding" ? <BrandingPanel quizId={quizId} /> : <QuizAnalyticsPanel quizId={quizId} />}

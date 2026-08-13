@@ -5211,3 +5211,9 @@
 - [x] Enforce course ownership before legacy lesson quiz reads, updates, question changes, group configuration, and AI generation
 - [x] Ensure lesson IDs, quiz IDs, and selected lesson context cannot cross organization boundaries
 - [x] Add regression coverage for legacy lesson quiz ownership checks
+
+## Teachific iSpring-Style Visual Quiz Authoring (Aug 13, 2026)
+- [x] Add a visual Form and Slides authoring mode to Teachific Quiz Creator without source-project branding
+- [x] Keep existing org-scoped Quiz Creator question editor, media, branch, feedback, design, and preview controls functional
+- [x] Preserve active-org and org-admin ownership checks in the visual authoring route
+- [x] Add regression coverage for visual authoring mode selection and Teachific branding

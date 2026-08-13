@@ -88,6 +88,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workspaceSource).not.toContain("All About Ultrasound");
   });
 
+  it("offers Teachific Form and Slides authoring modes in the visual Quiz Creator workspace", () => {
+    const workspaceSource = readFileSync(new URL("../client/src/pages/QuizVisualBuilderPage.tsx", import.meta.url), "utf8");
+    const slideEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/SlideViewEditor.tsx", import.meta.url), "utf8");
+    expect(workspaceSource).toContain('editorViewMode: "form"');
+    expect(workspaceSource).toContain('editorViewMode: "slides"');
+    expect(workspaceSource).toContain("SlideViewEditor");
+    expect(slideEditorSource).toContain("Slide storyboard");
+    expect(slideEditorSource).toContain("QuestionEditor");
+  });
+
   it("protects Quiz Creator authoring with organization ownership helpers", () => {
     const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function requireQuizAdmin");
