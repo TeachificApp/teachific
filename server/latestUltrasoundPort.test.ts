@@ -87,4 +87,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workspaceSource).toContain("BrandingPanel");
     expect(workspaceSource).not.toContain("All About Ultrasound");
   });
+
+  it("protects Quiz Creator authoring with organization ownership helpers", () => {
+    const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function requireQuizAdmin");
+    expect(routerSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId)");
+    expect(routerSource).toContain("await requireQuizAdmin(ctx, input.id)");
+  });
+
+  it("rejects cross-organization Question Bank pools, tags, and overrides", () => {
+    const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("requireQuizBankInOrg(pool.bankId, quiz.orgId)");
+    expect(routerSource).toContain("Question Bank tags must belong to the quiz organization.");
+    expect(routerSource).toContain("Question overrides must belong to the quiz organization.");
+  });
 });

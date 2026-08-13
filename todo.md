@@ -5195,3 +5195,14 @@
 - [x] Reuse the existing Quiz Creator editor, preview, design, analytics, settings, and cloud components
 - [x] Ensure the workspace can only load and mutate quizzes within the active organization and permitted role
 - [x] Add regression coverage for the visual workspace route and Teachific-only branding
+
+## Quiz Creator Export to Question Bank (Aug 13, 2026)
+- [ ] Add an org-admin-gated action to copy selected Quiz Creator questions into an org-owned Question Bank
+- [ ] Add a Quiz Creator dialog for selecting an eligible bank, folder, tags, and questions to export
+- [ ] Preserve question type, answers, feedback, media, and answer-order settings during export
+- [ ] Add regression coverage for cross-org rejection and payload preservation
+
+## Quiz Creator Org-Permission Hardening (Aug 13, 2026)
+- [x] Enforce organization ownership and org-admin permissions across Quiz Creator authoring, publishing, pooling, and analytics procedures
+- [x] Prevent cross-organization Question Bank pools and question overrides from being attached to a Quiz Creator quiz
+- [x] Add regression coverage for Quiz Creator org authorization

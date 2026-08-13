@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { TRPCError } from "@trpc/server";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -25,6 +25,7 @@ import {
   quizBankTags,
   quizQuestionTags,
   quizAccessGrants,
+  quizBanks,
 } from "../../drizzle/schema";
 import { and, eq, inArray, sql, desc, asc, isNull } from "drizzle-orm";
 import { buildStandaloneLearnerOptions } from "../lib/questionOptionOrder";
@@ -57,11 +58,36 @@ const questionPoolSchema = z.object({
   sortOrder: z.number().default(0),
 });
 
+type RequestContext = { user: { id: number; role: string } };
+
+async function requireQuizAdmin(ctx: RequestContext, quizId: number) {
+  const [quiz] = await (await db()).select({ orgId: quizzes.orgId })
+    .from(quizzes)
+    .where(eq(quizzes.id, quizId))
+    .limit(1);
+  if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found." });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, quiz.orgId);
+  return quiz;
+}
+
+async function requireQuizBankInOrg(bankId: number, orgId: number) {
+  const [bank] = await (await db()).select({ orgId: quizBanks.orgId })
+    .from(quizBanks)
+    .where(eq(quizBanks.id, bankId))
+    .limit(1);
+  if (!bank) throw new TRPCError({ code: "NOT_FOUND", message: "Question Bank not found." });
+  if (bank.orgId !== orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Question Banks must belong to the same organization as the quiz." });
+  }
+  return bank;
+}
+
 export const quizRouter = router({
   // ─── Quiz CRUD ────────────────────────────────────────────────────────────
   listQuizzes: protectedProcedure
     .input(z.object({ orgId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
       return (await db()).select().from(quizzes)
         .where(eq(quizzes.orgId, input.orgId))
         .orderBy(desc(quizzes.createdAt));
@@ -69,7 +95,8 @@ export const quizRouter = router({
 
   getQuiz: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireQuizAdmin(ctx, input.id);
       const [quiz] = await (await db()).select().from(quizzes).where(eq(quizzes.id, input.id));
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -86,7 +113,8 @@ export const quizRouter = router({
 
   createQuiz: protectedProcedure
     .input(z.object({ orgId: z.number(), ...quizSettingsSchema.shape }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
       const { orgId, ...settings } = input;
       const [result] = await (await db()).insert(quizzes).values({
         orgId,
@@ -113,20 +141,23 @@ export const quizRouter = router({
 
   updateQuiz: protectedProcedure
     .input(z.object({ id: z.number(), ...quizSettingsSchema.partial().shape }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireQuizAdmin(ctx, input.id);
       const { id, ...updates } = input;
       await (await db()).update(quizzes).set(updates).where(eq(quizzes.id, id));
     }),
 
   publishQuiz: protectedProcedure
     .input(z.object({ id: z.number(), publish: z.boolean() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireQuizAdmin(ctx, input.id);
       await (await db()).update(quizzes).set({ status: input.publish ? "published" : "draft" }).where(eq(quizzes.id, input.id));
     }),
 
   deleteQuiz: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireQuizAdmin(ctx, input.id);
       await (await db()).delete(quizQuestionPools).where(eq(quizQuestionPools.quizId, input.id));
       await (await db()).delete(quizQuestionOverrides).where(eq(quizQuestionOverrides.quizId, input.id));
       await (await db()).delete(quizzes).where(eq(quizzes.id, input.id));
@@ -134,7 +165,8 @@ export const quizRouter = router({
 
   duplicateQuiz: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireQuizAdmin(ctx, input.id);
       const [original] = await (await db()).select().from(quizzes).where(eq(quizzes.id, input.id));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
 
@@ -175,7 +207,28 @@ export const quizRouter = router({
         alwaysInclude: z.boolean().default(true),
       })).default([]),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const quiz = await requireQuizAdmin(ctx, input.quizId);
+      for (const pool of input.pools) {
+        await requireQuizBankInOrg(pool.bankId, quiz.orgId);
+        if (pool.tagId) {
+          const [tag] = await (await db()).select({ orgId: quizBankTags.orgId })
+            .from(quizBankTags)
+            .where(eq(quizBankTags.id, pool.tagId))
+            .limit(1);
+          if (!tag || tag.orgId !== quiz.orgId) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Question Bank tags must belong to the quiz organization." });
+          }
+        }
+      }
+      if (input.overrides.length > 0) {
+        const questions = await (await db()).select({ id: quizBankQuestions.id, orgId: quizBankQuestions.orgId })
+          .from(quizBankQuestions)
+          .where(inArray(quizBankQuestions.id, input.overrides.map((override) => override.questionId)));
+        if (questions.length !== input.overrides.length || questions.some((question) => question.orgId !== quiz.orgId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Question overrides must belong to the quiz organization." });
+        }
+      }
       await (await db()).delete(quizQuestionPools).where(eq(quizQuestionPools.quizId, input.quizId));
       await (await db()).delete(quizQuestionOverrides).where(eq(quizQuestionOverrides.quizId, input.quizId));
 
@@ -390,7 +443,8 @@ export const quizRouter = router({
   // ─── Analytics (admin) ────────────────────────────────────────────────────
   getQuizAnalytics: protectedProcedure
     .input(z.object({ quizId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireQuizAdmin(ctx, input.quizId);
       const attempts = await (await db()).select().from(quizAttempts)
         .where(and(eq(quizAttempts.quizId, input.quizId), eq(quizAttempts.status, "completed")));
 
