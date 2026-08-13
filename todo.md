@@ -5158,3 +5158,8 @@
 - [x] Port applicable landing page builder enhancements
 - [x] Add AI Image Generator blocks to lesson, email, and page editors using the shared image generation service
 - [x] Validate cross-org isolation, roles, branding, and automated tests for the ported work
+
+## Question Bank Org-Permission Hardening (Aug 13, 2026)
+- [x] Enforce org-admin authorization and record ownership checks across every active quizBank router procedure
+- [x] Ensure Question Bank banks, tags, questions, and import jobs cannot be read or mutated across organizations
+- [x] Add regression tests for active Question Bank org authorization coverage

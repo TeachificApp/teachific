@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { TRPCError } from "@trpc/server";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -75,11 +75,47 @@ function toDecimalString(value: number | undefined): string | undefined {
   return value === undefined ? undefined : String(value);
 }
 
+type RequestContext = { user: { id: number; role: string } };
+
+async function requireOwnedOrg(ctx: RequestContext, orgId: number) {
+  return requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+}
+
+async function requireBankAccess(ctx: RequestContext, bankId: number) {
+  const [bank] = await (await db()).select({ orgId: quizBanks.orgId }).from(quizBanks).where(eq(quizBanks.id, bankId)).limit(1);
+  if (!bank) throw new TRPCError({ code: "NOT_FOUND", message: "Question Bank not found." });
+  await requireOwnedOrg(ctx, bank.orgId);
+  return bank;
+}
+
+async function requireQuestionAccess(ctx: RequestContext, questionId: number) {
+  const [question] = await (await db()).select({ orgId: quizBankQuestions.orgId, bankId: quizBankQuestions.bankId })
+    .from(quizBankQuestions).where(eq(quizBankQuestions.id, questionId)).limit(1);
+  if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Question not found." });
+  await requireOwnedOrg(ctx, question.orgId);
+  return question;
+}
+
+async function requireTagAccess(ctx: RequestContext, tagId: number) {
+  const [tag] = await (await db()).select({ orgId: quizBankTags.orgId }).from(quizBankTags).where(eq(quizBankTags.id, tagId)).limit(1);
+  if (!tag) throw new TRPCError({ code: "NOT_FOUND", message: "Tag not found." });
+  await requireOwnedOrg(ctx, tag.orgId);
+  return tag;
+}
+
+async function requireImportJobAccess(ctx: RequestContext, jobId: number) {
+  const [job] = await (await db()).select({ orgId: quizImportJobs.orgId }).from(quizImportJobs).where(eq(quizImportJobs.id, jobId)).limit(1);
+  if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Import job not found." });
+  await requireOwnedOrg(ctx, job.orgId);
+  return job;
+}
+
 export const quizBankRouter = router({
   // ─── Banks ────────────────────────────────────────────────────────────────
   listBanks: protectedProcedure
     .input(z.object({ orgId: z.number() }))
     .query(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
       return (await db()).select().from(quizBanks)
         .where(eq(quizBanks.orgId, input.orgId))
         .orderBy(asc(quizBanks.name));
@@ -87,7 +123,8 @@ export const quizBankRouter = router({
 
   createBank: protectedProcedure
     .input(z.object({ orgId: z.number(), name: z.string().min(1), description: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
       const [result] = await (await db()).insert(quizBanks).values({
         orgId: input.orgId,
         name: input.name,
@@ -98,13 +135,15 @@ export const quizBankRouter = router({
 
   updateBank: protectedProcedure
     .input(z.object({ id: z.number(), name: z.string().min(1), description: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireBankAccess(ctx, input.id);
       await (await db()).update(quizBanks).set({ name: input.name, description: input.description }).where(eq(quizBanks.id, input.id));
     }),
 
   deleteBank: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireBankAccess(ctx, input.id);
       // Delete all questions in this bank first
       const questions = await (await db()).select({ id: quizBankQuestions.id })
         .from(quizBankQuestions).where(eq(quizBankQuestions.bankId, input.id));
@@ -120,7 +159,8 @@ export const quizBankRouter = router({
   // ─── Tags ─────────────────────────────────────────────────────────────────
   listTags: protectedProcedure
     .input(z.object({ orgId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
       return (await db()).select().from(quizBankTags)
         .where(eq(quizBankTags.orgId, input.orgId))
         .orderBy(asc(quizBankTags.name));
@@ -128,7 +168,8 @@ export const quizBankRouter = router({
 
   createTag: protectedProcedure
     .input(z.object({ orgId: z.number(), name: z.string().min(1), color: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
       const [result] = await (await db()).insert(quizBankTags).values({
         orgId: input.orgId,
         name: input.name,
@@ -139,13 +180,15 @@ export const quizBankRouter = router({
 
   updateTag: protectedProcedure
     .input(z.object({ id: z.number(), name: z.string().min(1), color: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireTagAccess(ctx, input.id);
       await (await db()).update(quizBankTags).set({ name: input.name, color: input.color }).where(eq(quizBankTags.id, input.id));
     }),
 
   deleteTag: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireTagAccess(ctx, input.id);
       await (await db()).delete(quizQuestionTags).where(eq(quizQuestionTags.tagId, input.id));
       await (await db()).delete(quizBankTags).where(eq(quizBankTags.id, input.id));
     }),
@@ -163,7 +206,9 @@ export const quizBankRouter = router({
       limit: z.number().default(50),
       offset: z.number().default(0),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
+      if (input.bankId) await requireBankAccess(ctx, input.bankId);
       const conditions = [eq(quizBankQuestions.orgId, input.orgId)];
       if (input.bankId) conditions.push(eq(quizBankQuestions.bankId, input.bankId));
       if (!input.includeArchived) conditions.push(eq(quizBankQuestions.isArchived, false));
@@ -202,9 +247,10 @@ export const quizBankRouter = router({
 
   getQuestion: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const [question] = await (await db()).select().from(quizBankQuestions).where(eq(quizBankQuestions.id, input.id));
       if (!question) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOwnedOrg(ctx, question.orgId);
       const choices = await (await db()).select().from(quizAnswerChoices)
         .where(eq(quizAnswerChoices.questionId, input.id))
         .orderBy(asc(quizAnswerChoices.sortOrder));
@@ -225,6 +271,8 @@ export const quizBankRouter = router({
 
       let questionId: number;
       if (id) {
+        await requireQuestionAccess(ctx, id);
+        await requireBankAccess(ctx, questionData.bankId);
         await (await db()).update(quizBankQuestions).set({
           ...normalizedQuestionData,
           hotspotZones: questionData.hotspotZones ?? null,
@@ -232,15 +280,11 @@ export const quizBankRouter = router({
         }).where(eq(quizBankQuestions.id, id));
         questionId = id;
       } else {
+        const bank = await requireBankAccess(ctx, questionData.bankId);
         const [result] = await (await db()).insert(quizBankQuestions).values({
           ...normalizedQuestionData,
-          orgId: questionData.bankId, // will be overridden below
+          orgId: bank.orgId,
         });
-        // Fix orgId from bank
-        const [bank] = await (await db()).select({ orgId: quizBanks.orgId }).from(quizBanks).where(eq(quizBanks.id, questionData.bankId));
-        if (bank) {
-          await (await db()).update(quizBankQuestions).set({ orgId: bank.orgId }).where(eq(quizBankQuestions.id, result.insertId));
-        }
         questionId = result.insertId;
         // Update question count
         await (await db()).update(quizBanks).set({ questionCount: sql`question_count + 1` }).where(eq(quizBanks.id, questionData.bankId));
@@ -278,7 +322,8 @@ export const quizBankRouter = router({
 
   deleteQuestion: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireQuestionAccess(ctx, input.id);
       const [q] = await (await db()).select({ bankId: quizBankQuestions.bankId }).from(quizBankQuestions).where(eq(quizBankQuestions.id, input.id));
       await (await db()).delete(quizQuestionTags).where(eq(quizQuestionTags.questionId, input.id));
       await (await db()).delete(quizAnswerChoices).where(eq(quizAnswerChoices.questionId, input.id));
@@ -290,7 +335,8 @@ export const quizBankRouter = router({
 
   archiveQuestion: protectedProcedure
     .input(z.object({ id: z.number(), archived: z.boolean() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireQuestionAccess(ctx, input.id);
       await (await db()).update(quizBankQuestions).set({ isArchived: input.archived }).where(eq(quizBankQuestions.id, input.id));
     }),
 
@@ -304,6 +350,8 @@ export const quizBankRouter = router({
       fileUrl: z.string(),
     }))
     .mutation(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
+      if (input.bankId) await requireBankAccess(ctx, input.bankId);
       const [result] = await (await db()).insert(quizImportJobs).values({
         orgId: input.orgId,
         bankId: input.bankId,
@@ -318,7 +366,8 @@ export const quizBankRouter = router({
 
   getImportJob: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireImportJobAccess(ctx, input.id);
       const [job] = await (await db()).select().from(quizImportJobs).where(eq(quizImportJobs.id, input.id));
       if (!job) throw new TRPCError({ code: "NOT_FOUND" });
       return job;
@@ -326,7 +375,8 @@ export const quizBankRouter = router({
 
   listImportJobs: protectedProcedure
     .input(z.object({ orgId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
       return (await db()).select().from(quizImportJobs)
         .where(eq(quizImportJobs.orgId, input.orgId))
         .orderBy(desc(quizImportJobs.createdAt))
@@ -339,7 +389,8 @@ export const quizBankRouter = router({
       fileUrl: z.string(),
       source: z.enum(["scorm","csv","xls"]),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireImportJobAccess(ctx, input.jobId);
       // Mark as parsing
       await (await db()).update(quizImportJobs).set({ status: "parsing" }).where(eq(quizImportJobs.id, input.jobId));
 
@@ -380,9 +431,14 @@ export const quizBankRouter = router({
       orgId: z.number(),
       selectedIndices: z.array(z.number()).optional(), // null = import all
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      await requireOwnedOrg(ctx, input.orgId);
+      const bank = await requireBankAccess(ctx, input.bankId);
+      if (bank.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "The selected Question Bank belongs to another organisation." });
+      await requireImportJobAccess(ctx, input.jobId);
       const [job] = await (await db()).select().from(quizImportJobs).where(eq(quizImportJobs.id, input.jobId));
       if (!job || !job.parsedQuestions) throw new TRPCError({ code: "NOT_FOUND" });
+      if (job.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "The selected import belongs to another organisation." });
 
       await (await db()).update(quizImportJobs).set({ status: "importing", bankId: input.bankId }).where(eq(quizImportJobs.id, input.jobId));
 

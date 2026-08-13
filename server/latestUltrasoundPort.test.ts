@@ -32,4 +32,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain('availability?.status === "enrollment_closed"');
     expect(routerSource).toContain("orgId: course.orgId");
   });
+
+  it("protects active Question Bank banks, tags, questions, and import jobs with org ownership checks", () => {
+    const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("requireOwnedOrg(ctx, input.orgId)");
+    expect(routerSource).toContain("requireBankAccess(ctx, input.id)");
+    expect(routerSource).toContain("requireQuestionAccess(ctx, input.id)");
+    expect(routerSource).toContain("requireTagAccess(ctx, input.id)");
+    expect(routerSource).toContain("requireImportJobAccess(ctx, input.jobId)");
+    expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
+  });
 });
