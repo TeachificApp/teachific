@@ -78,6 +78,7 @@ import {
   organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
+import { syncLessonQuizBlocksToQuestionBank } from "../lib/lessonQuizQuestionBankSync";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, assertSectionOwnership, assertLessonOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -912,6 +913,9 @@ export const lmsCourseBuilderRouter = router({
         updates.previewMode = updates.isPreview ? "preview" : "none";
       }
       if (Object.keys(updates).length > 0) await db.update(lmsLessons).set(updates as any).where(eq(lmsLessons.id, id));
+      if (input.contentBlocks !== undefined) {
+        await syncLessonQuizBlocksToQuestionBank(db, id, input.contentBlocks, ctx.user.id);
+      }
       // When countTowardCompletion changes, recalculate progress for all enrollments in this course
       if (countTowardCompletion !== undefined) {
         const [lesson] = await db.select({ courseId: lmsLessons.courseId }).from(lmsLessons).where(eq(lmsLessons.id, id)).limit(1);
@@ -923,6 +927,27 @@ export const lmsCourseBuilderRouter = router({
         }
       }
       return { success: true };
+    }),
+
+  /** Backfill page-builder lesson quiz blocks into this course's org-scoped Question Bank folders. */
+  backfillLessonQuizBlocksToQuestionBank: protectedProcedure
+    .input(z.object({ courseId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const lessons = await db.select({ id: lmsLessons.id, contentBlocks: lmsLessons.contentBlocks })
+        .from(lmsLessons)
+        .where(eq(lmsLessons.courseId, input.courseId));
+      let created = 0;
+      let updated = 0;
+      for (const lesson of lessons) {
+        const result = await syncLessonQuizBlocksToQuestionBank(db, lesson.id, lesson.contentBlocks, ctx.user.id);
+        created += result.created;
+        updated += result.updated;
+      }
+      return { success: true, created, updated, lessonsScanned: lessons.length };
     }),
 
   deleteLesson: protectedProcedure

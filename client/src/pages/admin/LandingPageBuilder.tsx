@@ -106,6 +106,8 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     defaultData: { html: "<p>Add your content here. Click to edit.</p>", align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" } },
   { type: "ai_content", label: "AI Generate Content", icon: <Sparkles size={14} />, category: "Content",
     defaultData: { html: "", prompt: "", contentType: "lesson", align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" } },
+  { type: "ai_image", label: "AI Generate Image", icon: <Sparkles size={14} />, category: "Content",
+    defaultData: { url: "", prompt: "", alt: "", caption: "", align: "center", maxWidth: "100%", showShadow: true, openInNewTab: true } },
   { type: "image", label: "Image", icon: <Image size={14} />, category: "Content",
     defaultData: { url: "", alt: "", caption: "", align: "center", maxWidth: "auto", linkUrl: "", openInNewTab: true, showShadow: true, noBorder: false } },
   { type: "video", label: "Video Embed", icon: <Video size={14} />, category: "Content",
@@ -2495,6 +2497,55 @@ function AIContentBlockSettings({
         <BSColorField data={data} onSet={onSet} label="Background" field="bgColor" />
         <BSColorField data={data} onSet={onSet} label="Text Color" field="textColor" />
       </div>
+    </div>
+  );
+}
+
+function AIImageBlockSettings({ data, onSet }: { data: Record<string, any>; onSet: (key: string, value: any) => void }) {
+  const [prompt, setPrompt] = React.useState(data.prompt ?? "");
+  const generateImageMutation = trpc.lmsAdmin.generateImage.useMutation({
+    onSuccess: ({ url }) => {
+      onSet("url", url);
+      onSet("prompt", prompt.trim());
+      if (!data.alt) onSet("alt", prompt.trim());
+      toast.success("Image generated and added to this block.");
+    },
+    onError: (error) => toast.error(`Image generation failed: ${error.message}`),
+  });
+  const generate = () => {
+    if (!prompt.trim()) {
+      toast.error("Describe the image you want to create.");
+      return;
+    }
+    generateImageMutation.mutate({ prompt: prompt.trim() });
+  };
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-teal-200 bg-teal-50 p-3">
+        <p className="text-xs font-semibold text-teal-800 flex items-center gap-1.5"><Sparkles size={13} /> AI Image Generator</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-teal-700">Describe an original visual for this lesson, landing page, or email. The generated image is saved to this block only.</p>
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">Image prompt</label>
+        <textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          className="w-full h-28 resize-y rounded-md border border-gray-200 px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400"
+          placeholder="e.g. A clean, editorial illustration of a clinician reviewing an echocardiogram on a monitor, teal and aqua palette, no text"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={generate}
+        disabled={!prompt.trim() || generateImageMutation.isPending}
+        className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#189aa1] to-[#17a2b8] px-3 py-2 text-xs font-semibold text-white transition-all hover:from-[#147f86] hover:to-[#138496] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {generateImageMutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Generating image…</> : <><Sparkles size={13} /> Generate Image</>}
+      </button>
+      {data.url ? <img src={data.url} alt={data.alt || "Generated image preview"} className="h-28 w-full rounded-md border border-gray-200 object-cover" /> : null}
+      <BSTextField data={data} onSet={onSet} label="Alt Text" field="alt" />
+      <BSTextField data={data} onSet={onSet} label="Caption" field="caption" />
+      <BSAlignField data={data} onSet={onSet} label="Image Alignment" field="align" />
     </div>
   );
 }
@@ -4897,6 +4948,8 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           onSetMany={setMany}
         />
       );
+    case "ai_image":
+      return <AIImageBlockSettings data={d} onSet={set} />;
      default:
       return <p className="text-xs text-gray-400">No settings for this block type.</p>;
   } })();
@@ -5817,40 +5870,40 @@ export default function LandingPageBuilder() {
     <BlockTemplateLibraryProvider onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); }}>
     <div className="fixed inset-0 z-40 flex flex-col bg-gray-50" style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button onClick={() => navigate(`/lms/courses/${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
-            <ArrowLeft size={16} /> Back to Course
+            <ArrowLeft size={16} /> <span className="hidden sm:inline">Back to Course</span>
           </button>
-          <div className="w-px h-5 bg-gray-200" />
-          <span className="text-sm font-semibold text-gray-800 truncate max-w-xs">{courseInfo?.title ?? "Landing Page Builder"}</span>
-          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Page Editor</span>
+          <div className="hidden sm:block w-px h-5 bg-gray-200" />
+          <span className="text-sm font-semibold text-gray-800 truncate max-w-[9rem] sm:max-w-xs">{courseInfo?.title ?? "Landing Page Builder"}</span>
+          <span className="hidden md:inline text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Page Editor</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
-            <FolderOpen size={14} /> Page Templates
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 transition-colors">
+            <FolderOpen size={14} /> <span className="hidden md:inline">Page Templates</span>
           </button>
           <OpenTemplateLibraryButton />
-          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-1.5 transition-colors" title="Save current page as a reusable template">
-            <Bookmark size={14} /> Save as Template
+          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="hidden sm:flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-1.5 transition-colors" title="Save current page as a reusable template">
+            <Bookmark size={14} /> <span className="hidden lg:inline">Save as Template</span>
           </button>
           {courseInfo?.slug && (
-            <a href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
-              <Eye size={14} /> Preview
+            <a href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 transition-colors">
+              <Eye size={14} /> <span className="hidden sm:inline">Preview</span>
             </a>
           )}
-          <AutoSaveIndicator status={autoSave.status} />
-          <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-4 py-1.5 h-8">
-            <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
+          <div className="hidden sm:block"><AutoSaveIndicator status={autoSave.status} /></div>
+          <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-2 sm:px-4 py-1.5 h-8">
+            <Save size={14} /> <span className="hidden sm:inline">{isSaving ? "Saving…" : "Save Page"}</span>
           </Button>
         </div>
       </div>
 
       {/* Main Editor Area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
         {/* Left Panel: Add Block button */}
-        <div className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-3">
+        <div className="w-full lg:w-52 max-h-20 lg:max-h-none flex-shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="p-2 lg:p-3">
             <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors"
@@ -5858,13 +5911,13 @@ export default function LandingPageBuilder() {
               <Plus size={14} /> Add Block
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="hidden lg:block flex-1 overflow-y-auto p-2">
             <p className="text-xs text-gray-400 text-center mt-4 px-2">Click "Add Block" to open the block picker with all block types, copy blocks from other pages, or insert saved templates.</p>
           </div>
         </div>
 
         {/* Center: Canvas */}
-        <div ref={canvasRef} className="flex-1 overflow-y-auto bg-gray-100">
+        <div ref={canvasRef} className="flex-1 min-h-0 overflow-y-auto bg-gray-100">
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-gray-400">Loading…</div>
           ) : blocks.length === 0 ? (
@@ -5998,11 +6051,11 @@ export default function LandingPageBuilder() {
         </div>
 
         {/* Right Panel: Block Settings / Page SEO */}
-        <div className="flex-shrink-0 bg-white border-l border-gray-200 overflow-y-auto relative" style={{ width: rightPanelWidth }}>
+        <div className="w-full lg:w-[var(--right-panel-width)] max-h-[48vh] lg:max-h-none flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 overflow-y-auto relative" style={{ "--right-panel-width": `${rightPanelWidth}px` } as React.CSSProperties}>
           {/* Drag handle */}
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#1db5bd] active:bg-[#189aa1] z-10 transition-colors"
+            className="hidden lg:block absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#1db5bd] active:bg-[#189aa1] z-10 transition-colors"
             title="Drag to resize panel"
           />
           {selectedBlock ? (

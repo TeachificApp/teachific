@@ -5148,3 +5148,13 @@
 ## Email Campaign Block Picker Popup
 - [x] Convert EmailBlockEditor Add Block from sidebar panel to Dialog modal popup (matching lesson editor style)
 - [x] Modal shows block categories as tabs, grid of block icons, search, and closes on block selection
+
+## Latest Ultrasound-App Course, Quiz, and Landing Page Sync (Aug 10, 2026)
+- [x] Inventory and map all newer Ultrasound-App course, lesson, quiz, mock-exam, question-bank, Quiz Creator, and landing-page changes to Teachific equivalents
+- [x] Enforce org-scoped data access and multi-tier permissions for every ported feature
+- [x] Preserve Teachific-only branding in Quiz Creator and exclude all Ultrasound-App brand names, URLs, and assets
+- [x] Port applicable course and lesson management enhancements
+- [x] Port applicable quiz, mock-exam, question-bank, and Quiz Creator enhancements
+- [x] Port applicable landing page builder enhancements
+- [x] Add AI Image Generator blocks to lesson, email, and page editors using the shared image generation service
+- [x] Validate cross-org isolation, roles, branding, and automated tests for the ported work

@@ -1660,6 +1660,27 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
     onSuccess: () => toast.success("URL & SEO settings saved"),
     onError: (e) => toast.error(e.message),
   });
+  const [availabilityStatus, setAvailabilityStatus] = useState<"open" | "waitlist" | "presale" | "enrollment_closed">("open");
+  const [presaleHeading, setPresaleHeading] = useState("");
+  const [presaleBody, setPresaleBody] = useState("");
+  const [presaleCtaLabel, setPresaleCtaLabel] = useState("");
+  const [presaleCtaUrl, setPresaleCtaUrl] = useState("");
+  const { data: courseAvailability } = trpc.contentAvailability.getAvailability.useQuery({
+    productType: "course",
+    productId: course.id,
+  });
+  const saveAvailability = trpc.contentAvailability.setAvailability.useMutation({
+    onSuccess: () => toast.success("Course availability saved"),
+    onError: (error) => toast.error(error.message),
+  });
+  useEffect(() => {
+    if (!courseAvailability) return;
+    setAvailabilityStatus(courseAvailability.status as "open" | "waitlist" | "presale" | "enrollment_closed");
+    setPresaleHeading(courseAvailability.presaleHeading ?? "");
+    setPresaleBody(courseAvailability.presaleBody ?? "");
+    setPresaleCtaLabel(courseAvailability.presaleCtaLabel ?? "");
+    setPresaleCtaUrl(courseAvailability.presaleCtaUrl ?? "");
+  }, [courseAvailability]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
@@ -1764,6 +1785,60 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
         <div>
           <Label htmlFor="enrollment-closed-switch" className="text-sm font-medium text-orange-800 cursor-pointer">Enrollment Closed</Label>
           <p className="text-xs text-orange-600 mt-0.5">When enabled, new students cannot enroll in this course. Existing enrollments are not affected.</p>
+        </div>
+      </div>
+      <div className="md:col-span-2 rounded-lg border border-teal-200 bg-teal-50/50 p-4 space-y-4">
+        <div>
+          <Label className="text-sm font-semibold text-teal-900">Enrollment Availability</Label>
+          <p className="text-xs text-teal-700 mt-1">This setting applies only to this organization’s course. Existing student access is never changed.</p>
+        </div>
+        <Select value={availabilityStatus} onValueChange={(value) => setAvailabilityStatus(value as typeof availabilityStatus)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Open — learners can enroll</SelectItem>
+            <SelectItem value="waitlist">Waitlist — collect interest before enrollment opens</SelectItem>
+            <SelectItem value="presale">Pre-sale — allow purchase before release</SelectItem>
+            <SelectItem value="enrollment_closed">Enrollment Closed — prevent new enrollments</SelectItem>
+          </SelectContent>
+        </Select>
+        {availabilityStatus === "presale" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <div>
+              <Label className="text-xs">Pre-sale confirmation heading</Label>
+              <Input className="mt-1" value={presaleHeading} onChange={(event) => setPresaleHeading(event.target.value)} placeholder="Thank you for enrolling." />
+            </div>
+            <div>
+              <Label className="text-xs">Optional post-enrollment CTA label</Label>
+              <Input className="mt-1" value={presaleCtaLabel} onChange={(event) => setPresaleCtaLabel(event.target.value)} placeholder="Learn more" />
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs">Pre-sale confirmation message</Label>
+              <Textarea className="mt-1" value={presaleBody} onChange={(event) => setPresaleBody(event.target.value)} placeholder="You will be granted access once this course opens." />
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs">Optional post-enrollment CTA URL</Label>
+              <Input className="mt-1" type="url" value={presaleCtaUrl} onChange={(event) => setPresaleCtaUrl(event.target.value)} placeholder="https://" />
+            </div>
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="border-teal-300 text-teal-800 hover:bg-teal-100"
+            disabled={saveAvailability.isPending}
+            onClick={() => saveAvailability.mutate({
+              productType: "course",
+              productId: course.id,
+              status: availabilityStatus,
+              presaleHeading: presaleHeading.trim() || null,
+              presaleBody: presaleBody.trim() || null,
+              presaleCtaLabel: presaleCtaLabel.trim() || null,
+              presaleCtaUrl: presaleCtaUrl.trim() || null,
+            })}
+          >
+            {saveAvailability.isPending ? "Saving availability…" : "Save Availability"}
+          </Button>
         </div>
       </div>
       </div>

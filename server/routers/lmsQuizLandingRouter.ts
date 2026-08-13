@@ -29,6 +29,7 @@ import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
+import { syncLegacyLessonQuizQuestionToBank } from "../lib/lessonQuizQuestionBankSync";
 import {
   lmsCourses,
   lmsSections,
@@ -80,7 +81,7 @@ import {
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
 export const lmsQuizLandingRouter = router({
   // ── Quizzes ──
@@ -159,6 +160,7 @@ export const lmsQuizLandingRouter = router({
         correctAnswers: correctAnswers ? JSON.stringify(correctAnswers) : null,
         explanation: rest.explanation ?? null,
       } as any).$returningId();
+      await syncLegacyLessonQuizQuestionToBank(db, result.id, ctx.user.id);
       return { id: result.id };
     }),
 
@@ -187,6 +189,7 @@ export const lmsQuizLandingRouter = router({
       if (options !== undefined) updates.options = JSON.stringify(options);
       if (correctAnswers !== undefined) updates.correctAnswers = correctAnswers ? JSON.stringify(correctAnswers) : null;
       if (Object.keys(updates).length > 0) await db.update(lmsQuizQuestions).set(updates as any).where(eq(lmsQuizQuestions.id, id));
+      await syncLegacyLessonQuizQuestionToBank(db, id, ctx.user.id);
       return { success: true };
     }),
 
@@ -198,6 +201,30 @@ export const lmsQuizLandingRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsQuizQuestions).where(eq(lmsQuizQuestions.id, input.id));
       return { success: true };
+    }),
+
+  /** Backfill existing legacy lesson quiz questions into the active course's Question Bank folders. */
+  backfillLessonQuizQuestionBank: protectedProcedure
+    .input(z.object({ courseId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const quizzes = await db.select({ id: lmsQuizzes.id })
+        .from(lmsQuizzes)
+        .where(and(eq(lmsQuizzes.courseId, input.courseId), isNotNull(lmsQuizzes.lessonId)));
+      let created = 0;
+      let updated = 0;
+      for (const quiz of quizzes) {
+        const questions = await db.select({ id: lmsQuizQuestions.id }).from(lmsQuizQuestions).where(eq(lmsQuizQuestions.quizId, quiz.id));
+        for (const question of questions) {
+          const result = await syncLegacyLessonQuizQuestionToBank(db, question.id, ctx.user.id);
+          created += result.created;
+          updated += result.updated;
+        }
+      }
+      return { success: true, created, updated };
     }),
 
   aiGenerateQuizQuestions: protectedProcedure

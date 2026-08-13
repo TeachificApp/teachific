@@ -108,6 +108,7 @@ const EMAIL_SAFE_TYPES: BlockType[] = [
   "divider",
   "text",
   "image",
+  "ai_image",
   "video",       // renders as thumbnail + Watch Video link (email-safe)
   "audio",       // renders as Listen link (email-safe)
   "gallery",
@@ -330,7 +331,8 @@ export function emailBlockToHtml(block: Block): string {
       const bgStyle = bg && bg !== "#ffffff" ? `background:${bg};` : "";
       return `<div style="${bgStyle}padding:8px 0;color:${color};font-size:15px;line-height:1.7;text-align:${align};">${html}</div>`;
     }
-    case "image": {
+    case "image":
+    case "ai_image": {
       const url = (d.url as string) ?? "";
       if (!url) return "";
       const alt = (d.alt as string) ?? "";

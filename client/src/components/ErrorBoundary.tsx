@@ -17,11 +17,14 @@ interface State {
  * stale deployment cache (e.g. "Failed to fetch dynamically imported module").
  * In that case we automatically reload the page once to pick up the new chunks.
  */
-function isChunkLoadError(error: Error): boolean {
+export function isStaleAssetError(error: Error): boolean {
   const msg = error?.message ?? "";
   return (
     msg.includes("Failed to fetch dynamically imported module") ||
     msg.includes("Importing a module script failed") ||
+    msg.includes("is not a valid JavaScript MIME type") ||
+    msg.includes("expected a JavaScript module script") ||
+    msg.includes("text/html") ||
     msg.includes("Loading chunk") ||
     msg.includes("Loading CSS chunk") ||
     /ChunkLoadError/.test(msg)
@@ -38,7 +41,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     // If it's a chunk load error and we haven't already tried reloading, auto-reload
-    if (isChunkLoadError(error)) {
+    if (isStaleAssetError(error)) {
       const alreadyTried = sessionStorage.getItem(CHUNK_RELOAD_KEY);
       if (!alreadyTried) {
         sessionStorage.setItem(CHUNK_RELOAD_KEY, "1");

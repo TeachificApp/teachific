@@ -96,7 +96,7 @@ export type BlockType =
   | "quiz_embed"
   | "remaining_seats"
   | "included_items_auto"
-  | "ai_content";
+  | "ai_content" | "ai_image";
 
 export interface Block {
   id: string;
@@ -232,7 +232,8 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
           <CC style={{ textAlign: d.align ?? "left" }}><div className="prose" dangerouslySetInnerHTML={{ __html: d.html ?? "" }} /></CC>
         </div>
       );
-    case "image": {
+    case "image":
+    case "ai_image": {
       const imgAlign = d.align ?? "center";
       const imgJustify = imgAlign === "left" ? "flex-start" : imgAlign === "right" ? "flex-end" : "center";
       const mw = d.maxWidth ?? "auto";

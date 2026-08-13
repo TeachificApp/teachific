@@ -958,6 +958,11 @@ export default function CourseLanding() {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestSubmitting, setGuestSubmitting] = useState(false);
+  // Cross-product availability waitlist state
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistName, setWaitlistName] = useState("");
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
 
   // Free Preview modal state
   const [freePreviewOpen, setFreePreviewOpen] = useState(false);
@@ -970,6 +975,17 @@ export default function CourseLanding() {
   const { data: course, isLoading } = trpc.lms.getCourse.useQuery({ slug: slug!, preview: isPreview || undefined }, { enabled: !!slug });
   const { data: myCourses } = trpc.lmsLearner.getMyCourses.useQuery(undefined, { enabled: !!user });
   const enrollment = myCourses?.find((e: any) => e.courseId === course?.id);
+  const { data: availability } = trpc.contentAvailability.getAvailability.useQuery(
+    { productType: "course", productId: course?.id ?? 0 },
+    { enabled: !!course?.id },
+  );
+  const joinWaitlist = trpc.contentAvailability.joinWaitlist.useMutation({
+    onSuccess: (data) => {
+      setWaitlistOpen(false);
+      toast.success(data.alreadyJoined ? "You are already on the waitlist." : "You are on the waitlist — we will let you know when enrollment opens.");
+    },
+    onError: (error) => toast.error(error.message || "Could not join the waitlist."),
+  });
 
   const enrollFree = trpc.lmsLearner.enrollFree.useMutation({
     onSuccess: () => { toast.success("Enrolled! You now have access to this course."); navigate(`/courses/${slug}/player`); },
@@ -1059,6 +1075,29 @@ export default function CourseLanding() {
     setGuestModalOpen(true);
   };
 
+  const openWaitlist = () => {
+    setWaitlistName((user as any)?.name ?? "");
+    setWaitlistEmail((user as any)?.email ?? "");
+    setWaitlistOpen(true);
+  };
+
+  const submitWaitlist = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!course || !waitlistName.trim() || !waitlistEmail.trim()) return;
+    setWaitlistSubmitting(true);
+    try {
+      await joinWaitlist.mutateAsync({
+        productType: "course",
+        productId: course.id,
+        name: waitlistName.trim(),
+        email: waitlistEmail.trim(),
+        userId: user?.id,
+      });
+    } finally {
+      setWaitlistSubmitting(false);
+    }
+  };
+
   const handleGuestCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug || !guestName.trim() || !guestEmail.trim()) return;
@@ -1080,6 +1119,14 @@ export default function CourseLanding() {
   };
 
   const handleEnroll = async () => {
+    if (!enrollment && availability?.status === "waitlist") {
+      openWaitlist();
+      return;
+    }
+    if (!enrollment && isEnrollmentClosed) {
+      toast.error("Enrollment is currently closed for this course.");
+      return;
+    }
     if (!user) {
       openGuestCheckoutModal(selectedPricingOptionId);
       return;
@@ -1099,6 +1146,14 @@ export default function CourseLanding() {
 
   /** Enroll with a specific pricing option ID — avoids React state closure timing issues */
   const handleEnrollWithOption = async (pricingOptionId: number | undefined) => {
+    if (!enrollment && availability?.status === "waitlist") {
+      openWaitlist();
+      return;
+    }
+    if (!enrollment && isEnrollmentClosed) {
+      toast.error("Enrollment is currently closed for this course.");
+      return;
+    }
     if (!user) {
       openGuestCheckoutModal(pricingOptionId);
       return;
@@ -1166,8 +1221,20 @@ export default function CourseLanding() {
   const lp = course.landingPage;
   const price = formatPrice(course);
   const pricingType = course.pricingType ?? (course.isFree ? "free" : "one_time");
-  const isEnrollmentClosed = !enrollment && course.enrollmentCloseDate && new Date(course.enrollmentCloseDate) < new Date();
-  const ctaText = enrollment ? "Continue Learning" : isEnrollmentClosed ? "Enrollment Closed" : (lp?.ctaText ?? "Enroll Now");
+  const isEnrollmentClosed = !enrollment && (
+    availability?.status === "enrollment_closed" ||
+    (course as any).enrollmentClosed ||
+    (course.enrollmentCloseDate && new Date(course.enrollmentCloseDate) < new Date())
+  );
+  const ctaText = enrollment
+    ? "Continue Learning"
+    : availability?.status === "waitlist"
+      ? "Join Waitlist"
+      : isEnrollmentClosed
+        ? "Enrollment Closed"
+        : availability?.status === "presale"
+          ? (availability.presaleCtaLabel || "Pre-sale: Enroll Now")
+          : (lp?.ctaText ?? "Enroll Now");
 
   // Enrollment countdown: days remaining until close (only for cohorts, not yet closed, not enrolled)
   const enrollmentCountdownDays = (() => {
@@ -1263,7 +1330,7 @@ export default function CourseLanding() {
   // Set page title
   useEffect(() => {
     if (course?.title) document.title = `${course.title} | Education Library | Teachific™`;
-    return () => { document.title = "UltrasoundAssist™ | Teachific™"; };
+    return () => { document.title = `${course?.organizationName ?? course?.orgName ?? "Teachific"} | Teachific™`; };
   }, [course?.title]);
 
   return (
@@ -1509,6 +1576,46 @@ export default function CourseLanding() {
         </div>
       </div>
     </div>
+
+    {/* Org-scoped course waitlist capture */}
+    <Dialog open={waitlistOpen} onOpenChange={setWaitlistOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-teal-700">Join the waitlist</DialogTitle>
+          <DialogDescription>
+            {availability?.productTitle ? `Be first to know when ${availability.productTitle} opens for enrollment.` : "Be first to know when enrollment opens."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submitWaitlist} className="space-y-4 mt-2">
+          <div className="space-y-1">
+            <Label htmlFor="course-waitlist-name">Full Name <span className="text-red-500">*</span></Label>
+            <Input
+              id="course-waitlist-name"
+              value={waitlistName}
+              onChange={(event) => setWaitlistName(event.target.value)}
+              placeholder="Jane Smith"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="course-waitlist-email">Email Address <span className="text-red-500">*</span></Label>
+            <Input
+              id="course-waitlist-email"
+              type="email"
+              value={waitlistEmail}
+              onChange={(event) => setWaitlistEmail(event.target.value)}
+              placeholder="jane@example.com"
+              required
+            />
+          </div>
+          <p className="text-xs text-gray-500">This request stays with this school only. We will email you when enrollment becomes available.</p>
+          <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white" disabled={waitlistSubmitting || joinWaitlist.isPending}>
+            {waitlistSubmitting || joinWaitlist.isPending ? "Joining…" : "Join Waitlist"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
 
     {/* Guest Checkout Modal — shown to unauthenticated users who click a CTA — build:v3 */}
     <Dialog open={guestModalOpen} onOpenChange={setGuestModalOpen}>

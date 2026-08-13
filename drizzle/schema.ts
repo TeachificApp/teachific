@@ -2411,10 +2411,20 @@ export const questionBankItems = mysqlTable("question_bank_items", {
   tags: text("tags"), // JSON array of tag strings
   explanation: text("explanation"),
   createdBy: int("createdBy").notNull(),
+  // Source identity lets lesson-quiz saves update their matching Question Bank item
+  // rather than creating duplicates. All sources remain constrained by orgId.
+  sourceLessonId: int("source_lesson_id"),
+  sourceBlockId: varchar("source_block_id", { length: 128 }),
+  sourceQuestionIndex: int("source_question_index"),
+  sourceQuizId: int("source_quiz_id"),
+  sourceQuizQuestionId: int("source_quiz_question_id"),
   usageCount: int("usageCount").default(0).notNull(), // how many quizzes use this question
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  lessonSourceIndex: index("question_bank_items_lesson_source_idx").on(table.orgId, table.sourceLessonId, table.sourceBlockId, table.sourceQuestionIndex),
+  quizSourceIndex: index("question_bank_items_quiz_source_idx").on(table.orgId, table.sourceQuizQuestionId),
+}));
 export type QuestionBankItem = typeof questionBankItems.$inferSelect;
 export type InsertQuestionBankItem = typeof questionBankItems.$inferInsert;
 
@@ -5242,6 +5252,45 @@ export const workshopWaitlistEntries = mysqlTable("workshop_waitlist_entries", {
 });
 export type WorkshopWaitlistEntry = typeof workshopWaitlistEntries.$inferSelect;
 
+// ─── Cross-Product Content Availability & Waitlists ──────────────────────────
+// Keeps course, cohort, workshop, webinar, download, bundle, membership, and
+// standalone quiz availability isolated by organization without overloading each
+// product table's existing visibility/status enum.
+export const contentAvailability = mysqlTable("content_availability", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  productType: varchar("product_type", { length: 64 }).notNull(),
+  productId: int("product_id").notNull(),
+  status: mysqlEnum("status", ["open", "waitlist", "presale", "enrollment_closed"]).default("open").notNull(),
+  presaleHeading: varchar("presale_heading", { length: 255 }),
+  presaleBody: text("presale_body"),
+  presaleMediaUrl: text("presale_media_url"),
+  presaleCtaLabel: varchar("presale_cta_label", { length: 255 }),
+  presaleCtaUrl: text("presale_cta_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  orgProductUnique: uniqueIndex("content_availability_org_product_unique").on(table.orgId, table.productType, table.productId),
+  orgStatusIndex: index("content_availability_org_status_idx").on(table.orgId, table.status),
+}));
+export type ContentAvailability = typeof contentAvailability.$inferSelect;
+
+export const contentWaitlistEntries = mysqlTable("content_waitlist_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  productType: varchar("product_type", { length: 64 }).notNull(),
+  productId: int("product_id").notNull(),
+  parentProductId: int("parent_product_id"),
+  userId: int("user_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  notifiedAt: timestamp("notified_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgProductEmailUnique: uniqueIndex("content_waitlist_org_product_email_unique").on(table.orgId, table.productType, table.productId, table.email),
+  orgProductIndex: index("content_waitlist_org_product_idx").on(table.orgId, table.productType, table.productId),
+}));
+export type ContentWaitlistEntry = typeof contentWaitlistEntries.$inferSelect;
 // ─── Workshop Resources ───────────────────────────────────────────────────────
 export const workshopResources = mysqlTable("workshop_resources", {
   id: int("id").autoincrement().primaryKey(),
