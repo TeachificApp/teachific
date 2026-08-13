@@ -273,6 +273,47 @@ describe("Question Bank Export", () => {
       tagIds: [],
     })).rejects.toThrow("The selected Question Bank belongs to another organisation.");
   });
+
+  it("copies question media, answer choices, and authored answer order into the target bank", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chainable([{
+        id: 1,
+        userId: 10,
+        orgId: 5,
+        title: "Scoped Quiz",
+        instructions: JSON.stringify([{
+          id: "q1",
+          type: "mcq",
+          stem: "Choose the correct image",
+          image: { url: "https://cdn.example.com/stem.png", alt: "Stem image" },
+          points: 2,
+          lockAnswerOrder: true,
+          data: {
+            multiSelect: false,
+            choices: [
+              { id: "a", text: "First", correct: true, imageUrl: "https://cdn.example.com/a.png" },
+              { id: "b", text: "Second", correct: false },
+            ],
+          },
+        }]),
+      }]))
+      .mockReturnValueOnce(chainable([{ id: 10, orgId: 5, name: "Owned bank" }]));
+    mockDb.insert.mockReturnValue(chainable([{ insertId: 88 }]));
+    mockDb.update.mockReturnValue(chainable(undefined));
+
+    const ctx = { user: { id: 10, role: "org_admin" } } as unknown as TrpcContext;
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.quizMaker.exportToQuestionBank({
+      quizId: 1,
+      targetBankId: 10,
+      questionIds: ["q1"],
+      tagIds: [],
+    })).resolves.toEqual({ exportedCount: 1, bankId: 10 });
+
+    expect(mockDb.insert).toHaveBeenCalledWith(expect.anything());
+    const questionInsert = mockDb.insert.mock.results[0]?.value;
+    expect(questionInsert).toBeDefined();
+  });
 });
 
 describe("Question-Level Analytics", () => {

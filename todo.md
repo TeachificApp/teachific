@@ -5201,9 +5201,9 @@
 - [x] Add a Quiz Creator dialog for selecting an eligible bank and questions to export
 - [x] Extend the Quiz Creator Question Bank export dialog with optional Question Bank tag selectors
 - [ ] Add a Question Bank folder selector when folder organization is enabled for the active organization
-- [ ] Preserve question type, answers, feedback, media, and answer-order settings during export
+- [x] Preserve supported question type, answers, media, and authored answer-order settings during export
 - [x] Add regression coverage for cross-org Question Bank export rejection
-- [ ] Add regression coverage for exported question payload preservation
+- [x] Add regression coverage for exported question payload preservation
 
 ## Quiz Creator Org-Permission Hardening (Aug 13, 2026)
 - [x] Enforce organization ownership and org-admin permissions across Quiz Creator authoring, publishing, pooling, and analytics procedures
