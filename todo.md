@@ -5062,7 +5062,7 @@
 - [x] Add CME status badge to webinar list rows
 - [x] Add CME status badge to workshop list rows
 - [x] Add CME status badge to cohort list rows through the shared LMS course management list
-- [ ] Add CME status badge to quiz list rows
+- [x] Add CME status badge to quiz list rows through the shared LMS management list
 
 ### Enrollment Closed
 - [ ] Add enrollmentClosed column to lmsCourses, webinars, workshops, lmsQuizzes, digitalProducts, bundles, memberships

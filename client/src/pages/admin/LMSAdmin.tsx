@@ -140,7 +140,20 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
         <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
         <p className="text-xs text-gray-400">{course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`} · <span className="font-mono">ID: {course.id}</span></p>
       </div>
-      <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
+      <div className="flex items-center gap-1.5">
+        <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
+        {course.cmeStatus && (
+          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
+            course.cmeStatus === "approved" ? "bg-green-100 text-green-700 border-green-200" :
+            course.cmeStatus === "pending_approval" ? "bg-amber-100 text-amber-700 border-amber-200" :
+            course.cmeStatus === "expiring_soon" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+            course.cmeStatus === "expired" ? "bg-red-100 text-red-700 border-red-200" :
+            "bg-gray-100 text-gray-600 border-gray-200"
+          }`}>
+            {course.cmeStatus === "pending_approval" ? "CME: Pending" : course.cmeStatus === "expiring_soon" ? "CME: Expiring" : `CME: ${course.cmeStatus.charAt(0).toUpperCase()}${course.cmeStatus.slice(1)}`}
+          </Badge>
+        )}
+      </div>
       <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(course.id)}>
         <Edit2 className="w-3 h-3 mr-1" /> Edit
       </Button>
@@ -13286,4 +13299,3 @@ function AfterPurchaseTab({ courseId }: { courseId: number }) {
     </div>
   );
 }
-
