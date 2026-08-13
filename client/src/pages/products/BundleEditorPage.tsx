@@ -37,6 +37,7 @@ export default function BundleEditorPage() {
   const [price, setPrice] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [enrollmentClosed, setEnrollmentClosed] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -48,6 +49,7 @@ export default function BundleEditorPage() {
       setPrice(String(bundle.price ?? 0));
       setSalePrice(String(bundle.salePrice ?? ""));
       setIsActive(bundle.isActive !== false);
+      setEnrollmentClosed((bundle as any).enrollmentClosed ?? false);
       setThumbnailUrl(bundle.thumbnailUrl ?? "");
       try {
         const ids = JSON.parse(bundle.courseIds ?? "[]");
@@ -69,6 +71,7 @@ export default function BundleEditorPage() {
         price: parseFloat(price) || 0,
         salePrice: salePrice ? parseFloat(salePrice) : null,
         isActive,
+        enrollmentClosed,
         thumbnailUrl: thumbnailUrl || null,
         courseIds: JSON.stringify(selectedCourseIds),
       },
@@ -219,6 +222,15 @@ export default function BundleEditorPage() {
 
         {/* ── Details Tab ── */}
         <TabsContent value="details">
+          <Card className="mb-6 border-amber-200 bg-amber-50">
+            <CardContent className="flex items-center justify-between gap-4 p-4">
+              <div>
+                <Label htmlFor="bundle-enrollment-closed" className="font-medium text-amber-900">Enrollment Closed</Label>
+                <p className="mt-1 text-sm text-amber-800">Prevent new bundle purchases while retaining access for current learners.</p>
+              </div>
+              <Switch id="bundle-enrollment-closed" checked={enrollmentClosed} onCheckedChange={(value) => { setEnrollmentClosed(value); markDirty(); }} />
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-6 space-y-4">
               <div>
