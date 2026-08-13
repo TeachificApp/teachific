@@ -5060,7 +5060,7 @@
 ### CME Status Badges
 - [x] Add CME status badge (draft/pending_approval/approved/expiring_soon/expired) to LMS Management course list rows
 - [x] Add CME status badge to webinar list rows
-- [ ] Add CME status badge to workshop list rows
+- [x] Add CME status badge to workshop list rows
 - [ ] Add CME status badge to cohort list rows
 - [ ] Add CME status badge to quiz list rows
 

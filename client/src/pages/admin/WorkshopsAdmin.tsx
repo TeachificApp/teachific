@@ -57,6 +57,22 @@ function instanceStatusColor(status: string) {
   if (status === "completed") return "bg-gray-100 text-gray-600";
   return "bg-yellow-100 text-yellow-700";
 }
+function cmeStatusColor(status: string) {
+  if (status === "approved") return "bg-green-100 text-green-700 border-green-200";
+  if (status === "pending_approval") return "bg-amber-100 text-amber-700 border-amber-200";
+  if (status === "expiring_soon") return "bg-yellow-100 text-yellow-700 border-yellow-200";
+  if (status === "expired") return "bg-red-100 text-red-700 border-red-200";
+  return "bg-gray-100 text-gray-600 border-gray-200";
+}
+function cmeStatusLabel(status: string) {
+  return ({
+    draft: "CME: Draft",
+    pending_approval: "CME: Pending",
+    approved: "CME: Approved",
+    expiring_soon: "CME: Expiring",
+    expired: "CME: Expired",
+  } as Record<string, string>)[status] ?? "CME";
+}
 
 // ── WorkshopsList ──────────────────────────────────────────────────────────────
 function WorkshopsList({ onEdit }: { onEdit: (id: number) => void }) {
@@ -164,6 +180,11 @@ function WorkshopsList({ onEdit }: { onEdit: (id: number) => void }) {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(w.status)}`}>
                       {w.status}
                     </span>
+                    {w.cmeStatus && (
+                      <Badge variant="outline" className={`ml-1.5 text-[10px] px-1.5 py-0 ${cmeStatusColor(w.cmeStatus)}`}>
+                        {cmeStatusLabel(w.cmeStatus)}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                   </TableCell>

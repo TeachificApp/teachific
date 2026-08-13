@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, asc, desc, eq, gt, gte, like, lte, or, sql, isNull } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { syncStripeProduct } from "../stripeSync";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import {
@@ -17,6 +17,7 @@ import {
   lmsEnrollments,
   lmsSections,
   lmsLessons,
+  cmeActivityForms,
 } from "../../drizzle/schema";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -726,19 +727,28 @@ export const workshopAdminRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) return { workshops: [], total: 0 };
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const limit = input.limit ?? input.pageSize;
       const offset = input.offset ?? (input.page - 1) * limit;
-      const conditions: any[] = [];
+      const conditions: any[] = [eq(workshops.orgId, orgId)];
       if (input.status) conditions.push(eq(workshops.status, input.status as any));
       if (input.search) conditions.push(like(workshops.title, `%${input.search}%`));
       const [rows, countRows] = await Promise.all([
-        db.select().from(workshops)
-          .where(conditions.length ? and(...conditions) : undefined)
+        db.select({ ...workshops, cmeStatus: cmeActivityForms.cmeStatus })
+          .from(workshops)
+          .leftJoin(cmeActivityForms, and(
+            eq(cmeActivityForms.courseId, workshops.id),
+            eq(cmeActivityForms.orgId, workshops.orgId),
+            eq(cmeActivityForms.productType, "workshop"),
+          ))
+          .where(and(...conditions))
           .orderBy(desc(workshops.createdAt))
           .limit(limit)
           .offset(offset),
         db.select({ count: sql<number>`count(*)` }).from(workshops)
-          .where(conditions.length ? and(...conditions) : undefined),
+          .where(and(...conditions)),
       ]);
       // Fetch instances for each workshop
       const workshopsWithInstances = await Promise.all(
