@@ -93,6 +93,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(toolbarSource).toContain("folderId: targetFolderId ? Number(targetFolderId) : undefined");
   });
 
+  it("includes the existing AI content block in the email-safe editor catalog", () => {
+    const editorSource = readFileSync(new URL("../client/src/components/EmailBlockEditor.tsx", import.meta.url), "utf8");
+    expect(editorSource).toContain('"ai_content",');
+    expect(editorSource).toContain("EMAIL_SAFE_TYPES.includes(b.type)");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

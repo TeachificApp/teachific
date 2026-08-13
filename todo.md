@@ -5141,7 +5141,7 @@
 - [x] Update CoursePlayer drip-out to client-side expiry calculation
 - [ ] Upgrade EmailBlockEditor AI block panel (Wand2 per-block, tone, image gen)
 - [ ] Fix questionBankExport archiver CJS import
-- [ ] Add ai_content to EMAIL_SAFE_TYPES in EmailBlockEditor
+- [x] Add ai_content to EMAIL_SAFE_TYPES in EmailBlockEditor
 
 ## AI Email Generator - Course/Product Promo (Aug 10, 2026)
 

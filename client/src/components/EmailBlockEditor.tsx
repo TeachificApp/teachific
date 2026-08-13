@@ -107,6 +107,7 @@ const EMAIL_SAFE_TYPES: BlockType[] = [
   "spacer",
   "divider",
   "text",
+  "ai_content",
   "image",
   "ai_image",
   "video",       // renders as thumbnail + Watch Video link (email-safe)
