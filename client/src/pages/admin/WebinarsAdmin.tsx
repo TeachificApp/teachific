@@ -74,6 +74,21 @@ function WebinarsList({ onEdit }: { onEdit: (id: number) => void }) {
   });
 
   const webinars = data?.webinars ?? [];
+
+  const cmeStatusClass = (status?: string | null) => ({
+    draft: "bg-gray-100 text-gray-600 border-gray-200",
+    pending_approval: "bg-amber-100 text-amber-700 border-amber-200",
+    approved: "bg-green-100 text-green-700 border-green-200",
+    expiring_soon: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    expired: "bg-red-100 text-red-700 border-red-200",
+  }[status ?? "draft"] ?? "bg-gray-100 text-gray-600 border-gray-200");
+  const cmeStatusLabel = (status?: string | null) => ({
+    draft: "CME: Draft",
+    pending_approval: "CME: Pending",
+    approved: "CME: Approved",
+    expiring_soon: "CME: Expiring",
+    expired: "CME: Expired",
+  }[status ?? "draft"] ?? "CME");
   const total = data?.total ?? 0;
 
   return (
@@ -159,6 +174,11 @@ function WebinarsList({ onEdit }: { onEdit: (id: number) => void }) {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor(w.status)}`}>
                       {w.status}
                     </span>
+                    {w.cmeStatus && (
+                      <Badge variant="outline" className={`ml-1.5 text-[10px] px-1.5 py-0 ${cmeStatusClass(w.cmeStatus)}`}>
+                        {cmeStatusLabel(w.cmeStatus)}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-1 justify-end" onClick={e => e.stopPropagation()}>
