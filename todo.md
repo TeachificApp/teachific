@@ -5071,7 +5071,7 @@
 - [x] Backend: block hosted-checkout enrollment when enrollmentClosed is set for supported product types
 - [x] Admin: add an Enrollment Closed setting to the digital product editor
 - [x] Admin: add an Enrollment Closed setting to the bundle editor
-- [ ] Admin: add an Enrollment Closed setting to the membership editor
+- [x] Admin: add an Enrollment Closed setting to the membership editor
 - [x] Student-facing: show "Enrollment Closed" CTA and block hosted checkout when enrollmentClosed is set
 
 ### Quiz Creator Consolidation

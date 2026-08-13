@@ -126,6 +126,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(editorSource).toContain("enrollmentClosed,");
   });
 
+  it("lets membership admins save an enrollment-closed setting", () => {
+    const editorSource = readFileSync(new URL("../client/src/pages/products/MembershipEditorPage.tsx", import.meta.url), "utf8");
+    expect(editorSource).toContain("membership-enrollment-closed");
+    expect(editorSource).toContain("Prevent new membership purchases while preserving access for current members.");
+    expect(editorSource).toContain("enrollmentClosed: currentMembership.enrollmentClosed ?? false");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

@@ -123,6 +123,7 @@ export default function MembershipEditorPage() {
     billingInterval: "monthly" as "monthly" | "yearly" | "one_time",
     trialDays: 0,
     isActive: true,
+    enrollmentClosed: false,
   });
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export default function MembershipEditorPage() {
         billingInterval: (currentMembership.billingInterval as "monthly" | "yearly" | "one_time") ?? "monthly",
         trialDays: currentMembership.trialDays ?? 0,
         isActive: currentMembership.isActive ?? true,
+        enrollmentClosed: currentMembership.enrollmentClosed ?? false,
       });
     }
   }, [currentMembership]);
@@ -312,6 +314,15 @@ export default function MembershipEditorPage() {
       <div className="flex-1 overflow-auto p-6">
         {activeTab === "details" && (
           <div className="max-w-3xl mx-auto space-y-6">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor="membership-enrollment-closed" className="font-medium text-amber-900">Enrollment Closed</Label>
+                  <p className="mt-1 text-sm text-amber-800">Prevent new membership purchases while preserving access for current members.</p>
+                </div>
+                <Switch id="membership-enrollment-closed" checked={form.enrollmentClosed} onCheckedChange={(value) => setForm((current) => ({ ...current, enrollmentClosed: value }))} />
+              </div>
+            </div>
             <div className="space-y-4">
               <h3 className="font-semibold">Membership Details</h3>
               <div className="space-y-1.5">
