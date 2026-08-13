@@ -5140,7 +5140,7 @@
 - [x] Add quiz question groups UI in QuizBuilderPage (per-category draw config)
 - [x] Update CoursePlayer drip-out to client-side expiry calculation
 - [ ] Upgrade EmailBlockEditor AI block panel (Wand2 per-block, tone, image gen)
-- [ ] Fix questionBankExport archiver CJS import
+- [x] Verify SCORM package generation uses the compatible Archiver default import
 - [x] Add ai_content to EMAIL_SAFE_TYPES in EmailBlockEditor
 
 ## AI Email Generator - Course/Product Promo (Aug 10, 2026)
