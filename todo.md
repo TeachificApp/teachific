@@ -5087,7 +5087,8 @@
 ### Question Bank Improvements
 - [ ] Fix folder creation UI in Question Bank admin (folder name input + create button)
 - [ ] Add folder+tags selector to AI Generate panel in Question Bank
-- [ ] Add SCORM/ZIP/.quiz import to Question Bank with auto-folder creation
+- [x] Add organization-owned media selection and immutable import-source handling to the active Question Bank import workflow
+- [ ] Extend active Question Bank import parsing to extract SCORM/ZIP/.quiz package questions and optionally create a Question Bank
 - [ ] Add Extract to Question Bank button to Media Repository file rows for SCORM/ZIP/.quiz files
 
 ### Google Drive Per-Org CME Integration

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { MediaLibraryPicker } from "@/components/MediaLibraryPicker";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -369,6 +370,7 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
   const [source, setSource] = useState<"csv" | "scorm">("csv");
   const [fileUrl, setFileUrl] = useState("");
   const [filename, setFilename] = useState("");
+  const [orgMediaId, setOrgMediaId] = useState<number | null>(null);
   const [jobId, setJobId] = useState<number | null>(null);
   const [preview, setPreview] = useState<any[]>([]);
   const [previewCount, setPreviewCount] = useState(0);
@@ -381,9 +383,9 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
 
   const handleParse = async () => {
     if (!fileUrl) return;
-    const job = await createJob.mutateAsync({ orgId, bankId, source, filename, fileUrl });
+    const job = await createJob.mutateAsync({ orgId, bankId, source, filename, fileUrl: orgMediaId ? undefined : fileUrl, orgMediaId: orgMediaId ?? undefined });
     setJobId(job.id);
-    const result = await parseJob.mutateAsync({ jobId: job.id, fileUrl, source });
+    const result = await parseJob.mutateAsync({ jobId: job.id });
     setPreview(result.questions);
     setPreviewCount(result.count);
     setStep("preview");
@@ -432,13 +434,24 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
 
           <div>
             <Label>File URL</Label>
-            <Input value={fileUrl} onChange={e => setFileUrl(e.target.value)} placeholder="https://..." />
+            <Input value={fileUrl} onChange={e => { setFileUrl(e.target.value); setOrgMediaId(null); }} placeholder="https://..." />
             <p className="text-xs text-muted-foreground mt-1">
               {source === "csv"
                 ? "CSV columns: question_text, question_type, choice_1, choice_1_correct, choice_2, ..., explanation, difficulty, points, tags"
-                : "Upload your SCORM .zip file to S3 first and paste the URL here"}
+                : "Choose an organization media file or paste a URL for a supported SCORM, ZIP, or .quiz source."}
             </p>
           </div>
+
+          <MediaLibraryPicker
+            orgId={orgId}
+            accept="all"
+            onSelect={(item) => {
+              setOrgMediaId(item.id);
+              setFileUrl(item.url);
+              setFilename(item.filename);
+            }}
+            trigger={<Button type="button" variant="outline" className="w-full">Choose from organization media</Button>}
+          />
 
           <div>
             <Label>Filename (optional)</Label>
@@ -447,7 +460,7 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
 
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleParse} disabled={!fileUrl || parseJob.isPending}>
+            <Button onClick={handleParse} disabled={(!fileUrl && !orgMediaId) || parseJob.isPending}>
               {parseJob.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : null}
               Parse File
             </Button>

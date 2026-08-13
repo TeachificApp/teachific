@@ -43,6 +43,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
   });
 
+  it("locks active Question Bank imports to their saved organization-owned media source", () => {
+    const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    const pageSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("orgMediaId: z.number().int().positive().optional()");
+    expect(routerSource).toContain("The selected media file belongs to another organisation.");
+    expect(routerSource).toContain("const [job] = await (await db()).select({ source: quizImportJobs.source, fileUrl: quizImportJobs.fileUrl })");
+    expect(routerSource).toContain("fetch(job.fileUrl)");
+    expect(pageSource).toContain('import { MediaLibraryPicker } from "@/components/MediaLibraryPicker"');
+    expect(pageSource).toContain("Choose from organization media");
+    expect(pageSource).toContain("orgMediaId: orgMediaId ?? undefined");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

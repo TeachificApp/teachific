@@ -21,6 +21,7 @@ import {
   quizQuestionTags,
   quizAnswerChoices,
   quizImportJobs,
+  orgMediaLibrary,
 } from "../../drizzle/schema";
 import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
@@ -350,18 +351,37 @@ export const quizBankRouter = router({
       bankId: z.number().optional(),
       source: z.enum(["scorm","csv","xls"]),
       filename: z.string(),
-      fileUrl: z.string(),
+      fileUrl: z.string().url().optional(),
+      orgMediaId: z.number().int().positive().optional(),
+    }).refine((input) => !!input.fileUrl || !!input.orgMediaId, {
+      message: "Choose an organization media file or provide a file URL.",
     }))
     .mutation(async ({ input, ctx }) => {
       await requireOwnedOrg(ctx, input.orgId);
       if (input.bankId) await requireBankAccess(ctx, input.bankId);
+      let fileUrl = input.fileUrl;
+      let filename = input.filename;
+      if (input.orgMediaId) {
+        const [media] = await (await db()).select({
+          id: orgMediaLibrary.id,
+          orgId: orgMediaLibrary.orgId,
+          filename: orgMediaLibrary.filename,
+          url: orgMediaLibrary.url,
+        }).from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.orgMediaId)).limit(1);
+        if (!media || media.orgId !== input.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The selected media file belongs to another organisation." });
+        }
+        fileUrl = media.url;
+        filename = media.filename;
+      }
+      if (!fileUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "A file source is required." });
       const [result] = await (await db()).insert(quizImportJobs).values({
         orgId: input.orgId,
         bankId: input.bankId,
         importedById: ctx.user.id,
         source: input.source,
-        filename: input.filename,
-        fileUrl: input.fileUrl,
+        filename,
+        fileUrl,
         status: "pending",
       });
       return { id: result.insertId };
@@ -389,25 +409,26 @@ export const quizBankRouter = router({
   parseImportFile: protectedProcedure
     .input(z.object({
       jobId: z.number(),
-      fileUrl: z.string(),
-      source: z.enum(["scorm","csv","xls"]),
     }))
     .mutation(async ({ input, ctx }) => {
       await requireImportJobAccess(ctx, input.jobId);
+      const [job] = await (await db()).select({ source: quizImportJobs.source, fileUrl: quizImportJobs.fileUrl })
+        .from(quizImportJobs).where(eq(quizImportJobs.id, input.jobId)).limit(1);
+      if (!job?.fileUrl) throw new TRPCError({ code: "NOT_FOUND", message: "Import source not found." });
       // Mark as parsing
       await (await db()).update(quizImportJobs).set({ status: "parsing" }).where(eq(quizImportJobs.id, input.jobId));
 
       try {
         let parsedQuestions: any[] = [];
 
-        if (input.source === "csv") {
+        if (job.source === "csv") {
           // Parse CSV
-          const response = await fetch(input.fileUrl);
+          const response = await fetch(job.fileUrl);
           const text = await response.text();
           parsedQuestions = parseCSVQuestions(text);
-        } else if (input.source === "scorm") {
+        } else if (job.source === "scorm") {
           // Parse SCORM QTI XML
-          const response = await fetch(input.fileUrl);
+          const response = await fetch(job.fileUrl);
           const text = await response.text();
           parsedQuestions = parseSCORMQuestions(text);
         }
