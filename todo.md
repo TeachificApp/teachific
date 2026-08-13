@@ -5075,7 +5075,7 @@
 - [x] Student-facing: show "Enrollment Closed" CTA and block hosted checkout when enrollmentClosed is set
 
 ### Quiz Creator Consolidation
-- [ ] Add LMS quiz products tab to Quiz Creator (show all org quizzes in one place)
+- [x] Add an active-organization Course Lesson Quizzes tab to the Quiz Creator browser
 - [ ] Add cross-quiz results view filtered by type and user
 - [ ] Add per-category question draw config to Quiz Creator
 - [ ] Wire lesson quiz result submission to also write to standaloneQuizAttempts table

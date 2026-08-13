@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { X, Cloud, Trash2, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { useQuizStore } from "../store/quizStore";
 
 interface Props {
@@ -8,7 +10,12 @@ interface Props {
 }
 
 export function CloudQuizBrowser({ onClose }: Props) {
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const orgId = (user as any)?.orgId ?? 0;
+  const [activeTab, setActiveTab] = useState<"creator" | "lesson">("creator");
   const { data: quizzes, isLoading } = trpc.quizMaker.listQuizzes.useQuery();
+  const { data: lessonQuizzes, isLoading: lessonQuizzesLoading } = trpc.lms.quiz.listOrgQuizzes.useQuery({ orgId }, { enabled: !!orgId });
   const deleteQuizMutation = trpc.quizMaker.deleteQuiz.useMutation();
   const utils = trpc.useUtils();
   const { loadQuiz } = useQuizStore();
@@ -83,9 +90,14 @@ export function CloudQuizBrowser({ onClose }: Props) {
           </button>
         </div>
 
+        <div className="flex gap-1 border-b border-gray-100 px-4 pt-3">
+          <button onClick={() => setActiveTab("creator")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "creator" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Quiz Creator</button>
+          <button onClick={() => setActiveTab("lesson")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "lesson" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Course Lesson Quizzes</button>
+        </div>
+
         {/* Body */}
         <div className="p-4 max-h-96 overflow-y-auto">
-          {isLoading ? (
+          {activeTab === "creator" && (isLoading ? (
             <div className="text-center py-12 text-gray-400">Loading...</div>
           ) : !quizzes || quizzes.length === 0 ? (
             <div className="text-center py-12">
@@ -126,7 +138,34 @@ export function CloudQuizBrowser({ onClose }: Props) {
                 </button>
               ))}
             </div>
-          )}
+          ))}
+          {activeTab === "lesson" && (lessonQuizzesLoading ? (
+            <div className="text-center py-12 text-gray-400">Loading course quizzes...</div>
+          ) : !lessonQuizzes || lessonQuizzes.length === 0 ? (
+            <div className="text-center py-12">
+              <Cloud className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">No lesson quizzes in this organization yet</p>
+              <p className="text-gray-400 text-xs mt-1">Create a quiz lesson within a course to manage it here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {lessonQuizzes.map((quiz: any) => (
+                <button
+                  key={quiz.id}
+                  onClick={() => { onClose(); navigate(`/lms/courses/${quiz.courseId}/curriculum`); }}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all text-left"
+                >
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#e0f7f9" }}>
+                    <span className="text-sm font-bold" style={{ color: "#189aa1" }}>L</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">{quiz.title}</h3>
+                    <p className="mt-0.5 text-xs text-gray-400 truncate">{quiz.courseTitle} · Passing score {quiz.passingScore}%</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </div>

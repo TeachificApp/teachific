@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken } from "../db";
+import { getDb, getOrCreateAccessToken, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -147,6 +147,28 @@ async function requireLegacyQuizGroupMappingOwnership(ctx: any, mappingId: numbe
 
 export const lmsQuizLandingRouter = router({
   // ── Quizzes ──
+  listOrgQuizzes: protectedProcedure
+    .input(z.object({ orgId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return db.select({
+        id: lmsQuizzes.id,
+        title: lmsQuizzes.title,
+        courseId: lmsCourses.id,
+        courseTitle: lmsCourses.title,
+        lessonId: lmsQuizzes.lessonId,
+        passingScore: lmsQuizzes.passingScore,
+        updatedAt: lmsQuizzes.updatedAt,
+      })
+        .from(lmsQuizzes)
+        .leftJoin(lmsLessons, eq(lmsQuizzes.lessonId, lmsLessons.id))
+        .innerJoin(lmsCourses, or(eq(lmsQuizzes.courseId, lmsCourses.id), eq(lmsLessons.courseId, lmsCourses.id)))
+        .where(eq(lmsCourses.orgId, input.orgId))
+        .orderBy(desc(lmsQuizzes.updatedAt));
+    }),
+
   getQuiz: protectedProcedure
     .input(z.object({ lessonId: z.number() }))
     .query(async ({ ctx, input }) => {

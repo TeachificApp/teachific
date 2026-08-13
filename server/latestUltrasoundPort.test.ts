@@ -153,6 +153,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pageSource).toContain("folderId: aiFolderId");
   });
 
+  it("lists only active-organization lesson quizzes in the Quiz Creator browser", () => {
+    const routerSource = readFileSync(new URL("./routers/lmsQuizLandingRouter.ts", import.meta.url), "utf8");
+    const browserSource = readFileSync(new URL("../client/src/quiz-creator/components/CloudQuizBrowser.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("listOrgQuizzes: protectedProcedure");
+    expect(routerSource).toContain("requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId)");
+    expect(routerSource).toContain("where(eq(lmsCourses.orgId, input.orgId))");
+    expect(browserSource).toContain("Course Lesson Quizzes");
+    expect(browserSource).toContain("trpc.lms.quiz.listOrgQuizzes.useQuery");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');
