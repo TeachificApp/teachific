@@ -204,6 +204,13 @@ async function requireOrgId(userId: number): Promise<number> {
   return orgId;
 }
 
+async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
+  const webinar = await getWebinarById(webinarId);
+  if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, webinar.orgId);
+  return webinar;
+}
+
 async function getTeachificOrgId(): Promise<number | null> {
   const teachOrg = await getOrgBySlug("teach");
   return teachOrg?.id ?? null;
@@ -767,10 +774,8 @@ export const lmsRouter = router({
       }),
     get: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
-      .query(async ({ input }) => {
-        const w = await getWebinarById(input.webinarId);
-        if (!w) throw new TRPCError({ code: "NOT_FOUND" });
-        return w;
+      .query(async ({ ctx, input }) => {
+        return requireWebinarAccess(ctx, input.webinarId);
       }),
     getBySlug: publicProcedure
       .input(z.object({ orgId: z.number(), slug: z.string() }))
@@ -786,12 +791,21 @@ export const lmsRouter = router({
       }),
     update: protectedProcedure
       .input(z.object({ webinarId: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const webinar = await requireWebinarAccess(ctx, input.webinarId);
+        const linkedCourseId = input.data.linkedCourseId;
+        if (typeof linkedCourseId === "number") {
+          const course = await getCourseById(linkedCourseId);
+          if (!course || course.orgId !== webinar.orgId) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "The linked course must belong to the webinar organization." });
+          }
+        }
         return updateWebinar(input.webinarId, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireWebinarAccess(ctx, input.webinarId);
         await deleteWebinar(input.webinarId);
         return { ok: true };
       }),

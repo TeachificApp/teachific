@@ -68,10 +68,11 @@ const POST_WEBINAR_ACTIONS = [
 ];
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
-type TabId = "details" | "video" | "schedule" | "ai_viewers" | "sales_page" | "funnel" | "checkout_page" | "cme";
+type TabId = "details" | "curriculum" | "video" | "schedule" | "ai_viewers" | "sales_page" | "funnel" | "checkout_page" | "cme";
 
 const tabs = [
   { id: "details" as const, label: "Details", icon: FileText },
+  { id: "curriculum" as const, label: "Curriculum", icon: FileText },
   { id: "video" as const, label: "Video", icon: Video },
   { id: "schedule" as const, label: "Schedule", icon: Calendar },
   { id: "ai_viewers" as const, label: "AI Viewers", icon: Bot },
@@ -96,6 +97,8 @@ export default function WebinarEditorPage() {
     { webinarId },
     { enabled: !!webinarId }
   );
+  const { data: courseOptionsData } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "course", page: 1, pageSize: 200 });
+  const courseOptions = ((courseOptionsData as any)?.courses ?? courseOptionsData ?? []) as any[];
 
   const [form, setForm] = useState({
     title: "",
@@ -128,6 +131,7 @@ export default function WebinarEditorPage() {
     purchaseTermsLink1Url: "",
     purchaseTermsLink2Label: "",
     purchaseTermsLink2Url: "",
+    linkedCourseId: "",
   });
 
   const [salesBlocks, setSalesBlocks] = useState<any[]>([]);
@@ -168,6 +172,7 @@ export default function WebinarEditorPage() {
         purchaseTermsLink1Url: (webinar as any).purchaseTermsLink1Url ?? "",
         purchaseTermsLink2Label: (webinar as any).purchaseTermsLink2Label ?? "",
         purchaseTermsLink2Url: (webinar as any).purchaseTermsLink2Url ?? "",
+        linkedCourseId: (webinar as any).linkedCourseId ? String((webinar as any).linkedCourseId) : "",
       });
       if (webinar.salesPageBlocksJson) {
         setSalesBlocks(
@@ -211,6 +216,7 @@ export default function WebinarEditorPage() {
       purchaseTermsLink1Url: form.purchaseTermsLink1Url.trim() || null,
       purchaseTermsLink2Label: form.purchaseTermsLink2Label.trim() || null,
       purchaseTermsLink2Url: form.purchaseTermsLink2Url.trim() || null,
+      linkedCourseId: form.linkedCourseId ? Number(form.linkedCourseId) : null,
     });
   };
 
@@ -532,6 +538,31 @@ export default function WebinarEditorPage() {
                   <Label className="text-xs">Link 2 URL</Label>
                   <Input value={form.purchaseTermsLink2Url} onChange={e => setForm(f => ({ ...f, purchaseTermsLink2Url: e.target.value }))} placeholder="https://example.com/privacy" className="text-sm h-8" maxLength={1024} />
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "curriculum" && (
+          <div className="max-w-3xl mx-auto space-y-5">
+            <div>
+              <h2 className="text-lg font-semibold">Webinar curriculum</h2>
+              <p className="text-sm text-muted-foreground mt-1">Link this webinar to a course in the same organization. That course uses the shared Course Builder, including standalone QuizMaker lessons.</p>
+            </div>
+            <div className="rounded-lg border p-5 space-y-4">
+              <div>
+                <Label>Linked course</Label>
+                <Select value={form.linkedCourseId || "none"} onValueChange={(value) => setForm((prev) => ({ ...prev, linkedCourseId: value === "none" ? "" : value }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Choose a course" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No linked course</SelectItem>
+                    {courseOptions.map((course) => <SelectItem key={course.id} value={String(course.id)}>{course.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={handleSave} disabled={updateMutation.isPending}><Save className="h-4 w-4 mr-2" />Save curriculum link</Button>
+                {form.linkedCourseId && <Button variant="outline" onClick={() => navigate(`/lms/courses/${form.linkedCourseId}`)}>Open Course Builder<ExternalLink className="h-4 w-4 ml-2" /></Button>}
               </div>
             </div>
           </div>

@@ -1115,6 +1115,8 @@ export const webinars = mysqlTable("webinars", {
   postWebinarUrl: text("postWebinarUrl"),
   postWebinarMessage: text("postWebinarMessage"),
   postWebinarDelaySeconds: int("postWebinarDelaySeconds").default(0),
+  // Optional same-organization LMS course that provides webinar curriculum and standalone quiz lessons.
+  linkedCourseId: int("linked_course_id"),
   // Status
   // Pricing & Stripe
   price: decimal("price", { precision: 10, scale: 2 }).default("0"),

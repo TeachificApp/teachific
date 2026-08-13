@@ -1,0 +1,1 @@
+ALTER TABLE `webinars` ADD `linked_course_id` int;

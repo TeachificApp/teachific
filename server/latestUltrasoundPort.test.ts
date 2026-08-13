@@ -68,6 +68,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionBankSource).toContain("initialJobId={directImportJobId}");
   });
 
+  it("keeps webinar curriculum links and webinar mutations within the organization", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const editorSource = readFileSync(new URL("../client/src/pages/admin/WebinarEditorPage.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('linkedCourseId: int("linked_course_id")');
+    expect(routerSource).toContain("async function requireWebinarAccess");
+    expect(routerSource).toContain("The linked course must belong to the webinar organization.");
+    expect(editorSource).toContain('label: "Curriculum"');
+    expect(editorSource).toContain("Open Course Builder");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

@@ -5120,7 +5120,8 @@
 - [x] AI email block generator: AiBlockGenerator component in EmailBlockEditor (Sparkles button, prompt textarea, apply to block)
 - [x] CME status badges on LMS Management list rows (courses, webinars, workshops, cohorts, quizzes)
 - [x] Standalone QuizMaker selection and learner playback in the shared course curriculum builder used by course and cohort curriculum
-- [ ] Confirm standalone QuizMaker selection is available from webinar and workshop curriculum handoffs
+- [x] Add same-organization webinar course curriculum handoff with Course Builder access and standalone QuizMaker support
+- [ ] Confirm workshop curriculum handoff uses the shared Course Builder for standalone QuizMaker selection
 - [ ] Question Bank: folder creation UI + AI generate with folder+tags
 - [ ] Revenue sharing: Stripe Connect + instructor/affiliate payouts per org
 
