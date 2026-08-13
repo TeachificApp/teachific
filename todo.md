@@ -5139,7 +5139,7 @@
 - [x] Add quiz question groups router procedures (CRUD + assign questions)
 - [x] Add quiz question groups UI in QuizBuilderPage (per-category draw config)
 - [x] Update CoursePlayer drip-out to client-side expiry calculation
-- [ ] Upgrade EmailBlockEditor AI block panel (Wand2 per-block, tone, image gen)
+- [x] Provide per-block EmailBlockEditor AI generation with email purpose, tone, emoji controls, and the email-safe AI image block
 - [x] Verify SCORM package generation uses the compatible Archiver default import
 - [x] Add ai_content to EMAIL_SAFE_TYPES in EmailBlockEditor
 
