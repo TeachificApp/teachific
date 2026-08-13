@@ -83,12 +83,75 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
+async function requireLessonQuizOwnership(ctx: any, lessonId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [lesson] = await db.select({ courseId: lmsLessons.courseId })
+    .from(lmsLessons)
+    .where(eq(lmsLessons.id, lessonId))
+    .limit(1);
+  if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found." });
+  await assertCourseOwnership(ctx, lesson.courseId);
+  return lesson;
+}
+
+async function requireLegacyQuizOwnership(ctx: any, quizId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [quiz] = await db.select({ id: lmsQuizzes.id, courseId: lmsQuizzes.courseId, lessonId: lmsQuizzes.lessonId })
+    .from(lmsQuizzes)
+    .where(eq(lmsQuizzes.id, quizId))
+    .limit(1);
+  if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found." });
+  const courseId = quiz.courseId ?? (quiz.lessonId ? (await requireLessonQuizOwnership(ctx, quiz.lessonId)).courseId : null);
+  if (!courseId) throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz is not associated with an organization-owned course." });
+  await assertCourseOwnership(ctx, courseId);
+  return { ...quiz, courseId };
+}
+
+async function requireLegacyQuestionOwnership(ctx: any, questionId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [question] = await db.select({ quizId: lmsQuizQuestions.quizId })
+    .from(lmsQuizQuestions)
+    .where(eq(lmsQuizQuestions.id, questionId))
+    .limit(1);
+  if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz question not found." });
+  await requireLegacyQuizOwnership(ctx, question.quizId);
+  return question;
+}
+
+async function requireLegacyQuizGroupOwnership(ctx: any, groupId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [group] = await db.select({ quizId: lmsQuizQuestionGroups.quizId })
+    .from(lmsQuizQuestionGroups)
+    .where(eq(lmsQuizQuestionGroups.id, groupId))
+    .limit(1);
+  if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Question group not found." });
+  await requireLegacyQuizOwnership(ctx, group.quizId);
+  return group;
+}
+
+async function requireLegacyQuizGroupMappingOwnership(ctx: any, mappingId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [mapping] = await db.select({ groupId: lmsQuizGroupQuestions.groupId })
+    .from(lmsQuizGroupQuestions)
+    .where(eq(lmsQuizGroupQuestions.id, mappingId))
+    .limit(1);
+  if (!mapping) throw new TRPCError({ code: "NOT_FOUND", message: "Question group mapping not found." });
+  await requireLegacyQuizGroupOwnership(ctx, mapping.groupId);
+  return mapping;
+}
+
 export const lmsQuizLandingRouter = router({
   // ── Quizzes ──
   getQuiz: protectedProcedure
     .input(z.object({ lessonId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLessonQuizOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       let [quiz] = await db.select().from(lmsQuizzes).where(eq(lmsQuizzes.lessonId, input.lessonId)).limit(1);
@@ -124,6 +187,7 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLessonQuizOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { lessonId, ...updates } = input;
@@ -150,6 +214,7 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { options, correctAnswers, ...rest } = input;
@@ -182,6 +247,7 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuestionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, options, correctAnswers, ...rest } = input;
@@ -197,6 +263,7 @@ export const lmsQuizLandingRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuestionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsQuizQuestions).where(eq(lmsQuizQuestions.id, input.id));
@@ -239,6 +306,10 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      const ownedQuiz = await requireLegacyQuizOwnership(ctx, input.quizId);
+      if (input.courseId && input.courseId !== ownedQuiz.courseId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "AI course context must belong to the quiz course." });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -248,9 +319,12 @@ export const lmsQuizLandingRouter = router({
         if (input.lessonIds && input.lessonIds.length > 0) {
           // Extract content from specific selected lessons
           const selectedLessons = await db
-            .select({ title: lmsLessons.title, content: lmsLessons.content, contentBlocks: lmsLessons.contentBlocks })
+            .select({ courseId: lmsLessons.courseId, title: lmsLessons.title, content: lmsLessons.content, contentBlocks: lmsLessons.contentBlocks })
             .from(lmsLessons)
             .where(inArray(lmsLessons.id, input.lessonIds));
+          if (selectedLessons.length !== input.lessonIds.length || selectedLessons.some((lesson) => lesson.courseId !== ownedQuiz.courseId)) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Selected lesson context must belong to the quiz course." });
+          }
           const lessonTexts = selectedLessons.map(l => {
             let text = `Lesson: ${l.title}`;
             if (l.content) text += `\nContent: ${l.content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 1500)}`;
@@ -392,6 +466,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -786,6 +861,7 @@ Make ALL content specific and compelling based on the course title, description,
     .input(z.object({ quizId: z.number(), useQuestionGroups: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsQuizzes).set({ useQuestionGroups: input.useQuestionGroups }).where(eq(lmsQuizzes.id, input.quizId));
@@ -796,6 +872,7 @@ Make ALL content specific and compelling based on the course title, description,
     .input(z.object({ quizId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const groups = await db.select().from(lmsQuizQuestionGroups)
@@ -819,6 +896,7 @@ Make ALL content specific and compelling based on the course title, description,
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const result = await db.insert(lmsQuizQuestionGroups).values({
@@ -841,6 +919,7 @@ Make ALL content specific and compelling based on the course title, description,
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizGroupOwnership(ctx, input.groupId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { groupId, ...updates } = input;
@@ -852,6 +931,7 @@ Make ALL content specific and compelling based on the course title, description,
     .input(z.object({ groupId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizGroupOwnership(ctx, input.groupId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsQuizGroupQuestions).where(eq(lmsQuizGroupQuestions.groupId, input.groupId));
@@ -863,6 +943,7 @@ Make ALL content specific and compelling based on the course title, description,
     .input(z.object({ groupId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizGroupOwnership(ctx, input.groupId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       return db.select({
@@ -885,6 +966,7 @@ Make ALL content specific and compelling based on the course title, description,
     .input(z.object({ groupId: z.number(), questionBankIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizGroupOwnership(ctx, input.groupId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (input.questionBankIds.length === 0) return { added: 0 };
@@ -908,6 +990,7 @@ Make ALL content specific and compelling based on the course title, description,
     .input(z.object({ mappingId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireLegacyQuizGroupMappingOwnership(ctx, input.mappingId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsQuizGroupQuestions).where(eq(lmsQuizGroupQuestions.id, input.mappingId));

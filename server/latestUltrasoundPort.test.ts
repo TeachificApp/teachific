@@ -101,4 +101,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("Question Bank tags must belong to the quiz organization.");
     expect(routerSource).toContain("Question overrides must belong to the quiz organization.");
   });
+
+  it("protects legacy lesson quiz authoring, groups, and AI lesson context with course ownership checks", () => {
+    const routerSource = readFileSync(new URL("./routers/lmsQuizLandingRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function requireLegacyQuizOwnership");
+    expect(routerSource).toContain("await requireLessonQuizOwnership(ctx, input.lessonId)");
+    expect(routerSource).toContain("await requireLegacyQuestionOwnership(ctx, input.id)");
+    expect(routerSource).toContain("AI course context must belong to the quiz course.");
+    expect(routerSource).toContain("Selected lesson context must belong to the quiz course.");
+    expect(routerSource).toContain("await requireLegacyQuizGroupOwnership(ctx, input.groupId)");
+  });
 });

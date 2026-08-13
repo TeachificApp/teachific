@@ -5206,3 +5206,8 @@
 - [x] Enforce organization ownership and org-admin permissions across Quiz Creator authoring, publishing, pooling, and analytics procedures
 - [x] Prevent cross-organization Question Bank pools and question overrides from being attached to a Quiz Creator quiz
 - [x] Add regression coverage for Quiz Creator org authorization
+
+## Legacy Lesson Quiz Org-Permission Hardening (Aug 13, 2026)
+- [x] Enforce course ownership before legacy lesson quiz reads, updates, question changes, group configuration, and AI generation
+- [x] Ensure lesson IDs, quiz IDs, and selected lesson context cannot cross organization boundaries
+- [x] Add regression coverage for legacy lesson quiz ownership checks
