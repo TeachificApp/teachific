@@ -48,7 +48,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const pageSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
     expect(routerSource).toContain("orgMediaId: z.number().int().positive().optional()");
     expect(routerSource).toContain("The selected media file belongs to another organisation.");
-    expect(routerSource).toContain("const [job] = await (await db()).select({ source: quizImportJobs.source, fileUrl: quizImportJobs.fileUrl })");
+    expect(routerSource).toContain("filename: quizImportJobs.filename");
     expect(routerSource).toContain("fetch(job.fileUrl)");
     expect(pageSource).toContain('import { MediaLibraryPicker } from "@/components/MediaLibraryPicker"');
     expect(pageSource).toContain("Choose from organization media");

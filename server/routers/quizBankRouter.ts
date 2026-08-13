@@ -26,6 +26,8 @@ import {
 import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { invokeLLM } from "../_core/llm";
+import { parseISpringQuizFromBuffer } from "../lib/iSpringQuizParser";
+import { rewriteStorageRefs, uploadISpringImagesFromZip } from "../lib/iSpringImageImporter";
 
 // ─── Question type enum ───────────────────────────────────────────────────────
 const QUESTION_TYPES = ["mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"] as const;
@@ -412,7 +414,7 @@ export const quizBankRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       await requireImportJobAccess(ctx, input.jobId);
-      const [job] = await (await db()).select({ source: quizImportJobs.source, fileUrl: quizImportJobs.fileUrl })
+      const [job] = await (await db()).select({ source: quizImportJobs.source, fileUrl: quizImportJobs.fileUrl, filename: quizImportJobs.filename })
         .from(quizImportJobs).where(eq(quizImportJobs.id, input.jobId)).limit(1);
       if (!job?.fileUrl) throw new TRPCError({ code: "NOT_FOUND", message: "Import source not found." });
       // Mark as parsing
@@ -427,10 +429,34 @@ export const quizBankRouter = router({
           const text = await response.text();
           parsedQuestions = parseCSVQuestions(text);
         } else if (job.source === "scorm") {
-          // Parse SCORM QTI XML
           const response = await fetch(job.fileUrl);
-          const text = await response.text();
-          parsedQuestions = parseSCORMQuestions(text);
+          if (!response.ok) throw new Error(`Could not download import file (HTTP ${response.status})`);
+          const buffer = Buffer.from(await response.arrayBuffer());
+          if ((job.filename ?? "").toLowerCase().endsWith(".quiz")) {
+            parsedQuestions = parseTeachificQuizQuestions(buffer.toString("utf8"));
+          } else {
+            const parsed = await parseISpringQuizFromBuffer(buffer);
+            const AdmZip = (await import("adm-zip")).default;
+            const imageMap = await uploadISpringImagesFromZip(new AdmZip(buffer).getEntries(), parsed.allImageRefs);
+            parsedQuestions = parsed.groups.flatMap((group) => group.questions.map((question) => {
+              const questionHtml = rewriteStorageRefs(question.questionHtml || question.questionText, imageMap);
+              const mediaUrl = question.imageRefs.map((ref) => imageMap.get(ref)).find(Boolean);
+              return {
+                questionType: question.type === "truefalse" ? "tf" : "mc",
+                questionText: question.questionText,
+                questionHtml,
+                mediaType: mediaUrl ? "image" : "none",
+                mediaUrl,
+                explanationText: rewriteStorageRefs(question.explanationText || question.explanationHtml || "", imageMap),
+                choices: question.answers.map((answer) => ({
+                  text: rewriteStorageRefs(answer.html || answer.text, imageMap),
+                  isCorrect: answer.isCorrect,
+                  mediaUrl: answer.imageRef ? imageMap.get(answer.imageRef) : undefined,
+                })),
+                importGroup: group.name,
+              };
+            }));
+          }
         }
 
         await (await db()).update(quizImportJobs).set({
@@ -642,6 +668,52 @@ export const quizBankRouter = router({
 });
 
 // ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseTeachificQuizQuestions(contents: string): any[] {
+  const lines = contents.trim().split(/\r?\n/);
+  if (lines[0] !== "TEACHIFIC_QUIZ_V1" || !lines[1]) {
+    throw new Error("Invalid .quiz file: expected a TEACHIFIC_QUIZ_V1 header");
+  }
+  let payload: any;
+  try {
+    payload = JSON.parse(Buffer.from(lines[1], "base64").toString("utf8"));
+  } catch {
+    throw new Error("Could not parse .quiz file. Encrypted files are not supported for import.");
+  }
+  if (!Array.isArray(payload?.questions)) throw new Error("Invalid .quiz file structure");
+  const typeMap: Record<string, string> = {
+    mcq: "mc",
+    image_choice: "mc",
+    tf: "tf",
+    short_answer: "short_answer",
+    matching: "matching",
+    hotspot: "hotspot",
+  };
+  return payload.questions.map((question: any) => {
+    const data = question.data ?? {};
+    let choices: Array<{ text: string; isCorrect: boolean }> = [];
+    if (question.type === "mcq" || question.type === "image_choice") {
+      choices = (data.choices ?? []).map((choice: any, index: number) => ({
+        text: choice.text || choice.label || `Option ${index + 1}`,
+        isCorrect: choice.correct === true,
+      }));
+    } else if (question.type === "tf") {
+      choices = [
+        { text: "True", isCorrect: data.correct === true },
+        { text: "False", isCorrect: data.correct === false },
+      ];
+    } else if (question.type === "short_answer") {
+      choices = data.sampleAnswer ? [{ text: data.sampleAnswer, isCorrect: true }] : [];
+    }
+    return {
+      questionType: typeMap[question.type] ?? "mc",
+      questionText: question.stem || "Imported question",
+      explanationText: question.explanation || undefined,
+      points: question.points ?? 1,
+      choices,
+    };
+  });
+}
+
 function parseCSVQuestions(csvText: string): any[] {
   const lines = csvText.split("\n").filter(l => l.trim());
   if (lines.length < 2) return [];

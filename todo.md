@@ -5088,7 +5088,7 @@
 - [ ] Fix folder creation UI in Question Bank admin (folder name input + create button)
 - [ ] Add folder+tags selector to AI Generate panel in Question Bank
 - [x] Add organization-owned media selection and immutable import-source handling to the active Question Bank import workflow
-- [ ] Extend active Question Bank import parsing to extract SCORM/ZIP/.quiz package questions and optionally create a Question Bank
+- [x] Extend active Question Bank import parsing to extract organization-owned iSpring SCORM/ZIP and Teachific .quiz package questions, preserving supported embedded media
 - [ ] Add Extract to Question Bank button to Media Repository file rows for SCORM/ZIP/.quiz files
 
 ### Google Drive Per-Org CME Integration
