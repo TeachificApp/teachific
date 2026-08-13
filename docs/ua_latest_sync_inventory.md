@@ -12,6 +12,10 @@ The most recent Ultrasound-App source session introduced a group of related lear
 | Page editor | Responsive layout improvements for mobile and tablet. | Keep each org's theme and landing-page content isolated. |
 | Imports and media | iSpring/SCORM and Excel quiz import improvements; reusable Question Bank media. | Imported questions and media must be attributed to the active org only. |
 
+## Additional Question Bank Findings
+
+The newest Ultrasound-App work confirms that Question Bank questions support per-answer media, per-answer feedback, question-level image/video, feedback image/video, folders, tags, hotspot markers, and matching pairs. Its import workflow supports SCORM/ZIP/.quiz extraction with automatic folder placement and explicit folder/tag assignment. Teachific already includes the core import/export and media fields; remaining parity work should focus on validating the editor flows and preserving org ownership on every source-backed question record.
+
 ## Branding Boundary
 
 Quiz Creator must remain branded as **Teachific**. No Ultrasound-App organization name, site URL, asset, footer, or copy may be ported into this project.
