@@ -4996,13 +4996,13 @@
 - [ ] Run SQL migration for new columns
 - [ ] Extend lmsCheckoutRouter to resolve per-content terms for download/webinar/workshop
 - [ ] Add purchaseTerms fields to downloadsRouter.update input schema
-- [ ] Add purchaseTerms fields to workshopAdminRouter.update input schema
-- [ ] Upgrade org-level agreement sentence from Input to Textarea in OrgSettingsPage
-- [ ] Upgrade course-level agreement sentence from Input to Textarea in CourseBuilderPage
-- [ ] Add HTML rendering for agreement text in HostedCheckoutPage
-- [ ] Add Checkout Terms Override card to DigitalProductEditorPage
-- [ ] Add Checkout Terms Override card to WebinarEditorPage
-- [ ] Add Checkout Terms Override card to WorkshopsAdmin
+- [x] Add purchaseTerms fields to workshop update input schema
+- [x] Upgrade org-level agreement sentence from Input to Textarea in OrgSettingsPage
+- [x] Upgrade course-level agreement sentence from Input to Textarea in CourseBuilderPage
+- [x] Add HTML rendering for agreement text in HostedCheckoutPage
+- [x] Add Checkout Terms Override card to DigitalProductEditorPage
+- [x] Add Checkout Terms Override card to WebinarEditorPage
+- [x] Add Checkout Terms Override card to WorkshopsAdmin
 
 ## Checkout Terms & Agreement (Ported from Ultrasound-App, Aug 4 2026)
 - [x] Add purchaseTerms columns to digitalProducts, webinars, workshops schema
