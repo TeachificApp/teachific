@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { MediaLibraryPicker } from "@/components/MediaLibraryPicker";
+import { useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MediaLibraryPicker } from "@/components/MediaLibraryPicker";
 import { toast } from "sonner";
 import {
   Plus, Search, Filter, Upload, Tag, Trash2, Edit2, Copy,
@@ -365,7 +365,7 @@ function QuestionEditor({
 }
 
 // ─── Import Dialog ────────────────────────────────────────────────────────────
-function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: number; onClose: () => void }) {
+function ImportDialog({ bankId, orgId, onClose, initialJobId }: { bankId: number; orgId: number; onClose: () => void; initialJobId?: number }) {
   const [step, setStep] = useState<"select" | "preview" | "importing">("select");
   const [source, setSource] = useState<"csv" | "scorm">("csv");
   const [fileUrl, setFileUrl] = useState("");
@@ -380,6 +380,19 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
   const createJob = trpc.quizBank.createImportJob.useMutation();
   const parseJob = trpc.quizBank.parseImportFile.useMutation();
   const confirmImport = trpc.quizBank.confirmImport.useMutation();
+  const { data: initialJob } = trpc.quizBank.getImportJob.useQuery(
+    { id: initialJobId! },
+    { enabled: !!initialJobId }
+  );
+
+  useEffect(() => {
+    if (!initialJob || initialJob.status !== "preview_ready" || step !== "select") return;
+    const parsed = Array.isArray(initialJob.parsedQuestions) ? initialJob.parsedQuestions : [];
+    setJobId(initialJob.id);
+    setPreview(parsed.slice(0, 5));
+    setPreviewCount(parsed.length);
+    setStep("preview");
+  }, [initialJob, step]);
 
   const handleParse = async () => {
     if (!fileUrl) return;
@@ -394,7 +407,7 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
   const handleConfirm = async () => {
     if (!jobId) return;
     setStep("importing");
-    await confirmImport.mutateAsync({ jobId, bankId });
+    await confirmImport.mutateAsync({ jobId, bankId, orgId });
     utils.quizBank.listQuestions.invalidate();
     toast.success(`Imported ${previewCount} questions`);
     onClose();
@@ -516,7 +529,11 @@ function ImportDialog({ bankId, orgId, onClose }: { bankId: number; orgId: numbe
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function QuestionBankPage() {
   const { user } = useAuth();
+  const search = useSearch();
   const orgId = (user as any)?.orgId ?? 0;
+  const queryParams = new URLSearchParams(search);
+  const directImportJobId = Number(queryParams.get("importJob")) || undefined;
+  const directImportBankId = Number(queryParams.get("bankId")) || undefined;
 
   const [selectedBankId, setSelectedBankId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -537,6 +554,12 @@ export default function QuestionBankPage() {
   const [aiDifficulty, setAiDifficulty] = useState<Difficulty>("medium");
   const [aiTagIds, setAiTagIds] = useState<number[]>([]);
   const [aiInstructions, setAiInstructions] = useState("");
+
+  useEffect(() => {
+    if (!directImportJobId || !directImportBankId) return;
+    setSelectedBankId(directImportBankId);
+    setShowImport(true);
+  }, [directImportBankId, directImportJobId]);
 
   const utils = trpc.useUtils();
 
@@ -895,7 +918,7 @@ export default function QuestionBankPage() {
       {/* Import */}
       {showImport && selectedBankId && (
         <Dialog open={showImport} onOpenChange={setShowImport}>
-          <ImportDialog bankId={selectedBankId} orgId={orgId} onClose={() => setShowImport(false)} />
+          <ImportDialog bankId={selectedBankId} orgId={orgId} initialJobId={directImportJobId} onClose={() => setShowImport(false)} />
         </Dialog>
       )}
 

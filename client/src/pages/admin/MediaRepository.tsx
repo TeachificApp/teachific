@@ -931,6 +931,7 @@ interface AssetDetailDialogProps {
 }
 
 function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: AssetDetailDialogProps) {
+  const [, navigate] = useLocation();
   const [reuploadOpen, setReuploadOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteExpiry, setInviteExpiry] = useState("30");
@@ -940,6 +941,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
   const [slugInitialized, setSlugInitialized] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [targetBankId, setTargetBankId] = useState<string>("");
 
   const { data, refetch } = trpc.mediaRepo.getAsset.useQuery(
     { id: assetId! },
@@ -959,6 +961,33 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
     }
   }, [assetId, slugInitialized]);
   const { data: foldersData } = trpc.mediaRepo.listFoldersFull.useQuery();
+  const { data: questionBanks = [] } = trpc.quizBank.listBanks.useQuery(
+    { orgId: data?.asset.orgId ?? 0 },
+    { enabled: !!data?.asset.orgId }
+  );
+  const createImportJob = trpc.quizBank.createImportJob.useMutation();
+  const parseImportJob = trpc.quizBank.parseImportFile.useMutation();
+  const [extractingToQuestionBank, setExtractingToQuestionBank] = useState(false);
+  const handleExtractToQuestionBank = async () => {
+    if (!data?.asset || !targetBankId) return;
+    setExtractingToQuestionBank(true);
+    try {
+      const job = await createImportJob.mutateAsync({
+        orgId: data.asset.orgId,
+        bankId: Number(targetBankId),
+        source: "scorm",
+        filename: data.asset.filename,
+        mediaRepositoryAssetId: data.asset.id,
+      });
+      await parseImportJob.mutateAsync({ jobId: job.id });
+      onClose();
+      navigate(`/lms/question-bank?importJob=${job.id}&bankId=${targetBankId}`);
+    } catch (error: any) {
+      toast.error(error.message ?? "Could not extract questions from this media asset");
+    } finally {
+      setExtractingToQuestionBank(false);
+    }
+  };
   const updateSlugMutation = trpc.mediaRepo.updateAsset.useMutation({
     onSuccess: () => { toast.success("Slug updated"); refetch(); onRefresh(); },
     onError: (e) => toast.error(e.message),
@@ -1236,6 +1265,23 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                   </Button>
                 </div>
               </div>
+              {(asset.mediaType === "scorm" || asset.mediaType === "zip" || asset.mediaType === "lms" || asset.filename.toLowerCase().endsWith(".quiz")) && (
+                <div className="mb-3 rounded-lg border border-teal-200 bg-teal-50 p-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <Label className="text-xs font-semibold text-teal-900">Extract to Question Bank</Label>
+                    <Select value={targetBankId} onValueChange={setTargetBankId}>
+                      <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Choose a Question Bank in this organization" /></SelectTrigger>
+                      <SelectContent>
+                        {questionBanks.map((bank: any) => <SelectItem key={bank.id} value={String(bank.id)}>{bank.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button size="sm" onClick={handleExtractToQuestionBank} disabled={!targetBankId || extractingToQuestionBank}>
+                    {extractingToQuestionBank ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
+                    Extract questions
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2">
                 {versions.map((v, i) => {
                   const isScorm = ["scorm", "zip", "lms"].includes(asset.mediaType);
@@ -2085,4 +2131,3 @@ export default function MediaRepository() {
     </div>
   );
 }
-

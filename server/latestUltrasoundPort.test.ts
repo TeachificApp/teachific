@@ -55,6 +55,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pageSource).toContain("orgMediaId: orgMediaId ?? undefined");
   });
 
+  it("routes direct Media Repository extraction into a same-organization Question Bank preview", () => {
+    const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    const repositorySource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    const questionBankSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("mediaRepositoryAssetId: z.number().int().positive().optional()");
+    expect(routerSource).toContain("The selected media repository asset belongs to another organisation.");
+    expect(repositorySource).toContain("Extract to Question Bank");
+    expect(repositorySource).toContain("mediaRepositoryAssetId: data.asset.id");
+    expect(repositorySource).toContain("/lms/question-bank?importJob=${job.id}&bankId=${targetBankId}");
+    expect(questionBankSource).toContain("const directImportJobId");
+    expect(questionBankSource).toContain("initialJobId={directImportJobId}");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

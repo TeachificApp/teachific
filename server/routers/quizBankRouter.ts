@@ -22,6 +22,7 @@ import {
   quizAnswerChoices,
   quizImportJobs,
   orgMediaLibrary,
+  mediaAssets,
 } from "../../drizzle/schema";
 import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
@@ -355,7 +356,8 @@ export const quizBankRouter = router({
       filename: z.string(),
       fileUrl: z.string().url().optional(),
       orgMediaId: z.number().int().positive().optional(),
-    }).refine((input) => !!input.fileUrl || !!input.orgMediaId, {
+      mediaRepositoryAssetId: z.number().int().positive().optional(),
+    }).refine((input) => !!input.fileUrl || !!input.orgMediaId || !!input.mediaRepositoryAssetId, {
       message: "Choose an organization media file or provide a file URL.",
     }))
     .mutation(async ({ input, ctx }) => {
@@ -375,6 +377,19 @@ export const quizBankRouter = router({
         }
         fileUrl = media.url;
         filename = media.filename;
+      }
+      if (input.mediaRepositoryAssetId) {
+        const [asset] = await (await db()).select({
+          id: mediaAssets.id,
+          orgId: mediaAssets.orgId,
+          filename: mediaAssets.filename,
+          s3Url: mediaAssets.s3Url,
+        }).from(mediaAssets).where(eq(mediaAssets.id, input.mediaRepositoryAssetId)).limit(1);
+        if (!asset || asset.orgId !== input.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The selected media repository asset belongs to another organisation." });
+        }
+        fileUrl = asset.s3Url;
+        filename = asset.filename;
       }
       if (!fileUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "A file source is required." });
       const [result] = await (await db()).insert(quizImportJobs).values({

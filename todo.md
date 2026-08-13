@@ -5089,7 +5089,7 @@
 - [ ] Add folder+tags selector to AI Generate panel in Question Bank
 - [x] Add organization-owned media selection and immutable import-source handling to the active Question Bank import workflow
 - [x] Extend active Question Bank import parsing to extract organization-owned iSpring SCORM/ZIP and Teachific .quiz package questions, preserving supported embedded media
-- [ ] Add Extract to Question Bank button to Media Repository file rows for SCORM/ZIP/.quiz files
+- [x] Add direct Media Repository extraction to a same-organization Question Bank preview for SCORM/ZIP/.quiz files
 
 ### Google Drive Per-Org CME Integration
 - [x] Port googleDriveCme.ts helper (org-scoped: each org has its own Google Drive credentials)
