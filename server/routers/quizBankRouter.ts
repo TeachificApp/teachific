@@ -16,6 +16,7 @@ async function db(): Promise<Db> {
 }
 import {
   quizBanks,
+  quizBankFolders,
   quizBankQuestions,
   quizBankTags,
   quizQuestionTags,
@@ -54,6 +55,7 @@ const answerChoiceSchema = z.object({
 const questionUpsertSchema = z.object({
   id: z.number().optional(),
   bankId: z.number(),
+  folderId: z.number().nullable().optional(),
   questionType: z.enum(QUESTION_TYPES).default("mc"),
   questionText: z.string().min(1),
   questionHtml: z.string().optional(),
@@ -93,6 +95,14 @@ async function requireBankAccess(ctx: RequestContext, bankId: number) {
   if (!bank) throw new TRPCError({ code: "NOT_FOUND", message: "Question Bank not found." });
   await requireOwnedOrg(ctx, bank.orgId);
   return bank;
+}
+
+async function requireFolderAccess(ctx: RequestContext, folderId: number) {
+  const [folder] = await (await db()).select({ orgId: quizBankFolders.orgId, bankId: quizBankFolders.bankId })
+    .from(quizBankFolders).where(eq(quizBankFolders.id, folderId)).limit(1);
+  if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Question Bank folder not found." });
+  await requireOwnedOrg(ctx, folder.orgId);
+  return folder;
 }
 
 async function requireQuestionAccess(ctx: RequestContext, questionId: number) {
@@ -161,6 +171,44 @@ export const quizBankRouter = router({
         await (await db()).delete(quizBankQuestions).where(eq(quizBankQuestions.bankId, input.id));
       }
       await (await db()).delete(quizBanks).where(eq(quizBanks.id, input.id));
+    }),
+
+  // ─── Folders ──────────────────────────────────────────────────────────────
+  listFolders: protectedProcedure
+    .input(z.object({ bankId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      await requireBankAccess(ctx, input.bankId);
+      return (await db()).select().from(quizBankFolders)
+        .where(eq(quizBankFolders.bankId, input.bankId))
+        .orderBy(asc(quizBankFolders.sortOrder), asc(quizBankFolders.name));
+    }),
+
+  createFolder: protectedProcedure
+    .input(z.object({ bankId: z.number(), name: z.string().min(1).max(255), color: z.string().max(32).optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const bank = await requireBankAccess(ctx, input.bankId);
+      const [result] = await (await db()).insert(quizBankFolders).values({
+        orgId: bank.orgId,
+        bankId: input.bankId,
+        name: input.name.trim(),
+        color: input.color ?? "#24abbc",
+      });
+      return { id: result.insertId };
+    }),
+
+  updateFolder: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1).max(255), color: z.string().max(32).optional() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireFolderAccess(ctx, input.id);
+      await (await db()).update(quizBankFolders).set({ name: input.name.trim(), color: input.color }).where(eq(quizBankFolders.id, input.id));
+    }),
+
+  deleteFolder: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      await requireFolderAccess(ctx, input.id);
+      await (await db()).update(quizBankQuestions).set({ folderId: null }).where(eq(quizBankQuestions.folderId, input.id));
+      await (await db()).delete(quizBankFolders).where(eq(quizBankFolders.id, input.id));
     }),
 
   // ─── Tags ─────────────────────────────────────────────────────────────────
@@ -270,6 +318,13 @@ export const quizBankRouter = router({
     .input(questionUpsertSchema)
     .mutation(async ({ input, ctx }) => {
       const { id, tagIds, choices, ...questionData } = input;
+      const bank = await requireBankAccess(ctx, questionData.bankId);
+      if (questionData.folderId) {
+        const folder = await requireFolderAccess(ctx, questionData.folderId);
+        if (folder.orgId !== bank.orgId || folder.bankId !== questionData.bankId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The selected folder belongs to another Question Bank." });
+        }
+      }
       const normalizedQuestionData = {
         ...questionData,
         numericMin: toDecimalString(questionData.numericMin),
@@ -279,7 +334,6 @@ export const quizBankRouter = router({
       let questionId: number;
       if (id) {
         await requireQuestionAccess(ctx, id);
-        await requireBankAccess(ctx, questionData.bankId);
         await (await db()).update(quizBankQuestions).set({
           ...normalizedQuestionData,
           hotspotZones: questionData.hotspotZones ?? null,
@@ -287,7 +341,6 @@ export const quizBankRouter = router({
         }).where(eq(quizBankQuestions.id, id));
         questionId = id;
       } else {
-        const bank = await requireBankAccess(ctx, questionData.bankId);
         const [result] = await (await db()).insert(quizBankQuestions).values({
           ...normalizedQuestionData,
           orgId: bank.orgId,

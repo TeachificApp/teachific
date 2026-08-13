@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb, requireOrgAdmin } from "./db";
 import { TRPCError } from "@trpc/server";
-import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts, quizBanks, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
+import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
 import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 
 type QuizMakerContext = { user: { id: number; role: string } };
@@ -910,6 +910,7 @@ export const quizMakerRouter = router({
     .input(z.object({
       quizId: z.number(),
       targetBankId: z.number(),
+      folderId: z.number().nullable().optional(),
       questionIds: z.array(z.string()).optional(),
       tagIds: z.array(z.number()).default([]),
     }))
@@ -922,6 +923,14 @@ export const quizMakerRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "The selected Question Bank belongs to another organisation." });
       }
       await requireOrgAdmin(ctx.user.id, ctx.user.role, bank.orgId);
+
+      if (input.folderId) {
+        const [folder] = await db.select({ orgId: quizBankFolders.orgId, bankId: quizBankFolders.bankId })
+          .from(quizBankFolders).where(eq(quizBankFolders.id, input.folderId)).limit(1);
+        if (!folder || folder.orgId !== quiz.orgId || folder.bankId !== bank.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The selected Question Bank folder belongs to another organisation or bank." });
+        }
+      }
 
       if (input.tagIds.length > 0) {
         const tags = await db.select({ id: quizBankTags.id, orgId: quizBankTags.orgId })
@@ -955,6 +964,7 @@ export const quizMakerRouter = router({
         const [insertedQuestion] = await db.insert(quizBankQuestions).values({
           orgId: quiz.orgId,
           bankId: bank.id,
+          folderId: input.folderId ?? null,
           questionType: mapQuestionBankType(question),
           questionText: question.stem?.trim() || "Untitled question",
           questionHtml: question.stemHtml || undefined,

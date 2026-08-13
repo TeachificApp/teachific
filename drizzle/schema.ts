@@ -4020,11 +4020,27 @@ export const quizBanks = mysqlTable("quiz_banks", {
 });
 export type QuizBank = typeof quizBanks.$inferSelect;
 
+// ─── Question Bank Folders ────────────────────────────────────────────────────
+export const quizBankFolders = mysqlTable("quiz_bank_folders", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  bankId: int("bank_id").notNull(),
+  parentId: int("parent_id"),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  color: varchar("color", { length: 32 }).default("#24abbc"),
+  sortOrder: int("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+export type QuizBankFolder = typeof quizBankFolders.$inferSelect;
+
 // ─── Question Bank Questions ──────────────────────────────────────────────────
 export const quizBankQuestions = mysqlTable("quiz_bank_questions", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("org_id").notNull(),
   bankId: int("bank_id").notNull(),
+  folderId: int("folder_id"),
   questionType: mysqlEnum("question_type", [
     "mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"
   ]).notNull().default("mc"),

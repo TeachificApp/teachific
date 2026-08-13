@@ -5205,7 +5205,7 @@
 - [x] Add an org-admin-gated action to copy selected Quiz Creator questions into an org-owned Question Bank
 - [x] Add a Quiz Creator dialog for selecting an eligible bank and questions to export
 - [x] Extend the Quiz Creator Question Bank export dialog with optional Question Bank tag selectors
-- [ ] Add a Question Bank folder selector when folder organization is enabled for the active organization
+- [x] Add organization-scoped Question Bank folders and an optional folder selector for QuizMaker exports
 - [x] Preserve supported question type, answers, media, and authored answer-order settings during export
 - [x] Add regression coverage for cross-org Question Bank export rejection
 - [x] Add regression coverage for exported question payload preservation

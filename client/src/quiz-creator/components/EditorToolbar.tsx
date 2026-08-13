@@ -29,6 +29,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [questionBankDialogOpen, setQuestionBankDialogOpen] = useState(false);
   const [targetBankId, setTargetBankId] = useState("");
+  const [targetFolderId, setTargetFolderId] = useState("");
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const { user } = useAuth();
@@ -41,6 +42,10 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   const { data: questionBankTags = [] } = trpc.quizBank.listTags.useQuery(
     { orgId: Number(orgId) },
     { enabled: questionBankDialogOpen && Boolean(orgId) }
+  );
+  const { data: questionBankFolders = [] } = trpc.quizBank.listFolders.useQuery(
+    { bankId: Number(targetBankId) },
+    { enabled: questionBankDialogOpen && Boolean(targetBankId) }
   );
   const exportToQuestionBank = trpc.quizMaker.exportToQuestionBank.useMutation();
   const utils = trpc.useUtils();
@@ -113,6 +118,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
     setSelectedQuestionIds(quiz.questions.map((question) => question.id));
     setSelectedTagIds([]);
     setTargetBankId("");
+    setTargetFolderId("");
     setFileMenuOpen(false);
     setQuestionBankDialogOpen(true);
   };
@@ -124,6 +130,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
       const result = await exportToQuestionBank.mutateAsync({
         quizId,
         targetBankId: Number(targetBankId),
+        folderId: targetFolderId ? Number(targetFolderId) : undefined,
         questionIds: selectedQuestionIds,
         tagIds: selectedTagIds,
       });
@@ -313,13 +320,22 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
               Target Question Bank
               <select
                 value={targetBankId}
-                onChange={(event) => setTargetBankId(event.target.value)}
+                onChange={(event) => { setTargetBankId(event.target.value); setTargetFolderId(""); }}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               >
                 <option value="">Select a Question Bank</option>
                 {questionBanks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
               </select>
             </label>
+            {targetBankId && questionBankFolders.length > 0 && (
+              <label className="grid gap-1.5 text-sm font-medium">
+                Question Bank folder <span className="font-normal text-muted-foreground">(optional)</span>
+                <select value={targetFolderId} onChange={(event) => setTargetFolderId(event.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">No folder</option>
+                  {questionBankFolders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                </select>
+              </label>
+            )}
             <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
               {quiz.questions.map((question, index) => {
                 const checked = selectedQuestionIds.includes(question.id);

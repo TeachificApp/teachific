@@ -79,6 +79,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(editorSource).toContain("Open Course Builder");
   });
 
+  it("scopes Question Bank folders to their bank and allows QuizMaker exports into an eligible folder", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const bankRouterSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    const quizMakerSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const toolbarSource = readFileSync(new URL("../client/src/quiz-creator/components/EditorToolbar.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('export const quizBankFolders = mysqlTable("quiz_bank_folders"');
+    expect(schemaSource).toContain('folderId: int("folder_id")');
+    expect(bankRouterSource).toContain("listFolders: protectedProcedure");
+    expect(bankRouterSource).toContain("The selected folder belongs to another Question Bank.");
+    expect(quizMakerSource).toContain("The selected Question Bank folder belongs to another organisation or bank.");
+    expect(toolbarSource).toContain("Question Bank folder");
+    expect(toolbarSource).toContain("folderId: targetFolderId ? Number(targetFolderId) : undefined");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');
