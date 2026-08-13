@@ -57,8 +57,8 @@ function blankQuestion(type: QuestionType) {
     difficulty: "medium" as Difficulty,
     tags: [] as number[],
     choices: type === "tf"
-      ? [{ choiceText: "True", isCorrect: true, sortOrder: 0 }, { choiceText: "False", isCorrect: false, sortOrder: 1 }]
-      : [{ choiceText: "", isCorrect: true, sortOrder: 0 }, { choiceText: "", isCorrect: false, sortOrder: 1 }],
+      ? [{ choiceText: "True", isCorrect: true, sortOrder: 0, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }, { choiceText: "False", isCorrect: false, sortOrder: 1, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }]
+      : [{ choiceText: "", isCorrect: true, sortOrder: 0, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }, { choiceText: "", isCorrect: false, sortOrder: 1, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }],
     hotspotImageUrl: "",
     hotspotZones: [] as any[],
     puzzleItems: [] as any[],
@@ -87,7 +87,7 @@ function QuestionEditor({
   };
 
   const addChoice = () => {
-    setQ({ ...q, choices: [...q.choices, { choiceText: "", isCorrect: false, sortOrder: q.choices.length }] });
+    setQ({ ...q, choices: [...q.choices, { choiceText: "", isCorrect: false, sortOrder: q.choices.length, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }] });
   };
 
   const removeChoice = (idx: number) => {
@@ -161,32 +161,46 @@ function QuestionEditor({
           <Label>Answer Choices</Label>
           <div className="space-y-2 mt-1">
             {q.choices.map((choice, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setCorrect(idx, q.questionType !== "ms")}
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${choice.isCorrect ? "bg-green-500 border-green-500" : "border-gray-300 hover:border-green-400"}`}
-                >
-                  {choice.isCorrect && <Check className="w-3 h-3 text-white" />}
-                </button>
-                <Input
-                  value={choice.choiceText}
-                  onChange={e => updateChoice(idx, "choiceText", e.target.value)}
-                  placeholder={`Choice ${idx + 1}`}
-                  className="flex-1"
-                  disabled={q.questionType === "tf"}
-                />
-                <Input
-                  value={choice.choiceMediaUrl ?? ""}
-                  onChange={e => updateChoice(idx, "choiceMediaUrl", e.target.value)}
-                  placeholder="Media URL (optional)"
-                  className="flex-1"
-                />
-                {q.questionType !== "tf" && (
-                  <Button variant="ghost" size="icon" onClick={() => removeChoice(idx)}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
+              <div key={idx} className="rounded-lg border border-border bg-muted/20 p-2.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCorrect(idx, q.questionType !== "ms")}
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${choice.isCorrect ? "bg-green-500 border-green-500" : "border-gray-300 hover:border-green-400"}`}
+                    aria-label={`Mark choice ${idx + 1} as correct`}
+                  >
+                    {choice.isCorrect && <Check className="w-3 h-3 text-white" />}
+                  </button>
+                  <Input
+                    value={choice.choiceText}
+                    onChange={e => updateChoice(idx, "choiceText", e.target.value)}
+                    placeholder={`Choice ${idx + 1}`}
+                    className="flex-1"
+                    disabled={q.questionType === "tf"}
+                  />
+                  {q.questionType !== "tf" && (
+                    <Button variant="ghost" size="icon" onClick={() => removeChoice(idx)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid gap-2 pl-7 md:grid-cols-3">
+                  <Input
+                    value={choice.mediaUrl ?? ""}
+                    onChange={e => updateChoice(idx, "mediaUrl", e.target.value)}
+                    placeholder="Choice media URL (optional)"
+                  />
+                  <Input
+                    value={choice.feedbackText ?? ""}
+                    onChange={e => updateChoice(idx, "feedbackText", e.target.value)}
+                    placeholder="Feedback for this answer (optional)"
+                  />
+                  <Input
+                    value={choice.feedbackMediaUrl ?? ""}
+                    onChange={e => updateChoice(idx, "feedbackMediaUrl", e.target.value)}
+                    placeholder="Feedback media URL (optional)"
+                  />
+                </div>
               </div>
             ))}
             {q.questionType !== "tf" && (

@@ -5168,3 +5168,8 @@
 - [x] Render a selected org-scoped standalone quiz inside quiz and exam lessons rather than falling back to embedded lesson JSON
 - [x] Preserve lesson completion handling after a linked standalone quiz is submitted
 - [x] Add regression coverage for standalone quiz lesson rendering
+
+## Question Bank Answer Feedback Editor Parity (Aug 13, 2026)
+- [x] Expose existing per-answer feedback and feedback-media fields in the active org-scoped Question Bank editor
+- [x] Preserve answer feedback through Question Bank create and update workflows
+- [x] Add regression coverage for answer-level feedback editing
