@@ -28,6 +28,7 @@ import { BlockPreview, type Block } from "@/components/BlockPreview";
 
 import LessonCommentSection from "@/components/LessonCommentSection";
 import CertificatePreviewBlock from "@/components/CertificatePreviewBlock";
+import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer";
 
 // Lazy-load the heavy editor so it doesn't bloat the initial bundle
 const LessonBlockEditor = lazy(() => import("@/components/LessonBlockEditor"));
@@ -1816,16 +1817,28 @@ export default function CoursePlayer() {
 
                   {/* ── Quiz ── */}
                   {lessonData.type === "quiz" && (
-                    <QuizRunner
-                      lesson={lessonData}
-                      courseSlug={slug!}
-                      submitQuizLabel={lbl.submitQuiz}
-                      onComplete={() => {
-                        fireLessonCompleteEffect();
-                        utils.lmsLearner.getCoursePlayer.invalidate({ slug: slug! });
-                        setTimeout(() => utils.lmsLearner.getCourseCertificate.invalidate({ courseSlug: slug! }), 3000);
-                      }}
-                    />
+                    lessonData.standaloneQuizId ? (
+                      <EmbeddedQuizPlayer
+                        quizId={lessonData.standaloneQuizId}
+                        onComplete={(_score, passed) => {
+                          if (!passed) return;
+                          setOptimisticCompleted(prev => new Set([...prev, lessonData.id]));
+                          markComplete.mutate({ lessonId: lessonData.id, courseSlug: slug! });
+                          fireLessonCompleteEffect();
+                        }}
+                      />
+                    ) : (
+                      <QuizRunner
+                        lesson={lessonData}
+                        courseSlug={slug!}
+                        submitQuizLabel={lbl.submitQuiz}
+                        onComplete={() => {
+                          fireLessonCompleteEffect();
+                          utils.lmsLearner.getCoursePlayer.invalidate({ slug: slug! });
+                          setTimeout(() => utils.lmsLearner.getCourseCertificate.invalidate({ courseSlug: slug! }), 3000);
+                        }}
+                      />
+                    )
                   )}
 
                   {/* ── Content Blocks (WYSIWYG) ── */}

@@ -5079,10 +5079,10 @@
 - [ ] Wire lesson quiz result submission to also write to standaloneQuizAttempts table
 
 ### Standalone Quiz Lesson Type
-- [ ] Add standalone quiz lesson type to course builder Add Lesson dialog
+- [x] Add standalone QuizMaker quiz selection to the active course builder Add Lesson dialog
 - [ ] Add standalone quiz lesson type to webinar/cohort/workshop builders
-- [ ] Lesson editor: show quiz selector when lesson type is standalone_quiz
-- [ ] Course player: render standalone quiz lesson using QuizPlayer component
+- [x] Validate the selected standalone quiz belongs to the course organization before saving
+- [x] Course player: render a linked standalone QuizMaker quiz and preserve pass-based lesson completion
 
 ### Question Bank Improvements
 - [ ] Fix folder creation UI in Question Bank admin (folder name input + create button)

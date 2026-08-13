@@ -1,0 +1,1 @@
+ALTER TABLE `lms_lessons` ADD `standalone_quiz_id` int;

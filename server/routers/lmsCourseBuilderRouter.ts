@@ -76,12 +76,22 @@ import {
   lmsCheckoutTemplates,
   curriculumEmbedVisibility,
   organizations,
+  quizzes,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 import { syncLessonQuizBlocksToQuestionBank } from "../lib/lessonQuizQuestionBankSync";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, assertSectionOwnership, assertLessonOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+
+async function assertStandaloneQuizForCourse(db: any, courseId: number, standaloneQuizId?: number | null) {
+  if (!standaloneQuizId) return;
+  const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+  const [quiz] = course?.orgId
+    ? await db.select({ id: quizzes.id }).from(quizzes).where(and(eq(quizzes.id, standaloneQuizId), eq(quizzes.orgId, course.orgId))).limit(1)
+    : [];
+  if (!quiz) throw new TRPCError({ code: "FORBIDDEN", message: "The selected quiz belongs to another organisation." });
+}
 
 export const lmsCourseBuilderRouter = router({
   // ── Lesson fetch for editor ──
@@ -794,6 +804,7 @@ export const lmsCourseBuilderRouter = router({
       content: z.string().optional(),
       videoContent: z.string().optional(),
       embedUrl: z.string().max(500).optional(),
+      standaloneQuizId: z.number().int().positive().optional(),
       mediaAssetId: z.number().optional(),
       isPreview: z.boolean().default(false),
       dripDays: z.number().int().default(0),
@@ -806,6 +817,7 @@ export const lmsCourseBuilderRouter = router({
       await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await assertStandaloneQuizForCourse(db, input.courseId, input.standaloneQuizId);
       // Auto-calculate position: append at end of section (or course top-level)
       const posResult = await db
         .select({ maxPos: max(lmsLessons.position) })
@@ -844,6 +856,7 @@ export const lmsCourseBuilderRouter = router({
         content: input.content ?? null,
         videoContent: input.videoContent ?? null,
         embedUrl: input.embedUrl ?? null,
+        standaloneQuizId: input.standaloneQuizId ?? null,
         mediaAssetId: input.mediaAssetId ?? null,
         isPreview: input.isPreview,
         dripDays: input.dripDays,
@@ -852,8 +865,8 @@ export const lmsCourseBuilderRouter = router({
         requireManualComplete: input.requireManualComplete ? 1 : 0,
         contentBlocks: defaultHeroBlock,
       }).$returningId();
-      // Auto-create quiz if type is quiz
-      if (input.type === "quiz") {
+      // Auto-create a legacy lesson quiz only when no standalone QuizMaker quiz was selected.
+      if (input.type === "quiz" && !input.standaloneQuizId) {
         await db.insert(lmsQuizzes).values({ lessonId: result.id, title: input.title });
       }
       return { id: result.id };
@@ -867,6 +880,7 @@ export const lmsCourseBuilderRouter = router({
       content: z.string().nullable().optional(),
       videoContent: z.string().nullable().optional(),
       embedUrl: z.string().max(500).nullable().optional(),
+      standaloneQuizId: z.number().int().positive().nullable().optional(),
       mediaAssetId: z.number().nullable().optional(),
       position: z.number().int().optional(),
       isPreview: z.boolean().optional(),
@@ -894,6 +908,11 @@ export const lmsCourseBuilderRouter = router({
       await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.standaloneQuizId !== undefined && input.standaloneQuizId !== null) {
+        const [lesson] = await db.select({ courseId: lmsLessons.courseId }).from(lmsLessons).where(eq(lmsLessons.id, input.id)).limit(1);
+        if (!lesson?.courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+        await assertStandaloneQuizForCourse(db, lesson.courseId, input.standaloneQuizId);
+      }
       const { id, requireVideoCompletion, requireManualComplete, isPrerequisite, commentsEnabled, countTowardCompletion, ...rest } = input;
       const updates: Record<string, unknown> = Object.fromEntries(
         Object.entries(rest).filter(([, v]) => v !== undefined)

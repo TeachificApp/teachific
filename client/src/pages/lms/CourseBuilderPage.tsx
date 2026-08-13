@@ -3744,6 +3744,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
   type LessonType = "text" | "video" | "video_text" | "embed" | "quiz" | "download";
   const [title, setTitle] = useState("");
   const [type, setType] = useState<LessonType>("text");
+  const [standaloneQuizId, setStandaloneQuizId] = useState<string>("");
   const [isPreview, setIsPreview] = useState(false);
   const [content, setContent] = useState("");
   const [videoContent, setVideoContent] = useState("");
@@ -3754,12 +3755,14 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
   const [requireManualComplete, setRequireManualComplete] = useState<boolean | null>(null);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<{ id: number; title: string; s3Url: string; mediaType: string } | null>(null);
+  const { data: standaloneQuizzes = [] } = trpc.quizMaker.listQuizzes.useQuery();
 
   const create = trpc.lmsAdmin.createLesson.useMutation({
     onSuccess: (data) => {
       toast.success("Lesson added");
       onCreated({
         id: data.id, title, type, content, videoContent, embedUrl,
+        standaloneQuizId: type === "quiz" && standaloneQuizId ? Number(standaloneQuizId) : null,
         isPreview, durationMinutes: durationMinutes ? parseInt(durationMinutes) : null,
         requireVideoCompletion: requireVideoCompletion ? 1 : 0,
         requireManualComplete: requireManualComplete === null ? null : (requireManualComplete ? 1 : 0),
@@ -3785,6 +3788,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
       content: (type === "text" || type === "video" || type === "download") ? (content || undefined) : undefined,
       videoContent: type === "video_text" ? (videoContent || undefined) : undefined,
       embedUrl: type === "embed" ? (embedUrl || undefined) : undefined,
+      standaloneQuizId: type === "quiz" && standaloneQuizId ? Number(standaloneQuizId) : undefined,
       mediaAssetId: selectedAsset?.id ?? undefined,
       durationMinutes: durationMinutes ? parseInt(durationMinutes) : undefined,
       requireVideoCompletion,
@@ -3805,6 +3809,40 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
             <Label className="text-sm">Title *</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Lesson title" className="mt-1" />
           </div>
+
+          <div>
+            <Label className="text-sm">Lesson type</Label>
+            <Select value={type} onValueChange={value => {
+              setType(value as LessonType);
+              if (value !== "quiz") setStandaloneQuizId("");
+            }}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text lesson</SelectItem>
+                <SelectItem value="video">Video lesson</SelectItem>
+                <SelectItem value="video_text">Video with text</SelectItem>
+                <SelectItem value="embed">Embedded content</SelectItem>
+                <SelectItem value="quiz">Quiz lesson</SelectItem>
+                <SelectItem value="download">Download</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {type === "quiz" && (
+            <div className="rounded-lg border border-teal-100 bg-teal-50/50 p-3 space-y-2">
+              <Label className="text-sm">Standalone Quiz Creator quiz</Label>
+              <Select value={standaloneQuizId} onValueChange={value => setStandaloneQuizId(value === "legacy" ? "" : value)}>
+                <SelectTrigger className="bg-white"><SelectValue placeholder="Create a new lesson quiz instead" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="legacy">Create a new lesson quiz</SelectItem>
+                  {standaloneQuizzes.map((quiz: any) => (
+                    <SelectItem key={quiz.id} value={String(quiz.id)}>{quiz.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-teal-700">Selecting an existing quiz keeps it in the current organization and displays it to learners in this lesson.</p>
+            </div>
+          )}
 
           <div>
             <Label className="text-sm">Duration (min)</Label>

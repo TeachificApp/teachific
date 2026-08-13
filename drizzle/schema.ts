@@ -2621,6 +2621,8 @@ export const lmsLessons = mysqlTable("lms_lessons", {
   content: longtext("content"),
   videoContent: longtext("video_content"),
   embedUrl: varchar("embed_url", { length: 500 }),
+  // Optional reference to an org-owned standalone QuizMaker quiz for quiz lessons.
+  standaloneQuizId: int("standalone_quiz_id"),
   mediaAssetId: int("media_asset_id"),
   position: int("position").default(0).notNull(),
   isPreview: boolean("is_preview").default(false).notNull(),

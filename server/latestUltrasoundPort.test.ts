@@ -51,6 +51,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).toContain("quizId={lesson.quizId}");
   });
 
+  it("creates and plays organization-owned standalone QuizMaker links in active LMS lessons", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const builderRouterSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    const builderPageSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('standaloneQuizId: int("standalone_quiz_id")');
+    expect(builderRouterSource).toContain("assertStandaloneQuizForCourse");
+    expect(builderRouterSource).toContain("eq(quizzes.orgId, course.orgId)");
+    expect(builderPageSource).toContain("Standalone Quiz Creator quiz");
+    expect(builderPageSource).toContain("trpc.quizMaker.listQuizzes.useQuery");
+    expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');
+    expect(playerSource).toContain("lessonData.standaloneQuizId ? (");
+    expect(playerSource).toContain("quizId={lessonData.standaloneQuizId}");
+  });
+
   it("exposes answer-level feedback and media controls in the org-scoped Question Bank editor", () => {
     const questionBankPage = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
     expect(questionBankPage).toContain('updateChoice(idx, "mediaUrl", e.target.value)');
