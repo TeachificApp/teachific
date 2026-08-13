@@ -5223,5 +5223,5 @@
 ## Active QuizMaker Organization Scope Correction (Aug 13, 2026)
 - [x] Resolve the active organization on QuizMaker create and save workflows instead of assigning org ID 0
 - [x] Require organization membership and admin-level permission for QuizMaker authoring, publication, analytics, and exports
-- [ ] Limit QuizMaker Question Bank export targets to banks owned by the quiz organization
+- [x] Limit QuizMaker Question Bank export targets to banks owned by the quiz organization
 - [x] Add regression coverage for active QuizMaker organization isolation
