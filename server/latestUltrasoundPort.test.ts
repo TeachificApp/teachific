@@ -58,4 +58,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionBankPage).toContain('updateChoice(idx, "feedbackMediaUrl", e.target.value)');
     expect(questionBankPage).toContain("Feedback for this answer (optional)");
   });
+
+  it("wires the active organization into Question Bank media picker controls", () => {
+    const questionBankPage = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
+    expect(questionBankPage).toContain('import { MediaLibraryPicker } from "@/components/MediaLibraryPicker"');
+    expect(questionBankPage).toContain("orgId={orgId}");
+    expect(questionBankPage).toContain("Choose question media");
+    expect(questionBankPage).toContain("Feedback media");
+  });
 });

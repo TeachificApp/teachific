@@ -5173,3 +5173,8 @@
 - [x] Expose existing per-answer feedback and feedback-media fields in the active org-scoped Question Bank editor
 - [x] Preserve answer feedback through Question Bank create and update workflows
 - [x] Add regression coverage for answer-level feedback editing
+
+## Question Bank Media Library Parity (Aug 13, 2026)
+- [x] Add the org-scoped media library picker to Question Bank question, answer-choice, and answer-feedback media fields
+- [x] Keep direct URL entry available while preserving selected media URLs in Question Bank updates
+- [x] Add regression coverage for Question Bank media picker wiring

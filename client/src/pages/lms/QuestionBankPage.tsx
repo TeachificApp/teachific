@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MediaLibraryPicker } from "@/components/MediaLibraryPicker";
 import { toast } from "sonner";
 import {
   Plus, Search, Filter, Upload, Tag, Trash2, Edit2, Copy,
@@ -70,10 +71,11 @@ function blankQuestion(type: QuestionType) {
 
 // ─── Question Editor ──────────────────────────────────────────────────────────
 function QuestionEditor({
-  question, tags, onSave, onCancel
+  question, tags, orgId, onSave, onCancel
 }: {
   question: ReturnType<typeof blankQuestion> & { id?: number };
   tags: any[];
+  orgId: number;
   onSave: (q: any) => void;
   onCancel: () => void;
 }) {
@@ -138,8 +140,16 @@ function QuestionEditor({
       {/* Media URL */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label>Media URL (image/video)</Label>
-          <Input value={q.mediaUrl} onChange={e => setQ({ ...q, mediaUrl: e.target.value })} placeholder="https://..." />
+          <Label>Question Media (image/video)</Label>
+          <div className="flex gap-2">
+            <Input value={q.mediaUrl} onChange={e => setQ({ ...q, mediaUrl: e.target.value })} placeholder="https://..." />
+            <MediaLibraryPicker
+              orgId={orgId}
+              accept="all"
+              onSelect={(item) => setQ({ ...q, mediaUrl: item.url, mediaType: item.mimeType.startsWith("video/") ? "video" : "image" })}
+              trigger={<Button type="button" variant="outline" size="icon" aria-label="Choose question media"><Image className="w-4 h-4" /></Button>}
+            />
+          </div>
         </div>
         <div>
           <Label>Media Type</Label>
@@ -199,6 +209,20 @@ function QuestionEditor({
                     value={choice.feedbackMediaUrl ?? ""}
                     onChange={e => updateChoice(idx, "feedbackMediaUrl", e.target.value)}
                     placeholder="Feedback media URL (optional)"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 pl-7">
+                  <MediaLibraryPicker
+                    orgId={orgId}
+                    accept="all"
+                    onSelect={(item) => updateChoice(idx, "mediaUrl", item.url)}
+                    trigger={<Button type="button" size="sm" variant="outline"><Image className="mr-1.5 h-3.5 w-3.5" /> Choice media</Button>}
+                  />
+                  <MediaLibraryPicker
+                    orgId={orgId}
+                    accept="all"
+                    onSelect={(item) => updateChoice(idx, "feedbackMediaUrl", item.url)}
+                    trigger={<Button type="button" size="sm" variant="outline"><Image className="mr-1.5 h-3.5 w-3.5" /> Feedback media</Button>}
                   />
                 </div>
               </div>
@@ -758,6 +782,7 @@ export default function QuestionBankPage() {
             <QuestionEditor
               question={editingQuestion}
               tags={tags}
+              orgId={orgId}
               onSave={handleSaveQuestion}
               onCancel={() => setEditingQuestion(null)}
             />
