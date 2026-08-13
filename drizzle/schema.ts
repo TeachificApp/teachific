@@ -2750,6 +2750,8 @@ export const lmsQuizQuestions = mysqlTable("lms_quiz_questions", {
   explanation: longtext("explanation"),
   position: int("position").default(0).notNull(),
   points: int("points").default(1).notNull(),
+  shuffleAnswerOptions: boolean("shuffle_answer_options"), // null = use quiz-level setting
+  lockAnswerOrder: boolean("lock_answer_order").default(false).notNull(),
   options: longtext("options"),                      // JSON array of answer options
   correctAnswer: text("correct_answer"),             // for single-answer questions
   correctAnswers: longtext("correct_answers"),       // JSON array for multi-answer
@@ -4035,6 +4037,8 @@ export const quizBankQuestions = mysqlTable("quiz_bank_questions", {
   partialCredit: boolean("partial_credit").default(false),
   penaltyPoints: int("penalty_points").default(0),
   difficulty: mysqlEnum("difficulty", ["easy","medium","hard"]).default("medium"),
+  shuffleAnswerOptions: boolean("shuffle_answer_options"), // null = inherit the quiz-wide setting
+  lockAnswerOrder: boolean("lock_answer_order").default(false).notNull(),
   explanationText: text("explanation_text"),
   explanationHtml: text("explanation_html"),
   explanationMediaType: mysqlEnum("exp_media_type", ["none","image","video"]).default("none"),

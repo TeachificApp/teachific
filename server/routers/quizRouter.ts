@@ -27,6 +27,7 @@ import {
   quizAccessGrants,
 } from "../../drizzle/schema";
 import { and, eq, inArray, sql, desc, asc, isNull } from "drizzle-orm";
+import { buildStandaloneLearnerOptions } from "../lib/questionOptionOrder";
 
 // ─── Quiz settings schema ─────────────────────────────────────────────────────
 const quizSettingsSchema = z.object({
@@ -460,9 +461,12 @@ async function buildQuestionSnapshot(quiz: any): Promise<any[]> {
 
   return allQuestions.map(q => ({
     ...q,
-    choices: quiz.randomizeAnswers
-      ? shuffleArray(choices.filter(c => c.questionId === q.id))
-      : choices.filter(c => c.questionId === q.id),
+    choices: buildStandaloneLearnerOptions({
+      options: choices.filter(c => c.questionId === q.id),
+      quizShuffleAnswers: quiz.randomizeAnswers,
+      questionShuffleAnswerOptions: q.shuffleAnswerOptions,
+      lockAnswerOrder: q.lockAnswerOrder,
+    }),
   }));
 }
 

@@ -5184,3 +5184,8 @@
 - [x] Let authors direct generated questions into the selected org-owned Question Bank with existing tag selection
 - [x] Add Question Bank UI for topic, count, question type, difficulty, bank, and tags
 - [x] Add regression coverage for org-scoped AI question generation
+
+## Standalone Quiz Answer Ordering Parity (Aug 13, 2026)
+- [x] Persist an explicit answer order for standalone Quiz Creator questions
+- [x] Return and render answer options in stored order for org-scoped quizzes and embedded quiz lessons
+- [x] Add regression coverage for stable quiz answer ordering

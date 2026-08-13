@@ -64,6 +64,8 @@ const questionUpsertSchema = z.object({
   partialCredit: z.boolean().default(false),
   penaltyPoints: z.number().default(0),
   difficulty: z.enum(["easy","medium","hard"]).default("medium"),
+  shuffleAnswerOptions: z.boolean().nullable().optional(),
+  lockAnswerOrder: z.boolean().default(false),
   explanationText: z.string().optional(),
   explanationHtml: z.string().optional(),
   explanationMediaType: z.enum(["none","image","video"]).default("none"),
