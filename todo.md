@@ -5061,7 +5061,7 @@
 - [x] Add CME status badge (draft/pending_approval/approved/expiring_soon/expired) to LMS Management course list rows
 - [x] Add CME status badge to webinar list rows
 - [x] Add CME status badge to workshop list rows
-- [ ] Add CME status badge to cohort list rows
+- [x] Add CME status badge to cohort list rows through the shared LMS course management list
 - [ ] Add CME status badge to quiz list rows
 
 ### Enrollment Closed
