@@ -379,20 +379,40 @@ export const lmsRouter = router({
     enroll: protectedProcedure
       .input(z.object({ courseId: z.number(), orgId: z.number().optional(), amountPaid: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
         const existing = await getEnrollment(input.courseId, ctx.user.id);
         if (existing) return existing;
-        // Check enrollmentClosed before creating enrollment
+        // Resolve the course owner server-side so callers cannot enroll under another org.
         const { getDb } = await import("./db");
-        const { lmsCourses } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
+        const { contentAvailability, lmsCourses } = await import("../drizzle/schema");
+        const { and, eq } = await import("drizzle-orm");
         const db = await getDb();
         if (db) {
-          const [course] = await db.select({ enrollmentClosed: lmsCourses.enrollmentClosed }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const [course] = await db.select({ enrollmentClosed: lmsCourses.enrollmentClosed, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
           if (course?.enrollmentClosed) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment is closed for this course." });
           }
+          if (course) {
+            const [availability] = await db.select({ status: contentAvailability.status }).from(contentAvailability).where(and(
+              eq(contentAvailability.orgId, course.orgId),
+              eq(contentAvailability.productType, "course"),
+              eq(contentAvailability.productId, input.courseId),
+            )).limit(1);
+            if (availability?.status === "waitlist") {
+              throw new TRPCError({ code: "FORBIDDEN", message: "This course is currently accepting waitlist registrations only." });
+            }
+            if (availability?.status === "enrollment_closed") {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment is closed for this course." });
+            }
+            return createEnrollment({
+              courseId: input.courseId,
+              userId: ctx.user.id,
+              orgId: course.orgId,
+              amountPaid: input.amountPaid ?? 0,
+              isActive: true,
+            });
+          }
         }
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
         return createEnrollment({
           courseId: input.courseId,
           userId: ctx.user.id,

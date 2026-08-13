@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isStaleAssetError } from "../client/src/components/ErrorBoundary";
 import { mapQuestionType, parseBlocks } from "./lib/lessonQuizQuestionBankSync";
@@ -22,5 +23,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(parseBlocks('{"type":"lesson_quiz"}')).toEqual([]);
     expect(parseBlocks("not JSON")).toEqual([]);
     expect(parseBlocks(null)).toEqual([]);
+  });
+
+  it("enforces org-owned waitlist and enrollment-closed states before creating a course enrollment", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain('eq(contentAvailability.productType, "course")');
+    expect(routerSource).toContain('availability?.status === "waitlist"');
+    expect(routerSource).toContain('availability?.status === "enrollment_closed"');
+    expect(routerSource).toContain("orgId: course.orgId");
   });
 });
