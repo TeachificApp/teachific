@@ -30,10 +30,15 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   const [questionBankDialogOpen, setQuestionBankDialogOpen] = useState(false);
   const [targetBankId, setTargetBankId] = useState("");
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const { user } = useAuth();
   const { orgId } = useOrgScope();
   const saveToCloud = trpc.quizMaker.saveQuiz.useMutation();
   const { data: questionBanks = [] } = trpc.quizBank.listBanks.useQuery(
+    { orgId: Number(orgId) },
+    { enabled: questionBankDialogOpen && Boolean(orgId) }
+  );
+  const { data: questionBankTags = [] } = trpc.quizBank.listTags.useQuery(
     { orgId: Number(orgId) },
     { enabled: questionBankDialogOpen && Boolean(orgId) }
   );
@@ -106,6 +111,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
       return;
     }
     setSelectedQuestionIds(quiz.questions.map((question) => question.id));
+    setSelectedTagIds([]);
     setTargetBankId("");
     setFileMenuOpen(false);
     setQuestionBankDialogOpen(true);
@@ -119,6 +125,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
         quizId,
         targetBankId: Number(targetBankId),
         questionIds: selectedQuestionIds,
+        tagIds: selectedTagIds,
       });
       alert(`${result.exportedCount} question${result.exportedCount === 1 ? "" : "s"} exported to the Question Bank.`);
       setQuestionBankDialogOpen(false);
@@ -327,6 +334,24 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                 </label>;
               })}
             </div>
+            {questionBankTags.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Apply Question Bank tags <span className="font-normal text-muted-foreground">(optional)</span></p>
+                <div className="flex max-h-24 flex-wrap gap-2 overflow-y-auto">
+                  {questionBankTags.map((tag) => {
+                    const selected = selectedTagIds.includes(tag.id);
+                    return <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setSelectedTagIds((current) => selected ? current.filter((id) => id !== tag.id) : [...current, tag.id])}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${selected ? "border-teal-600 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600 hover:border-teal-300"}`}
+                    >
+                      {tag.name}
+                    </button>;
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setQuestionBankDialogOpen(false)} className="rounded-md border px-4 py-2 text-sm">Cancel</button>
