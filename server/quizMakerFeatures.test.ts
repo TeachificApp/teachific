@@ -23,6 +23,7 @@ const chainable = (result: any) => {
 };
 
 vi.mock("./db", () => ({
+  requireOrgAdmin: vi.fn().mockResolvedValue(1),
   getDb: () => Promise.resolve(mockDb),
 }));
 
@@ -82,7 +83,7 @@ describe("Quiz Attempt Tracking", () => {
 
   it("getAttempts returns paginated attempts for quiz owner", async () => {
     mockDb.select
-      .mockReturnValueOnce(chainable([{ id: 1, userId: 10 }])) // quiz ownership check
+      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, orgId: 5 }])) // org-owned quiz access check
       .mockReturnValueOnce(
         chainable([
           { id: 1, takerName: "Alice", scorePct: 90, isPassed: true, startedAt: new Date() },
@@ -100,7 +101,7 @@ describe("Quiz Attempt Tracking", () => {
 
   it("getQuizAnalytics returns summary stats", async () => {
     mockDb.select
-      .mockReturnValueOnce(chainable([{ id: 1, userId: 10 }])) // quiz ownership
+      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, orgId: 5 }])) // org-owned quiz access
       .mockReturnValueOnce(
         chainable([
           { scorePct: 90, isPassed: true, timeTakenSeconds: 60 },
@@ -127,7 +128,7 @@ describe("Quiz Branding", () => {
   });
 
   it("updateBranding saves branding settings", async () => {
-    mockDb.select.mockReturnValue(chainable([{ id: 1, userId: 10 }]));
+    mockDb.select.mockReturnValue(chainable([{ id: 1, userId: 10, orgId: 5 }]));
     mockDb.update.mockReturnValue(chainable(undefined));
 
     const ctx = { user: { id: 10 } } as unknown as TrpcContext;
@@ -185,6 +186,7 @@ describe("SCORM Export", () => {
       chainable([{
         id: 1,
         userId: 10,
+        orgId: 5,
         title: "Test Quiz",
         description: "A test",
         instructions: JSON.stringify([{ id: "q1", type: "multiple_choice", stem: "Q1" }]),
@@ -206,6 +208,7 @@ describe("SCORM Export", () => {
       chainable([{
         id: 1,
         userId: 10,
+        orgId: 5,
         title: "Empty Quiz",
         description: "",
         instructions: JSON.stringify([]),
@@ -227,6 +230,7 @@ describe("SCORM Export", () => {
       chainable([{
         id: 1,
         userId: 10,
+        orgId: 5,
         title: "Test Quiz",
         description: "A test",
         instructions: JSON.stringify([{ id: "q1", type: "multiple_choice", stem: "Q1" }]),
@@ -276,7 +280,7 @@ describe("Question-Level Analytics", () => {
 
     // Mock: first call = quiz ownership, second call = attempts
     mockDb.select
-      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, instructions: questionsJson }]))
+      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, orgId: 5, instructions: questionsJson }]))
       .mockReturnValueOnce(
         chainable([
           { answersJson: JSON.stringify({ q1: ["b"], q2: true }) },   // correct, correct
@@ -326,7 +330,7 @@ describe("Question-Level Analytics", () => {
     ]);
 
     mockDb.select
-      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, instructions: questionsJson }]))
+      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, orgId: 5, instructions: questionsJson }]))
       .mockReturnValueOnce(chainable([]));
 
     const ctx = { user: { id: 10 } } as unknown as TrpcContext;
@@ -341,7 +345,7 @@ describe("Question-Level Analytics", () => {
 
   it("getQuestionAnalytics returns empty when quiz has no questions", async () => {
     mockDb.select
-      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, instructions: JSON.stringify([]) }]));
+      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, orgId: 5, instructions: JSON.stringify([]) }]));
 
     const ctx = { user: { id: 10 } } as unknown as TrpcContext;
     const caller = appRouter.createCaller(ctx);
@@ -356,7 +360,7 @@ describe("Question-Level Analytics", () => {
     ]);
 
     mockDb.select
-      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, instructions: questionsJson }]))
+      .mockReturnValueOnce(chainable([{ id: 1, userId: 10, orgId: 5, instructions: questionsJson }]))
       .mockReturnValueOnce(
         chainable([
           { answersJson: "invalid json{{{" },
@@ -374,12 +378,12 @@ describe("Question-Level Analytics", () => {
   });
 
   it("getQuestionAnalytics rejects for non-owner", async () => {
-    mockDb.select.mockReturnValue(chainable([])); // no quiz found for this user
+    mockDb.select.mockReturnValue(chainable([{ id: 1, userId: 10, orgId: 0 }]));
 
     const ctx = { user: { id: 999 } } as unknown as TrpcContext;
     const caller = appRouter.createCaller(ctx);
     await expect(
       caller.quizMaker.getQuestionAnalytics({ quizId: 1 })
-    ).rejects.toThrow("Quiz not found");
+    ).rejects.toThrow("You do not have access to this quiz");
   });
 });

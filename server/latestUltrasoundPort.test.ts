@@ -105,6 +105,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("requireQuizMakerQuestionAccess");
     expect(routerSource).toContain("requireQuizMakerChoiceAccess");
     expect(routerSource).not.toContain("orgId: 0");
+    expect(routerSource).not.toContain("eq(quizzes.userId, ctx.user.id)");
+    expect(routerSource).toContain("getQuizAnalytics");
+    expect(routerSource).toContain("exportScorm");
+    expect(routerSource).toContain("getPublishStatus");
+    expect(routerSource).toContain("exportToQuestionBank");
+    expect(routerSource).toContain("targetBankId");
+    expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
+    expect(routerSource).toContain('importSource: "quiz_maker"');
     expect(routerSource).toContain("const orgId = await resolveQuizMakerOrg(ctx)");
   });
 

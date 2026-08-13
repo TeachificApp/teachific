@@ -2,8 +2,8 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb, requireOrgAdmin } from "./db";
 import { TRPCError } from "@trpc/server";
-import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts } from "../drizzle/schema";
-import { eq, and, asc, desc } from "drizzle-orm";
+import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts, quizBanks, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
+import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 
 type QuizMakerContext = { user: { id: number; role: string } };
 
@@ -50,6 +50,82 @@ async function requireQuizMakerChoiceAccess(ctx: QuizMakerContext, choiceId: num
   if (!choice) throw new TRPCError({ code: "NOT_FOUND", message: "Answer choice not found" });
   await requireQuizMakerQuestionAccess(ctx, choice.questionId);
   return choice;
+}
+
+type SerializedQuizQuestion = {
+  id?: string;
+  type?: string;
+  stem?: string;
+  stemHtml?: string;
+  image?: { url?: string; alt?: string } | null;
+  video?: { url?: string } | null;
+  explanation?: string;
+  explanationHtml?: string;
+  points?: number;
+  lockAnswerOrder?: boolean;
+  data?: Record<string, any>;
+};
+
+function mapQuestionBankType(question: SerializedQuizQuestion) {
+  const type = question.type;
+  const data = question.data ?? {};
+  if (type === "mcq") return data.multiSelect ? "ms" : "mc";
+  if (type === "image_choice") return data.multiSelect ? "ms" : "mc";
+  if (type === "tf") return "tf";
+  if (type === "matching") return "matching";
+  if (type === "hotspot") return "hotspot";
+  if (type === "ordering") return "sequence";
+  if (type === "drag_drop") return "puzzle";
+  if (type === "numeric") return "numeric";
+  if (type === "short_answer" || type === "essay" || type === "fill_blank" || type === "drag_words" || type === "dropdown") return "short_answer";
+  return "info_slide";
+}
+
+function quizMakerChoicesForBank(question: SerializedQuizQuestion) {
+  const data = question.data ?? {};
+  if (question.type === "mcq") {
+    return (data.choices ?? []).map((choice: any, index: number) => ({
+      choiceText: choice.text ?? "",
+      mediaType: choice.imageUrl ? "image" as const : "none" as const,
+      mediaUrl: choice.imageUrl || undefined,
+      isCorrect: Boolean(choice.correct),
+      sortOrder: index,
+    }));
+  }
+  if (question.type === "image_choice") {
+    return (data.choices ?? []).map((choice: any, index: number) => ({
+      choiceText: choice.label ?? "",
+      mediaType: choice.imageUrl ? "image" as const : "none" as const,
+      mediaUrl: choice.imageUrl || undefined,
+      isCorrect: Boolean(choice.correct),
+      sortOrder: index,
+    }));
+  }
+  if (question.type === "tf") {
+    return [
+      { choiceText: "True", mediaType: "none" as const, isCorrect: data.correct === true, sortOrder: 0 },
+      { choiceText: "False", mediaType: "none" as const, isCorrect: data.correct === false, sortOrder: 1 },
+    ];
+  }
+  if (question.type === "matching") {
+    return [
+      ...(data.pairs ?? []).flatMap((pair: any, index: number) => [
+        { choiceText: pair.premise ?? "", mediaType: pair.premiseImageUrl ? "image" as const : "none" as const, mediaUrl: pair.premiseImageUrl || undefined, isCorrect: true, sortOrder: index * 2, matchPairId: pair.id, matchSide: "left" as const },
+        { choiceText: pair.response ?? "", mediaType: pair.responseImageUrl ? "image" as const : "none" as const, mediaUrl: pair.responseImageUrl || undefined, isCorrect: true, sortOrder: index * 2 + 1, matchPairId: pair.id, matchSide: "right" as const },
+      ]),
+      ...(data.extraDistractors ?? []).map((text: string, index: number) => ({ choiceText: text, mediaType: "none" as const, isCorrect: false, sortOrder: (data.pairs?.length ?? 0) * 2 + index, matchSide: "right" as const })),
+    ];
+  }
+  if (question.type === "ordering") {
+    return (data.items ?? []).map((item: any, index: number) => ({
+      choiceText: item.text ?? "",
+      mediaType: item.imageUrl ? "image" as const : "none" as const,
+      mediaUrl: item.imageUrl || undefined,
+      isCorrect: true,
+      sortOrder: index,
+    }));
+  }
+  return [];
 }
 
 // ─── QuizMaker Web Editor Router ─────────────────────────────────────────────
@@ -670,7 +746,7 @@ export const quizMakerRouter = router({
       return { attemptId: result.insertId };
     }),
 
-  /** Get attempts for a quiz (quiz owner only) */
+  /** Get attempts for an authorized organization quiz */
   getAttempts: protectedProcedure
     .input(
       z.object({
@@ -681,12 +757,7 @@ export const quizMakerRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      // Verify ownership
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, input.quizId);
 
       const attempts = await db
         .select()
@@ -701,17 +772,12 @@ export const quizMakerRouter = router({
       return { attempts: paginated, total };
     }),
 
-  /** Get analytics summary for a quiz (quiz owner only) */
+  /** Get analytics summary for an authorized organization quiz */
   getQuizAnalytics: protectedProcedure
     .input(z.object({ quizId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      // Verify ownership
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, input.quizId);
 
       const attempts = await db
         .select()
@@ -772,11 +838,7 @@ export const quizMakerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const { quizId, ...data } = input;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      await requireQuizMakerAccess(ctx, quizId);
 
       const updateData: any = {};
       for (const [key, val] of Object.entries(data)) {
@@ -809,7 +871,7 @@ export const quizMakerRouter = router({
 
   // ── SCORM Export ──────────────────────────────────────────────────────────
 
-  /** Export quiz as SCORM 1.2 or 2004 package */
+  /** Export an authorized organization quiz as SCORM 1.2 or 2004 package */
   exportScorm: protectedProcedure
     .input(
       z.object({
@@ -819,11 +881,7 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
       if (questions.length === 0) throw new Error("Quiz has no questions. Save to cloud first.");
@@ -847,17 +905,97 @@ export const quizMakerRouter = router({
       return { downloadUrl: url };
     }),
 
-  /** Get question-level analytics for a quiz (per-question correct/incorrect rates) */
+  /** Copy supported authored questions into a Question Bank owned by the same organization. */
+  exportToQuestionBank: protectedProcedure
+    .input(z.object({
+      quizId: z.number(),
+      targetBankId: z.number(),
+      questionIds: z.array(z.string()).optional(),
+      tagIds: z.array(z.number()).default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = (await getDb())!;
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      const [bank] = await db.select().from(quizBanks).where(eq(quizBanks.id, input.targetBankId)).limit(1);
+      if (!bank) throw new TRPCError({ code: "NOT_FOUND", message: "Question Bank not found." });
+      if (bank.orgId !== quiz.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "The selected Question Bank belongs to another organisation." });
+      }
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, bank.orgId);
+
+      if (input.tagIds.length > 0) {
+        const tags = await db.select({ id: quizBankTags.id, orgId: quizBankTags.orgId })
+          .from(quizBankTags)
+          .where(inArray(quizBankTags.id, input.tagIds));
+        if (tags.length !== input.tagIds.length || tags.some((tag) => tag.orgId !== quiz.orgId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Question Bank tags must belong to the quiz organization." });
+        }
+      }
+
+      let serializedQuestions: SerializedQuizQuestion[];
+      try {
+        serializedQuestions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz questions could not be read. Save the quiz and try again." });
+      }
+      if (!Array.isArray(serializedQuestions)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz questions could not be read. Save the quiz and try again." });
+      }
+
+      const selectedQuestions = input.questionIds?.length
+        ? serializedQuestions.filter((question) => question.id && input.questionIds!.includes(question.id))
+        : serializedQuestions;
+      if (selectedQuestions.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Select at least one quiz question to export." });
+      }
+
+      let exportedCount = 0;
+      for (const question of selectedQuestions) {
+        const data = question.data ?? {};
+        const [insertedQuestion] = await db.insert(quizBankQuestions).values({
+          orgId: quiz.orgId,
+          bankId: bank.id,
+          questionType: mapQuestionBankType(question),
+          questionText: question.stem?.trim() || "Untitled question",
+          questionHtml: question.stemHtml || undefined,
+          mediaType: question.image?.url ? "image" : question.video?.url ? "video" : "none",
+          mediaUrl: question.image?.url || question.video?.url || undefined,
+          mediaAlt: question.image?.alt || undefined,
+          hotspotZones: question.type === "hotspot" ? data.regions ?? [] : undefined,
+          // Retain the native QuizMaker configuration for supported and future compatible question-bank players.
+          puzzleConfig: ["drag_drop", "fill_blank", "drag_words", "dropdown", "short_answer", "essay", "numeric"].includes(question.type ?? "") ? data : undefined,
+          numericMin: question.type === "numeric" && typeof data.rangeMin === "number" ? String(data.rangeMin) : undefined,
+          numericMax: question.type === "numeric" && typeof data.rangeMax === "number" ? String(data.rangeMax) : undefined,
+          points: Math.max(1, Math.round(question.points ?? 1)),
+          lockAnswerOrder: Boolean(question.lockAnswerOrder),
+          explanationText: question.explanation || undefined,
+          explanationHtml: question.explanationHtml || undefined,
+          importSource: "quiz_maker",
+        });
+        const questionId = insertedQuestion.insertId;
+        const choices = quizMakerChoicesForBank(question);
+        if (choices.length > 0) {
+          await db.insert(quizAnswerChoices).values(choices.map((choice) => ({ ...choice, questionId })));
+        }
+        if (input.tagIds.length > 0) {
+          await db.insert(quizQuestionTags).values(input.tagIds.map((tagId) => ({ questionId, tagId })));
+        }
+        exportedCount++;
+      }
+
+      await db.update(quizBanks)
+        .set({ questionCount: sql`${quizBanks.questionCount} + ${exportedCount}` })
+        .where(eq(quizBanks.id, bank.id));
+
+      return { exportedCount, bankId: bank.id };
+    }),
+
+  /** Get question-level analytics for an authorized organization quiz */
   getQuestionAnalytics: protectedProcedure
     .input(z.object({ quizId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      // Verify ownership
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       // Get questions from the quiz instructions JSON
       const questions: any[] = quiz.instructions ? JSON.parse(quiz.instructions) : [];
@@ -975,16 +1113,12 @@ export const quizMakerRouter = router({
       return { questions: questionStats };
     }),
 
-  /** Get publish status for a quiz */
+  /** Get publish status for an authorized organization quiz */
   getPublishStatus: protectedProcedure
     .input(z.object({ quizId: z.number() }))
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.id, input.quizId), eq(quizzes.userId, ctx.user.id)));
-      if (!quiz) throw new Error("Quiz not found");
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       // Look up org slug for share URL generation
       let orgSlug: string | null = null;

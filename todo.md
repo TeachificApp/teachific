@@ -5197,7 +5197,7 @@
 - [x] Add regression coverage for the visual workspace route and Teachific-only branding
 
 ## Quiz Creator Export to Question Bank (Aug 13, 2026)
-- [ ] Add an org-admin-gated action to copy selected Quiz Creator questions into an org-owned Question Bank
+- [x] Add an org-admin-gated action to copy selected Quiz Creator questions into an org-owned Question Bank
 - [ ] Add a Quiz Creator dialog for selecting an eligible bank, folder, tags, and questions to export
 - [ ] Preserve question type, answers, feedback, media, and answer-order settings during export
 - [ ] Add regression coverage for cross-org rejection and payload preservation
@@ -5220,6 +5220,6 @@
 
 ## Active QuizMaker Organization Scope Correction (Aug 13, 2026)
 - [x] Resolve the active organization on QuizMaker create and save workflows instead of assigning org ID 0
-- [ ] Require organization membership and admin-level permission for QuizMaker authoring, publication, analytics, and exports
+- [x] Require organization membership and admin-level permission for QuizMaker authoring, publication, analytics, and exports
 - [ ] Limit QuizMaker Question Bank export targets to banks owned by the quiz organization
 - [x] Add regression coverage for active QuizMaker organization isolation
