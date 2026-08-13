@@ -5116,8 +5116,9 @@
 - [x] Google Drive per-org CME: wired into sendCmeForm procedure (non-blocking upload after email send)
 - [x] AI email block generator: emailCampaign.generateEmailBlockContent procedure (invokeLLM with JSON schema output)
 - [x] AI email block generator: AiBlockGenerator component in EmailBlockEditor (Sparkles button, prompt textarea, apply to block)
-- [ ] CME status badges on LMS Management list rows (courses, webinars, workshops, cohorts, quizzes) — listCourses already joins cmeActivityForms; webinarAdmin.list also joins; UI badges pending
-- [ ] Standalone quiz lesson type in course/webinar/cohort/workshop builders
+- [x] CME status badges on LMS Management list rows (courses, webinars, workshops, cohorts, quizzes)
+- [x] Standalone QuizMaker selection and learner playback in the shared course curriculum builder used by course and cohort curriculum
+- [ ] Confirm standalone QuizMaker selection is available from webinar and workshop curriculum handoffs
 - [ ] Question Bank: folder creation UI + AI generate with folder+tags
 - [ ] Revenue sharing: Stripe Connect + instructor/affiliate payouts per org
 
