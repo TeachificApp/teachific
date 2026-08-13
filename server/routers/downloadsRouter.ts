@@ -555,6 +555,7 @@ export const downloadsAdminRouter = router({
       purchaseTermsLink1Url: z.string().max(1024).nullable().optional(),
       purchaseTermsLink2Label: z.string().max(255).nullable().optional(),
       purchaseTermsLink2Url: z.string().max(1024).nullable().optional(),
+      enrollmentClosed: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);

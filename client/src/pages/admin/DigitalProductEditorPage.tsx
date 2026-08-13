@@ -195,6 +195,7 @@ export default function DigitalProductEditorPage() {
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [defaultAccessDays, setDefaultAccessDays] = useState<number | null>(null);
   const [defaultMaxDownloads, setDefaultMaxDownloads] = useState<number | null>(null);
+  const [enrollmentClosed, setEnrollmentClosed] = useState(false);
   const [salesPageBlocks, setSalesPageBlocks] = useState<Block[]>([]);
   // Checkout purchase terms override
   const [purchaseTermsAgreement, setPurchaseTermsAgreement] = useState("");
@@ -222,6 +223,7 @@ export default function DigitalProductEditorPage() {
       setThumbnailUrl(product.thumbnailUrl ?? "");
       setDefaultAccessDays(product.defaultAccessDays ?? null);
       setDefaultMaxDownloads(product.defaultMaxDownloads ?? null);
+      setEnrollmentClosed((product as any).enrollmentClosed ?? false);
       setPurchaseTermsAgreement((product as any).purchaseTermsAgreement ?? "");
       setPurchaseTermsLink1Label((product as any).purchaseTermsLink1Label ?? "");
       setPurchaseTermsLink1Url((product as any).purchaseTermsLink1Url ?? "");
@@ -342,6 +344,7 @@ export default function DigitalProductEditorPage() {
           thumbnailUrl: thumbnailUrl || undefined,
           defaultAccessDays,
           defaultMaxDownloads,
+          enrollmentClosed,
         });
         savedProductId = (created as any).id;
         for (const p of priceList) {
@@ -364,6 +367,7 @@ export default function DigitalProductEditorPage() {
           isPublished,
           defaultAccessDays,
           defaultMaxDownloads,
+          enrollmentClosed,
           purchaseTermsAgreement: purchaseTermsAgreement.trim() || null,
           purchaseTermsLink1Label: purchaseTermsLink1Label.trim() || null,
           purchaseTermsLink1Url: purchaseTermsLink1Url.trim() || null,
@@ -716,6 +720,15 @@ export default function DigitalProductEditorPage() {
 
         {activeTab === "access" && (
           <div className="max-w-3xl mx-auto space-y-6">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor="download-enrollment-closed" className="font-medium text-amber-900">Enrollment Closed</Label>
+                  <p className="mt-1 text-sm text-amber-800">Prevent new purchases while current learners retain their existing access.</p>
+                </div>
+                <Switch id="download-enrollment-closed" checked={enrollmentClosed} onCheckedChange={setEnrollmentClosed} />
+              </div>
+            </div>
             <div>
               <h3 className="font-semibold mb-1">Default Access Controls</h3>
               <p className="text-sm text-muted-foreground">

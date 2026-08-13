@@ -5069,7 +5069,8 @@
 - [x] Add enrollmentClosed columns to active course, webinar, workshop, digital product, bundle, and membership models
 - [x] Run DB migrations for newly added product enrollmentClosed columns
 - [x] Backend: block hosted-checkout enrollment when enrollmentClosed is set for supported product types
-- [ ] Admin: add Enrollment Closed status controls to all product editors
+- [x] Admin: add an Enrollment Closed setting to the digital product editor
+- [ ] Admin: add Enrollment Closed settings to bundle and membership editors
 - [x] Student-facing: show "Enrollment Closed" CTA and block hosted checkout when enrollmentClosed is set
 
 ### Quiz Creator Consolidation
