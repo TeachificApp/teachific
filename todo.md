@@ -5124,7 +5124,8 @@
 - [x] Standalone QuizMaker selection and learner playback in the shared course curriculum builder used by course and cohort curriculum
 - [x] Add same-organization webinar course curriculum handoff with Course Builder access and standalone QuizMaker support
 - [x] Confirm workshop curriculum handoff uses the shared Course Builder for standalone QuizMaker selection
-- [ ] Question Bank: folder creation UI + AI generate with folder+tags
+- [x] Question Bank: organization-scoped folder creation, management, and manual question assignment UI
+- [ ] Question Bank: AI generation with optional same-bank folder assignment
 - [ ] Revenue sharing: Stripe Connect + instructor/affiliate payouts per org
 
 ## Emoji & Email Campaign Updates (Aug 10, 2026)

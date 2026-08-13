@@ -58,6 +58,7 @@ function blankQuestion(type: QuestionType) {
     points: 1,
     difficulty: "medium" as Difficulty,
     tags: [] as number[],
+    folderId: undefined as number | undefined,
     choices: type === "tf"
       ? [{ choiceText: "True", isCorrect: true, sortOrder: 0, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }, { choiceText: "False", isCorrect: false, sortOrder: 1, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }]
       : [{ choiceText: "", isCorrect: true, sortOrder: 0, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }, { choiceText: "", isCorrect: false, sortOrder: 1, mediaUrl: "", feedbackText: "", feedbackMediaUrl: "" }],
@@ -72,10 +73,11 @@ function blankQuestion(type: QuestionType) {
 
 // ─── Question Editor ──────────────────────────────────────────────────────────
 function QuestionEditor({
-  question, tags, orgId, onSave, onCancel
+  question, tags, folders, orgId, onSave, onCancel
 }: {
   question: ReturnType<typeof blankQuestion> & { id?: number };
   tags: any[];
+  folders: any[];
   orgId: number;
   onSave: (q: any) => void;
   onCancel: () => void;
@@ -126,6 +128,19 @@ function QuestionEditor({
           </SelectContent>
         </Select>
       </div>
+
+      {folders.length > 0 && (
+        <div>
+          <Label>Folder</Label>
+          <Select value={q.folderId ? String(q.folderId) : "none"} onValueChange={value => setQ({ ...q, folderId: value === "none" ? undefined : Number(value) })}>
+            <SelectTrigger><SelectValue placeholder="No folder" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No folder</SelectItem>
+              {folders.map((folder) => <SelectItem key={folder.id} value={String(folder.id)}>{folder.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Question text */}
       <div>
@@ -547,6 +562,8 @@ export default function QuestionBankPage() {
   const [showImport, setShowImport] = useState(false);
   const [showTagManager, setShowTagManager] = useState(false);
   const [newTagName, setNewTagName] = useState("");
+  const [showFolderManager, setShowFolderManager] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const [showAiGenerate, setShowAiGenerate] = useState(false);
   const [aiTopic, setAiTopic] = useState("");
   const [aiCount, setAiCount] = useState(5);
@@ -566,6 +583,7 @@ export default function QuestionBankPage() {
   // ─── Data ──────────────────────────────────────────────────────────────────
   const { data: banks = [], isLoading: banksLoading } = trpc.quizBank.listBanks.useQuery({ orgId }, { enabled: !!orgId });
   const { data: tags = [] } = trpc.quizBank.listTags.useQuery({ orgId }, { enabled: !!orgId });
+  const { data: folders = [] } = trpc.quizBank.listFolders.useQuery({ bankId: selectedBankId! }, { enabled: !!selectedBankId });
   const { data: questionsData, isLoading: questionsLoading } = trpc.quizBank.listQuestions.useQuery(
     { orgId, bankId: selectedBankId!, search: search || undefined, questionType: filterType !== "all" ? filterType : undefined, difficulty: filterDifficulty !== "all" ? filterDifficulty as Difficulty : undefined, tagIds: filterTagId ? [filterTagId] : undefined },
     { enabled: !!selectedBankId && !!orgId }
@@ -591,6 +609,14 @@ export default function QuestionBankPage() {
   });
   const deleteTag = trpc.quizBank.deleteTag.useMutation({
     onSuccess: () => { utils.quizBank.listTags.invalidate(); toast.success("Tag deleted"); }
+  });
+  const createFolder = trpc.quizBank.createFolder.useMutation({
+    onSuccess: () => { utils.quizBank.listFolders.invalidate(); setNewFolderName(""); toast.success("Folder created"); },
+    onError: (error) => toast.error(error.message),
+  });
+  const deleteFolder = trpc.quizBank.deleteFolder.useMutation({
+    onSuccess: () => { utils.quizBank.listFolders.invalidate(); utils.quizBank.listQuestions.invalidate(); toast.success("Folder deleted"); },
+    onError: (error) => toast.error(error.message),
   });
   const generateQuestions = trpc.quizBank.generateQuestions.useMutation({
     onSuccess: (result) => {
@@ -679,6 +705,9 @@ export default function QuestionBankPage() {
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowAiGenerate(true)}>
                   <Sparkles className="w-4 h-4 mr-2" /> AI Generate
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowFolderManager(true)}>
+                  <FileText className="w-4 h-4 mr-2" /> Folders
                 </Button>
                 <Button
                   variant="outline"
@@ -830,6 +859,29 @@ export default function QuestionBankPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Folder Manager */}
+      <Dialog open={showFolderManager} onOpenChange={setShowFolderManager}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Question Bank Folders</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Organize questions within <strong>{selectedBank?.name}</strong>. Folders remain private to this Question Bank.</p>
+            <div className="flex gap-2">
+              <Input value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="New folder name..." onKeyDown={e => e.key === "Enter" && newFolderName.trim() && selectedBankId && createFolder.mutate({ bankId: selectedBankId, name: newFolderName.trim() })} />
+              <Button onClick={() => selectedBankId && createFolder.mutate({ bankId: selectedBankId, name: newFolderName.trim() })} disabled={!newFolderName.trim() || createFolder.isPending}>Add</Button>
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {folders.length === 0 ? <p className="text-sm text-muted-foreground py-3 text-center">No folders yet.</p> : folders.map(folder => (
+                <div key={folder.id} className="flex items-center justify-between rounded-md border p-2.5">
+                  <span className="text-sm font-medium">{folder.name}</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { if (confirm(`Delete ${folder.name}? Questions will remain in this bank.`)) deleteFolder.mutate({ id: folder.id }); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowFolderManager(false)}>Done</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Question Editor */}
       <Dialog open={!!editingQuestion} onOpenChange={v => !v && setEditingQuestion(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -840,6 +892,7 @@ export default function QuestionBankPage() {
             <QuestionEditor
               question={editingQuestion}
               tags={tags}
+              folders={folders}
               orgId={orgId}
               onSave={handleSaveQuestion}
               onCancel={() => setEditingQuestion(null)}
