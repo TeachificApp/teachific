@@ -5091,14 +5091,14 @@
 - [ ] Add Extract to Question Bank button to Media Repository file rows for SCORM/ZIP/.quiz files
 
 ### Google Drive Per-Org CME Integration
-- [ ] Port googleDriveCme.ts helper (org-scoped: each org has its own Google Drive credentials)
-- [ ] Add Google Drive OAuth columns to organizations table (per-org credentials)
-- [ ] Add Google Drive tab to CME Management page (per-org setup)
-- [ ] Wire CME form PDF save to also upload to org's Google Drive folder (if configured)
+- [x] Port googleDriveCme.ts helper (org-scoped: each org has its own Google Drive credentials)
+- [x] Add Google Drive OAuth columns to organizations table (per-org credentials)
+- [x] Add Google Drive tab to CME Management page (per-org setup)
+- [x] Wire CME form PDF save to also upload to org's Google Drive folder (if configured)
 
 ### AI Email Block Generator
-- [ ] Add generateEmailBlock backend procedure (LLM + optional image generation)
-- [ ] Add per-block AI regenerate button/panel to EmailBlockEditor
+- [x] Add generateEmailBlock backend procedure (LLM + optional image generation)
+- [x] Add per-block AI regenerate button/panel to EmailBlockEditor
 
 ### Revenue Sharing (Stripe Connect)
 - [ ] Add Stripe Connect account columns to instructors/revenue_partners tables (per-org)
