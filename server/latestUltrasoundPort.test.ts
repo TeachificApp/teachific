@@ -77,4 +77,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionBankPage).toContain("AI Question Generator");
     expect(questionBankPage).toContain("trpc.quizBank.generateQuestions.useMutation");
   });
+
+  it("provides a Teachific-branded visual workspace for an authorized standalone Quiz Creator quiz", () => {
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const workspaceSource = readFileSync(new URL("../client/src/pages/QuizVisualBuilderPage.tsx", import.meta.url), "utf8");
+    expect(appSource).toContain('path="/quiz-creator/:quizId/builder"');
+    expect(workspaceSource).toContain("trpc.quizMaker.getQuiz.useQuery");
+    expect(workspaceSource).toContain("Back to Teachific Quiz Creator");
+    expect(workspaceSource).toContain("BrandingPanel");
+    expect(workspaceSource).not.toContain("All About Ultrasound");
+  });
 });

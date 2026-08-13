@@ -5189,3 +5189,9 @@
 - [x] Persist an explicit answer order for standalone Quiz Creator questions
 - [x] Return and render answer options in stored order for org-scoped quizzes and embedded quiz lessons
 - [x] Add regression coverage for stable quiz answer ordering
+
+## Teachific Visual Quiz Creator Workspace (Aug 13, 2026)
+- [x] Add a Teachific-branded visual Quiz Creator workspace route for an org-owned quiz
+- [x] Reuse the existing Quiz Creator editor, preview, design, analytics, settings, and cloud components
+- [x] Ensure the workspace can only load and mutate quizzes within the active organization and permitted role
+- [x] Add regression coverage for the visual workspace route and Teachific-only branding

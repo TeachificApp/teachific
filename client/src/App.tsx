@@ -181,6 +181,7 @@ import UnsubscribePage from "./pages/UnsubscribePage";
 import CmeDisclosureForm from "./pages/CmeDisclosureForm";
 
 import QuizCreatorPage from "./pages/QuizCreatorPage";
+import QuizVisualBuilderPage from "./pages/QuizVisualBuilderPage";
 import PublicQuizPlayerPage from "./pages/PublicQuizPlayerPage";
 import QuizCreatorGate from "./pages/QuizCreatorGate";
 import QuizCreatorDashboard from "./pages/QuizCreatorDashboard";
@@ -264,6 +265,7 @@ function BareRouter() {
         <Route path="/support" component={SupportPage} />
         {/* Standalone Quiz Creator — gated by role */}
         <Route path="/quiz-creator" component={QuizCreatorGate} />
+        <Route path="/quiz-creator/:quizId/builder" component={QuizVisualBuilderPage} />
         {/* QuizMaker standalone app for users without LMS access */}
         <Route path="/quiz-creator-app/download">{() => <DesktopDownloadPage app="quizCreator" />}</Route>
         <Route path="/quiz-creator-app" component={QuizCreatorDashboard} />
