@@ -627,10 +627,17 @@ export const quizBankRouter = router({
       questionType: z.enum(["mc", "tf", "ms", "short_answer", "numeric"]).default("mc"),
       difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
       tagIds: z.array(z.number()).default([]),
+      folderId: z.number().optional(),
       additionalInstructions: z.string().max(2_000).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const bank = await requireBankAccess(ctx, input.bankId);
+      if (input.folderId) {
+        const folder = await requireFolderAccess(ctx, input.folderId);
+        if (folder.orgId !== bank.orgId || folder.bankId !== input.bankId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The selected folder belongs to another Question Bank." });
+        }
+      }
       if (input.tagIds.length > 0) {
         const tags = await (await db()).select({ id: quizBankTags.id, orgId: quizBankTags.orgId })
           .from(quizBankTags).where(inArray(quizBankTags.id, input.tagIds));
@@ -709,6 +716,7 @@ export const quizBankRouter = router({
         const [result] = await (await db()).insert(quizBankQuestions).values({
           orgId: bank.orgId,
           bankId: input.bankId,
+          folderId: input.folderId,
           questionType: input.questionType,
           questionText: generatedQuestion.questionText,
           explanationText: generatedQuestion.explanationText,

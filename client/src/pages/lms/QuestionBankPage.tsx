@@ -570,6 +570,7 @@ export default function QuestionBankPage() {
   const [aiQuestionType, setAiQuestionType] = useState<"mc" | "tf" | "ms" | "short_answer" | "numeric">("mc");
   const [aiDifficulty, setAiDifficulty] = useState<Difficulty>("medium");
   const [aiTagIds, setAiTagIds] = useState<number[]>([]);
+  const [aiFolderId, setAiFolderId] = useState<number | undefined>(undefined);
   const [aiInstructions, setAiInstructions] = useState("");
 
   useEffect(() => {
@@ -626,6 +627,7 @@ export default function QuestionBankPage() {
       setAiTopic("");
       setAiInstructions("");
       setAiTagIds([]);
+      setAiFolderId(undefined);
       toast.success(`${result.count} AI-generated question${result.count === 1 ? "" : "s"} added to this bank`);
     },
     onError: (error) => toast.error(error.message),
@@ -943,6 +945,18 @@ export default function QuestionBankPage() {
                 <Input id="ai-question-count" type="number" min={1} max={10} value={aiCount} onChange={(event) => setAiCount(Math.max(1, Math.min(10, Number(event.target.value) || 1)))} />
               </div>
             </div>
+            {folders.length > 0 && (
+              <div>
+                <Label>Save generated questions in</Label>
+                <Select value={aiFolderId ? String(aiFolderId) : "none"} onValueChange={(value) => setAiFolderId(value === "none" ? undefined : Number(value))}>
+                  <SelectTrigger><SelectValue placeholder="No folder" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No folder</SelectItem>
+                    {folders.map((folder) => <SelectItem key={folder.id} value={String(folder.id)}>{folder.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {tags.length > 0 && (
               <div>
                 <Label>Apply tags</Label>
@@ -961,7 +975,7 @@ export default function QuestionBankPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAiGenerate(false)}>Cancel</Button>
-            <Button disabled={!selectedBankId || aiTopic.trim().length < 3 || generateQuestions.isPending} onClick={() => generateQuestions.mutate({ bankId: selectedBankId!, topic: aiTopic.trim(), count: aiCount, questionType: aiQuestionType, difficulty: aiDifficulty, tagIds: aiTagIds, additionalInstructions: aiInstructions.trim() || undefined })}>
+            <Button disabled={!selectedBankId || aiTopic.trim().length < 3 || generateQuestions.isPending} onClick={() => generateQuestions.mutate({ bankId: selectedBankId!, topic: aiTopic.trim(), count: aiCount, questionType: aiQuestionType, difficulty: aiDifficulty, tagIds: aiTagIds, folderId: aiFolderId, additionalInstructions: aiInstructions.trim() || undefined })}>
               {generateQuestions.isPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Generate Questions
             </Button>
           </DialogFooter>

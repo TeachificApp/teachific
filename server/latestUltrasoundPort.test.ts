@@ -143,6 +143,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pageSource).toContain("Folder</Label>");
   });
 
+  it("validates and persists same-bank folders for AI-generated questions", () => {
+    const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    const pageSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("folderId: z.number().optional()");
+    expect(routerSource).toContain("The selected folder belongs to another Question Bank.");
+    expect(routerSource).toContain("folderId: input.folderId");
+    expect(pageSource).toContain("Save generated questions in");
+    expect(pageSource).toContain("folderId: aiFolderId");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');
