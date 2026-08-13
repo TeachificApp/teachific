@@ -248,6 +248,33 @@ describe("SCORM Export", () => {
   });
 });
 
+describe("Question Bank Export", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects a target Question Bank owned by another organization", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chainable([{
+        id: 1,
+        userId: 10,
+        orgId: 5,
+        title: "Scoped Quiz",
+        instructions: JSON.stringify([{ id: "q1", type: "mcq", stem: "Question", data: { choices: [] } }]),
+      }]))
+      .mockReturnValueOnce(chainable([{ id: 12, orgId: 6, name: "Other organization bank" }]));
+
+    const ctx = { user: { id: 10, role: "org_admin" } } as unknown as TrpcContext;
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.quizMaker.exportToQuestionBank({
+      quizId: 1,
+      targetBankId: 12,
+      questionIds: ["q1"],
+      tagIds: [],
+    })).rejects.toThrow("The selected Question Bank belongs to another organisation.");
+  });
+});
+
 describe("Question-Level Analytics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
