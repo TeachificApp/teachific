@@ -5085,8 +5085,9 @@
 - [x] Course player: render a linked standalone QuizMaker quiz and preserve pass-based lesson completion
 
 ### Question Bank Improvements
-- [ ] Fix folder creation UI in Question Bank admin (folder name input + create button)
-- [ ] Add folder+tags selector to AI Generate panel in Question Bank
+- [x] Provide organization-scoped Question Bank creation with name and description inputs
+- [x] Provide organization-scoped tag selection in the AI Question Generator panel
+- [ ] Add a distinct nested Question Bank folder model if an organization requires hierarchy beyond separate Question Banks
 - [x] Add organization-owned media selection and immutable import-source handling to the active Question Bank import workflow
 - [x] Extend active Question Bank import parsing to extract organization-owned iSpring SCORM/ZIP and Teachific .quiz package questions, preserving supported embedded media
 - [x] Add direct Media Repository extraction to a same-organization Question Bank preview for SCORM/ZIP/.quiz files
