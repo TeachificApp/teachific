@@ -5163,3 +5163,8 @@
 - [x] Enforce org-admin authorization and record ownership checks across every active quizBank router procedure
 - [x] Ensure Question Bank banks, tags, questions, and import jobs cannot be read or mutated across organizations
 - [x] Add regression tests for active Question Bank org authorization coverage
+
+## Standalone Quiz Lesson Playback Parity (Aug 13, 2026)
+- [x] Render a selected org-scoped standalone quiz inside quiz and exam lessons rather than falling back to embedded lesson JSON
+- [x] Preserve lesson completion handling after a linked standalone quiz is submitted
+- [x] Add regression coverage for standalone quiz lesson rendering

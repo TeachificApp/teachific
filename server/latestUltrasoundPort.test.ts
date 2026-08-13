@@ -42,4 +42,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("requireImportJobAccess(ctx, input.jobId)");
     expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
   });
+
+  it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
+    const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
+    expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');
+    expect(playerSource).toContain("lesson.quizId ? (");
+    expect(playerSource).toContain("<EmbeddedQuizPlayer");
+    expect(playerSource).toContain("quizId={lesson.quizId}");
+  });
 });

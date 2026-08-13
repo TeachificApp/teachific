@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextContent } from "@/components/RichTextEditor";
+import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer";
 import { BANNER_SOUNDS } from "@/lib/bannerSounds";
 import { fireConfetti } from "@/components/lms/LessonBannerEditor";
 import { toast } from "sonner";
@@ -451,13 +452,23 @@ function LessonContent({
       case "exam":
         return (
           <div className="max-w-2xl mx-auto py-4">
-            <QuizPlayer
-              contentJson={lesson.contentJson}
-              lessonType={lesson.lessonType}
-              onComplete={(score, passed) => {
-                if (passed) onComplete?.();
-              }}
-            />
+            {lesson.quizId ? (
+              <EmbeddedQuizPlayer
+                quizId={lesson.quizId}
+                showHeader={true}
+                onComplete={(_score, passed) => {
+                  if (passed) onComplete?.();
+                }}
+              />
+            ) : (
+              <QuizPlayer
+                contentJson={lesson.contentJson}
+                lessonType={lesson.lessonType}
+                onComplete={(_score, passed) => {
+                  if (passed) onComplete?.();
+                }}
+              />
+            )}
           </div>
         );
 
