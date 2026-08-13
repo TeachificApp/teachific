@@ -3,10 +3,12 @@ import { useQuizStore } from "../store/quizStore";
 import { downloadQuiz, openQuizFile } from "../lib/quizFile";
 import {
   Save, FolderOpen, Play, Settings, Key, ChevronDown,
-  FileText, Plus, CloudUpload, Cloud, Globe, FileArchive,
+  FileText, Plus, CloudUpload, Cloud, Globe, FileArchive, Database,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScormImportDialog } from "./ScormImportDialog";
 import type { QuizFile } from "../types/quiz";
 
@@ -25,8 +27,17 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [cloudSaving, setCloudSaving] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [questionBankDialogOpen, setQuestionBankDialogOpen] = useState(false);
+  const [targetBankId, setTargetBankId] = useState("");
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const saveToCloud = trpc.quizMaker.saveQuiz.useMutation();
+  const { data: questionBanks = [] } = trpc.quizBank.listBanks.useQuery(
+    { orgId: Number(orgId) },
+    { enabled: questionBankDialogOpen && Boolean(orgId) }
+  );
+  const exportToQuestionBank = trpc.quizMaker.exportToQuestionBank.useMutation();
   const utils = trpc.useUtils();
 
   const handleCloudSave = async () => {
@@ -87,6 +98,33 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
 
   const handleImportComplete = (quiz: QuizFile, fileName: string) => {
     loadQuiz(quiz, fileName);
+  };
+
+  const openQuestionBankExport = () => {
+    if (!(quiz.meta as any).cloudId) {
+      alert("Save this quiz to the cloud before exporting questions to a Question Bank.");
+      return;
+    }
+    setSelectedQuestionIds(quiz.questions.map((question) => question.id));
+    setTargetBankId("");
+    setFileMenuOpen(false);
+    setQuestionBankDialogOpen(true);
+  };
+
+  const handleQuestionBankExport = async () => {
+    const quizId = (quiz.meta as any).cloudId as number | undefined;
+    if (!quizId || !targetBankId || selectedQuestionIds.length === 0) return;
+    try {
+      const result = await exportToQuestionBank.mutateAsync({
+        quizId,
+        targetBankId: Number(targetBankId),
+        questionIds: selectedQuestionIds,
+      });
+      alert(`${result.exportedCount} question${result.exportedCount === 1 ? "" : "s"} exported to the Question Bank.`);
+      setQuestionBankDialogOpen(false);
+    } catch (err) {
+      alert("Question Bank export failed: " + (err as Error).message);
+    }
   };
 
   const tierBadge = {
@@ -180,6 +218,12 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                     >
                       <Cloud className="w-4 h-4 text-teal-500" /> Open from Cloud
                     </button>
+                    <button
+                      onClick={openQuestionBankExport}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
+                    >
+                      <Database className="w-4 h-4 text-teal-500" /> Export questions to Bank
+                    </button>
                   </>
                 )}
               </div>
@@ -250,6 +294,53 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
         onOpenChange={setImportDialogOpen}
         onImportComplete={handleImportComplete}
       />
+
+      <Dialog open={questionBankDialogOpen} onOpenChange={setQuestionBankDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Export Quiz Questions to Question Bank</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Choose a Question Bank in the active organization and the questions to copy. Question media, choices, ordering, and matching data are retained when supported.</p>
+            <label className="grid gap-1.5 text-sm font-medium">
+              Target Question Bank
+              <select
+                value={targetBankId}
+                onChange={(event) => setTargetBankId(event.target.value)}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Select a Question Bank</option>
+                {questionBanks.map((bank) => <option key={bank.id} value={bank.id}>{bank.name}</option>)}
+              </select>
+            </label>
+            <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border p-3">
+              {quiz.questions.map((question, index) => {
+                const checked = selectedQuestionIds.includes(question.id);
+                return <label key={question.id} className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => setSelectedQuestionIds((current) => event.target.checked ? [...current, question.id] : current.filter((id) => id !== question.id))}
+                    className="mt-0.5 accent-teal-600"
+                  />
+                  <span><strong>Q{index + 1}.</strong> {question.stem || "Untitled question"}</span>
+                </label>;
+              })}
+            </div>
+          </div>
+          <DialogFooter>
+            <button type="button" onClick={() => setQuestionBankDialogOpen(false)} className="rounded-md border px-4 py-2 text-sm">Cancel</button>
+            <button
+              type="button"
+              onClick={handleQuestionBankExport}
+              disabled={!targetBankId || selectedQuestionIds.length === 0 || exportToQuestionBank.isPending}
+              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {exportToQuestionBank.isPending ? "Exporting..." : "Export selected questions"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
