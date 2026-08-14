@@ -16,17 +16,10 @@
  */
 
 import mysql from 'mysql2/promise';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import readline from 'readline';
+import { requireMysqlTargets } from './load-replication-config.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configPath = path.join(__dirname, '../replication-config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-
-const MANUS = config.manus.mysql;
-const RAILWAY = config.railway.mysql;
+const { manus: MANUS, railway: RAILWAY } = requireMysqlTargets();
 
 const rl = readline.createInterface({
   input: process.stdin,

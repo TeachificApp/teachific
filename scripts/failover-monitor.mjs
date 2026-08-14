@@ -13,16 +13,9 @@
 
 import mysql from 'mysql2/promise';
 import fetch from 'node-fetch';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { requireMysqlTargets } from './load-replication-config.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configPath = path.join(__dirname, '../replication-config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-
-const MANUS = config.manus.mysql;
-const RAILWAY = config.railway.mysql;
+const { manus: MANUS, railway: RAILWAY } = requireMysqlTargets();
 
 const MANUS_APP_URL = process.env.MANUS_APP_URL || 'https://scormhost-fjxmsdmk.manus.space';
 const RAILWAY_APP_URL = process.env.RAILWAY_APP_URL || 'https://teachific-app.railway.app';

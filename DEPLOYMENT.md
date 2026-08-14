@@ -1,6 +1,8 @@
 # Teachific™ — Railway Deployment Guide
 
-This guide walks you through deploying Teachific™ to [Railway](https://railway.app) as a self-hosted alternative to the Manus platform. The app runs as a single Node.js process (Express + Vite SSR) backed by a MySQL database and S3-compatible file storage.
+This guide walks you through deploying **this** Teachific app to [Railway](https://railway.app) as a self-hosted alternative to the Manus platform. The app runs as a single Node.js process (Express + Vite SSR) backed by a MySQL database and S3-compatible file storage.
+
+Moving **every** Manus GitHub repo (Teachific, Ultrasound, Echo Assist, and the older snapshots) follows the same loop. Use [docs/MANUS_TO_RAILWAY.md](docs/MANUS_TO_RAILWAY.md) as the org-wide process; this file is the Teachific-specific checklist.
 
 ---
 

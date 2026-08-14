@@ -13,6 +13,6 @@ VITE_STRIPE_PUBLISHABLE_KEY = "${{VITE_STRIPE_PUBLISHABLE_KEY}}"
 
 [deploy]
 healthcheckPath = "/api/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

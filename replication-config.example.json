@@ -1,0 +1,29 @@
+{
+  "manus": {
+    "mysql": {
+      "host": "YOUR_TIDB_HOST.tidbcloud.com",
+      "port": 4000,
+      "username": "YOUR_TIDB_USER",
+      "password": "YOUR_TIDB_PASSWORD",
+      "database": "YOUR_TIDB_DATABASE",
+      "ssl": true
+    }
+  },
+  "railway": {
+    "mysql": {
+      "host": "YOUR_RAILWAY_MYSQL_HOST.proxy.rlwy.net",
+      "port": 3306,
+      "username": "root",
+      "password": "YOUR_RAILWAY_MYSQL_PASSWORD",
+      "database": "railway"
+    }
+  },
+  "cloudflare": {
+    "r2": {
+      "accountId": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+      "bucketName": "teachific",
+      "accessKeyId": "YOUR_R2_ACCESS_KEY_ID",
+      "endpoint": "https://YOUR_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
+    }
+  }
+}

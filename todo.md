@@ -5234,3 +5234,13 @@
 - [x] Require organization membership and admin-level permission for QuizMaker authoring, publication, analytics, and exports
 - [x] Limit QuizMaker Question Bank export targets to banks owned by the quiz organization
 - [x] Add regression coverage for active QuizMaker organization isolation
+
+## Manus → Railway (all GitHub-synced Manus apps)
+- [x] Document org-wide cutover process for every TeachificApp GitHub repo (`docs/MANUS_TO_RAILWAY.md`)
+- [x] Teachific Docker/Railway: pass `VITE_*` build args, bind `0.0.0.0`/`PORT`, longer healthcheck
+- [x] Stop committing `replication-config.json`; load migration settings from env vars
+- [ ] Create Railway project + MySQL for `teachific` and copy TiDB + files (needs Railway token)
+- [ ] Port R2/OpenAI fallbacks into `ultrasound-app` (needs write access to that repo)
+- [ ] Create Railway projects for `ultrasound-app` and `echo-assist`
+- [ ] Confirm whether `teachificapp` and `ultrasound-assist` still have live users or can be archived
+- [ ] DNS + Stripe/SendGrid webhook cutover per app

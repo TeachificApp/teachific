@@ -10,10 +10,25 @@ RUN pnpm install --frozen-lockfile
 
 # Build both client (vite) and server (esbuild)
 # vite builds React into dist/public, esbuild compiles Express into dist/index.js
+# VITE_* must be present at build time; Railway injects them via railway.toml [build.buildArgs].
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG VITE_APP_ID
+ARG VITE_APP_TITLE
+ARG VITE_APP_LOGO
+ARG VITE_OAUTH_PORTAL_URL
+ARG VITE_FRONTEND_FORGE_API_KEY
+ARG VITE_FRONTEND_FORGE_API_URL
+ARG VITE_STRIPE_PUBLISHABLE_KEY
+ENV VITE_APP_ID=$VITE_APP_ID \
+    VITE_APP_TITLE=$VITE_APP_TITLE \
+    VITE_APP_LOGO=$VITE_APP_LOGO \
+    VITE_OAUTH_PORTAL_URL=$VITE_OAUTH_PORTAL_URL \
+    VITE_FRONTEND_FORGE_API_KEY=$VITE_FRONTEND_FORGE_API_KEY \
+    VITE_FRONTEND_FORGE_API_URL=$VITE_FRONTEND_FORGE_API_URL \
+    VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
 RUN NODE_ENV=production pnpm build
 
 # Production runtime

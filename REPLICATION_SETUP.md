@@ -1,3 +1,5 @@
+For the org-wide Manus → Railway process (every GitHub-synced app), see [docs/MANUS_TO_RAILWAY.md](docs/MANUS_TO_RAILWAY.md).
+
 # Teachific Replication & Failover Setup
 
 This document outlines the real-time replication system that keeps your Railway backup in sync with your primary Manus deployment.
@@ -13,37 +15,13 @@ This document outlines the real-time replication system that keeps your Railway 
 
 ## Credentials
 
-All credentials are stored in `replication-config.json` (⚠️ **keep this file secure**):
+Copy `replication-config.example.json` to `replication-config.json` (gitignored) or set:
 
-```json
-{
-  "manus": {
-    "mysql": {
-      "host": "gateway04.us-east-1.prod.aws.tidbcloud.com",
-      "port": 4000,
-      "username": "2mhhtxpXA9Esras.7d3251b537d6",
-      "password": "ps2dxQvK5a32w3zvii4v",
-      "database": "fJXMsdmk8vcb8V4GDt37f6"
-    }
-  },
-  "railway": {
-    "mysql": {
-      "host": "roundhouse.proxy.rlwy.net",
-      "port": 25456,
-      "username": "root",
-      "password": "sLDKCIPwEFYclujJlwXfKtJSzXHBulcV",
-      "database": "railway"
-    }
-  },
-  "cloudflare": {
-    "r2": {
-      "accountId": "926e046281eccc776864fd105e322ac8",
-      "bucketName": "teachific",
-      "endpoint": "https://926e046281eccc776864fd105e322ac8.r2.cloudflarestorage.com"
-    }
-  }
-}
-```
+- `MANUS_DB_HOST` / `MANUS_DB_PORT` / `MANUS_DB_USER` / `MANUS_DB_PASS` / `MANUS_DB_NAME`
+- `RAILWAY_DB_HOST` / `RAILWAY_DB_PORT` / `RAILWAY_DB_USER` / `RAILWAY_DB_PASS` / `RAILWAY_DB_NAME`
+- `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_R2_BUCKET` / `CLOUDFLARE_R2_ACCESS_KEY` / `CLOUDFLARE_R2_SECRET_KEY` / `CLOUDFLARE_R2_ENDPOINT`
+
+Do not commit live passwords. Rotate any secret that was previously stored in git.
 
 ## Setup Steps
 

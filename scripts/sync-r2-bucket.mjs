@@ -11,18 +11,15 @@
  * --watch: Enable continuous monitoring (polls every 5 minutes)
  */
 
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
-import { S3Client as R2Client } from '@aws-sdk/client-s3';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { loadReplicationConfig } from './load-replication-config.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configPath = path.join(__dirname, '../replication-config.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-
-const R2_CONFIG = config.cloudflare.r2;
+const { r2: R2_CONFIG } = loadReplicationConfig();
+if (!R2_CONFIG.endpoint || !R2_CONFIG.accessKeyId || !R2_CONFIG.bucketName) {
+  throw new Error(
+    "R2 settings missing. Set CLOUDFLARE_R2_ENDPOINT / CLOUDFLARE_R2_ACCESS_KEY / CLOUDFLARE_R2_BUCKET or provide replication-config.json."
+  );
+}
 
 // Initialize S3 client for Manus (using environment variables)
 const s3Client = new S3Client({
@@ -39,7 +36,7 @@ const r2Client = new S3Client({
   endpoint: R2_CONFIG.endpoint,
   credentials: {
     accessKeyId: R2_CONFIG.accessKeyId,
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_KEY || R2_CONFIG.accessKeyId,
+    secretAccessKey: R2_CONFIG.secretAccessKey || process.env.CLOUDFLARE_R2_SECRET_KEY,
   },
 });
 

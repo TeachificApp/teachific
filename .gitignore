@@ -14,6 +14,9 @@ build/
 .env.test.local
 .env.production.local
 
+# Live DB / R2 credentials — use replication-config.example.json as the template
+replication-config.json
+
 # IDE and editor files
 .vscode/
 .idea/

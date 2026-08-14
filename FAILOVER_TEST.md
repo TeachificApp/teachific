@@ -23,11 +23,11 @@ Before running any tests:
 1. **Check current row counts:**
    ```bash
    # On Manus
-   mysql -h gateway04.us-east-1.prod.aws.tidbcloud.com -u 2mhhtxpXA9Esras.7d3251b537d6 -p fJXMsdmk8vcb8V4GDt37f6 \
+   mysql -h "$MANUS_DB_HOST" -P "${MANUS_DB_PORT:-4000}" -u "$MANUS_DB_USER" -p"$MANUS_DB_PASS" "$MANUS_DB_NAME" \
      -e "SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM courses;"
    
    # On Railway
-   mysql -h roundhouse.proxy.rlwy.net -u root -p railway \
+   mysql -h "$RAILWAY_DB_HOST" -P "$RAILWAY_DB_PORT" -u "$RAILWAY_DB_USER" -p"$RAILWAY_DB_PASS" "$RAILWAY_DB_NAME" \
      -e "SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM courses;"
    ```
 

@@ -48,20 +48,20 @@ node scripts/failover-monitor.mjs check
 ### Step 4: Enable Automated Sync (Choose One)
 
 #### Option A: GitHub Actions (Recommended)
-1. Add these secrets to GitHub repository:
-   - `MANUS_DB_USER`: `2mhhtxpXA9Esras.7d3251b537d6`
-   - `MANUS_DB_PASS`: `ps2dxQvK5a32w3zvii4v`
-   - `MANUS_DB_NAME`: `fJXMsdmk8vcb8V4GDt37f6`
-   - `RAILWAY_DB_HOST`: `roundhouse.proxy.rlwy.net`
-   - `RAILWAY_DB_PORT`: `25456`
-   - `RAILWAY_DB_USER`: `root`
-   - `RAILWAY_DB_PASS`: `sLDKCIPwEFYclujJlwXfKtJSzXHBulcV`
-   - `RAILWAY_DB_NAME`: `railway`
-   - `CLOUDFLARE_ACCOUNT_ID`: `926e046281eccc776864fd105e322ac8`
-   - `CLOUDFLARE_R2_BUCKET`: `teachific`
-   - `CLOUDFLARE_R2_ACCESS_KEY`: `cfat_fbBYg0l4UlQGBEfT6PrBebZh3VPjUGKgsgDQ2Xy0f1e6f4af`
-   - `MANUS_S3_ACCESS_KEY`: (your Manus S3 key)
-   - `MANUS_S3_SECRET_KEY`: (your Manus S3 secret)
+1. Add these secrets to the GitHub repository (values live in Railway / your password manager, not in git):
+   - `MANUS_DB_USER`
+   - `MANUS_DB_PASS`
+   - `MANUS_DB_NAME`
+   - `RAILWAY_DB_HOST`
+   - `RAILWAY_DB_PORT`
+   - `RAILWAY_DB_USER`
+   - `RAILWAY_DB_PASS`
+   - `RAILWAY_DB_NAME`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `CLOUDFLARE_R2_BUCKET`
+   - `CLOUDFLARE_R2_ACCESS_KEY`
+   - `MANUS_S3_ACCESS_KEY`
+   - `MANUS_S3_SECRET_KEY`
 
 2. Workflow will run automatically every 5 minutes
 
@@ -208,11 +208,11 @@ cat replication-config.json
 # Run sync again
 node scripts/migrate-to-railway.mjs
 
-# Compare row counts
-mysql -h gateway04.us-east-1.prod.aws.tidbcloud.com -u 2mhhtxpXA9Esras.7d3251b537d6 -p fJXMsdmk8vcb8V4GDt37f6 \
+# Compare row counts (use $MANUS_DB_* and $RAILWAY_DB_* from your environment)
+mysql -h "$MANUS_DB_HOST" -P "${MANUS_DB_PORT:-4000}" -u "$MANUS_DB_USER" -p"$MANUS_DB_PASS" "$MANUS_DB_NAME" \
   -e "SELECT COUNT(*) FROM users;"
 
-mysql -h roundhouse.proxy.rlwy.net -u root -p railway \
+mysql -h "$RAILWAY_DB_HOST" -P "$RAILWAY_DB_PORT" -u "$RAILWAY_DB_USER" -p"$RAILWAY_DB_PASS" "$RAILWAY_DB_NAME" \
   -e "SELECT COUNT(*) FROM users;"
 ```
 
