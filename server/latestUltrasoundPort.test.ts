@@ -166,12 +166,15 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    const stripeWebhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
     expect(builderSource).toContain('import { getOrgBaseUrl } from "@/lib/orgUrl"');
     expect(builderSource).toContain("const courseBaseUrl = getOrgBaseUrl(course.orgSlug");
     expect(builderSource).toContain("getOrgBaseUrl(data.orgSlug, data.orgCustomDomain, data.orgDomainVerificationStatus)");
     expect(builderSource).toContain("${courseBaseUrl}/courses/${course.slug}?checkout=1");
+    expect(stripeWebhookSource).toContain("const bundleLibraryUrl = bundleOrg?.slug");
+    expect(stripeWebhookSource).toContain("loginUrl: bundleLibraryUrl");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {

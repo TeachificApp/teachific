@@ -359,12 +359,20 @@ router.post(
                       console.log(`[Stripe Webhook] User ${user.id} granted bundle ${bundleId} (${items.length} items)`);
                       // Send buyer confirmation via org sender
                       const bundleAmountPaid = session.amount_total ? session.amount_total / 100 : 0;
+                      const [bundleOrg] = await db.select({
+                        slug: organizations.slug,
+                        customDomain: organizations.customDomain,
+                        domainVerificationStatus: organizations.domainVerificationStatus,
+                      }).from(organizations).where(eq(organizations.id, orgId2)).limit(1);
+                      const bundleLibraryUrl = bundleOrg?.slug
+                        ? `${getOrgBaseUrl(bundleOrg.slug, bundleOrg.customDomain, bundleOrg.domainVerificationStatus)}/my-library`
+                        : "https://teachific.app/my-library";
                       const { subject: bundleSubj, htmlBody: bundleHtml, previewText: bundlePreview } =
                         buildFunnelPurchaseConfirmationEmail({
                           firstName: (user.name ?? user.email ?? "there").split(" ")[0],
                           productName: `Bundle #${bundleId}`,
                           amountPaid: bundleAmountPaid,
-                          loginUrl: `https://teachific.app/my-library`,
+                          loginUrl: bundleLibraryUrl,
                         });
                       await sendEmailViaOrg({
                         to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },

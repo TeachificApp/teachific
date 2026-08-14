@@ -4951,9 +4951,9 @@
 - [x] Update getLandingPageBlocks to return orgSlug + customDomain
 - [x] Resolve Course Builder main checkout, pricing-option checkout, and free-preview links through the course organization domain
 - [ ] Fix LandingPageBuilder preview link to use org subdomain
-- [ ] Fix server: enrollmentEmail.ts to use org subdomain
-- [ ] Fix server: embeddedCheckoutWebhook.ts to use org subdomain
-- [ ] Fix server: stripeWebhookRoutes.ts to use org subdomain
+- [x] Fix server: enrollmentEmail.ts to use org subdomain or verified custom domain when organization context is available
+- [x] Fix server: embeddedCheckoutWebhook.ts to use org subdomain or verified custom domain when purchase organization context is available
+- [x] Fix server: stripeWebhookRoutes.ts bundle confirmation links to use the purchasing organization subdomain or verified custom domain
 - [ ] Fix server: lmsRouter.ts discussion URL to use org subdomain
 - [ ] Fix DashboardLayout "Teachific Learn" sidebar link to use org subdomain
 
