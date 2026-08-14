@@ -978,6 +978,10 @@ export default function CourseLanding() {
     { slug: organizationSlug! },
     { enabled: !!organizationSlug },
   );
+  const { data: organizationTheme } = trpc.lms.publicSchool.themeBySlug.useQuery(
+    { slug: organizationSlug! },
+    { enabled: !!organizationSlug },
+  );
   const { data: course, isLoading } = trpc.lms.getCourse.useQuery(
     { slug: slug!, orgId: organization?.id, preview: isPreview || undefined },
     { enabled: !!slug && (!organizationSlug || !!organization?.id) },
@@ -1331,7 +1335,12 @@ export default function CourseLanding() {
   }
 
   // ── Auto-generated fallback layout ──
-  const heroColor = lp?.heroImageUrl ? undefined : "#179ca3";
+  const landingAccentColor = (course as any)?.primaryColor
+    ?? (course as any)?.themeColor
+    ?? (organizationTheme as any)?.buttonColor
+    ?? (organizationTheme as any)?.primaryColor
+    ?? "#179ca3";
+  const heroColor = lp?.heroImageUrl ? undefined : landingAccentColor;
   const heroBg = lp?.heroImageUrl
     ? { backgroundImage: `url(${lp.heroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { backgroundColor: heroColor };
@@ -1359,7 +1368,7 @@ export default function CourseLanding() {
         <div className="max-w-6xl mx-auto px-4 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 items-start">
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="bg-teal-600 text-white border-0 flex items-center gap-1">
+              <Badge variant="secondary" className="text-white border-0 flex items-center gap-1" style={{ backgroundColor: landingAccentColor }}>
                 {TYPE_ICONS[course.type]} {course.type === "download" ? "Digital Download" : course.type.charAt(0).toUpperCase() + course.type.slice(1)}
               </Badge>
               <Badge variant="outline" className="border-teal-400 text-teal-200">
@@ -1404,7 +1413,7 @@ export default function CourseLanding() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-800">Full Access</span>
-                    <span className="text-sm font-bold text-teal-700">{price}</span>
+                    <span className="text-sm font-bold" style={{ color: landingAccentColor }}>{price}</span>
                   </div>
                 </button>
                 {/* Secondary options */}
@@ -1428,7 +1437,7 @@ export default function CourseLanding() {
               </div>
             )}
             <div className="space-y-1">
-              <div className="text-3xl font-bold text-teal-700">{price}</div>
+              <div className="text-3xl font-bold" style={{ color: landingAccentColor }}>{price}</div>
               {pricingType === "trial_then_subscription" && (
                 <p className="text-xs text-gray-500">{course.trialDays ?? 7}-day free trial, then billed {course.subscriptionInterval ?? "monthly"}</p>
               )}
@@ -1438,7 +1447,7 @@ export default function CourseLanding() {
               )}
               {pricingType === "free" && <p className="text-xs text-gray-500">No payment required</p>}
             </div>
-            <Button className="w-full hover: font-semibold" size="lg" onClick={handleEnroll} disabled={enrolling || enrollFree.isPending || createCheckout.isPending}>
+            <Button className="w-full hover: font-semibold" size="lg" style={{ backgroundColor: landingAccentColor }} onClick={handleEnroll} disabled={enrolling || enrollFree.isPending || createCheckout.isPending}>
               {enrolling ? "Processing..." : ctaText}<ChevronRight className="w-4 h-4 ml-1" />
             </Button>
             {enrollment && (
