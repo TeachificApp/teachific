@@ -80,6 +80,7 @@ import {
   instructorPayoutConfig,
   affiliateCourseAccess,
   userRoles,
+  organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
@@ -1635,11 +1636,16 @@ CRITICAL REQUIREMENTS:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Get course slug
       const [course] = await db
-        .select({ slug: lmsCourses.slug, title: lmsCourses.title, pricingType: lmsCourses.pricingType, price: lmsCourses.price })
+        .select({ slug: lmsCourses.slug, title: lmsCourses.title, pricingType: lmsCourses.pricingType, price: lmsCourses.price, orgId: lmsCourses.orgId })
         .from(lmsCourses)
         .where(eq(lmsCourses.id, input.courseId))
         .limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const [org] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
       // Get all preview lessons (previewMode = 'preview' or 'preview_hide_after_purchase')
       const lessons = await db
         .select({
@@ -1667,6 +1673,9 @@ CRITICAL REQUIREMENTS:
         courseTitle: course.title,
         pricingType: course.pricingType,
         price: course.price,
+        orgSlug: org?.slug ?? null,
+        orgCustomDomain: org?.customDomain ?? null,
+        orgDomainVerificationStatus: org?.domainVerificationStatus ?? null,
         lessons: lessons.map(l => ({
           id: l.id,
           title: l.title,
@@ -2665,4 +2674,3 @@ CRITICAL REQUIREMENTS:
       return { success: true, alreadyExisted: false, certificateUrl: newCert?.certificateUrl ?? null };
     }),
 });
-

@@ -13,6 +13,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { getOrgBaseUrl } from "@/lib/orgUrl";
 import {
   DndContext, DragOverlay, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -1561,7 +1562,8 @@ function CertTemplateSelector({ value, onChange }: { value: number | null; onCha
 }
 
 function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (data: any) => void; saving: boolean }) {
-   const [uploadingCover, setUploadingCover] = useState(false);
+  const courseBaseUrl = getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1882,7 +1884,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           {course.slug && (
             <button
               onClick={() => {
-                const url = `${window.location.origin}/courses/${course.slug}?checkout=1`;
+                const url = `${courseBaseUrl}/courses/${course.slug}?checkout=1`;
                 navigator.clipboard.writeText(url).then(() => toast.success("Main checkout link copied!"));
               }}
               className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50 transition-colors"
@@ -2034,7 +2036,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
         )}
 
         {/* Additional Pricing Options */}
-        <CoursePricingOptionsEditor courseId={course.id} courseSlug={course.slug} />
+        <CoursePricingOptionsEditor courseId={course.id} courseSlug={course.slug} courseBaseUrl={courseBaseUrl} />
       </div>
 
             <div className="flex items-center gap-2">
@@ -2457,7 +2459,7 @@ function FreePreviewLinkPanel({ courseId }: { courseId: number }) {
   const [copied, setCopied] = useState(false);
   if (isLoading) return null;
   if (!data || data.lessons.length === 0) return null;
-  const previewUrl = `${window.location.origin}/courses/${data.courseSlug}?free_preview=1`;
+  const previewUrl = `${getOrgBaseUrl(data.orgSlug, data.orgCustomDomain, data.orgDomainVerificationStatus)}/courses/${data.courseSlug}?free_preview=1`;
   const handleCopy = () => {
     navigator.clipboard.writeText(previewUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   };
@@ -8775,7 +8777,7 @@ function PricingOptionForm({
   );
 }
 
-function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOption, deleteOption, formatPrice, courseSlug }: {
+function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOption, deleteOption, formatPrice, courseSlug, courseBaseUrl }: {
   opt: PricingOption;
   editingId: number | null;
   setEditingId: (id: number | null) => void;
@@ -8784,6 +8786,7 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
   deleteOption: any;
   formatPrice: (opt: PricingOption) => string;
   courseSlug?: string | null;
+  courseBaseUrl: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: opt.id });
   const style: React.CSSProperties = {
@@ -8825,11 +8828,11 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
       {courseSlug && (
         <button
           onClick={() => {
-            const url = `${window.location.origin}/courses/${courseSlug}?pricingOptionId=${opt.id}&checkout=1`;
+            const url = `${courseBaseUrl}/courses/${courseSlug}?pricingOptionId=${opt.id}&checkout=1`;
             navigator.clipboard.writeText(url).then(() => toast.success("Checkout link copied!"));
           }}
           className="text-xs text-blue-400 hover:text-blue-600 p-1 flex-shrink-0"
-          title={`Copy direct checkout link\n${window.location.origin}/courses/${courseSlug}?pricingOptionId=${opt.id}&checkout=1`}
+          title={`Copy direct checkout link\n${courseBaseUrl}/courses/${courseSlug}?pricingOptionId=${opt.id}&checkout=1`}
         >
           <Link2 className="w-3.5 h-3.5" />
         </button>
@@ -8854,7 +8857,7 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
 // Stable fallback — avoids creating a new array reference on every render
 const EMPTY_PRICING_OPTIONS: PricingOption[] = [];
 
-function CoursePricingOptionsEditor({ courseId, courseSlug }: { courseId: number; courseSlug?: string | null }) {
+function CoursePricingOptionsEditor({ courseId, courseSlug, courseBaseUrl }: { courseId: number; courseSlug?: string | null; courseBaseUrl: string }) {
   const utils = trpc.useUtils();
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -8958,6 +8961,7 @@ function CoursePricingOptionsEditor({ courseId, courseSlug }: { courseId: number
                   deleteOption={deleteOption}
                   formatPrice={formatPrice}
                   courseSlug={courseSlug}
+                  courseBaseUrl={courseBaseUrl}
                 />
               ))}
             </div>

@@ -4947,8 +4947,9 @@
 ## Fix: All org links scoped to org subdomain (not learn.teachific.com)
 - [x] Scope public download catalogs and automatic related-product download feeds by organization subdomain
 - [ ] Update useLearnLink hook to use org's own subdomain
-- [ ] Update getCourse procedure to return orgSlug + customDomain
-- [ ] Update getLandingPageBlocks to return orgSlug + customDomain
+- [x] Update getCourse procedure to return orgSlug + customDomain
+- [x] Update getLandingPageBlocks to return orgSlug + customDomain
+- [x] Resolve Course Builder main checkout, pricing-option checkout, and free-preview links through the course organization domain
 - [ ] Fix LandingPageBuilder preview link to use org subdomain
 - [ ] Fix server: enrollmentEmail.ts to use org subdomain
 - [ ] Fix server: embeddedCheckoutWebhook.ts to use org subdomain
