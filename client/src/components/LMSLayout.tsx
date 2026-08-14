@@ -199,8 +199,8 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                         <>
                           <div className="border-t border-gray-100 my-1" />
                           <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Affiliate</div>
-                          <a href={`${MEMBERS_URL}/affiliate-dashboard`} onClick={() => setAccountOpen(false)} className="px-3 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 cursor-pointer flex items-center gap-2">
-                            <DollarSign className="w-3.5 h-3.5 text-purple-500" /> Affiliate Dashboard
+                          <a href={`${MEMBERS_URL}/affiliate-dashboard`} onClick={() => setAccountOpen(false)} className="px-3 py-2 text-sm text-gray-700 hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] cursor-pointer flex items-center gap-2">
+                            <DollarSign className="w-3.5 h-3.5 text-[var(--org-primary)]" /> Affiliate Dashboard
                           </a>
                         </>
                       )}
@@ -210,8 +210,8 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                         <>
                           <div className="border-t border-gray-100 my-1" />
                           <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Instructor</div>
-                          <a href={`${MEMBERS_URL}/instructor-portal`} onClick={() => setAccountOpen(false)} className="px-3 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer flex items-center gap-2">
-                            <BookOpen className="w-3.5 h-3.5 text-emerald-500" /> Instructor Portal
+                          <a href={`${MEMBERS_URL}/instructor-portal`} onClick={() => setAccountOpen(false)} className="px-3 py-2 text-sm text-gray-700 hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] cursor-pointer flex items-center gap-2">
+                            <BookOpen className="w-3.5 h-3.5 text-[var(--org-primary)]" /> Instructor Portal
                           </a>
                         </>
                       )}

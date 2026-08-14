@@ -4824,14 +4824,14 @@
 - [x] Fix lmsRouter.ts (main) listCourses: use getOrgIdForUserWithFallback
 
 ## Phase 9: Org-Level Color Theming System
-- [ ] Create OrgThemeContext with CSS variable injection
-- [ ] Extend SubdomainThemeProvider to inject --org-primary, --org-accent, --org-button, --org-button-text CSS variables
-- [ ] Add CSS variable declarations to index.css with teal defaults
+- [x] Create OrgThemeContext with CSS variable injection
+- [x] Extend SubdomainThemeProvider to inject --org-primary, --org-accent, --org-button, --org-button-text CSS variables
+- [x] Add CSS variable declarations to index.css with teal defaults
 - [ ] Add LMS admin OrgThemeProvider that fetches theme for the current org
-- [ ] Replace hardcoded teal in CoursePlayer.tsx with CSS variables
-- [ ] Replace hardcoded teal in LMSLayout.tsx with CSS variables
-- [ ] Replace hardcoded teal in SchoolMemberLayout.tsx with CSS variables
-- [ ] Replace hardcoded teal in StudentLayout.tsx with CSS variables
+- [x] Replace priority CoursePlayer.tsx accent fallbacks with CSS variables
+- [x] Replace LMSLayout portal action accents with organization theme CSS variables
+- [x] Replace SchoolMemberLayout.tsx organization navigation accents with CSS variables
+- [x] Replace StudentLayout.tsx organization identity accents with CSS variables
 - [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables
 - [ ] Replace hardcoded teal in CourseOverviewPage.tsx with CSS variables
 - [ ] Replace hardcoded teal in SchoolPage.tsx with CSS variables

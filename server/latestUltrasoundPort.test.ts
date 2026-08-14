@@ -171,6 +171,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const courseLandingSource = readFileSync(new URL("../client/src/pages/lms/CourseLanding.tsx", import.meta.url), "utf8");
     const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
     const myCoursesSource = readFileSync(new URL("../client/src/pages/lms/MyCoursesPage.tsx", import.meta.url), "utf8");
+    const lmsLayoutSource = readFileSync(new URL("../client/src/components/LMSLayout.tsx", import.meta.url), "utf8");
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
@@ -199,6 +200,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsRouterSource).toContain("orgId: z.number().optional()");
     expect(lmsRouterSource).toContain("eq(lmsCourses.orgId, input.orgId)");
     expect(myCoursesSource).toContain("{invoice.orgName && <p className=");
+    expect(lmsLayoutSource).toContain("hover:text-[var(--org-primary)]");
+    expect(lmsLayoutSource).toContain("DollarSign className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
+    expect(lmsLayoutSource).toContain("BookOpen className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {
