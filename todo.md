@@ -4946,15 +4946,16 @@
 
 ## Fix: All org links scoped to org subdomain (not learn.teachific.com)
 - [x] Scope public download catalogs and automatic related-product download feeds by organization subdomain
-- [ ] Update useLearnLink hook to use org's own subdomain
+- [x] Update useLearnLink hook to use the organization subdomain or verified custom domain with SSO passthrough
 - [x] Update getCourse procedure to return orgSlug + customDomain
 - [x] Update getLandingPageBlocks to return orgSlug + customDomain
 - [x] Resolve Course Builder main checkout, pricing-option checkout, and free-preview links through the course organization domain
-- [ ] Fix LandingPageBuilder preview link to use org subdomain
+- [x] Fix LandingPageBuilder preview link to use org subdomain or verified custom domain
 - [x] Fix server: enrollmentEmail.ts to use org subdomain or verified custom domain when organization context is available
 - [x] Fix server: embeddedCheckoutWebhook.ts to use org subdomain or verified custom domain when purchase organization context is available
 - [x] Fix server: stripeWebhookRoutes.ts bundle confirmation links to use the purchasing organization subdomain or verified custom domain
-- [ ] Fix server: lmsRouter.ts discussion URL to use org subdomain
+- [x] Fix server: lmsRouter.ts discussion URL to use org subdomain or verified custom domain when course organization context is available
+- [x] Resolve membership welcome and access links through the membership organization subdomain or verified custom domain
 - [ ] Fix DashboardLayout "Teachific Learn" sidebar link to use org subdomain
 
 ## Org Branding & CME Feature Flag

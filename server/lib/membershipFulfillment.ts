@@ -22,12 +22,14 @@ import {
   bundleEnrollments,
   bundleItems,
   bundles,
+  organizations,
 } from "../../drizzle/schema";
 import { getUserByEmail, getOrCreateUserByEmail, getOrCreateAccessToken } from "../db";
 import { generateAutoLoginToken } from "../routes/autoLogin";
 import { buildPasswordResetEmail, sendEmail } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
 import { isEnrollmentAccessActive } from "./enrollmentAccess";
+import { getOrgBaseUrl } from "./orgUrl";
 
 export type MembershipFulfillmentContext = {
   sessionId?: string | null;
@@ -404,9 +406,14 @@ async function sendMembershipWelcomeEmail(opts: {
   resetToken: string | null;
   planId: number;
   primaryCourseSlug?: string | null;
+  orgSlug?: string | null;
+  orgCustomDomain?: string | null;
+  orgDomainVerificationStatus?: string | null;
 }): Promise<void> {
-  const baseUrl = "https://teachific.app";
-  const learnBase = "https://teachific.app/learn";
+  const baseUrl = opts.orgSlug
+    ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus)
+    : "https://teachific.app";
+  const learnBase = baseUrl;
   const firstName = opts.name.split(" ")[0] || "there";
   const destination = opts.primaryCourseSlug
     ? `${learnBase}/courses/${opts.primaryCourseSlug}/player`
@@ -487,6 +494,13 @@ export async function fulfillMembershipPurchase(
   if (!plan) {
     return { success: false, userId, planId, isNewUser: resolved.isNew, notes, error: "Plan not found" };
   }
+  const [membershipOrg] = plan.orgId
+    ? await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, plan.orgId)).limit(1)
+    : [undefined];
 
   // Idempotency: prefer stripe subscription id
   let existingSub = null as {
@@ -600,6 +614,9 @@ export async function fulfillMembershipPurchase(
         resetToken: resolved.resetToken,
         planId,
         primaryCourseSlug,
+        orgSlug: membershipOrg?.slug ?? null,
+        orgCustomDomain: membershipOrg?.customDomain ?? null,
+        orgDomainVerificationStatus: membershipOrg?.domainVerificationStatus ?? null,
       });
       notes.push("Welcome email sent");
     } catch (err) {
