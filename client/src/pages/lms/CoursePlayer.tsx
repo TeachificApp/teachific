@@ -23,6 +23,7 @@ import {
   User, ListChecks, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSubdomain } from "@/hooks/useSubdomain";
 import LessonEffectPlayer, { fireLessonCompleteEffect } from "@/components/LessonEffectPlayer";
 import { BlockPreview, type Block } from "@/components/BlockPreview";
 
@@ -764,10 +765,17 @@ export default function CoursePlayer() {
   const [contentFullscreen, setContentFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const utils = trpc.useUtils();
+  const organizationSlug = getSubdomain();
+  const { data: organization } = trpc.orgs.publicSchoolBySlug.useQuery(
+    { slug: organizationSlug! },
+    { enabled: !!organizationSlug },
+  );
+  const playerLogo = organization?.logoUrl ?? LOGO;
+  const playerBrandName = organization?.name ?? (data as any)?.course?.organizationName ?? "Teachific™";
 
   const { data, isLoading } = trpc.lmsLearner.getCoursePlayer.useQuery(
-    { slug: slug!, preview: isPreviewMode || adminPreviewStudent || isAdmin },
-    { enabled: !!slug && !!user }
+    { slug: slug!, orgId: organization?.id, preview: isPreviewMode || adminPreviewStudent || isAdmin },
+    { enabled: !!slug && !!user && (!organizationSlug || !!organization?.id) }
   );
   const { data: lessonData, isLoading: lessonLoading, refetch: refetchLesson } = trpc.lmsLearner.getLesson.useQuery(
     { lessonId: selectedLessonId! },
@@ -1249,9 +1257,9 @@ export default function CoursePlayer() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          {LOGO
-            ? <img src={LOGO} alt="Logo" className="h-7 sm:h-8 w-auto flex-shrink-0" />
-            : <span className="font-bold text-sm sm:text-base truncate" style={{ color: primaryColor }}>Teachific</span>
+          {playerLogo
+            ? <img src={playerLogo} alt={`${playerBrandName} logo`} className="h-7 sm:h-8 w-auto flex-shrink-0" />
+            : <span className="font-bold text-sm sm:text-base truncate" style={{ color: primaryColor }}>{playerBrandName}</span>
           }
         </div>
         <div className="flex items-center gap-2 sm:gap-5 flex-shrink-0">

@@ -613,11 +613,14 @@ export const lmsLearnerRouter = router({
 
   /** Get full course content for enrolled user (or preview lessons) */
   getCoursePlayer: protectedProcedure
-    .input(z.object({ slug: z.string(), preview: z.boolean().optional() }))
+    .input(z.object({ slug: z.string(), orgId: z.number().optional(), preview: z.boolean().optional() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.slug)).limit(1);
+      const courseScope = input.orgId
+        ? and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, input.orgId))
+        : eq(lmsCourses.slug, input.slug);
+      const [course] = await db.select().from(lmsCourses).where(courseScope).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
       // Check enrollment first — must happen before isAdminPreview check
       const [enrollment] = await db.select().from(lmsEnrollments)

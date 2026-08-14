@@ -169,6 +169,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const stripeWebhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     const membershipSource = readFileSync(new URL("./lib/membershipFulfillment.ts", import.meta.url), "utf8");
     const courseLandingSource = readFileSync(new URL("../client/src/pages/lms/CourseLanding.tsx", import.meta.url), "utf8");
+    const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
     expect(builderSource).toContain('import { getOrgBaseUrl } from "@/lib/orgUrl"');
@@ -189,6 +191,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseLandingSource).toContain("const landingOrganizationName = organization?.name");
     expect(courseLandingSource).toContain("const isOrganizationLanding = !!organizationSlug && !!organization?.id");
     expect(courseLandingSource).toContain("isOrganizationLanding ? landingOrganizationName : \"Teachific™\"");
+    expect(coursePlayerSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
+    expect(coursePlayerSource).toContain("const playerBrandName = organization?.name");
+    expect(coursePlayerSource).toContain("orgId: organization?.id");
+    expect(lmsRouterSource).toContain("getCoursePlayer: protectedProcedure");
+    expect(lmsRouterSource).toContain("orgId: z.number().optional()");
+    expect(lmsRouterSource).toContain("eq(lmsCourses.orgId, input.orgId)");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {
