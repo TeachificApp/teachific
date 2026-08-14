@@ -1,20 +1,40 @@
 # Manus → Railway: every GitHub-synced app
 
-Manus already pushes source to GitHub. Railway should deploy **from GitHub**, not from Manus. A repo is not migrated until it boots, stores files, talks to a database, authenticates users, and calls an LLM **without** Manus Forge, Manus OAuth, or `*.manus.space`.
+Manus already pushes source to GitHub. Railway should deploy **web apps from GitHub**, not from Manus. A **web** repo is not migrated until it boots, stores files, talks to a database, authenticates users, and calls an LLM **without** Manus Forge, Manus OAuth, or `*.manus.space`.
 
-Do one app at a time. Finish cutover on that app before starting the next.
+Electron desktop apps are a different class: they ship as Windows/Mac installers from GitHub Releases. They authenticate against the Teachific web API. They do **not** become Railway services.
 
-## GitHub inventory (TeachificApp)
+Do one web app at a time. Finish cutover on that app before starting the next.
 
-| GitHub repo | Product | Last push | Railway files today | Still depends on Manus at runtime? | Treat as |
-|---|---|---|---|---|---|
-| [teachific](https://github.com/TeachificApp/teachific) | Teachific LMS | 2026-08-13 | `Dockerfile`, `railway.toml`, data-copy scripts | Dual backends exist (S3 + OpenAI). Manus is fallback only. | **Canonical — migrate first** |
-| [ultrasound-app](https://github.com/TeachificApp/ultrasound-app) | All About Ultrasound | 2026-08-13 | `nixpacks.toml`, `railway.toml`, `railway.json`, `RAILWAY_DEPLOY.md` | **Yes.** Storage and LLM still require Forge. | **Canonical** |
-| [echo-assist](https://github.com/TeachificApp/echo-assist) | iHeartEcho | 2026-05-13 | `nixpacks.toml`, `railway.json` | Partial. Storage already switches to R2 when `R2_ENDPOINT` is set. | **Canonical** |
-| [teachificapp](https://github.com/TeachificApp/teachificapp) | Older Teachific snapshot | 2026-06-23 | `Dockerfile`, `railway.toml` | Same Manus coupling as old Teachific | Likely **archive** after confirming no unique domain/data |
-| [ultrasound-assist](https://github.com/TeachificApp/ultrasound-assist) | Older UltrasoundAssist snapshot | 2026-05-12 | `nixpacks.toml`, `railway.toml`, `RAILWAY_DEPLOY.md` | Yes (Forge storage) | Likely **archive** after confirming superseded by `ultrasound-app` |
+## Full GitHub inventory (TeachificApp)
+
+This agent’s GitHub token can list **public** org repos only (`public_repos: 5`). Private repos return 404. The private Electron apps below are included from the org listing you shared; there may be more private repos this token cannot see.
+
+### Web apps — these go to Railway
+
+| GitHub repo | Visibility | Product | Last push | Railway files today | Still depends on Manus at runtime? | Treat as |
+|---|---|---|---|---|---|---|
+| [teachific](https://github.com/TeachificApp/teachific) | public | Teachific LMS (web) | 2026-08-13 | `Dockerfile`, `railway.toml`, data-copy scripts | Dual backends exist (S3 + OpenAI). Manus is fallback only. | **Canonical web — migrate first** |
+| [ultrasound-app](https://github.com/TeachificApp/ultrasound-app) | public | All About Ultrasound (web) | 2026-08-13 | `nixpacks.toml`, `railway.toml`, `railway.json`, `RAILWAY_DEPLOY.md` | **Yes.** Storage and LLM still require Forge. | **Canonical web** |
+| [echo-assist](https://github.com/TeachificApp/echo-assist) | public | iHeartEcho (web) | 2026-05-13 | `nixpacks.toml`, `railway.json` | Partial. Storage already switches to R2 when `R2_ENDPOINT` is set. | **Canonical web** |
+| [teachificapp](https://github.com/TeachificApp/teachificapp) | public | Older Teachific snapshot | 2026-06-23 | `Dockerfile`, `railway.toml` | Same Manus coupling as old Teachific | Likely **archive** after confirming no unique domain/data |
+| [ultrasound-assist](https://github.com/TeachificApp/ultrasound-assist) | public | Older UltrasoundAssist snapshot | 2026-05-12 | `nixpacks.toml`, `railway.toml`, `RAILWAY_DEPLOY.md` | Yes (Forge storage) | Likely **archive** after confirming superseded by `ultrasound-app` |
 
 `teachificapp` and `ultrasound-assist` still get a Railway project if they have a live Manus URL or a database anyone still uses. Otherwise archive the GitHub repo after the canonical app is live.
+
+### Electron desktop apps — these do **not** go to Railway
+
+These are private installer products. Login, billing, downloads, and `app_versions` already live in the **teachific** web app (`/creator`, `/studio`, `/quiz-creator-app` dashboards). Moving Teachific to Railway is what those apps need.
+
+| GitHub repo | Visibility | Product | What “moved off Manus” means |
+|---|---|---|---|
+| [quizcreator-desktop](https://github.com/TeachificApp/quizcreator-desktop) | private | Teachific QuizCreator™ (Electron) | Keep GitHub Actions → `.exe` / `.dmg` releases. Point the app at the Railway Teachific API (`VITE_APP_URL` / API base). Do not create a Railway web service for the Electron process. |
+| [studio-desktop](https://github.com/TeachificApp/studio-desktop) | private | Teachific Studio™ (Electron) | Same: GitHub Releases + Teachific API on Railway. |
+| [creator-desktop](https://github.com/TeachificApp/creator-desktop) | private | TeachificCreator™ (Electron) | Same: GitHub Releases + Teachific API on Railway. |
+
+Older notes in `todo.md` also mention `teachific-quizcreator-desktop`, `teachific-studio-desktop`, `teachific-creator-desktop`, and a combined `teachific-desktop-apps` repo. If those still exist, treat them as rename leftovers: confirm they match the three private repos above, then archive duplicates.
+
+If a desktop app currently calls Manus Forge for AI/storage, change it to the Teachific Railway API (or OpenAI/R2) the same way the web apps do. That is a code change in the Electron repo, not a Railway deploy of Electron.
 
 ## What “moved to Railway” means
 
@@ -32,7 +52,7 @@ Hosting on Railway while still calling Forge is not a migration. `ultrasound-app
 
 ## Shared Railway layout
 
-Use **one Railway workspace**, then **one project per GitHub repo**:
+Use **one Railway workspace**, then **one project per web app**:
 
 ```
 Railway workspace
@@ -41,6 +61,11 @@ Railway workspace
 ├── echo-assist        → GitHub TeachificApp/echo-assist    + MySQL
 ├── teachificapp       → only if still serving users
 └── ultrasound-assist  → only if still serving users
+
+Not Railway services (GitHub Releases only):
+├── quizcreator-desktop
+├── studio-desktop
+└── creator-desktop
 ```
 
 Do not put unrelated apps in one Railway project as multiple services. They have different domains, databases, Stripe webhooks, and secrets.
@@ -150,10 +175,11 @@ Do not touch DNS until all of these pass on `*.up.railway.app`:
 
 ## Suggested order
 
-1. **teachific** — furthest along; use it as the template.
-2. **echo-assist** — R2 switch already in `server/storage.ts`.
-3. **ultrasound-app** — add R2/S3 + OpenAI fallbacks, then deploy. Highest production complexity (Thinkific, Printful, BookVault, Shopify, two hostnames).
-4. **teachificapp** / **ultrasound-assist** — deploy only if they still have users; otherwise archive.
+1. **teachific** (web) — furthest along; desktop apps and download hubs depend on this API.
+2. **echo-assist** (web) — R2 switch already in `server/storage.ts`.
+3. **ultrasound-app** (web) — add R2/S3 + OpenAI fallbacks, then deploy. Highest production complexity (Thinkific, Printful, BookVault, Shopify, two hostnames).
+4. **teachificapp** / **ultrasound-assist** (web) — deploy only if they still have users; otherwise archive.
+5. **quizcreator-desktop / studio-desktop / creator-desktop** — after Teachific is on Railway, point each Electron app at the new API URL and ship a release. No Railway project.
 
 ## Per-app variable checklists
 
@@ -200,10 +226,11 @@ This agent can only open PRs on `TeachificApp/teachific`. Apply those storage/LL
 ## What this agent cannot do from the teachific checkout
 
 - Create Railway projects or set Railway variables (needs a Railway account token).
-- Push branches to `ultrasound-app`, `echo-assist`, `ultrasound-assist`, or `teachificapp` (this run’s GitHub token is scoped to `teachific`).
+- List or push **private** org repos (`quizcreator-desktop`, `studio-desktop`, `creator-desktop`, and any others). This token sees only the five public repos.
+- Push branches to the other public web repos (`ultrasound-app`, `echo-assist`, `ultrasound-assist`, `teachificapp`).
 - Dump a live Manus TiDB or copy production files without those credentials in the environment.
 
-Once a Railway API token and sibling-repo access are available, the same loop is: connect repo → MySQL → variables → migrate data → smoke test → DNS.
+Once a Railway API token and org-wide GitHub access are available, the web-app loop is: connect repo → MySQL → variables → migrate data → smoke test → DNS. Desktop apps then get a new release aimed at the Railway Teachific URL.
 
 ## Teachific-specific runbook
 

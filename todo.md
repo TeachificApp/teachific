@@ -5239,8 +5239,11 @@
 - [x] Document org-wide cutover process for every TeachificApp GitHub repo (`docs/MANUS_TO_RAILWAY.md`)
 - [x] Teachific Docker/Railway: pass `VITE_*` build args, bind `0.0.0.0`/`PORT`, longer healthcheck
 - [x] Stop committing `replication-config.json`; load migration settings from env vars
+- [x] Split inventory: 5 public web repos vs private Electron desktop apps (not Railway services)
+- [ ] Grant this agent org access so private repos can be listed (may be more than the three desktop apps)
 - [ ] Create Railway project + MySQL for `teachific` and copy TiDB + files (needs Railway token)
 - [ ] Port R2/OpenAI fallbacks into `ultrasound-app` (needs write access to that repo)
 - [ ] Create Railway projects for `ultrasound-app` and `echo-assist`
 - [ ] Confirm whether `teachificapp` and `ultrasound-assist` still have live users or can be archived
-- [ ] DNS + Stripe/SendGrid webhook cutover per app
+- [ ] After Teachific is on Railway: point `quizcreator-desktop`, `studio-desktop`, `creator-desktop` at the new API and ship a release
+- [ ] DNS + Stripe/SendGrid webhook cutover per web app
