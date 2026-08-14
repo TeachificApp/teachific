@@ -4950,6 +4950,7 @@
 - [x] Update getCourse procedure to return orgSlug + customDomain
 - [x] Update getLandingPageBlocks to return orgSlug + customDomain
 - [x] Resolve Course Builder main checkout, pricing-option checkout, and free-preview links through the course organization domain
+- [x] Scope public Course Landing lookups to the active organization subdomain before resolving a course slug
 - [x] Fix LandingPageBuilder preview link to use org subdomain or verified custom domain
 - [x] Fix server: enrollmentEmail.ts to use org subdomain or verified custom domain when organization context is available
 - [x] Fix server: embeddedCheckoutWebhook.ts to use org subdomain or verified custom domain when purchase organization context is available

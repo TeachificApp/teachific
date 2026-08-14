@@ -168,6 +168,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     const stripeWebhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     const membershipSource = readFileSync(new URL("./lib/membershipFulfillment.ts", import.meta.url), "utf8");
+    const courseLandingSource = readFileSync(new URL("../client/src/pages/lms/CourseLanding.tsx", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
     expect(builderSource).toContain('import { getOrgBaseUrl } from "@/lib/orgUrl"');
@@ -179,6 +180,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membershipSource).toContain("const [membershipOrg] = plan.orgId");
     expect(membershipSource).toContain("orgSlug: membershipOrg?.slug ?? null");
     expect(membershipSource).toContain("getOrgBaseUrl(opts.orgSlug");
+    expect(courseLandingSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
+    expect(courseLandingSource).toContain("const organizationSlug = getSubdomain()");
+    expect(courseLandingSource).toContain("orgId: organization?.id");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {

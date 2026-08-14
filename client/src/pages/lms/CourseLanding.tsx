@@ -28,6 +28,7 @@ import { CountdownV2Block, ImageLinkWrapper, FormEmbedBlockPreview } from "@/com
 import { injectUserParams, injectUserParamsIntoHtml, type UserParamSource } from "@/lib/userUrlParams";
 import { getStoredAffiliateCode } from "@/pages/AffiliateRedirect";
 import { getLoginUrl } from "@/const";
+import { getSubdomain } from "@/hooks/useSubdomain";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -972,7 +973,15 @@ export default function CourseLanding() {
   const [fpEmail, setFpEmail] = useState("");
   const [fpSubmitting, setFpSubmitting] = useState(false);
 
-  const { data: course, isLoading } = trpc.lms.getCourse.useQuery({ slug: slug!, preview: isPreview || undefined }, { enabled: !!slug });
+  const organizationSlug = getSubdomain();
+  const { data: organization } = trpc.orgs.publicSchoolBySlug.useQuery(
+    { slug: organizationSlug! },
+    { enabled: !!organizationSlug },
+  );
+  const { data: course, isLoading } = trpc.lms.getCourse.useQuery(
+    { slug: slug!, orgId: organization?.id, preview: isPreview || undefined },
+    { enabled: !!slug && (!organizationSlug || !!organization?.id) },
+  );
   const { data: myCourses } = trpc.lmsLearner.getMyCourses.useQuery(undefined, { enabled: !!user });
   const enrollment = myCourses?.find((e: any) => e.courseId === course?.id);
   const { data: availability } = trpc.contentAvailability.getAvailability.useQuery(
