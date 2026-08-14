@@ -5249,3 +5249,14 @@
 - [ ] Confirm whether `teachificapp` still has live users or can be archived
 - [ ] After Teachific is on Railway: point `quizcreator-desktop`, `studio-desktop`, `creator-desktop` at the new API and ship a release
 - [ ] DNS + Stripe/SendGrid webhook cutover per web app
+
+## Quiz Creator Attempt Schema Reconciliation (Aug 13, 2026)
+- [x] Audit every runtime reader and writer of standalone Quiz Creator attempts against the live table contract
+- [x] Preserve existing legacy attempt records while establishing one authoritative attempt schema
+- [x] Align standalone quiz attempt persistence, analytics, and results queries with the authoritative schema
+- [x] Add org-admin-safe cross-quiz results filtering by quiz and learner
+- [x] Add regression coverage for attempt persistence and cross-organization result isolation
+
+## Draft Pull Request Integration (Aug 14, 2026)
+- [x] Review and integrate the user-provided draft pull request without overwriting current reconciliation work
+- [x] Reconcile draft changes with organization-scoped Quiz Creator attempt storage and results filtering

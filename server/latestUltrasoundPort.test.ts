@@ -163,6 +163,30 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(browserSource).toContain("trpc.lms.quiz.listOrgQuizzes.useQuery");
   });
 
+  it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const routerSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const migrationSource = readFileSync(new URL("../drizzle/0077_quiz_attempt_compatibility.sql", import.meta.url), "utf8");
+    expect(schemaSource).toContain('quizId: int("quiz_id")');
+    expect(schemaSource).toContain('legacyQuizId: int("quizId")');
+    expect(routerSource).toContain('status: "completed"');
+    expect(routerSource).toContain("legacyAnswersJson: input.answersJson");
+    expect(migrationSource).toContain("ADD COLUMN IF NOT EXISTS `quiz_id`");
+    expect(migrationSource).toContain("WHERE `quiz_id` = 0");
+  });
+
+  it("limits standalone Quiz Creator result filtering to an authorized organization", () => {
+    const routerSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const browserSource = readFileSync(new URL("../client/src/quiz-creator/components/CloudQuizBrowser.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("listOrgAttemptResults: protectedProcedure");
+    expect(routerSource).toContain("requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId)");
+    expect(routerSource).toContain("eq(quizAttempts.legacyOrgId, input.orgId)");
+    expect(routerSource).toContain("learnerEmail: z.string().trim().email().optional()");
+    expect(browserSource).toContain('setActiveTab("results")');
+    expect(browserSource).toContain("trpc.quizMaker.listOrgAttemptResults.useQuery");
+    expect(browserSource).toContain("Filter by learner email");
+  });
+
   it("uses the linked standalone quiz for quiz and exam lessons when a lesson quizId is present", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');

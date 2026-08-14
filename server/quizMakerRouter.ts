@@ -729,18 +729,29 @@ export const quizMakerRouter = router({
 
       const [result] = await db.insert(quizAttempts).values({
         quizId: quiz.id,
-        orgId: quiz.orgId || undefined,
-        scoreRaw: input.score,
-        scorePct,
-        totalPoints: input.totalPoints,
-        isPassed: input.passed,
-        isCompleted: true,
-        timeTakenSeconds: input.timeTakenSeconds || undefined,
-        takerName: input.takerName || undefined,
-        takerEmail: input.takerEmail || undefined,
-        answersJson: input.answersJson,
-        shareToken: input.shareToken,
-        submittedAt: new Date(),
+        totalPoints: Math.round(input.totalPoints),
+        earnedPoints: Math.round(input.score),
+        scorePercent: String(scorePct),
+        passed: input.passed,
+        status: "completed",
+        completedAt: new Date(),
+        timeSpentSeconds: input.timeTakenSeconds || undefined,
+        guestEmail: input.takerEmail || undefined,
+        sourceType: "standalone",
+        // Retain the proven legacy fields during the gradual compatibility window.
+        legacyQuizId: quiz.id,
+        legacyOrgId: quiz.orgId || undefined,
+        legacyScoreRaw: input.score,
+        legacyScorePct: scorePct,
+        legacyTotalPoints: input.totalPoints,
+        legacyIsPassed: input.passed,
+        legacyIsCompleted: true,
+        legacyTimeTakenSeconds: input.timeTakenSeconds || undefined,
+        legacyTakerName: input.takerName || undefined,
+        legacyTakerEmail: input.takerEmail || undefined,
+        legacyAnswersJson: input.answersJson,
+        legacyShareToken: input.shareToken,
+        legacySubmittedAt: new Date(),
       });
 
       return { attemptId: result.insertId };
@@ -772,6 +783,48 @@ export const quizMakerRouter = router({
       return { attempts: paginated, total };
     }),
 
+  /** List standalone Quiz Creator results within one authorized organization. */
+  listOrgAttemptResults: protectedProcedure
+    .input(z.object({
+      orgId: z.number().int().positive(),
+      quizId: z.number().int().positive().optional(),
+      learnerEmail: z.string().trim().email().optional(),
+      limit: z.number().int().min(1).max(100).default(50),
+      offset: z.number().int().min(0).default(0),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = (await getDb())!;
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+      const conditions = [eq(quizAttempts.legacyOrgId, input.orgId)];
+      if (input.quizId) conditions.push(eq(quizAttempts.quizId, input.quizId));
+      if (input.learnerEmail) conditions.push(eq(quizAttempts.guestEmail, input.learnerEmail));
+
+      const attempts = await db.select().from(quizAttempts)
+        .where(and(...conditions))
+        .orderBy(desc(quizAttempts.completedAt), desc(quizAttempts.startedAt));
+      const quizIds = [...new Set(attempts.map((attempt) => attempt.quizId))];
+      const quizRows = quizIds.length > 0
+        ? await db.select({ id: quizzes.id, title: quizzes.title }).from(quizzes).where(inArray(quizzes.id, quizIds))
+        : [];
+      const titles = new Map(quizRows.map((quiz) => [quiz.id, quiz.title]));
+
+      const total = attempts.length;
+      return {
+        total,
+        results: attempts.slice(input.offset, input.offset + input.limit).map((attempt) => ({
+          id: attempt.id,
+          quizId: attempt.quizId,
+          quizTitle: titles.get(attempt.quizId) ?? "Quiz",
+          learnerEmail: attempt.guestEmail,
+          scorePercent: Number(attempt.scorePercent ?? 0),
+          passed: Boolean(attempt.passed),
+          status: attempt.status,
+          completedAt: attempt.completedAt,
+          startedAt: attempt.startedAt,
+        })),
+      };
+    }),
+
   /** Get analytics summary for an authorized organization quiz */
   getQuizAnalytics: protectedProcedure
     .input(z.object({ quizId: z.number() }))
@@ -795,11 +848,11 @@ export const quizMakerRouter = router({
         };
       }
 
-      const scores = attempts.map((a) => a.scorePct || 0);
+      const scores = attempts.map((a: any) => Number(a.scorePercent ?? a.legacyScorePct ?? a.scorePct ?? 0));
       const averageScore = scores.reduce((sum, s) => sum + s, 0) / totalAttempts;
-      const passCount = attempts.filter((a) => a.isPassed).length;
+      const passCount = attempts.filter((a: any) => a.passed ?? a.legacyIsPassed ?? a.isPassed).length;
       const passRate = (passCount / totalAttempts) * 100;
-      const times = attempts.filter((a) => a.timeTakenSeconds).map((a) => a.timeTakenSeconds!);
+      const times = attempts.map((a: any) => a.timeSpentSeconds ?? a.legacyTimeTakenSeconds ?? a.timeTakenSeconds).filter(Boolean);
       const averageTime = times.length > 0 ? times.reduce((sum, t) => sum + t, 0) / times.length : 0;
 
       // Score distribution in 10% buckets
@@ -1035,7 +1088,10 @@ export const quizMakerRouter = router({
       // Parse all attempts' answers
       const parsedAttempts = attempts
         .map((a) => {
-          try { return a.answersJson ? JSON.parse(a.answersJson) : null; }
+          try {
+            const answers = (a as any).legacyAnswersJson ?? (a as any).answersJson;
+            return answers ? JSON.parse(answers) : null;
+          }
           catch { return null; }
         })
         .filter(Boolean) as Record<string, any>[];

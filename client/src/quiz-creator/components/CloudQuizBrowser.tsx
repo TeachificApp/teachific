@@ -13,9 +13,17 @@ export function CloudQuizBrowser({ onClose }: Props) {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const orgId = (user as any)?.orgId ?? 0;
-  const [activeTab, setActiveTab] = useState<"creator" | "lesson">("creator");
+  const [activeTab, setActiveTab] = useState<"creator" | "lesson" | "results">("creator");
+  const [resultQuizId, setResultQuizId] = useState("all");
+  const [resultEmail, setResultEmail] = useState("");
   const { data: quizzes, isLoading } = trpc.quizMaker.listQuizzes.useQuery();
   const { data: lessonQuizzes, isLoading: lessonQuizzesLoading } = trpc.lms.quiz.listOrgQuizzes.useQuery({ orgId }, { enabled: !!orgId });
+  const resultInput = useMemo(() => ({
+    orgId,
+    quizId: resultQuizId === "all" ? undefined : Number(resultQuizId),
+    learnerEmail: resultEmail.trim() || undefined,
+  }), [orgId, resultQuizId, resultEmail]);
+  const { data: resultData, isLoading: resultsLoading } = trpc.quizMaker.listOrgAttemptResults.useQuery(resultInput, { enabled: !!orgId && activeTab === "results" });
   const deleteQuizMutation = trpc.quizMaker.deleteQuiz.useMutation();
   const utils = trpc.useUtils();
   const { loadQuiz } = useQuizStore();
@@ -93,6 +101,7 @@ export function CloudQuizBrowser({ onClose }: Props) {
         <div className="flex gap-1 border-b border-gray-100 px-4 pt-3">
           <button onClick={() => setActiveTab("creator")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "creator" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Quiz Creator</button>
           <button onClick={() => setActiveTab("lesson")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "lesson" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Course Lesson Quizzes</button>
+          <button onClick={() => setActiveTab("results")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "results" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Results</button>
         </div>
 
         {/* Body */}
@@ -164,6 +173,35 @@ export function CloudQuizBrowser({ onClose }: Props) {
                   </div>
                 </button>
               ))}
+            </div>
+          ))}
+          {activeTab === "results" && (resultsLoading ? (
+            <div className="text-center py-12 text-gray-400">Loading results...</div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <select value={resultQuizId} onChange={(event) => setResultQuizId(event.target.value)} className="h-9 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700">
+                  <option value="all">All Quiz Creator quizzes</option>
+                  {quizzes?.map((quiz: any) => <option key={quiz.id} value={quiz.id}>{quiz.title}</option>)}
+                </select>
+                <input value={resultEmail} onChange={(event) => setResultEmail(event.target.value)} type="email" placeholder="Filter by learner email" className="h-9 rounded-md border border-gray-200 px-2 text-xs text-gray-700" />
+              </div>
+              {!resultData || resultData.results.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-500">No matching completed quiz attempts.</div>
+              ) : (
+                <div className="space-y-2">
+                  {resultData.results.map((result: any) => (
+                    <div key={result.id} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${result.passed ? "bg-teal-50 text-teal-700" : "bg-amber-50 text-amber-700"}`}>{Math.round(result.scorePercent)}%</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-900">{result.quizTitle}</p>
+                        <p className="truncate text-xs text-gray-400">{result.learnerEmail || "Guest learner"} · {result.passed ? "Passed" : "Not passed"}</p>
+                      </div>
+                      <span className="text-xs text-gray-400">{result.completedAt ? new Date(result.completedAt).toLocaleDateString() : "In progress"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

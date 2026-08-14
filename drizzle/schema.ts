@@ -4170,6 +4170,25 @@ export const quizAttempts = mysqlTable("quiz_attempts", {
   sourceType: mysqlEnum("source_type", ["standalone","lesson","funnel","landing_page"]).default("standalone"),
   sourceLessonId: int("source_lesson_id"),
   sourceFunnelPageId: int("source_funnel_page_id"),
+  // Legacy QuizMaker attempt fields retained while existing records are migrated to the canonical contract.
+  legacyQuizId: int("quizId"),
+  legacyPackageId: int("packageId"),
+  legacyUserId: int("userId"),
+  legacySessionId: int("sessionId"),
+  legacyOrgId: int("orgId"),
+  legacyAttemptNumber: int("attemptNumber"),
+  legacyStartedAt: timestamp("startedAt"),
+  legacySubmittedAt: timestamp("submittedAt"),
+  legacyScoreRaw: float("scoreRaw"),
+  legacyScorePct: float("scorePct"),
+  legacyIsPassed: boolean("isPassed"),
+  legacyIsCompleted: boolean("isCompleted"),
+  legacyTimeTakenSeconds: int("timeTakenSeconds"),
+  legacyTakerName: varchar("takerName", { length: 255 }),
+  legacyTakerEmail: varchar("takerEmail", { length: 320 }),
+  legacyAnswersJson: longtext("answersJson"),
+  legacyShareToken: varchar("shareToken", { length: 32 }),
+  legacyTotalPoints: float("totalPoints"),
 });
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export type InsertQuizAttempt = typeof quizAttempts.$inferInsert;

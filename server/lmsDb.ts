@@ -1848,7 +1848,7 @@ export async function getOrgAnalyticsByGroup(orgId: number, opts: {
     }).from(courseEnrollments).where(and(...enrollConds));
 
     const quizConds: any[] = [
-      eq(quizAttempts.orgId, orgId),
+      eq(quizAttempts.legacyOrgId, orgId),
       sql`${quizAttempts.userId} IN (${userIdList})`,
     ];
     if (opts.dateFrom) quizConds.push(gte(quizAttempts.startedAt, opts.dateFrom));
@@ -1943,7 +1943,7 @@ export async function getOrgQuizAnalytics(orgId: number, opts: {
   dateTo?: Date;
   groupBy?: "day" | "week" | "month";
 } = {}) {
-  const conditions: any[] = [eq(quizAttempts.orgId, orgId)];
+  const conditions: any[] = [eq(quizAttempts.legacyOrgId, orgId)];
   if (opts.dateFrom) conditions.push(gte(quizAttempts.startedAt, opts.dateFrom));
   if (opts.dateTo) conditions.push(sql`${quizAttempts.startedAt} <= ${opts.dateTo}`);
 
