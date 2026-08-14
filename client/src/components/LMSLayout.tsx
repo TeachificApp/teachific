@@ -15,14 +15,14 @@ import {
 import NotificationBell from "@/components/NotificationBell";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
 import NameCollectionModal from "@/components/NameCollectionModal";
 
-const AAUS_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp";
+const PLATFORM_LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp";
 const MEMBERS_URL = "/";
-import { getAdminUrl, APP_URL } from "@/hooks/useSubdomain";
+import { getAdminUrl, APP_URL, getSubdomain } from "@/hooks/useSubdomain";
 import { useSiteNavMenu } from "@/hooks/useSiteNavMenu";
 import { SiteNavHeaderLinks, SiteNavProfileLinks } from "@/components/SiteNavLinks";
-const AAUS_APP_URL = "/";
 
 interface NavItem {
   label: string;
@@ -32,8 +32,7 @@ interface NavItem {
   external?: boolean;
 }
 
-const AAUS_SITE_URL = "https://teachific.app";
-const IHE_SITE_URL = "https://teachific.app";
+const PLATFORM_SITE_URL = "https://teachific.app";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Education Library", href: "/education-library", icon: <BookOpen className="w-4 h-4" /> },
@@ -45,7 +44,18 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
-  const { items: headerNavItems } = useSiteNavMenu("header", NAV_ITEMS.map((item) => ({
+  const subdomain = getSubdomain();
+  const { data: organization } = trpc.orgs.publicSchoolBySlug.useQuery(
+    { slug: subdomain! },
+    { enabled: !!subdomain },
+  );
+  const isOrganizationShell = !!subdomain;
+  const shellBrandName = organization?.name ?? "Teachific™";
+  const shellBrandLogo = organization?.logoUrl ?? PLATFORM_LOGO_URL;
+  const defaultNavItems = isOrganizationShell
+    ? NAV_ITEMS.map((item) => item.label === "Community" ? { ...item, href: "/community" } : item)
+    : NAV_ITEMS;
+  const { items: headerNavItems } = useSiteNavMenu("header", defaultNavItems.map((item) => ({
     label: item.label,
     href: item.href,
     external: item.external,
@@ -84,10 +94,10 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
           {/* Logo + branding */}
           <Link href="/">
             <div className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none shrink-0">
-              <img src={AAUS_LOGO} alt="Teachific" className="w-7 sm:w-8 h-7 sm:h-8 rounded-full" />
+              {shellBrandLogo ? <img src={shellBrandLogo} alt={`${shellBrandName} logo`} className="w-7 sm:w-8 h-7 sm:h-8 rounded-full object-contain" /> : <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-full org-btn flex items-center justify-center text-xs font-bold">{shellBrandName[0]}</div>}
               <div className="flex flex-col leading-none">
-                <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 hidden sm:block">Teachific™ | Teachific™</span>
-                <span className="text-xs sm:text-sm font-bold org-text">Learning Platform</span>
+                <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 hidden sm:block">{shellBrandName}</span>
+                <span className="text-xs sm:text-sm font-bold org-text">{isOrganizationShell ? "Learning Portal" : "Learning Platform"}</span>
               </div>
             </div>
           </Link>
@@ -98,25 +108,17 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
             location={location}
             className="hidden md:flex ml-4"
           />
-          <nav className="hidden md:flex items-center gap-1">
+          {!isOrganizationShell && <nav className="hidden md:flex items-center gap-1">
             {/* External brand links */}
             <a
-              href={AAUS_SITE_URL}
+              href={PLATFORM_SITE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
               Teachific™
             </a>
-            <a
-              href={IHE_SITE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            >
-              Teachific™
-            </a>
-          </nav>
+          </nav>}
 
           {/* Spacer */}
           <div className="flex-1" />
@@ -256,9 +258,9 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
               onNavigate={() => setMobileMenuOpen(false)}
               className="flex-col items-stretch gap-0.5"
             />
-            <div className="border-t border-gray-100 mt-1 pt-1 flex flex-col gap-1">
+            {!isOrganizationShell && <div className="border-t border-gray-100 mt-1 pt-1 flex flex-col gap-1">
               <a
-                href={AAUS_SITE_URL}
+                href={PLATFORM_SITE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
@@ -266,16 +268,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
               >
                 <ExternalLink className="w-4 h-4" /> Teachific™
               </a>
-              <a
-                href={IHE_SITE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <ExternalLink className="w-4 h-4" /> Teachific™
-              </a>
-            </div>
+            </div>}
           </div>
         )}
       </header>

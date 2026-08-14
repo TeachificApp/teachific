@@ -4830,6 +4830,7 @@
 - [ ] Add LMS admin OrgThemeProvider that fetches theme for the current org
 - [x] Replace priority CoursePlayer.tsx accent fallbacks with CSS variables
 - [x] Replace LMSLayout portal action accents with organization theme CSS variables
+- [x] Replace organization-scoped LMS shell legacy logo and platform labels with the active organization identity
 - [x] Replace SchoolMemberLayout.tsx organization navigation accents with CSS variables
 - [x] Replace StudentLayout.tsx organization identity accents with CSS variables
 - [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables

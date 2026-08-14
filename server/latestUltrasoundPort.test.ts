@@ -203,6 +203,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsLayoutSource).toContain("hover:text-[var(--org-primary)]");
     expect(lmsLayoutSource).toContain("DollarSign className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
     expect(lmsLayoutSource).toContain("BookOpen className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
+    expect(lmsLayoutSource).toContain("const isOrganizationShell = !!subdomain");
+    expect(lmsLayoutSource).toContain("const shellBrandName = organization?.name ?? \"Teachific™\"");
+    expect(lmsLayoutSource).toContain("!isOrganizationShell && <nav");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {
