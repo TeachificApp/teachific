@@ -4952,6 +4952,7 @@
 - [x] Resolve Course Builder main checkout, pricing-option checkout, and free-preview links through the course organization domain
 - [x] Scope public Course Landing lookups to the active organization subdomain before resolving a course slug
 - [x] Apply course-level color overrides with organization theme fallbacks to public Course Landing hero, pricing, and enrollment controls
+- [x] Replace organization-scoped public Course Landing platform labels, title, breadcrumb, and optional logo with the organization identity
 - [x] Fix LandingPageBuilder preview link to use org subdomain or verified custom domain
 - [x] Fix server: enrollmentEmail.ts to use org subdomain or verified custom domain when organization context is available
 - [x] Fix server: embeddedCheckoutWebhook.ts to use org subdomain or verified custom domain when purchase organization context is available

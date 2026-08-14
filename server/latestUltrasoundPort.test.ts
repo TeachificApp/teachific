@@ -186,6 +186,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseLandingSource).toContain("const { data: organizationTheme } = trpc.lms.publicSchool.themeBySlug.useQuery");
     expect(courseLandingSource).toContain("const landingAccentColor = (course as any)?.primaryColor");
     expect(courseLandingSource).toContain("backgroundColor: landingAccentColor");
+    expect(courseLandingSource).toContain("const landingOrganizationName = organization?.name");
+    expect(courseLandingSource).toContain("const isOrganizationLanding = !!organizationSlug && !!organization?.id");
+    expect(courseLandingSource).toContain("isOrganizationLanding ? landingOrganizationName : \"Teachific™\"");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {

@@ -1340,6 +1340,11 @@ export default function CourseLanding() {
     ?? (organizationTheme as any)?.buttonColor
     ?? (organizationTheme as any)?.primaryColor
     ?? "#179ca3";
+  const landingOrganizationName = organization?.name
+    ?? (course as any)?.organizationName
+    ?? (course as any)?.orgName
+    ?? "Teachific™";
+  const isOrganizationLanding = !!organizationSlug && !!organization?.id;
   const heroColor = lp?.heroImageUrl ? undefined : landingAccentColor;
   const heroBg = lp?.heroImageUrl
     ? { backgroundImage: `url(${lp.heroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -1347,9 +1352,9 @@ export default function CourseLanding() {
 
   // Set page title
   useEffect(() => {
-    if (course?.title) document.title = `${course.title} | Education Library | Teachific™`;
-    return () => { document.title = `${course?.organizationName ?? course?.orgName ?? "Teachific"} | Teachific™`; };
-  }, [course?.title]);
+    if (course?.title) document.title = `${course.title} | ${isOrganizationLanding ? landingOrganizationName : "Teachific™"}`;
+    return () => { document.title = isOrganizationLanding ? landingOrganizationName : "Teachific™"; };
+  }, [course?.title, isOrganizationLanding, landingOrganizationName]);
 
   return (
     <>
@@ -1358,7 +1363,7 @@ export default function CourseLanding() {
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-1.5 text-sm text-gray-500">
-          <Link href="/education-library" className="hover:text-teal-600 transition-colors">Education Library</Link>
+          <Link href={isOrganizationLanding ? "/" : "/education-library"} className="hover:text-teal-600 transition-colors">{isOrganizationLanding ? landingOrganizationName : "Education Library"}</Link>
           <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="text-gray-800 truncate max-w-xs">{course.title}</span>
         </div>
@@ -1371,8 +1376,9 @@ export default function CourseLanding() {
               <Badge variant="secondary" className="text-white border-0 flex items-center gap-1" style={{ backgroundColor: landingAccentColor }}>
                 {TYPE_ICONS[course.type]} {course.type === "download" ? "Digital Download" : course.type.charAt(0).toUpperCase() + course.type.slice(1)}
               </Badge>
-              <Badge variant="outline" className="border-teal-400 text-teal-200">
-                {course.brand === "teachific" ? "Teachific™" : "Teachific™"}
+              <Badge variant="outline" className="border-teal-400 text-teal-200 flex items-center gap-1.5">
+                {isOrganizationLanding && organization?.logoUrl && <img src={organization.logoUrl} alt="" className="h-3.5 max-w-16 object-contain" />}
+                {isOrganizationLanding ? landingOrganizationName : "Teachific™"}
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{lp?.heroTitle ?? course.title}</h1>
