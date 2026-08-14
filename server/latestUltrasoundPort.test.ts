@@ -172,6 +172,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
     const myCoursesSource = readFileSync(new URL("../client/src/pages/lms/MyCoursesPage.tsx", import.meta.url), "utf8");
     const lmsLayoutSource = readFileSync(new URL("../client/src/components/LMSLayout.tsx", import.meta.url), "utf8");
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
@@ -206,6 +207,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsLayoutSource).toContain("const isOrganizationShell = !!subdomain");
     expect(lmsLayoutSource).toContain("const shellBrandName = organization?.name ?? \"Teachific™\"");
     expect(lmsLayoutSource).toContain("!isOrganizationShell && <nav");
+    expect(landingBuilderSource).toContain('defaultData: { quote: "", author: "", avatarUrl: ""');
+    expect(landingBuilderSource).toContain('defaultData: { headline: "Student Feedback", reviews: []');
+    expect(landingBuilderSource).not.toContain('author: "Jane Smith, RDMS"');
+    expect(landingBuilderSource).not.toContain('name: "Jane D."');
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {

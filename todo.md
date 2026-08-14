@@ -4831,6 +4831,10 @@
 - [x] Replace priority CoursePlayer.tsx accent fallbacks with CSS variables
 - [x] Replace LMSLayout portal action accents with organization theme CSS variables
 - [x] Replace organization-scoped LMS shell legacy logo and platform labels with the active organization identity
+
+## Landing Page Builder Content Compliance (Aug 14, 2026)
+- [x] Remove fabricated testimonial and review defaults from the Landing Page Builder block catalog
+- [x] Replace platform-branded landing page defaults with organization-neutral content and configurable organization identity
 - [x] Replace SchoolMemberLayout.tsx organization navigation accents with CSS variables
 - [x] Replace StudentLayout.tsx organization identity accents with CSS variables
 - [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables
@@ -4962,7 +4966,7 @@
 - [x] Fix server: stripeWebhookRoutes.ts bundle confirmation links to use the purchasing organization subdomain or verified custom domain
 - [x] Fix server: lmsRouter.ts discussion URL to use org subdomain or verified custom domain when course organization context is available
 - [x] Resolve membership welcome and access links through the membership organization subdomain or verified custom domain
-- [ ] Fix DashboardLayout "Teachific Learn" sidebar link to use org subdomain
+- [x] Resolve Dashboard learner preview navigation through the active organization subdomain or verified custom domain
 
 ## Org Branding & CME Feature Flag
 

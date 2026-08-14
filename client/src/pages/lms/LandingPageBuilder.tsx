@@ -123,9 +123,9 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
   { type: "icon_grid", label: "Icon Grid", icon: <LayoutGrid size={14} />, category: "Marketing",
     defaultData: { headline: "Why Choose This Course", items: [{ icon: "🎯", title: "Focused Content", text: "Targeted curriculum" }, { icon: "⚡", title: "Fast Results", text: "See improvement quickly" }, { icon: "🏆", title: "Expert Instructors", text: "Learn from the best" }], columns: 3, bgColor: "#ffffff" } },
   { type: "testimonial", label: "Testimonial", icon: <Quote size={14} />, category: "Marketing",
-    defaultData: { quote: "This course changed my practice completely.", author: "Jane Smith, RDMS", avatarUrl: "", bgColor: "#f0fafa", accentColor: "#179ca3", rating: 5 } },
+    defaultData: { quote: "", author: "", avatarUrl: "", bgColor: "#f0fafa", accentColor: "#179ca3", rating: 0 } },
   { type: "reviews", label: "Reviews / Stars", icon: <Star size={14} />, category: "Marketing",
-    defaultData: { headline: "What Students Say", reviews: [{ name: "Jane D.", rating: 5, text: "Excellent course!" }, { name: "Mark S.", rating: 5, text: "Very practical content." }], bgColor: "#ffffff" } },
+    defaultData: { headline: "Student Feedback", reviews: [], bgColor: "#ffffff" } },
   { type: "logos", label: "Logos / Social Proof", icon: <Tag size={14} />, category: "Marketing",
     defaultData: { headline: "Trusted By", logos: [{ url: "", alt: "Organization 1" }, { url: "", alt: "Organization 2" }], bgColor: "#f9fafb" } },
   { type: "instructor", label: "Instructor Profile", icon: <Users size={14} />, category: "Marketing",
@@ -150,7 +150,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     } },
   { type: "ticker", label: "Running Ticker / Marquee", icon: <Radio size={14} />, category: "Content",
     defaultData: {
-      items: ["Welcome to Teachific!", "New courses available now!", "Expand your clinical skills today!"],
+      items: ["Welcome to our learning community", "New courses available now", "Explore your next learning opportunity"],
       separator: "•",
       direction: "left", speed: 40,
       pauseOnHover: true,
@@ -301,8 +301,8 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
   { type: "footer", label: "Footer", icon: <Columns size={14} />, category: "Layout",
     defaultData: {
       bgColor: "#0e1e2e", textColor: "#ffffff", align: "center",
-      copyrightText: `© ${new Date().getFullYear()} Teachific. All rights reserved.`,
-      links: [{ text: "Privacy Policy", url: "https://www.teachific.com/privacy-policy.html" }, { text: "Terms of Service", url: "https://www.teachific.com/terms-of-service.html" }, { text: "Contact", url: "https://www.teachific.com/contact.html" }],
+      copyrightText: `© ${new Date().getFullYear()} Your Organization. All rights reserved.`,
+      links: [{ text: "Privacy Policy", url: "/privacy" }, { text: "Terms of Service", url: "/terms" }, { text: "Contact", url: "/contact" }],
       showSocial: true, socialLinks: { facebook: "", instagram: "", youtube: "", linkedin: "" },
       logoUrl: "", logoMaxWidth: "120px",
     } },
@@ -7737,4 +7737,3 @@ function UpgradePromptBlockSettings({ d, set }: { d: Record<string, any>; set: (
     </div>
   );
 }
-
