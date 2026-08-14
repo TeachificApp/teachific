@@ -15,14 +15,16 @@ export function CloudQuizBrowser({ onClose }: Props) {
   const orgId = (user as any)?.orgId ?? 0;
   const [activeTab, setActiveTab] = useState<"creator" | "lesson" | "results">("creator");
   const [resultQuizId, setResultQuizId] = useState("all");
+  const [resultQuizType, setResultQuizType] = useState("all");
   const [resultEmail, setResultEmail] = useState("");
   const { data: quizzes, isLoading } = trpc.quizMaker.listQuizzes.useQuery();
   const { data: lessonQuizzes, isLoading: lessonQuizzesLoading } = trpc.lms.quiz.listOrgQuizzes.useQuery({ orgId }, { enabled: !!orgId });
   const resultInput = useMemo(() => ({
     orgId,
     quizId: resultQuizId === "all" ? undefined : Number(resultQuizId),
+    quizType: resultQuizType === "all" ? undefined : resultQuizType as "assessment" | "practice" | "survey" | "exam",
     learnerEmail: resultEmail.trim() || undefined,
-  }), [orgId, resultQuizId, resultEmail]);
+  }), [orgId, resultQuizId, resultQuizType, resultEmail]);
   const { data: resultData, isLoading: resultsLoading } = trpc.quizMaker.listOrgAttemptResults.useQuery(resultInput, { enabled: !!orgId && activeTab === "results" });
   const deleteQuizMutation = trpc.quizMaker.deleteQuiz.useMutation();
   const utils = trpc.useUtils();
@@ -179,10 +181,17 @@ export function CloudQuizBrowser({ onClose }: Props) {
             <div className="text-center py-12 text-gray-400">Loading results...</div>
           ) : (
             <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <select value={resultQuizId} onChange={(event) => setResultQuizId(event.target.value)} className="h-9 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700">
                   <option value="all">All Quiz Creator quizzes</option>
                   {quizzes?.map((quiz: any) => <option key={quiz.id} value={quiz.id}>{quiz.title}</option>)}
+                </select>
+                <select value={resultQuizType} onChange={(event) => setResultQuizType(event.target.value)} className="h-9 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700">
+                  <option value="all">All types</option>
+                  <option value="assessment">Assessment</option>
+                  <option value="practice">Practice</option>
+                  <option value="survey">Survey</option>
+                  <option value="exam">Exam</option>
                 </select>
                 <input value={resultEmail} onChange={(event) => setResultEmail(event.target.value)} type="email" placeholder="Filter by learner email" className="h-9 rounded-md border border-gray-200 px-2 text-xs text-gray-700" />
               </div>

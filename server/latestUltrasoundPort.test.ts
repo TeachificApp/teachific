@@ -173,6 +173,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const myCoursesSource = readFileSync(new URL("../client/src/pages/lms/MyCoursesPage.tsx", import.meta.url), "utf8");
     const lmsLayoutSource = readFileSync(new URL("../client/src/components/LMSLayout.tsx", import.meta.url), "utf8");
     const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const quizRouterSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const quizBrowserSource = readFileSync(new URL("../client/src/quiz-creator/components/CloudQuizBrowser.tsx", import.meta.url), "utf8");
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
@@ -211,6 +213,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).toContain('defaultData: { headline: "Student Feedback", reviews: []');
     expect(landingBuilderSource).not.toContain('author: "Jane Smith, RDMS"');
     expect(landingBuilderSource).not.toContain('name: "Jane D."');
+    expect(quizRouterSource).toContain('quizType: z.enum(["assessment", "practice", "survey", "exam"]).optional()');
+    expect(quizRouterSource).toContain('eq(quizzes.quizType, input.quizType)');
+    expect(quizRouterSource).toContain('conditions.push(inArray(quizAttempts.quizId, allowedQuizIds))');
+    expect(quizBrowserSource).toContain('const [resultQuizType, setResultQuizType] = useState("all")');
+    expect(quizBrowserSource).toContain('<option value="assessment">Assessment</option>');
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {

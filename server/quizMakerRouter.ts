@@ -788,6 +788,7 @@ export const quizMakerRouter = router({
     .input(z.object({
       orgId: z.number().int().positive(),
       quizId: z.number().int().positive().optional(),
+      quizType: z.enum(["assessment", "practice", "survey", "exam"]).optional(),
       learnerEmail: z.string().trim().email().optional(),
       limit: z.number().int().min(1).max(100).default(50),
       offset: z.number().int().min(0).default(0),
@@ -795,18 +796,24 @@ export const quizMakerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
       await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+      const quizConditions = [eq(quizzes.orgId, input.orgId)];
+      if (input.quizType) quizConditions.push(eq(quizzes.quizType, input.quizType));
+      const quizRows = await db
+        .select({ id: quizzes.id, title: quizzes.title, quizType: quizzes.quizType })
+        .from(quizzes)
+        .where(and(...quizConditions));
+      const allowedQuizIds = quizRows.map((quiz) => quiz.id);
+      if (allowedQuizIds.length === 0) return { total: 0, results: [] };
       const conditions = [eq(quizAttempts.legacyOrgId, input.orgId)];
       if (input.quizId) conditions.push(eq(quizAttempts.quizId, input.quizId));
       if (input.learnerEmail) conditions.push(eq(quizAttempts.guestEmail, input.learnerEmail));
+      conditions.push(inArray(quizAttempts.quizId, allowedQuizIds));
 
       const attempts = await db.select().from(quizAttempts)
         .where(and(...conditions))
         .orderBy(desc(quizAttempts.completedAt), desc(quizAttempts.startedAt));
-      const quizIds = [...new Set(attempts.map((attempt) => attempt.quizId))];
-      const quizRows = quizIds.length > 0
-        ? await db.select({ id: quizzes.id, title: quizzes.title }).from(quizzes).where(inArray(quizzes.id, quizIds))
-        : [];
       const titles = new Map(quizRows.map((quiz) => [quiz.id, quiz.title]));
+      const types = new Map(quizRows.map((quiz) => [quiz.id, quiz.quizType]));
 
       const total = attempts.length;
       return {
@@ -815,6 +822,7 @@ export const quizMakerRouter = router({
           id: attempt.id,
           quizId: attempt.quizId,
           quizTitle: titles.get(attempt.quizId) ?? "Quiz",
+          quizType: types.get(attempt.quizId) ?? "assessment",
           learnerEmail: attempt.guestEmail,
           scorePercent: Number(attempt.scorePercent ?? 0),
           passed: Boolean(attempt.passed),

@@ -5269,6 +5269,13 @@
 - [x] Add org-admin-safe cross-quiz results filtering by quiz and learner
 - [x] Add regression coverage for attempt persistence and cross-organization result isolation
 
+## Quiz Creator Metadata Schema Reconciliation (Aug 14, 2026)
+- [x] Audit every reader and writer of standalone Quiz Creator metadata against the live quizzes table contract
+- [x] Preserve legacy Quiz Creator records while adding canonical quiz type metadata
+- [x] Align Quiz Creator persistence and results queries with the compatibility schema
+- [x] Add organization-safe results filtering by persisted quiz type
+- [x] Add regression coverage for metadata compatibility and type-filter isolation
+
 ## Draft Pull Request Integration (Aug 14, 2026)
 - [x] Review and integrate the user-provided draft pull request without overwriting current reconciliation work
 - [x] Reconcile draft changes with organization-scoped Quiz Creator attempt storage and results filtering
