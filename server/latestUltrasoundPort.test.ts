@@ -170,6 +170,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const membershipSource = readFileSync(new URL("./lib/membershipFulfillment.ts", import.meta.url), "utf8");
     const courseLandingSource = readFileSync(new URL("../client/src/pages/lms/CourseLanding.tsx", import.meta.url), "utf8");
     const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    const myCoursesSource = readFileSync(new URL("../client/src/pages/lms/MyCoursesPage.tsx", import.meta.url), "utf8");
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     expect(enrollmentRouterSource).toContain("orgSlug: org?.slug ?? null");
     expect(enrollmentRouterSource).toContain("orgCustomDomain: org?.customDomain ?? null");
@@ -197,6 +198,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsRouterSource).toContain("getCoursePlayer: protectedProcedure");
     expect(lmsRouterSource).toContain("orgId: z.number().optional()");
     expect(lmsRouterSource).toContain("eq(lmsCourses.orgId, input.orgId)");
+    expect(myCoursesSource).toContain("{invoice.orgName && <p className=");
   });
 
   it("preserves legacy Quiz Creator attempts while dual-writing canonical attempt fields", () => {

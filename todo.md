@@ -4955,6 +4955,7 @@
 - [x] Replace organization-scoped public Course Landing platform labels, title, breadcrumb, and optional logo with the organization identity
 - [x] Scope learner Course Player slug lookups and header identity to the active organization subdomain
 - [x] Fix LandingPageBuilder preview link to use org subdomain or verified custom domain
+- [x] Display the organization name alongside the logo in learner receipt headers
 - [x] Fix server: enrollmentEmail.ts to use org subdomain or verified custom domain when organization context is available
 - [x] Fix server: embeddedCheckoutWebhook.ts to use org subdomain or verified custom domain when purchase organization context is available
 - [x] Fix server: stripeWebhookRoutes.ts bundle confirmation links to use the purchasing organization subdomain or verified custom domain

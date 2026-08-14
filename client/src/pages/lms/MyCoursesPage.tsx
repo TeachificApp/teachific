@@ -51,6 +51,7 @@ function ReceiptModal({ invoice, onClose }: { invoice: InvoiceRow; onClose: () =
             {invoice.orgLogoUrl && (
               <img src={invoice.orgLogoUrl} alt="" className="h-8 mb-2 object-contain" />
             )}
+            {invoice.orgName && <p className="text-sm font-semibold text-slate-700 mb-0.5">{invoice.orgName}</p>}
             <h2 className="text-xl font-bold text-slate-900">Receipt</h2>
             {invoice.invoiceNumber && (
               <p className="text-xs text-slate-500 mt-0.5">#{invoice.invoiceNumber}</p>
