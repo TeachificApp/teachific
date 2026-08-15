@@ -4451,7 +4451,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               {([null, true, false] as const).map(v => (
                 <button key={String(v)} onClick={() => setRequireManualComplete(v)}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    requireManualComplete === v ? "bg-white shadow text-teal-700 border border-gray-200" : "text-gray-500 hover:text-gray-700"
+                    requireManualComplete === v ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
                   }`}>
                   {v === null ? "Inherit from course" : v ? "Always show" : "Always hide"}
                 </button>
@@ -5210,7 +5210,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                     <Label htmlFor="dlg-use-lessons" className="text-sm font-medium cursor-pointer">Generate from specific lesson content</Label>
                   </div>
                   {useFromLessons && (
-                    <div className="border border-teal-200 rounded-lg p-3 bg-white space-y-1 max-h-48 overflow-y-auto">
+                    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3 bg-white space-y-1 max-h-48 overflow-y-auto">
                       <div className="flex gap-2 mb-2">
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setSelectedLessonIds(courseLessonList.map(l => l.id))}>Select All</Button>
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setSelectedLessonIds([])}>Clear</Button>
@@ -6474,7 +6474,7 @@ function OrdersManagementTab() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {orders.map((o: any) => (
-                <tr key={o.id} className={cn("hover:bg-gray-50", selectedIds.includes(o.id) && "bg-teal-50")}>
+                <tr key={o.id} className={cn("hover:bg-gray-50", selectedIds.includes(o.id) && "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]")}>
                   <td className="px-4 py-2.5">
                     <input type="checkbox" checked={selectedIds.includes(o.id)}
                       onChange={() => setSelectedIds(ids => ids.includes(o.id) ? ids.filter(i => i !== o.id) : [...ids, o.id])}
@@ -7411,7 +7411,7 @@ function CommunitiesTab() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 text-sm truncate">{b.name}</div>
                     {b.description && <div className="text-xs text-gray-500 truncate">{b.description}</div>}
-                    {b.xpRequired > 0 && <div className="text-xs text-teal-600">{b.xpRequired} XP required</div>}
+                    {b.xpRequired > 0 && <div className="text-xs text-[var(--org-primary)]">{b.xpRequired} XP required</div>}
                   </div>
                 </div>
               ))}
@@ -7427,8 +7427,8 @@ function CommunitiesTab() {
 
 function LMSComingSoonTab({ icon: Icon, title, description, color }: { icon: any; title: string; description: string; color: string }) {
   const colorMap: Record<string, { bg: string; iconBg: string; iconText: string; badge: string }> = {
-    teal:   { bg: "bg-teal-50",   iconBg: "bg-teal-100",   iconText: "text-teal-600",   badge: "bg-teal-100 text-teal-700" },
-    teal2: { bg: "bg-teal-50", iconBg: "bg-teal-100", iconText: "text-teal-600", badge: "bg-teal-100 text-teal-700" },
+    teal:   { bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]",   iconBg: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]",   iconText: "text-[var(--org-primary)]",   badge: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]" },
+    teal2: { bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]", iconBg: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]", iconText: "text-[var(--org-primary)]", badge: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]" },
     blue:   { bg: "bg-blue-50",   iconBg: "bg-blue-100",   iconText: "text-blue-600",   badge: "bg-blue-100 text-blue-700" },
     orange: { bg: "bg-orange-50", iconBg: "bg-orange-100", iconText: "text-orange-600", badge: "bg-orange-100 text-orange-700" },
   };
@@ -7535,12 +7535,12 @@ function FreePreviewEnrollmentsTab() {
           placeholder="Search name or email…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-teal-300"
+          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
         />
         <select
           value={courseFilter ?? ""}
           onChange={(e) => { setCourseFilter(e.target.value ? Number(e.target.value) : undefined); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
         >
           <option value="">All Courses</option>
           {(courses ?? []).map((c: any) => (
@@ -7550,7 +7550,7 @@ function FreePreviewEnrollmentsTab() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-teal-600" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-[var(--org-primary)]" /></div>
       ) : (
         <>
           <div className="text-xs text-gray-500 mb-2">{data?.total ?? 0} enrollment{data?.total !== 1 ? "s" : ""} found</div>
@@ -7573,7 +7573,7 @@ function FreePreviewEnrollmentsTab() {
                     <td className="px-4 py-3 text-gray-600">{row.email}</td>
                     <td className="px-4 py-3 text-gray-600">{row.courseTitle ?? `Course #${row.courseId}`}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700">{row.source ?? "course_landing"}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]">{row.source ?? "course_landing"}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "-"}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{row.accessExpiresAt ? new Date(row.accessExpiresAt).toLocaleDateString() : "-"}</td>
@@ -7606,8 +7606,8 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   bundle: "Bundle",
 };
 const ITEM_TYPE_COLORS: Record<string, string> = {
-  course: "bg-teal-100 text-teal-700",
-  quiz: "bg-teal-100 text-teal-700",
+  course: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]",
+  quiz: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]",
   download: "bg-blue-100 text-blue-700",
   product: "bg-orange-100 text-orange-700",
   bundle: "bg-pink-100 text-pink-700",
@@ -7660,7 +7660,7 @@ function PublishRequestsTab() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-teal-600" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[var(--org-primary)]" /></div>
       ) : requests.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
           <CheckCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -7690,8 +7690,8 @@ function PublishRequestsTab() {
                     </p>
                   )}
                   {req.reviewNote && (
-                    <p className="mt-2 text-sm text-gray-600 bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <span className="text-xs font-bold text-teal-600 uppercase tracking-wide block mb-1">Review Note</span>
+                    <p className="mt-2 text-sm text-gray-600 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] rounded-lg p-3 border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]">
+                      <span className="text-xs font-bold text-[var(--org-primary)] uppercase tracking-wide block mb-1">Review Note</span>
                       {req.reviewNote}
                     </p>
                   )}
@@ -7732,7 +7732,7 @@ function PublishRequestsTab() {
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
                 placeholder={decision === "approved" ? "Great work! Published." : "Please revise the introduction section before publishing."}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                 rows={3}
               />
             </div>
@@ -7887,7 +7887,7 @@ function SortableCollectionRow({ col, onEdit, onDelete }: { col: any; onEdit: (c
         <p className="text-xs text-gray-400 mt-1">{col.courseCount} course{col.courseCount !== 1 ? "s" : ""}</p>
       </div>
       <div className="flex gap-1 flex-shrink-0">
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(col)}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => onEdit(col)}>
           <Edit2 className="w-3 h-3 mr-1" /> Edit
         </Button>
         <Button size="sm" variant="ghost" className="h-7 text-red-400 hover:bg-red-50" onClick={() => onDelete(col)}>
@@ -8119,7 +8119,7 @@ function CollectionFormDialog({
                   <img src={coverImageUrl} alt="Hero preview" className="w-32 h-20 object-cover rounded-lg border border-gray-200 flex-shrink-0" />
                 )}
                 <div className="flex-1">
-                  <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 hover:border-teal-400 text-sm text-gray-500 hover:text-teal-600 transition-colors ${!initial?.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 hover:border-[var(--org-primary)] text-sm text-gray-500 hover:text-[var(--org-primary)] transition-colors ${!initial?.id ? 'opacity-50 pointer-events-none' : ''}`}>
                     {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                     {imageUploading ? "Uploading..." : coverImageUrl ? "Replace image" : "Upload hero image"}
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFile} disabled={imageUploading || !initial?.id} />
@@ -8147,11 +8147,11 @@ function CollectionFormDialog({
                     type="checkbox"
                     checked={selectedCourseIds.includes(c.id)}
                     onChange={() => toggleCourse(c.id)}
-                    className="accent-teal-600"
+                    className="accent-[var(--org-primary)]"
                   />
                   <span className="text-sm text-gray-700 flex-1 truncate">{c.title}</span>
                   {selectedCourseIds.includes(c.id) && (
-                    <span className="text-xs text-teal-600 font-medium">#{selectedCourseIds.indexOf(c.id) + 1}</span>
+                    <span className="text-xs text-[var(--org-primary)] font-medium">#{selectedCourseIds.indexOf(c.id) + 1}</span>
                   )}
                 </label>
               ))}
@@ -9052,9 +9052,9 @@ function CoursePricingOptionsEditor({ courseId, courseSlug, courseBaseUrl }: { c
     <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-teal-600" /> Secondary Pricing Options
+          <DollarSign className="w-4 h-4 text-[var(--org-primary)]" /> Secondary Pricing Options
         </h3>
-        <Button size="sm" variant="outline" className="h-7 text-xs border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => { setShowAdd(true); setEditingId(null); }}>
+        <Button size="sm" variant="outline" className="h-7 text-xs border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => { setShowAdd(true); setEditingId(null); }}>
           <Plus className="w-3 h-3 mr-1" /> Add Option
         </Button>
       </div>
@@ -9157,12 +9157,12 @@ function QuestionBankAdmin() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Database className="w-5 h-5 text-teal-600" /> Question Bank</h2>
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Database className="w-5 h-5 text-[var(--org-primary)]" /> Question Bank</h2>
           <p className="text-sm text-gray-500 mt-0.5">{total} question{total !== 1 ? "s" : ""} total</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowTagManager(p => !p)} className="gap-1.5"><Tag className="w-3.5 h-3.5" /> Tags</Button>
-          <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50 gap-1.5" onClick={() => setShowAIPanel(p => !p)}><Sparkles className="w-3.5 h-3.5" /> AI Generate</Button>
+          <Button size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] gap-1.5" onClick={() => setShowAIPanel(p => !p)}><Sparkles className="w-3.5 h-3.5" /> AI Generate</Button>
           <Button size="sm" className=" hover: gap-1.5" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" /> Add Question</Button>
         </div>
       </div>
@@ -9299,7 +9299,7 @@ function QuestionBankAdmin() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {questions.map(q => (
-                <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", selectedIds.has(q.id) && "bg-teal-50")}>
+                <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", selectedIds.has(q.id) && "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]")}>
                   <td className="px-3 py-2.5"><input type="checkbox" checked={selectedIds.has(q.id)} onChange={() => toggleSelect(q.id)} className="rounded" /></td>
                   <td className="px-3 py-2.5">
                     <p className="font-medium text-gray-800 line-clamp-2">{q.question}</p>
@@ -10104,7 +10104,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-teal-500 ml-auto">Sessions created here will be assigned to this group</span>
+              <span className="text-xs text-[var(--org-primary)] ml-auto">Sessions created here will be assigned to this group</span>
             </div>
           )}
           {/* Toolbar */}
@@ -10292,7 +10292,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-teal-500 ml-auto">Assignments created here will be assigned to this group</span>
+              <span className="text-xs text-[var(--org-primary)] ml-auto">Assignments created here will be assigned to this group</span>
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -10362,7 +10362,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-teal-500 ml-auto">Recordings added here will be assigned to this group</span>
+              <span className="text-xs text-[var(--org-primary)] ml-auto">Recordings added here will be assigned to this group</span>
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -10382,8 +10382,8 @@ function CohortTab({ courseId }: { courseId: number }) {
             <div className="space-y-2">
               {(recordings as CohortRecording[]).map(r => (
                 <div key={r.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
-                    <Film className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] flex items-center justify-center flex-shrink-0">
+                    <Film className="w-5 h-5 text-[var(--org-primary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -10392,7 +10392,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                       {r.durationSeconds && <span className="text-xs text-gray-400">{Math.floor(r.durationSeconds / 60)}m {r.durationSeconds % 60}s</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 flex-wrap">
-                      {r.videoUrl && <a href={r.videoUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" />Watch Video</a>}
+                      {r.videoUrl && <a href={r.videoUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline flex items-center gap-1"><ExternalLink className="w-3 h-3" />Watch Video</a>}
                       {r.sessionId && <span className="text-gray-400">Linked to session #{r.sessionId}</span>}
                     </div>
                     {r.description && <p className="text-xs text-gray-400 mt-1 line-clamp-1">{r.description}</p>}
@@ -10456,7 +10456,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1 block">Description</Label>
-                <textarea value={recordingForm.description} onChange={e => setRecordingForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="What was covered in this session..." />
+                <textarea value={recordingForm.description} onChange={e => setRecordingForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="What was covered in this session..." />
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1 block">Status</Label>
@@ -10549,7 +10549,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                               "w-9 h-9 rounded-full text-xs font-medium border transition-colors",
                               sessionForm.recurrenceDaysOfWeek.includes(idx)
                                 ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
-                                : "bg-white text-gray-600 border-gray-200 hover:border-teal-400"
+                                : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
                             )}
                           >{label}</button>
                         ))}
@@ -10560,11 +10560,11 @@ function CohortTab({ courseId }: { courseId: number }) {
                       <Label className="text-xs font-medium text-gray-600 mb-1.5 block">End condition</Label>
                       <div className="flex gap-3 mb-2">
                         <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                          <input type="radio" checked={sessionForm.recurrenceEndType === "date"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "date" }))} className="accent-teal-600" />
+                          <input type="radio" checked={sessionForm.recurrenceEndType === "date"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "date" }))} className="accent-[var(--org-primary)]" />
                           End date
                         </label>
                         <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                          <input type="radio" checked={sessionForm.recurrenceEndType === "count"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "count" }))} className="accent-teal-600" />
+                          <input type="radio" checked={sessionForm.recurrenceEndType === "count"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "count" }))} className="accent-[var(--org-primary)]" />
                           # of occurrences
                         </label>
                       </div>
@@ -10613,7 +10613,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
               {!sessionDialog.session && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <input type="checkbox" id="session-notify" checked={sessionForm.notifyStudents} onChange={e => setSessionForm(p => ({ ...p, notifyStudents: e.target.checked }))} className="w-4 h-4 accent-teal-600" />
+                  <input type="checkbox" id="session-notify" checked={sessionForm.notifyStudents} onChange={e => setSessionForm(p => ({ ...p, notifyStudents: e.target.checked }))} className="w-4 h-4 accent-[var(--org-primary)]" />
                   <label htmlFor="session-notify" className="text-sm text-amber-800 cursor-pointer">
                     <span className="font-medium">Notify enrolled students</span> — send email with session details when status is Published
                   </label>
