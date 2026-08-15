@@ -67,6 +67,7 @@ import WebinarsPage from "@/pages/admin/WebinarsPage";
 import MembershipsPage from "@/pages/products/MembershipsPage";
 import BundlesPage from "@/pages/products/BundlesPage";
 import CmeFormTab from "@/components/CmeFormTab";
+import { useOrgScope } from "@/hooks/useOrgScope";
 /** Convenience alias used in LandingPageEditor */
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
@@ -922,9 +923,10 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
   const { data: course, isLoading, refetch } = trpc.lmsAdmin.getCourse.useQuery({ id: courseId });
   // CME feature flag — only show CME tab if org has CME enabled (platform admins always see it)
   const { user: authUser } = useAuth();
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
+  const { orgs: scopedOrgs } = useOrgScope();
   const isPlatformAdmin = authUser?.role === "site_admin" || authUser?.role === "site_owner";
-  const cmeEnabled = isPlatformAdmin || (myOrgs?.[0]?.cmeEnabled ?? false);
+  const courseOrganization = (scopedOrgs as any[]).find((org: any) => org.id === (course as any)?.orgId);
+  const cmeEnabled = isPlatformAdmin || (courseOrganization?.cmeEnabled ?? false);
   // Use org-scoped learn link so preview opens on the org's own subdomain
   const { openLearnLink } = useLearnLink(
     (course as any)?.orgSlug,

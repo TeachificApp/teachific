@@ -3,6 +3,7 @@
 - [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support
 - [x] Route remaining checkout confirmations through each organization’s configured transactional email sender
 - [x] Scope learner purchase-history invoice queries to the active organization subdomain
+- [x] Use the Course Builder course organization, not the first membership, to determine CME tab visibility
 
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)
