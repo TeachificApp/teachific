@@ -5286,3 +5286,7 @@
 - [ ] Complete remaining organization branding, theme propagation, and site-builder workflows
 - [ ] Complete remaining checkout, product fulfillment, and revenue-sharing workflows
 - [ ] Complete remaining course, quiz, Question Bank, and product authoring workflows
+
+## Active Organization Member Management (Aug 15, 2026)
+- [x] Scope MembersPage data and mutations to the active organization rather than the first membership
+- [x] Let authorized organization administrators create members with the org_super_admin role

@@ -169,6 +169,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(browserSource).toContain("trpc.lms.quiz.listOrgQuizzes.useQuery");
   });
 
+  it("scopes member management to the active organization and exposes the org super-admin role", () => {
+    const membersSource = readFileSync(new URL("../client/src/pages/lms/MembersPage.tsx", import.meta.url), "utf8");
+    expect(membersSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
+    expect(membersSource).toContain("const orgId = orgCtx?.org?.id ?? orgs?.[0]?.id;");
+    expect(membersSource).toContain('SelectItem value="org_super_admin"');
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getSubdomain } from "@/hooks/useSubdomain";
 import { toast } from "sonner";
 import {
   Search, Users, BookOpen, TrendingUp, Download, UserPlus,
@@ -35,7 +36,7 @@ export default function MembersPage() {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [addForm, setAddForm] = useState({
     name: "", email: "", password: "",
-    role: "user" as "org_admin" | "user",
+    role: "user" as "org_super_admin" | "org_admin" | "user",
     courseIds: [] as number[],
   });
   const [showAddPassword, setShowAddPassword] = useState(false);
@@ -49,7 +50,9 @@ export default function MembersPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
+  const currentSubdomain = getSubdomain() ?? undefined;
+  const { data: orgCtx } = trpc.orgs.myContext.useQuery({ subdomain: currentSubdomain });
+  const orgId = orgCtx?.org?.id ?? orgs?.[0]?.id;
 
   const { data: members, isLoading, refetch } = trpc.lms.members.listWithEnrollments.useQuery(
     { orgId: orgId! },
@@ -584,6 +587,7 @@ export default function MembersPage() {
                   <SelectContent>
                     <SelectItem value="user">Student</SelectItem>
                     <SelectItem value="org_admin">Org Admin</SelectItem>
+                    <SelectItem value="org_super_admin">Org Super Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
