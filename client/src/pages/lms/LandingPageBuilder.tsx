@@ -3985,14 +3985,14 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   const key = `${p.type}-${p.id}`;
                   const isSelected = manualItems.some(m => m.type === p.type && m.id === p.id);
                   return (
-                    <div key={key} className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-teal-50" : ""}`}
+                    <div key={key} className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : ""}`}
                       onClick={() => {
                         const next = isSelected
                           ? manualItems.filter(m => !(m.type === p.type && m.id === p.id))
                           : [...manualItems, { type: p.type, id: p.id }];
                         set("manualItems", next);
                       }}>
-                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? "bg-teal-600 border-teal-600" : "border-gray-300"}`}>
+                      <div className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${isSelected ? "bg-[var(--org-primary)] border-[var(--org-primary)]" : "border-gray-300"}`}>
                         {isSelected && <svg viewBox="0 0 10 8" className="w-2.5 h-2.5 fill-white"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>}
                       </div>
                       {p.imageUrl && <img src={p.imageUrl} alt="" className="w-6 h-6 rounded object-cover flex-shrink-0" />}
@@ -4005,7 +4005,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 })}
               </div>
               {manualItems.length > 0 && (
-                <div className="text-[10px] text-teal-600">{manualItems.length} item{manualItems.length !== 1 ? "s" : ""} selected</div>
+                <div className="text-[10px] text-[var(--org-primary)]">{manualItems.length} item{manualItems.length !== 1 ? "s" : ""} selected</div>
               )}
             </div>
           )}
@@ -4013,7 +4013,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Layout</label>
             <div className="flex gap-1">
               {(["grid", "list"] as const).map(l => (
-                <button key={l} onClick={() => set("layout", l)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.layout ?? "grid") === l ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{l}</button>
+                <button key={l} onClick={() => set("layout", l)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.layout ?? "grid") === l ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{l}</button>
               ))}
             </div>
           </div>
@@ -5183,16 +5183,16 @@ export function SortableBlock({ block, isSelected, onSelect, onDelete, onDuplica
 
   return (
     <div ref={setNodeRef} style={style} onClick={(e) => { if ((e.target as HTMLElement).closest('[data-drag-handle]')) return; onSelect(); }} data-block-id={block.id}
-      className={`relative group cursor-pointer border-2 transition-all ${isSelected ? "border-teal-500 shadow-lg shadow-teal-100" : "border-transparent hover:border-teal-200"}`}>
+      className={`relative group cursor-pointer border-2 transition-all ${isSelected ? "border-[var(--org-primary)] shadow-lg" : "border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]"}`}>
       <div className={`absolute top-2 right-2 z-10 flex gap-1 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
-        <button onClick={e => { e.stopPropagation(); onDuplicate(); }} className="w-7 h-7 bg-white border border-gray-200 rounded shadow text-gray-500 hover:text-teal-600 flex items-center justify-center" title="Duplicate"><Copy size={12} /></button>
-        {onSaveAsTemplate && <button onClick={e => { e.stopPropagation(); onSaveAsTemplate(block); }} className="w-7 h-7 bg-white border border-gray-200 rounded shadow text-gray-500 hover:text-teal-600 flex items-center justify-center" title="Save as template"><BookmarkPlus size={12} /></button>}
+        <button onClick={e => { e.stopPropagation(); onDuplicate(); }} className="w-7 h-7 bg-white border border-gray-200 rounded shadow text-gray-500 hover:text-[var(--org-primary)] flex items-center justify-center" title="Duplicate"><Copy size={12} /></button>
+        {onSaveAsTemplate && <button onClick={e => { e.stopPropagation(); onSaveAsTemplate(block); }} className="w-7 h-7 bg-white border border-gray-200 rounded shadow text-gray-500 hover:text-[var(--org-primary)] flex items-center justify-center" title="Save as template"><BookmarkPlus size={12} /></button>}
         <button onClick={e => { e.stopPropagation(); onDelete(); }} className="w-7 h-7 bg-white border border-gray-200 rounded shadow text-gray-500 hover:text-red-500 flex items-center justify-center" title="Delete"><Trash2 size={12} /></button>
       </div>
       {/* Up/Down arrow buttons */}
       <div className={`absolute top-2 left-10 z-10 flex flex-col gap-0.5 ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition-opacity`}>
-        <button disabled={!onMoveUp} onClick={e => { e.stopPropagation(); onMoveUp?.(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-teal-600 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed" title="Move up"><ChevronUp size={12} /></button>
-        <button disabled={!onMoveDown} onClick={e => { e.stopPropagation(); onMoveDown?.(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-teal-600 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed" title="Move down"><ChevronDown size={12} /></button>
+        <button disabled={!onMoveUp} onClick={e => { e.stopPropagation(); onMoveUp?.(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-[var(--org-primary)] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed" title="Move up"><ChevronUp size={12} /></button>
+        <button disabled={!onMoveDown} onClick={e => { e.stopPropagation(); onMoveDown?.(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-[var(--org-primary)] flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed" title="Move down"><ChevronDown size={12} /></button>
       </div>
       <div
         {...attributes}
@@ -6071,7 +6071,7 @@ export default function LandingPageBuilder() {
           {/* Drag handle */}
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-teal-400 active:bg-teal-500 z-10 transition-colors"
+            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[var(--org-primary)] active:opacity-80 z-10 transition-colors"
             title="Drag to resize panel"
           />
           {selectedBlock ? (
@@ -6400,7 +6400,7 @@ export default function LandingPageBuilder() {
     <Dialog open={!!saveTemplateDialogBlock} onOpenChange={(open) => { if (!open) setSaveTemplateDialogBlock(null); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">
             <Bookmark className="w-4 h-4" /> Save Block as Template
           </DialogTitle>
         </DialogHeader>
@@ -6441,7 +6441,7 @@ export default function LandingPageBuilder() {
                 { onSuccess: () => { setSaveTemplateDialogBlock(null); } }
               );
             }}
-            className="bg-teal-600 hover:bg-teal-700 text-white text-sm"
+            className="bg-[var(--org-primary)] hover:opacity-90 text-white text-sm"
           >
             {saveBlockTemplateMutation.isPending ? "Saving…" : "Save Template"}
           </Button>
@@ -6532,7 +6532,7 @@ function FileDownloadBlockSettings({ d, set, uploading, setUploading, uploadMedi
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading === "file_download_file"}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 disabled:opacity-50"
           >
             <Upload size={12} />
             {uploading === "file_download_file" ? "Uploading..." : "Upload File"}
@@ -6549,7 +6549,7 @@ function FileDownloadBlockSettings({ d, set, uploading, setUploading, uploadMedi
         </div>
         {currentFileName && (
           <div className="mt-1.5 flex items-center gap-1.5 p-2 bg-gray-50 rounded text-xs text-gray-600 border border-gray-200">
-            <Upload size={11} className="text-teal-600 flex-shrink-0" />
+            <Upload size={11} className="text-[var(--org-primary)] flex-shrink-0" />
             <span className="truncate flex-1">{currentFileName}</span>
             {d.fileSize && <span className="text-gray-400 flex-shrink-0">{d.fileSize}</span>}
             <button onClick={() => { set("fileUrl", ""); set("fileName", ""); set("mediaAssetId", null); set("mediaAssetUrl", ""); set("mediaAssetTitle", ""); }} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={11} /></button>
@@ -6601,7 +6601,7 @@ function FileDownloadBlockSettings({ d, set, uploading, setUploading, uploadMedi
                 placeholder="Search files..."
                 value={mediaSearch}
                 onChange={e => { setMediaSearch(e.target.value); setMediaPage(1); }}
-                className="w-full h-8 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full h-8 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
             </div>
             <div className="flex-1 overflow-y-auto p-3">
@@ -6618,7 +6618,7 @@ function FileDownloadBlockSettings({ d, set, uploading, setUploading, uploadMedi
                       <button
                         key={asset.id}
                         onClick={() => selectMediaAsset(asset)}
-                        className="flex flex-col items-center gap-1.5 p-2 rounded-lg border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-all text-left"
+                        className="flex flex-col items-center gap-1.5 p-2 rounded-lg border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-all text-left"
                       >
                         {isImage ? (
                           <img src={url} alt={asset.title} className="w-full h-20 object-cover rounded" />
@@ -6688,12 +6688,12 @@ function ScormEmbedBlockSettings({ d, set, dataRef, onChangeRef }: {
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Selected File</label>
         {d.mediaAssetSlug ? (
-          <div className="flex items-center gap-2 p-2 bg-teal-50 border border-teal-200 rounded-lg">
-            <Package size={16} className="text-teal-600 flex-shrink-0" />
-            <span className="text-sm text-teal-800 font-medium flex-1 truncate">{d.mediaAssetTitle || d.mediaAssetSlug}</span>
+          <div className="flex items-center gap-2 p-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg">
+            <Package size={16} className="text-[var(--org-primary)] flex-shrink-0" />
+            <span className="text-sm text-[var(--org-primary)] font-medium flex-1 truncate">{d.mediaAssetTitle || d.mediaAssetSlug}</span>
             <button
               onClick={() => { onChangeRef.current({ ...dataRef.current, mediaAssetId: null, mediaAssetSlug: "", mediaAssetTitle: "" }); }}
-              className="text-teal-400 hover:text-red-500 flex-shrink-0"
+              className="text-[var(--org-primary)] hover:text-red-500 flex-shrink-0"
             >
               <X size={14} />
             </button>
@@ -6736,7 +6736,7 @@ function ScormEmbedBlockSettings({ d, set, dataRef, onChangeRef }: {
                   <button
                     key={asset.id}
                     title={`${asset.title ?? asset.currentVersion?.fileName ?? asset.slug}\n${asset.mediaType ?? ""} · ${asset.slug}`}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-teal-50 text-left transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-left transition-colors"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -6744,13 +6744,13 @@ function ScormEmbedBlockSettings({ d, set, dataRef, onChangeRef }: {
                       setShowPicker(false);
                     }}
                   >
-                    <Package size={14} className="text-teal-500 flex-shrink-0" />
+                    <Package size={14} className="text-[var(--org-primary)] flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-gray-800 truncate">{asset.title ?? asset.currentVersion?.fileName ?? asset.slug}</p>
                       <p className="text-[10px] text-gray-400 truncate">{asset.mediaType ?? ""} · {asset.slug}</p>
                     </div>
                     {d.mediaAssetSlug === asset.slug && (
-                      <span className="text-[10px] text-teal-600 font-semibold flex-shrink-0">Selected</span>
+                      <span className="text-[10px] text-[var(--org-primary)] font-semibold flex-shrink-0">Selected</span>
                     )}
                   </button>
                 ))}
@@ -7492,7 +7492,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
         <textarea
           value={d.instructions ?? ""}
           onChange={e => set("instructions", e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none font-mono"
+          className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] resize-none font-mono"
           rows={4}
           placeholder="<p>Complete the following...</p>"
         />
@@ -7504,7 +7504,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
           type="date"
           value={d.dueDate ?? ""}
           onChange={e => set("dueDate", e.target.value)}
-          className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+          className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
         />
       </div>
       {/* Submission types */}
@@ -7523,8 +7523,8 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
               onClick={() => toggleSubmissionType(opt.value)}
               className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
                 submissionTypes.includes(opt.value)
-                  ? "bg-teal-600 text-white border-teal-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
+                  ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
               }`}
             >
               {opt.label}
@@ -7536,7 +7536,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-bold text-gray-700">
-            Grading Rubric {totalPoints > 0 && <span className="text-teal-600 font-semibold">({totalPoints} pts total)</span>}
+            Grading Rubric {totalPoints > 0 && <span className="text-[var(--org-primary)] font-semibold">({totalPoints} pts total)</span>}
           </label>
           <button
             onClick={addRubricItem}
@@ -7558,7 +7558,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
                   min={0}
                   value={r.points}
                   onChange={e => updateRubric(i, "points", Number(e.target.value))}
-                  className="w-16 h-7 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="w-16 h-7 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                   placeholder="pts"
                 />
                 <button onClick={() => removeRubric(i)} className="text-xs text-red-400 hover:text-red-600 shrink-0">✕</button>
@@ -7594,7 +7594,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
               max={100}
               value={d.latePenaltyPct ?? 0}
               onChange={e => set("latePenaltyPct", Number(e.target.value))}
-              className="w-24 h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className="w-24 h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             />
           </div>
         )}
