@@ -529,6 +529,13 @@ export const workshopLearnerRouter = router({
         .where(eq(workshops.slug, input.workshopSlug))
         .limit(1);
       if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, workshop.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop organization not found" });
+      const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
 
       const [instance] = await db
         .select()
@@ -565,11 +572,12 @@ export const workshopLearnerRouter = router({
       }
 
       // Determine price (instance override or workshop default)
-      // Both instance.price and workshop.price are stored in cents (int)
-      const priceInCents =
+      // Both instance.price and workshop.price are stored in dollars.
+      const priceInDollars =
         instance.price != null
-          ? Math.round(Number(instance.price))
-          : Math.round(Number(workshop.price));
+          ? Number(instance.price)
+          : Number(workshop.price);
+      const stripeAmountCents = Math.round(priceInDollars * 100);
 
       const { platformSettings } = await import("../../drizzle/schema");
       const [settings] = await db
@@ -577,7 +585,7 @@ export const workshopLearnerRouter = router({
         .from(platformSettings)
         .limit(1);
 
-      if (priceInCents === 0 || workshop.isFree) {
+      if (priceInDollars === 0 || workshop.isFree) {
         // Free enrollment — only if user is logged in
         if (userId) await db.insert(workshopEnrollments).values({
           workshopId: workshop.id,
@@ -626,7 +634,7 @@ export const workshopLearnerRouter = router({
             description: instance.description ?? workshop.subtitle ?? undefined,
             images: workshop.thumbnailUrl ? [workshop.thumbnailUrl] : undefined,
           },
-          unit_amount: priceInCents,
+          unit_amount: stripeAmountCents,
         },
         quantity: 1,
       };
@@ -651,7 +659,7 @@ export const workshopLearnerRouter = router({
           ...orderBumpCheckout?.metadata,
         },
         payment_intent_data: { description: `${workshop.title} — Workshop Registration` },
-        return_url: `${input.origin}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=workshop`,
+        return_url: `${orgBaseUrl}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=workshop`,
       }, { idempotencyKey: `workshop-checkout-${userId}-${workshop.id}-${instance.id}-${workshopIdempotencyDate}` });
 
       return {
@@ -663,7 +671,7 @@ export const workshopLearnerRouter = router({
         primaryColor: workshop.primaryColor ?? "#179ca3",
         accentColor: workshop.accentColor ?? "#0d9488",
         productName: `${workshop.title} — ${instanceTitle}`,
-        displayPrice: Math.round(priceInCents / 100),
+        displayPrice: priceInDollars,
         currency: workshop.currency,
         termsUrl: settings?.termsUrl ?? "",
         privacyUrl: settings?.privacyUrl ?? "",

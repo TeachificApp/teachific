@@ -886,4 +886,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminSource).toContain("priceOverride: grantType === \"paid\" ? parsedOverride : undefined");
     expect(adminSource).not.toContain("priceOverrideCents");
   });
+
+  it("converts stored workshop dollars to Stripe cents only at checkout and returns to the organization domain", () => {
+    const routerSource = readFileSync(new URL("./routers/workshopRouter.ts", import.meta.url), "utf8");
+    const checkoutSource = routerSource.slice(
+      routerSource.indexOf("// Determine price (instance override or workshop default)"),
+      routerSource.indexOf("/** Complete enrollment after successful Stripe payment */")
+    );
+    expect(checkoutSource).toContain("const priceInDollars =");
+    expect(checkoutSource).toContain("const stripeAmountCents = Math.round(priceInDollars * 100);");
+    expect(checkoutSource).toContain("unit_amount: stripeAmountCents");
+    expect(checkoutSource).toContain("displayPrice: priceInDollars");
+    expect(checkoutSource).not.toContain("priceInCents");
+    expect(checkoutSource).not.toContain("displayPrice: Math.round");
+    expect(routerSource).toContain("getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)");
+    expect(checkoutSource).toContain("return_url: `${orgBaseUrl}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=workshop`");
+    expect(checkoutSource).not.toContain("return_url: `${input.origin}");
+  });
 });
