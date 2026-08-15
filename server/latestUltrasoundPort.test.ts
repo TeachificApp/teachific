@@ -1096,5 +1096,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(orderBumpRouterSource).toContain("impressions: null");
     expect(orderBumpRouterSource).toContain("conversionRate: null");
     expect(orderBumpRouterSource).toContain("accepted: true,");
+    const cmeDisclosureSource = readFileSync(new URL("./routers/cmeDisclosureRouter.ts", import.meta.url), "utf8");
+    expect(cmeDisclosureSource).toContain('message: "Course not found in this organization."');
+    expect(cmeDisclosureSource).toContain("const baseUrl = getOrgBaseUrl(");
+    expect(cmeDisclosureSource).not.toContain("const baseUrl = input.origin || getOrgBaseUrl(");
   });
 });

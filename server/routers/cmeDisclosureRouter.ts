@@ -67,6 +67,14 @@ export const cmeDisclosureRouter = router({
       await assertCmeEnabled(orgId, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({ orgId: lmsCourses.orgId })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.id, input.courseId))
+        .limit(1);
+      if (!course || course.orgId !== orgId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in this organization." });
+      }
       const token = generateToken();
       const [result] = await db.insert(cmeFinancialDisclosures).values({
         orgId,
@@ -112,9 +120,9 @@ export const cmeDisclosureRouter = router({
         .where(eq(lmsCourses.id, (disclosure as any).courseId))
         .limit(1);
 
-      // Build the disclosure URL using the org's subdomain
+      // Build the disclosure URL using the org's verified domain.
       const { getOrgBaseUrl } = await import("../lib/orgUrl");
-      const baseUrl = input.origin || getOrgBaseUrl(
+      const baseUrl = getOrgBaseUrl(
         (org as any)?.slug ?? "",
         (org as any)?.customDomain ?? null,
         (org as any)?.domainVerificationStatus ?? "unverified"
