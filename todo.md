@@ -20,7 +20,9 @@
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
-- [ ] Surface persisted course welcome, completion, upsell, and waitlist automation controls in the organization-scoped Course Builder
+- [x] Link Course Builder settings to the organization-owned after-purchase automation editor
+- [ ] Embed or render direct Course Builder controls for welcome, completion, and upsell automation settings
+- [ ] Verify whether course waitlistEnabled is distinct from availability status and expose the persisted control when applicable
 - [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [ ] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone

@@ -352,6 +352,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderRouterSource).toContain("getAfterPurchase: protectedProcedure");
     expect(courseBuilderRouterSource).toContain("await assertCourseOwnership(ctx, input.courseId);");
     expect(courseBuilderRouterSource).toContain("await assertCourseOwnership(ctx, courseId);");
+    const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    expect(courseBuilderSource).toContain("/lms/courses/${course.id}/after_purchase");
+    expect(courseBuilderSource).toContain("After-purchase automation");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {

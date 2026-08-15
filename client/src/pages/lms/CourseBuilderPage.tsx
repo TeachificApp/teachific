@@ -2223,6 +2223,17 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           </div>
           <Switch checked={sendEnrollmentEmail} onCheckedChange={setSendEnrollmentEmail} />
         </div>
+        <div className="border-t border-gray-200 pt-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-700">After-purchase automation</p>
+            <p className="text-xs text-gray-400 mt-0.5">Configure welcome and completion emails, thank-you content, upsells, and post-purchase redirects for this course.</p>
+          </div>
+          <Link href={`/lms/courses/${course.id}/after_purchase`} className="shrink-0">
+            <Button type="button" size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50">
+              Configure
+            </Button>
+          </Link>
+        </div>
       </div>
       {/* Player Experience */}
       <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
