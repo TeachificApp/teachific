@@ -10,7 +10,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb, getOrCreateUserByEmail } from "../db";
-import { funnelPurchases, lmsEnrollments, brandMemberships, digitalPurchases, lmsCourses, digitalProducts, physicalProducts } from "../../drizzle/schema";
+import { funnelPurchases, lmsEnrollments, brandMemberships, digitalPurchases, lmsCourses, digitalProducts, digitalBundles, physicalProducts, funnelPages } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
 import { sendEmail, buildFunnelPurchaseConfirmationEmail } from "../_core/email";
@@ -42,6 +42,22 @@ const orderBumpInputSchema = z.object({
   price: z.number(), // dollars
   productType: z.string().optional(),
 });
+
+async function resolveCheckoutOrgId(db: any, input: { sourceFunnelPageId?: number; lmsCourseId?: number; productId?: number; productType: string }) {
+  if (input.sourceFunnelPageId) {
+    const [page] = await db.select({ orgId: funnelPages.orgId }).from(funnelPages).where(eq(funnelPages.id, input.sourceFunnelPageId)).limit(1);
+    if (page) return page.orgId;
+  }
+  if (input.lmsCourseId) {
+    const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.lmsCourseId)).limit(1);
+    if (course) return course.orgId;
+  }
+  if (!input.productId) return null;
+  if (input.productType === "download") return (await db.select({ orgId: digitalProducts.orgId }).from(digitalProducts).where(eq(digitalProducts.id, input.productId)).limit(1))[0]?.orgId ?? null;
+  if (input.productType === "bundle") return (await db.select({ orgId: digitalBundles.orgId }).from(digitalBundles).where(eq(digitalBundles.id, input.productId)).limit(1))[0]?.orgId ?? null;
+  if (input.productType === "physical") return (await db.select({ orgId: physicalProducts.orgId }).from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1))[0]?.orgId ?? null;
+  return null;
+}
 
 export const embeddedCheckoutRouter = router({
   /**
@@ -94,6 +110,9 @@ export const embeddedCheckoutRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      const orgId = await resolveCheckoutOrgId(db, input);
+      if (orgId === null) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable to resolve the checkout organization" });
 
       let totalAmountCents = await resolveEmbeddedCheckoutExpectedCents(db, {
         productName: input.productName,
@@ -224,6 +243,7 @@ export const embeddedCheckoutRouter = router({
 
       // Create a pending purchase record immediately (will be confirmed by webhook)
       await db.insert(funnelPurchases).values({
+        orgId,
         userId: ctx.user?.id ?? null,
         email: input.email,
         name: customerName ?? null,
@@ -319,6 +339,9 @@ export const embeddedCheckoutRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
+      const orgId = await resolveCheckoutOrgId(db, input);
+      if (orgId === null) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable to resolve the checkout organization" });
+
       await assertFreeOrderEligible(db, {
         productName: input.productName,
         productType: input.productType,
@@ -356,7 +379,7 @@ export const embeddedCheckoutRouter = router({
           userId = result.user.id;
           if (result.isNew && result.resetToken) {
             try {
-              const { buildPasswordResetEmail, sendEmail: _sendEmail } = await import("../_core/email");
+              const { buildPasswordResetEmail, sendEmailViaOrg } = await import("../_core/email");
               const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${result.resetToken}`;
               const firstName = input.firstName || nameParts[0] || "there";
               const emailContent = buildPasswordResetEmail({
@@ -364,12 +387,12 @@ export const embeddedCheckoutRouter = router({
                 resetUrl: setPasswordUrl,
                 brandMode: brandMode as any,
               });
-              await _sendEmail({
+              await sendEmailViaOrg({
                 to: { name: customerName || firstName, email: input.email },
                 subject: `Your account is ready — set your password to access ${input.productName || "your purchase"}`,
                 htmlBody: emailContent.htmlBody,
                 previewText: `Set your password to access your ${input.productName || "purchase"} on Teachific`,
-              });
+              }, orgId);
               console.log(`[FreeOrder] Sent set-password email to ${input.email} (new user ${userId})`);
             } catch (emailErr) {
               console.error(`[FreeOrder] Failed to send set-password email:`, emailErr);
@@ -383,6 +406,7 @@ export const embeddedCheckoutRouter = router({
 
       // Record the free purchase
       await db.insert(funnelPurchases).values({
+        orgId,
         userId,
         email: input.email,
         name: customerName ?? null,
@@ -528,7 +552,8 @@ export const embeddedCheckoutRouter = router({
             loginUrl: autoLoginUrl,
             brandMode: brandMode as any,
           });
-          await sendEmail({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText });
+          const { sendEmailViaOrg } = await import("../_core/email");
+          await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, orgId);
           console.log(`[FreeOrder] Confirmation email sent to ${input.email} (auto-login: ${userId ? 'yes' : 'no'})`);
         } catch (err) {
           console.error(`[FreeOrder] Failed to send confirmation email:`, err);

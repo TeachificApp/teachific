@@ -1,6 +1,7 @@
 # SCORM Host Platform - TODO
 
 - [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support
+- [x] Route remaining checkout confirmations through each organization’s configured transactional email sender
 
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)

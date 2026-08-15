@@ -1406,7 +1406,7 @@ export const funnelPublicRouter = router({
         // 2. Send welcome + set-password email for new accounts
         if (isNewUser && resetToken && resolvedUserId) {
           try {
-            const { buildPasswordResetEmail, sendEmail: _sendEmail } = await import("../_core/email");
+            const { buildPasswordResetEmail, sendEmailViaOrg } = await import("../_core/email");
             const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${resetToken}`;
             const firstName = input.firstName || customerName.split(" ")[0] || "there";
             const emailContent = buildPasswordResetEmail({
@@ -1414,12 +1414,12 @@ export const funnelPublicRouter = router({
               resetUrl: setPasswordUrl,
               brandMode: brandMode as any,
             });
-            await _sendEmail({
+            await sendEmailViaOrg({
               to: { name: customerName || firstName, email: input.email },
               subject: `Your account is ready — set your password to access ${selectedProduct.name || "your purchase"}`,
               htmlBody: emailContent.htmlBody,
               previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${brandMode === "iheartecho" ? "Teachific" : "Teachific"}`,
-            });
+            }, funnel.orgId ?? null);
             console.log(`[FreeCheckout] Sent set-password email to ${input.email} (new user ${resolvedUserId})`);
           } catch (emailErr) {
             console.error(`[FreeCheckout] Failed to send set-password email:`, emailErr);
@@ -1489,7 +1489,7 @@ export const funnelPublicRouter = router({
 
         // 6. Send purchase confirmation email
         try {
-          const { sendEmail, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
+          const { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
           const firstName = input.firstName || customerName.split(" ")[0] || "there";
           let loginUrl = `${baseUrl}/my-courses`;
           if (productType === "course" && productId) {
@@ -1509,7 +1509,7 @@ export const funnelPublicRouter = router({
             loginUrl,
             brandMode: brandMode as any,
           });
-          await sendEmail({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText });
+          await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, funnel.orgId ?? null);
           console.log(`[FreeCheckout] Confirmation email sent to ${input.email}`);
         } catch (emailErr) {
           console.error(`[FreeCheckout] Failed to send confirmation email:`, emailErr);

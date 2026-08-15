@@ -222,6 +222,22 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsBuilderSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
   });
 
+  it("routes free funnel checkout account and purchase emails through the owning organization sender", () => {
+    const routerSource = readFileSync(new URL("./routers/funnelRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("const { buildPasswordResetEmail, sendEmailViaOrg }");
+    expect(routerSource).toContain("}, funnel.orgId ?? null);");
+    expect(routerSource).toContain("const { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail }");
+  });
+
+  it("persists a trusted organization on embedded checkout purchases and uses it for free-order emails", () => {
+    const routerSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function resolveCheckoutOrgId");
+    expect(routerSource).toContain("funnelPages.orgId");
+    expect(routerSource).toContain("Unable to resolve the checkout organization");
+    expect(routerSource).toContain("orgId,");
+    expect(routerSource).toContain("await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, orgId);");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
