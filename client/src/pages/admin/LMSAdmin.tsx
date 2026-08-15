@@ -7156,7 +7156,7 @@ function OrdersManagementTab() {
                     <p className="text-xs text-gray-400">{o.user?.email}</p>
                   </td>
                   <td className="px-4 py-2.5 text-xs text-gray-700 max-w-[160px] truncate">{o.course?.title ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-xs font-medium text-gray-900">${(Number(o.amount) / 100).toFixed(2)}</td>
+                  <td className="px-4 py-2.5 text-xs font-medium text-gray-900">${Number(o.amount).toFixed(2)}</td>
                   <td className="px-4 py-2.5">
                     <Badge className={`text-xs ${STATUS_BADGE[o.status] ?? "bg-gray-100 text-gray-600"}`}>{o.status}</Badge>
                   </td>

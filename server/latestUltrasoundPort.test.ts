@@ -340,6 +340,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(builderSource).not.toContain("Number(o.amount) / 100");
   });
 
+  it("displays platform LMS order amounts as stored dollars", () => {
+    const platformLmsSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    expect(platformLmsSource).toContain("${Number(o.amount).toFixed(2)}");
+    expect(platformLmsSource).not.toContain("Number(o.amount) / 100");
+  });
+
   it("scopes funnel product catalogs to the active organization and preserves dollar prices", () => {
     const routerSource = readFileSync(new URL("./routers/funnelRouter.ts", import.meta.url), "utf8");
     const relatedProductsSource = readFileSync(new URL("../client/src/components/RelatedProductsBlock.tsx", import.meta.url), "utf8");
