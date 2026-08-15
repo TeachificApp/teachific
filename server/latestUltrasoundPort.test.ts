@@ -375,6 +375,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membersRouterSource).toContain("memberSubRole: z.enum");
     expect(membersRouterSource).toContain("input.memberSubRole");
     expect(membersRouterSource).toContain("u.memberSubRole");
+    expect(membersRouterSource).toContain("updateMemberRole: orgAdminProcedure");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {

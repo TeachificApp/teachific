@@ -1718,6 +1718,7 @@ export const appRouter = router({
           orgId: z.number(),
           userId: z.number(),
           role: z.enum(["org_super_admin", "org_admin", "member", "user"]),
+          memberSubRole: z.enum(["basic_member", "instructor", "group_manager", "group_member"]).optional(),
         }))
         .mutation(async ({ input, ctx }) => {
           if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
@@ -1732,7 +1733,7 @@ export const appRouter = router({
           const db2 = await getDb();
           if (!db2) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
           const { and: andOp } = await import("drizzle-orm");
-          await db2.update(orgMembers).set({ role: input.role }).where(
+          await db2.update(orgMembers).set({ role: input.role, ...(input.memberSubRole !== undefined ? { memberSubRole: input.memberSubRole } : {}) }).where(
             andOp(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, input.userId))
           );
           if (input.role === "org_admin" || input.role === "org_super_admin") {

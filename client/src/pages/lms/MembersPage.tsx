@@ -41,6 +41,7 @@ export default function MembersPage() {
     courseIds: [] as number[],
   });
   const [showAddPassword, setShowAddPassword] = useState(false);
+  const [accessMember, setAccessMember] = useState<{ userId: number; name?: string | null; email?: string | null; role: "org_super_admin" | "org_admin" | "member" | "user"; memberSubRole: "basic_member" | "instructor" | "group_manager" | "group_member" } | null>(null);
 
   // Bulk import state
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -130,6 +131,10 @@ export default function MembersPage() {
       setAddForm({ name: "", email: "", password: "", role: "user", memberSubRole: "basic_member", courseIds: [] });
       refetch();
     },
+    onError: (err) => toast.error(err.message),
+  });
+  const updateMemberAccess = trpc.lms.members.updateMemberRole.useMutation({
+    onSuccess: () => { toast.success("Member access updated"); setAccessMember(null); refetch(); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -342,6 +347,9 @@ export default function MembersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setAccessMember({ userId: m.userId, name: m.name, email: m.email, role: (m.role === "org_super_admin" || m.role === "org_admin" ? m.role : "user"), memberSubRole: (m.memberSubRole === "instructor" ? "instructor" : "basic_member") })}>
+                          Edit Access
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                           Enroll in Course
                         </DropdownMenuItem>
@@ -401,6 +409,7 @@ export default function MembersPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setAccessMember({ userId: m.userId, name: m.name, email: m.email, role: (m.role === "org_super_admin" || m.role === "org_admin" ? m.role : "user"), memberSubRole: (m.memberSubRole === "instructor" ? "instructor" : "basic_member") })}>Edit Access</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                         Enroll in Course
                       </DropdownMenuItem>
@@ -771,6 +780,17 @@ export default function MembersPage() {
               </Button>
             )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!accessMember} onOpenChange={(open) => !open && setAccessMember(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Member Access</DialogTitle></DialogHeader>
+          {accessMember && <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{accessMember.name ?? accessMember.email}</p>
+            <div className="space-y-2"><Label>Organization role</Label><Select value={accessMember.role} onValueChange={(role) => setAccessMember((member) => member ? { ...member, role: role as typeof member.role } : member)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">Member</SelectItem><SelectItem value="org_admin">Org Admin</SelectItem><SelectItem value="org_super_admin">Org Super Admin</SelectItem></SelectContent></Select></div>
+            {accessMember.role === "user" && <div className="space-y-2"><Label>Member access</Label><Select value={accessMember.memberSubRole} onValueChange={(memberSubRole) => setAccessMember((member) => member ? { ...member, memberSubRole: memberSubRole as typeof member.memberSubRole } : member)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="basic_member">Member</SelectItem><SelectItem value="instructor">Instructor</SelectItem></SelectContent></Select></div>}
+          </div>}
+          <DialogFooter><Button variant="outline" onClick={() => setAccessMember(null)}>Cancel</Button><Button disabled={!accessMember || updateMemberAccess.isPending || !orgId} onClick={() => accessMember && orgId && updateMemberAccess.mutate({ orgId, userId: accessMember.userId, role: accessMember.role, memberSubRole: accessMember.memberSubRole })}>{updateMemberAccess.isPending ? "Saving..." : "Save Access"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
