@@ -2340,7 +2340,16 @@ export const lmsRouter = router({
       .query(async ({ input }) => {
         const org = await getOrgBySlug(input.slug);
         if (!org) throw new TRPCError({ code: "NOT_FOUND" });
-        return getOrgTheme(org.id);
+        const theme = await getOrgTheme(org.id);
+        return {
+          ...theme,
+          orgName: org.name,
+          seoTitle: (org as any).seoTitle ?? null,
+          seoDescription: (org as any).seoDescription ?? null,
+          seoKeywords: (org as any).seoKeywords ?? null,
+          seoOgImage: (org as any).seoOgImage ?? null,
+          customCss: (org as any).customCss ?? null,
+        };
       }),
     homePageBySlug: publicProcedure
       .input(z.object({ slug: z.string() }))

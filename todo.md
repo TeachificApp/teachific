@@ -2930,16 +2930,16 @@
 - [ ] Add seoOgImageUpload tRPC procedure: upload OG image to S3, return URL
 - [ ] Website tab: SEO card with fields: Site Title (meta title), Meta Description, Keywords, OG Image upload, Robots (index/noindex toggle)
 - [ ] Website tab: character count hints on title (max 60) and description (max 160)
-- [ ] useOrgBranding hook: inject seoTitle as document.title, meta description, meta keywords, og:title, og:description, og:image, robots meta tag into <head> on subdomain pages
-- [ ] themeBySlug procedure: include SEO fields in response
+- [x] Apply organization seoTitle, description, keywords, and Open Graph metadata on subdomain pages
+- [x] Include organization SEO fields in the public theme response
 
 ## Website Tab: Custom CSS Injection
 - [ ] Add customCss column (longtext) to organizations table
 - [ ] Include customCss in migration SQL
 - [ ] Add orgs.updateCustomCss tRPC procedure (orgAdminProcedure): save custom CSS
 - [ ] Website tab: Custom CSS card with CodeMirror/textarea editor, warning banner about no support
-- [ ] useOrgBranding hook: inject customCss as <style> tag into <head> on subdomain pages
-- [ ] themeBySlug procedure: include customCss in response
+- [x] Inject organization customCss as a scoped style tag on subdomain pages
+- [x] Include customCss in the public organization theme response
 
 ## Support Page & Ticket System
 - [ ] Add support_tickets table (id, name, email, subject, category, message, status, userId, createdAt)
@@ -4395,7 +4395,7 @@
 - [ ] Live preview panel (split-view or preview tab)
 - [ ] Publish/unpublish toggle
 - [ ] Build public OrgHomePage renderer at /org/:orgSlug route
-- [ ] Wire "Edit Home Page" link into org admin sidebar
+- [x] Wire "Edit Home Page" link into active organization admin sidebar
 - [ ] Write vitest tests for orgPages procedures
 
 ## Site Builder Sprint
@@ -4840,7 +4840,7 @@
 - [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables
 - [ ] Replace hardcoded teal in CourseOverviewPage.tsx with CSS variables
 - [ ] Replace hardcoded teal in SchoolPage.tsx with CSS variables
-- [ ] Update BrandingPage to include buttonColor and buttonTextColor fields
+- [x] Update BrandingPage to include buttonColor and buttonTextColor fields
 - [ ] Wire getCoursePlayer to include org primaryColor as fallback
 
 ## Bug Fix: Superadmin Role Assignment for Second User

@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { OrgThemeProvider } from "@/contexts/OrgThemeContext";
+import { useEffect } from "react";
 
 interface SubdomainThemeProviderProps {
   subdomain: string;
@@ -22,6 +23,33 @@ export function SubdomainThemeProvider({ subdomain, children }: SubdomainThemePr
   );
 
   const studentTheme = (theme?.studentTheme as "light" | "dark") ?? "light";
+
+  useEffect(() => {
+    if (!theme) return;
+    const title = (theme as any).seoTitle || (theme as any).orgName;
+    if (title) document.title = title;
+
+    const setMeta = (name: string, content?: string | null, property = false) => {
+      if (!content) return;
+      const selector = property ? `meta[property="${name}"]` : `meta[name="${name}"]`;
+      let meta = document.head.querySelector(selector) as HTMLMetaElement | null;
+      if (!meta) {
+        meta = document.createElement("meta");
+        if (property) meta.setAttribute("property", name);
+        else meta.setAttribute("name", name);
+        document.head.appendChild(meta);
+      }
+      meta.content = content;
+    };
+
+    const seoTitle = (theme as any).seoTitle || (theme as any).orgName;
+    const seoDescription = (theme as any).seoDescription;
+    setMeta("description", seoDescription);
+    setMeta("keywords", (theme as any).seoKeywords);
+    setMeta("og:title", seoTitle, true);
+    setMeta("og:description", seoDescription, true);
+    setMeta("og:image", (theme as any).seoOgImage, true);
+  }, [theme]);
 
   return (
     <ThemeProvider defaultTheme={studentTheme}>

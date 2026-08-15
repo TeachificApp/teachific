@@ -176,6 +176,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membersSource).toContain('SelectItem value="org_super_admin"');
   });
 
+  it("applies organization SEO metadata and custom CSS through the subdomain theme provider", () => {
+    const themeProviderSource = readFileSync(new URL("../client/src/components/SubdomainThemeProvider.tsx", import.meta.url), "utf8");
+    const themeRouterSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    expect(themeProviderSource).toContain("setMeta(\"og:title\", seoTitle, true);");
+    expect(themeProviderSource).toContain("setMeta(\"og:image\", (theme as any).seoOgImage, true);");
+    expect(themeProviderSource).toContain("const title = (theme as any).seoTitle || (theme as any).orgName;");
+    expect(themeRouterSource).toContain("seoTitle: (org as any).seoTitle ?? null");
+    expect(themeRouterSource).toContain("customCss: (org as any).customCss ?? null");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
