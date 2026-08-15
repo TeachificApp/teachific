@@ -55,6 +55,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pageSource).toContain("orgMediaId: orgMediaId ?? undefined");
   });
 
+  it("falls back to QTI XML question parsing for non-iSpring SCORM packages", () => {
+    const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain('parseSCORMQuestions(entry.getData().toString("utf8"))');
+    expect(routerSource).toContain("if (parsedQuestions.length === 0) throw iSpringError;");
+  });
+
   it("routes direct Media Repository extraction into a same-organization Question Bank preview", () => {
     const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
     const repositorySource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");

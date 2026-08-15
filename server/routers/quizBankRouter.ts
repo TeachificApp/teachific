@@ -503,27 +503,37 @@ export const quizBankRouter = router({
           if ((job.filename ?? "").toLowerCase().endsWith(".quiz")) {
             parsedQuestions = parseTeachificQuizQuestions(buffer.toString("utf8"));
           } else {
-            const parsed = await parseISpringQuizFromBuffer(buffer);
             const AdmZip = (await import("adm-zip")).default;
-            const imageMap = await uploadISpringImagesFromZip(new AdmZip(buffer).getEntries(), parsed.allImageRefs);
-            parsedQuestions = parsed.groups.flatMap((group) => group.questions.map((question) => {
-              const questionHtml = rewriteStorageRefs(question.questionHtml || question.questionText, imageMap);
-              const mediaUrl = question.imageRefs.map((ref) => imageMap.get(ref)).find(Boolean);
-              return {
-                questionType: question.type === "truefalse" ? "tf" : "mc",
-                questionText: question.questionText,
-                questionHtml,
-                mediaType: mediaUrl ? "image" : "none",
-                mediaUrl,
-                explanationText: rewriteStorageRefs(question.explanationText || question.explanationHtml || "", imageMap),
-                choices: question.answers.map((answer) => ({
-                  text: rewriteStorageRefs(answer.html || answer.text, imageMap),
-                  isCorrect: answer.isCorrect,
-                  mediaUrl: answer.imageRef ? imageMap.get(answer.imageRef) : undefined,
-                })),
-                importGroup: group.name,
-              };
-            }));
+            const zip = new AdmZip(buffer);
+            try {
+              const parsed = await parseISpringQuizFromBuffer(buffer);
+              const imageMap = await uploadISpringImagesFromZip(zip.getEntries(), parsed.allImageRefs);
+              parsedQuestions = parsed.groups.flatMap((group) => group.questions.map((question) => {
+                const questionHtml = rewriteStorageRefs(question.questionHtml || question.questionText, imageMap);
+                const mediaUrl = question.imageRefs.map((ref) => imageMap.get(ref)).find(Boolean);
+                return {
+                  questionType: question.type === "truefalse" ? "tf" : "mc",
+                  questionText: question.questionText,
+                  questionHtml,
+                  mediaType: mediaUrl ? "image" : "none",
+                  mediaUrl,
+                  explanationText: rewriteStorageRefs(question.explanationText || question.explanationHtml || "", imageMap),
+                  choices: question.answers.map((answer) => ({
+                    text: rewriteStorageRefs(answer.html || answer.text, imageMap),
+                    isCorrect: answer.isCorrect,
+                    mediaUrl: answer.imageRef ? imageMap.get(answer.imageRef) : undefined,
+                  })),
+                  importGroup: group.name,
+                };
+              }));
+            } catch (iSpringError) {
+              const qtiEntries = zip.getEntries().filter((entry) =>
+                /\.(xml|qti)$/i.test(entry.entryName) &&
+                /<(questestinterop|assessment|item)\b/i.test(entry.getData().toString("utf8"))
+              );
+              parsedQuestions = qtiEntries.flatMap((entry) => parseSCORMQuestions(entry.getData().toString("utf8")));
+              if (parsedQuestions.length === 0) throw iSpringError;
+            }
           }
         }
 

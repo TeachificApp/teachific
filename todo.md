@@ -3657,7 +3657,7 @@
 - [ ] Info slide editor: rich text + media, no answer choices
 - [ ] Per-question explanation/feedback editor with media support
 - [ ] Tag management UI: create/edit/delete tags, assign tags to questions
-- [ ] SCORM import: upload .zip, parse imsmanifest.xml + QTI XML, show preview table, confirm import to bank
+- [x] SCORM import: parse supported iSpring and standard QTI XML packages into an organization-safe Question Bank preview
 - [ ] CSV/XLS import: upload file, parse columns (Question Type, Question Text, Image, Video, Answer 1-10, Correct Feedback, Incorrect Feedback, Points), preview, confirm import
 - [ ] Export questions to CSV/XLS template format
 
