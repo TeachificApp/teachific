@@ -688,7 +688,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           {mode === "manual" ? (
             <Button
-              className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white"
               disabled={!title.trim() || create.isPending}
               onClick={() => create.mutate({
                 title: title.trim(), subtitle: subtitle.trim() || undefined,
@@ -706,7 +706,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
             </Button>
           ) : aiStep === "input" ? (
             <Button
-              className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white"
               disabled={!aiTopics.trim() || aiGenerate.isPending}
               onClick={() => aiGenerate.mutate({
                 topics: aiTopics.trim(),
