@@ -26,7 +26,7 @@ import {
 } from "../../drizzle/schema";
 import { getUserByEmail, getOrCreateUserByEmail, getOrCreateAccessToken } from "../db";
 import { generateAutoLoginToken } from "../routes/autoLogin";
-import { buildPasswordResetEmail, sendEmail } from "../_core/email";
+import { buildPasswordResetEmail, sendEmailViaOrg } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
 import { isEnrollmentAccessActive } from "./enrollmentAccess";
 import { getOrgBaseUrl } from "./orgUrl";
@@ -405,6 +405,7 @@ async function sendMembershipWelcomeEmail(opts: {
   isNewUser: boolean;
   resetToken: string | null;
   planId: number;
+  orgId?: number | null;
   primaryCourseSlug?: string | null;
   orgSlug?: string | null;
   orgCustomDomain?: string | null;
@@ -450,12 +451,12 @@ async function sendMembershipWelcomeEmail(opts: {
     });
     const subject = `Your ${opts.planTitle} membership is ready`;
     const enhancedBody = emailContent.htmlBody.replace("</body>", `${accessNote}</body>`);
-    await sendEmail({
+    await sendEmailViaOrg({
       to: { name: opts.name, email: opts.email },
       subject,
       htmlBody: enhancedBody,
       previewText: `Access your ${opts.planTitle} membership on Teachific`,
-    });
+    }, opts.orgId ?? undefined);
     return;
   }
 
@@ -467,12 +468,12 @@ async function sendMembershipWelcomeEmail(opts: {
     loginUrl: autoLoginUrl,
     brandMode: "aaus",
   });
-  await sendEmail({
+  await sendEmailViaOrg({
     to: { name: opts.name, email: opts.email },
     subject: subject.replace("Purchase confirmed", `Your ${opts.planTitle} membership is active`),
     htmlBody: htmlBody.replace("</body>", `${accessNote}</body>`),
     previewText,
-  });
+  }, opts.orgId ?? undefined);
 }
 
 /**
@@ -613,6 +614,7 @@ export async function fulfillMembershipPurchase(
         isNewUser: resolved.isNew,
         resetToken: resolved.resetToken,
         planId,
+        orgId: membershipOrg?.id ?? null,
         primaryCourseSlug,
         orgSlug: membershipOrg?.slug ?? null,
         orgCustomDomain: membershipOrg?.customDomain ?? null,

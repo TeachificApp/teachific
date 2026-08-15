@@ -60,6 +60,7 @@
 - [x] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [x] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
+- [x] Route membership welcome and purchase-confirmation emails through the owning organization sender
 
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)

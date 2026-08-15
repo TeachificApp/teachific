@@ -316,6 +316,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("const { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail }");
   });
 
+  it("routes membership welcome emails through the owning organization sender", () => {
+    const membershipSource = readFileSync(new URL("./lib/membershipFulfillment.ts", import.meta.url), "utf8");
+    expect(membershipSource).toContain('import { buildPasswordResetEmail, sendEmailViaOrg }');
+    expect(membershipSource).toContain("orgId?: number | null;");
+    expect(membershipSource).toContain("}, opts.orgId ?? undefined);");
+    expect(membershipSource).toContain("orgId: membershipOrg?.id ?? null,");
+  });
+
   it("persists a trusted organization on embedded checkout purchases and uses it for free-order emails", () => {
     const routerSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function resolveCheckoutOrgId");
