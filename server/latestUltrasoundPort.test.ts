@@ -324,6 +324,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membershipSource).toContain("orgId: membershipOrg?.id ?? null,");
   });
 
+  it("limits membership course, download, bundle, and all-access grants to the plan organization", () => {
+    const membershipSource = readFileSync(new URL("./lib/membershipFulfillment.ts", import.meta.url), "utf8");
+    expect(membershipSource).toContain("eq(lmsCourses.orgId, ctx.orgId)");
+    expect(membershipSource).toContain("eq(digitalProducts.orgId, ctx.orgId)");
+    expect(membershipSource).toContain("eq(bundles.orgId, ctx.orgId)");
+    expect(membershipSource).toContain("orgId: plan.orgId,");
+  });
+
   it("persists a trusted organization on embedded checkout purchases and uses it for free-order emails", () => {
     const routerSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function resolveCheckoutOrgId");

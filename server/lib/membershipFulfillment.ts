@@ -325,7 +325,7 @@ export async function fulfillMembershipPlanAccess(
   db: MySql2Database<typeof schema>,
   userId: number,
   planId: number,
-  ctx: Pick<MembershipFulfillmentContext, "sessionId" | "stripeSubscriptionId" | "stripeCustomerId" | "accessExpiresAt" | "forceRenew">,
+  ctx: Pick<MembershipFulfillmentContext, "sessionId" | "stripeSubscriptionId" | "stripeCustomerId" | "accessExpiresAt" | "forceRenew"> & { orgId?: number | null },
 ): Promise<string[]> {
   const enrollOpts: EnrollOpts = {
     accessExpiresAt: ctx.accessExpiresAt ?? null,
@@ -357,26 +357,38 @@ export async function fulfillMembershipPlanAccess(
       switch (item.itemType) {
         case "course":
         case "quiz":
-          if (item.itemId) await enrollCourseOrQuiz(db, userId, item.itemId, notes, enrollOpts);
+          if (item.itemId && ctx.orgId) {
+            const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(and(eq(lmsCourses.id, item.itemId), eq(lmsCourses.orgId, ctx.orgId))).limit(1);
+            if (course) await enrollCourseOrQuiz(db, userId, item.itemId, notes, enrollOpts);
+            else notes.push(`Skipped cross-organization ${item.itemType} #${item.itemId}`);
+          }
           break;
         case "download":
-          if (item.itemId) await grantDownload(db, userId, item.itemId, ctx.sessionId ?? null, notes);
+          if (item.itemId && ctx.orgId) {
+            const [product] = await db.select({ id: digitalProducts.id }).from(digitalProducts).where(and(eq(digitalProducts.id, item.itemId), eq(digitalProducts.orgId, ctx.orgId))).limit(1);
+            if (product) await grantDownload(db, userId, item.itemId, ctx.sessionId ?? null, notes);
+            else notes.push(`Skipped cross-organization download #${item.itemId}`);
+          }
           break;
         case "bundle":
-          if (item.itemId) await grantBundle(db, userId, item.itemId, ctx.sessionId ?? null, notes, enrollOpts);
+          if (item.itemId && ctx.orgId) {
+            const [bundle] = await db.select({ id: bundles.id }).from(bundles).where(and(eq(bundles.id, item.itemId), eq(bundles.orgId, ctx.orgId))).limit(1);
+            if (bundle) await grantBundle(db, userId, item.itemId, ctx.sessionId ?? null, notes, enrollOpts);
+            else notes.push(`Skipped cross-organization bundle #${item.itemId}`);
+          }
           break;
         case "all_courses": {
-          const courses = await db
+          const courses = ctx.orgId ? await db
             .select({ id: lmsCourses.id })
             .from(lmsCourses)
-            .where(eq(lmsCourses.status, "public"));
+            .where(and(eq(lmsCourses.status, "public"), eq(lmsCourses.orgId, ctx.orgId))) : [];
           for (const c of courses) {
             await enrollCourseOrQuiz(db, userId, c.id, notes, enrollOpts);
           }
           break;
         }
         case "all_downloads": {
-          const products = await db.select({ id: digitalProducts.id }).from(digitalProducts);
+          const products = ctx.orgId ? await db.select({ id: digitalProducts.id }).from(digitalProducts).where(eq(digitalProducts.orgId, ctx.orgId)) : [];
           for (const p of products) {
             await grantDownload(db, userId, p.id, ctx.sessionId ?? null, notes);
           }
@@ -574,6 +586,7 @@ export async function fulfillMembershipPurchase(
     stripeCustomerId,
     accessExpiresAt: ctx.accessExpiresAt ?? null,
     forceRenew: ctx.forceRenew ?? isNewStripeSubscription,
+    orgId: plan.orgId,
   });
   notes.push(...accessNotes);
 
