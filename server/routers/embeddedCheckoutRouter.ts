@@ -299,7 +299,7 @@ export const embeddedCheckoutRouter = router({
       }
 
       await db.update(funnelPurchases)
-        .set({ status: "paid", amountPaid: paymentIntent.amount })
+        .set({ status: "paid", amountPaid: paymentIntent.amount / 100 })
         .where(eq(funnelPurchases.stripePaymentIntentId, input.paymentIntentId));
 
       return { success: true };

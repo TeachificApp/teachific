@@ -313,6 +313,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");
     expect(embeddedCheckoutSource).toContain("amountPaid: totalAmount,");
+    expect(embeddedCheckoutSource).toContain("amountPaid: paymentIntent.amount / 100");
     expect(embeddedCheckoutSource).not.toContain("amountPaid: totalAmountCents,");
   });
 
