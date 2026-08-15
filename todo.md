@@ -34,6 +34,7 @@
 - [x] Allow organization administrators to edit existing member admin and instructor access within their active organization
 - [x] Apply active organization theme variables to Course Builder discussion filter and publishing controls
 - [x] Replace remaining fixed Course Builder teal interface controls with active organization theme variables while preserving explicit content overrides
+- [x] Apply active organization theme variables to Digital Downloads administration and product authoring controls
 - [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [ ] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone

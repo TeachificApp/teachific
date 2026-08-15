@@ -28,7 +28,7 @@ function SortableProductRow({ product, onEdit, onDuplicate, onDelete }: { produc
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 px-4 py-3 hover:border-teal-300 transition-colors">
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 px-4 py-3 hover:border-[var(--org-primary)] transition-colors">
       <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none" title="Drag to reorder">
         <GripVertical className="w-4 h-4" />
       </button>
@@ -46,7 +46,7 @@ function SortableProductRow({ product, onEdit, onDuplicate, onDelete }: { produc
       <Badge variant={product.status === "published" ? "default" : product.status === "archived" ? "secondary" : "outline"} className="text-xs">
         {product.status}
       </Badge>
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(product.id)}>
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => onEdit(product.id)}>
         <Pencil className="w-3 h-3 mr-1" /> Edit
       </Button>
       <Button size="sm" variant="ghost" className="h-7 text-xs text-blue-500 hover:bg-blue-50" title="Duplicate" onClick={() => onDuplicate(product.id)}>
@@ -159,8 +159,8 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
           </SortableContext>
           <DragOverlay>
             {activeProduct && (
-              <div className="flex items-center gap-3 bg-white rounded-lg border-2 border-teal-400 shadow-lg px-4 py-3">
-                <GripVertical className="w-4 h-4 text-teal-400" />
+              <div className="flex items-center gap-3 bg-white rounded-lg border-2 border-[var(--org-primary)] shadow-lg px-4 py-3">
+                <GripVertical className="w-4 h-4 text-[var(--org-primary)]" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{activeProduct.title}</p>
                 </div>
@@ -171,7 +171,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
       ) : (
         <div className="grid gap-3">
           {localProducts.map((p: any) => (
-            <Card key={p.id} className="hover:border-teal-500/50 transition-colors">
+            <Card key={p.id} className="hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
                 {p.thumbnailUrl ? (
                   <img src={p.thumbnailUrl} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" />
@@ -344,7 +344,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         <Badge variant={product.status === "published" ? "default" : "outline"}>{product.status}</Badge>
         {product.slug && (
           <a href={`/downloads/${product.slug}?preview=admin`} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600">
+            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)]">
               <Eye className="w-3 h-3 mr-1" /> Preview
             </Button>
           </a>
@@ -354,25 +354,25 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
       {/* Top Tabs — like Course admin */}
       <Tabs defaultValue="settings">
         <TabsList className="border-b w-full justify-start rounded-none bg-transparent p-0 h-auto gap-0">
-          <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             <Settings2 className="w-3.5 h-3.5 mr-1.5" /> Settings
           </TabsTrigger>
-          <TabsTrigger value="landing" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="landing" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             <LayoutTemplate className="w-3.5 h-3.5 mr-1.5" /> Landing Page
           </TabsTrigger>
-          <TabsTrigger value="files" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="files" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             <FolderOpen className="w-3.5 h-3.5 mr-1.5" /> Files
           </TabsTrigger>
-          <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="students" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             <Users className="w-3.5 h-3.5 mr-1.5" /> Students
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="analytics" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Analytics
           </TabsTrigger>
-          <TabsTrigger value="sales" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="sales" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Sales
           </TabsTrigger>
-          <TabsTrigger value="embed" className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-4 py-2 text-sm font-medium bg-transparent hover:text-teal-600">
+          <TabsTrigger value="embed" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-4 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)]">
             Embed
           </TabsTrigger>
         </TabsList>
@@ -463,7 +463,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
           {/* URL & SEO Settings */}
           <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><LinkIcon className="w-4 h-4 text-teal-600" /> URL &amp; SEO Settings</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><LinkIcon className="w-4 h-4 text-[var(--org-primary)]" /> URL &amp; SEO Settings</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm">URL Slug</Label>
@@ -486,7 +486,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                 <PublishDomainSelect value={publishDomain} onChange={setPublishDomain} />
                 <p className="text-xs text-muted-foreground mt-1">Override the default publish domain for this download only.</p>
               </div>
-              <Button size="sm" variant="outline" className="border-teal-300 text-teal-600 hover:bg-teal-50"
+              <Button size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                 disabled={updateSettingsMut.isPending}
                 onClick={() => updateSettingsMut.mutate({ productId, slug: slug.trim() || product.slug, metaTitle: metaTitle.trim() || undefined, metaDescription: metaDescription.trim() || undefined, publishDomain: publishDomain || null })}
               >
@@ -506,20 +506,20 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         {/* Landing Page Tab */}
         <TabsContent value="landing" className="mt-4">
           <div className="space-y-3">
-            <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-              <LayoutTemplate className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+            <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+              <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-teal-800">Landing Page Builder</p>
-                <p className="text-xs text-teal-600 mt-0.5">Design your product landing page with blocks, images, pricing sections, and more.</p>
+                <p className="text-sm font-medium text-[var(--org-primary)]">Landing Page Builder</p>
+                <p className="text-xs text-[var(--org-primary)] mt-0.5">Design your product landing page with blocks, images, pricing sections, and more.</p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button
                 onClick={() => navigate(`/admin/downloads/${productId}/landing-builder`)}
-                className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-colors text-left"
+                className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors text-left"
               >
-                <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <LayoutTemplate className="w-5 h-5 text-teal-600" />
+                <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)]" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">Open Full Builder</p>
@@ -539,10 +539,10 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                 </a>
               )}
             </div>
-            <div className="bg-white border border-teal-200 rounded-xl p-5">
+            <div className="bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-5">
               <div className="flex items-start gap-3 mb-4">
-                <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-teal-600" />
+                <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-[var(--org-primary)]" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">AI Generate Landing Page</p>
@@ -550,7 +550,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                 </div>
               </div>
               <Button
-                className="bg-teal-600 hover:bg-teal-700 text-white gap-2 w-full"
+                className="bg-[var(--org-primary)] hover:opacity-90 text-white gap-2 w-full"
                 disabled={aiGenerateLandingPage.isPending}
                 onClick={() => aiGenerateLandingPage.mutate({ productId })}
               >
@@ -559,7 +559,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                   : <><Sparkles className="w-4 h-4" /> Generate Landing Page with AI</>}
               </Button>
               {aiGenerateLandingPage.isPending && (
-                <p className="text-xs text-teal-500 text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
+                <p className="text-xs text-[var(--org-primary)] text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
               )}
             </div>
           </div>
@@ -584,7 +584,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         {/* Sales Tab */}
         <TabsContent value="sales" className="mt-4">
           <div className="flex justify-end mb-3">
-            <Button variant="outline" size="sm" className="text-teal-600 border-teal-300 hover:bg-teal-50" onClick={() => setShowGrantDialog(true)}>
+            <Button variant="outline" size="sm" className="text-[var(--org-primary)] border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => setShowGrantDialog(true)}>
               <UserPlus className="w-4 h-4 mr-1" /> Grant Access to Student
             </Button>
           </div>
@@ -644,7 +644,7 @@ function GrantDownloadAccessDialog({ open, productId, onClose }: { open: boolean
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-600" /> Grant Download Access</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[var(--org-primary)]" /> Grant Download Access</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <Label>Student Email</Label>
@@ -665,9 +665,9 @@ function GrantDownloadAccessDialog({ open, productId, onClose }: { open: boolean
             </div>
           )}
           {searchResult && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-              <p className="text-sm text-teal-800 font-medium">Found: {searchResult.name ?? searchResult.email}</p>
-              <p className="text-xs text-teal-600">{searchResult.email}</p>
+            <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3">
+              <p className="text-sm text-[var(--org-primary)] font-medium">Found: {searchResult.name ?? searchResult.email}</p>
+              <p className="text-xs text-[var(--org-primary)]">{searchResult.email}</p>
             </div>
           )}
         </div>
@@ -740,7 +740,7 @@ function FileManager({ productId, files }: { productId: number; files: any[] }) 
             {files.map((f) => (
               <div key={f.id} className="flex items-center gap-3 p-2 rounded border bg-muted/30">
                 <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                <FileIcon className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                <FileIcon className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{f.fileName}</p>
                   <p className="text-xs text-muted-foreground">{formatSize(f.fileSize)} · {f.mimeType ?? "unknown"}</p>
@@ -772,7 +772,7 @@ function DownloadStudentsTab({ productId, onGrantAccess }: { productId: number; 
           <p className="text-sm font-semibold">{purchasers.length} student{purchasers.length !== 1 ? 's' : ''}</p>
           <p className="text-xs text-muted-foreground">All users with access to this download</p>
         </div>
-        <Button size="sm" variant="outline" className="text-teal-600 border-teal-300 hover:bg-teal-50" onClick={onGrantAccess}>
+        <Button size="sm" variant="outline" className="text-[var(--org-primary)] border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={onGrantAccess}>
           <UserPlus className="w-4 h-4 mr-1" /> Grant Access
         </Button>
       </div>
@@ -806,7 +806,7 @@ function DownloadStudentsTab({ productId, onGrantAccess }: { productId: number; 
                   <td className="px-4 py-2.5">{p.amountPaid != null ? `$${(Number(p.amountPaid) / 100).toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-2.5">
                     {p.userId && (
-                      <Button size="sm" variant="ghost" className="text-xs text-teal-600 hover:bg-teal-50 h-7" onClick={() => navigate(`/admin/users/${p.userId}`)}>
+                      <Button size="sm" variant="ghost" className="text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] h-7" onClick={() => navigate(`/admin/users/${p.userId}`)}>
                         View Profile
                       </Button>
                     )}
