@@ -4503,6 +4503,19 @@ export const affiliateCourseAccess = mysqlTable("affiliate_course_access", {
 });
 export type AffiliateCourseAccess = typeof affiliateCourseAccess.$inferSelect;
 
+// Explicit compatibility ownership for affiliates operating within an organization.
+// Course-level grants remain the fine-grained permission source; this record establishes
+// the organization boundary used by payout and affiliate administration workflows.
+export const affiliateOrgAccess = mysqlTable("affiliate_org_access", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliate_id").notNull(),
+  orgId: int("org_id").notNull(),
+  grantedByAdminId: int("granted_by_admin_id"),
+  grantedAt: timestamp("granted_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+});
+export type AffiliateOrgAccess = typeof affiliateOrgAccess.$inferSelect;
+
 // ─── Thinkific import tables ──────────────────────────────────────────────
 export const lmsPendingEnrollments = mysqlTable("lms_pending_enrollments", {
   id: int("id").autoincrement().primaryKey(),

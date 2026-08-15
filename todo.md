@@ -10,7 +10,9 @@
 - [x] Scope instructor revenue-share listings and updates to the active organization
 - [x] Add organization ownership and active-org authorization to new payout requests and payout request administration
 - [x] Backfill existing payout requests with trusted organization ownership and define safe handling for unresolvable legacy rows
-- [ ] Add an explicit organization-scoped compatibility model for legacy affiliates before affiliate payout requests are created
+- [ ] Add explicit affiliate-organization compatibility ownership for legacy affiliate records
+- [ ] Backfill affiliate-organization compatibility records only where a single organization can be derived safely
+- [x] Reject affiliate payout requests when no active-organization compatibility record exists
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 
 ## Phase 1: Database Schema & Migrations

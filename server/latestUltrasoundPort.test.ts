@@ -293,6 +293,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("Select an organization before requesting a payout.");
     expect(routerSource).toContain("orgId,\n        requestorType: input.requestorType");
     expect(routerSource).toContain("eq(payoutRequests.id, input.id), eq(payoutRequests.orgId, orgId)");
+    expect(routerSource).toContain("affiliateCourseAccess");
+    expect(routerSource).toContain("affiliateOrgAccess");
+    expect(routerSource).toContain("isNull(affiliateOrgAccess.revokedAt)");
     expect(routerSource).toContain("No affiliate access is available for the active organization.");
     expect(routerSource).toContain("eq(lmsCourses.orgId, orgId)");
     expect(routerSource).toContain("eq(lmsAffiliateConversions.orgId, orgId)");

@@ -79,6 +79,7 @@ import {
   payoutRequests,
   instructorPayoutConfig,
   affiliateCourseAccess,
+  affiliateOrgAccess,
   userRoles,
   organizations,
 } from "../../drizzle/schema";
@@ -2380,12 +2381,15 @@ CRITICAL REQUIREMENTS:
         const aff = await db.select({ id: lmsAffiliates.id }).from(lmsAffiliates)
           .where(eq(lmsAffiliates.userId, ctx.user.id)).then(r => r[0]);
         if (!aff) throw new TRPCError({ code: "FORBIDDEN", message: "No affiliate account found for your user." });
-        const [orgAffiliateLink] = await db.select({ id: affiliateLinks.id })
-          .from(affiliateLinks)
-          .innerJoin(lmsCourses, eq(lmsCourses.id, affiliateLinks.courseId))
-          .where(and(eq(affiliateLinks.affiliateId, aff.id), eq(lmsCourses.orgId, orgId)))
+        const [orgAffiliateAccess] = await db.select({ id: affiliateOrgAccess.id })
+          .from(affiliateOrgAccess)
+          .where(and(
+            eq(affiliateOrgAccess.affiliateId, aff.id),
+            eq(affiliateOrgAccess.orgId, orgId),
+            isNull(affiliateOrgAccess.revokedAt),
+          ))
           .limit(1);
-        if (!orgAffiliateLink) {
+        if (!orgAffiliateAccess) {
           throw new TRPCError({ code: "FORBIDDEN", message: "No affiliate access is available for the active organization." });
         }
         const [{ approvedCommission }] = await db.select({
@@ -2511,6 +2515,10 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses)
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, orgId))).limit(1);
+      if (!course) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       // Check course has affiliate enabled
       const [settings] = await db.select().from(affiliateCourseSettings)
         .where(eq(affiliateCourseSettings.courseId, input.courseId)).limit(1);
@@ -2525,6 +2533,13 @@ CRITICAL REQUIREMENTS:
         await db.update(affiliateCourseAccess)
           .set({ revokedAt: null, grantedByAdminId: ctx.user.id, commissionPctOverride: input.commissionPctOverride ?? null, grantedAt: new Date() })
           .where(eq(affiliateCourseAccess.id, existing.id));
+        const [orgAccess] = await db.select({ id: affiliateOrgAccess.id }).from(affiliateOrgAccess)
+          .where(and(eq(affiliateOrgAccess.affiliateId, input.affiliateId), eq(affiliateOrgAccess.orgId, orgId))).limit(1);
+        if (orgAccess) {
+          await db.update(affiliateOrgAccess).set({ revokedAt: null, grantedByAdminId: ctx.user.id, grantedAt: new Date() }).where(eq(affiliateOrgAccess.id, orgAccess.id));
+        } else {
+          await db.insert(affiliateOrgAccess).values({ affiliateId: input.affiliateId, orgId, grantedByAdminId: ctx.user.id });
+        }
         return { id: existing.id };
       }
       const [result] = await db.insert(affiliateCourseAccess).values({
@@ -2533,6 +2548,7 @@ CRITICAL REQUIREMENTS:
         commissionPctOverride: input.commissionPctOverride ?? null,
         grantedByAdminId: ctx.user.id,
       }).$returningId();
+      await db.insert(affiliateOrgAccess).values({ affiliateId: input.affiliateId, orgId, grantedByAdminId: ctx.user.id });
       return { id: result.id };
     }),
 
