@@ -4623,6 +4623,7 @@
 - [ ] Require organization-admin ownership for mounted legacy LMS enrollment management reads and mutations
 - [x] Remove prohibited legacy branding from cohort calendar export identifiers
 - [x] Route public workshop waitlist notifications to the owning organization rather than a platform-wide address
+- [x] Remove platform-domain fallback from organization-owned bundle confirmation links
 - [x] Require active-organization ownership for workshop instance landing-page reads and saves
 - [x] Require active-organization ownership for workshop pricing-option administration
 - [x] Keep embedded checkout purchase amounts dollar-denominated after Stripe payment confirmation

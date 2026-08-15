@@ -632,7 +632,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(builderSource).toContain("const courseBaseUrl = getOrgBaseUrl(course.orgSlug");
     expect(builderSource).toContain("getOrgBaseUrl(data.orgSlug, data.orgCustomDomain, data.orgDomainVerificationStatus)");
     expect(builderSource).toContain("${courseBaseUrl}/courses/${course.slug}?checkout=1");
-    expect(stripeWebhookSource).toContain("const bundleLibraryUrl = bundleOrg?.slug");
+    expect(stripeWebhookSource).toContain("if (bundleOrg?.slug)");
     expect(stripeWebhookSource).toContain("loginUrl: bundleLibraryUrl");
     expect(membershipSource).toContain("const [membershipOrg] = plan.orgId");
     expect(membershipSource).toContain("orgSlug: membershipOrg?.slug ?? null");
@@ -1039,5 +1039,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     const pricingSource = workshopRouterSource.slice(workshopRouterSource.indexOf("listPricingOptions: protectedProcedure"));
     expect(pricingSource).toContain("await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);");
     expect(pricingSource).not.toContain('ctx.user.role !== "admin"');
+  });
+
+  it("uses only organization-resolved library links in bundle confirmation emails", () => {
+    const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
+    expect(webhookSource).toContain("if (bundleOrg?.slug)");
+    expect(webhookSource).toContain("getOrgBaseUrl(bundleOrg.slug");
+    expect(webhookSource).not.toContain("https://teachific.app/my-library");
   });
 });

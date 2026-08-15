@@ -364,22 +364,24 @@ router.post(
                         customDomain: organizations.customDomain,
                         domainVerificationStatus: organizations.domainVerificationStatus,
                       }).from(organizations).where(eq(organizations.id, orgId2)).limit(1);
-                      const bundleLibraryUrl = bundleOrg?.slug
-                        ? `${getOrgBaseUrl(bundleOrg.slug, bundleOrg.customDomain, bundleOrg.domainVerificationStatus)}/my-library`
-                        : "https://teachific.app/my-library";
-                      const { subject: bundleSubj, htmlBody: bundleHtml, previewText: bundlePreview } =
-                        buildFunnelPurchaseConfirmationEmail({
-                          firstName: (user.name ?? user.email ?? "there").split(" ")[0],
-                          productName: `Bundle #${bundleId}`,
-                          amountPaid: bundleAmountPaid,
-                          loginUrl: bundleLibraryUrl,
-                        });
-                      await sendEmailViaOrg({
-                        to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },
-                        subject: bundleSubj,
-                        htmlBody: bundleHtml,
-                        previewText: bundlePreview,
-                      }, orgId2).catch(() => {});
+                      if (bundleOrg?.slug) {
+                        const bundleLibraryUrl = `${getOrgBaseUrl(bundleOrg.slug, bundleOrg.customDomain, bundleOrg.domainVerificationStatus)}/my-library`;
+                        const { subject: bundleSubj, htmlBody: bundleHtml, previewText: bundlePreview } =
+                          buildFunnelPurchaseConfirmationEmail({
+                            firstName: (user.name ?? user.email ?? "there").split(" ")[0],
+                            productName: `Bundle #${bundleId}`,
+                            amountPaid: bundleAmountPaid,
+                            loginUrl: bundleLibraryUrl,
+                          });
+                        await sendEmailViaOrg({
+                          to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },
+                          subject: bundleSubj,
+                          htmlBody: bundleHtml,
+                          previewText: bundlePreview,
+                        }, orgId2).catch(() => {});
+                      } else {
+                        console.warn(`[Stripe Webhook] Skipped bundle confirmation email because organization ${orgId2} could not be resolved`);
+                      }
                     // Notify org admins via Teachific email (non-blocking)
                     notifyOrgAdminsOfPurchase(orgId2, {
                       buyerName: user.name ?? buyerEmail2,
