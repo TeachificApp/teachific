@@ -4309,7 +4309,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <Button
             size="sm"
             variant="outline"
-            className="border-teal-300 text-teal-700 hover:bg-teal-50 h-7 text-xs font-semibold"
+            className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] h-7 text-xs font-semibold"
             disabled={headerSaving || update.isPending}
             onClick={() => handleHeaderSave(false)}
           >
@@ -4318,7 +4318,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           </Button>
           <Button
             size="sm"
-            className="bg-[#189aa1] hover:bg-[#147f86] text-white h-7 text-xs font-semibold"
+            className="bg-[var(--org-primary)] hover:opacity-90 text-white h-7 text-xs font-semibold"
             disabled={headerSaving || update.isPending}
             onClick={() => handleHeaderSave(true)}
           >
@@ -4330,7 +4330,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <button
             onClick={() => setActiveTab("settings")}
             className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              activeTab === "settings" ? "bg-[#189aa1] text-white" : "text-gray-500 hover:text-gray-800"
+              activeTab === "settings" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:text-gray-800"
             }`}
           >
             Settings
@@ -4338,7 +4338,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <button
             onClick={() => setActiveTab("content")}
             className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              activeTab === "content" ? "bg-[#189aa1] text-white" : "text-gray-500 hover:text-gray-800"
+              activeTab === "content" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:text-gray-800"
             }`}
           >
             Lesson Editor
@@ -4395,8 +4395,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
                 onClick={() => { setLessonStatus("published"); setIsDirty(true); }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
                   lessonStatus === "published"
-                    ? "bg-[#189aa1] text-white border-[#189aa1]"
-                    : "border-gray-200 text-gray-500 hover:border-teal-300 hover:text-teal-600"
+                    ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                    : "border-gray-200 text-gray-500 hover:border-[var(--org-primary)] hover:text-[var(--org-primary)]"
                 }`}
               >
                 Published
