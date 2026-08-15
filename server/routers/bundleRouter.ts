@@ -7,7 +7,8 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb } from "../db";
+import { getDb, getOrgById } from "../db";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import {
   bundles, bundleItems, bundleEnrollments, users,
   lmsCourses, lmsEnrollments, lmsQuizzes, digitalBundlePurchases,
@@ -210,8 +211,8 @@ export const bundleLearnerRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Pricing option not found" });
       }
 
-      // Normalize price: structured table stores cents, legacy JSON stores dollars
-      const price = isStructured ? (selectedOption.price / 100) : (selectedOption.price ?? 0);
+      // Bundle option prices are stored in dollars; cents are used only when calling Stripe.
+      const price = selectedOption.price ?? 0;
 
       if (price <= 0 || selectedOption.pricingType === "free") {
         // Free pricing option — enroll directly
@@ -231,7 +232,9 @@ export const bundleLearnerRouter = router({
         return { alreadyEnrolled: false, checkoutUrl: null, enrolled: true };
       }
       const stripe = getStripeClient();
-      const origin = ctx.req.headers.origin || "https://teachific.app";
+      const org = bundle.orgId ? await getOrgById(bundle.orgId) : null;
+      const origin = org ? getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus) : ctx.req.headers.origin;
+      if (!origin) throw new TRPCError({ code: "BAD_REQUEST", message: "Organization checkout domain is unavailable" });
       const isSubscription = isStructured
         ? selectedOption.pricingType === "subscription"
         : selectedOption?.type === "subscription";

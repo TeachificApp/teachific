@@ -4628,6 +4628,8 @@
 - [x] Require active-organization ownership for certificate template reads, updates, previews, and deletion
 - [x] Require active-organization ownership for webinar administration reads, registrations, settings, and mutations
 - [ ] Require active-organization ownership for digital download and bundle administration reads and mutations
+- [ ] Keep current bundle checkout pricing dollar-denominated and resolve checkout return URLs from the owning organization domain
+- [x] Keep current bundle checkout prices dollar-denominated and resolve checkout return URLs from the owning organization domain
 - [x] Resolve the active organization before authorizing digital download administration
 - [ ] Add organization ownership and active-organization authorization to order bump administration
 - [x] Align order-bump listing and creation with the organization-owned schema contract

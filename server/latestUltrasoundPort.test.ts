@@ -1112,5 +1112,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     const contentAvailabilitySource = readFileSync(new URL("./routers/contentAvailabilityRouter.ts", import.meta.url), "utf8");
     expect(contentAvailabilitySource).toContain("sendEmailViaOrg({");
     expect(contentAvailabilitySource).toContain("}, target.orgId);");
+    const bundleRouterSource = readFileSync(new URL("./routers/bundleRouter.ts", import.meta.url), "utf8");
+    expect(bundleRouterSource).toContain("const price = selectedOption.price ?? 0;");
+    expect(bundleRouterSource).not.toContain("selectedOption.price / 100");
+    expect(bundleRouterSource).toContain("getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)");
   });
 });
