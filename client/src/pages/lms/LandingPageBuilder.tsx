@@ -3230,10 +3230,10 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             </Select>
           </div>
           <PricingCtaSettings d={d} set={set} setMany={setMany} />
-          <div className="border border-teal-100 bg-teal-50/50 rounded-lg p-3 space-y-2">
+          <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2">
               <input type="checkbox" id="pcta-lc" checked={d.leadCapture??false} onChange={e=>set("leadCapture",e.target.checked)} className="rounded" />
-              <label htmlFor="pcta-lc" className="text-xs text-teal-700 font-medium">Collect lead before action</label>
+              <label htmlFor="pcta-lc" className="text-xs text-[var(--org-primary)] font-medium">Collect lead before action</label>
             </div>
             {(d.leadCapture??false)&&(
               <div className="space-y-1 pl-1">
@@ -3261,8 +3261,8 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div>
               <label className="text-xs text-gray-500 block mb-1">Subtext Style</label>
               <div className="flex gap-2">
-                <button type="button" onClick={() => set("buttonSubtextItalic", !(d.buttonSubtextItalic ?? false))} className={`px-2 py-1 text-xs rounded border ${(d.buttonSubtextItalic ?? false) ? "bg-teal-50 border-teal-400 text-teal-700" : "border-gray-200 text-gray-500"}`}><em>Italic</em></button>
-                <button type="button" onClick={() => set("buttonSubtextBold", !(d.buttonSubtextBold ?? false))} className={`px-2 py-1 text-xs rounded border ${(d.buttonSubtextBold ?? false) ? "bg-teal-50 border-teal-400 text-teal-700" : "border-gray-200 text-gray-500"}`}><strong>Bold</strong></button>
+                <button type="button" onClick={() => set("buttonSubtextItalic", !(d.buttonSubtextItalic ?? false))} className={`px-2 py-1 text-xs rounded border ${(d.buttonSubtextItalic ?? false) ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[var(--org-primary)] text-[var(--org-primary)]" : "border-gray-200 text-gray-500"}`}><em>Italic</em></button>
+                <button type="button" onClick={() => set("buttonSubtextBold", !(d.buttonSubtextBold ?? false))} className={`px-2 py-1 text-xs rounded border ${(d.buttonSubtextBold ?? false) ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[var(--org-primary)] text-[var(--org-primary)]" : "border-gray-200 text-gray-500"}`}><strong>Bold</strong></button>
               </div>
             </div>
           </div>
@@ -4573,7 +4573,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
               <label className="text-xs text-gray-500 font-medium">Pricing Tiers</label>
               <button
                 onClick={() => set("tiers", [...pcTiers, { name: "New Tier", price: "$0", interval: "/ month", description: "", badge: "", features: ["Feature A"], ctaText: "Get Started", ctaBehavior: "direct_checkout", ctaLink: "", highlighted: false }])}
-                className="text-xs text-teal-600 flex items-center gap-1"
+                className="text-xs text-[var(--org-primary)] flex items-center gap-1"
               ><Plus size={12} /> Add Tier</button>
             </div>
             <div className="space-y-3">
@@ -7390,7 +7390,7 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
           <label className="text-xs font-bold text-gray-700">Class Sessions</label>
           <button
             onClick={addSession}
-            className="text-xs px-2 py-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 font-medium border border-teal-200"
+            className="text-xs px-2 py-1 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] hover:opacity-80 font-medium border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]"
           >
             + Add Session
           </button>
@@ -7540,7 +7540,7 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
           </label>
           <button
             onClick={addRubricItem}
-            className="text-xs px-2 py-1 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 font-medium border border-teal-200"
+            className="text-xs px-2 py-1 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] hover:opacity-80 font-medium border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]"
           >
             + Add Criterion
           </button>
