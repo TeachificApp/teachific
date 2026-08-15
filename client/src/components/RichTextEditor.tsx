@@ -33,6 +33,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
+import { getSubdomain } from "@/hooks/useSubdomain";
 import Youtube from "@tiptap/extension-youtube";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
@@ -661,7 +662,7 @@ export function RichTextEditor({
   );
   // Fetch product catalog for direct checkout
   const { data: productCatalog } = trpc.funnel.listAllProducts.useQuery(
-    undefined,
+    { orgSlug: getSubdomain() ?? undefined },
     { enabled: ctaDialogOpen && ctaAction === "direct_checkout", staleTime: 60_000 }
   );
   const fileInputRef = useRef<HTMLInputElement>(null);

@@ -70,6 +70,7 @@ export type { BlockType, Block } from "@/components/BlockPreview";
 export { BlockPreview };
 import UserParamTagsHelper from "@/components/UserParamTagsHelper";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
+import { getSubdomain } from "@/hooks/useSubdomain";
 
 export function uid() { return Math.random().toString(36).slice(2, 10); }
 
@@ -1863,7 +1864,7 @@ function CheckoutFormBlockSettings({
   cfProds: Array<{ name: string; description: string; price: number; imageUrl: string; type: string; productId?: number; strikethroughPrice?: string }>;
   cfBumps: Array<{ title?: string; headline?: string; label?: string; description: string; price: number | string; imageUrl?: string; ctaText?: string; ctaEmoji?: string; externalUrl?: string; strikethroughPrice?: string }>;
 }) {
-  const { data: catalog } = trpc.funnel.listAllProducts.useQuery(undefined, { staleTime: 60_000 });
+  const { data: catalog } = trpc.funnel.listAllProducts.useQuery({ orgSlug: getSubdomain() ?? undefined }, { staleTime: 60_000 });
   const [prodMode, setProdMode] = useState<"catalog" | "manual">("catalog");
   const [bumpMode, setBumpMode] = useState<"catalog" | "manual">("catalog");
 
@@ -2569,7 +2570,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
   const inlineMediaRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const uploadMedia = trpc.auth.uploadPageMedia.useMutation();
-  const { data: productCatalog } = trpc.funnel.listAllProducts.useQuery(undefined, { staleTime: 60_000 });
+  const { data: productCatalog } = trpc.funnel.listAllProducts.useQuery({ orgSlug: getSubdomain() ?? undefined }, { staleTime: 60_000 });
   const { data: orderBumpsList } = trpc.orderBumpsAdmin.list.useQuery(undefined, { staleTime: 60_000 });
   const { data: funnelList } = trpc.funnel.list.useQuery(undefined, { staleTime: 60_000 });
   // Sensors for drag-and-drop (must be at top level, not inside switch)

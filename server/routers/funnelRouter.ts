@@ -6,8 +6,8 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb, getOrCreateUserByEmail } from "../db";
-import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, webinarRegistrations, bundleEnrollments, webinars, communities, workshops, workshopInstances, lmsCohortGroups } from "../../drizzle/schema";
+import { getDb, getOrCreateUserByEmail, getOrgBySlug, getPrimaryOrgId } from "../db";
+import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, webinarRegistrations, bundleEnrollments, webinars, workshops, workshopInstances, lmsCohortGroups, membershipPlans, communityHubs } from "../../drizzle/schema";
 import { eq, and, asc, desc, sql, inArray, or, like, isNotNull, gte } from "drizzle-orm";
 import { evaluateBranchRules, type VisitorContext } from "../lib/funnelBranchEngine";
 import { computeFunnelCheckoutTotalCents } from "../lib/checkoutPricing";
@@ -45,39 +45,30 @@ async function uniquePageSlug(
 // ─── Admin Router ────────────────────────────────────────────────────────────
 
 export const funnelRouter = router({
-  /** List all products (courses, downloads, bundles) for order bump picker */
-  listAllProducts: publicProcedure.query(async () => {
+  /** List active-organization products for builders, order bumps, and direct checkout CTAs. */
+  listAllProducts: publicProcedure.input(z.object({ orgSlug: z.string().min(1).max(100).optional() }).optional()).query(async ({ input }) => {
     const db = await getDb();
-    const [courses, downloads, bundles, physical, webinarList, communityList, workshopList] = await Promise.all([
-      db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, thumbnailUrl: lmsCourses.thumbnailUrl, courseType: lmsCourses.type }).from(lmsCourses).orderBy(asc(lmsCourses.title)),
-      db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price, thumbnailUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).orderBy(asc(digitalProducts.title)),
-      db.select({ id: digitalBundles.id, title: digitalBundles.title, price: digitalBundles.discountPrice, thumbnailUrl: digitalBundles.thumbnailUrl }).from(digitalBundles).orderBy(asc(digitalBundles.title)),
-      db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price, thumbnailUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).orderBy(asc(physicalProducts.title)),
-      db.select({ id: webinars.id, title: webinars.title, slug: webinars.slug, price: webinars.price, coverImage: webinars.coverImage, accessType: webinars.accessType }).from(webinars).where(eq(webinars.status, "published")).orderBy(asc(webinars.title)),
-      db.select({ id: communities.id, title: communities.title, slug: communities.slug, coverImage: communities.coverImage, accessType: communities.accessType }).from(communities).where(eq(communities.status, "published")).orderBy(asc(communities.title)),
-      db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, price: workshops.price, thumbnailUrl: workshops.thumbnailUrl, isFree: workshops.isFree, status: workshops.status }).from(workshops).orderBy(asc(workshops.title)),
+    const scopeOrgId = input?.orgSlug ? (await getOrgBySlug(input.orgSlug))?.id ?? null : await getPrimaryOrgId();
+    if (scopeOrgId === null) return [];
+    const [courses, downloads, bundles, physical, webinarList, workshopList, membershipPlanList, communityHubList] = await Promise.all([
+      db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, thumbnailUrl: lmsCourses.thumbnailUrl, courseType: lmsCourses.type }).from(lmsCourses).where(eq(lmsCourses.orgId, scopeOrgId)).orderBy(asc(lmsCourses.title)),
+      db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price, thumbnailUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).where(eq(digitalProducts.orgId, scopeOrgId)).orderBy(asc(digitalProducts.title)),
+      db.select({ id: digitalBundles.id, title: digitalBundles.title, price: digitalBundles.discountPrice, thumbnailUrl: digitalBundles.thumbnailUrl }).from(digitalBundles).where(eq(digitalBundles.orgId, scopeOrgId)).orderBy(asc(digitalBundles.title)),
+      db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price, thumbnailUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).where(eq(physicalProducts.orgId, scopeOrgId)).orderBy(asc(physicalProducts.title)),
+      db.select({ id: webinars.id, title: webinars.title, slug: webinars.slug, price: webinars.price, coverImage: webinars.coverImage, accessType: webinars.accessType }).from(webinars).where(and(eq(webinars.orgId, scopeOrgId), eq(webinars.status, "published"))).orderBy(asc(webinars.title)),
+      db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, price: workshops.price, thumbnailUrl: workshops.thumbnailUrl, isFree: workshops.isFree, status: workshops.status }).from(workshops).where(eq(workshops.orgId, scopeOrgId)).orderBy(asc(workshops.title)),
+      db.select({ id: membershipPlans.id, name: membershipPlans.name, description: membershipPlans.description, price: membershipPlans.price, billingInterval: membershipPlans.billingInterval }).from(membershipPlans).where(eq(membershipPlans.orgId, scopeOrgId)).orderBy(asc(membershipPlans.name)),
+      db.select({ id: communityHubs.id, name: communityHubs.name, coverImageUrl: communityHubs.coverImageUrl }).from(communityHubs).where(and(eq(communityHubs.orgId, scopeOrgId), eq(communityHubs.isEnabled, true))).orderBy(asc(communityHubs.name)),
     ]);
-    // Hardcoded app products (UltrasoundAssist + EchoAssist, Free + Premium)
-    // Use hero banner images (teal probe / teal heart) for product cards
-    const AAUS_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/ultrasound-hero-probe-3bWMAQMJw9YFHoPXwbt8bZ.webp";
-    const IHE_HERO  = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/ihe-hero-MNscA4NaWNyxrdkewtLGLG.webp";
-    const APP_PRODUCTS = [
-      { id: 1001, type: "app" as const, name: "UltrasoundAssist™ — Free", price: 0, imageUrl: AAUS_HERO, href: "https://teachific.app", isFree: true, appLabel: "UltrasoundAssist™" },
-      { id: 1002, type: "app" as const, name: "UltrasoundAssist™ — Premium", price: 9.97, imageUrl: AAUS_HERO, href: "https://teachific.app", isFree: false, appLabel: "UltrasoundAssist™", priceLabel: "$9.97/mo" },
-      { id: 1003, type: "app" as const, name: "EchoAssist™ — Free", price: 0, imageUrl: IHE_HERO, href: "https://app.iheartecho.com", isFree: true, appLabel: "EchoAssist™" },
-      { id: 1004, type: "app" as const, name: "EchoAssist™ — Premium", price: 9.97, imageUrl: IHE_HERO, href: "https://app.iheartecho.com", isFree: false, appLabel: "EchoAssist™", priceLabel: "$9.97/mo" },
-      { id: 1005, type: "app" as const, name: "UltrasoundAssist™ + EchoAssist™ — Bundle", price: 12.99, imageUrl: AAUS_HERO, href: "https://teachific.app", isFree: false, appLabel: "UltrasoundAssist™ + EchoAssist™", priceLabel: "$12.99/mo" },
-    ];
     return [
-      // All prices returned in DOLLARS (DB stores cents for courses/downloads/bundles/physical/webinars)
-      ...courses.map(c => ({ id: c.id, type: (c.courseType === "cohort" ? "cohort" : c.courseType === "quiz" ? "quiz" : "course") as string, name: c.title, price: Number(c.price ?? 0) / 100, imageUrl: c.thumbnailUrl ?? "" })),
-      ...downloads.map(d => ({ id: d.id, type: "download" as const, name: d.title, price: Number(d.price ?? 0) / 100, imageUrl: d.thumbnailUrl ?? "" })),
-      ...bundles.map(b => ({ id: b.id, type: "bundle" as const, name: b.title, price: Number(b.price ?? 0) / 100, imageUrl: b.thumbnailUrl ?? "" })),
-      ...physical.map(p => ({ id: p.id, type: "physical" as const, name: p.title, price: Number(p.price ?? 0) / 100, imageUrl: p.thumbnailUrl ?? "" })),
-      ...webinarList.map(w => ({ id: w.id, type: "webinar" as const, name: w.title, price: Number(w.price ?? 0) / 100, imageUrl: w.coverImage ?? "", isFree: w.accessType === "free" })),
-      ...communityList.map(c => ({ id: c.id, type: "community" as const, name: c.title, price: 0, imageUrl: c.coverImage ?? "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp", isFree: c.accessType === "free" })),
-      ...workshopList.map(w => ({ id: w.id, type: "workshop" as const, name: w.title, price: Number(w.price ?? 0) / 100, imageUrl: w.thumbnailUrl ?? "", isFree: w.isFree })),
-      ...APP_PRODUCTS, // App products already in dollars (9.97, 12.99, etc.)
+      ...courses.map(c => ({ id: c.id, type: (c.courseType === "cohort" ? "cohort" : c.courseType === "quiz" ? "quiz" : "course") as string, name: c.title, price: Number(c.price ?? 0), imageUrl: c.thumbnailUrl ?? "" })),
+      ...downloads.map(d => ({ id: d.id, type: "download" as const, name: d.title, price: Number(d.price ?? 0), imageUrl: d.thumbnailUrl ?? "" })),
+      ...bundles.map(b => ({ id: b.id, type: "bundle" as const, name: b.title, price: Number(b.price ?? 0), imageUrl: b.thumbnailUrl ?? "" })),
+      ...physical.map(p => ({ id: p.id, type: "physical" as const, name: p.title, price: Number(p.price ?? 0), imageUrl: p.thumbnailUrl ?? "" })),
+      ...webinarList.map(w => ({ id: w.id, type: "webinar" as const, name: w.title, price: Number(w.price ?? 0), imageUrl: w.coverImage ?? "", isFree: w.accessType === "free" })),
+      ...workshopList.map(w => ({ id: w.id, type: "workshop" as const, name: w.title, price: Number(w.price ?? 0), imageUrl: w.thumbnailUrl ?? "", isFree: w.isFree })),
+      ...membershipPlanList.map(m => ({ id: m.id, type: "membership_plan" as const, name: m.name, price: Number(m.price ?? 0), imageUrl: "", isFree: Number(m.price ?? 0) === 0, billingInterval: m.billingInterval })),
+      ...communityHubList.map(c => ({ id: c.id, type: "community" as const, name: c.name, price: 0, imageUrl: c.coverImageUrl ?? "", isFree: true })),
     ];
   }),
 
@@ -88,10 +79,13 @@ export const funnelRouter = router({
   getProductsByIds: publicProcedure
     .input(z.object({
       items: z.array(z.object({ type: z.string(), id: z.number() })),
+      orgSlug: z.string().min(1).max(100).optional(),
     }))
     .query(async ({ input }) => {
       if (input.items.length === 0) return [];
       const db = await getDb();
+      const scopeOrgId = input.orgSlug ? (await getOrgBySlug(input.orgSlug))?.id ?? null : await getPrimaryOrgId();
+      if (scopeOrgId === null) return [];
 
       const courseIds = input.items.filter(i => i.type === "course" || i.type === "quiz").map(i => i.id);
       const cohortIds = input.items.filter(i => i.type === "cohort").map(i => i.id);
@@ -99,43 +93,35 @@ export const funnelRouter = router({
       const bundleIds = input.items.filter(i => i.type === "bundle").map(i => i.id);
       const physicalIds = input.items.filter(i => i.type === "physical").map(i => i.id);
       const webinarIds = input.items.filter(i => i.type === "webinar").map(i => i.id);
-      const communityIds = input.items.filter(i => i.type === "community").map(i => i.id);
       const workshopIds = input.items.filter(i => i.type === "workshop").map(i => i.id);
-      const appIds = input.items.filter(i => i.type === "app").map(i => i.id);
+      const membershipPlanIds = input.items.filter(i => i.type === "membership_plan").map(i => i.id);
+      const communityIds = input.items.filter(i => i.type === "community").map(i => i.id);
       const allLmsCourseIds = [...new Set([...courseIds, ...cohortIds])];
 
-      // Hardcoded app products registry — use hero banner images for product cards
-      const AAUS_HERO_R = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/ultrasound-hero-probe-3bWMAQMJw9YFHoPXwbt8bZ.webp";
-      const IHE_HERO_R  = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/ihe-hero-MNscA4NaWNyxrdkewtLGLG.webp";
-      const APP_REGISTRY: Record<number, { id: number; type: string; title: string; slug: string; description: string; price: number; isFree: boolean; imageUrl: string; href: string; appLabel?: string }> = {
-        1001: { id: 1001, type: "app", title: "UltrasoundAssist™ — Free", slug: "ultrasound-assist-free", description: "AI-powered ultrasound clinical intelligence, free tier.", price: 0, isFree: true, imageUrl: AAUS_HERO_R, href: "https://teachific.app", appLabel: "UltrasoundAssist™" },
-        1002: { id: 1002, type: "app", title: "UltrasoundAssist™ — Premium", slug: "ultrasound-assist-premium", description: "Full access to AI-powered ultrasound clinical intelligence.", price: 9.97, isFree: false, imageUrl: AAUS_HERO_R, href: "https://teachific.app", appLabel: "UltrasoundAssist™", priceLabel: "$9.97/mo" },
-        1003: { id: 1003, type: "app", title: "EchoAssist™ — Free", slug: "echo-assist-free", description: "AI-powered echocardiography clinical intelligence, free tier.", price: 0, isFree: true, imageUrl: IHE_HERO_R, href: "https://app.iheartecho.com", appLabel: "EchoAssist™" },
-        1004: { id: 1004, type: "app", title: "EchoAssist™ — Premium", slug: "echo-assist-premium", description: "Full access to AI-powered echocardiography clinical intelligence.", price: 9.97, isFree: false, imageUrl: IHE_HERO_R, href: "https://app.iheartecho.com", appLabel: "EchoAssist™", priceLabel: "$9.97/mo" },
-        1005: { id: 1005, type: "app", title: "UltrasoundAssist™ + EchoAssist™ — Bundle", slug: "ultrasound-echo-bundle", description: "Full access to both UltrasoundAssist™ and EchoAssist™ premium apps.", price: 12.99, isFree: false, imageUrl: AAUS_HERO_R, href: "https://teachific.app", appLabel: "UltrasoundAssist™ + EchoAssist™", priceLabel: "$12.99/mo" },
-      };
-
-      const [courses, downloads, bundles, physicals, webinarRows, communityRows, workshopRows] = await Promise.all([
+      const [courses, downloads, bundles, physicals, webinarRows, workshopRows, membershipPlanRows, communityHubRows] = await Promise.all([
         allLmsCourseIds.length > 0
-          ? db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, price: lmsCourses.price, isFree: lmsCourses.isFree, description: lmsCourses.subtitle, imageUrl: lmsCourses.coverImageUrl, courseType: lmsCourses.type, pricingType: lmsCourses.pricingType, subscriptionInterval: lmsCourses.subscriptionInterval }).from(lmsCourses).where(inArray(lmsCourses.id, allLmsCourseIds))
+          ? db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, price: lmsCourses.price, isFree: lmsCourses.isFree, description: lmsCourses.subtitle, imageUrl: lmsCourses.coverImageUrl, courseType: lmsCourses.type, pricingType: lmsCourses.pricingType, subscriptionInterval: lmsCourses.subscriptionInterval }).from(lmsCourses).where(and(inArray(lmsCourses.id, allLmsCourseIds), eq(lmsCourses.orgId, scopeOrgId)))
           : [],
         downloadIds.length > 0
-          ? db.select({ id: digitalProducts.id, title: digitalProducts.title, slug: digitalProducts.slug, price: digitalProducts.price, isFree: digitalProducts.isFree, description: digitalProducts.subtitle, imageUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).where(inArray(digitalProducts.id, downloadIds))
+          ? db.select({ id: digitalProducts.id, title: digitalProducts.title, slug: digitalProducts.slug, price: digitalProducts.price, isFree: digitalProducts.isFree, description: digitalProducts.subtitle, imageUrl: digitalProducts.thumbnailUrl }).from(digitalProducts).where(and(inArray(digitalProducts.id, downloadIds), eq(digitalProducts.orgId, scopeOrgId)))
           : [],
         bundleIds.length > 0
-          ? db.select({ id: digitalBundles.id, title: digitalBundles.title, slug: digitalBundles.slug, price: digitalBundles.discountPrice, description: digitalBundles.description, imageUrl: digitalBundles.thumbnailUrl }).from(digitalBundles).where(inArray(digitalBundles.id, bundleIds))
+          ? db.select({ id: digitalBundles.id, title: digitalBundles.title, slug: digitalBundles.slug, price: digitalBundles.discountPrice, description: digitalBundles.description, imageUrl: digitalBundles.thumbnailUrl }).from(digitalBundles).where(and(inArray(digitalBundles.id, bundleIds), eq(digitalBundles.orgId, scopeOrgId)))
           : [],
         physicalIds.length > 0
-          ? db.select({ id: physicalProducts.id, title: physicalProducts.title, slug: physicalProducts.slug, price: physicalProducts.price, description: physicalProducts.description, imageUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).where(inArray(physicalProducts.id, physicalIds))
+          ? db.select({ id: physicalProducts.id, title: physicalProducts.title, slug: physicalProducts.slug, price: physicalProducts.price, description: physicalProducts.description, imageUrl: physicalProducts.thumbnailUrl }).from(physicalProducts).where(and(inArray(physicalProducts.id, physicalIds), eq(physicalProducts.orgId, scopeOrgId)))
           : [],
         webinarIds.length > 0
-          ? db.select({ id: webinars.id, title: webinars.title, slug: webinars.slug, price: webinars.price, description: webinars.subtitle, imageUrl: webinars.coverImage, accessType: webinars.accessType }).from(webinars).where(inArray(webinars.id, webinarIds))
-          : [],
-        communityIds.length > 0
-          ? db.select({ id: communities.id, title: communities.title, slug: communities.slug, description: communities.description, imageUrl: communities.coverImage, accessType: communities.accessType }).from(communities).where(inArray(communities.id, communityIds))
+          ? db.select({ id: webinars.id, title: webinars.title, slug: webinars.slug, price: webinars.price, description: webinars.subtitle, imageUrl: webinars.coverImage, accessType: webinars.accessType }).from(webinars).where(and(inArray(webinars.id, webinarIds), eq(webinars.orgId, scopeOrgId)))
           : [],
         workshopIds.length > 0
-          ? db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, price: workshops.price, description: workshops.subtitle, imageUrl: workshops.thumbnailUrl, isFree: workshops.isFree }).from(workshops).where(inArray(workshops.id, workshopIds))
+          ? db.select({ id: workshops.id, title: workshops.title, slug: workshops.slug, price: workshops.price, description: workshops.subtitle, imageUrl: workshops.thumbnailUrl, isFree: workshops.isFree }).from(workshops).where(and(inArray(workshops.id, workshopIds), eq(workshops.orgId, scopeOrgId)))
+          : [],
+        membershipPlanIds.length > 0
+          ? db.select({ id: membershipPlans.id, name: membershipPlans.name, description: membershipPlans.description, price: membershipPlans.price, billingInterval: membershipPlans.billingInterval }).from(membershipPlans).where(and(inArray(membershipPlans.id, membershipPlanIds), eq(membershipPlans.orgId, scopeOrgId)))
+          : [],
+        communityIds.length > 0
+          ? db.select({ id: communityHubs.id, name: communityHubs.name, slug: communityHubs.slug, description: communityHubs.description, imageUrl: communityHubs.coverImageUrl }).from(communityHubs).where(and(inArray(communityHubs.id, communityIds), eq(communityHubs.orgId, scopeOrgId), eq(communityHubs.isEnabled, true)))
           : [],
       ]);
 
@@ -149,7 +135,7 @@ export const funnelRouter = router({
         fallbackDownloads = await db
           .select({ id: digitalProducts.id, title: digitalProducts.title, slug: digitalProducts.slug, price: digitalProducts.price, isFree: digitalProducts.isFree, description: digitalProducts.subtitle, imageUrl: digitalProducts.thumbnailUrl })
           .from(digitalProducts)
-          .where(inArray(digitalProducts.id, missingCourseIds));
+          .where(and(inArray(digitalProducts.id, missingCourseIds), eq(digitalProducts.orgId, scopeOrgId)));
       }
 
       // Pre-fetch cohort group data before map population
@@ -205,16 +191,12 @@ export const funnelRouter = router({
       for (const b of bundles as any[]) map.set(`bundle-${b.id}`, { ...b, type: "bundle", isFree: false, price: b.price ?? 0, href: `/bundles/${b.slug}` });
       for (const p of physicals as any[]) map.set(`physical-${p.id}`, { ...p, type: "physical", isFree: false, href: `/shop/${p.slug}` });
       for (const w of webinarRows as any[]) map.set(`webinar-${w.id}`, { ...w, type: "webinar", isFree: w.accessType === "free", price: w.price ?? 0, href: `/webinars/${w.slug}` });
-      const COMMUNITY_FALLBACK_IMG = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp";
-      for (const c of communityRows as any[]) map.set(`community-${c.id}`, { ...c, type: "community", isFree: c.accessType === "free", price: 0, href: `/community/${c.slug}`, imageUrl: c.imageUrl ?? COMMUNITY_FALLBACK_IMG });
       for (const w of workshopRows as any[]) {
         const nextInstance = workshopInstanceMap.get(w.id) ?? null;
-        map.set(`workshop-${w.id}`, { ...w, type: "workshop", isFree: w.isFree ?? false, price: (w.price ?? 0) / 100, href: `/workshops/${w.slug}`, nextInstance });
+        map.set(`workshop-${w.id}`, { ...w, type: "workshop", isFree: w.isFree ?? false, price: Number(w.price ?? 0), href: `/workshops/${w.slug}`, nextInstance });
       }
-      for (const appId of appIds) {
-        const app = APP_REGISTRY[appId];
-        if (app) map.set(`app-${appId}`, app);
-      }
+      for (const m of membershipPlanRows as any[]) map.set(`membership_plan-${m.id}`, { ...m, type: "membership_plan", slug: String(m.id), title: m.name, isFree: Number(m.price ?? 0) === 0, price: Number(m.price ?? 0), imageUrl: null, href: `/checkout/membership_plan/${m.id}`, pricingType: "subscription", subscriptionInterval: m.billingInterval });
+      for (const c of communityHubRows as any[]) map.set(`community-${c.id}`, { ...c, type: "community", title: c.name, isFree: true, price: 0, href: `/community/${c.slug}` });
 
       // Deduplicate: if the same lmsCourse id was saved under both "course" and "quiz" types
       // (e.g., type changed in DB), only return it once.

@@ -123,7 +123,7 @@ export function RelatedProductsBlock({ data, currentSlug, currentType }: Props) 
 
   // ── MANUAL mode query ──────────────────────────────────────────────────────
   const { data: manualData, isLoading: manualLoading } = trpc.funnel.getProductsByIds.useQuery(
-    { items: manualRefs },
+    { items: manualRefs, orgSlug },
     { enabled: selectionMode === "manual" && manualRefs.length > 0 }
   );
 

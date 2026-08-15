@@ -1,5 +1,7 @@
 # SCORM Host Platform - TODO
 
+- [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support
+
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)
 - [x] Update users table with org membership and roles (site_owner, admin, user)
@@ -4276,9 +4278,9 @@
 ### Page Editor — Membership & Bundle in Product Picker
 - [ ] Add `membership` type to `listAllProducts` in `funnelRouter.ts`
 - [ ] Add `membership` to `getProductsByIds` in `funnelRouter.ts`
-- [ ] Add `membership` option to `related_products` block type filter in LandingPageBuilder
+- [x] Add `membership` option to `related_products` block type filter in LandingPageBuilder
 - [ ] Add `membership` URL mapping in `PricingCtaSettings` (`/memberships/{slug}`)
-- [ ] Add `membership` to `inline_checkout` product type select options
+- [x] Add `membership` to `inline_checkout` product type select options
 
 ### Tests
 - [ ] Test bundle fulfillment in embeddedCheckoutWebhook
@@ -4837,7 +4839,7 @@
 - [x] Replace platform-branded landing page defaults with organization-neutral content and configurable organization identity
 - [x] Replace SchoolMemberLayout.tsx organization navigation accents with CSS variables
 - [x] Replace StudentLayout.tsx organization identity accents with CSS variables
-- [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables
+- [x] Verify CourseSalesPage has no hardcoded teal learner accents requiring replacement
 - [x] Replace CourseOverviewPage learner accents with organization theme CSS variables
 - [ ] Replace hardcoded teal in SchoolPage.tsx with CSS variables
 - [x] Update BrandingPage to include buttonColor and buttonTextColor fields

@@ -200,6 +200,28 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(embeddedCheckoutSource).not.toContain("amountPaid: totalAmountCents,");
   });
 
+  it("scopes funnel product catalogs to the active organization and preserves dollar prices", () => {
+    const routerSource = readFileSync(new URL("./routers/funnelRouter.ts", import.meta.url), "utf8");
+    const relatedProductsSource = readFileSync(new URL("../client/src/components/RelatedProductsBlock.tsx", import.meta.url), "utf8");
+    const editorSource = readFileSync(new URL("../client/src/components/RichTextEditor.tsx", import.meta.url), "utf8");
+    const adminBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const lmsBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("getOrgBySlug(input.orgSlug)");
+    expect(routerSource).toContain("eq(lmsCourses.orgId, scopeOrgId)");
+    expect(routerSource).toContain("eq(membershipPlans.orgId, scopeOrgId)");
+    expect(routerSource).toContain("eq(communityHubs.orgId, scopeOrgId)");
+    expect(routerSource).toContain('type: "community"');
+    expect(routerSource).toContain('type: "membership_plan"');
+    expect(routerSource).not.toContain("APP_REGISTRY");
+    expect(routerSource).not.toContain("UltrasoundAssist™");
+    expect(routerSource).not.toContain("EchoAssist™");
+    expect(routerSource).toContain("price: Number(w.price ?? 0)");
+    expect(relatedProductsSource).toContain("{ items: manualRefs, orgSlug }");
+    expect(editorSource).toContain('{ orgSlug: getSubdomain() ?? undefined }');
+    expect(adminBuilderSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
+    expect(lmsBuilderSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
