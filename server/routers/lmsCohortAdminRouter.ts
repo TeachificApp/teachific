@@ -82,6 +82,22 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
+async function assertCohortSessionOwnership(ctx: { user: { id: number; role: string } }, sessionId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [session] = await db.select({ courseId: lmsCohortSessions.courseId }).from(lmsCohortSessions).where(eq(lmsCohortSessions.id, sessionId)).limit(1);
+  if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+  await assertCourseOwnership(ctx, session.courseId);
+}
+
+async function assertCohortAssignmentOwnership(ctx: { user: { id: number; role: string } }, assignmentId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [assignment] = await db.select({ courseId: lmsCohortAssignments.courseId }).from(lmsCohortAssignments).where(eq(lmsCohortAssignments.id, assignmentId)).limit(1);
+  if (!assignment) throw new TRPCError({ code: "NOT_FOUND" });
+  await assertCourseOwnership(ctx, assignment.courseId);
+}
+
 export const lmsCohortAdminRouter = router({
   // ── Cohort Sessions ──
   listCohortSessions: protectedProcedure
@@ -199,6 +215,7 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortSessionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, sessionDate, recurrenceEndDate, ...rest } = input;
@@ -215,6 +232,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortSessionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortSessions).where(eq(lmsCohortSessions.id, input.id));
@@ -323,6 +341,7 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortAssignmentOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, dueDate, ...rest } = input;
@@ -338,6 +357,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortAssignmentOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortAssignments).where(eq(lmsCohortAssignments.id, input.id));
