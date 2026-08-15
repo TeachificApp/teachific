@@ -923,4 +923,22 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(themeCss).toContain(".lms-org-theme :is(");
     expect(themeCss).toContain("background-color: var(--org-primary);");
   });
+
+  it("requires organization-admin ownership throughout mounted legacy LMS membership administration", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const membershipSource = routerSource.slice(
+      routerSource.indexOf("memberships: router({"),
+      routerSource.indexOf("// ── Bundles")
+    );
+    const dbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function requireLegacyMembershipAccess");
+    expect(membershipSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect((membershipSource.match(/await requireLegacyMembershipAccess\(ctx,/g) ?? []).length).toBeGreaterThanOrEqual(11);
+    expect(membershipSource).toContain("getMembershipIdByMemberRecordId(input.id)");
+    expect(membershipSource).toContain("getMembershipIdByContentRecordId(input.id)");
+    expect(membershipSource).toContain("getMembershipIdByRuleRecordId(input.id)");
+    expect(dbSource).toContain("export async function getMembershipIdByMemberRecordId");
+    expect(dbSource).toContain("export async function getMembershipIdByContentRecordId");
+    expect(dbSource).toContain("export async function getMembershipIdByRuleRecordId");
+  });
 });

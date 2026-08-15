@@ -141,13 +141,16 @@ import {
   getMembershipMembers,
   addMembershipMember,
   updateMembershipMember,
+  getMembershipIdByMemberRecordId,
   removeMembershipMember,
   getMembershipContentItems,
   addMembershipContent,
+  getMembershipIdByContentRecordId,
   removeMembershipContent,
   getMembershipRules,
   addMembershipRule,
   updateMembershipRule,
+  getMembershipIdByRuleRecordId,
   removeMembershipRule,
   getBundlesByOrg,
   getBundleById,
@@ -209,6 +212,13 @@ async function requireWebinarAccess(ctx: { user: { id: number; role: string } },
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
   await requireOrgAdmin(ctx.user.id, ctx.user.role, webinar.orgId);
   return webinar;
+}
+
+async function requireLegacyMembershipAccess(ctx: { user: { id: number; role: string } }, membershipId: number) {
+  const membership = await getMembershipById(membershipId);
+  if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Membership not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, membership.orgId);
+  return membership;
 }
 
 async function getTeachificOrgId(): Promise<number | null> {
@@ -1660,82 +1670,107 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getMembershipsByOrg(orgId);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), price: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return createMembership({ orgId, name: input.name, price: input.price ?? 0, courseIds: "[]" });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.id);
         return updateMembership(input.id, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.id);
         await deleteMembership(input.id);
         return { ok: true };
       }),
     getMembers: protectedProcedure
       .input(z.object({ membershipId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.membershipId);
         return getMembershipMembers(input.membershipId);
       }),
     addMember: protectedProcedure
       .input(z.object({ membershipId: z.number(), userId: z.number(), status: z.enum(["active", "paused", "cancelled", "expired"]).optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.membershipId);
         return addMembershipMember({ membershipId: input.membershipId, userId: input.userId, status: input.status ?? "active" });
       }),
     updateMember: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const membershipId = await getMembershipIdByMemberRecordId(input.id);
+        if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership member not found" });
+        await requireLegacyMembershipAccess(ctx, membershipId);
         await updateMembershipMember(input.id, input.data as any);
         return { ok: true };
       }),
     removeMember: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const membershipId = await getMembershipIdByMemberRecordId(input.id);
+        if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership member not found" });
+        await requireLegacyMembershipAccess(ctx, membershipId);
         await removeMembershipMember(input.id);
         return { ok: true };
       }),
     getContent: protectedProcedure
       .input(z.object({ membershipId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.membershipId);
         return getMembershipContentItems(input.membershipId);
       }),
     addContent: protectedProcedure
       .input(z.object({ membershipId: z.number(), contentType: z.enum(["course", "digital_product", "community", "webinar"]), contentId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.membershipId);
         return addMembershipContent(input);
       }),
     removeContent: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const membershipId = await getMembershipIdByContentRecordId(input.id);
+        if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership content item not found" });
+        await requireLegacyMembershipAccess(ctx, membershipId);
         await removeMembershipContent(input.id);
         return { ok: true };
       }),
     getRules: protectedProcedure
       .input(z.object({ membershipId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.membershipId);
         return getMembershipRules(input.membershipId);
       }),
     addRule: protectedProcedure
       .input(z.object({ membershipId: z.number(), triggerType: z.string(), triggerEntityId: z.number().optional(), triggerTag: z.string().optional(), action: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyMembershipAccess(ctx, input.membershipId);
         return addMembershipRule(input as any);
       }),
     updateRule: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const membershipId = await getMembershipIdByRuleRecordId(input.id);
+        if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership rule not found" });
+        await requireLegacyMembershipAccess(ctx, membershipId);
         await updateMembershipRule(input.id, input.data as any);
         return { ok: true };
       }),
     removeRule: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        const membershipId = await getMembershipIdByRuleRecordId(input.id);
+        if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership rule not found" });
+        await requireLegacyMembershipAccess(ctx, membershipId);
         await removeMembershipRule(input.id);
         return { ok: true };
       }),
