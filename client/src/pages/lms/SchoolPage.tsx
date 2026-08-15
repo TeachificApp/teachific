@@ -423,17 +423,6 @@ export default function SchoolPage({ subdomainOrg }: { subdomainOrg?: string } =
             )}
           </div>
 
-          {/* Powered-by line */}
-          <div className="mt-6 pt-4 border-t border-border/50 text-center">
-            <p className="text-xs text-muted-foreground/50">
-              Powered by{" "}
-              <span className="font-semibold">
-                <span className="text-foreground/60">teach</span>
-                <span style={{ color: primaryColor }}>ific</span>
-                <span className="text-foreground/60">™</span>
-              </span>
-            </p>
-          </div>
         </div>
       </footer>
 

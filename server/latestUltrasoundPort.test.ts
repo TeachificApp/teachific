@@ -233,6 +233,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseOverviewSource).not.toContain("text-teal-600");
   });
 
+  it("keeps the organization School Page free of platform branding in its footer", () => {
+    const schoolPageSource = readFileSync(new URL("../client/src/pages/lms/SchoolPage.tsx", import.meta.url), "utf8");
+    expect(schoolPageSource).toContain("const primaryColor = theme?.studentPrimaryColor || theme?.primaryColor");
+    expect(schoolPageSource).not.toContain("Powered by");
+    expect(schoolPageSource).not.toContain("teach</span>");
+  });
+
   it("injects the active organization theme into the LMS administration shell", () => {
     const layoutSource = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
     expect(layoutSource).toContain('import { OrgThemeProvider } from "@/contexts/OrgThemeContext"');

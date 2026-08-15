@@ -4905,7 +4905,8 @@
 - [x] Replace StudentLayout.tsx organization identity accents with CSS variables
 - [x] Verify CourseSalesPage has no hardcoded teal learner accents requiring replacement
 - [x] Replace CourseOverviewPage learner accents with organization theme CSS variables
-- [ ] Replace hardcoded teal in SchoolPage.tsx with CSS variables
+- [x] Confirm SchoolPage uses organization-derived primary colors rather than hardcoded teal utilities
+- [x] Remove platform branding from the organization School Page footer
 - [x] Update BrandingPage to include buttonColor and buttonTextColor fields
 - [ ] Wire getCoursePlayer to include org primaryColor as fallback
 
