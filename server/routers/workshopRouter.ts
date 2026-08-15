@@ -18,7 +18,9 @@ import {
   lmsSections,
   lmsLessons,
   cmeActivityForms,
+  organizations,
 } from "../../drizzle/schema";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,28 @@ function isInstanceSoldOut(instance: {
   if (now >= closeDate) return false;
   // Must have capacity set and be at/over it
   return instance.capacity != null && (instance.enrolledCount ?? 0) >= instance.capacity;
+}
+
+async function requireActiveWorkshopAdmin(userId: number, userRole: string, workshopId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [workshop] = await db.select().from(workshops).where(eq(workshops.id, workshopId)).limit(1);
+  if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
+  const activeOrgId = await getOrgIdForUserWithFallback(userId, userRole);
+  if (!activeOrgId || activeOrgId !== workshop.orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Workshop does not belong to the active organization." });
+  }
+  await requireOrgAdmin(userId, userRole, workshop.orgId);
+  const [organization] = await db.select({
+    id: organizations.id,
+    name: organizations.name,
+    slug: organizations.slug,
+    customDomain: organizations.customDomain,
+    domainVerificationStatus: organizations.domainVerificationStatus,
+    primaryColor: organizations.primaryColor,
+  }).from(organizations).where(eq(organizations.id, workshop.orgId)).limit(1);
+  if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop organization not found" });
+  return { db, workshop, organization };
 }
 
 // ─── Public Router ────────────────────────────────────────────────────────────
@@ -1339,9 +1363,8 @@ export const workshopAdminRouter = router({
   // ── Waitlist Settings ─────────────────────────────────────────────────────
   getWaitlistSettings: protectedProcedure
     .input(z.object({ workshopId: z.number() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    .query(async ({ ctx, input }) => {
+      const { db } = await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);
       const [w] = await db.select({
         waitlistEnabled: workshops.waitlistEnabled,
         waitlistHeading: workshops.waitlistHeading,
@@ -1368,9 +1391,8 @@ export const workshopAdminRouter = router({
       waitlistContentBlocks: z.string().nullish(),
       waitlistSuccessMessage: z.string().nullish(),
     }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    .mutation(async ({ ctx, input }) => {
+      const { db } = await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);
       const { workshopId, ...data } = input;
       await db.update(workshops).set(data).where(eq(workshops.id, workshopId));
       return { success: true };
@@ -1378,9 +1400,8 @@ export const workshopAdminRouter = router({
 
   getWaitlistEntries: protectedProcedure
     .input(z.object({ workshopId: z.number() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    .query(async ({ ctx, input }) => {
+      const { db } = await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);
       const entries = await db.select().from(workshopWaitlistEntries)
         .where(eq(workshopWaitlistEntries.workshopId, input.workshopId))
         .orderBy(desc(workshopWaitlistEntries.createdAt));
@@ -1388,9 +1409,8 @@ export const workshopAdminRouter = router({
     }),
   exportWaitlistCsv: protectedProcedure
     .input(z.object({ workshopId: z.number() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    .query(async ({ ctx, input }) => {
+      const { db } = await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);
       const entries = await db.select().from(workshopWaitlistEntries)
         .where(eq(workshopWaitlistEntries.workshopId, input.workshopId))
         .orderBy(desc(workshopWaitlistEntries.createdAt));
@@ -1410,18 +1430,18 @@ export const workshopAdminRouter = router({
       entryId: z.number(),
       workshopId: z.number(),
       accessType: z.enum(["free", "paid"]),
-      priceOverrideCents: z.number().int().min(0).optional(),
-      origin: z.string(),
+      priceOverride: z.number().min(0).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db, workshop, organization } = await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);
       const [entry] = await db.select().from(workshopWaitlistEntries)
         .where(eq(workshopWaitlistEntries.id, input.entryId)).limit(1);
       if (!entry) throw new TRPCError({ code: "NOT_FOUND", message: "Waitlist entry not found" });
-      const [workshop] = await db.select().from(workshops)
-        .where(eq(workshops.id, input.workshopId)).limit(1);
-      if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
+      if (entry.workshopId !== workshop.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Waitlist entry does not belong to this workshop." });
+      }
+      const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
+      const organizationColor = organization.primaryColor || "#179ca3";
 
       let userId: number;
       const [existingUser] = await db.select({ id: users.id })
@@ -1437,7 +1457,7 @@ export const workshopAdminRouter = router({
         userId = newUser.id;
       }
 
-      const { sendEmail } = await import("../_core/email");
+      const { sendEmailViaOrg } = await import("../_core/email");
 
       if (input.accessType === "free") {
         const [existing] = await db.select({ id: workshopEnrollments.id })
@@ -1447,44 +1467,44 @@ export const workshopAdminRouter = router({
         if (!existing) {
           await db.insert(workshopEnrollments).values({ userId, workshopId: input.workshopId, enrollmentType: "full" as any });
         }
-        await sendEmail({
+        await sendEmailViaOrg({
           to: { name: entry.name, email: entry.email },
           subject: `You've been granted access to ${workshop.title}`,
-          htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#189aa1">Welcome to ${workshop.title}!</h2><p>Hi ${entry.name},</p><p>You've been granted free access to <strong>${workshop.title}</strong>.</p><p style="text-align:center;margin:30px 0"><a href="${input.origin}/workshops/${workshop.slug}" style="background:#189aa1;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Access Your Workshop</a></p></div>`,
-        });
+          htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:${organizationColor}">Welcome to ${workshop.title}!</h2><p>Hi ${entry.name},</p><p>You've been granted free access to <strong>${workshop.title}</strong>.</p><p style="text-align:center;margin:30px 0"><a href="${orgBaseUrl}/workshops/${workshop.slug}" style="background:${organizationColor};color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Access Your Workshop</a></p></div>`,
+        }, workshop.orgId);
         return { success: true, type: "free", message: `Free access granted and email sent to ${entry.email}` };
       } else {
         const stripe = getStripeClient();
-        const priceInCents = input.priceOverrideCents !== undefined ? input.priceOverrideCents : (workshop.price ?? 0);
-        if (priceInCents === 0) {
+        const priceInDollars = input.priceOverride !== undefined ? input.priceOverride : Number(workshop.price ?? 0);
+        if (priceInDollars === 0) {
           const [existing] = await db.select({ id: workshopEnrollments.id }).from(workshopEnrollments)
             .where(and(eq(workshopEnrollments.userId, userId), eq(workshopEnrollments.workshopId, input.workshopId))).limit(1);
           if (!existing) {
             await db.insert(workshopEnrollments).values({ userId, workshopId: input.workshopId, enrollmentType: "full" as any });
           }
-          await sendEmail({
+          await sendEmailViaOrg({
             to: { name: entry.name, email: entry.email },
             subject: `You've been granted access to ${workshop.title}`,
-            htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#189aa1">Welcome to ${workshop.title}!</h2><p>Hi ${entry.name},</p><p>You've been granted free access to <strong>${workshop.title}</strong>.</p><p style="text-align:center;margin:30px 0"><a href="${input.origin}/workshops/${workshop.slug}" style="background:#189aa1;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Access Your Workshop</a></p></div>`,
-          });
+            htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:${organizationColor}">Welcome to ${workshop.title}!</h2><p>Hi ${entry.name},</p><p>You've been granted free access to <strong>${workshop.title}</strong>.</p><p style="text-align:center;margin:30px 0"><a href="${orgBaseUrl}/workshops/${workshop.slug}" style="background:${organizationColor};color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Access Your Workshop</a></p></div>`,
+          }, workshop.orgId);
           return { success: true, type: "free", message: `Zero-price access granted and email sent to ${entry.email}` };
         }
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: entry.email,
-          line_items: [{ price_data: { currency: "usd", product_data: { name: workshop.title }, unit_amount: priceInCents }, quantity: 1 }],
-          success_url: `${input.origin}/workshops/${workshop.slug}?enrolled=1`,
-          cancel_url: `${input.origin}/workshops/${workshop.slug}`,
+          line_items: [{ price_data: { currency: "usd", product_data: { name: workshop.title }, unit_amount: Math.round(priceInDollars * 100) }, quantity: 1 }],
+          success_url: `${orgBaseUrl}/workshops/${workshop.slug}?enrolled=1`,
+          cancel_url: `${orgBaseUrl}/workshops/${workshop.slug}`,
           metadata: { workshopId: String(input.workshopId), waitlistEntryId: String(input.entryId), grantedByAdminId: String(ctx.user.id) },
           payment_intent_data: { description: `${workshop.title} — Workshop Registration` },
           client_reference_id: String(userId),
           allow_promotion_codes: true,
         });
-        await sendEmail({
+        await sendEmailViaOrg({
           to: { name: entry.name, email: entry.email },
           subject: `Your spot in ${workshop.title} — Complete your enrollment`,
-          htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:#189aa1">You've been granted access to ${workshop.title}</h2><p>Hi ${entry.name},</p><p>Great news! You've been selected from the waitlist for <strong>${workshop.title}</strong>.</p><p>Please complete your enrollment:</p><p style="text-align:center;margin:30px 0"><a href="${session.url}" style="background:#189aa1;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Complete Enrollment — $${(priceInCents / 100).toFixed(2)}</a></p></div>`,
-        });
+          htmlBody: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px"><h2 style="color:${organizationColor}">You've been granted access to ${workshop.title}</h2><p>Hi ${entry.name},</p><p>Great news! You've been selected from the waitlist for <strong>${workshop.title}</strong>.</p><p>Please complete your enrollment:</p><p style="text-align:center;margin:30px 0"><a href="${session.url}" style="background:${organizationColor};color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Complete Enrollment — $${priceInDollars.toFixed(2)}</a></p></div>`,
+        }, workshop.orgId);
         return { success: true, type: "paid", checkoutUrl: session.url, message: `Checkout link sent to ${entry.email}` };
       }
     }),

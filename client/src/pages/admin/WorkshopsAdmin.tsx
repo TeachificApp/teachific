@@ -1506,6 +1506,16 @@ function WaitlistSettingsTab({ workshopId }: { workshopId: number }) {
   const [grantType, setGrantType] = useState<"free" | "paid">("paid");
   const [priceOverride, setPriceOverride] = useState("");
 
+  const grantWaitlistAccess = trpc.workshopAdmin.grantWaitlistAccess.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setGrantEntry(null);
+      setPriceOverride("");
+      utils.workshopAdmin.getWaitlistEntries.invalidate({ workshopId });
+    },
+    onError: (error) => toast.error(`Unable to grant access: ${error.message}`),
+  });
+
   useEffect(() => {
     if (data) {
       setEnabled(data.waitlistEnabled ?? false);
@@ -1693,6 +1703,68 @@ function WaitlistSettingsTab({ workshopId }: { workshopId: number }) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!grantEntry} onOpenChange={(open) => {
+        if (!open) {
+          setGrantEntry(null);
+          setPriceOverride("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Grant Waitlist Access</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Grant <strong>{grantEntry?.name || grantEntry?.email}</strong> access to this workshop.
+            </p>
+            <div>
+              <Label className="text-xs">Access Type</Label>
+              <Select value={grantType} onValueChange={(value) => setGrantType(value as "free" | "paid")}>
+                <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="paid">Send a paid enrollment link</SelectItem>
+                  <SelectItem value="free">Grant free access immediately</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {grantType === "paid" && (
+              <div>
+                <Label className="text-xs">Price Override (USD, optional)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={priceOverride}
+                  onChange={(event) => setPriceOverride(event.target.value)}
+                  className="mt-1 text-sm"
+                  placeholder="Use the workshop price"
+                />
+                <p className="mt-1 text-xs text-gray-400">Leave blank to use the workshop’s stored dollar price.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGrantEntry(null)} disabled={grantWaitlistAccess.isPending}>Cancel</Button>
+            <Button
+              className="bg-[var(--org-button)] hover:opacity-90 text-[var(--org-button-text)]"
+              disabled={grantWaitlistAccess.isPending || (grantType === "paid" && priceOverride !== "" && (!Number.isFinite(Number(priceOverride)) || Number(priceOverride) < 0))}
+              onClick={() => {
+                if (!grantEntry) return;
+                const parsedOverride = priceOverride.trim() === "" ? undefined : Number(priceOverride);
+                grantWaitlistAccess.mutate({
+                  entryId: grantEntry.id,
+                  workshopId,
+                  accessType: grantType,
+                  priceOverride: grantType === "paid" ? parsedOverride : undefined,
+                });
+              }}
+            >
+              {grantWaitlistAccess.isPending ? "Sending…" : grantType === "free" ? "Grant Free Access" : "Send Enrollment Link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

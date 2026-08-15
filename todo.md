@@ -69,6 +69,11 @@
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 - [x] Route membership welcome and purchase-confirmation emails through the owning organization sender
 - [x] Route hosted LMS checkout enrollment and quiz confirmation emails through the owning organization sender and domain
+- [x] Require active-organization ownership for workshop waitlist administration and access grants
+- [x] Route workshop waitlist access messages through the owning organization sender and learner domain
+- [x] Keep workshop waitlist price overrides and Stripe amounts dollar-denominated outside the Stripe API boundary
+- [x] Align workshop waitlist admin client mutations to the dollar-denominated priceOverride contract
+- [x] Require active-organization ownership for workshop waitlist settings reads and saves
 - [x] Scope membership all-course and all-download access grants to the owning organization
 
 ## Phase 1: Database Schema & Migrations

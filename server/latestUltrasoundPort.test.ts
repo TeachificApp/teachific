@@ -852,4 +852,38 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(emailSource).toContain("return await sendEmailViaOrg({ to: opts.to, subject: opts.subject, htmlBody: opts.htmlBody }, opts.orgId);");
     expect(emailSource).toContain("getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus)");
   });
+
+  it("scopes workshop waitlist administration to the active organization and keeps waitlist pricing in dollars", () => {
+    const routerSource = readFileSync(new URL("./routers/workshopRouter.ts", import.meta.url), "utf8");
+    const adminSource = readFileSync(new URL("../client/src/pages/admin/WorkshopsAdmin.tsx", import.meta.url), "utf8");
+    const waitlistGrantSource = routerSource.slice(
+      routerSource.indexOf("grantWaitlistAccess: protectedProcedure"),
+      routerSource.indexOf("// ── Instance Landing Page Builder")
+    );
+    const waitlistSettingsSource = routerSource.slice(
+      routerSource.indexOf("getWaitlistSettings: protectedProcedure"),
+      routerSource.indexOf("grantWaitlistAccess: protectedProcedure")
+    );
+    expect(routerSource).toContain("async function requireActiveWorkshopAdmin");
+    expect(routerSource).toContain("Workshop does not belong to the active organization.");
+    expect(routerSource).toContain("await requireOrgAdmin(userId, userRole, workshop.orgId);");
+    expect(routerSource).toContain("Waitlist entry does not belong to this workshop.");
+    expect(waitlistSettingsSource).toContain("requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId)");
+    expect(waitlistSettingsSource).toContain("getWaitlistEntries: protectedProcedure");
+    expect(waitlistSettingsSource).toContain("exportWaitlistCsv: protectedProcedure");
+    expect(waitlistGrantSource).toContain("priceOverride: z.number().min(0).optional()");
+    expect(waitlistGrantSource).not.toContain("priceOverrideCents");
+    expect(waitlistGrantSource).not.toContain("priceInCents");
+    expect(waitlistGrantSource).toContain("const priceInDollars = input.priceOverride");
+    expect(waitlistGrantSource).toContain("unit_amount: Math.round(priceInDollars * 100)");
+    expect(waitlistGrantSource).toContain("sendEmailViaOrg({");
+    expect(waitlistGrantSource).toContain("}, workshop.orgId);");
+    expect(waitlistGrantSource).toContain("getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)");
+    expect(waitlistGrantSource).not.toContain("input.origin}/workshops/${workshop.slug}");
+    expect(adminSource).toContain("trpc.workshopAdmin.grantWaitlistAccess.useMutation");
+    expect(adminSource).toContain("<Dialog open={!!grantEntry}");
+    expect(adminSource).toContain("Price Override (USD, optional)");
+    expect(adminSource).toContain("priceOverride: grantType === \"paid\" ? parsedOverride : undefined");
+    expect(adminSource).not.toContain("priceOverrideCents");
+  });
 });
