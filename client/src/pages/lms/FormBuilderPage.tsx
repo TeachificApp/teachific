@@ -1375,7 +1375,7 @@ function MemberVarsPanel({
         <div className="bg-muted rounded p-2 space-y-1">
           {MEMBER_VARS.map((v) => (
             <div key={v.key} className="flex items-center gap-2 text-xs">
-              <code className="text-teal-600 font-mono">{`?${v.key}=value`}</code>
+              <code className="text-[var(--org-primary)] font-mono">{`?${v.key}=value`}</code>
               <span className="text-muted-foreground">→ {v.description}</span>
             </div>
           ))}
