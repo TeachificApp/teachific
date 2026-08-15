@@ -8451,7 +8451,7 @@ function EnrollStudentDialog({ open, courseId, cohortGroups = [], onClose, onEnr
         <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-1">
           <button
             className={`flex-1 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
-              !createMode ? "bg-[#189aa1] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+              !createMode ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
             onClick={() => setCreateMode(false)}
           >
@@ -8459,7 +8459,7 @@ function EnrollStudentDialog({ open, courseId, cohortGroups = [], onClose, onEnr
           </button>
           <button
             className={`flex-1 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
-              createMode ? "bg-[#189aa1] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+              createMode ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
             onClick={() => { setCreateMode(true); if (debouncedQuery.includes("@")) setNewUserEmail(debouncedQuery); }}
           >
@@ -8493,9 +8493,9 @@ function EnrollStudentDialog({ open, courseId, cohortGroups = [], onClose, onEnr
               </div>
             )}
             {selectedUser && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-teal-200 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-teal-700" />
+            <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[var(--org-primary)] rounded-lg p-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-[var(--org-primary)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{selectedUser.displayName || selectedUser.name}</p>
@@ -8547,7 +8547,7 @@ function EnrollStudentDialog({ open, courseId, cohortGroups = [], onClose, onEnr
             <select
               value={selectedGroupId}
               onChange={e => setSelectedGroupId(e.target.value)}
-              className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             >
               <option value="">— No group assignment —</option>
               {cohortGroups.map((g: any) => (
@@ -8561,7 +8561,7 @@ function EnrollStudentDialog({ open, courseId, cohortGroups = [], onClose, onEnr
           <Button variant="outline" onClick={handleClose}>Cancel</Button>
           {!createMode ? (
             <Button
-              className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white"
               disabled={!selectedUser || addEnrollment.isPending}
               onClick={handleEnroll}
             >
