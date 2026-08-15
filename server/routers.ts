@@ -2458,9 +2458,14 @@ export const appRouter = router({
         return getPackageById(id);
       }),
 
-    delete: adminProcedure
+    delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => deletePackage(input.id)),
+      .mutation(async ({ input, ctx }) => {
+        const existingPackage = await getPackageById(input.id);
+        if (!existingPackage) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);
+        return deletePackage(input.id);
+      }),
 
     // LLM analysis of an uploaded package
     analyze: protectedProcedure

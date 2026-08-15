@@ -328,6 +328,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);");
     expect(packageRouterSource).toContain("const existingPackage = await getPackageById(input.id);");
     expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);");
+    expect(packageRouterSource).toContain("delete: protectedProcedure");
+    expect(packageRouterSource).toContain("return deletePackage(input.id);");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
