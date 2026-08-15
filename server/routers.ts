@@ -2446,7 +2446,10 @@ export const appRouter = router({
         currentVersionId: z.number().optional(),
         processingError: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const existingPackage = await getPackageById(input.id);
+        if (!existingPackage) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);
         const { id, tags, ...rest } = input;
         await updatePackage(id, {
           ...rest,

@@ -326,6 +326,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(chunkedUploadSource).toContain("const uploadedByNum = user.id");
     const packageRouterSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);");
+    expect(packageRouterSource).toContain("const existingPackage = await getPackageById(input.id);");
+    expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
