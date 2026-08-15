@@ -37,6 +37,7 @@ export default function MembersPage() {
   const [addForm, setAddForm] = useState({
     name: "", email: "", password: "",
     role: "user" as "org_super_admin" | "org_admin" | "user",
+    memberSubRole: "basic_member" as "basic_member" | "instructor" | "group_manager" | "group_member",
     courseIds: [] as number[],
   });
   const [showAddPassword, setShowAddPassword] = useState(false);
@@ -124,7 +125,7 @@ export default function MembersPage() {
     onSuccess: () => {
       toast.success("Member added successfully");
       setAddMemberOpen(false);
-      setAddForm({ name: "", email: "", password: "", role: "user", courseIds: [] });
+      setAddForm({ name: "", email: "", password: "", role: "user", memberSubRole: "basic_member", courseIds: [] });
       refetch();
     },
     onError: (err) => toast.error(err.message),
@@ -591,6 +592,18 @@ export default function MembersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {addForm.role === "user" && (
+                <div className="flex flex-col gap-1.5">
+                  <Label>Member access</Label>
+                  <Select value={addForm.memberSubRole} onValueChange={(v) => setAddForm((f) => ({ ...f, memberSubRole: v as typeof f.memberSubRole }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic_member">Member</SelectItem>
+                      <SelectItem value="instructor">Instructor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             {courses && courses.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -628,6 +641,7 @@ export default function MembersPage() {
                   email: addForm.email,
                   password: addForm.password,
                   role: addForm.role,
+                  memberSubRole: addForm.memberSubRole,
                   courseIds: addForm.courseIds.length > 0 ? addForm.courseIds : undefined,
                 });
               }}

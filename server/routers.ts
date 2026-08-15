@@ -1833,6 +1833,7 @@ export const appRouter = router({
           email: z.string().email(),
           password: z.string().min(6),
           role: z.enum(["org_super_admin", "org_admin", "user"]).default("user"),
+          memberSubRole: z.enum(["basic_member", "instructor", "group_manager", "group_member"]).default("basic_member"),
           courseIds: z.array(z.number()).optional(),
         }))
         .mutation(async ({ input, ctx }) => {
@@ -1854,7 +1855,7 @@ export const appRouter = router({
             const existingMember = await getOrgMember(input.orgId, existing.id);
             if (!existingMember) {
               const orgRole = input.role === "org_super_admin" ? "org_super_admin" : input.role === "org_admin" ? "org_admin" : "member";
-              await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
+              await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id, input.memberSubRole);
               if (orgRole === "org_admin" || orgRole === "org_super_admin") await grantTeachificSchoolAccess(existing.id);
             } else {
               console.log("[createAndAdd] user already a member, skipping addOrgMember");
@@ -1871,7 +1872,7 @@ export const appRouter = router({
             userId = newUser.id;
             const orgRole = input.role === "org_super_admin" ? "org_super_admin" : input.role === "org_admin" ? "org_admin" : "member";
             console.log("[createAndAdd] calling addOrgMember", { orgId: input.orgId, userId, orgRole });
-            await addOrgMember(input.orgId, userId, orgRole, ctx.user.id);
+            await addOrgMember(input.orgId, userId, orgRole, ctx.user.id, input.memberSubRole);
             console.log("[createAndAdd] addOrgMember done");
             if (orgRole === "org_admin" || orgRole === "org_super_admin") await grantTeachificSchoolAccess(userId);
           }
