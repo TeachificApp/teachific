@@ -4602,6 +4602,7 @@
 - [x] Membership administration: display and edit plan prices as dollars without legacy cents conversion
 - [x] Keep embedded checkout purchase amounts dollar-denominated after Stripe payment confirmation
 - [x] Product analytics and manual invoice transactions: keep internal amounts dollar-denominated outside Stripe boundaries
+- [x] Require explicit active-organization context for product analytics administrative reads and actions
 - [x] Workshop administration: display, edit, and save workshop and instance prices as dollars without legacy cents conversion
 - [x] RelatedProductsBlock formats membership and other related product prices directly from stored dollar values
 

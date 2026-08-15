@@ -805,4 +805,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("Selected lesson context must belong to the quiz course.");
     expect(routerSource).toContain("await requireLegacyQuizGroupOwnership(ctx, input.groupId)");
   });
+
+  it("requires active-organization authorization for product analytics reads, invoices, and product access grants", () => {
+    const routerSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function requireActiveAnalyticsAdmin");
+    expect(routerSource).toContain("Select an active organization before managing product analytics.");
+    expect(routerSource).toContain("await requireOrgAdmin(userId, userRole, activeOrgId);");
+    expect(routerSource).toContain("const orgId = await requireActiveAnalyticsAdmin(ctx.user.id, ctx.user.role);");
+    expect(routerSource).toContain("Product does not belong to the active organization.");
+    expect(routerSource).toContain("Course does not belong to the active organization.");
+    expect(routerSource).toContain("Download does not belong to the active organization.");
+    expect(routerSource).toContain("Bundle does not belong to the active organization.");
+    expect(routerSource).toContain("Bundle includes a download outside the active organization.");
+    expect(routerSource).toContain("eq(lmsEnrollments.orgId, orgId)");
+    expect(routerSource).toContain("eq(orgInvoices.orgId, orgId)");
+    expect(routerSource).toContain("eq(digitalProducts.orgId, orgId)");
+    expect(routerSource).toContain("eq(digitalBundles.orgId, orgId)");
+  });
 });
