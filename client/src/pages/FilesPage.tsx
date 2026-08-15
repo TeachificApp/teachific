@@ -29,6 +29,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { chunkedMediaUpload } from "@/lib/chunkedMediaUpload";
 import {
   DndContext,
@@ -362,6 +363,7 @@ interface UploadQueueItem {
 export default function FilesPage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { activeOrg } = useOrgScope();
   const utils = trpc.useUtils();
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -396,9 +398,11 @@ export default function FilesPage() {
   const [localFolderOrder, setLocalFolderOrder] = useState<number[] | null>(null);
 
   // ── Queries ────────────────────────────────────────────────────────────────
-  const { data: packages, isLoading: pkgsLoading, refetch: refetchPkgs } = trpc.packages.list.useQuery(undefined);
+  const { data: packages, isLoading: pkgsLoading, refetch: refetchPkgs } = trpc.packages.list.useQuery(
+    activeOrg?.id ? { orgId: activeOrg.id } : undefined,
+  );
   const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = myOrgs?.[0]?.id ?? 0;
+  const orgId = activeOrg?.id ?? myOrgs?.[0]?.id ?? 0;
   const { data: foldersRaw = [], refetch: refetchFolders } = trpc.folders.list.useQuery({ orgId }, { enabled: orgId > 0 });
   const { data: mediaData, isLoading: mediaLoading, refetch: refetchMedia } = trpc.lms.media.listOrgMedia.useQuery(
     { orgId, typeFilter: "all", pageSize: 200 },
