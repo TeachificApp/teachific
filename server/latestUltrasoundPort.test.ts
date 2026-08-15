@@ -1080,5 +1080,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(orderBumpRouterSource).toContain("eq(orderBumps.orgId, orgId)");
     expect(orderBumpRouterSource).toContain("triggerProductType: input.triggerProductType");
     expect(orderBumpRouterSource).toContain("bumpProductType: input.bumpProductType");
+    expect(orderBumpRouterSource).toContain("and(eq(orderBumps.id, id), eq(orderBumps.orgId, orgId))");
+    expect(orderBumpRouterSource).toContain("and(eq(orderBumps.id, input.id), eq(orderBumps.orgId, orgId))");
   });
 });

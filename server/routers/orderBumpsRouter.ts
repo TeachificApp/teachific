@@ -113,10 +113,10 @@ export const orderBumpsAdminRouter = router({
       bumpMode: z.enum(["addon", "upgrade"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
       const { id, ...data } = input;
-      await db.update(orderBumps).set(data).where(eq(orderBumps.id, id));
+      await db.update(orderBumps).set(data as any).where(and(eq(orderBumps.id, id), eq(orderBumps.orgId, orgId)));
       return { success: true };
     }),
 
@@ -124,9 +124,9 @@ export const orderBumpsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
-      await db.delete(orderBumps).where(eq(orderBumps.id, input.id));
+      await db.delete(orderBumps).where(and(eq(orderBumps.id, input.id), eq(orderBumps.orgId, orgId)));
       return { success: true };
     }),
 
