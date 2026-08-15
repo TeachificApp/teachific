@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
+import { getSubdomain } from "@/hooks/useSubdomain";
 import {
   BookOpen, CheckCircle, Clock, Play, Search, GraduationCap,
   ArrowRight, Trophy, RotateCcw, Receipt, Printer, CheckCircle2,
@@ -132,7 +133,12 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 
 function PurchasesTab() {
   const [receiptInvoice, setReceiptInvoice] = useState<InvoiceRow | null>(null);
-  const { data, isLoading } = trpc.invoices.list.useQuery({ pageSize: 100 });
+  const organizationSlug = getSubdomain();
+  const { data: organization } = trpc.lms.publicSchool.getBySlug.useQuery(
+    { slug: organizationSlug ?? "" },
+    { enabled: !!organizationSlug }
+  );
+  const { data, isLoading } = trpc.invoices.list.useQuery({ pageSize: 100, orgId: organization?.id ?? undefined });
 
   const fmt = (n: number, cur: string) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: cur.toUpperCase() }).format(n);

@@ -238,6 +238,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, orgId);");
   });
 
+  it("scopes learner purchase history to the active organization subdomain", () => {
+    const pageSource = readFileSync(new URL("../client/src/pages/lms/MyCoursesPage.tsx", import.meta.url), "utf8");
+    expect(pageSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
+    expect(pageSource).toContain("const organizationSlug = getSubdomain();");
+    expect(pageSource).toContain("orgId: organization?.id ?? undefined");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
