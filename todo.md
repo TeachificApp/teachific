@@ -74,6 +74,7 @@
 - [x] Keep workshop waitlist price overrides and Stripe amounts dollar-denominated outside the Stripe API boundary
 - [x] Convert stored-dollar workshop checkout prices to Stripe cents only at the payment boundary and return dollar display values
 - [x] Build embedded workshop checkout return URLs from the owning organization domain
+- [x] Require active-organization course ownership for checkout configuration reads and saves
 - [x] Align workshop waitlist admin client mutations to the dollar-denominated priceOverride contract
 - [x] Require active-organization ownership for workshop waitlist settings reads and saves
 - [x] Scope membership all-course and all-download access grants to the owning organization

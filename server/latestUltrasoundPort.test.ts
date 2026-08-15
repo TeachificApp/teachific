@@ -903,4 +903,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(checkoutSource).toContain("return_url: `${orgBaseUrl}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=workshop`");
     expect(checkoutSource).not.toContain("return_url: `${input.origin}");
   });
+
+  it("requires active-organization course ownership for checkout configuration administration", () => {
+    const routerSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    const checkoutConfigSource = routerSource.slice(
+      routerSource.indexOf("getCheckoutPageConfig: protectedProcedure"),
+      routerSource.indexOf("getPublicCheckoutPageConfig: publicProcedure")
+    );
+    expect(checkoutConfigSource).toContain("getCheckoutPageConfig: protectedProcedure");
+    expect(checkoutConfigSource).toContain("saveCheckoutPageConfig: protectedProcedure");
+    expect((checkoutConfigSource.match(/await assertCourseOwnership\(ctx, input\.courseId\);/g) ?? []).length).toBe(2);
+  });
 });
