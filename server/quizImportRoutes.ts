@@ -16,6 +16,7 @@ import { writeFileSync, unlinkSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { storagePut } from "./storage";
+import { requireOrgAdmin } from "./db";
 import { parseQuizExcel, exportQuizToExcel, parsedToDbQuestions } from "./quizExcel";
 import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb";
 import { getQuestionsByOrg, getQuestionsByIds } from "./questionBankDb";
@@ -1069,6 +1070,13 @@ router.post("/bank-import/confirm-native", async (req: Request, res: Response) =
     const orgId = parseInt(orgIdStr, 10);
     if (!Number.isFinite(orgId)) return res.status(400).json({ error: "Invalid orgId" });
     const userId = (user as any).id;
+    try {
+      await requireOrgAdmin(userId, (user as any).role ?? "user", orgId);
+    } catch (error) {
+      return res.status(403).json({
+        error: error instanceof Error ? error.message : "You do not have admin access to this organisation",
+      });
+    }
     // Import createPackage and processZip lazily to avoid circular deps
     const { createPackage } = await import("./db");
     const { processZip } = await import("./scormUploadRoutes");

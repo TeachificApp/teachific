@@ -61,6 +61,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("if (parsedQuestions.length === 0) throw iSpringError;");
   });
 
+  it("requires organization-admin ownership before creating a native package from a Question Bank import", () => {
+    const importRouteSource = readFileSync(new URL("./quizImportRoutes.ts", import.meta.url), "utf8");
+    expect(importRouteSource).toContain('import { requireOrgAdmin } from "./db"');
+    expect(importRouteSource).toContain('await requireOrgAdmin(userId, (user as any).role ?? "user", orgId);');
+    expect(importRouteSource).toContain("return res.status(403).json({");
+  });
+
   it("routes direct Media Repository extraction into a same-organization Question Bank preview", () => {
     const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
     const repositorySource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");

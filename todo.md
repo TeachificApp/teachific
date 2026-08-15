@@ -18,6 +18,7 @@
 - [x] Enforce authenticated user and organization ownership in chunked new-package upload sessions
 - [x] Enforce authenticated user and organization ownership for chunked package version upload session initiation, chunks, and finalization
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
+- [x] Require organization-admin ownership before native SCORM package creation from the Question Bank import workflow
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
 - [x] Link Course Builder settings to the organization-owned after-purchase automation editor
