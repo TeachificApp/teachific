@@ -1103,5 +1103,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const newsletterSource = readFileSync(new URL("./routers/newsletterRouter.ts", import.meta.url), "utf8");
     expect(newsletterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input?.orgId)");
     expect(newsletterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, subscriber.orgId)");
+    const cohortAdminSource = readFileSync(new URL("./routers/lmsCohortAdminRouter.ts", import.meta.url), "utf8");
+    expect(cohortAdminSource).toContain("await assertCourseOwnership(ctx, input.courseId);");
   });
 });

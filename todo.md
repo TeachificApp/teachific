@@ -78,6 +78,9 @@
 - [x] Align workshop waitlist admin client mutations to the dollar-denominated priceOverride contract
 - [x] Require active-organization ownership for workshop waitlist settings reads and saves
 - [x] Scope newsletter subscriber administration to the active organization for organization administrators
+- [ ] Require active-organization course ownership and organization-domain learner links for cohort administration
+- [x] Require active-organization course ownership for core cohort session and assignment list and creation actions
+- [ ] Migrate email campaigns, templates, audience previews, and sender profiles to active-organization authorization and routing
 - [ ] Require active-organization course ownership and organization-domain routing for CME disclosure administration
 - [x] Scope membership all-course and all-download access grants to the owning organization
 
