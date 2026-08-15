@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOrgTheme } from "@/contexts/OrgThemeContext";
 import {
   BookOpen, CheckCircle2, ChevronLeft, Clock, Download,
   ExternalLink, Maximize2, Minimize2, Play, Shield, X,
@@ -50,10 +51,42 @@ const SCORM_API_SCRIPT = `
 
 type ScormData = Record<string, string>;
 
+type LmsShellConfig = {
+  shellTitle?: string;
+  organizationName?: string;
+  logoUrl?: string;
+  theme?: "light" | "dark";
+  showProgress?: boolean;
+  showCompletionBadge?: boolean;
+  showSessionStatus?: boolean;
+  showFooter?: boolean;
+};
+
+function parseLmsShellConfig(raw: string | null | undefined): LmsShellConfig {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return {
+      shellTitle: typeof parsed.shellTitle === "string" ? parsed.shellTitle : undefined,
+      organizationName: typeof parsed.organizationName === "string" ? parsed.organizationName : undefined,
+      logoUrl: typeof parsed.logoUrl === "string" ? parsed.logoUrl : undefined,
+      theme: parsed.theme === "light" || parsed.theme === "dark" ? parsed.theme : undefined,
+      showProgress: typeof parsed.showProgress === "boolean" ? parsed.showProgress : undefined,
+      showCompletionBadge: typeof parsed.showCompletionBadge === "boolean" ? parsed.showCompletionBadge : undefined,
+      showSessionStatus: typeof parsed.showSessionStatus === "boolean" ? parsed.showSessionStatus : undefined,
+      showFooter: typeof parsed.showFooter === "boolean" ? parsed.showFooter : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export default function PlayerPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
   const packageId = Number(params.id);
+  const orgTheme = useOrgTheme();
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -224,6 +257,15 @@ export default function PlayerPage() {
   );
 
   const isLmsShell = pkg.displayMode === "lms_shell";
+  const shellConfig = parseLmsShellConfig((pkg as any).lmsShellConfig);
+  const shellTitle = shellConfig.shellTitle?.trim() || shellConfig.organizationName?.trim() || "Learning Portal";
+  const shellLogoUrl = shellConfig.logoUrl?.trim() || orgTheme.adminLogoUrl?.trim() || null;
+  const lmsShellTheme = shellConfig.theme ?? "dark";
+  const isLightLmsShell = lmsShellTheme === "light";
+  const showProgress = shellConfig.showProgress !== false;
+  const showCompletionBadge = shellConfig.showCompletionBadge !== false;
+  const showSessionStatus = shellConfig.showSessionStatus !== false;
+  const showFooter = shellConfig.showFooter !== false;
   // Always use the /entry redirect — it resolves the correct S3 URL regardless of subfolder nesting
   // Include the currentVersionId as a cache-buster so mobile browsers always load the latest version
   const playerUrl = pkg.status === "ready"
@@ -325,37 +367,41 @@ export default function PlayerPage() {
 
   // ─── LMS Shell Player ───────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-screen bg-gray-950">
+    <div className={`flex flex-col h-screen ${isLightLmsShell ? "bg-gray-100" : "bg-gray-950"}`}>
       {/* LMS branded header */}
-      <div className="bg-gray-900 border-b border-gray-800 shrink-0">
+      <div className={`${isLightLmsShell ? "bg-white border-b border-gray-200" : "bg-gray-900 border-b border-gray-800"} shrink-0`}>
         <div className="flex items-center px-4 h-14 gap-3">
           <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-white shrink-0" onClick={() => setLocation("/files")}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-2 shrink-0">
-            <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:block" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Teachific&#8482; LMS</span>
+            {shellLogoUrl ? (
+              <img src={shellLogoUrl} alt={shellTitle} className="h-7 w-7 rounded-lg object-contain bg-white" />
+            ) : (
+              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+                <BookOpen className="h-4 w-4 text-primary-foreground" />
+              </div>
+            )}
+            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:block" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{shellTitle}</span>
           </div>
-          <div className="h-5 w-px bg-gray-700 hidden sm:block" />
+          <div className={`h-5 w-px hidden sm:block ${isLightLmsShell ? "bg-gray-200" : "bg-gray-700"}`} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{pkg.title}</p>
-            {pkg.description && <p className="text-xs text-gray-400 truncate hidden sm:block">{pkg.description}</p>}
+            <p className={`text-sm font-semibold truncate ${isLightLmsShell ? "text-gray-900" : "text-white"}`}>{pkg.title}</p>
+            {pkg.description && <p className={`text-xs truncate hidden sm:block ${isLightLmsShell ? "text-gray-500" : "text-gray-400"}`}>{pkg.description}</p>}
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {started && (
+            {showSessionStatus && started && (
               <div className="flex items-center gap-1.5 text-xs text-gray-400">
                 <Clock className="h-3.5 w-3.5" />
                 <span>{formatElapsed(elapsed)}</span>
               </div>
             )}
             {scorePercent !== null && (
-              <Badge variant="secondary" className="text-xs bg-gray-800 text-gray-200">
+              <Badge variant="secondary" className={`text-xs ${isLightLmsShell ? "bg-gray-100 text-gray-700" : "bg-gray-800 text-gray-200"}`}>
                 Score: {scorePercent}%
               </Badge>
             )}
-            {completionStatus !== 'not_started' && (
+            {showCompletionBadge && completionStatus !== 'not_started' && (
               <Badge className={`text-xs text-white ${
                 completionStatus === 'completed' || completionStatus === 'passed' ? 'bg-emerald-600' :
                 completionStatus === 'failed' ? 'bg-red-600' : 'bg-amber-600'
@@ -377,7 +423,7 @@ export default function PlayerPage() {
         </div>
 
         {/* Progress bar */}
-        {(completionStatus === 'incomplete' || completionStatus === 'completed' || completionStatus === 'passed') && (
+        {showProgress && (completionStatus === 'incomplete' || completionStatus === 'completed' || completionStatus === 'passed') && (
           <div className="px-4 pb-2">
             <Progress
               value={completionStatus === 'completed' || completionStatus === 'passed' ? 100 : scorePercent ?? 30}
@@ -445,12 +491,12 @@ export default function PlayerPage() {
       </div>
 
       {/* LMS footer status bar */}
-      <div className="bg-gray-900 border-t border-gray-800 px-4 py-2 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
+      {showFooter && <div className={`${isLightLmsShell ? "bg-white border-t border-gray-200" : "bg-gray-900 border-t border-gray-800"} px-4 py-2 flex items-center justify-between shrink-0`}>
+        <div className={`flex items-center gap-3 text-xs ${isLightLmsShell ? "text-gray-500" : "text-gray-500"}`}>
+          {showSessionStatus && <span className="flex items-center gap-1">
             <span className={`h-2 w-2 rounded-full ${started ? 'bg-emerald-500' : 'bg-gray-600'}`} />
             {started ? 'Session active' : 'Initializing...'}
-          </span>
+          </span>}
           {pkg.scormVersion !== 'none' && (
             <span>SCORM {pkg.scormVersion}</span>
           )}
@@ -458,7 +504,7 @@ export default function PlayerPage() {
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <X className="h-3 w-3 cursor-pointer hover:text-gray-300" onClick={() => setLocation("/files")} />
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -68,6 +68,24 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(importRouteSource).toContain("return res.status(403).json({");
   });
 
+  it("applies organization-owned LMS shell configuration without platform branding in package playback", () => {
+    const playerSource = readFileSync(new URL("../client/src/pages/PlayerPage.tsx", import.meta.url), "utf8");
+    expect(playerSource).toContain('import { useOrgTheme } from "@/contexts/OrgThemeContext"');
+    expect(playerSource).toContain("parseLmsShellConfig((pkg as any).lmsShellConfig)");
+    expect(playerSource).toContain('shellConfig.shellTitle?.trim() || shellConfig.organizationName?.trim() || "Learning Portal"');
+    expect(playerSource).toContain("shellConfig.logoUrl?.trim() || orgTheme.adminLogoUrl?.trim() || null");
+    expect(playerSource).toContain("const showProgress = shellConfig.showProgress !== false;");
+    expect(playerSource).toContain("const showCompletionBadge = shellConfig.showCompletionBadge !== false;");
+    expect(playerSource).toContain("const showSessionStatus = shellConfig.showSessionStatus !== false;");
+    expect(playerSource).toContain("const showFooter = shellConfig.showFooter !== false;");
+    expect(playerSource).toContain('theme: parsed.theme === "light" || parsed.theme === "dark" ? parsed.theme : undefined');
+    expect(playerSource).toContain('const lmsShellTheme = shellConfig.theme ?? "dark";');
+    expect(playerSource).toContain('const isLightLmsShell = lmsShellTheme === "light";');
+    expect(playerSource).toContain("showProgress && (completionStatus");
+    expect(playerSource).toContain("showCompletionBadge && completionStatus");
+    expect(playerSource).not.toContain("Teachific&#8482; LMS");
+  });
+
   it("routes direct Media Repository extraction into a same-organization Question Bank preview", () => {
     const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
     const repositorySource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
