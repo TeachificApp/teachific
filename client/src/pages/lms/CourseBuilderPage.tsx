@@ -5393,7 +5393,7 @@ function EnrollmentsTab() {
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
                       <div className="w-20 bg-gray-200 rounded-full h-1.5">
-                        <div className="bg-[#189aa1] h-1.5 rounded-full" style={{ width: `${e.progressPct}%` }} />
+                        <div className="bg-[var(--org-primary)] h-1.5 rounded-full" style={{ width: `${e.progressPct}%` }} />
                       </div>
                       <span className="text-xs text-gray-500">{e.progressPct}%</span>
                     </div>
@@ -5401,7 +5401,7 @@ function EnrollmentsTab() {
                   <td className="px-4 py-2.5 text-xs text-gray-400">{new Date(e.enrolledAt).toLocaleDateString()}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" className="h-6 text-teal-500 hover:bg-teal-50 text-xs" onClick={() => setCertTarget({ enrollmentId: e.id, userName: e.user?.displayName ?? "Learner" })}>
+                      <Button size="sm" variant="ghost" className="h-6 text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-xs" onClick={() => setCertTarget({ enrollmentId: e.id, userName: e.user?.displayName ?? "Learner" })}>
                         <Award className="w-3 h-3 mr-1" /> Cert
                       </Button>
                       <Button size="sm" variant="ghost" className="h-6 text-red-400 hover:bg-red-50" onClick={() => {
@@ -5432,13 +5432,13 @@ function EnrollmentsTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setCertTarget(null)}>
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-4">
-              <Award className="w-5 h-5 text-teal-500" />
+              <Award className="w-5 h-5 text-[var(--org-primary)]" />
               <h3 className="font-semibold text-gray-900">Issue Certificate</h3>
             </div>
             <p className="text-sm text-gray-600 mb-5">Issue a certificate for <strong>{certTarget.userName}</strong>.</p>
             <div className="flex flex-col gap-2">
               <Button
-                className="bg-[#189aa1] hover:bg-[#1db5bd] text-white"
+                className="bg-[var(--org-primary)] hover:opacity-90 text-white"
                 onClick={() => manualIssueCertificate.mutate({ enrollmentId: certTarget.enrollmentId, forceReissue: false })}
                 disabled={manualIssueCertificate.isPending}
               >
