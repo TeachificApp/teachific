@@ -10818,8 +10818,8 @@ function CohortTab({ courseId }: { courseId: number }) {
 
                       {/* Discussion thread panel */}
                       {discussionGroupId === group.id && (
-                        <div className="mt-3 border border-teal-200 rounded-xl bg-teal-50/30 p-4 space-y-3">
-                          <div className="text-sm font-semibold text-teal-800">Group Discussion Thread</div>
+                        <div className="mt-3 border border-[var(--org-primary)] rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] p-4 space-y-3">
+                          <div className="text-sm font-semibold text-[var(--org-primary)]">Group Discussion Thread</div>
                           {/* Messages */}
                           <div className="space-y-2 max-h-80 overflow-y-auto">
                             {cohortMessages.length === 0 ? (
@@ -10829,14 +10829,14 @@ function CohortTab({ courseId }: { courseId: number }) {
                                 {msg.userAvatar ? (
                                   <img src={msg.userAvatar} alt={msg.userDisplayName || msg.userName || '?'} className="w-7 h-7 rounded-full object-cover shrink-0" />
                                 ) : (
-                                  <div className="w-7 h-7 rounded-full bg-[#189aa1] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                  <div className="w-7 h-7 rounded-full bg-[var(--org-primary)] flex items-center justify-center text-white text-xs font-bold shrink-0">
                                     {(msg.userDisplayName ?? msg.userName ?? msg.userEmail ?? "?")[0].toUpperCase()}
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-semibold text-gray-800">{msg.userDisplayName ?? msg.userName ?? msg.userEmail}</span>
-                                    {msg.isAdminPost && <span className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">Admin</span>}
+                                    {msg.isAdminPost && <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] text-[var(--org-primary)] px-1.5 py-0.5 rounded font-medium">Admin</span>}
                                     <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</span>
                                     <button onClick={() => { if (confirm("Delete this message?")) deleteMessage.mutate({ id: msg.id }); }} className="ml-auto text-xs text-red-400 hover:text-red-600">Delete</button>
                                   </div>
@@ -10849,7 +10849,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                                         ) : m.mimeType?.startsWith("video/") ? (
                                           <video key={i} src={m.url} controls className="max-h-40 rounded-lg border border-gray-200" />
                                         ) : (
-                                          <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 underline">{m.fileName}</a>
+                                          <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--org-primary)] underline">{m.fileName}</a>
                                         )
                                       ))}
                                     </div>
@@ -10859,13 +10859,13 @@ function CohortTab({ courseId }: { courseId: number }) {
                             ))}
                           </div>
                           {/* Compose */}
-                          <div className="border-t border-teal-200 pt-3 space-y-2">
+                          <div className="border-t border-[var(--org-primary)] pt-3 space-y-2">
                             <textarea
                               value={messageBody}
                               onChange={e => setMessageBody(e.target.value)}
                               rows={2}
                               placeholder="Write a message to this cohort group..."
-                              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                             />
                             {messageMedia.length > 0 && (
                               <div className="flex flex-wrap gap-2">
@@ -10882,7 +10882,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                               </div>
                             )}
                             <div className="flex items-center gap-2">
-                              <label className="cursor-pointer text-xs text-teal-600 hover:text-teal-800 border border-teal-300 rounded px-2 py-1">
+                              <label className="cursor-pointer text-xs text-[var(--org-primary)] hover:opacity-90 border border-[var(--org-primary)] rounded px-2 py-1">
                                 {uploadingMedia ? "Uploading..." : "📎 Attach"}
                                 <input type="file" accept="image/*,video/*" className="hidden" disabled={uploadingMedia} onChange={e => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f); e.target.value = ""; }} />
                               </label>
@@ -10908,12 +10908,12 @@ function CohortTab({ courseId }: { courseId: number }) {
                           <div className="divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
                             {unassignedStudents.map((s: any) => (
                               <div key={s.userId} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-50">
-                                <input type="checkbox" checked={bulkSelected.includes(s.userId)} onChange={e => setBulkSelected(prev => e.target.checked ? [...prev, s.userId] : prev.filter(id => id !== s.userId))} className="w-3.5 h-3.5 accent-teal-600" />
+                                <input type="checkbox" checked={bulkSelected.includes(s.userId)} onChange={e => setBulkSelected(prev => e.target.checked ? [...prev, s.userId] : prev.filter(id => id !== s.userId))} className="w-3.5 h-3.5 accent-[var(--org-primary)]" />
                                 <div className="flex-1 min-w-0">
                                   <span className="text-sm font-medium text-gray-800">{s.userName}</span>
                                   <span className="text-xs text-gray-400 ml-2">{s.userEmail}</span>
                                 </div>
-                                <Button size="sm" variant="ghost" onClick={() => assignStudent.mutate({ cohortGroupId: group.id, userId: s.userId, courseId })} className="text-xs text-teal-600 hover:text-teal-800 h-6 px-2">Assign</Button>
+                                <Button size="sm" variant="ghost" onClick={() => assignStudent.mutate({ cohortGroupId: group.id, userId: s.userId, courseId })} className="text-xs text-[var(--org-primary)] hover:opacity-90 h-6 px-2">Assign</Button>
                               </div>
                             ))}
                           </div>
@@ -11190,9 +11190,9 @@ function CohortTab({ courseId }: { courseId: number }) {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-sm font-medium text-gray-700">Filter by group:</span>
-              <button onClick={() => setDiscFilterGroupId(null)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${!discFilterGroupId ? 'bg-[#189aa1] text-white border-[#189aa1]' : 'border-gray-200 text-gray-600 hover:border-teal-400'}`}>All Groups</button>
+              <button onClick={() => setDiscFilterGroupId(null)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${!discFilterGroupId ? 'bg-[var(--org-primary)] text-white border-[var(--org-primary)]' : 'border-gray-200 text-gray-600 hover:border-[var(--org-primary)]'}`}>All Groups</button>
               {cohortGroups.map(g => (
-                <button key={g.id} onClick={() => setDiscFilterGroupId(g.id)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${discFilterGroupId === g.id ? 'bg-[#189aa1] text-white border-[#189aa1]' : 'border-gray-200 text-gray-600 hover:border-teal-400'}`}>{g.name}</button>
+                <button key={g.id} onClick={() => setDiscFilterGroupId(g.id)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${discFilterGroupId === g.id ? 'bg-[var(--org-primary)] text-white border-[var(--org-primary)]' : 'border-gray-200 text-gray-600 hover:border-[var(--org-primary)]'}`}>{g.name}</button>
               ))}
             </div>
             <button
@@ -11200,7 +11200,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               disabled={setAdminNotifPref.isPending}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 adminNotifPref?.cohortDiscussions !== false
-                  ? "bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100"
+                  ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[var(--org-primary)] text-[var(--org-primary)] hover:opacity-90"
                   : "bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200"
               }`}
             >
@@ -11231,11 +11231,11 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <label className="cursor-pointer text-xs text-teal-600 hover:underline">
+              <label className="cursor-pointer text-xs text-[var(--org-primary)] hover:underline">
                 {discUploadingMedia ? 'Uploading...' : '+ Add Image/Video'}
                 <input type="file" accept="image/*,video/*" className="hidden" disabled={discUploadingMedia} onChange={e => { if (e.target.files?.[0]) handleDiscMediaUpload(e.target.files[0]); e.target.value = ''; }} />
               </label>
-              <button disabled={(!discBody.trim() && discMedia.length === 0) || !discTargetGroupId || postAdminMessage.isPending} onClick={() => { if (!discTargetGroupId) return; postAdminMessage.mutate({ cohortGroupId: discTargetGroupId, courseId, body: discBody.trim() || undefined, mediaUrls: discMedia.length > 0 ? discMedia : undefined }); }} className="ml-auto px-4 py-1.5 bg-[#189aa1] text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              <button disabled={(!discBody.trim() && discMedia.length === 0) || !discTargetGroupId || postAdminMessage.isPending} onClick={() => { if (!discTargetGroupId) return; postAdminMessage.mutate({ cohortGroupId: discTargetGroupId, courseId, body: discBody.trim() || undefined, mediaUrls: discMedia.length > 0 ? discMedia : undefined }); }} className="ml-auto px-4 py-1.5 bg-[var(--org-primary)] text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {postAdminMessage.isPending ? 'Posting...' : 'Post'}
               </button>
             </div>
@@ -11311,7 +11311,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <label className="text-sm font-medium text-gray-700">Permissions</label>
               {([['canManageDiscussions', 'Manage Discussions'], ['canAddSessions', 'Add Live Sessions'], ['canAddAssignments', 'Add Assignments'], ['canAddRecordings', 'Add Recordings']] as [keyof typeof staffForm, string][]).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={!!staffForm[key]} onChange={e => setStaffForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-teal-600" />
+                  <input type="checkbox" checked={!!staffForm[key]} onChange={e => setStaffForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-[var(--org-primary)]" />
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
               ))}
@@ -11326,7 +11326,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   if (!user) { toast.error('User not found with that email'); return; }
                   upsertStaff.mutate({ cohortGroupId: staffGroupId!, courseId, userId: user.id, ...staffForm });
                 }
-              }} className="flex-1 px-4 py-2 bg-[#189aa1] text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              }} className="flex-1 px-4 py-2 bg-[var(--org-primary)] text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {upsertStaff.isPending ? 'Saving...' : 'Save'}
               </button>
             </div>
@@ -11453,7 +11453,7 @@ function LMSPublishDomainSettings() {
                 <Button
                   onClick={handleSave}
                   disabled={!dirty || updateSettings.isPending}
-                  className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+                  className="bg-[var(--org-primary)] text-white hover:opacity-90"
                   size="sm"
                 >
                   {updateSettings.isPending ? "Saving…" : "Save Defaults"}
