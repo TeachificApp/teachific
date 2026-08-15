@@ -21,7 +21,7 @@
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
 - [x] Link Course Builder settings to the organization-owned after-purchase automation editor
-- [ ] Embed or render direct Course Builder controls for welcome, completion, and upsell automation settings
+- [x] Embed or render direct Course Builder controls for welcome, completion, and upsell automation settings
 - [ ] Verify whether course waitlistEnabled is distinct from availability status and expose the persisted control when applicable
 - [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [ ] Enforce course organization ownership when reading or updating after-purchase automation settings

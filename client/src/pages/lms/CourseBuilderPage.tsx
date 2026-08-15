@@ -1616,6 +1616,9 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
   const [showInstructor, setShowInstructor] = useState(course.showInstructor ?? false);
   const [showInLibrary, setShowInLibrary] = useState(course.showInLibrary ?? true);
   const [sendEnrollmentEmail, setSendEnrollmentEmail] = useState(course.sendEnrollmentEmail ?? true);
+  const [welcomeEmailEnabled, setWelcomeEmailEnabled] = useState(false);
+  const [completionEmailEnabled, setCompletionEmailEnabled] = useState(false);
+  const [upsellEnabled, setUpsellEnabled] = useState(false);
   const [defaultMarkComplete, setDefaultMarkComplete] = useState<boolean>(course.defaultMarkComplete !== 0);
   const [playerTheme, setPlayerTheme] = useState<"light" | "dark">(course.playerTheme ?? "light");
   const [playerColor, setPlayerColor] = useState(course.playerColor ?? "#00b4b4");
@@ -1664,6 +1667,11 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
     onSuccess: () => toast.success("URL & SEO settings saved"),
     onError: (e) => toast.error(e.message),
   });
+  const { data: afterPurchaseSettings } = trpc.lmsAdmin.getAfterPurchase.useQuery({ courseId: course.id });
+  const saveLifecycleAutomation = trpc.lmsAdmin.updateAfterPurchase.useMutation({
+    onSuccess: () => toast.success("Course automation saved"),
+    onError: (error) => toast.error(error.message),
+  });
   const [availabilityStatus, setAvailabilityStatus] = useState<"open" | "waitlist" | "presale" | "enrollment_closed">("open");
   const [presaleHeading, setPresaleHeading] = useState("");
   const [presaleBody, setPresaleBody] = useState("");
@@ -1685,6 +1693,12 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
     setPresaleCtaLabel(courseAvailability.presaleCtaLabel ?? "");
     setPresaleCtaUrl(courseAvailability.presaleCtaUrl ?? "");
   }, [courseAvailability]);
+  useEffect(() => {
+    if (!afterPurchaseSettings) return;
+    setWelcomeEmailEnabled(afterPurchaseSettings.welcomeEmailEnabled ?? true);
+    setCompletionEmailEnabled(afterPurchaseSettings.completionEmailEnabled ?? false);
+    setUpsellEnabled(afterPurchaseSettings.upsellEnabled ?? false);
+  }, [afterPurchaseSettings]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
@@ -2233,6 +2247,38 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
               Configure
             </Button>
           </Link>
+        </div>
+        <div className="border-t border-gray-200 pt-3 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-gray-700">Lifecycle automation</p>
+            <p className="text-xs text-gray-400 mt-0.5">Enable the course-level welcome email, completion email, and post-purchase upsell. Use Configure for message content and offer details.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white p-3">
+              <Label className="text-xs font-medium text-gray-700">Welcome email</Label>
+              <Switch checked={welcomeEmailEnabled} onCheckedChange={setWelcomeEmailEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white p-3">
+              <Label className="text-xs font-medium text-gray-700">Completion email</Label>
+              <Switch checked={completionEmailEnabled} onCheckedChange={setCompletionEmailEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-white p-3">
+              <Label className="text-xs font-medium text-gray-700">Upsell offer</Label>
+              <Switch checked={upsellEnabled} onCheckedChange={setUpsellEnabled} />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-teal-300 text-teal-700 hover:bg-teal-50"
+              disabled={saveLifecycleAutomation.isPending}
+              onClick={() => saveLifecycleAutomation.mutate({ courseId: course.id, welcomeEmailEnabled, completionEmailEnabled, upsellEnabled })}
+            >
+              {saveLifecycleAutomation.isPending ? "Saving…" : "Save Automation"}
+            </Button>
+          </div>
         </div>
       </div>
       {/* Player Experience */}
