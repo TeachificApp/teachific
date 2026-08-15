@@ -2220,8 +2220,8 @@ function SortableCarouselItem({
       </div>
       {/* Media type toggle */}
       <div className="grid grid-cols-2 gap-1">
-        <button onClick={() => onUpdate("mediaType", "image")} className={`py-1 text-xs rounded border ${item.mediaType === "image" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Image</button>
-        <button onClick={() => onUpdate("mediaType", "video")} className={`py-1 text-xs rounded border ${item.mediaType === "video" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Video</button>
+        <button onClick={() => onUpdate("mediaType", "image")} className={`py-1 text-xs rounded border ${item.mediaType === "image" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Image</button>
+        <button onClick={() => onUpdate("mediaType", "video")} className={`py-1 text-xs rounded border ${item.mediaType === "video" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Video</button>
       </div>
       {/* URL input + upload button */}
       <div className="flex gap-1">
@@ -2284,7 +2284,7 @@ function SortableChecklistItem({
         type="button"
         onClick={() => onChange({ ...item, crossed: !item.crossed })}
         className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold transition-colors ${
-          item.crossed ? "bg-red-400 hover:bg-red-500" : "bg-teal-500 hover:bg-teal-600"
+          item.crossed ? "bg-red-400 hover:bg-red-500" : "bg-[var(--org-primary)] hover:opacity-90"
         }`}
         title={item.crossed ? "Crossed out — click to make normal" : "Normal — click to cross out"}
       >{item.crossed ? "✗" : "✓"}</button>
@@ -2364,8 +2364,8 @@ function ColumnBlockList({ side, blocks, onUpdate, lessonId, courseId }: {
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-medium text-gray-600 truncate flex-1">{BLOCK_CATALOG.find(c => c.type === b.type)?.label ?? b.type}</span>
                 <div className="flex gap-0.5">
-                  <button disabled={i === 0} onClick={() => { const nb = [...blocks]; [nb[i-1], nb[i]] = [nb[i], nb[i-1]]; onUpdate(nb); }} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-teal-600 disabled:opacity-30"><ChevronUp size={10} /></button>
-                  <button disabled={i === blocks.length - 1} onClick={() => { const nb = [...blocks]; [nb[i], nb[i+1]] = [nb[i+1], nb[i]]; onUpdate(nb); }} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-teal-600 disabled:opacity-30"><ChevronDown size={10} /></button>
+                  <button disabled={i === 0} onClick={() => { const nb = [...blocks]; [nb[i-1], nb[i]] = [nb[i], nb[i-1]]; onUpdate(nb); }} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[var(--org-primary)] disabled:opacity-30"><ChevronUp size={10} /></button>
+                  <button disabled={i === blocks.length - 1} onClick={() => { const nb = [...blocks]; [nb[i], nb[i+1]] = [nb[i+1], nb[i]]; onUpdate(nb); }} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-[var(--org-primary)] disabled:opacity-30"><ChevronDown size={10} /></button>
                   <button onClick={() => onUpdate(blocks.filter((_, j) => j !== i))} className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-500"><X size={10} /></button>
                 </div>
               </div>
@@ -2412,7 +2412,7 @@ function FormEmbedFormPicker({ d, set }: { d: Record<string, any>; set: (field: 
         <p className="text-[10px] text-amber-600">⚠ This form has no public slug. Set one in Form Builder → Settings → Public URL.</p>
       )}
       {selectedId && d.formSlug && (
-        <p className="text-[10px] text-teal-600">✓ Public slug: <code>{d.formSlug}</code></p>
+        <p className="text-[10px] text-[var(--org-primary)]">✓ Public slug: <code>{d.formSlug}</code></p>
       )}
     </div>
   );
@@ -2483,7 +2483,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Background Type</label>
             <div className="grid grid-cols-2 gap-1">
               {(["color", "gradient", "image", "video"] as const).map(t => (
-                <button key={t} onClick={() => set("bgType", t)} className={`py-1 text-xs rounded border ${bgType === t ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                <button key={t} onClick={() => set("bgType", t)} className={`py-1 text-xs rounded border ${bgType === t ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
                   {t === "color" ? "Solid Color" : t === "gradient" ? "Gradient" : t === "image" ? "Image" : "Video"}
                 </button>
               ))}
@@ -2495,7 +2495,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <DebouncedInput value={d.imageUrl ?? ""} onChange={v => set("imageUrl", v)} placeholder="Image URL or upload" className="h-8 text-sm flex-1" />
-                <button onClick={() => bgImageRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "imageUrl"}>
+                <button onClick={() => bgImageRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "imageUrl"}>
                   {uploading === "imageUrl" ? "..." : <><Upload size={12} /> Upload</>}
                 </button>
                 <input ref={bgImageRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "imageUrl", "hero-bg"); e.target.value = ""; }} />
@@ -2507,7 +2507,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <DebouncedInput value={d.videoUrl ?? ""} onChange={v => set("videoUrl", v)} placeholder="Video URL or upload" className="h-8 text-sm flex-1" />
-                <button onClick={() => bgVideoRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "videoUrl"}>
+                <button onClick={() => bgVideoRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "videoUrl"}>
                   {uploading === "videoUrl" ? "..." : <><Upload size={12} /> Upload</>}
                 </button>
                 <input ref={bgVideoRef} type="file" accept="video/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "videoUrl", "hero-bg-video"); e.target.value = ""; }} />
@@ -2525,7 +2525,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
               </select>
               <div className="flex items-center gap-2">
                 <DebouncedInput value={d.inlineMediaUrl ?? ""} onChange={v => set("inlineMediaUrl", v)} placeholder={d.inlineMediaType === "video" ? "Video URL" : "Image URL"} className="h-8 text-sm flex-1" />
-                <button onClick={() => inlineMediaRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "inlineMediaUrl"}>
+                <button onClick={() => inlineMediaRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "inlineMediaUrl"}>
                   {uploading === "inlineMediaUrl" ? "..." : <><Upload size={12} /> Upload</>}
                 </button>
                 <input ref={inlineMediaRef} type="file" accept={d.inlineMediaType === "video" ? "video/*" : "image/*"} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "inlineMediaUrl", "hero-inline"); e.target.value = ""; }} />
@@ -2535,7 +2535,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   <label className="text-xs text-gray-500 block mb-1">Placement</label>
                   <div className="flex gap-1">
                     {(["left", "center", "right"] as const).map(pos => (
-                      <button key={pos} onClick={() => set("inlineMediaPlacement", pos)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.inlineMediaPlacement === pos ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{pos}</button>
+                      <button key={pos} onClick={() => set("inlineMediaPlacement", pos)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.inlineMediaPlacement === pos ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{pos}</button>
                     ))}
                   </div>
                 </div>
@@ -2622,7 +2622,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           {!d.hideButtons && <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">CTA Buttons</label>
-              <button onClick={addBtn} className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={addBtn} className="text-xs text-[var(--org-primary)] hover:opacity-80 flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-3">
               {buttons.map((btn, idx) => (
@@ -2660,14 +2660,14 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   {(btn.behavior ?? "url") === "send_email" && (
                     <HeroSendEmailSettings btn={btn} idx={idx} setBtn={setBtn} setBtnMulti={setBtnMulti} />
                   )}
-                  <div><label className="text-xs text-gray-400 block mb-0.5">Style</label><div className="flex gap-1">{(["filled", "outline"] as const).map(s => <button key={s} onClick={() => setBtn(idx, "style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${btn.style === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
+                  <div><label className="text-xs text-gray-400 block mb-0.5">Style</label><div className="flex gap-1">{(["filled", "outline"] as const).map(s => <button key={s} onClick={() => setBtn(idx, "style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${btn.style === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
                   <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-16 flex-shrink-0">Color</label><input type="color" value={btn.color} onChange={e => setBtn(idx, "color", e.target.value)} className="w-7 h-7 rounded cursor-pointer border border-gray-200" /><DebouncedInput value={btn.color} onChange={v => setBtn(idx, "color", v)} className="h-7 text-xs flex-1" /></div>
                   {btn.style !== "outline" && <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-16 flex-shrink-0">Text</label><input type="color" value={btn.textColor} onChange={e => setBtn(idx, "textColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border border-gray-200" /><DebouncedInput value={btn.textColor} onChange={v => setBtn(idx, "textColor", v)} className="h-7 text-xs flex-1" /></div>}
                   <div><label className="text-xs text-gray-400 block mb-0.5">Animation</label><Select value={btn.animation ?? "none"} onValueChange={v => setBtn(idx, "animation", v)}><SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="pulse">Pulse</SelectItem><SelectItem value="bounce">Bounce</SelectItem><SelectItem value="shake">Shake</SelectItem><SelectItem value="glow">Glow</SelectItem></SelectContent></Select></div>
                   <div className="border-t border-gray-100 pt-2 mt-1">
                     <div className="flex items-center gap-2 mb-1">
                       <input type="checkbox" id={`lc-${idx}`} checked={btn.leadCapture ?? false} onChange={e => setBtn(idx, "leadCapture", e.target.checked as any)} className="rounded" />
-                      <label htmlFor={`lc-${idx}`} className="text-xs text-teal-700 font-medium">Collect lead before action</label>
+                      <label htmlFor={`lc-${idx}`} className="text-xs text-[var(--org-primary)] font-medium">Collect lead before action</label>
                     </div>
                     {btn.leadCapture && (
                       <div className="space-y-1 pl-1">
@@ -4695,13 +4695,13 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
               <tbody>
                 {rows.map((row: string[], ri: number) => (
-                  <tr key={ri} className={ri === 0 && d.hasHeader !== false ? "bg-teal-50" : ri % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                  <tr key={ri} className={ri === 0 && d.hasHeader !== false ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : ri % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                     {row.map((cell: string, ci: number) => (
                       <td key={ci} className="border border-gray-200 p-0">
                         <input
                           value={cell}
                           onChange={e => updateCell(ri, ci, e.target.value)}
-                          className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-teal-400 min-w-[60px]"
+                          className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)] min-w-[60px]"
                           placeholder={ri === 0 && d.hasHeader !== false ? `Header ${ci + 1}` : `R${ri}C${ci + 1}`}
                         />
                       </td>
@@ -4716,8 +4716,8 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Row/col controls */}
           <div className="flex gap-2 flex-wrap">
-            <button onClick={addRow} className="px-2 py-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded hover:bg-teal-100">+ Row</button>
-            <button onClick={addCol} className="px-2 py-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded hover:bg-teal-100">+ Column</button>
+            <button onClick={addRow} className="px-2 py-1 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded hover:opacity-80">+ Row</button>
+            <button onClick={addCol} className="px-2 py-1 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded hover:opacity-80">+ Column</button>
             <button onClick={removeCol} className="px-2 py-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100">− Last Column</button>
             <button
               onClick={async () => {
@@ -4924,7 +4924,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             {(["full","xl","lg","md","sm"] as const).map(w => {
               const labels: Record<string, string> = { full: "Full", xl: "XL (1280)", lg: "LG (1024)", md: "MD (768)", sm: "SM (640)" };
               return (
-                <button key={w} onClick={() => set("contentWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.contentWidth ?? "full") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{labels[w]}</button>
+                <button key={w} onClick={() => set("contentWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.contentWidth ?? "full") === w ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{labels[w]}</button>
               );
             })}
           </div>
@@ -4963,14 +4963,14 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
   // isTargeted comes from parent (tracked via pointermove); isOver is from dnd-kit
   const isActive = isTargeted || (isOver && activeDragId != null);
   return (
-    <div ref={setNodeRef} data-col-zone={id} style={{ pointerEvents: "all" }} className={`flex-1 min-h-[120px] rounded-lg transition-all duration-150 ${isActive ? "ring-4 ring-teal-500 ring-offset-2 bg-teal-50 shadow-lg shadow-teal-200" : "bg-gray-50/50"}`}>
+    <div ref={setNodeRef} data-col-zone={id} style={{ pointerEvents: "all" }} className={`flex-1 min-h-[120px] rounded-lg transition-all duration-150 ${isActive ? "ring-4 ring-[var(--org-primary)] ring-offset-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] shadow-lg" : "bg-gray-50/50"}`}>
       {blocks.length === 0 ? (
-        <div data-col-zone={id} className={`h-full min-h-[120px] flex flex-col items-center justify-center gap-2 text-xs rounded-lg border-2 border-dashed transition-all duration-150 ${isActive ? "border-teal-500 text-teal-700 bg-teal-100 scale-[1.02]" : "border-gray-200 text-gray-400"}`}>
-          {isActive ? <><span className="text-2xl font-bold text-teal-600">↓</span><span className="font-semibold text-teal-700">Drop here</span></> : (
+        <div data-col-zone={id} className={`h-full min-h-[120px] flex flex-col items-center justify-center gap-2 text-xs rounded-lg border-2 border-dashed transition-all duration-150 ${isActive ? "border-[var(--org-primary)] text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] scale-[1.02]" : "border-gray-200 text-gray-400"}`}>
+          {isActive ? <><span className="text-2xl font-bold text-[var(--org-primary)]">↓</span><span className="font-semibold text-[var(--org-primary)]">Drop here</span></> : (
             <>
               <span>Drag blocks here</span>
               <button onClick={e => { e.stopPropagation(); setPickerOpen(true); }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-500 text-white text-[10px] font-medium hover:bg-teal-600 transition-colors">
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--org-primary)] text-white text-[10px] font-medium hover:opacity-90 transition-colors">
                 <Plus size={10} /> Add Block
               </button>
             </>
@@ -4979,7 +4979,7 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
       ) : (
         <>
           <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-            <div data-col-zone={id} className={`space-y-1 p-1 rounded transition-all duration-150 ${isActive ? "bg-teal-50" : ""}`}>
+            <div data-col-zone={id} className={`space-y-1 p-1 rounded transition-all duration-150 ${isActive ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : ""}`}>
               {blocks.map((b, bIdx) => (
                 <ColumnChildBlock
                   key={b.id}
@@ -4993,7 +4993,7 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
                 />
               ))}
               {isActive && (
-                <div data-col-zone={id} className="flex items-center justify-center gap-1 py-3 rounded-lg border-2 border-dashed border-teal-400 bg-teal-100 text-teal-700 text-xs font-semibold">
+                <div data-col-zone={id} className="flex items-center justify-center gap-1 py-3 rounded-lg border-2 border-dashed border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] text-xs font-semibold">
                   <span className="text-base">↓</span> Drop here
                 </div>
               )}
@@ -5003,7 +5003,7 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
           {!isActive && (
             <div className="px-1 pb-1">
               <button onClick={e => { e.stopPropagation(); setPickerOpen(true); }}
-                className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg border border-dashed border-gray-200 text-gray-400 text-[10px] hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50 transition-colors">
+                className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg border border-dashed border-gray-200 text-gray-400 text-[10px] hover:border-[var(--org-primary)] hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors">
                 <Plus size={10} /> Add Block
               </button>
             </div>
@@ -6815,12 +6815,12 @@ function ScormEmbedBlockSettings({ d, set, dataRef, onChangeRef }: {
       {/* Alignment */}
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Alignment</label>
-        <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+        <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
       </div>
       {/* Width */}
       <div>
         <label className="text-xs font-medium text-gray-600 block mb-1">Width</label>
-        <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+        <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
         <DebouncedInput value={d.maxWidth ?? "100%"} onChange={v => set("maxWidth", v)} className="h-7 text-xs" placeholder="100%, 600px, etc." />
       </div>
 
@@ -6870,9 +6870,9 @@ function LandingBlockTemplatesTab({ onInsert }: { onInsert: (block: Block) => vo
             const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
             const block: Block = { id: uid(), type: tpl.blockType as any, data: blockData };
             return (
-              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] group transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                  {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
                     {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
@@ -6880,7 +6880,7 @@ function LandingBlockTemplatesTab({ onInsert }: { onInsert: (block: Block) => vo
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50"
+                  <Button size="sm" variant="outline" className="h-6 text-xs border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                     onClick={() => onInsert({ ...block, id: uid() })}>
                     <Plus className="w-3 h-3 mr-1" /> Insert
                   </Button>
@@ -6958,7 +6958,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
             <button
               key={s}
               onClick={() => set("source", s)}
-              className={`flex-1 py-1.5 text-xs rounded border capitalize transition-colors ${sourceMode === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:border-teal-300"}`}
+              className={`flex-1 py-1.5 text-xs rounded border capitalize transition-colors ${sourceMode === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-[var(--org-primary)]"}`}
             >
               {s === "url" ? "URL / Embed" : s === "upload" ? "Upload" : "Media Library"}
             </button>
@@ -6985,16 +6985,16 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
             onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f); e.target.value = ""; }}
           />
           {d.embedUrl && d.source === "upload" ? (
-            <div className="border border-teal-200 rounded p-2 bg-teal-50 space-y-1">
-              <p className="text-xs text-teal-700 font-medium truncate">{d.uploadedFileName ?? "Uploaded video"}</p>
+            <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded p-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] space-y-1">
+              <p className="text-xs text-[var(--org-primary)] font-medium truncate">{d.uploadedFileName ?? "Uploaded video"}</p>
               <p className="text-xs text-gray-400 truncate">{d.embedUrl}</p>
-              <button onClick={() => videoInputRef.current?.click()} className="text-xs text-teal-600 hover:underline">Replace video</button>
+              <button onClick={() => videoInputRef.current?.click()} className="text-xs text-[var(--org-primary)] hover:underline">Replace video</button>
             </div>
           ) : (
             <button
               onClick={() => videoInputRef.current?.click()}
               disabled={uploading === "video_block_upload"}
-              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-500 hover:border-teal-400 hover:text-teal-600 transition-colors disabled:opacity-50"
+              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-500 hover:border-[var(--org-primary)] hover:text-[var(--org-primary)] transition-colors disabled:opacity-50"
             >
               {uploading === "video_block_upload" ? (
                 <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</span>
@@ -7015,15 +7015,15 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       {sourceMode === "media_repo" && (
         <div className="space-y-2">
           {d.embedUrl && d.source === "media_repo" ? (
-            <div className="border border-teal-200 rounded p-2 bg-teal-50 space-y-1">
-              <p className="text-xs text-teal-700 font-medium truncate">{d.mediaAssetTitle ?? "Media repository video"}</p>
+            <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded p-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] space-y-1">
+              <p className="text-xs text-[var(--org-primary)] font-medium truncate">{d.mediaAssetTitle ?? "Media repository video"}</p>
               <p className="text-xs text-gray-400 truncate">{d.embedUrl}</p>
-              <button onClick={() => setShowMediaPicker(true)} className="text-xs text-teal-600 hover:underline">Change video</button>
+              <button onClick={() => setShowMediaPicker(true)} className="text-xs text-[var(--org-primary)] hover:underline">Change video</button>
             </div>
           ) : (
             <button
               onClick={() => setShowMediaPicker(true)}
-              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-500 hover:border-teal-400 hover:text-teal-600 transition-colors"
+              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-xs text-gray-500 hover:border-[var(--org-primary)] hover:text-[var(--org-primary)] transition-colors"
             >
               <div className="text-2xl mb-1">🗂️</div>
               <p className="font-medium">Pick from Media Library</p>
@@ -7044,7 +7044,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
                     placeholder="Search videos..."
                     value={mediaSearch}
                     onChange={e => { setMediaSearch(e.target.value); setMediaPage(1); }}
-                    className="w-full h-8 px-3 text-sm border border-gray-200 rounded focus:outline-none focus:border-teal-400"
+                    className="w-full h-8 px-3 text-sm border border-gray-200 rounded focus:outline-none focus:border-[var(--org-primary)]"
                   />
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
@@ -7058,7 +7058,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
                         <button
                           key={asset.id}
                           onClick={() => selectMediaAsset(asset)}
-                          className="border border-gray-200 rounded-lg p-2 text-left hover:border-teal-400 hover:bg-teal-50 transition-colors"
+                          className="border border-gray-200 rounded-lg p-2 text-left hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors"
                         >
                           <div className="w-full aspect-video bg-gray-100 rounded mb-1.5 flex items-center justify-center text-2xl overflow-hidden">
                             {asset.currentVersion?.thumbnailUrl
@@ -7107,7 +7107,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       <div><label className="text-xs text-gray-500 block mb-1">Border Width (px)</label><Input type="number" value={d.borderWidth ?? 0} onChange={e => set("borderWidth", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div>
       <div>
         <label className="text-xs text-gray-500 block mb-1">Border Style</label>
-        <div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div>
+        <div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div>
       </div>
       <BSColorField data={d} onSet={set} label="Border Color" field="borderColor" />
       <div className="border border-gray-100 rounded p-2 space-y-2">
