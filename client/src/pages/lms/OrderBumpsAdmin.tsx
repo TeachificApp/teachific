@@ -62,11 +62,11 @@ type OrderBump = {
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
-  course: <BookOpen size={14} className="text-teal-600" />,
-  quiz: <BookOpen size={14} className="text-teal-600" />,
+  course: <BookOpen size={14} className="text-[var(--org-primary)]" />,
+  quiz: <BookOpen size={14} className="text-[var(--org-primary)]" />,
   cohort: <BookOpen size={14} className="text-orange-500" />,
   download: <Download size={14} className="text-blue-600" />,
-  bundle: <Layers size={14} className="text-teal-600" />,
+  bundle: <Layers size={14} className="text-[var(--org-primary)]" />,
   physical: <Package size={14} className="text-amber-600" />,
 };
 
@@ -90,18 +90,23 @@ function generateId() {
   return `blk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function getOrgPrimaryColor() {
+  if (typeof window === "undefined") return "#000000";
+  return window.getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000";
+}
+
 function getDefaultData(type: BlockType): Record<string, any> {
   switch (type) {
-    case "hero": return { headline: "Special One-Time Offer", subheadline: "Add this to your order at a special price", bgColor: "#179ca3", textColor: "#fff", ctaText: "Add to Order", buttons: [] };
+    case "hero": return { headline: "Special One-Time Offer", subheadline: "Add this to your order at a special price", bgColor: getOrgPrimaryColor(), textColor: "#fff", ctaText: "Add to Order", buttons: [] };
     case "text": return { html: "<p>Describe your offer here...</p>" };
     case "image": return { url: "", alt: "" };
     case "video": return { url: "" };
     case "bullets": return { headline: "", items: ["Benefit 1", "Benefit 2", "Benefit 3"] };
     case "checklist": return { headline: "", items: ["Feature 1", "Feature 2", "Feature 3"] };
-    case "testimonial": return { quote: "This was amazing!", author: "Happy Customer", role: "" };
+    case "testimonial": return { quote: "", author: "", role: "" };
     case "faq": return { headline: "Frequently Asked Questions", items: [{ q: "Question?", a: "Answer." }] };
-    case "pricing_cta": return { ctaText: "Add to Order", ctaColor: "#179ca3", bgColor: "#fff" };
-    case "countdown": return { headline: "Offer expires in:", bgColor: "#179ca3", textColor: "#fff", durationMinutes: 30 };
+    case "pricing_cta": return { ctaText: "Add to Order", ctaColor: getOrgPrimaryColor(), bgColor: "#fff" };
+    case "countdown": return { headline: "Offer expires in:", bgColor: getOrgPrimaryColor(), textColor: "#fff", durationMinutes: 30 };
     case "alert": return { message: "Limited time offer!", type: "warning" };
     case "divider": return { style: "solid", color: "#e5e7eb", thickness: 1, spacing: 24 };
     case "spacer": return { height: 32 };
@@ -120,7 +125,7 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
           <div><label className="text-xs text-gray-500">Headline</label><Input value={d.headline ?? ""} onChange={e => set("headline", e.target.value)} className="h-7 text-sm mt-0.5" /></div>
           <div><label className="text-xs text-gray-500">Subheadline</label><Input value={d.subheadline ?? ""} onChange={e => set("subheadline", e.target.value)} className="h-7 text-sm mt-0.5" /></div>
           <div className="flex gap-2">
-            <div className="flex-1"><label className="text-xs text-gray-500">Background</label><input type="color" value={d.bgColor ?? "#179ca3"} onChange={e => set("bgColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
+            <div className="flex-1"><label className="text-xs text-gray-500">Background</label><input type="color" value={d.bgColor ?? getOrgPrimaryColor()} onChange={e => set("bgColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
             <div className="flex-1"><label className="text-xs text-gray-500">Text Color</label><input type="color" value={d.textColor ?? "#ffffff"} onChange={e => set("textColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
           </div>
           <div><label className="text-xs text-gray-500">CTA Button Text</label><Input value={d.ctaText ?? ""} onChange={e => set("ctaText", e.target.value)} className="h-7 text-sm mt-0.5" /></div>
@@ -169,7 +174,7 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
                 <button onClick={() => set("items", d.items.filter((_: any, j: number) => j !== i))} className="text-xs text-red-400">Remove</button>
               </div>
             ))}
-            <button onClick={() => set("items", [...(d.items ?? []), { q: "", a: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={10} /> Add Q&amp;A</button>
+            <button onClick={() => set("items", [...(d.items ?? []), { q: "", a: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={10} /> Add Q&amp;A</button>
           </div>
         </div>
       );
@@ -178,8 +183,8 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
         <div className="space-y-2">
           <div><label className="text-xs text-gray-500">CTA Text</label><Input value={d.ctaText ?? ""} onChange={e => set("ctaText", e.target.value)} className="h-7 text-sm mt-0.5" /></div>
           <div className="flex gap-2">
-            <div className="flex-1"><label className="text-xs text-gray-500">Button Color</label><input type="color" value={d.ctaColor ?? "#179ca3"} onChange={e => set("ctaColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
-            <div className="flex-1"><label className="text-xs text-gray-500">Background</label><input type="color" value={d.bgColor ?? "#f0fafa"} onChange={e => set("bgColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
+            <div className="flex-1"><label className="text-xs text-gray-500">Button Color</label><input type="color" value={d.ctaColor ?? getOrgPrimaryColor()} onChange={e => set("ctaColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
+            <div className="flex-1"><label className="text-xs text-gray-500">Background</label><input type="color" value={d.bgColor ?? "#ffffff"} onChange={e => set("bgColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
           </div>
         </div>
       );
@@ -189,7 +194,7 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
           <div><label className="text-xs text-gray-500">Headline</label><Input value={d.headline ?? ""} onChange={e => set("headline", e.target.value)} className="h-7 text-sm mt-0.5" /></div>
           <div><label className="text-xs text-gray-500">Duration (minutes)</label><Input type="number" value={d.durationMinutes ?? 30} onChange={e => set("durationMinutes", Number(e.target.value))} className="h-7 text-sm mt-0.5" /></div>
           <div className="flex gap-2">
-            <div className="flex-1"><label className="text-xs text-gray-500">Background</label><input type="color" value={d.bgColor ?? "#179ca3"} onChange={e => set("bgColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
+            <div className="flex-1"><label className="text-xs text-gray-500">Background</label><input type="color" value={d.bgColor ?? getOrgPrimaryColor()} onChange={e => set("bgColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
             <div className="flex-1"><label className="text-xs text-gray-500">Text Color</label><input type="color" value={d.textColor ?? "#ffffff"} onChange={e => set("textColor", e.target.value)} className="w-full h-7 mt-0.5 rounded cursor-pointer" /></div>
           </div>
         </div>
@@ -202,7 +207,7 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
             <label className="text-xs text-gray-500 block mb-1">Type</label>
             <div className="flex gap-1">
               {(["info", "warning", "success", "error"] as const).map(t => (
-                <button key={t} onClick={() => set("type", t)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.type ?? "info") === t ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{t}</button>
+                <button key={t} onClick={() => set("type", t)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.type ?? "info") === t ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{t}</button>
               ))}
             </div>
           </div>
@@ -335,20 +340,20 @@ export default function OrderBumpsAdmin() {
       ) : (
         <div className="space-y-3">
           {(bumps as OrderBump[]).map((bump) => (
-            <div key={bump.id} className={`border rounded-lg p-4 transition-all ${bump.isActive ? "border-teal-200 bg-white" : "border-gray-200 bg-gray-50 opacity-70"}`}>
+            <div key={bump.id} className={`border rounded-lg p-4 transition-all ${bump.isActive ? "border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-white" : "border-gray-200 bg-gray-50 opacity-70"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${bump.timing === "before_checkout" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
                       {bump.timing === "before_checkout" ? "Before Checkout" : "After Checkout"}
                     </span>
-                    {bump.presentationMode === "landing_page" && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-teal-700 flex items-center gap-1"><LayoutTemplate size={9} /> Landing Page</span>}
+                    {bump.presentationMode === "landing_page" && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] flex items-center gap-1"><LayoutTemplate size={9} /> Landing Page</span>}
                     {!bump.isActive && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-600">Inactive</span>}
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="flex items-center gap-1">{TYPE_ICONS[bump.triggerType]} {getProductName(bump.triggerType, bump.triggerProductId)}</span>
                     <ArrowRight size={12} className="text-gray-400" />
-                    <span className="flex items-center gap-1 font-medium text-teal-700">{TYPE_ICONS[bump.bumpType]} {getProductName(bump.bumpType, bump.bumpProductId)}</span>
+                    <span className="flex items-center gap-1 font-medium text-[var(--org-primary)]">{TYPE_ICONS[bump.bumpType]} {getProductName(bump.bumpType, bump.bumpProductId)}</span>
                   </div>
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                     <span>Price: <strong className="text-gray-700">${Number(bump.bumpPrice).toFixed(2)}</strong></span>
@@ -358,9 +363,9 @@ export default function OrderBumpsAdmin() {
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => toggleActive(bump)} className="p-1.5 rounded hover:bg-gray-100" title={bump.isActive ? "Deactivate" : "Activate"}>
-                    {bump.isActive ? <ToggleRight size={18} className="text-teal-600" /> : <ToggleLeft size={18} className="text-gray-400" />}
+                    {bump.isActive ? <ToggleRight size={18} className="text-[var(--org-primary)]" /> : <ToggleLeft size={18} className="text-gray-400" />}
                   </button>
-                  <button onClick={() => setEditingBump(bump)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-teal-600" title="Edit"><Edit size={14} /></button>
+                  <button onClick={() => setEditingBump(bump)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[var(--org-primary)]" title="Edit"><Edit size={14} /></button>
                   <button onClick={() => duplicateMutation.mutate({ id: bump.id })} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-500" title="Duplicate" disabled={duplicateMutation.isPending}><Copy size={14} /></button>
                   <button onClick={() => { if (confirm("Delete this order bump?")) deleteMutation.mutate({ id: bump.id }); }} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500" title="Delete"><Trash2 size={14} /></button>
                 </div>
@@ -405,7 +410,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
     bodyHtml: bump?.bodyHtml ?? "",
     imageUrl: bump?.imageUrl ?? "",
     ctaText: bump?.ctaText ?? "Add to Order",
-    ctaColor: bump?.ctaColor ?? "#179ca3",
+    ctaColor: bump?.ctaColor ?? getOrgPrimaryColor(),
     skipText: bump?.skipText ?? "No thanks, continue",
     isActive: bump?.isActive ?? true,
     presentationMode: (bump?.presentationMode ?? "widget") as "widget" | "landing_page",
@@ -504,13 +509,13 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
         <div className="flex gap-2">
           <button
             onClick={() => setForm(f => ({ ...f, presentationMode: "widget" }))}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "widget" ? "border-teal-600 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "widget" ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
           >
             <Rows size={16} /> Widget (inline at checkout)
           </button>
           <button
             onClick={() => setForm(f => ({ ...f, presentationMode: "landing_page" }))}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "landing_page" ? "border-teal-600 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "landing_page" ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
           >
             <LayoutTemplate size={16} /> Landing Page (full page)
           </button>
@@ -606,7 +611,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
         <div className="border border-gray-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-gray-700">Landing Page Blocks</h4>
-            <button onClick={() => setShowAddBlock(v => !v)} className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
+            <button onClick={() => setShowAddBlock(v => !v)} className="flex items-center gap-1 text-xs text-[var(--org-primary)] hover:opacity-80 font-medium">
               <Plus size={13} /> Add Block
             </button>
           </div>
@@ -619,7 +624,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
                   <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{cat}</p>
                   <div className="flex flex-wrap gap-1">
                     {items.map(b => (
-                      <button key={b.type} onClick={() => addBlock(b.type)} className="px-2 py-1 text-xs rounded border border-gray-200 bg-white hover:border-teal-400 hover:text-teal-700 transition-colors">
+                      <button key={b.type} onClick={() => addBlock(b.type)} className="px-2 py-1 text-xs rounded border border-gray-200 bg-white hover:border-[var(--org-primary)] hover:text-[var(--org-primary)] transition-colors">
                         {b.label}
                       </button>
                     ))}
@@ -697,7 +702,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
       {/* Active toggle */}
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+          <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[var(--org-primary)] focus:ring-[var(--org-primary)]" />
           <span className="text-sm text-gray-700">Active (show to customers)</span>
         </label>
       </div>

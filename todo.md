@@ -38,6 +38,9 @@
 - [x] Apply active organization theme variables to Bundles administration and product authoring controls
 - [x] Apply active organization theme variables to Physical Products administration and product authoring controls
 - [x] Correct Physical Products analytics revenue display to use stored dollar values without a legacy cents conversion
+- [x] Apply active organization theme variables to Order Bumps administration and product authoring controls
+- [x] Remove fabricated testimonial defaults from Order Bumps landing-page block templates
+- [x] Replace Order Bumps hard-coded teal authoring defaults with active organization theme-derived defaults
 - [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [ ] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
