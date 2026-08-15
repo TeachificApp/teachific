@@ -1014,4 +1014,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortScheduleSource).toContain("UID:cohort-session-${s.id}");
     expect(cohortScheduleSource).not.toContain("UltrasoundAssist");
   });
+
+  it("routes public workshop waitlist notifications through the owning organization sender", () => {
+    const workshopRouterSource = readFileSync(new URL("./routers/workshopRouter.ts", import.meta.url), "utf8");
+    const waitlistSource = workshopRouterSource.slice(workshopRouterSource.indexOf("export const workshopWaitlistRouter"));
+    expect(waitlistSource).toContain("sendEmailViaOrg");
+    expect(waitlistSource).toContain("ownerId: organizations.ownerId");
+    expect(waitlistSource).toContain("workshop.orgId");
+    expect(waitlistSource).not.toContain("admin@teachific.app");
+  });
 });

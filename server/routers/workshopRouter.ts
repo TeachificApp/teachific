@@ -1586,15 +1586,24 @@ export const workshopWaitlistRouter = router({
         message: input.message ?? null,
         createdAt: Date.now(),
       });
-      // Notify admin of new waitlist signup
+      // Notify the owning organization's owner of the new waitlist signup.
       try {
-        const { sendEmail } = await import("../_core/email");
-        await sendEmail({
-          to: "admin@teachific.app",
-          subject: `New Waitlist Signup — Workshop #${input.workshopId}`,
-          html: `<h2>New Workshop Waitlist Lead</h2><p><strong>Name:</strong> ${input.name}</p><p><strong>Email:</strong> ${input.email}</p>${input.phone ? `<p><strong>Phone:</strong> ${input.phone}</p>` : ""}<p><strong>Workshop ID:</strong> ${input.workshopId}</p>${input.message ? `<p><strong>Message:</strong> ${input.message}</p>` : ""}<p><em>Signed up at ${new Date().toUTCString()}</em></p>`,
-          text: `New Workshop Waitlist Lead\nName: ${input.name}\nEmail: ${input.email}${input.phone ? `\nPhone: ${input.phone}` : ""}\nWorkshop ID: ${input.workshopId}${input.message ? `\nMessage: ${input.message}` : ""}`,
-        });
+        const [workshop] = await db.select({ orgId: workshops.orgId, title: workshops.title }).from(workshops)
+          .where(eq(workshops.id, input.workshopId)).limit(1);
+        if (workshop) {
+          const [organization] = await db.select({ ownerId: organizations.ownerId }).from(organizations)
+            .where(eq(organizations.id, workshop.orgId)).limit(1);
+          const [owner] = organization ? await db.select({ email: users.email, name: users.name }).from(users)
+            .where(eq(users.id, organization.ownerId)).limit(1) : [];
+          if (owner?.email) {
+            const { sendEmailViaOrg } = await import("../_core/email");
+            await sendEmailViaOrg({
+              to: { name: owner.name ?? undefined, email: owner.email },
+              subject: `New waitlist signup for ${workshop.title}`,
+              htmlBody: `<h2>New workshop waitlist lead</h2><p><strong>Name:</strong> ${input.name}</p><p><strong>Email:</strong> ${input.email}</p>${input.phone ? `<p><strong>Phone:</strong> ${input.phone}</p>` : ""}${input.message ? `<p><strong>Message:</strong> ${input.message}</p>` : ""}<p><em>Signed up at ${new Date().toUTCString()}</em></p>`,
+            }, workshop.orgId);
+          }
+        }
       } catch (e) {
         console.error("[waitlist] Failed to send admin notification:", e);
       }
