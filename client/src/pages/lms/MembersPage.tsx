@@ -316,8 +316,8 @@ export default function MembersPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={m.role === "org_admin" ? "default" : "secondary"} className="text-xs">
-                      {m.role === "org_admin" ? "Admin" : "Student"}
+                    <Badge variant={m.role === "org_admin" || m.role === "org_super_admin" ? "default" : "secondary"} className="text-xs">
+                      {m.role === "org_super_admin" ? "Org Super Admin" : m.role === "org_admin" ? "Admin" : "Student"}
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium">{m.totalEnrollments}</TableCell>
@@ -382,8 +382,8 @@ export default function MembersPage() {
                       <p className="font-medium text-sm truncate">{m.name ?? "—"}</p>
                       <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={m.role === "org_admin" ? "default" : "secondary"} className="text-xs">
-                          {m.role === "org_admin" ? "Admin" : "Student"}
+                        <Badge variant={m.role === "org_admin" || m.role === "org_super_admin" ? "default" : "secondary"} className="text-xs">
+                          {m.role === "org_super_admin" ? "Org Super Admin" : m.role === "org_admin" ? "Admin" : "Student"}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {new Date(m.joinedAt).toLocaleDateString()}
@@ -694,7 +694,7 @@ export default function MembersPage() {
                               <TableCell className="text-xs py-1.5">{m.name}</TableCell>
                               <TableCell className="text-xs py-1.5">{m.email}</TableCell>
                               <TableCell className="text-xs py-1.5">
-                                <Badge variant={m.role === "org_admin" ? "default" : "secondary"} className="text-xs">{m.role === "org_admin" ? "Admin" : "Member"}</Badge>
+                                <Badge variant={m.role === "org_admin" || m.role === "org_super_admin" ? "default" : "secondary"} className="text-xs">{m.role === "org_super_admin" ? "Org Super Admin" : m.role === "org_admin" ? "Admin" : "Member"}</Badge>
                               </TableCell>
                             </TableRow>
                           ))}

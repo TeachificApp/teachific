@@ -24,6 +24,7 @@
 - [x] Embed or render direct Course Builder controls for welcome, completion, and upsell automation settings
 - [x] Verify whether course waitlistEnabled is distinct from availability status and expose the persisted control when applicable
 - [x] Add organization-owned course waitlist settings read and update procedures for Course Builder
+- [x] Display organization super-admin membership roles distinctly throughout active-organization member management
 - [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [ ] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone

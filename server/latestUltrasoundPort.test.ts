@@ -363,6 +363,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderSource).toContain("Course waitlist configuration");
     expect(courseBuilderRouterSource).toContain("getCourseWaitlistSettings: protectedProcedure");
     expect(courseBuilderRouterSource).toContain("updateCourseWaitlistSettings: protectedProcedure");
+    const membersPageSource = readFileSync(new URL("../client/src/pages/lms/MembersPage.tsx", import.meta.url), "utf8");
+    expect(membersPageSource).toContain('m.role === "org_super_admin" ? "Org Super Admin"');
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
