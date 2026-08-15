@@ -358,6 +358,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderSource).toContain("Lifecycle automation");
     expect(courseBuilderSource).toContain("trpc.lmsAdmin.updateAfterPurchase.useMutation");
     expect(courseBuilderSource).toContain("welcomeEmailEnabled, completionEmailEnabled, upsellEnabled");
+    expect(courseBuilderSource).toContain("trpc.lmsAdmin.getCourseWaitlistSettings.useQuery");
+    expect(courseBuilderSource).toContain("trpc.lmsAdmin.updateCourseWaitlistSettings.useMutation");
+    expect(courseBuilderSource).toContain("Course waitlist configuration");
+    expect(courseBuilderRouterSource).toContain("getCourseWaitlistSettings: protectedProcedure");
+    expect(courseBuilderRouterSource).toContain("updateCourseWaitlistSettings: protectedProcedure");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {

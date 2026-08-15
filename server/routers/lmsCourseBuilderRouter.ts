@@ -1229,6 +1229,52 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
+  // ===== Course waitlist settings =====
+  getCourseWaitlistSettings: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({
+          waitlistEnabled: lmsCourses.waitlistEnabled,
+          waitlistHeading: lmsCourses.waitlistHeading,
+          waitlistBody: lmsCourses.waitlistBody,
+          waitlistCtaLabel: lmsCourses.waitlistCtaLabel,
+          waitlistCtaUrl: lmsCourses.waitlistCtaUrl,
+          waitlistRedirectUrl: lmsCourses.waitlistRedirectUrl,
+          waitlistSuccessMessage: lmsCourses.waitlistSuccessMessage,
+        })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.id, input.courseId))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      return course;
+    }),
+
+  updateCourseWaitlistSettings: protectedProcedure
+    .input(z.object({
+      courseId: z.number(),
+      waitlistEnabled: z.boolean(),
+      waitlistHeading: z.string().max(512).nullable().optional(),
+      waitlistBody: z.string().nullable().optional(),
+      waitlistCtaLabel: z.string().max(255).nullable().optional(),
+      waitlistCtaUrl: z.string().max(1024).nullable().optional(),
+      waitlistRedirectUrl: z.string().max(1024).nullable().optional(),
+      waitlistSuccessMessage: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { courseId, ...updates } = input;
+      await db.update(lmsCourses).set(updates).where(eq(lmsCourses.id, courseId));
+      return { success: true };
+    }),
+
   // ===== getCheckoutPageConfig =====
   getCheckoutPageConfig: protectedProcedure
     .input(z.object({ courseId: z.number() }))

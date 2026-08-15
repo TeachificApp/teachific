@@ -1677,12 +1677,21 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
   const [presaleBody, setPresaleBody] = useState("");
   const [presaleCtaLabel, setPresaleCtaLabel] = useState("");
   const [presaleCtaUrl, setPresaleCtaUrl] = useState("");
+  const [waitlistEnabled, setWaitlistEnabled] = useState(false);
+  const [waitlistHeading, setWaitlistHeading] = useState("");
+  const [waitlistBody, setWaitlistBody] = useState("");
+  const [waitlistSuccessMessage, setWaitlistSuccessMessage] = useState("");
   const { data: courseAvailability } = trpc.contentAvailability.getAvailability.useQuery({
     productType: "course",
     productId: course.id,
   });
   const saveAvailability = trpc.contentAvailability.setAvailability.useMutation({
     onSuccess: () => toast.success("Course availability saved"),
+    onError: (error) => toast.error(error.message),
+  });
+  const { data: courseWaitlistSettings } = trpc.lmsAdmin.getCourseWaitlistSettings.useQuery({ courseId: course.id });
+  const saveWaitlistSettings = trpc.lmsAdmin.updateCourseWaitlistSettings.useMutation({
+    onSuccess: () => toast.success("Course waitlist settings saved"),
     onError: (error) => toast.error(error.message),
   });
   useEffect(() => {
@@ -1699,6 +1708,13 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
     setCompletionEmailEnabled(afterPurchaseSettings.completionEmailEnabled ?? false);
     setUpsellEnabled(afterPurchaseSettings.upsellEnabled ?? false);
   }, [afterPurchaseSettings]);
+  useEffect(() => {
+    if (!courseWaitlistSettings) return;
+    setWaitlistEnabled(courseWaitlistSettings.waitlistEnabled ?? false);
+    setWaitlistHeading(courseWaitlistSettings.waitlistHeading ?? "");
+    setWaitlistBody(courseWaitlistSettings.waitlistBody ?? "");
+    setWaitlistSuccessMessage(courseWaitlistSettings.waitlistSuccessMessage ?? "");
+  }, [courseWaitlistSettings]);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
@@ -1819,6 +1835,49 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
             <SelectItem value="enrollment_closed">Enrollment Closed — prevent new enrollments</SelectItem>
           </SelectContent>
         </Select>
+        <div className="rounded-md border border-gray-200 bg-white p-3 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-700">Course waitlist configuration</Label>
+              <p className="text-xs text-gray-400 mt-0.5">Use this independent setting to prepare the waitlist messaging before or while the course availability is set to Waitlist.</p>
+            </div>
+            <Switch checked={waitlistEnabled} onCheckedChange={setWaitlistEnabled} />
+          </div>
+          {waitlistEnabled && (
+            <div className="space-y-3 border-t border-gray-100 pt-3">
+              <div>
+                <Label className="text-xs">Waitlist heading</Label>
+                <Input className="mt-1" value={waitlistHeading} onChange={(event) => setWaitlistHeading(event.target.value)} placeholder="Join the waitlist" />
+              </div>
+              <div>
+                <Label className="text-xs">Waitlist message</Label>
+                <Textarea className="mt-1" value={waitlistBody} onChange={(event) => setWaitlistBody(event.target.value)} placeholder="Be the first to know when enrollment opens." />
+              </div>
+              <div>
+                <Label className="text-xs">Success message</Label>
+                <Input className="mt-1" value={waitlistSuccessMessage} onChange={(event) => setWaitlistSuccessMessage(event.target.value)} placeholder="You are on the waitlist." />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-teal-300 text-teal-800 hover:bg-teal-100"
+              disabled={saveWaitlistSettings.isPending}
+              onClick={() => saveWaitlistSettings.mutate({
+                courseId: course.id,
+                waitlistEnabled,
+                waitlistHeading: waitlistHeading.trim() || null,
+                waitlistBody: waitlistBody.trim() || null,
+                waitlistSuccessMessage: waitlistSuccessMessage.trim() || null,
+              })}
+            >
+              {saveWaitlistSettings.isPending ? "Saving waitlist…" : "Save Waitlist"}
+            </Button>
+          </div>
+        </div>
         {availabilityStatus === "presale" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             <div>
