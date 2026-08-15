@@ -20,6 +20,28 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
 
+type LmsShellSettings = {
+  shellTitle?: string;
+  logoUrl?: string;
+  theme?: "light" | "dark";
+  showProgress?: boolean;
+  showCompletion?: boolean;
+  showSessionStatus?: boolean;
+  showFooter?: boolean;
+  showSidebar?: boolean;
+  allowNotes?: boolean;
+};
+
+function parseLmsShellSettings(value: unknown): LmsShellSettings {
+  if (typeof value !== "string" || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed as LmsShellSettings : {};
+  } catch {
+    return {};
+  }
+}
+
 // ── Dynamic Embed Integration Builder ────────────────────────────────────────
 const ALL_PARAMS = [
   { key: "learner_name",  label: "Learner Name",   token: "{{learner_name}}",  desc: "Full name of the learner",        example: "Jane Smith" },
@@ -733,12 +755,23 @@ export default function FileDetailPage() {
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [autoFullscreenMobile, setAutoFullscreenMobile] = useState(false);
+  const [displayMode, setDisplayMode] = useState<"native" | "lms_shell" | "quiz">("native");
+  const [lmsShellSettings, setLmsShellSettings] = useState<LmsShellSettings>({});
   const [allowDownload, setAllowDownload] = useState(false);
   const [maxPlays, setMaxPlays] = useState("");
   const [shareToken, setShareToken] = useState("");
   const [saveToBankOpen, setSaveToBankOpen] = useState(false);
 
-  useEffect(() => { if (pkg) { setTitle(pkg.title); setDescription(pkg.description ?? ""); setIsPublic(pkg.isPublic ?? false); setAutoFullscreenMobile((pkg as any).autoFullscreenMobile ?? false); } }, [pkg]);
+  useEffect(() => {
+    if (!pkg) return;
+    const packageRecord = pkg as any;
+    setTitle(pkg.title);
+    setDescription(pkg.description ?? "");
+    setIsPublic(pkg.isPublic ?? false);
+    setAutoFullscreenMobile(packageRecord.autoFullscreenMobile ?? false);
+    setDisplayMode(packageRecord.displayMode ?? "native");
+    setLmsShellSettings(parseLmsShellSettings(packageRecord.lmsShellConfig));
+  }, [pkg]);
   useEffect(() => {
     if (perms) {
       setAllowDownload(perms.allowDownload ?? false);
@@ -749,6 +782,15 @@ export default function FileDetailPage() {
 
   const baseEmbedUrl = `${window.location.origin}/embed/${packageId}`;
   const shareUrl = shareToken ? `${baseEmbedUrl}?token=${shareToken}` : "";
+  const savePackageSettings = () => updatePkg.mutate({
+    id: packageId,
+    title,
+    description,
+    isPublic,
+    autoFullscreenMobile,
+    displayMode,
+    lmsShellConfig: JSON.stringify(lmsShellSettings),
+  });
 
   if (isLoading) return (
     <div className="p-6 max-w-5xl mx-auto space-y-4">
@@ -880,6 +922,69 @@ export default function FileDetailPage() {
                   </div>
                 </div>
               </div>
+              <div className="space-y-3 rounded-lg border border-border/70 p-4">
+                <div>
+                  <Label>Display Mode</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">Choose how learners experience this organization-owned package.</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {([
+                    ["native", "Native", "Play the imported package exactly as supplied."],
+                    ["lms_shell", "LMS Shell", "Wrap the package in your configured learner shell."],
+                    ["quiz", "Quiz", "Deliver extracted questions through the quiz experience."],
+                  ] as const).map(([value, label, helper]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setDisplayMode(value)}
+                      className={`rounded-lg border-2 p-3 text-left transition-colors ${displayMode === value ? "border-primary bg-primary/5 text-primary" : "border-border bg-background text-muted-foreground hover:border-border/80 hover:text-foreground"}`}
+                    >
+                      <span className="block text-sm font-medium">{label}</span>
+                      <span className="mt-1 block text-xs leading-snug opacity-80">{helper}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {displayMode === "lms_shell" && (
+                <div className="space-y-4 rounded-lg border border-primary/25 bg-primary/[0.03] p-4">
+                  <div>
+                    <Label>LMS Shell Settings</Label>
+                    <p className="mt-1 text-xs text-muted-foreground">These settings apply only to this package in the active organization.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="shell-title">Learner shell title</Label>
+                      <Input id="shell-title" value={lmsShellSettings.shellTitle ?? ""} placeholder="Learning Portal" onChange={(event) => setLmsShellSettings((current) => ({ ...current, shellTitle: event.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="shell-logo">Logo URL</Label>
+                      <Input id="shell-logo" value={lmsShellSettings.logoUrl ?? ""} placeholder="https://…" onChange={(event) => setLmsShellSettings((current) => ({ ...current, logoUrl: event.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Shell theme</Label>
+                      <Select value={lmsShellSettings.theme ?? "dark"} onValueChange={(theme: "light" | "dark") => setLmsShellSettings((current) => ({ ...current, theme }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="dark">Dark</SelectItem><SelectItem value="light">Light</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {([
+                      ["showProgress", "Show progress", "Display learner progress in the shell header."],
+                      ["showCompletion", "Show completion badge", "Show the completion status when available."],
+                      ["showSessionStatus", "Show session status", "Show session information in the footer."],
+                      ["showFooter", "Show footer", "Show the organization-owned learner shell footer."],
+                      ["showSidebar", "Show sidebar", "Show package context alongside learner content."],
+                      ["allowNotes", "Enable learner notes", "Let learners retain browser-local notes for this package."],
+                    ] as const).map(([key, label, helper]) => (
+                      <div key={key} className="flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background p-3">
+                        <div><p className="text-sm font-medium">{label}</p><p className="text-xs text-muted-foreground">{helper}</p></div>
+                        <Switch checked={lmsShellSettings[key] ?? true} onCheckedChange={(checked) => setLmsShellSettings((current) => ({ ...current, [key]: checked }))} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {pkg.originalZipUrl && (
                 <Button variant="outline" size="sm" asChild>
                   <a href={pkg.originalZipUrl} download target="_blank" rel="noreferrer"><Download className="h-3.5 w-3.5 mr-1.5" />Download Original ZIP</a>
@@ -890,7 +995,7 @@ export default function FileDetailPage() {
                   <Database className="h-3.5 w-3.5" />Save to Question Bank
                 </Button>
               )}
-              <Button onClick={() => updatePkg.mutate({ id: packageId, title, description, isPublic, autoFullscreenMobile })} disabled={updatePkg.isPending} className="gap-2">
+              <Button onClick={savePackageSettings} disabled={updatePkg.isPending} className="gap-2">
                 <Save className="h-3.5 w-3.5" />{updatePkg.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </CardContent>

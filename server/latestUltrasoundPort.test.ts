@@ -71,7 +71,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("applies organization-owned LMS shell configuration without platform branding in package playback", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/PlayerPage.tsx", import.meta.url), "utf8");
     expect(playerSource).toContain('import { useOrgTheme } from "@/contexts/OrgThemeContext"');
-    expect(playerSource).toContain("parseLmsShellConfig((pkg as any).lmsShellConfig)");
+    expect(playerSource).toContain("const packageShellConfig = parseLmsShellConfig((pkg as any)?.lmsShellConfig);");
     expect(playerSource).toContain('shellConfig.shellTitle?.trim() || shellConfig.organizationName?.trim() || "Learning Portal"');
     expect(playerSource).toContain("shellConfig.logoUrl?.trim() || orgTheme.adminLogoUrl?.trim() || null");
     expect(playerSource).toContain("const showProgress = shellConfig.showProgress !== false;");
@@ -84,6 +84,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).toContain("showProgress && (completionStatus");
     expect(playerSource).toContain("showCompletionBadge && completionStatus");
     expect(playerSource).not.toContain("Teachific&#8482; LMS");
+    expect(playerSource).toContain('showSidebar: typeof parsed.showSidebar === "boolean"');
+    expect(playerSource).toContain('allowNotes: typeof parsed.allowNotes === "boolean"');
+    expect(playerSource).toContain("Package overview");
+    expect(playerSource).toContain("teachific-package-notes-${packageId}");
+    const fileDetailSource = readFileSync(new URL("../client/src/pages/FileDetailPage.tsx", import.meta.url), "utf8");
+    expect(fileDetailSource).toContain("type LmsShellSettings");
+    expect(fileDetailSource).toContain("parseLmsShellSettings(packageRecord.lmsShellConfig)");
+    expect(fileDetailSource).toContain("lmsShellConfig: JSON.stringify(lmsShellSettings)");
+    expect(fileDetailSource).toContain("LMS Shell Settings");
+    expect(fileDetailSource).toContain("lmsShellSettings.shellTitle");
+    expect(fileDetailSource).toContain("showSessionStatus");
+    expect(fileDetailSource).toContain("showSidebar");
+    expect(fileDetailSource).toContain("allowNotes");
   });
 
   it("routes direct Media Repository extraction into a same-organization Question Bank preview", () => {

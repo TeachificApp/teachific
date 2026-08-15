@@ -24,6 +24,7 @@
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
 - [x] Apply organization-owned LMS shell branding, core visibility, and light/dark theme settings during package playback
+- [x] Add active-organization package controls for display mode, shell branding, visibility, sidebar, and learner notes
 - [x] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
 - [x] Require explicit active-organization scope for administrator content package list and management reads
 - [x] Enforce active-organization authorization for content package versions and permission management

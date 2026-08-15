@@ -61,6 +61,8 @@ type LmsShellConfig = {
   showCompletionBadge?: boolean;
   showSessionStatus?: boolean;
   showFooter?: boolean;
+  showSidebar?: boolean;
+  allowNotes?: boolean;
 };
 
 function parseLmsShellConfig(raw: string | null | undefined): LmsShellConfig {
@@ -77,6 +79,8 @@ function parseLmsShellConfig(raw: string | null | undefined): LmsShellConfig {
       showCompletionBadge: typeof parsed.showCompletionBadge === "boolean" ? parsed.showCompletionBadge : undefined,
       showSessionStatus: typeof parsed.showSessionStatus === "boolean" ? parsed.showSessionStatus : undefined,
       showFooter: typeof parsed.showFooter === "boolean" ? parsed.showFooter : undefined,
+      showSidebar: typeof parsed.showSidebar === "boolean" ? parsed.showSidebar : undefined,
+      allowNotes: typeof parsed.allowNotes === "boolean" ? parsed.allowNotes : undefined,
     };
   } catch {
     return {};
@@ -99,6 +103,7 @@ export default function PlayerPage() {
   const [scorePercent, setScorePercent] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [started, setStarted] = useState(false);
+  const [learnerNotes, setLearnerNotes] = useState("");
   const startedAt = useRef<number>(Date.now());
   const sessionTokenRef = useRef<string | null>(null);
 
@@ -108,6 +113,8 @@ export default function PlayerPage() {
   const endSession = trpc.sessions.end.useMutation();
   const saveScorm = trpc.scorm.setData.useMutation();
   const trackDownload = trpc.analytics.trackDownload.useMutation();
+  const packageShellConfig = parseLmsShellConfig((pkg as any)?.lmsShellConfig);
+  const notesAllowed = packageShellConfig.allowNotes === true;
 
   // Start session when package is ready
   useEffect(() => {
@@ -129,6 +136,16 @@ export default function PlayerPage() {
     const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt.current) / 1000)), 1000);
     return () => clearInterval(t);
   }, [started]);
+
+  useEffect(() => {
+    if (!notesAllowed) return;
+    setLearnerNotes(window.localStorage.getItem(`teachific-package-notes-${packageId}`) ?? "");
+  }, [notesAllowed, packageId]);
+
+  const updateLearnerNotes = (value: string) => {
+    setLearnerNotes(value);
+    window.localStorage.setItem(`teachific-package-notes-${packageId}`, value);
+  };
 
   // Listen for SCORM API messages from iframe
   useEffect(() => {
@@ -259,7 +276,7 @@ export default function PlayerPage() {
   );
 
   const isLmsShell = pkg.displayMode === "lms_shell";
-  const shellConfig = parseLmsShellConfig((pkg as any).lmsShellConfig);
+  const shellConfig = packageShellConfig;
   const shellTitle = shellConfig.shellTitle?.trim() || shellConfig.organizationName?.trim() || "Learning Portal";
   const shellLogoUrl = shellConfig.logoUrl?.trim() || orgTheme.adminLogoUrl?.trim() || null;
   const lmsShellTheme = shellConfig.theme ?? "dark";
@@ -268,6 +285,8 @@ export default function PlayerPage() {
   const showCompletionBadge = shellConfig.showCompletionBadge !== false;
   const showSessionStatus = shellConfig.showSessionStatus !== false;
   const showFooter = shellConfig.showFooter !== false;
+  const showSidebar = shellConfig.showSidebar !== false;
+  const allowNotes = notesAllowed;
   // Always use the /entry redirect — it resolves the correct S3 URL regardless of subfolder nesting
   // Include the currentVersionId as a cache-buster so mobile browsers always load the latest version
   const playerUrl = pkg.status === "ready"
@@ -461,34 +480,50 @@ export default function PlayerPage() {
       )}
 
       {/* Content area */}
-      <div className="flex-1 relative overflow-hidden">
-        {playerUrl ? (
-          <iframe
-            ref={iframeRef}
-            src={playerUrl}
-            className="w-full h-full border-0"
-            title={pkg.title}
-            allow="fullscreen"
-            onLoad={handleIframeLoad}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <div className="text-center space-y-3">
-              <Shield className="h-12 w-12 mx-auto opacity-20" />
-              <p className="text-lg font-medium">No entry point found</p>
-              <p className="text-sm opacity-70">This package may still be processing or has no HTML entry point</p>
-              {pkg.status === 'processing' && (
-                <p className="text-xs text-amber-400">Package is still being processed. Please check back shortly.</p>
-              )}
-              {pkg.originalZipUrl && (
-                <Button variant="outline" className="mt-2 border-gray-700 text-gray-300 hover:bg-gray-800" asChild>
-                  <a href={pkg.originalZipUrl} download target="_blank" rel="noreferrer">
-                    <Download className="h-4 w-4 mr-2" />Download ZIP
-                  </a>
-                </Button>
-              )}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {showSidebar && (
+          <aside className={`hidden md:flex w-56 shrink-0 flex-col border-r p-4 ${isLightLmsShell ? "border-gray-200 bg-white text-gray-900" : "border-gray-800 bg-gray-900 text-gray-100"}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-wider ${isLightLmsShell ? "text-gray-500" : "text-gray-400"}`}>Package overview</p>
+            <p className="mt-3 text-sm font-medium leading-snug">{pkg.title}</p>
+            {pkg.description && <p className={`mt-2 text-xs leading-relaxed ${isLightLmsShell ? "text-gray-500" : "text-gray-400"}`}>{pkg.description}</p>}
+            <div className={`mt-5 rounded-md border p-3 text-xs ${isLightLmsShell ? "border-gray-200 bg-gray-50 text-gray-600" : "border-gray-800 bg-gray-950/40 text-gray-300"}`}>
+              <p className="font-medium">Learner status</p>
+              <p className="mt-1 capitalize">{completionStatus.replaceAll("_", " ")}</p>
             </div>
-          </div>
+          </aside>
+        )}
+        <div className="flex-1 relative min-w-0 overflow-hidden">
+          {playerUrl ? (
+            <iframe
+              ref={iframeRef}
+              src={playerUrl}
+              className="w-full h-full border-0"
+              title={pkg.title}
+              allow="fullscreen"
+              onLoad={handleIframeLoad}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <div className="text-center space-y-3">
+                <Shield className="h-12 w-12 mx-auto opacity-20" />
+                <p className="text-lg font-medium">No entry point found</p>
+                <p className="text-sm opacity-70">This package may still be processing or has no HTML entry point</p>
+                {pkg.status === 'processing' && <p className="text-xs text-amber-400">Package is still being processed. Please check back shortly.</p>}
+                {pkg.originalZipUrl && (
+                  <Button variant="outline" className="mt-2 border-gray-700 text-gray-300 hover:bg-gray-800" asChild>
+                    <a href={pkg.originalZipUrl} download target="_blank" rel="noreferrer"><Download className="h-4 w-4 mr-2" />Download ZIP</a>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        {allowNotes && (
+          <aside className={`hidden lg:flex w-72 shrink-0 flex-col border-l p-4 ${isLightLmsShell ? "border-gray-200 bg-white" : "border-gray-800 bg-gray-900"}`}>
+            <Label htmlFor="learner-package-notes" className={isLightLmsShell ? "text-gray-900" : "text-gray-100"}>My notes</Label>
+            <p className={`mt-1 text-xs ${isLightLmsShell ? "text-gray-500" : "text-gray-400"}`}>Notes are retained in this browser for this package.</p>
+            <textarea id="learner-package-notes" value={learnerNotes} onChange={(event) => updateLearnerNotes(event.target.value)} placeholder="Write notes while you learn…" className={`mt-3 min-h-0 flex-1 resize-none rounded-md border p-3 text-sm outline-none focus:ring-2 focus:ring-primary ${isLightLmsShell ? "border-gray-200 bg-gray-50 text-gray-900" : "border-gray-800 bg-gray-950 text-gray-100"}`} />
+          </aside>
         )}
       </div>
 
