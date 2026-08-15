@@ -713,7 +713,7 @@ export default function FileDetailPage() {
     { enabled: !!orgId && orgReady }
   );
   const { data: versions } = trpc.versions.list.useQuery({ packageId });
-  const { data: perms } = trpc.permissions.get.useQuery({ packageId });
+  const { data: perms } = trpc.permissions.getManaged.useQuery({ packageId });
   const { data: analytics } = trpc.analytics.byPackage.useQuery({ packageId });
 
   const utils = trpc.useUtils();

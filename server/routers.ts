@@ -230,6 +230,17 @@ async function grantTeachificSchoolAccess(userId: number) {
   }
 }
 
+async function requireActivePackageAdmin(userId: number, userRole: string, packageId: number) {
+  const packageRecord = await getPackageById(packageId);
+  if (!packageRecord) throw new TRPCError({ code: "NOT_FOUND" });
+  const activeOrgId = await getOrgIdForUserWithFallback(userId, userRole);
+  if (!activeOrgId || activeOrgId !== packageRecord.orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
+  }
+  await requireOrgAdmin(userId, userRole, packageRecord.orgId);
+  return packageRecord;
+}
+
 // ─── App Router ────────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -2602,11 +2613,19 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
   versions: router({
     list: protectedProcedure
       .input(z.object({ packageId: z.number() }))
-      .query(({ input }) => getVersionsByPackage(input.packageId)),
+      .query(async ({ input, ctx }) => {
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
+        return getVersionsByPackage(input.packageId);
+      }),
 
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(({ input }) => getVersionById(input.id)),
+      .query(async ({ input, ctx }) => {
+        const version = await getVersionById(input.id);
+        if (!version) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, version.packageId);
+        return version;
+      }),
 
     create: protectedProcedure
       .input(z.object({
@@ -2621,9 +2640,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         fileCount: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const pkg = await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
         // Mark the currently active version as replaced
-        const pkg = await getPackageById(input.packageId);
-        if (pkg?.currentVersionId) {
+        if (pkg.currentVersionId) {
           await setVersionReplacedAt(pkg.currentVersionId, new Date());
         }
         const latestNum = await getLatestVersionNumber(input.packageId);
@@ -2644,10 +2663,14 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
 
     restore: protectedProcedure
       .input(z.object({ packageId: z.number(), versionId: z.number() }))
-      .mutation(async ({ input }) => {
-        const pkg = await getPackageById(input.packageId);
+      .mutation(async ({ input, ctx }) => {
+        const pkg = await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
+        const targetVersion = await getVersionById(input.versionId);
+        if (!targetVersion || targetVersion.packageId !== input.packageId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The requested version does not belong to this content package." });
+        }
         // Mark the currently active version as replaced (now)
-        if (pkg?.currentVersionId && pkg.currentVersionId !== input.versionId) {
+        if (pkg.currentVersionId && pkg.currentVersionId !== input.versionId) {
           await setVersionReplacedAt(pkg.currentVersionId, new Date());
         }
         // Restore the target version: clear its replacedAt and set as current
@@ -2658,7 +2681,8 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
 
     purgeExpired: protectedProcedure
       .input(z.object({ packageId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
         const cutoff = new Date(Date.now() - THIRTY_DAYS_MS);
         const versions = await getVersionsByPackage(input.packageId);
@@ -2673,11 +2697,21 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
 
     assets: protectedProcedure
       .input(z.object({ versionId: z.number() }))
-      .query(({ input }) => getFileAssetsByVersion(input.versionId)),
+      .query(async ({ input, ctx }) => {
+        const version = await getVersionById(input.versionId);
+        if (!version) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, version.packageId);
+        return getFileAssetsByVersion(input.versionId);
+      }),
 
     entryPoint: protectedProcedure
       .input(z.object({ versionId: z.number() }))
-      .query(({ input }) => getEntryPointAsset(input.versionId)),
+      .query(async ({ input, ctx }) => {
+        const version = await getVersionById(input.versionId);
+        if (!version) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, version.packageId);
+        return getEntryPointAsset(input.versionId);
+      }),
   }),
 
   // ── Permissions ───────────────────────────────────────────────────────────
@@ -2686,7 +2720,14 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .input(z.object({ packageId: z.number() }))
       .query(({ input }) => getPermissions(input.packageId)),
 
-    update: adminProcedure
+    getManaged: protectedProcedure
+      .input(z.object({ packageId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
+        return getPermissions(input.packageId);
+      }),
+
+    update: protectedProcedure
       .input(z.object({
         packageId: z.number(),
         allowDownload: z.boolean().optional(),
@@ -2701,7 +2742,8 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         allowedOrgIds: z.array(z.number()).optional(),
         allowedUserIds: z.array(z.number()).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
         const { packageId, allowedEmbedDomains, allowedOrgIds, allowedUserIds, ...rest } = input;
         const existing = await getPermissions(packageId);
         if (!existing) await createPermissions(packageId);
@@ -2714,9 +2756,10 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         return getPermissions(packageId);
       }),
 
-    generateShareToken: adminProcedure
+    generateShareToken: protectedProcedure
       .input(z.object({ packageId: z.number(), expiresInDays: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);
         const token = nanoid(32);
         const expiresAt = input.expiresInDays
           ? new Date(Date.now() + input.expiresInDays * 86400000)

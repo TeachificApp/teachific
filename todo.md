@@ -26,6 +26,7 @@
 - [x] Apply organization-owned LMS shell branding, core visibility, and light/dark theme settings during package playback
 - [x] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
 - [x] Require explicit active-organization scope for administrator content package list and management reads
+- [x] Enforce active-organization authorization for content package versions and permission management
 - [x] Link Course Builder settings to the organization-owned after-purchase automation editor
 - [x] Embed or render direct Course Builder controls for welcome, completion, and upsell automation settings
 - [x] Verify whether course waitlistEnabled is distinct from availability status and expose the persisted control when applicable

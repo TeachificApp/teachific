@@ -423,6 +423,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(packageRouterSource).toContain("input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
     expect(packageRouterSource).toContain("Content can only be created in the active organization.");
     expect(packageRouterSource).toContain("activeOrgId !== existingPackage.orgId");
+    expect(packageRouterSource).toContain("getManaged: protectedProcedure");
+    expect(packageRouterSource).toContain("await requireActivePackageAdmin(ctx.user.id, ctx.user.role, input.packageId);");
     expect(filesPageSource).toContain("trpc.packages.list.useQuery");
     const lmsHelpersSource = readFileSync(new URL("../server/routers/lmsHelpers.ts", import.meta.url), "utf8");
     expect(lmsHelpersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);");
