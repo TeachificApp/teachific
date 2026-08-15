@@ -11,7 +11,7 @@ import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { sql, eq, and, isNull, or } from "drizzle-orm";
-import { orderBumps, orderBumpConversions, lmsPricingOptions } from "../../drizzle/schema";
+import { orderBumps, orderBumpConversions, lmsPricingOptions, lmsCourses, digitalProducts } from "../../drizzle/schema";
 import { requireOrgAdmin } from "../db";
 
 // Helper to get DB
@@ -195,21 +195,27 @@ export const orderBumpsPublicRouter = router({
     }))
     .query(async ({ input }) => {
       const db = await getDb();
+      if (input.triggerType !== "course" && input.triggerType !== "quiz" && input.triggerType !== "download") return [];
+      const [triggerProduct] = input.triggerType === "download"
+        ? await db.select({ orgId: digitalProducts.orgId }).from(digitalProducts).where(eq(digitalProducts.id, input.triggerProductId)).limit(1)
+        : await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.triggerProductId)).limit(1);
+      if (!triggerProduct) return [];
       const baseConditions = [
-        eq(orderBumps.triggerType, input.triggerType),
+        eq(orderBumps.orgId, triggerProduct.orgId),
+        eq(orderBumps.triggerProductType, input.triggerType),
         eq(orderBumps.triggerProductId, input.triggerProductId),
         eq(orderBumps.isActive, true),
       ];
       if (input.timing) {
-        baseConditions.push(eq(orderBumps.timing, input.timing));
+        baseConditions.push(eq(orderBumps.placement, input.timing));
       }
 
       // Conditional pricing option filter:
       // Show bumps that apply to ALL pricing options (null) OR to this specific one
       if (input.triggerPricingOptionId != null) {
         const pricingOptionFilter = or(
-          isNull(orderBumps.triggerPricingOptionId),
-          eq(orderBumps.triggerPricingOptionId, input.triggerPricingOptionId),
+          isNull(orderBumps.pricingOptionId),
+          eq(orderBumps.pricingOptionId, input.triggerPricingOptionId),
         );
         const rows = await db
           .select()
