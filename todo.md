@@ -18,6 +18,8 @@
 - [x] Enforce authenticated user and organization ownership in chunked new-package upload sessions
 - [x] Enforce authenticated user and organization ownership for chunked package version upload session initiation, chunks, and finalization
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
+- [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
+- [ ] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 
 ## Phase 1: Database Schema & Migrations

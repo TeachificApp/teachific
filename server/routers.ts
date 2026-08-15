@@ -57,6 +57,7 @@ import {
   setVersionReplacedAt,
   deleteVersionAssets,
   getOrgIdForUser,
+  requireOrgAdmin,
   getPlatformSettings,
   updatePlatformSettings,
   updateUser,
@@ -2402,6 +2403,7 @@ export const appRouter = router({
         lmsShellConfig: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         await createPackage({
           orgId: input.orgId,
           uploadedBy: ctx.user.id,
