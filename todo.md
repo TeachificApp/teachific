@@ -4525,7 +4525,7 @@
 - [ ] InlineCheckoutBlock: same — dollars throughout, remove fmt(cents/100) pattern
 - [ ] LandingPageBuilder (admin): remove all item.price/100 display hacks; remove *100 catalog assignments; remove /100 in price input value; remove *100 in price input onChange; fix "Price (cents)" labels to "Price ($)"
 - [ ] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
-- [ ] embeddedCheckoutRouter: accept productPrice and bump prices in dollars; multiply by 100 only when calling Stripe
+- [x] embeddedCheckoutRouter: preserve dollar-denominated pending purchase storage while converting to cents only for Stripe payment intents
 - [ ] lmsEnrollmentAdminRouter CSV export: remove /100 from orderAmount (stored in dollars)
 - [ ] RelatedProductsBlock: remove *100 for membership price; update formatPrice to not divide by 100
 

@@ -231,7 +231,7 @@ export const embeddedCheckoutRouter = router({
         productName: input.productName,
         productType: input.productType,
         orderBumps: input.selectedBumps.length > 0 ? JSON.stringify(input.selectedBumps.map(b => ({ title: b.title, price: b.price }))) : null,
-        amountPaid: totalAmountCents,
+        amountPaid: totalAmount,
         currency: "usd",
         stripePaymentIntentId: paymentIntent.id,
         sourceType: input.sourceType,

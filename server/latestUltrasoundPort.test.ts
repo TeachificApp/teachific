@@ -186,6 +186,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(themeRouterSource).toContain("customCss: (org as any).customCss ?? null");
   });
 
+  it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
+    const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
+    expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");
+    expect(embeddedCheckoutSource).toContain("amountPaid: totalAmount,");
+    expect(embeddedCheckoutSource).not.toContain("amountPaid: totalAmountCents,");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
