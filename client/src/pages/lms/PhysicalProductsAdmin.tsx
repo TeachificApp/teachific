@@ -74,7 +74,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
       ) : (
         <div className="grid gap-3">
           {products.map((p) => (
-            <Card key={p.id} className="hover:border-teal-500/50 transition-colors">
+            <Card key={p.id} className="hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
                 {p.thumbnailUrl ? (
                   <img src={p.thumbnailUrl} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" />
@@ -88,7 +88,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
                     <span className="font-medium truncate">{p.title}</span>
                     <StatusBadge status={p.status} />
                     {p.checkoutMode !== "native" && (
-                      <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">
+                      <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[var(--org-primary)]">
                         {p.checkoutMode === "shopify" ? "Shopify" : "External"}
                       </Badge>
                     )}
@@ -195,7 +195,7 @@ function PricingOptionsManager({ productId }: { productId: number }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-sm flex items-center gap-2"><DollarSign className="w-4 h-4 text-teal-600" /> Pricing Options</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2"><DollarSign className="w-4 h-4 text-[var(--org-primary)]" /> Pricing Options</CardTitle>
         <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)}>
           <Plus className="w-4 h-4 mr-1" /> Add Option
         </Button>
@@ -273,7 +273,7 @@ function OrdersTab({ productId }: { productId: number }) {
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
     processing: "bg-blue-100 text-blue-700",
-    shipped: "bg-teal-100 text-teal-700",
+    shipped: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]",
     delivered: "bg-green-100 text-green-700",
     cancelled: "bg-gray-100 text-gray-600",
     refunded: "bg-red-100 text-red-600",
@@ -318,7 +318,7 @@ function OrdersTab({ productId }: { productId: number }) {
                       </div>
                     )}
                     {order.trackingNumber && (
-                      <div className="text-xs text-teal-600 mt-1">
+                      <div className="text-xs text-[var(--org-primary)] mt-1">
                         Tracking: {order.trackingCarrier} {order.trackingNumber}
                       </div>
                     )}
@@ -379,13 +379,13 @@ function AnalyticsTab({ productId }: { productId: number }) {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-teal-600">{data.totalOrders}</div>
+            <div className="text-2xl font-bold text-[var(--org-primary)]">{data.totalOrders}</div>
             <div className="text-sm text-muted-foreground">Total Orders</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-teal-600">${(data.totalRevenue / 100).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-[var(--org-primary)]">${Number(data.totalRevenue ?? 0).toFixed(2)}</div>
             <div className="text-sm text-muted-foreground">Total Revenue</div>
           </CardContent>
         </Card>
@@ -430,7 +430,7 @@ function GrantAccessDialog({ open, productId, onClose }: { open: boolean; produc
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-600" /> Grant Product Access</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[var(--org-primary)]" /> Grant Product Access</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <Label>User Email</Label>
@@ -445,8 +445,8 @@ function GrantAccessDialog({ open, productId, onClose }: { open: boolean; produc
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">User not found.</p>
           )}
           {searchResult && (
-            <div className="bg-teal-50 border border-teal-200 rounded p-2">
-              <p className="text-sm text-teal-800 font-medium">Found: {searchResult.name ?? searchResult.email}</p>
+            <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded p-2">
+              <p className="text-sm text-[var(--org-primary)] font-medium">Found: {searchResult.name ?? searchResult.email}</p>
             </div>
           )}
         </div>
@@ -589,12 +589,12 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         </Button>
         {product.slug && (
           <a href={`/product/${product.slug}?preview=admin`} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600">
+            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)]">
               <Eye className="w-3 h-3 mr-1" /> Preview Sales Page
             </Button>
           </a>
         )}
-        <Button size="sm" variant="outline" className="text-xs text-teal-600 border-teal-300 hover:bg-teal-50"
+        <Button size="sm" variant="outline" className="text-xs text-[var(--org-primary)] border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
           onClick={() => setShowGrantDialog(true)}>
           <UserPlus className="w-3 h-3 mr-1" /> Grant Access
         </Button>
@@ -687,7 +687,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
           {/* URL & SEO */}
           <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Tag className="w-4 h-4 text-teal-600" /> URL &amp; SEO</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Tag className="w-4 h-4 text-[var(--org-primary)]" /> URL &amp; SEO</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm">URL Slug</Label>
@@ -761,7 +761,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                   { value: "shopify", label: "Shopify", desc: "Redirect to a Shopify product URL or embed a Shopify Buy Button." },
                   { value: "external", label: "External URL", desc: "Redirect to any external checkout URL (e.g. Gumroad, Etsy, WooCommerce)." },
                 ].map((opt) => (
-                  <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${form.checkoutMode === opt.value ? "border-teal-500 bg-teal-50/50" : "border-border hover:border-teal-300"}`}>
+                  <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${form.checkoutMode === opt.value ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-border hover:border-[var(--org-primary)]"}`}>
                     <input type="radio" name="checkoutMode" value={opt.value} checked={form.checkoutMode === opt.value} onChange={() => setForm({ ...form, checkoutMode: opt.value })} className="mt-0.5" />
                     <div>
                       <div className="text-sm font-medium">{opt.label}</div>
@@ -825,21 +825,21 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         {/* ── Sales Page Tab ── */}
         <TabsContent value="landing" className="mt-4 space-y-3">
           {/* Info banner */}
-          <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-            <LayoutTemplate className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+          <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+            <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-teal-800">Sales Page Builder</p>
-              <p className="text-xs text-teal-600 mt-0.5">Design your product sales page with blocks, images, pricing sections, and more.</p>
+              <p className="text-sm font-medium text-[var(--org-primary)]">Sales Page Builder</p>
+              <p className="text-xs text-[var(--org-primary)] mt-0.5">Design your product sales page with blocks, images, pricing sections, and more.</p>
             </div>
           </div>
           {/* Quick actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button
               onClick={() => navigate(`/admin/products/${productId}/landing-builder`)}
-              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-colors text-left"
+              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors text-left"
             >
-              <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <LayoutTemplate className="w-5 h-5 text-teal-600" />
+              <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+                <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)]" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-800">Open Full Builder</p>
@@ -860,10 +860,10 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
             )}
           </div>
           {/* AI Generate */}
-          <div className="bg-white border border-teal-200 rounded-xl p-5">
+          <div className="bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-5">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-teal-600" />
+              <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 text-[var(--org-primary)]" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-800">AI Generate Sales Page</p>
@@ -871,7 +871,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               </div>
             </div>
             <Button
-              className="bg-teal-600 hover:bg-teal-700 text-white gap-2 w-full"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white gap-2 w-full"
               disabled={aiGenerateLandingPage.isPending}
               onClick={() => aiGenerateLandingPage.mutate({ productId })}
             >
@@ -880,7 +880,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                 : <><Sparkles className="w-4 h-4" /> Generate Sales Page with AI</>}
             </Button>
             {aiGenerateLandingPage.isPending && (
-              <p className="text-xs text-teal-500 text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
+              <p className="text-xs text-[var(--org-primary)] text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
             )}
           </div>
         </TabsContent>
