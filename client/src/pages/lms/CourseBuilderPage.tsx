@@ -8251,7 +8251,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-20 bg-gray-200 rounded-full h-1.5">
-                        <div className="h-1.5 bg-[#189aa1] rounded-full" style={{ width: `${e.progressPct ?? 0}%` }} />
+                        <div className="h-1.5 bg-[var(--org-primary)] rounded-full" style={{ width: `${e.progressPct ?? 0}%` }} />
                       </div>
                       <span className="text-xs text-gray-600">{e.progressPct ?? 0}%</span>
                     </div>
