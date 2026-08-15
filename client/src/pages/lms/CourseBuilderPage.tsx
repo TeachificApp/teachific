@@ -124,7 +124,7 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: course.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 px-4 py-3 hover:border-teal-300 transition-colors">
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 bg-white rounded-lg border border-gray-200 px-4 py-3 hover:border-[var(--org-primary)] transition-colors">
       <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none" title="Drag to reorder">
         <GripVertical className="w-4 h-4" />
       </button>
@@ -134,7 +134,7 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
         <p className="text-xs text-gray-400">{course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`}</p>
       </div>
       <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(course.id)}>
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => onEdit(course.id)}>
         <Edit2 className="w-3 h-3 mr-1" /> Edit
       </Button>
       <SsoLearnLinkButton slug={course.slug} />
@@ -233,7 +233,7 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
             </Select>
           )}
           {data && <span className="text-sm text-gray-500">{data.total} {data.total !== 1 ? typeLabelPlural : typeLabel.toLowerCase()}</span>}
-          {reorderMode && <span className="text-xs text-teal-600 font-medium">Drag rows to set library display order</span>}
+          {reorderMode && <span className="text-xs text-[var(--org-primary)] font-medium">Drag rows to set library display order</span>}
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant={reorderMode ? "default" : "outline"} className={reorderMode ? "h-8 hover:" : "h-8"} onClick={() => setReorderMode(r => !r)}>
@@ -270,8 +270,8 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
           </SortableContext>
           <DragOverlay>
             {activeCourse && (
-              <div className="flex items-center gap-3 bg-white rounded-lg border-2 border-teal-400 shadow-lg px-4 py-3">
-                <GripVertical className="w-4 h-4 text-teal-400" />
+              <div className="flex items-center gap-3 bg-white rounded-lg border-2 border-[var(--org-primary)] shadow-lg px-4 py-3">
+                <GripVertical className="w-4 h-4 text-[var(--org-primary)]" />
                 <span className="text-gray-400">{TYPE_ICONS[activeCourse.type]}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 text-sm truncate">{activeCourse.title}</p>
@@ -501,8 +501,8 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
             <div className="py-2">
               {aiStep === "input" ? (
                 <div className="space-y-4">
-                  <div className="bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-lg p-3">
-                    <p className="text-sm text-teal-700 dark:text-teal-300 flex items-center gap-2">
+                  <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3">
+                    <p className="text-sm text-[var(--org-primary)] flex items-center gap-2">
                       <Sparkles className="w-4 h-4" />
                       AI will generate a complete {type === "quiz" ? "quiz with questions" : "course curriculum with sections and lessons"} plus a full landing page based on your topics.
                     </p>
@@ -550,22 +550,22 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                     <>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label className="text-sm">Number of Modules: <span className="font-bold text-teal-600">{aiModuleCount}</span></Label>
+                          <Label className="text-sm">Number of Modules: <span className="font-bold text-[var(--org-primary)]">{aiModuleCount}</span></Label>
                           <input
                             type="range" min={3} max={20} step={1}
                             value={aiModuleCount}
                             onChange={e => setAiModuleCount(Number(e.target.value))}
-                            className="mt-2 w-full accent-teal-600"
+                            className="mt-2 w-full accent-[var(--org-primary)]"
                           />
                           <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>20</span></div>
                         </div>
                         <div>
-                          <Label className="text-sm">Lessons per Module: <span className="font-bold text-teal-600">{aiLessonsPerModule}</span></Label>
+                          <Label className="text-sm">Lessons per Module: <span className="font-bold text-[var(--org-primary)]">{aiLessonsPerModule}</span></Label>
                           <input
                             type="range" min={3} max={10} step={1}
                             value={aiLessonsPerModule}
                             onChange={e => setAiLessonsPerModule(Number(e.target.value))}
-                            className="mt-2 w-full accent-teal-600"
+                            className="mt-2 w-full accent-[var(--org-primary)]"
                           />
                           <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>10</span></div>
                         </div>
@@ -576,7 +576,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                           id="aiGenerateQuizzes"
                           checked={aiGenerateQuizzes}
                           onChange={e => setAiGenerateQuizzes(e.target.checked)}
-                          className="accent-teal-600 w-4 h-4"
+                          className="accent-[var(--org-primary)] w-4 h-4"
                         />
                         <label htmlFor="aiGenerateQuizzes" className="text-sm cursor-pointer">
                           Generate a <strong>5-question quiz</strong> after each lesson
@@ -608,11 +608,11 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                   </div>
                   <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-3 text-sm max-h-[50vh] overflow-y-auto">
                     <div>
-                      <span className="font-semibold text-teal-700 dark:text-teal-400">Title:</span>
+                      <span className="font-semibold text-[var(--org-primary)]">Title:</span>
                       <Input value={aiPreview?.title ?? ""} onChange={e => setAiPreview((p: any) => ({ ...p, title: e.target.value }))} className="mt-1" />
                     </div>
                     <div>
-                      <span className="font-semibold text-teal-700 dark:text-teal-400">Subtitle:</span>
+                      <span className="font-semibold text-[var(--org-primary)]">Subtitle:</span>
                       <Input value={aiPreview?.subtitle ?? ""} onChange={e => setAiPreview((p: any) => ({ ...p, subtitle: e.target.value }))} className="mt-1" />
                     </div>
                     {type !== "quiz" && Array.isArray(aiPreview?.sections) && (() => {
@@ -622,10 +622,10 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       return (
                         <div>
                           <div className="flex items-center gap-3 mb-2">
-                            <span className="font-semibold text-teal-700 dark:text-teal-400">Curriculum</span>
-                            <span className="text-xs bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded-full">{aiPreview.sections.length} modules</span>
+                            <span className="font-semibold text-[var(--org-primary)]">Curriculum</span>
+                            <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] px-2 py-0.5 rounded-full">{aiPreview.sections.length} modules</span>
                             <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">{totalLessons} lessons</span>
-                            {totalQuizzes > 0 && <span className="text-xs bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded-full">{totalQuizzes} quizzes</span>}
+                            {totalQuizzes > 0 && <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] px-2 py-0.5 rounded-full">{totalQuizzes} quizzes</span>}
                           </div>
                           <div className="mt-2 space-y-2">
                             {aiPreview.sections.map((sec: any, si: number) => (
@@ -638,7 +638,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                                         <span className="text-gray-400">{li + 1}.</span>
                                         <span className="font-medium text-gray-700 dark:text-gray-300">{les.title}</span>
                                         <span className="ml-auto text-gray-400 shrink-0">{les.durationMinutes ? `${les.durationMinutes}m` : ""}</span>
-                                        {les.quiz?.questions?.length > 0 && <span className="text-teal-500 shrink-0">+quiz</span>}
+                                        {les.quiz?.questions?.length > 0 && <span className="text-[var(--org-primary)] shrink-0">+quiz</span>}
                                       </div>
                                       {les.content && (
                                         <div className="mt-0.5 pl-4 text-gray-400 line-clamp-2" dangerouslySetInnerHTML={{ __html: les.content.replace(/<[^>]+>/g, ' ').slice(0, 120) + '...' }} />
@@ -654,13 +654,13 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                     })()}
                     {type === "quiz" && Array.isArray(aiPreview?.questions) && (
                       <div>
-                        <span className="font-semibold text-teal-700 dark:text-teal-400">Questions ({aiPreview.questions.length}):</span>
+                        <span className="font-semibold text-[var(--org-primary)]">Questions ({aiPreview.questions.length}):</span>
                         <div className="mt-2 space-y-2">
                           {aiPreview.questions.slice(0, 5).map((q: any, qi: number) => (
                             <div key={qi} className="border rounded p-2 text-xs">
                               <div className="font-medium">{qi + 1}. {q.question}</div>
                               <div className="mt-1 text-gray-500">{q.options?.join(" · ")}</div>
-                              <div className="text-teal-600 mt-1">✓ {q.correctAnswer}</div>
+                              <div className="text-[var(--org-primary)] mt-1">✓ {q.correctAnswer}</div>
                             </div>
                           ))}
                           {aiPreview.questions.length > 5 && <div className="text-xs text-gray-400">+ {aiPreview.questions.length - 5} more questions…</div>}
@@ -669,7 +669,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                     )}
                     {aiPreview?.landingPage && (
                       <div>
-                        <span className="font-semibold text-teal-700 dark:text-teal-400">Landing Page:</span>
+                        <span className="font-semibold text-[var(--org-primary)]">Landing Page:</span>
                         <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 space-y-1">
                           <div><strong>Hero:</strong> {aiPreview.landingPage.heroTitle}</div>
                           <div><strong>Subtitle:</strong> {aiPreview.landingPage.heroSubtitle}</div>
@@ -764,8 +764,8 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
         <GripVertical className="w-4 h-4 text-gray-400" />
       </button>
       <div className="flex flex-col gap-0">
-        <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
-        <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
+        <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
+        <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
       </div>
       <span className="text-gray-400">{TYPE_ICONS[lesson.type] ?? <FileText className="w-4 h-4" />}</span>
       <span className="text-sm text-gray-700 flex-1">{lesson.title}</span>
@@ -785,7 +785,7 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
       ) : (
         lesson.lessonStatus === "draft" && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">Draft</Badge>
       )}
-      {lesson.isPreview && <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">Preview</Badge>}
+      {lesson.isPreview && <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[var(--org-primary)]">Preview</Badge>}
       {lesson.requireVideoCompletion === 1 && <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Video req.</Badge>}
       {lesson.requireManualComplete === 1 && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Manual</Badge>}
       {onToggleCountTowardCompletion && (
@@ -797,15 +797,15 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
           }}
           className={`text-xs font-semibold px-2 py-0.5 rounded border transition-colors ${
             lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0
-              ? "text-teal-600 border-teal-300 bg-teal-50 hover:bg-teal-100"
-              : "text-gray-400 border-gray-200 bg-white hover:bg-teal-50 hover:text-teal-600 hover:border-teal-300"
+              ? "text-[var(--org-primary)] border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]"
+              : "text-gray-400 border-gray-200 bg-white hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] hover:border-[var(--org-primary)]"
           }`}
         >
           {lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0 ? "Counts" : "Excluded"}
         </button>
       )}
       {lesson.type === "quiz" && (
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onQuiz(lesson)}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => onQuiz(lesson)}>
           <HelpCircle className="w-3 h-3 mr-1" /> Quiz
         </Button>
       )}
@@ -814,7 +814,7 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
           <Copy className="w-3 h-3" />
         </Button>
       )}
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(lesson)}>
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => onEdit(lesson)}>
         <Edit2 className="w-3 h-3" />
       </Button>
       <Button size="sm" variant="ghost" className="h-7 text-red-400 hover:bg-red-50" onClick={() => onDelete(lesson.id)}>
@@ -861,8 +861,8 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
           <GripVertical className="w-4 h-4 text-gray-400" />
         </button>
         <div className="flex flex-col gap-0">
-          <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
-          <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
+          <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
+          <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
         </div>
         {editingTitle ? (
           <input
@@ -871,12 +871,12 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
             onChange={e => setTitleDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { setEditingTitle(false); setTitleDraft(section.title); } }}
-            className="flex-1 font-medium text-sm text-gray-800 bg-white border border-teal-400 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className="flex-1 font-medium text-sm text-gray-800 bg-white border border-[var(--org-primary)] rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
             autoFocus
           />
         ) : (
           <span
-            className="font-medium text-sm text-gray-800 flex-1 cursor-pointer hover:text-teal-700 group/title flex items-center gap-1"
+            className="font-medium text-sm text-gray-800 flex-1 cursor-pointer hover:text-[var(--org-primary)] group/title flex items-center gap-1"
             title="Click pencil or double-click to rename"
             onDoubleClick={() => { setTitleDraft(section.title); setEditingTitle(true); }}
           >
@@ -887,11 +887,11 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
               onClick={(e) => { e.stopPropagation(); setTitleDraft(section.title); setEditingTitle(true); }}
               title="Rename section"
             >
-              <Pencil className="w-3 h-3 text-gray-300 group-hover/title:text-teal-400 transition-colors hover:text-teal-600" />
+              <Pencil className="w-3 h-3 text-gray-300 group-hover/title:text-[var(--org-primary)] transition-colors hover:text-[var(--org-primary)]" />
             </button>
           </span>
         )}
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600" onClick={onAddLesson}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)]" onClick={onAddLesson}>
           <Plus className="w-3 h-3 mr-1" /> Add Lesson
         </Button>
         <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500 hover:bg-gray-100" title="Drip schedule" onClick={onDrip}>
@@ -903,7 +903,7 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
           </Button>
         )}
         {onSaveAsTemplate && (
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-500 hover:bg-teal-50" title="Save section as reusable template" onClick={onSaveAsTemplate}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" title="Save section as reusable template" onClick={onSaveAsTemplate}>
             <Save className="w-3 h-3 mr-1" /> Template
           </Button>
         )}
@@ -1169,12 +1169,12 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
         <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
         <Button
           size="sm" variant="outline"
-          className="h-8 text-xs text-teal-600 border-teal-300"
+          className="h-8 text-xs text-[var(--org-primary)] border-[var(--org-primary)]"
           onClick={() => openLearnLink(`/courses/${course.slug}/player`)}
         >
           <Eye className="w-3 h-3 mr-1" /> Preview Course
         </Button>
-        <Button size="sm" variant="outline" className="h-8 text-xs text-teal-600 border-teal-300 hover:bg-teal-50"
+        <Button size="sm" variant="outline" className="h-8 text-xs text-[var(--org-primary)] border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
           onClick={() => openLearnLink(`/courses/${course.slug}/player?preview=student`)}
         >
           <Users className="w-3 h-3 mr-1" /> Preview as Student
@@ -1212,13 +1212,13 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
           <div className="space-y-4">
             {/* Quick-add buttons at the top */}
             <div className="flex gap-2 flex-wrap items-center">
-              <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setAddLessonAtCourseLevel(true)}>
+              <Button size="sm" variant="outline" className="border-dashed border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => setAddLessonAtCourseLevel(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Lesson (No Section)
               </Button>
               <Button size="sm" variant="outline" className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => setAddSectionOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Section
               </Button>
-              <Button size="sm" className="bg-gradient-to-r from-[#189aa1] to-[#17a2b8] hover:from-[#147f86] hover:to-[#138496] text-white border-0 shadow-sm" onClick={() => setAiCourseGenOpen(true)}>
+              <Button size="sm" className="bg-[var(--org-primary)] hover:opacity-90 text-white border-0 shadow-sm" onClick={() => setAiCourseGenOpen(true)}>
                 <Sparkles className="w-4 h-4 mr-1" /> AI Generate Course
               </Button>
             </div>
@@ -1232,9 +1232,9 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
               {/* Top-level lessons (no section) */}
               {localTopLessons.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-teal-50 border-b border-teal-200">
-                    <span className="font-medium text-sm text-teal-800 flex-1">Course-Level Lessons</span>
-                    <span className="text-xs text-teal-600">Not inside any section</span>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-b border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
+                    <span className="font-medium text-sm text-[var(--org-primary)] flex-1">Course-Level Lessons</span>
+                    <span className="text-xs text-[var(--org-primary)]">Not inside any section</span>
                   </div>
                   <SortableContext items={localTopLessons.map((l: any) => l.id)} strategy={verticalListSortingStrategy}>
                     <div className="divide-y divide-gray-100">
@@ -4805,7 +4805,7 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
                         <span className="text-xs text-gray-500 ml-auto self-center">{selectedLessonIds.length} selected</span>
                       </div>
                       {courseLessonList.map(l => (
-                        <label key={l.id} className="flex items-center gap-2 cursor-pointer hover:bg-teal-50 rounded px-1 py-0.5">
+                        <label key={l.id} className="flex items-center gap-2 cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] rounded px-1 py-0.5">
                           <input type="checkbox" className="rounded" checked={selectedLessonIds.includes(l.id)} onChange={e => setSelectedLessonIds(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))} />
                           <span className="text-sm text-gray-700 truncate">{l.title}</span>
                         </label>
@@ -5217,7 +5217,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                         <span className="text-xs text-gray-500 ml-auto self-center">{selectedLessonIds.length} selected</span>
                       </div>
                       {courseLessonList.map(l => (
-                        <label key={l.id} className="flex items-center gap-2 cursor-pointer hover:bg-teal-50 rounded px-1 py-0.5">
+                        <label key={l.id} className="flex items-center gap-2 cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] rounded px-1 py-0.5">
                           <input type="checkbox" className="rounded" checked={selectedLessonIds.includes(l.id)} onChange={e => setSelectedLessonIds(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))} />
                           <span className="text-sm text-gray-700 truncate">{l.title}</span>
                         </label>
@@ -8274,7 +8274,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
                       {e.user?.id && (
                         <Button
                           size="sm" variant="ghost"
-                          className="h-7 w-7 p-0 text-teal-500 hover:bg-teal-50 hover:text-teal-700"
+                          className="h-7 w-7 p-0 text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)]"
                           title="View member profile"
                           onClick={() => window.open(`/admin/users/${e.user.id}`, '_blank')}
                         >
@@ -8637,7 +8637,7 @@ function CourseAnalyticsTab({ courseId }: { courseId: number }) {
           <div className="flex-1 bg-gray-200 rounded-full h-3">
             <div className="h-3 bg-[var(--org-primary)] rounded-full transition-all" style={{ width: `${data.avgProgress}%` }} />
           </div>
-          <span className="text-sm font-bold text-teal-700 w-10 text-right">{data.avgProgress}%</span>
+          <span className="text-sm font-bold text-[var(--org-primary)] w-10 text-right">{data.avgProgress}%</span>
         </div>
       </div>
 
@@ -8778,7 +8778,7 @@ function PricingOptionForm({
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
 
   return (
-    <div className="border border-teal-200 rounded-lg p-4 bg-teal-50/30 space-y-3">
+    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-4 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label className="text-xs font-medium">Label *</Label>
@@ -8940,7 +8940,7 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
       <button onClick={() => updateOption.mutate({ id: opt.id, isActive: !opt.isActive })} className="text-xs text-gray-400 hover:text-gray-600 p-1 flex-shrink-0" title={opt.isActive ? "Hide" : "Show"}>
         {opt.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
       </button>
-            <button onClick={() => { setEditingId(opt.id); setShowAdd(false); }} className="text-xs text-teal-500 hover:text-teal-700 p-1 flex-shrink-0">
+            <button onClick={() => { setEditingId(opt.id); setShowAdd(false); }} className="text-xs text-[var(--org-primary)] hover:opacity-80 p-1 flex-shrink-0">
         <Edit2 className="w-3.5 h-3.5" />
       </button>
       {courseSlug && (
@@ -9613,7 +9613,7 @@ function GlobalUnassignedPanel({ unassignedStudents, cohortGroups, courseId, onA
               <div key={s.userId} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-amber-50">
                 <input type="checkbox" checked={bulkSelected.includes(s.userId)}
                   onChange={e => setBulkSelected(prev => e.target.checked ? [...prev, s.userId] : prev.filter(id => id !== s.userId))}
-                  className="w-3.5 h-3.5 accent-teal-600" />
+                  className="w-3.5 h-3.5 accent-[var(--org-primary)]" />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium text-gray-800">{s.userName}</span>
                   <span className="text-xs text-gray-400 ml-2">{s.userEmail}</span>
@@ -9624,7 +9624,7 @@ function GlobalUnassignedPanel({ unassignedStudents, cohortGroups, courseId, onA
                     {cohortGroups.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="ghost" className="text-xs text-teal-600 hover:text-teal-800 h-7 px-2"
+                <Button size="sm" variant="ghost" className="text-xs text-[var(--org-primary)] hover:opacity-80 h-7 px-2"
                   disabled={!groupSelections[s.userId] || assignStudent.isPending}
                   onClick={() => assignStudent.mutate({ cohortGroupId: parseInt(groupSelections[s.userId]), userId: s.userId, courseId })}>
                   Assign
@@ -10092,13 +10092,13 @@ function CohortTab({ courseId }: { courseId: number }) {
         <div className="space-y-3">
           {/* Group selector banner when multi-cohort mode is on */}
           {multiCohortMode && cohortGroups.length > 0 && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-teal-700">Viewing group:</span>
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg px-3 py-2">
+              <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+              <span className="text-xs font-medium text-[var(--org-primary)]">Viewing group:</span>
               <select
                 value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
                 onChange={e => setContentGroupId(Number(e.target.value))}
-                className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                className="text-xs border border-[var(--org-primary)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
               >
                 {cohortGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -10251,13 +10251,13 @@ function CohortTab({ courseId }: { courseId: number }) {
                   });
                   const isToday = new Date().toDateString() === cellDate.toDateString();
                   cells.push(
-                    <div key={day} className={cn("min-h-[64px] border-r border-b border-gray-50 p-1", isToday && "bg-teal-50/40")}>
+                    <div key={day} className={cn("min-h-[64px] border-r border-b border-gray-50 p-1", isToday && "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]")}>
                       <span className={cn("text-xs font-medium block mb-1 w-6 h-6 flex items-center justify-center rounded-full",
                         isToday ? "bg-[var(--org-primary)] text-white" : "text-gray-500")}>{day}</span>
                       {daySessions.map(s => (
                         <div key={s.id}
                           className={cn("text-[10px] leading-tight rounded px-1 py-0.5 mb-0.5 cursor-pointer truncate",
-                            s.status === "published" ? "bg-teal-100 text-teal-800" :
+                            s.status === "published" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]" :
                             s.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600")}
                           title={s.title}
                           onClick={() => openSessionDialog(s)}
@@ -10280,13 +10280,13 @@ function CohortTab({ courseId }: { courseId: number }) {
         <div className="space-y-3">
           {/* Group selector banner when multi-cohort mode is on */}
           {multiCohortMode && cohortGroups.length > 0 && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-teal-700">Viewing group:</span>
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg px-3 py-2">
+              <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+              <span className="text-xs font-medium text-[var(--org-primary)]">Viewing group:</span>
               <select
                 value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
                 onChange={e => setContentGroupId(Number(e.target.value))}
-                className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                className="text-xs border border-[var(--org-primary)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
               >
                 {cohortGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -10350,13 +10350,13 @@ function CohortTab({ courseId }: { courseId: number }) {
         <div className="space-y-3">
           {/* Group selector banner when multi-cohort mode is on */}
           {multiCohortMode && cohortGroups.length > 0 && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-teal-700">Viewing group:</span>
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg px-3 py-2">
+              <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+              <span className="text-xs font-medium text-[var(--org-primary)]">Viewing group:</span>
               <select
                 value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
                 onChange={e => setContentGroupId(Number(e.target.value))}
-                className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                className="text-xs border border-[var(--org-primary)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
               >
                 {cohortGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -11117,7 +11117,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 !courseData?.multiCohortMode ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]" : "border-gray-200 hover:border-gray-300")}>
                 <input type="radio" name="cohortMode" checked={!courseData?.multiCohortMode}
                   onChange={() => updateCourse.mutate({ id: courseId, multiCohortMode: false })}
-                  className="mt-0.5 accent-teal-600" />
+                  className="mt-0.5 accent-[var(--org-primary)]" />
                 <div>
                   <div className="text-sm font-semibold text-gray-800">Single Cohort</div>
                   <div className="text-xs text-gray-500 mt-0.5">All enrolled students share the same live sessions, assignments, and recordings. No group separation.</div>
@@ -11128,7 +11128,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 courseData?.multiCohortMode ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]" : "border-gray-200 hover:border-gray-300")}>
                 <input type="radio" name="cohortMode" checked={!!courseData?.multiCohortMode}
                   onChange={() => updateCourse.mutate({ id: courseId, multiCohortMode: true })}
-                  className="mt-0.5 accent-teal-600" />
+                  className="mt-0.5 accent-[var(--org-primary)]" />
                 <div>
                   <div className="text-sm font-semibold text-gray-800">Multiple Cohort Groups</div>
                   <div className="text-xs text-gray-500 mt-0.5">Organise students into named groups (e.g. June 2026, January 2027). Each group has its own sessions, assignments, and recordings. Students only see their group's content.</div>
@@ -11403,7 +11403,7 @@ function LMSPublishDomainSettings() {
       {/* Header */}
       <div>
         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-          <Globe className="w-5 h-5 text-teal-600" />
+          <Globe className="w-5 h-5 text-[var(--org-primary)]" />
           Publish Domain Defaults
         </h2>
         <p className="text-sm text-gray-500 mt-1">
@@ -11465,15 +11465,15 @@ function LMSPublishDomainSettings() {
       </Card>
 
       {/* Note about per-item overrides */}
-      <Card className="border-0 shadow-sm bg-teal-50">
+      <Card className="border-0 shadow-sm bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]">
         <CardContent className="pt-4 pb-4">
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0">
-              <Globe className="w-4 h-4 text-teal-600" />
+            <div className="w-8 h-8 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] flex items-center justify-center flex-shrink-0">
+              <Globe className="w-4 h-4 text-[var(--org-primary)]" />
             </div>
             <div>
-              <p className="text-sm font-medium text-teal-800">Per-item domain overrides</p>
-              <p className="text-xs text-teal-700 mt-0.5">
+              <p className="text-sm font-medium text-[var(--org-primary)]">Per-item domain overrides</p>
+              <p className="text-xs text-[var(--org-primary)] mt-0.5">
                 Each individual course, download, product, funnel, and form has a <strong>Publish Domain</strong> field
                 in its settings that overrides the default above. Leave it blank to use the default.
               </p>
