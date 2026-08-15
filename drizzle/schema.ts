@@ -4438,6 +4438,8 @@ export type AffiliateClick = typeof affiliateClicks.$inferSelect;
 
 export const payoutRequests = mysqlTable("payout_requests", {
   id: int("id").autoincrement().primaryKey(),
+  // Nullable for legacy records that cannot be unambiguously attributed during migration.
+  orgId: int("org_id"),
   requestorType: mysqlEnum("requestor_type", ["affiliate", "instructor"]).notNull(),
   affiliateId: int("affiliate_id"),
   instructorUserId: int("instructor_user_id"),

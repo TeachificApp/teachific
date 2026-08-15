@@ -2167,9 +2167,10 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const conditions = input.status && input.status !== "all"
-        ? [eq(payoutRequests.status, input.status as any)]
-        : [];
+        ? [eq(payoutRequests.orgId, orgId), eq(payoutRequests.status, input.status as any)]
+        : [eq(payoutRequests.orgId, orgId)];
       const rows = await db.select({
         id: payoutRequests.id,
         requestorType: payoutRequests.requestorType,
@@ -2208,7 +2209,10 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const req = await db.select().from(payoutRequests).where(eq(payoutRequests.id, input.id)).then(r => r[0]);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const req = await db.select().from(payoutRequests)
+        .where(and(eq(payoutRequests.id, input.id), eq(payoutRequests.orgId, orgId)))
+        .then(r => r[0]);
       if (!req) throw new TRPCError({ code: "NOT_FOUND" });
       const now = new Date();
       await db.update(payoutRequests).set({
@@ -2369,14 +2373,43 @@ CRITICAL REQUIREMENTS:
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUser(ctx.user.id);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Select an organization before requesting a payout." });
       let affiliateId: number | null = null;
       if (input.requestorType === "affiliate") {
         const aff = await db.select({ id: lmsAffiliates.id }).from(lmsAffiliates)
           .where(eq(lmsAffiliates.userId, ctx.user.id)).then(r => r[0]);
         if (!aff) throw new TRPCError({ code: "FORBIDDEN", message: "No affiliate account found for your user." });
+        const [orgAffiliateLink] = await db.select({ id: affiliateLinks.id })
+          .from(affiliateLinks)
+          .innerJoin(lmsCourses, eq(lmsCourses.id, affiliateLinks.courseId))
+          .where(and(eq(affiliateLinks.affiliateId, aff.id), eq(lmsCourses.orgId, orgId)))
+          .limit(1);
+        if (!orgAffiliateLink) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "No affiliate access is available for the active organization." });
+        }
+        const [{ approvedCommission }] = await db.select({
+          approvedCommission: sql<string>`COALESCE(SUM(${lmsAffiliateConversions.commissionAmount}), 0)`,
+        }).from(lmsAffiliateConversions).where(and(
+          eq(lmsAffiliateConversions.affiliateId, aff.id),
+          eq(lmsAffiliateConversions.orgId, orgId),
+          eq(lmsAffiliateConversions.status, "approved"),
+        ));
+        const [{ committedPayouts }] = await db.select({
+          committedPayouts: sql<string>`COALESCE(SUM(${payoutRequests.amount}), 0)`,
+        }).from(payoutRequests).where(and(
+          eq(payoutRequests.affiliateId, aff.id),
+          eq(payoutRequests.orgId, orgId),
+          inArray(payoutRequests.status, ["pending", "approved", "paid"]),
+        ));
+        const availableCommission = Number(approvedCommission ?? 0) - Number(committedPayouts ?? 0);
+        if (input.amount > availableCommission) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Requested payout exceeds approved commission available for the active organization." });
+        }
         affiliateId = aff.id;
       }
       await db.insert(payoutRequests).values({
+        orgId,
         requestorType: input.requestorType,
         affiliateId,
         instructorUserId: input.requestorType === "instructor" ? ctx.user.id : null,
@@ -2392,11 +2425,13 @@ CRITICAL REQUIREMENTS:
     .query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUser(ctx.user.id);
+      if (!orgId) return [];
       const aff = await db.select({ id: lmsAffiliates.id }).from(lmsAffiliates)
         .where(eq(lmsAffiliates.userId, ctx.user.id)).then(r => r[0]);
       const conditions = aff
-        ? [or(eq(payoutRequests.affiliateId, aff.id), eq(payoutRequests.instructorUserId, ctx.user.id))]
-        : [eq(payoutRequests.instructorUserId, ctx.user.id)];
+        ? [eq(payoutRequests.orgId, orgId), or(eq(payoutRequests.affiliateId, aff.id), eq(payoutRequests.instructorUserId, ctx.user.id))]
+        : [eq(payoutRequests.orgId, orgId), eq(payoutRequests.instructorUserId, ctx.user.id)];
       return db.select().from(payoutRequests)
         .where(and(...conditions))
         .orderBy(desc(payoutRequests.requestedAt));

@@ -286,6 +286,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("instructor.courseShares.length > 0");
   });
 
+  it("scopes payout request administration and self-service history to the active organization", () => {
+    const routerSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const migrationSource = readFileSync(new URL("../drizzle/0001_nosy_fixer.sql", import.meta.url), "utf8");
+    expect(routerSource).toContain("eq(payoutRequests.orgId, orgId)");
+    expect(routerSource).toContain("Select an organization before requesting a payout.");
+    expect(routerSource).toContain("orgId,\n        requestorType: input.requestorType");
+    expect(routerSource).toContain("eq(payoutRequests.id, input.id), eq(payoutRequests.orgId, orgId)");
+    expect(routerSource).toContain("No affiliate access is available for the active organization.");
+    expect(routerSource).toContain("eq(lmsCourses.orgId, orgId)");
+    expect(routerSource).toContain("eq(lmsAffiliateConversions.orgId, orgId)");
+    expect(routerSource).toContain("Requested payout exceeds approved commission available for the active organization.");
+    expect(migrationSource).toContain("HAVING COUNT(DISTINCT course_record.orgId) = 1");
+    expect(migrationSource).toContain("remain NULL and are intentionally excluded");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
