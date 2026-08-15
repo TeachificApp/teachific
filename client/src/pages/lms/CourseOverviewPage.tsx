@@ -49,7 +49,7 @@ function getLessonStatus(lessonId: number, lessonProgress: any[]) {
 
 function LessonProgressIcon({ status }: { status: string }) {
   if (status === "completed") return <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />;
-  if (status === "in_progress") return <PlayCircle className="w-4 h-4 text-teal-500 flex-shrink-0" />;
+  if (status === "in_progress") return <PlayCircle className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />;
   return <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />;
 }
 
@@ -148,7 +148,7 @@ export default function CourseOverviewPage() {
   if (courseLoading || curriculumLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-b-[var(--org-primary)]" />
       </div>
     );
   }
@@ -201,7 +201,7 @@ export default function CourseOverviewPage() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
                     activeTab === tab
-                      ? "border-teal-500 text-teal-600"
+                      ? "border-[var(--org-primary)] text-[var(--org-primary)]"
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -226,7 +226,7 @@ export default function CourseOverviewPage() {
                     <div key={a.id} className="rounded-xl border border-border bg-card p-5">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
-                          {a.isPinned && <Pin className="w-3.5 h-3.5 text-teal-500" />}
+                          {a.isPinned && <Pin className="w-3.5 h-3.5 text-[var(--org-primary)]" />}
                           <h4 className="font-semibold">{a.title}</h4>
                         </div>
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -305,8 +305,8 @@ export default function CourseOverviewPage() {
                 ) : (
                   (resources as any[]).map((r: any) => (
                     <div key={r.id} className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-900/20 flex items-center justify-center flex-shrink-0">
-                        {r.fileUrl ? <Download className="w-5 h-5 text-teal-600" /> : <ExternalLink className="w-5 h-5 text-teal-600" />}
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${primaryColor}14` }}>
+                        {r.fileUrl ? <Download className="w-5 h-5" style={{ color: primaryColor }} /> : <ExternalLink className="w-5 h-5" style={{ color: primaryColor }} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{r.title}</p>
@@ -317,7 +317,8 @@ export default function CourseOverviewPage() {
                         href={r.fileUrl ?? r.externalUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-teal-600 hover:text-teal-700 text-sm font-medium flex-shrink-0"
+                        className="hover:opacity-80 text-sm font-medium flex-shrink-0"
+                        style={{ color: primaryColor }}
                       >
                         {r.fileUrl ? "Download" : "Open"}
                       </a>

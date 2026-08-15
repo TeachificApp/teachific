@@ -186,6 +186,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(themeRouterSource).toContain("customCss: (org as any).customCss ?? null");
   });
 
+  it("uses organization theme variables for Course Overview learner accents", () => {
+    const courseOverviewSource = readFileSync(new URL("../client/src/pages/lms/CourseOverviewPage.tsx", import.meta.url), "utf8");
+    expect(courseOverviewSource).toContain("text-[var(--org-primary)]");
+    expect(courseOverviewSource).toContain("border-[var(--org-primary)]");
+    expect(courseOverviewSource).not.toContain("text-teal-600");
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");

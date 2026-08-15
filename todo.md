@@ -4527,7 +4527,7 @@
 - [ ] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
 - [x] embeddedCheckoutRouter: preserve dollar-denominated pending purchase storage while converting to cents only for Stripe payment intents
 - [ ] lmsEnrollmentAdminRouter CSV export: remove /100 from orderAmount (stored in dollars)
-- [ ] RelatedProductsBlock: remove *100 for membership price; update formatPrice to not divide by 100
+- [x] RelatedProductsBlock formats membership and other related product prices directly from stored dollar values
 
 ## Org-Sender Buyer Confirmation Emails
 - [ ] Add getOrgEmailSender(orgId, db) helper in _core/email.ts — resolves org's own SendGrid key + fromName + fromEmail from orgPaymentSettings; falls back to Teachific key/sender
@@ -4838,7 +4838,7 @@
 - [x] Replace SchoolMemberLayout.tsx organization navigation accents with CSS variables
 - [x] Replace StudentLayout.tsx organization identity accents with CSS variables
 - [ ] Replace hardcoded teal in CourseSalesPage.tsx with CSS variables
-- [ ] Replace hardcoded teal in CourseOverviewPage.tsx with CSS variables
+- [x] Replace CourseOverviewPage learner accents with organization theme CSS variables
 - [ ] Replace hardcoded teal in SchoolPage.tsx with CSS variables
 - [x] Update BrandingPage to include buttonColor and buttonTextColor fields
 - [ ] Wire getCoursePlayer to include org primaryColor as fallback
