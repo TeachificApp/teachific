@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,8 +85,11 @@ function StatusDot({ status }: { status: string }) {
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { activeOrg } = useOrgScope();
 
-  const { data: packages, isLoading: pkgLoading } = trpc.packages.list.useQuery(undefined);
+  const { data: packages, isLoading: pkgLoading } = trpc.packages.list.useQuery(
+    activeOrg?.id ? { orgId: activeOrg.id } : undefined,
+  );
   const { data: analytics } = trpc.analytics.summary.useQuery({});
   const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
 
