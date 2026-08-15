@@ -81,6 +81,8 @@
 - [ ] Require active-organization course ownership and organization-domain learner links for cohort administration
 - [x] Require active-organization course ownership for core cohort session and assignment list, creation, update, and deletion actions
 - [x] Resolve core cohort session and assignment notification links from the owning organization domain
+- [ ] Route content availability notifications through the owning organization sender and validated learner URL
+- [x] Route content availability enrollment-open notifications through the owning organization sender
 - [ ] Migrate email campaigns, templates, audience previews, and sender profiles to active-organization authorization and routing
 - [ ] Require active-organization course ownership and organization-domain routing for CME disclosure administration
 - [x] Scope membership all-course and all-download access grants to the owning organization

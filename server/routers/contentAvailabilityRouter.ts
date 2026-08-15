@@ -15,7 +15,7 @@ import {
   workshops,
 } from "../../drizzle/schema";
 import { getDb, requireOrgAdmin } from "../db";
-import { sendEmail } from "../_core/email";
+import { sendEmailViaOrg } from "../_core/email";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const productTypeSchema = z.enum([
@@ -245,11 +245,11 @@ export const contentAvailabilityRouter = router({
       const color = input.accentColor ?? "#189aa1";
       let sent = 0;
       for (const entry of selected) {
-        const ok = await sendEmail({
+        const ok = await sendEmailViaOrg({
           to: { name: entry.name, email: entry.email },
           subject: input.subject,
           htmlBody: `${input.messageHtml}<p style="margin-top:24px"><a href="${input.enrollmentUrl}" style="display:inline-block;padding:12px 18px;background:${color};color:#ffffff;border-radius:6px;text-decoration:none;font-weight:600">Enroll now</a></p>`,
-        });
+        }, target.orgId);
         if (ok) sent++;
       }
       if (selected.length) {
