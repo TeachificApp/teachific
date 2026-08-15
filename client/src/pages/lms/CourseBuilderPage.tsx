@@ -3829,7 +3829,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
             <>
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button
-                className="bg-gradient-to-r from-[#189aa1] to-[#17a2b8] hover:from-[#147f86] hover:to-[#138496] text-white"
+                className="bg-[var(--org-primary)] hover:opacity-90 text-white"
                 disabled={!prompt.trim()}
                 onClick={handleGenerate}
               >
@@ -3845,7 +3845,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
               <Button variant="outline" onClick={() => { setStep("prompt"); setPreview(null); }}>
                 Generate Again
               </Button>
-              <Button className="bg-[#189aa1] hover:bg-[#147f86] text-white" onClick={onGenerated}>
+              <Button className="bg-[var(--org-primary)] hover:opacity-90 text-white" onClick={onGenerated}>
                 <CheckCircle className="w-4 h-4 mr-1" /> View Curriculum
               </Button>
             </>
