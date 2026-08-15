@@ -1162,6 +1162,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db
@@ -1220,6 +1221,7 @@ export const lmsCourseBuilderRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, ...updates } = input;
+      await assertCourseOwnership(ctx, courseId);
       const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
       if (Object.keys(filtered).length > 0) {
         await db.update(lmsCourses).set(filtered).where(eq(lmsCourses.id, courseId));

@@ -348,6 +348,10 @@ describe("latest Ultrasound-App learning feature port", () => {
       lmsHelpersSource.indexOf("export async function assertSectionOwnership"),
     );
     expect(courseOwnershipHelper).not.toContain("const isPlatformAdmin");
+    const courseBuilderRouterSource = readFileSync(new URL("../server/routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    expect(courseBuilderRouterSource).toContain("getAfterPurchase: protectedProcedure");
+    expect(courseBuilderRouterSource).toContain("await assertCourseOwnership(ctx, input.courseId);");
+    expect(courseBuilderRouterSource).toContain("await assertCourseOwnership(ctx, courseId);");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
