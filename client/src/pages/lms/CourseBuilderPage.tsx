@@ -2667,10 +2667,10 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
       </div>
 
       {/* AI Generate */}
-      <div className="bg-white border border-teal-200 rounded-xl p-5">
+      <div className="bg-white border border-[var(--org-primary)] rounded-xl p-5">
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-teal-600" />
+          <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-[var(--org-primary)]" />
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-800">AI Generate Landing Page</p>
@@ -2680,7 +2680,7 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
           </div>
         </div>
         <Button
-          className="bg-[#189aa1] hover:bg-[#147f86] text-white gap-2 w-full"
+          className="bg-[var(--org-primary)] hover:opacity-90 text-white gap-2 w-full"
           disabled={aiGenerateLandingPage.isPending}
           onClick={() => aiGenerateLandingPage.mutate({ courseId })}
         >
@@ -2689,7 +2689,7 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
             : <><Sparkles className="w-4 h-4" /> Generate Landing Page with AI</>}
         </Button>
         {aiGenerateLandingPage.isPending && (
-          <p className="text-xs text-teal-500 text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
+          <p className="text-xs text-[var(--org-primary)] text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
         )}
       </div>
     </div>
