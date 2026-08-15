@@ -193,6 +193,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseOverviewSource).not.toContain("text-teal-600");
   });
 
+  it("scopes Course Builder legacy teal utilities to the active organization theme without changing inline content overrides", () => {
+    const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    const blockPreviewSource = readFileSync(new URL("../client/src/components/BlockPreview.tsx", import.meta.url), "utf8");
+    expect(builderSource).toContain('className="lms-org-theme w-full"');
+    expect(themeCss).toContain(".lms-org-theme");
+    expect(themeCss).toContain("var(--org-primary)");
+    expect(themeCss).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
+    expect(blockPreviewSource).toContain("backgroundColor: d.bgColor");
+    expect(blockPreviewSource).toContain("color: d.textColor");
+    expect(blockPreviewSource).toContain("backgroundColor: d.ctaColor");
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");

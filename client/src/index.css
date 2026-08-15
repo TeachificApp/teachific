@@ -480,3 +480,50 @@
   outline: 2px solid var(--org-primary);
   outline-offset: 2px;
 }
+
+/* LMS authoring compatibility layer. Course Builder predates organization
+ * theming and still contains utility-based teal accents in deeply nested
+ * editors. Scope their visual output to the LMS root so an organization's
+ * selected primary color is applied without changing inline content colors or
+ * stored page/course overrides. */
+.lms-org-theme :is(
+  .text-teal-300, .text-teal-400, .text-teal-500, .text-teal-600,
+  .text-teal-700, .text-teal-800, .text-teal-900
+) {
+  color: var(--org-primary);
+}
+
+.lms-org-theme :is(.bg-teal-50, .bg-teal-50\/40, .bg-teal-100) {
+  background-color: color-mix(in srgb, var(--org-primary) 12%, transparent);
+}
+
+.lms-org-theme :is(.bg-teal-400, .bg-teal-900, .bg-teal-950) {
+  background-color: var(--org-primary);
+}
+
+.lms-org-theme :is(
+  .border-teal-100, .border-teal-200, .border-teal-300,
+  .border-teal-400, .border-teal-500, .border-teal-600, .border-teal-800
+) {
+  border-color: color-mix(in srgb, var(--org-primary) 45%, transparent);
+}
+
+.lms-org-theme :is(.hover\:bg-teal-50:hover, .hover\:bg-teal-100:hover) {
+  background-color: color-mix(in srgb, var(--org-primary) 12%, transparent);
+}
+
+.lms-org-theme :is(.hover\:border-teal-200:hover, .hover\:border-teal-300:hover, .hover\:border-teal-400:hover) {
+  border-color: var(--org-primary);
+}
+
+.lms-org-theme :is(.hover\:text-teal-600:hover, .hover\:text-teal-700:hover, .hover\:text-teal-800:hover) {
+  color: var(--org-primary);
+}
+
+.lms-org-theme :is(.focus\:ring-teal-300:focus, .focus\:ring-teal-400:focus, .focus\:ring-teal-500:focus, .ring-teal-400, .ring-teal-500) {
+  --tw-ring-color: var(--org-primary);
+}
+
+.lms-org-theme :is(.accent-teal-600) {
+  accent-color: var(--org-primary);
+}
