@@ -302,6 +302,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("Requested payout exceeds approved commission available for the active organization.");
     expect(migrationSource).toContain("HAVING COUNT(DISTINCT course_record.orgId) = 1");
     expect(migrationSource).toContain("remain NULL and are intentionally excluded");
+    const affiliateMigrationSource = readFileSync(new URL("../drizzle/0002_shiny_doctor_strange.sql", import.meta.url), "utf8");
+    expect(affiliateMigrationSource).toContain("HAVING COUNT(DISTINCT course_record.orgId) = 1");
+    expect(affiliateMigrationSource).toContain("remain unassigned and blocked from payout requests");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
