@@ -4893,7 +4893,7 @@
 - [x] Create OrgThemeContext with CSS variable injection
 - [x] Extend SubdomainThemeProvider to inject --org-primary, --org-accent, --org-button, --org-button-text CSS variables
 - [x] Add CSS variable declarations to index.css with teal defaults
-- [ ] Add LMS admin OrgThemeProvider that fetches theme for the current org
+- [x] Add LMS admin OrgThemeProvider that fetches theme for the current org
 - [x] Replace priority CoursePlayer.tsx accent fallbacks with CSS variables
 - [x] Replace LMSLayout portal action accents with organization theme CSS variables
 - [x] Replace organization-scoped LMS shell legacy logo and platform labels with the active organization identity

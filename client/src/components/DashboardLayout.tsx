@@ -78,6 +78,7 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import { trpc } from "@/lib/trpc";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
+import { OrgThemeProvider } from "@/contexts/OrgThemeContext";
 import { ProductSwitcher } from "./ProductSwitcher";
 import { OrgSwitcher } from "./OrgSwitcher";
 
@@ -424,11 +425,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
-    </SidebarProvider>
+    <OrgThemeProvider
+      theme={orgCtx?.org ? {
+        primaryColor: orgCtx.org.primaryColor ?? undefined,
+        accentColor: orgCtx.org.accentColor ?? undefined,
+        buttonColor: orgCtx.org.buttonColor ?? undefined,
+        buttonTextColor: orgCtx.org.buttonTextColor ?? undefined,
+        fontFamily: orgCtx.org.fontFamily ?? undefined,
+        adminLogoUrl: orgCtx.org.adminLogoUrl ?? undefined,
+        faviconUrl: orgCtx.org.faviconUrl ?? undefined,
+        customCss: orgCtx.org.customCss ?? undefined,
+      } : undefined}
+    >
+      <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
+        <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+          {children}
+        </DashboardLayoutContent>
+      </SidebarProvider>
+    </OrgThemeProvider>
   );
 }
 

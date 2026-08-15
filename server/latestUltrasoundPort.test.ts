@@ -233,6 +233,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseOverviewSource).not.toContain("text-teal-600");
   });
 
+  it("injects the active organization theme into the LMS administration shell", () => {
+    const layoutSource = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+    expect(layoutSource).toContain('import { OrgThemeProvider } from "@/contexts/OrgThemeContext"');
+    expect(layoutSource).toContain("<OrgThemeProvider");
+    expect(layoutSource).toContain("theme={orgCtx?.org ? {");
+    expect(layoutSource).toContain("primaryColor: orgCtx.org.primaryColor");
+    expect(layoutSource).toContain("buttonColor: orgCtx.org.buttonColor");
+    expect(layoutSource).toContain("customCss: orgCtx.org.customCss");
+  });
+
   it("scopes Course Builder legacy teal utilities to the active organization theme without changing inline content overrides", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
