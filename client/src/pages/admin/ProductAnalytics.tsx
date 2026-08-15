@@ -22,8 +22,8 @@ import {
 import { Link } from "wouter";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function fmtCurrency(cents: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+function fmtCurrency(amount: number, currency = "usd") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(Number(amount));
 }
 function fmtDate(d: Date | string) {
   return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

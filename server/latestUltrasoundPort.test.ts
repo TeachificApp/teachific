@@ -377,6 +377,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workshopsSource).not.toContain("Math.round(Number(instPrice) * 100)");
   });
 
+  it("keeps product analytics transactions and manual invoices dollar-denominated", () => {
+    const routerSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    const analyticsSource = readFileSync(new URL("../client/src/pages/admin/ProductAnalytics.tsx", import.meta.url), "utf8");
+    const userDetailSource = readFileSync(new URL("../client/src/pages/admin/AdminUserDetailPage.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("amountPaid: Number(o.amount)");
+    expect(routerSource).toContain("amountPaid: Number(i.amountPaid)");
+    expect(routerSource).toContain("amountPaid: String(input.amountPaid)");
+    expect(routerSource).not.toContain("Math.round(Number(o.amount) * 100)");
+    expect(analyticsSource).toContain(".format(Number(amount))");
+    expect(analyticsSource).not.toContain(".format(cents / 100)");
+    expect(userDetailSource).toContain("const totalLineItemsDollars");
+    expect(userDetailSource).toContain("amountPaid: totalLineItemsDollars");
+    expect(userDetailSource).not.toContain("totalLineItemsCents");
+  });
+
   it("displays active-organization Course Builder order amounts as stored dollars", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain("${Number(o.amount).toFixed(2)}");

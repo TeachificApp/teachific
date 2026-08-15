@@ -343,8 +343,8 @@ export const appRouter = router({
           .orderBy(desc(orgInvoices.createdAt));
         // Merge and sort
         const transactions: any[] = [
-          ...orders.map(o => ({ transactionId: o.id, sourceTable: 'course', productName: o.courseTitle ?? 'Course', productType: 'course', amountPaid: Math.round(Number(o.amount) * 100), currency: o.currency, status: o.status, stripePaymentIntentId: o.stripePaymentIntentId, orderType: o.stripeSubscriptionId ? 'subscription' : 'one_time', purchasedAt: o.createdAt })),
-          ...invoices.map(i => ({ transactionId: i.id, sourceTable: 'manual_invoice', productName: i.productTitle, productType: i.productType, amountPaid: Math.round(Number(i.amountPaid) * 100), currency: i.currency, status: i.status, stripePaymentIntentId: i.stripePaymentIntentId, orderType: 'manual', purchasedAt: i.createdAt, invoiceNumber: i.invoiceNumber })),
+          ...orders.map(o => ({ transactionId: o.id, sourceTable: 'course', productName: o.courseTitle ?? 'Course', productType: 'course', amountPaid: Number(o.amount), currency: o.currency, status: o.status, stripePaymentIntentId: o.stripePaymentIntentId, orderType: o.stripeSubscriptionId ? 'subscription' : 'one_time', purchasedAt: o.createdAt })),
+          ...invoices.map(i => ({ transactionId: i.id, sourceTable: 'manual_invoice', productName: i.productTitle, productType: i.productType, amountPaid: Number(i.amountPaid), currency: i.currency, status: i.status, stripePaymentIntentId: i.stripePaymentIntentId, orderType: 'manual', purchasedAt: i.createdAt, invoiceNumber: i.invoiceNumber })),
         ].sort((a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime());
         const paginated = transactions.slice(offset, offset + input.pageSize);
         const totalSpent = transactions.filter(t => t.status !== 'refunded' && t.status !== 'failed').reduce((s, t) => s + t.amountPaid, 0);
@@ -382,7 +382,7 @@ export const appRouter = router({
           productTitle: description,
           buyerName: user?.displayName || user?.name || undefined,
           buyerEmail: user?.email || undefined,
-          amountPaid: (input.amountPaid / 100).toFixed(2),
+          amountPaid: String(input.amountPaid),
           currency: input.currency,
           status: 'paid',
           notes: input.notes,

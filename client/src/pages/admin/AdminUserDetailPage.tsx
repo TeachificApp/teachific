@@ -2271,8 +2271,8 @@ function TransactionsTab({ userId, data: userData, refetch }: { userId: number; 
     onError: (e) => toast.error(e.message),
   });
 
-  const fmtCurrency = (cents: number, currency = "usd") =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+  const fmtCurrency = (amount: number, currency = "usd") =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(Number(amount));
   const fmtDate = (d: Date | string) =>
     new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -2298,7 +2298,7 @@ function TransactionsTab({ userId, data: userData, refetch }: { userId: number; 
     onError: (e) => toast.error(e.message),
   });
 
-  const totalLineItemsCents = invoiceForm.lineItems.reduce((sum, li) => sum + (parseFloat(li.amount) || 0) * 100 * (parseInt(li.qty) || 1), 0);
+  const totalLineItemsDollars = invoiceForm.lineItems.reduce((sum, li) => sum + (parseFloat(li.amount) || 0) * (parseInt(li.qty) || 1), 0);
 
   return (
     <div className="space-y-4">
@@ -2474,7 +2474,7 @@ function TransactionsTab({ userId, data: userData, refetch }: { userId: number; 
                   >+ Add line item</button>
                 </div>
                 <div className="text-right text-sm font-semibold text-gray-800 mt-2">
-                  Total: {fmtCurrency(totalLineItemsCents)}
+                  Total: {fmtCurrency(totalLineItemsDollars)}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -2534,8 +2534,8 @@ function TransactionsTab({ userId, data: userData, refetch }: { userId: number; 
                   createInvoice.mutate({
                     userId,
                     description: invoiceForm.description,
-                    lineItems: validItems.map(li => ({ name: li.name, amount: Math.round(parseFloat(li.amount) * 100), qty: parseInt(li.qty) || 1 })),
-                    amountPaid: Math.round(totalLineItemsCents),
+                    lineItems: validItems.map(li => ({ name: li.name, amount: parseFloat(li.amount), qty: parseInt(li.qty) || 1 })),
+                    amountPaid: totalLineItemsDollars,
                     currency: 'usd',
                     paidAt: invoiceForm.paidAt,
                     paymentSource: invoiceForm.paymentSource || undefined,
