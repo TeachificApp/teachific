@@ -47,10 +47,10 @@ function BundleList({ onEdit }: { onEdit: (id: number) => void }) {
       ) : (
         <div className="grid gap-3">
           {bundles.map((b) => (
-            <Card key={b.id} className="hover:border-teal-500/50 transition-colors">
+            <Card key={b.id} className="hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
-                  <Package className="w-5 h-5 text-teal-600" />
+                <div className="w-10 h-10 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] flex items-center justify-center flex-shrink-0">
+                  <Package className="w-5 h-5 text-[var(--org-primary)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{b.title}</p>
@@ -188,7 +188,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
         <h3 className="text-lg font-semibold flex-1">Edit Bundle</h3>
-        <Button variant="outline" size="sm" className="text-teal-600 border-teal-300 hover:bg-teal-50" onClick={() => setShowGrantDialog(true)}>
+        <Button variant="outline" size="sm" className="text-[var(--org-primary)] border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => setShowGrantDialog(true)}>
           <UserPlus className="w-4 h-4 mr-1" /> Grant Access
         </Button>
         <Button onClick={handleSave} disabled={updateMut.isPending}>
@@ -199,7 +199,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
 
       {/* Sales & Access */}
       <Card>
-        <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-teal-600" /> Sales &amp; Access</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-[var(--org-primary)]" /> Sales &amp; Access</CardTitle></CardHeader>
         <CardContent>
           <BundleSalesTab bundleId={bundleId} />
         </CardContent>
@@ -276,14 +276,14 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
 
       {/* URL Slug */}
       <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><LinkIcon className="w-4 h-4 text-teal-600" /> URL Slug</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><LinkIcon className="w-4 h-4 text-[var(--org-primary)]" /> URL Slug</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground whitespace-nowrap">/bundles/</span>
             <Input value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"))} placeholder="bundle-slug" className="flex-1" />
           </div>
           <p className="text-xs text-muted-foreground">Lowercase letters, numbers, and hyphens only. Changing this will break existing links.</p>
-          <Button size="sm" variant="outline" className="border-teal-300 text-teal-600 hover:bg-teal-50"
+          <Button size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
             disabled={updateSlugMut.isPending || !slug.trim()}
             onClick={() => updateSlugMut.mutate({ bundleId, slug: slug.trim() })}
           >
@@ -306,12 +306,12 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
                   <div
                     key={p.id}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      isSelected ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300"
+                      isSelected ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "border-gray-200 hover:border-gray-300"
                     }`}
                     onClick={() => toggleProduct(p.id)}
                   >
                     <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                      isSelected ? "bg-teal-500 border-teal-500" : "border-gray-300"
+                      isSelected ? "bg-[var(--org-primary)] border-[var(--org-primary)]" : "border-gray-300"
                     }`}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}
                     </div>
@@ -373,7 +373,7 @@ function GrantBundleAccessDialog({ open, bundleId, onClose }: { open: boolean; b
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-600" /> Grant Bundle Access</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[var(--org-primary)]" /> Grant Bundle Access</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <Label>Student Email</Label>
@@ -394,9 +394,9 @@ function GrantBundleAccessDialog({ open, bundleId, onClose }: { open: boolean; b
             </div>
           )}
           {searchResult && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
-              <p className="text-sm text-teal-800 font-medium">Found: {searchResult.name ?? searchResult.email}</p>
-              <p className="text-xs text-teal-600">{searchResult.email}</p>
+            <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3">
+              <p className="text-sm text-[var(--org-primary)] font-medium">Found: {searchResult.name ?? searchResult.email}</p>
+              <p className="text-xs text-[var(--org-primary)]">{searchResult.email}</p>
             </div>
           )}
         </div>
