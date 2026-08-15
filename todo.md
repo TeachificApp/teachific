@@ -14,6 +14,7 @@
 - [x] Backfill affiliate-organization compatibility records only where a single organization can be derived safely
 - [x] Reject affiliate payout requests when no active-organization compatibility record exists
 - [x] Verify authenticated organization ownership for SCORM and HTML package uploads instead of trusting multipart form identifiers
+- [x] Resolve SCORM and HTML upload targets from the active organization rather than the first organization membership
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 
 ## Phase 1: Database Schema & Migrations

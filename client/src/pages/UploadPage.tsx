@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,7 @@ const DISPLAY_MODES: Array<{ id: DisplayMode; label: string; desc: string; icon:
 export default function UploadPage({ onClose, onSuccess, initialFile }: UploadPageProps = {}) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { orgId: activeOrgId } = useOrgScope();
   const utils = trpc.useUtils();
 
   // Fetch user's orgs
@@ -91,8 +93,8 @@ export default function UploadPage({ onClose, onSuccess, initialFile }: UploadPa
 
   const analyzePackage = trpc.packages.analyze.useMutation();
 
-  // Resolve the effective org ID: prefer explicit selection, fall back to first org
-  const effectiveOrgId = selectedOrgId || myOrgs?.[0]?.id;
+  // Resolve the effective org ID: prefer explicit selection, then active organization context.
+  const effectiveOrgId = selectedOrgId || activeOrgId;
 
   const handleFileSelect = useCallback((selectedFile: File) => {
     if (!selectedFile.name.toLowerCase().endsWith(".zip")) {
