@@ -11,8 +11,8 @@ import {
   orderBumps,
 } from "../../drizzle/schema";
 
-type TriggerType = "course" | "download" | "bundle";
-type BumpType = "course" | "download" | "bundle" | "physical";
+type TriggerType = "course" | "download" | "quiz" | "bundle" | "workshop";
+type BumpType = "course" | "download" | "quiz";
 
 export type OrderBumpCheckoutLine = {
   lineItem: Record<string, unknown>;
@@ -31,6 +31,7 @@ export async function buildOrderBumpCheckoutLine(
   },
 ): Promise<OrderBumpCheckoutLine | null> {
   if (!input.orderBumpId) return null;
+  if (input.triggerType !== "course" && input.triggerType !== "download" && input.triggerType !== "quiz") return null;
 
   const [bump] = await db
     .select()
@@ -38,9 +39,9 @@ export async function buildOrderBumpCheckoutLine(
     .where(
       and(
         eq(orderBumps.id, input.orderBumpId),
-        eq(orderBumps.triggerType, input.triggerType),
+        eq(orderBumps.triggerProductType, input.triggerType),
         eq(orderBumps.triggerProductId, input.triggerProductId),
-        eq(orderBumps.timing, "before_checkout"),
+        eq(orderBumps.placement, "before_checkout"),
         eq(orderBumps.isActive, true),
       ),
     )
@@ -48,17 +49,17 @@ export async function buildOrderBumpCheckoutLine(
 
   if (!bump) return null;
 
-  const bumpType = bump.bumpType as BumpType;
+  const bumpType = bump.bumpProductType as BumpType;
   let name = bump.headline || "Order bump";
-  let description = bump.subheadline || undefined;
+  let description = bump.description || undefined;
   let imageUrl = bump.imageUrl || undefined;
-  let amount = bump.bumpPrice;
+  let amount = bump.discountedPrice ? Number(bump.discountedPrice) : 0;
 
   if (bumpType === "download") {
     const [product] = await db.select().from(digitalProducts).where(eq(digitalProducts.id, bump.bumpProductId)).limit(1);
     if (product) {
       name = bump.headline || product.title;
-      description = bump.subheadline || product.subtitle || undefined;
+      description = bump.description || product.subtitle || undefined;
       imageUrl = bump.imageUrl || product.thumbnailUrl || undefined;
       if (!amount) amount = product.price;
     }
@@ -66,16 +67,8 @@ export async function buildOrderBumpCheckoutLine(
     const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, bump.bumpProductId)).limit(1);
     if (course) {
       name = bump.headline || course.title;
-      description = bump.subheadline || course.subtitle || undefined;
+      description = bump.description || course.subtitle || undefined;
       if (!amount) amount = course.price;
-    }
-  } else if (bumpType === "bundle") {
-    const [bundle] = await db.select().from(digitalBundles).where(eq(digitalBundles.id, bump.bumpProductId)).limit(1);
-    if (bundle) {
-      name = bump.headline || bundle.title;
-      description = bump.subheadline || bundle.subtitle || undefined;
-      imageUrl = bump.imageUrl || bundle.thumbnailUrl || undefined;
-      if (!amount) amount = bundle.price;
     }
   }
 
@@ -83,7 +76,7 @@ export async function buildOrderBumpCheckoutLine(
 
   return {
     amount,
-    requiresShipping: bumpType === "physical",
+    requiresShipping: false,
     lineItem: {
       price_data: {
         currency: input.currency,
@@ -122,9 +115,9 @@ export async function fulfillOrderBumpPurchase(
   const bumpId = meta.order_bump_id ? Number(meta.order_bump_id) : null;
   const bumpProductId = meta.order_bump_product_id ? Number(meta.order_bump_product_id) : null;
   const bumpType = meta.order_bump_type as BumpType | undefined;
-  const bumpAmount = meta.order_bump_price ? Number(meta.order_bump_price) : 0;
-
   if (!bumpId || !bumpType) return;
+  const [bump] = await db.select().from(orderBumps).where(eq(orderBumps.id, bumpId)).limit(1);
+  if (!bump || bump.bumpProductType !== bumpType) return;
 
   if (bumpType === "download" && bumpProductId) {
     const [existing] = await db
@@ -152,52 +145,20 @@ export async function fulfillOrderBumpPurchase(
         affiliateCode: null,
       });
     }
-  } else if (bumpType === "bundle" && bumpProductId) {
-    const [existingBundle] = await db
-      .select()
-      .from(digitalBundlePurchases)
-      .where(and(eq(digitalBundlePurchases.userId, input.userId), eq(digitalBundlePurchases.bundleId, bumpProductId)))
-      .limit(1);
-    if (!existingBundle) {
-      await db.insert(digitalBundlePurchases).values({
-        userId: input.userId,
-        bundleId: bumpProductId,
-        stripeCheckoutSessionId: input.sessionId,
-      });
-    }
-
-    const items = await db.select().from(digitalBundleItems).where(eq(digitalBundleItems.bundleId, bumpProductId));
-    for (const item of items) {
-      const [existingProduct] = await db
-        .select()
-        .from(digitalPurchases)
-        .where(and(eq(digitalPurchases.userId, input.userId), eq(digitalPurchases.productId, item.productId)))
-        .limit(1);
-      if (!existingProduct) {
-        await db.insert(digitalPurchases).values({
-          userId: input.userId,
-          productId: item.productId,
-          stripeCheckoutSessionId: input.sessionId,
-        });
-      }
-    }
   }
 
   const [existingConversion] = await db
     .select()
     .from(orderBumpConversions)
-    .where(and(eq(orderBumpConversions.bumpId, bumpId), eq(orderBumpConversions.stripeCheckoutSessionId, input.sessionId)))
+    .where(and(eq(orderBumpConversions.bumpId, bumpId), eq(orderBumpConversions.sessionId, input.sessionId)))
     .limit(1);
   if (existingConversion) return;
 
   await db.insert(orderBumpConversions).values({
     bumpId,
-    userId: input.userId,
-    triggerOrderType: input.triggerOrderType,
+    orgId: bump.orgId,
     triggerOrderId: input.triggerOrderId ?? null,
-    stripeCheckoutSessionId: input.sessionId,
-    bumpAmount,
-    status: "completed",
+    accepted: true,
+    sessionId: input.sessionId,
   });
-  await db.execute(sql`UPDATE order_bumps SET conversions = conversions + 1 WHERE id = ${bumpId}`);
 }
