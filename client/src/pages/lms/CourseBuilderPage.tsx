@@ -1721,7 +1721,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
       {/* Top Save Button */}
       <div className="flex justify-end pb-2 border-b border-gray-100">
         <Button
-          className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+          className="bg-[var(--org-primary)] hover:opacity-90 text-white"
           disabled={saving}
           onClick={() => onSave({
             title: title.trim(), subtitle: subtitle.trim() || undefined,
