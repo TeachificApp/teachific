@@ -239,6 +239,11 @@ export async function getPricingByCourse(courseId: number) {
     .orderBy(asc(coursePricing.sortOrder));
 }
 
+export async function getCourseIdByPricingId(id: number) {
+  const rows = await db.select({ courseId: coursePricing.courseId }).from(coursePricing).where(eq(coursePricing.id, id)).limit(1);
+  return rows[0]?.courseId ?? null;
+}
+
 export async function createPricing(data: typeof coursePricing.$inferInsert) {
   const result = await db.insert(coursePricing).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;

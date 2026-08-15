@@ -992,4 +992,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(curriculumSource).toContain("input.lessonIds.map((lessonId) => requireLegacyLessonAccess(ctx, lessonId))");
     expect(dbSource).toContain("export async function getCourseIdBySectionId");
   });
+
+  it("requires organization-admin ownership while preserving dollar-priced legacy LMS pricing administration", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const pricingSource = routerSource.slice(
+      routerSource.indexOf("pricing: router({"),
+      routerSource.indexOf("// ── Enrollments")
+    );
+    const dbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function requireLegacyPricingAccess");
+    expect((pricingSource.match(/await requireLegacyCourseAccess\(ctx, input\.courseId\);/g) ?? []).length).toBe(2);
+    expect(pricingSource).toContain("await requireLegacyPricingAccess(ctx, input.id);");
+    expect(pricingSource).toContain("await requireLegacyPricingAccess(ctx, id);");
+    expect(pricingSource).not.toMatch(/price\s*\/\s*100|price\s*\*\s*100/);
+    expect(dbSource).toContain("export async function getCourseIdByPricingId");
+  });
 });

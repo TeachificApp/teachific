@@ -32,6 +32,7 @@ import {
   reorderLessons,
   getFullCurriculum,
   getPricingByCourse,
+  getCourseIdByPricingId,
   createPricing,
   updatePricing,
   deletePricing,
@@ -255,6 +256,12 @@ async function requireLegacyLessonAccess(ctx: { user: { id: number; role: string
   return requireLegacyCourseAccess(ctx, lesson.courseId);
 }
 
+async function requireLegacyPricingAccess(ctx: { user: { id: number; role: string } }, pricingId: number) {
+  const courseId = await getCourseIdByPricingId(pricingId);
+  if (!courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Course pricing option not found" });
+  return requireLegacyCourseAccess(ctx, courseId);
+}
+
 async function getTeachificOrgId(): Promise<number | null> {
   const teachOrg = await getOrgBySlug("teach");
   return teachOrg?.id ?? null;
@@ -410,25 +417,29 @@ export const lmsRouter = router({
   pricing: router({
     list: protectedProcedure
       .input(z.object({ courseId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyCourseAccess(ctx, input.courseId);
         return getPricingByCourse(input.courseId);
       }),
     create: protectedProcedure
       .input(z.object({ courseId: z.number(), orgId: z.number().optional() }).passthrough())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyCourseAccess(ctx, input.courseId);
         return createPricing(input as any);
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number() }).passthrough())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyPricingAccess(ctx, input.id);
         const { id, ...data } = input;
         return updatePricing(id, data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number().optional(), pricingId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const id = input.id ?? input.pricingId;
         if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await requireLegacyPricingAccess(ctx, id);
         await deletePricing(id);
         return { ok: true };
       }),
