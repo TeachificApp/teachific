@@ -307,6 +307,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(affiliateMigrationSource).toContain("remain unassigned and blocked from payout requests");
   });
 
+  it("requires authenticated organization ownership for content package uploads", () => {
+    const uploadSource = readFileSync(new URL("./scormUploadRoutes.ts", import.meta.url), "utf8");
+    expect(uploadSource).toContain("requireOrgAdmin(authUser.id, authUser.role, orgId)");
+    expect(uploadSource).toContain("Upload user does not match the authenticated user");
+    expect(uploadSource).toContain("You are not authorized to upload content for this organization");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

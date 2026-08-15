@@ -15,7 +15,7 @@ import { join } from "path";
 import { nanoid } from "nanoid";
 import { storagePut, storagePutStream } from "./storage";
 import { parseScormManifest } from "./scormParser";
-import { createPackage, updatePackage, createVersion, createFileAsset, getPackageById } from "./db";
+import { createPackage, updatePackage, createVersion, createFileAsset, getPackageById, requireOrgAdmin } from "./db";
 import { authenticateRequest } from "./authHelper";
 
 const router = express.Router();
@@ -63,6 +63,16 @@ router.post("/package", upload.single("file"), async (req: Request, res: Respons
     if (!orgId || !uploadedBy) {
       if (existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(400).json({ error: "orgId and uploadedBy are required" });
+    }
+    if (uploadedBy !== authUser.id) {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "Upload user does not match the authenticated user" });
+    }
+    try {
+      await requireOrgAdmin(authUser.id, authUser.role, orgId);
+    } catch {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "You are not authorized to upload content for this organization" });
     }
 
     const suffix = nanoid(8);
@@ -150,6 +160,16 @@ router.post("/version/:packageId", upload.single("file"), async (req: Request, r
 
     const suffix = nanoid(8);
     const orgId = pkg.orgId;
+    if (uploadedBy !== authUser.id) {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "Upload user does not match the authenticated user" });
+    }
+    try {
+      await requireOrgAdmin(authUser.id, authUser.role, orgId);
+    } catch {
+      if (existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "You are not authorized to upload content for this organization" });
+    }
 
     // 1. Stream original ZIP directly to S3 — no full buffer in RAM
     const zipKey = `orgs/${orgId}/packages/${suffix}/original.zip`;
