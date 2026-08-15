@@ -3995,7 +3995,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+            className="bg-[var(--org-primary)] hover:opacity-90 text-white"
             disabled={!title.trim() || create.isPending}
             onClick={handleCreate}
           >
