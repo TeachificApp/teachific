@@ -4628,7 +4628,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
             <Button
               size="sm"
-              className="bg-[#189aa1] hover:bg-[#147f86] text-white h-7 text-xs font-semibold"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white h-7 text-xs font-semibold"
               onClick={() => blockEditorRef.current?.openAddBlock()}
             >
               <Plus className="w-3 h-3 mr-1" /> Add Block
@@ -4636,7 +4636,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             <Button
               size="sm"
               variant="outline"
-              className="border-teal-300 text-teal-700 hover:bg-teal-50 h-7 text-xs font-semibold"
+              className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] h-7 text-xs font-semibold"
               onClick={() => blockEditorRef.current?.openSaveLessonTemplate()}
             >
               <LayoutTemplate className="w-3 h-3 mr-1" /> Save as Template
