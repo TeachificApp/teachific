@@ -329,12 +329,16 @@ const _lmsCertificateTemplatesRouter = router({
     .query(async ({ ctx, input }) => {
       const orgId = input?.orgId ?? await getOrgIdForUser(ctx.user.id);
       if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       return getLmsCertificateTemplatesByOrg(orgId);
     }),
   getCertificateTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
-      return getLmsCertificateTemplateById(input.id);
+    .query(async ({ ctx, input }) => {
+      const template = await getLmsCertificateTemplateById(input.id);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+      return template;
     }),
   createCertificateTemplate: protectedProcedure
     .input(z.object({
@@ -363,6 +367,7 @@ const _lmsCertificateTemplatesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const orgId = input.orgId ?? await getOrgIdForUser(ctx.user.id);
       if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const { orgId: _orgId, ...rest } = input;
       return createLmsCertificateTemplate({ orgId, ...rest } as any);
     }),
@@ -390,13 +395,19 @@ const _lmsCertificateTemplatesRouter = router({
       layout: z.enum(["classic", "modern", "minimal"]).optional(),
       isDefault: z.boolean().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const template = await getLmsCertificateTemplateById(id);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
       return updateLmsCertificateTemplate(id, data as any);
     }),
   deleteCertificateTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const template = await getLmsCertificateTemplateById(input.id);
+      if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
       await deleteLmsCertificateTemplate(input.id);
       return { ok: true };
     }),

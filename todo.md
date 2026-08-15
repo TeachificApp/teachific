@@ -4616,6 +4616,8 @@
 - [x] Apply active organization theme variables to membership administration controls and primary actions
 - [x] Replace legacy membership labels with generic organization-scoped labels in membership administration
 - [x] Replace legacy membership naming in organization-scoped product sales controls
+- [ ] Derive certificate template defaults and controls from the active organization rather than platform branding
+- [x] Require active-organization ownership for certificate template reads, updates, previews, and deletion
 - [x] Require organization-admin ownership for mounted legacy LMS membership plan reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS bundle reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS flashcard deck and card reads and mutations

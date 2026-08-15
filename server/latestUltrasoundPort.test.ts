@@ -1055,4 +1055,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((enrollmentEmailSource.match(/const orgBase = await resolveOrganizationBaseUrl\(opts\);/g) ?? []).length).toBe(3);
     expect((enrollmentEmailSource.match(/if \(opts\.orgId && !orgBase\) return false;/g) ?? []).length).toBe(3);
   });
+
+  it("requires organization-admin ownership for certificate template administration", () => {
+    const certificateRouterSource = readFileSync(new URL("./routers/lmsAdminRouter.ts", import.meta.url), "utf8");
+    const certificateSource = certificateRouterSource.slice(certificateRouterSource.indexOf("const _lmsCertificateTemplatesRouter"));
+    expect((certificateSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, template\.orgId\);/g) ?? []).length).toBe(3);
+    expect(certificateSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+  });
 });
