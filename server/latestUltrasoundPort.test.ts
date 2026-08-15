@@ -822,4 +822,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("eq(digitalProducts.orgId, orgId)");
     expect(routerSource).toContain("eq(digitalBundles.orgId, orgId)");
   });
+
+  it("scopes Webinar administration controls to the active organization theme", () => {
+    const webinarSource = readFileSync(new URL("../client/src/pages/admin/WebinarsAdmin.tsx", import.meta.url), "utf8");
+    const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    expect(webinarSource).toContain('className="webinar-admin-org-theme lms-org-theme p-4 md:p-6 max-w-6xl mx-auto"');
+    expect(webinarSource).toContain("bg-[var(--org-button)] hover:opacity-90 text-[var(--org-button-text)]");
+    expect(webinarSource).not.toContain("bg-teal-600 hover:bg-teal-700 text-white");
+    expect(webinarSource).not.toMatch(/(?:text|border|bg|ring|hover:text|hover:border|hover:bg|focus:ring)-teal-\d+/);
+    expect(webinarSource).toContain("text-[var(--org-primary)]");
+    expect(webinarSource).toContain("bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)]");
+    expect(themeCss).toContain(".hover\\:bg-teal-700:hover");
+    expect(themeCss).toContain("color-mix(in srgb, var(--org-primary) 82%, #000 18%)");
+    expect(themeCss).toContain("background-color: var(--org-primary);");
+  });
 });

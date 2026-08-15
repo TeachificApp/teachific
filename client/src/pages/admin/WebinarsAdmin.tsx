@@ -122,7 +122,7 @@ function WebinarsList({ onEdit }: { onEdit: (id: number) => void }) {
         </div>
         <Button
           size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-button)] hover:opacity-90 text-[var(--org-button-text)]"
           onClick={() => createMutation.mutate({ title: "New Webinar", type: "live" })}
           disabled={createMutation.isPending}
         >
@@ -363,7 +363,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
         </div>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-xs font-mono font-semibold text-gray-600 select-all cursor-text" title="Webinar ID">ID: {webinar.id}</span>
         <a href={`/webinars/${webinar.slug}`} target="_blank" rel="noopener noreferrer">
-          <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600 gap-1">
+          <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)] gap-1">
             <Eye className="w-3.5 h-3.5" /> View Sales Page
           </Button>
         </a>
@@ -377,7 +377,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
         </Button>
         <Button
           size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-button)] hover:opacity-90 text-[var(--org-button-text)]"
           onClick={saveSettings}
           disabled={updateMutation.isPending}
         >
@@ -396,7 +396,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
         ].map(s => (
           <Card key={s.label} className="p-3">
             <div className="flex items-center gap-2">
-              <s.icon className="w-4 h-4 text-teal-500 shrink-0" />
+              <s.icon className="w-4 h-4 text-[var(--org-primary)] shrink-0" />
               <div>
                 <p className="text-xs text-gray-500">{s.label}</p>
                 <p className="text-lg font-bold text-gray-800">{s.value}</p>
@@ -418,7 +418,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
           <TabsTrigger value="after-purchase" className="text-xs"><Workflow className="w-3.5 h-3.5 mr-1" />After Purchase</TabsTrigger>
           <TabsTrigger value="checkout-page" className="text-xs"><DollarSign className="w-3.5 h-3.5 mr-1" />Checkout Page</TabsTrigger>
           <a href={`/admin/webinars/${webinarId}/landing-builder`} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium border border-teal-600 text-teal-700 rounded-md hover:bg-teal-50 transition-colors">
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium border border-[var(--org-primary)] text-[var(--org-primary)] rounded-md hover:bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             Landing Builder
           </a>
@@ -666,7 +666,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
                 When enabled, visitors must register (and optionally pay) before accessing the webinar room.
                 Registration data is collected and shown in the Attendees tab.
               </p>
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-xs text-teal-700">
+              <div className="bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-lg p-3 text-xs text-[var(--org-primary)]">
                 <strong>Registration URL:</strong>
                 <div className="flex items-center gap-2 mt-1">
                   <code className="bg-white border rounded px-2 py-1 flex-1 truncate">{publicUrl}</code>
@@ -712,7 +712,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
                         {r.watchedSeconds ? `${Math.round(r.watchedSeconds / 60)}m` : "—"}
                       </TableCell>
                       <TableCell>
-                        {r.convertedAt ? <CheckCircle className="w-4 h-4 text-teal-500" /> : <span className="text-xs text-gray-400">No</span>}
+                        {r.convertedAt ? <CheckCircle className="w-4 h-4 text-[var(--org-primary)]" /> : <span className="text-xs text-gray-400">No</span>}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -728,7 +728,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
             {[
               { label: "Total Registrations", value: stats.totalRegistrations, icon: Users, color: "text-blue-500" },
               { label: "Attended Live", value: stats.attended, icon: Radio, color: "text-red-500" },
-              { label: "Conversion Rate", value: `${stats.conversionRate}%`, icon: BarChart2, color: "text-teal-500" },
+              { label: "Conversion Rate", value: `${stats.conversionRate}%`, icon: BarChart2, color: "text-[var(--org-primary)]" },
               { label: "Conversions", value: stats.converted, icon: CheckCircle, color: "text-green-500" },
               { label: "Avg Watch Time", value: `${stats.avgWatchMinutes} min`, icon: Clock, color: "text-purple-500" },
               { label: "Attendance Rate", value: stats.totalRegistrations > 0 ? `${Math.round((stats.attended / stats.totalRegistrations) * 100)}%` : "—", icon: Eye, color: "text-orange-500" },
@@ -753,7 +753,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Globe className="w-4 h-4 text-teal-500" /> Publish Domain
+                <Globe className="w-4 h-4 text-[var(--org-primary)]" /> Publish Domain
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -773,13 +773,13 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                   <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-3.5 h-3.5 text-teal-600" />
+                    <ExternalLink className="w-3.5 h-3.5 text-[var(--org-primary)]" />
                   </a>
                 </div>
               </div>
               <Button
                 size="sm"
-                className="bg-teal-600 hover:bg-teal-700 text-white"
+                className="bg-[var(--org-button)] hover:opacity-90 text-[var(--org-button-text)]"
                 onClick={saveSettings}
                 disabled={updateMutation.isPending}
               >
@@ -804,7 +804,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
                   <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
                   <p className="text-sm text-gray-500 mt-1">
                     Customise the sections shown on the hosted checkout page at{" "}
-                    <a href={`/checkout/${webinar.slug}?type=webinar`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                    <a href={`/checkout/${webinar.slug}?type=webinar`} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline font-medium">
                       /checkout/{webinar.slug}
                     </a>.
                   </p>
@@ -815,7 +815,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
                     <ExternalLink className="w-3.5 h-3.5" /> Preview
                   </a>
                   <a href={`/admin/checkout-editor/webinar/${webinarId}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-[var(--org-button)] text-[var(--org-button-text)] rounded-lg hover:opacity-90 font-medium">
                     Open Page Editor
                   </a>
                 </div>
@@ -823,7 +823,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
               <div className="mt-5 grid grid-cols-3 gap-3">
                 {["Trust Seals & Badges","What You'll Learn","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
                   <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="w-2 h-2 rounded-full bg-teal-400" />
+                  <div className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
                     <span className="text-xs text-gray-600">{s}</span>
                   </div>
                 ))}
@@ -852,11 +852,11 @@ function WebinarAfterPurchaseTab({ webinarId }: { webinarId: number }) {
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
   return (
     <div className="space-y-4">
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-        <Workflow className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-xl p-4 flex items-start gap-3">
+        <Workflow className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-teal-800">After Purchase Workflow</p>
-          <p className="text-xs text-teal-600 mt-0.5">Configure what happens immediately after a customer completes their purchase. Actions run in order.</p>
+          <p className="text-sm font-medium text-[var(--org-primary)]">After Purchase Workflow</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">Configure what happens immediately after a customer completes their purchase. Actions run in order.</p>
         </div>
       </div>
       <HidePricingOptionsToggle
@@ -878,11 +878,11 @@ export function WebinarsAdmin({ initialEditId }: { initialEditId?: number } = {}
   const [editingId, setEditingId] = useState<number | null>(initialEditId ?? null);
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+    <div className="webinar-admin-org-theme lms-org-theme p-4 md:p-6 max-w-6xl mx-auto">
       {editingId === null ? (
         <>
           <div className="flex items-center gap-3 mb-6">
-            <Radio className="w-6 h-6 text-teal-600" />
+            <Radio className="w-6 h-6 text-[var(--org-primary)]" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">Webinars</h1>
               <p className="text-sm text-gray-500">Host live and pre-recorded webinars with registration, tracking, and analytics.</p>

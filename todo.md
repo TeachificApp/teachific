@@ -46,6 +46,10 @@
 - [x] Apply active organization theme variables to Digital Downloads administration and product authoring controls
 - [x] Apply active organization theme variables to Bundles administration and product authoring controls
 - [x] Apply active organization theme variables to Physical Products administration and product authoring controls
+- [x] Apply active organization theme variables to Webinar administration and product authoring controls
+- [x] Keep filled Webinar action buttons readable with organization-colored hover states
+- [x] Replace remaining fixed teal Webinar administration action classes with organization theme utilities
+- [x] Remove remaining fixed teal Webinar indicators, links, and informational surfaces in favor of organization theme variables
 - [x] Correct Physical Products analytics revenue display to use stored dollar values without a legacy cents conversion
 - [x] Apply active organization theme variables to Order Bumps administration and product authoring controls
 - [x] Remove fabricated testimonial defaults from Order Bumps landing-page block templates

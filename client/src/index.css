@@ -513,7 +513,10 @@
   background-color: color-mix(in srgb, var(--org-primary) 12%, transparent);
 }
 
-.lms-org-theme :is(.bg-teal-400, .bg-teal-900, .bg-teal-950) {
+.lms-org-theme :is(
+  .bg-teal-400, .bg-teal-500, .bg-teal-600, .bg-teal-700,
+  .bg-teal-800, .bg-teal-900, .bg-teal-950
+) {
   background-color: var(--org-primary);
 }
 
@@ -524,8 +527,17 @@
   border-color: color-mix(in srgb, var(--org-primary) 45%, transparent);
 }
 
-.lms-org-theme :is(.hover\:bg-teal-50:hover, .hover\:bg-teal-100:hover, .hover\:bg-teal-200:hover) {
+.lms-org-theme :is(
+  .hover\:bg-teal-50:hover, .hover\:bg-teal-100:hover, .hover\:bg-teal-200:hover
+) {
   background-color: color-mix(in srgb, var(--org-primary) 12%, transparent);
+}
+
+.lms-org-theme :is(
+  .hover\:bg-teal-400:hover, .hover\:bg-teal-500:hover, .hover\:bg-teal-600:hover,
+  .hover\:bg-teal-700:hover, .hover\:bg-teal-800:hover
+) {
+  background-color: color-mix(in srgb, var(--org-primary) 82%, #000 18%);
 }
 
 .lms-org-theme .active\:bg-teal-300:active {
