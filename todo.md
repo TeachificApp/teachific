@@ -15,6 +15,9 @@
 - [x] Reject affiliate payout requests when no active-organization compatibility record exists
 - [x] Verify authenticated organization ownership for SCORM and HTML package uploads instead of trusting multipart form identifiers
 - [x] Resolve SCORM and HTML upload targets from the active organization rather than the first organization membership
+- [x] Enforce authenticated user and organization ownership in chunked new-package upload sessions
+- [x] Enforce authenticated user and organization ownership for chunked package version upload session initiation, chunks, and finalization
+- [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 
 ## Phase 1: Database Schema & Migrations

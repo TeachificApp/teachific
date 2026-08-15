@@ -18,7 +18,7 @@ import { join } from "path";
 import { nanoid } from "nanoid";
 import { processZipVersion, processZip, emitProgress } from "./scormUploadRoutes";
 import { storagePutStream } from "./storage";
-import { getPackageById, updatePackage, createPackage } from "./db";
+import { getPackageById, updatePackage, createPackage, requireOrgAdmin } from "./db";
 import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
 import { ENV } from "./_core/env";
@@ -39,6 +39,7 @@ const chunkUpload = multer({
 // ── In-memory upload session registry ────────────────────────────────────────
 interface UploadSession {
   uploadId: string;
+  authUserId: number;
   totalChunks: number;
   receivedChunks: Set<number>;
   chunkPaths: Map<number, string>;
@@ -65,6 +66,14 @@ router.post("/package/initiate", express.json(), async (req: Request, res: Respo
   if (!totalChunks || !filename || !orgId || !uploadedBy) {
     return res.status(400).json({ error: "totalChunks, filename, orgId and uploadedBy are required" });
   }
+  const parsedOrgId = parseInt(String(orgId), 10);
+  const parsedUploadedBy = parseInt(String(uploadedBy), 10);
+  if (parsedUploadedBy !== user.id) return res.status(403).json({ error: "Upload user does not match the authenticated user" });
+  try {
+    await requireOrgAdmin(user.id, user.role, parsedOrgId);
+  } catch {
+    return res.status(403).json({ error: "You are not authorized to upload content for this organization" });
+  }
   const fileSizeBytes = parseInt(String(totalBytes ?? "0"), 10);
   if (fileSizeBytes > LARGE_FILE_LIMIT) {
     const isOwner = !!(user.role === "site_owner" || user.role === "site_admin" || user.openId === ENV.ownerOpenId);
@@ -77,8 +86,9 @@ router.post("/package/initiate", express.json(), async (req: Request, res: Respo
     receivedChunks: new Set(),
     chunkPaths: new Map(),
     filename: String(filename),
-    orgId: parseInt(String(orgId), 10),
-    uploadedBy: parseInt(String(uploadedBy), 10),
+    orgId: parsedOrgId,
+    uploadedBy: parsedUploadedBy,
+    authUserId: user.id,
     title: String(title ?? String(filename).replace(/\.zip$/i, "").replace(/[-_]/g, " ")),
     displayMode: String(displayMode ?? "native"),
     lmsShellConfig: lmsShellConfig ? String(lmsShellConfig) : undefined,
@@ -90,14 +100,19 @@ router.post("/package/initiate", express.json(), async (req: Request, res: Respo
 router.post(
   "/package/chunk/:uploadId",
   chunkUpload.single("chunk"),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const { uploadId } = req.params;
     const session = newPackageSessions.get(uploadId);
     const chunkIndex = parseInt(String(req.body.chunkIndex ?? "-1"), 10);
     const tmpPath = (req.file as (Express.Multer.File & { path: string }) | undefined)?.path;
+    const user = await authenticateRequest(req);
     if (!session) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(404).json({ error: "Upload session not found" });
+    }
+    if (!user || user.id !== session.authUserId) {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
     }
     if (chunkIndex < 0 || chunkIndex >= session.totalChunks) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
@@ -122,6 +137,12 @@ router.post("/package/finalize/:uploadId", express.json(), async (req: Request, 
   }
   const user = await authenticateRequest(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+  if (user.id !== session.authUserId) return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
+  try {
+    await requireOrgAdmin(user.id, user.role, session.orgId);
+  } catch {
+    return res.status(403).json({ error: "You are not authorized to upload content for this organization" });
+  }
   const assembledPath = join(tmpdir(), `pkg-assembled-${uploadId}-${session.filename}`);
   try {
     await assembleChunks(session, assembledPath);
@@ -182,6 +203,16 @@ router.post("/package/finalize/:uploadId", express.json(), async (req: Request, 
 
 // ── POST /api/chunked/version/:packageId/initiate ─────────────────────────────
 router.post("/version/:packageId/initiate", express.json(), async (req: Request, res: Response) => {
+  const user = await authenticateRequest(req);
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+  const packageId = parseInt(req.params.packageId, 10);
+  const pkg = await getPackageById(packageId);
+  if (!pkg) return res.status(404).json({ error: "Package not found" });
+  try {
+    await requireOrgAdmin(user.id, user.role, pkg.orgId);
+  } catch {
+    return res.status(403).json({ error: "You are not authorized to upload content for this organization" });
+  }
   const { totalChunks, filename, totalBytes } = req.body;
   if (!totalChunks || !filename) {
     return res.status(400).json({ error: "totalChunks and filename are required" });
@@ -208,6 +239,7 @@ router.post("/version/:packageId/initiate", express.json(), async (req: Request,
   const uploadId = nanoid(16);
   sessions.set(uploadId, {
     uploadId,
+    authUserId: user.id,
     totalChunks: parseInt(String(totalChunks), 10),
     receivedChunks: new Set(),
     chunkPaths: new Map(),
@@ -220,15 +252,20 @@ router.post("/version/:packageId/initiate", express.json(), async (req: Request,
 router.post(
   "/version/:packageId/chunk/:uploadId",
   chunkUpload.single("chunk"),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const { uploadId } = req.params;
     const chunkIndex = parseInt(String(req.body.chunkIndex ?? "-1"), 10);
     const tmpPath = (req.file as (Express.Multer.File & { path: string }) | undefined)?.path;
 
     const session = sessions.get(uploadId);
+    const user = await authenticateRequest(req);
     if (!session) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(404).json({ error: "Upload session not found" });
+    }
+    if (!user || user.id !== session.authUserId) {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
     }
     if (chunkIndex < 0 || chunkIndex >= session.totalChunks) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
@@ -261,6 +298,17 @@ router.post(
     const packageId = parseInt(packageIdStr, 10);
     const session = sessions.get(uploadId);
     if (!session) return res.status(404).json({ error: "Upload session not found" });
+    const user = await authenticateRequest(req);
+    if (!user || user.id !== session.authUserId) {
+      return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
+    }
+    const pkg = await getPackageById(packageId);
+    if (!pkg) return res.status(404).json({ error: "Package not found" });
+    try {
+      await requireOrgAdmin(user.id, user.role, pkg.orgId);
+    } catch {
+      return res.status(403).json({ error: "You are not authorized to upload content for this organization" });
+    }
 
     if (session.receivedChunks.size !== session.totalChunks) {
       return res.status(400).json({
@@ -276,16 +324,15 @@ router.post(
 
       const fileSize = statSync(assembledPath).size;
       const { uploadedBy, changelog } = req.body;
-      const uploadedByNum = parseInt(String(uploadedBy ?? "0"), 10);
+      const requestedUploadedBy = uploadedBy === undefined ? user.id : parseInt(String(uploadedBy), 10);
+      if (requestedUploadedBy !== user.id) {
+        if (existsSync(assembledPath)) unlinkSync(assembledPath);
+        return res.status(403).json({ error: "Version attribution does not match the authenticated user" });
+      }
+      const uploadedByNum = user.id;
       const changelogStr = String(changelog ?? "New version");
 
       // 2. Look up package to get orgId
-      const pkg = await getPackageById(packageId);
-      if (!pkg) {
-        if (existsSync(assembledPath)) unlinkSync(assembledPath);
-        return res.status(404).json({ error: "Package not found" });
-      }
-
       const suffix = nanoid(8);
       const orgId = pkg.orgId;
 

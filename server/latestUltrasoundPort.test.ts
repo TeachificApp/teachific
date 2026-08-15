@@ -310,12 +310,20 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("requires authenticated organization ownership for content package uploads", () => {
     const uploadSource = readFileSync(new URL("./scormUploadRoutes.ts", import.meta.url), "utf8");
     const uploadPageSource = readFileSync(new URL("../client/src/pages/UploadPage.tsx", import.meta.url), "utf8");
+    const chunkedUploadSource = readFileSync(new URL("./chunkedUploadRoutes.ts", import.meta.url), "utf8");
     expect(uploadSource).toContain("requireOrgAdmin(authUser.id, authUser.role, orgId)");
     expect(uploadSource).toContain("Upload user does not match the authenticated user");
     expect(uploadSource).toContain("You are not authorized to upload content for this organization");
     expect(uploadPageSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
     expect(uploadPageSource).toContain("const { orgId: activeOrgId } = useOrgScope();");
     expect(uploadPageSource).toContain("selectedOrgId || activeOrgId");
+    expect(chunkedUploadSource).toContain("authUserId: user.id");
+    expect(chunkedUploadSource).toContain("Upload session does not belong to the authenticated user");
+    expect(chunkedUploadSource).toContain("requireOrgAdmin(user.id, user.role, session.orgId)");
+    expect(chunkedUploadSource).toContain("/version/:packageId/chunk/:uploadId");
+    expect(chunkedUploadSource).toContain("user.id !== session.authUserId");
+    expect(chunkedUploadSource).toContain("Version attribution does not match the authenticated user");
+    expect(chunkedUploadSource).toContain("const uploadedByNum = user.id");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
