@@ -662,8 +662,8 @@ function InstructorBlockSettings({ d, set, inlineMediaRef, uploading, handleFile
       <div>
         <label className="text-xs text-gray-500 block mb-1">Source</label>
         <div className="grid grid-cols-2 gap-1">
-          <button onClick={() => set("mode", "profile")} className={`py-1.5 text-xs rounded border ${mode === "profile" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Saved Profile</button>
-          <button onClick={() => set("mode", "manual")} className={`py-1.5 text-xs rounded border ${mode === "manual" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Manual Entry</button>
+          <button onClick={() => set("mode", "profile")} className={`py-1.5 text-xs rounded border ${mode === "profile" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Saved Profile</button>
+          <button onClick={() => set("mode", "manual")} className={`py-1.5 text-xs rounded border ${mode === "manual" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Manual Entry</button>
         </div>
       </div>
 
@@ -688,20 +688,20 @@ function InstructorBlockSettings({ d, set, inlineMediaRef, uploading, handleFile
           </div>
           {/* Selected instructor preview */}
           {selectedInstructor && (
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
+            <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3">
               <div className="flex items-center gap-3">
                 {selectedInstructor.avatarUrl
                   ? <img src={selectedInstructor.avatarUrl} className="w-10 h-10 rounded-full object-cover" />
-                  : <div className="w-10 h-10 rounded-full bg-teal-200 flex items-center justify-center"><Users size={16} className="text-teal-700" /></div>}
+                  : <div className="w-10 h-10 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] flex items-center justify-center"><Users size={16} className="text-[var(--org-primary)]" /></div>}
                 <div>
-                  <p className="text-sm font-semibold text-teal-900">{selectedInstructor.name}</p>
-                  {selectedInstructor.title && <p className="text-xs text-teal-700">{selectedInstructor.title}</p>}
+                  <p className="text-sm font-semibold text-[var(--org-primary)]">{selectedInstructor.name}</p>
+                  {selectedInstructor.title && <p className="text-xs text-[var(--org-primary)]">{selectedInstructor.title}</p>}
                 </div>
               </div>
             </div>
           )}
           {/* Create new button */}
-          <button onClick={() => setShowCreateDialog(true)} className="w-full py-2 text-xs text-teal-700 bg-teal-50 border border-dashed border-teal-300 rounded-lg hover:bg-teal-100 flex items-center justify-center gap-1">
+          <button onClick={() => setShowCreateDialog(true)} className="w-full py-2 text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-lg hover:opacity-80 flex items-center justify-center gap-1">
             <Plus size={12} /> Create New Instructor Profile
           </button>
         </>
@@ -716,7 +716,7 @@ function InstructorBlockSettings({ d, set, inlineMediaRef, uploading, handleFile
             <label className="text-xs text-gray-500 block mb-1">Avatar</label>
             <div className="flex items-center gap-2">
               <DebouncedInput value={d.avatarUrl ?? ""} onChange={v => set("avatarUrl", v)} className="h-8 text-sm flex-1" placeholder="Avatar URL or upload" />
-              <button onClick={() => inlineMediaRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "avatarUrl"}>{uploading === "avatarUrl" ? "..." : <><Upload size={12} /> Upload</>}</button>
+              <button onClick={() => inlineMediaRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "avatarUrl"}>{uploading === "avatarUrl" ? "..." : <><Upload size={12} /> Upload</>}</button>
               <input ref={inlineMediaRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "avatarUrl", "instructor-avatar"); e.target.value = ""; }} />
             </div>
             {d.avatarUrl && <img src={d.avatarUrl} className="w-12 h-12 rounded-full object-cover border mt-1" />}
@@ -728,8 +728,8 @@ function InstructorBlockSettings({ d, set, inlineMediaRef, uploading, handleFile
       <div>
         <label className="text-xs text-gray-500 block mb-1">Layout</label>
         <div className="grid grid-cols-2 gap-1">
-          <button onClick={() => set("layout", "horizontal")} className={`py-1.5 text-xs rounded border ${(d.layout ?? "horizontal") === "horizontal" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Horizontal</button>
-          <button onClick={() => set("layout", "centered")} className={`py-1.5 text-xs rounded border ${d.layout === "centered" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Centered</button>
+          <button onClick={() => set("layout", "horizontal")} className={`py-1.5 text-xs rounded border ${(d.layout ?? "horizontal") === "horizontal" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Horizontal</button>
+          <button onClick={() => set("layout", "centered")} className={`py-1.5 text-xs rounded border ${d.layout === "centered" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>Centered</button>
         </div>
       </div>
 
@@ -1059,18 +1059,18 @@ function CTAActionPicker({
         </div>
       )}
       {behavior === "next_funnel_step" && (
-        <p className="text-[10px] text-teal-600 bg-teal-50 rounded px-2 py-1">Button will navigate to the next page in the funnel sequence.</p>
+        <p className="text-[10px] text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] rounded px-2 py-1">Button will navigate to the next page in the funnel sequence.</p>
       )}
       {isCheckoutBehavior && (
         <div className={`space-y-2 rounded p-2 border ${
-          behavior === "direct_checkout" ? "bg-teal-50 border-teal-200" :
+          behavior === "direct_checkout" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]" :
           behavior === "free_preview" ? "bg-blue-50 border-blue-200" :
-          "bg-teal-50 border-teal-200"
+          "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]"
         }`}>
           <p className={`text-[10px] font-medium ${
-            behavior === "direct_checkout" ? "text-teal-700" :
+            behavior === "direct_checkout" ? "text-[var(--org-primary)]" :
             behavior === "free_preview" ? "text-blue-700" :
-            "text-teal-700"
+            "text-[var(--org-primary)]"
           }`}>
             {behavior === "direct_checkout" && "Opens Stripe Checkout. After payment, user is sent to /my-dashboard."}
             {behavior === "free_preview" && "Opens Stripe Checkout with a 100% discount (free preview). Product must support free enrollment."}
@@ -1090,33 +1090,33 @@ function CTAActionPicker({
             </select>
           </div>
           {behavior === "group_purchase" && (
-            <div className="border-t border-teal-200 pt-2 mt-1 space-y-2">
+            <div className="border-t border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] pt-2 mt-1 space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-teal-700">Volume Discount Tiers</p>
+                <p className="text-[10px] font-semibold text-[var(--org-primary)]">Volume Discount Tiers</p>
                 <button
                   type="button"
                   onClick={() => onGroupDiscountTiersChange?.([...(groupDiscountTiersValue ?? []), { minSeats: 5, discountPercent: 10 }])}
-                  className="text-[10px] text-teal-600 hover:text-teal-800 flex items-center gap-0.5"
+                  className="text-[10px] text-[var(--org-primary)] hover:opacity-80 flex items-center gap-0.5"
                 ><Plus size={10} /> Add Tier</button>
               </div>
               {(groupDiscountTiersValue ?? []).length === 0 && (
-                <p className="text-[10px] text-teal-400 italic">No discount tiers. Buyer pays full price regardless of seat count.</p>
+                <p className="text-[10px] text-[var(--org-primary)] italic">No discount tiers. Buyer pays full price regardless of seat count.</p>
               )}
               {(groupDiscountTiersValue ?? []).map((tier, i) => (
                 <div key={i} className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-teal-600 whitespace-nowrap">If seats ≥</span>
+                  <span className="text-[10px] text-[var(--org-primary)] whitespace-nowrap">If seats ≥</span>
                   <input
                     type="number" min={1} max={999} value={tier.minSeats}
                     onChange={e => { const next = [...(groupDiscountTiersValue ?? [])]; next[i] = { ...next[i], minSeats: Number(e.target.value) }; onGroupDiscountTiersChange?.(next); }}
-                    className="w-14 h-6 text-xs rounded border border-teal-200 px-1 text-center"
+                    className="w-14 h-6 text-xs rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] px-1 text-center"
                   />
-                  <span className="text-[10px] text-teal-600 whitespace-nowrap">then discount</span>
+                  <span className="text-[10px] text-[var(--org-primary)] whitespace-nowrap">then discount</span>
                   <input
                     type="number" min={1} max={100} value={tier.discountPercent}
                     onChange={e => { const next = [...(groupDiscountTiersValue ?? [])]; next[i] = { ...next[i], discountPercent: Number(e.target.value) }; onGroupDiscountTiersChange?.(next); }}
-                    className="w-14 h-6 text-xs rounded border border-teal-200 px-1 text-center"
+                    className="w-14 h-6 text-xs rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] px-1 text-center"
                   />
-                  <span className="text-[10px] text-teal-600">% per seat</span>
+                  <span className="text-[10px] text-[var(--org-primary)]">% per seat</span>
                   <button
                     type="button"
                     onClick={() => onGroupDiscountTiersChange?.((groupDiscountTiersValue ?? []).filter((_, j) => j !== i))}
@@ -1541,7 +1541,7 @@ function LeadCaptureSettings({ d, set }: { d: Record<string, any>; set: (key: st
             {(["filled", "outline"] as const).map(s => (
               <button key={s} type="button" onClick={() => set("btnStyle", s)}
                 className={`flex-1 py-1.5 text-xs rounded border capitalize ${
-                  (d.btnStyle ?? "filled") === s ? "bg-teal-50 border-teal-400 text-teal-700 font-semibold" : "border-gray-200 text-gray-500"
+                  (d.btnStyle ?? "filled") === s ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[var(--org-primary)] text-[var(--org-primary)] font-semibold" : "border-gray-200 text-gray-500"
                 }`}>{s}</button>
             ))}
           </div>
@@ -1637,7 +1637,7 @@ function CtaOptinSettings({ d, set }: { d: Record<string, any>; set: (key: strin
             {(["filled", "outline"] as const).map(s => (
               <button key={s} type="button" onClick={() => set("btnStyle", s)}
                 className={`flex-1 py-1.5 text-xs rounded border capitalize ${
-                  (d.btnStyle ?? "filled") === s ? "bg-teal-50 border-teal-400 text-teal-700 font-semibold" : "border-gray-200 text-gray-500"
+                  (d.btnStyle ?? "filled") === s ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[var(--org-primary)] text-[var(--org-primary)] font-semibold" : "border-gray-200 text-gray-500"
                 }`}>{s}</button>
             ))}
           </div>
@@ -1848,24 +1848,24 @@ function AdditionalAccessEditor({
   };
 
   const addMembership = (brand: string) => {
-    const label = brand === "teachific" ? "Teachific™ Membership" : brand === "teachific" ? "Teachific™ Membership" : "All Memberships";
+    const label = brand === "both" ? "All Memberships" : "Membership";
     onSet("additionalAccess", [...items, { type: "membership", brand, label }]);
   };
 
   const removeItem = (i: number) => onSet("additionalAccess", items.filter((_, j) => j !== i));
 
   return (
-    <div className="border border-teal-200 rounded-lg p-3 space-y-2 bg-teal-50/30">
+    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3 space-y-2 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]">
       <div className="flex items-center gap-2">
-        <UserPlus size={13} className="text-teal-600 flex-shrink-0" />
-        <p className="text-xs font-semibold text-teal-700">Additional Access (Bonus — no charge)</p>
+        <UserPlus size={13} className="text-[var(--org-primary)] flex-shrink-0" />
+        <p className="text-xs font-semibold text-[var(--org-primary)]">Additional Access (Bonus — no charge)</p>
       </div>
       <p className="text-xs text-gray-500">Automatically grants access to these extra items after purchase. The primary product from the checkout is always granted automatically.</p>
       {/* Current items */}
       {items.length > 0 && (
         <div className="space-y-1">
           {items.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 bg-white border border-teal-100 rounded px-2 py-1">
+            <div key={i} className="flex items-center gap-2 bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] rounded px-2 py-1">
               <span className="text-xs text-gray-500 capitalize flex-shrink-0">{item.type}</span>
               <span className="text-xs flex-1 truncate text-gray-700">{item.label}</span>
               <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={10} /></button>
@@ -1881,7 +1881,7 @@ function AdditionalAccessEditor({
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full h-7 text-xs pl-6 pr-2 rounded border border-gray-200 focus:outline-none focus:border-teal-400"
+              className="w-full h-7 text-xs pl-6 pr-2 rounded border border-gray-200 focus:outline-none focus:border-[var(--org-primary)]"
               placeholder="Search courses, downloads, products..."
             />
           </div>
@@ -1890,7 +1890,7 @@ function AdditionalAccessEditor({
               {filtered.length === 0 && <p className="text-xs text-gray-400 px-2 py-1">No results</p>}
               {filtered.map(item => (
                 <button key={`aa-${item.type}-${item.id}`} onClick={() => addItem(item)}
-                  className="w-full text-left flex items-center gap-2 px-2 py-1 hover:bg-teal-50 hover:text-teal-700 text-xs transition-colors">
+                  className="w-full text-left flex items-center gap-2 px-2 py-1 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] text-xs transition-colors">
                   {item.imageUrl && <img src={item.imageUrl} className="w-5 h-5 rounded object-cover flex-shrink-0" />}
                   <span className="flex-1 truncate">{item.name}</span>
                   <span className="text-gray-300 flex-shrink-0 capitalize">{item.type}</span>
@@ -1905,8 +1905,8 @@ function AdditionalAccessEditor({
         <span className="text-xs text-gray-400">+ Membership:</span>
         {(["teachific", "both"] as const).map(b => (
           <button key={b} onClick={() => addMembership(b)}
-            className="text-xs px-2 py-0.5 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 transition-colors">
-            {b === "teachific" ? "Teachific™" : b === "both" ? "Both" : "Teachific™"}
+            className="text-xs px-2 py-0.5 rounded-full border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors">
+            {b === "both" ? "All Memberships" : "Membership"}
           </button>
         ))}
       </div>
@@ -1966,7 +1966,7 @@ function CheckoutFormBlockSettings({
           <span className="text-xs font-semibold text-gray-700">Products ({cfProds.length})</span>
           <div className="flex gap-1">
             <button onClick={() => setProdMode(m => m === "catalog" ? "manual" : "catalog")} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5">{prodMode === "catalog" ? "Manual" : "Catalog"}</button>
-            <button onClick={() => set("products", [...cfProds, { name: "New Product", description: "", price: 0, imageUrl: "", type: "course" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+            <button onClick={() => set("products", [...cfProds, { name: "New Product", description: "", price: 0, imageUrl: "", type: "course" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
           </div>
         </div>
         {prodMode === "catalog" && catalog && catalog.length > 0 && (
@@ -1975,7 +1975,7 @@ function CheckoutFormBlockSettings({
             <div className="max-h-40 overflow-y-auto space-y-1">
               {catalog.map(item => (
                 <button key={`${item.type}-${item.id}`} onClick={() => addFromCatalog(item)}
-                  className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
+                  className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] text-xs border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] transition-colors">
                   {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                   <span className="flex-1 truncate">{item.name}</span>
                   <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
@@ -2024,7 +2024,7 @@ function CheckoutFormBlockSettings({
           <label className="text-xs text-gray-500 font-medium">Order Bumps</label>
           <div className="flex gap-1">
             <button onClick={() => setBumpMode(m => m === "catalog" ? "manual" : "catalog")} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5">{bumpMode === "catalog" ? "Manual" : "Catalog"}</button>
-            <button onClick={() => set("orderBumps", [...cfBumps, { title: "Add-on Offer", headline: "❖ Special Add-On!", description: "", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", externalUrl: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+            <button onClick={() => set("orderBumps", [...cfBumps, { title: "Add-on Offer", headline: "❖ Special Add-On!", description: "", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", externalUrl: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
           </div>
         </div>
         {bumpMode === "catalog" && catalog && catalog.length > 0 && (
@@ -2033,7 +2033,7 @@ function CheckoutFormBlockSettings({
             <div className="max-h-40 overflow-y-auto space-y-1">
               {catalog.map(item => (
                 <button key={`bump-${item.type}-${item.id}`} onClick={() => addBumpFromCatalog(item)}
-                  className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
+                  className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] text-xs border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] transition-colors">
                   {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                   <span className="flex-1 truncate">{item.name}</span>
                   <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
@@ -2182,8 +2182,8 @@ function SortablePricingCard({
             <button onClick={() => onSet("imageUrl", "")} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5"><X size={10} /></button>
           </div>
         ) : (
-          <label className="flex items-center gap-2 cursor-pointer border border-dashed border-gray-300 rounded p-2 hover:border-teal-400">
-            {uploading === `pricing-img-${card.id}` ? <Loader2 size={12} className="animate-spin text-teal-600" /> : <Upload size={12} className="text-gray-400" />}
+          <label className="flex items-center gap-2 cursor-pointer border border-dashed border-gray-300 rounded p-2 hover:border-[var(--org-primary)]">
+            {uploading === `pricing-img-${card.id}` ? <Loader2 size={12} className="animate-spin text-[var(--org-primary)]" /> : <Upload size={12} className="text-gray-400" />}
             <span className="text-xs text-gray-400">{uploading === `pricing-img-${card.id}` ? "Uploading..." : "Upload image"}</span>
             <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onImageUpload(f); }} />
           </label>
@@ -2718,7 +2718,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
               <label className="text-xs text-gray-500 block mb-1">Image URL</label>
               <div className="flex items-center gap-2">
                 <DebouncedInput value={d.url ?? ""} onChange={v => set("url", v)} className="h-8 text-sm flex-1" placeholder="Image URL or upload" />
-                <button onClick={() => bgImageRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "url"}>{uploading === "url" ? "..." : <><Upload size={12} /> Upload</>}</button>
+                <button onClick={() => bgImageRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "url"}>{uploading === "url" ? "..." : <><Upload size={12} /> Upload</>}</button>
                 <input ref={bgImageRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "url", "image-block"); e.target.value = ""; }} />
               </div>
               {d.url && <img src={d.url} className="w-full h-16 object-cover rounded border mt-1" style={{ borderRadius: d.borderRadius ? `${d.borderRadius}px` : undefined }} />}
@@ -2764,12 +2764,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             {/* Alignment */}
             <div>
               <label className="text-xs text-gray-500 block mb-1">Alignment</label>
-              <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+              <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
             </div>
             {/* Width */}
             <div>
               <label className="text-xs text-gray-500 block mb-1">Image Width</label>
-              <div className="flex flex-wrap gap-1 mb-1">{(["auto","25%","33%","50%","75%","100%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "auto") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+              <div className="flex flex-wrap gap-1 mb-1">{(["auto","25%","33%","50%","75%","100%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "auto") === w ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
               <DebouncedInput value={d.maxWidth ?? "auto"} onChange={v => set("maxWidth", v)} className="h-8 text-sm" placeholder="auto, 100%, 600px, etc." />
             </div>
             <div><label className="text-xs text-gray-500 block mb-1">Height</label><DebouncedInput value={d.height ?? ""} onChange={v => set("height", v)} className="h-8 text-sm" placeholder="auto, 300px, etc." /></div>
@@ -2782,7 +2782,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
               <div><label className="text-xs text-gray-500 block mb-1">Border Radius (px)</label><Input type="number" value={d.borderRadius ?? 0} onChange={e => set("borderRadius", Number(e.target.value))} className="h-8 text-sm" min={0} max={999} /></div>
               {!d.noBorder && <>
                 <div><label className="text-xs text-gray-500 block mb-1">Border Width (px)</label><Input type="number" value={d.borderWidth ?? 0} onChange={e => set("borderWidth", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div>
-                <div><label className="text-xs text-gray-500 block mb-1">Border Style</label><div className="flex gap-1">{(["solid","dashed","dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
+                <div><label className="text-xs text-gray-500 block mb-1">Border Style</label><div className="flex gap-1">{(["solid","dashed","dotted"] as const).map(s => <button key={s} onClick={() => set("borderStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.borderStyle ?? "solid") === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
                 <BSColorField data={d} onSet={set} label="Border Color" field="borderColor" />
               </>}
             </div>
@@ -2815,12 +2815,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           {/* Alignment */}
           <div>
             <label className="text-xs text-gray-500 block mb-1">Alignment</label>
-            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
           </div>
           {/* Width */}
           <div>
             <label className="text-xs text-gray-500 block mb-1">Width</label>
-            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
             <DebouncedInput value={d.maxWidth ?? "100%"} onChange={v => set("maxWidth", v)} className="h-8 text-sm" placeholder="100%, 600px, etc." />
           </div>
           <BSTextField data={d} onSet={set} label="Caption" field="caption" />
@@ -2828,11 +2828,11 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     case "gallery": {
       const images: Array<{ url: string; caption: string }> = d.images ?? [];
-      return (<div className="space-y-3"><div><label className="text-xs text-gray-500 block mb-1">Columns</label><Input type="number" value={d.columns ?? 3} onChange={e => set("columns", Number(e.target.value))} className="h-8 text-sm" min={1} max={6} /></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Images</label><button onClick={() => set("images", [...images, { url: "", caption: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{images.map((img, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Image {i + 1}</span><button onClick={() => set("images", images.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div><DebouncedInput value={img.url} onChange={v => { const next = images.map((im, j) => j === i ? { ...im, url: v } : im); set("images", next); }} className="h-7 text-xs" placeholder="Image URL" /><DebouncedInput value={img.caption} onChange={v => { const next = images.map((im, j) => j === i ? { ...im, caption: v } : im); set("images", next); }} className="h-7 text-xs" placeholder="Caption (optional)" /></div>))}</div></div></div>);
+      return (<div className="space-y-3"><div><label className="text-xs text-gray-500 block mb-1">Columns</label><Input type="number" value={d.columns ?? 3} onChange={e => set("columns", Number(e.target.value))} className="h-8 text-sm" min={1} max={6} /></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Images</label><button onClick={() => set("images", [...images, { url: "", caption: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{images.map((img, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Image {i + 1}</span><button onClick={() => set("images", images.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div><DebouncedInput value={img.url} onChange={v => { const next = images.map((im, j) => j === i ? { ...im, url: v } : im); set("images", next); }} className="h-7 text-xs" placeholder="Image URL" /><DebouncedInput value={img.caption} onChange={v => { const next = images.map((im, j) => j === i ? { ...im, caption: v } : im); set("images", next); }} className="h-7 text-xs" placeholder="Caption (optional)" /></div>))}</div></div></div>);
     }
     case "bullets": {
       const items: string[] = d.items ?? [];
-      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Section Headline" field="headline" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Items</label><button onClick={() => set("items", [...items, "New item"])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-1">{items.map((item, i) => (<div key={i} className="flex gap-1"><DebouncedInput value={item} onChange={v => { const next = items.map((it, j) => j === i ? v : it); set("items", next); }} className="h-7 text-xs flex-1" /><button onClick={() => set("items", items.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={12} /></button></div>))}</div></div><BSColorField data={d} onSet={set} label="Icon Color" field="iconColor" /><BSColorField data={d} onSet={set} label="Background" field="bgColor" /></div>);
+      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Section Headline" field="headline" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Items</label><button onClick={() => set("items", [...items, "New item"])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-1">{items.map((item, i) => (<div key={i} className="flex gap-1"><DebouncedInput value={item} onChange={v => { const next = items.map((it, j) => j === i ? v : it); set("items", next); }} className="h-7 text-xs flex-1" /><button onClick={() => set("items", items.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={12} /></button></div>))}</div></div><BSColorField data={d} onSet={set} label="Icon Color" field="iconColor" /><BSColorField data={d} onSet={set} label="Background" field="bgColor" /></div>);
     }
     case "numbered_list": {
       const items: string[] = d.items ?? [];
@@ -2844,7 +2844,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Items</label>
-              <button onClick={() => set("items", [...items, "New step"])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("items", [...items, "New step"])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <DndContext
               sensors={listSensors}
@@ -2894,7 +2894,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Items</label>
               <p className="text-[10px] text-gray-400 flex-1 mx-2">Click ✓/✗ to toggle crossed-out</p>
-              <button onClick={() => set("items", [...items, { text: "New item", crossed: false }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("items", [...items, { text: "New item", crossed: false }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <DndContext
               sensors={listSensors}
@@ -2930,7 +2930,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
     }
     case "icon_grid": {
       const items: Array<{ icon: string; title: string; text: string }> = d.items ?? [];
-      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Section Headline" field="headline" /><div><label className="text-xs text-gray-500 block mb-1">Columns</label><Input type="number" value={d.columns ?? 3} onChange={e => set("columns", Number(e.target.value))} className="h-8 text-sm" min={1} max={6} /></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Items</label><button onClick={() => set("items", [...items, { icon: "⭐", title: "Feature", text: "Description" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{items.map((item, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Item {i + 1}</span><button onClick={() => set("items", items.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div><DebouncedInput value={item.icon} onChange={v => { const next = items.map((it, j) => j === i ? { ...it, icon: v } : it); set("items", next); }} className="h-7 text-xs" placeholder="Emoji or icon" /><DebouncedInput value={item.title} onChange={v => { const next = items.map((it, j) => j === i ? { ...it, title: v } : it); set("items", next); }} className="h-7 text-xs" placeholder="Title" /><DebouncedInput value={item.text} onChange={v => { const next = items.map((it, j) => j === i ? { ...it, text: v } : it); set("items", next); }} className="h-7 text-xs" placeholder="Description" /></div>))}</div></div></div>);
+      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Section Headline" field="headline" /><div><label className="text-xs text-gray-500 block mb-1">Columns</label><Input type="number" value={d.columns ?? 3} onChange={e => set("columns", Number(e.target.value))} className="h-8 text-sm" min={1} max={6} /></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Items</label><button onClick={() => set("items", [...items, { icon: "⭐", title: "Feature", text: "Description" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{items.map((item, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Item {i + 1}</span><button onClick={() => set("items", items.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div><DebouncedInput value={item.icon} onChange={v => { const next = items.map((it, j) => j === i ? { ...it, icon: v } : it); set("items", next); }} className="h-7 text-xs" placeholder="Emoji or icon" /><DebouncedInput value={item.title} onChange={v => { const next = items.map((it, j) => j === i ? { ...it, title: v } : it); set("items", next); }} className="h-7 text-xs" placeholder="Title" /><DebouncedInput value={item.text} onChange={v => { const next = items.map((it, j) => j === i ? { ...it, text: v } : it); set("items", next); }} className="h-7 text-xs" placeholder="Description" /></div>))}</div></div></div>);
     }
     case "testimonial":
       return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Quote" field="quote" multiline /><BSTextField data={d} onSet={set} label="Author" field="author" /><BSTextField data={d} onSet={set} label="Avatar URL" field="avatarUrl" /><div><label className="text-xs text-gray-500 block mb-1">Star Rating</label><div className="flex items-center gap-1">{[0,1,2,3,4,5].map(n => (<button key={n} type="button" onClick={() => set("rating", n)} className={`w-8 h-8 rounded text-sm font-medium border ${(d.rating ?? 5) === n ? "bg-yellow-100 border-yellow-400 text-yellow-700" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>{n === 0 ? "\u2715" : "\u2605".repeat(n)}</button>))}</div><p className="text-[10px] text-gray-400 mt-1">{(d.rating ?? 5) === 0 ? "Stars hidden" : `${d.rating ?? 5} star${(d.rating ?? 5) > 1 ? "s" : ""} shown`}</p></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" /></div>);
@@ -2979,7 +2979,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
     }
     case "logos": {
       const logos: Array<{ url: string; alt: string }> = d.logos ?? [];
-      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Headline" field="headline" /><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Logos</label><button onClick={() => set("logos", [...logos, { url: "", alt: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{logos.map((logo, i) => (<div key={i} className="flex gap-1 items-center"><DebouncedInput value={logo.url} onChange={v => { const next = logos.map((l, j) => j === i ? { ...l, url: v } : l); set("logos", next); }} className="h-7 text-xs flex-1" placeholder="Logo URL" /><DebouncedInput value={logo.alt} onChange={v => { const next = logos.map((l, j) => j === i ? { ...l, alt: v } : l); set("logos", next); }} className="h-7 text-xs w-24" placeholder="Alt" /><button onClick={() => set("logos", logos.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={12} /></button></div>))}</div></div></div>);
+      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Headline" field="headline" /><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Logos</label><button onClick={() => set("logos", [...logos, { url: "", alt: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{logos.map((logo, i) => (<div key={i} className="flex gap-1 items-center"><DebouncedInput value={logo.url} onChange={v => { const next = logos.map((l, j) => j === i ? { ...l, url: v } : l); set("logos", next); }} className="h-7 text-xs flex-1" placeholder="Logo URL" /><DebouncedInput value={logo.alt} onChange={v => { const next = logos.map((l, j) => j === i ? { ...l, alt: v } : l); set("logos", next); }} className="h-7 text-xs w-24" placeholder="Alt" /><button onClick={() => set("logos", logos.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={12} /></button></div>))}</div></div></div>);
     }
     case "instructor":
       return <InstructorBlockSettings d={d} set={set} inlineMediaRef={inlineMediaRef} uploading={uploading} handleFileUpload={handleFileUpload} onChange={onChange} />;
@@ -3004,7 +3004,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div className="border-t pt-3">
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">FAQ Items <span className="text-gray-400">(drag to reorder)</span></label>
-              <button onClick={() => set("items", [{ id: `faq-${Date.now()}`, q: "Question?", a: "Answer." }, ...items])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("items", [{ id: `faq-${Date.now()}`, q: "Question?", a: "Answer." }, ...items])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <DndContext sensors={faqSensors} collisionDetection={closestCenter} onDragEnd={e => { const { active, over } = e; if (over && active.id !== over.id) { const oldIdx = items.findIndex(it => it.id === active.id); const newIdx = items.findIndex(it => it.id === over.id); if (oldIdx !== -1 && newIdx !== -1) set("items", arrayMove(items, oldIdx, newIdx)); } }}>
               <SortableContext items={items.map(it => it.id)} strategy={verticalListSortingStrategy}>
@@ -3027,13 +3027,13 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     }
     case "ticker": {
-      const tickerItems: string[] = d.items ?? ["Free Shipping on Orders Over $50", "New Courses Added Weekly", "Join 10,000+ Students"];
+      const tickerItems: string[] = d.items ?? [];
       return (
         <div className="space-y-3">
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs text-gray-500 font-medium">Ticker Items</label>
-              <button onClick={() => set("items", [...tickerItems, "New item"])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("items", [...tickerItems, "New item"])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-1">
               {tickerItems.map((item, i) => (
@@ -3177,7 +3177,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Alert Text" field="text" /><div><label className="text-xs text-gray-500 block mb-1">Alert Type</label><select value={d.alertType ?? "info"} onChange={e => set("alertType", e.target.value)} className="w-full h-8 text-xs rounded border border-gray-200 px-2"><option value="info">Info (Blue)</option><option value="success">Success (Green)</option><option value="warning">Warning (Yellow)</option><option value="error">Error (Red)</option></select></div><BSTextField data={d} onSet={set} label="Icon (emoji)" field="icon" placeholder="💡" /></div>);
     case "flip_cards": {
       const cards: Array<{ front: string; back: string }> = d.cards ?? [];
-      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Section Headline" field="headline" /><BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" /><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Cards</label><button onClick={() => set("cards", [...cards, { front: "Card Title", back: "Card description" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{cards.map((card, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Card {i + 1}</span><button onClick={() => set("cards", cards.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div><DebouncedInput value={card.front} onChange={v => { const next = cards.map((c, j) => j === i ? { ...c, front: v } : c); set("cards", next); }} className="h-7 text-xs" placeholder="Front (title)" /><DebouncedTextarea value={card.back} onChange={v => { const next = cards.map((c, j) => j === i ? { ...c, back: v } : c); set("cards", next); }} className="text-xs min-h-[60px]" placeholder="Back (description)" /></div>))}</div></div></div>);
+      return (<div className="space-y-3"><BSTextField data={d} onSet={set} label="Section Headline" field="headline" /><BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" /><BSColorField data={d} onSet={set} label="Background" field="bgColor" /><div><div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-500 font-medium">Cards</label><button onClick={() => set("cards", [...cards, { front: "Card Title", back: "Card description" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div><div className="space-y-2">{cards.map((card, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Card {i + 1}</span><button onClick={() => set("cards", cards.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div><DebouncedInput value={card.front} onChange={v => { const next = cards.map((c, j) => j === i ? { ...c, front: v } : c); set("cards", next); }} className="h-7 text-xs" placeholder="Front (title)" /><DebouncedTextarea value={card.back} onChange={v => { const next = cards.map((c, j) => j === i ? { ...c, back: v } : c); set("cards", next); }} className="text-xs min-h-[60px]" placeholder="Back (description)" /></div>))}</div></div></div>);
     }
     case "pricing_cta":
       return (
@@ -7411,13 +7411,13 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
                   type="date"
                   value={s.date}
                   onChange={e => updateSession(i, "date", e.target.value)}
-                  className="h-7 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="h-7 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                 />
                 <input
                   type="time"
                   value={s.time}
                   onChange={e => updateSession(i, "time", e.target.value)}
-                  className="h-7 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="h-7 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                 />
               </div>
               <DebouncedInput value={s.meetingUrl ?? ""} onChange={v => updateSession(i, "meetingUrl", v)} className="h-7 text-xs" placeholder="Meeting URL (optional)" />
