@@ -206,6 +206,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(blockPreviewSource).toContain("backgroundColor: d.ctaColor");
   });
 
+  it("derives new Landing Page Builder block defaults from the active organization theme", () => {
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(landingBuilderSource).toContain("getOrgPrimaryDefault");
+    expect(landingBuilderSource).toContain("resolveOrgBlockDefaults");
+    expect(landingBuilderSource).toContain("createOrgThemedBlock(catalog)");
+    expect(landingBuilderSource).toContain("createOrgThemedBlock(c)");
+    expect(landingBuilderSource).toContain("createOrgThemedBlock(b)");
+    expect(landingBuilderSource).not.toMatch(/data: \{ \.\.\.(c|b|catalog)\.defaultData \}/);
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");

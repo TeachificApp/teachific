@@ -605,6 +605,30 @@ BLOCK_CATALOG.push(
   },
 );
 
+const LEGACY_ORG_PRIMARY_DEFAULTS = new Set(["#179ca3", "#189aa1"]);
+const LEGACY_ORG_TINT_DEFAULTS = new Set(["#f0fafa", "#f8fffe", "#f0fdfa"]);
+
+function getOrgPrimaryDefault() {
+  if (typeof window === "undefined") return "#000000";
+  return window.getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000";
+}
+
+function resolveOrgBlockDefaults(value: any): any {
+  if (Array.isArray(value)) return value.map(resolveOrgBlockDefaults);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, nestedValue]) => [key, resolveOrgBlockDefaults(nestedValue)]));
+  }
+  if (typeof value === "string") {
+    if (LEGACY_ORG_PRIMARY_DEFAULTS.has(value.toLowerCase())) return getOrgPrimaryDefault();
+    if (LEGACY_ORG_TINT_DEFAULTS.has(value.toLowerCase())) return "#ffffff";
+  }
+  return value;
+}
+
+function createOrgThemedBlock(catalog: { type: BlockType; defaultData: Record<string, any> }): Block {
+  return { id: uid(), type: catalog.type, data: resolveOrgBlockDefaults(catalog.defaultData) };
+}
+
 // ─── Block Preview ─────────────────────────────────────────────────────────────
 
 // ─── Instructor Block Settings (select from saved profiles or manual entry) ──
@@ -2311,22 +2335,22 @@ function ColumnBlockList({ side, blocks, onUpdate, lessonId, courseId }: {
     <div className="space-y-1">
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-medium text-gray-600 capitalize">{side} Column</span>
-        <button onClick={() => setAddOpen(v => !v)} className="text-xs text-teal-600 flex items-center gap-1 hover:text-teal-700"><Plus size={11} /> Add Block</button>
+        <button onClick={() => setAddOpen(v => !v)} className="text-xs text-[var(--org-primary)] flex items-center gap-1 hover:opacity-80"><Plus size={11} /> Add Block</button>
       </div>
       {addOpen && (
         <div className="bg-gray-50 border border-gray-200 rounded p-2 space-y-1 mb-2">
           <div className="flex gap-1 flex-wrap">
             {CATALOG_CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => setAddCat(cat)} className={`text-[10px] px-2 py-0.5 rounded-full border ${addCat === cat ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-500"}`}>{cat}</button>
+              <button key={cat} onClick={() => setAddCat(cat)} className={`text-[10px] px-2 py-0.5 rounded-full border ${addCat === cat ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-500"}`}>{cat}</button>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
             {BLOCK_CATALOG.filter(c => c.category === addCat && c.type !== "column_layout").map(c => (
               <button key={c.type} onClick={() => {
-                const newBlock: Block = { id: uid(), type: c.type, data: { ...c.defaultData } };
+                const newBlock = createOrgThemedBlock(c);
                 onUpdate([...blocks, newBlock]);
                 setAddOpen(false);
-              }} className="text-[10px] text-left px-2 py-1 rounded border border-gray-200 hover:bg-teal-50 hover:border-teal-300 text-gray-600 truncate">{c.label}</button>
+              }} className="text-[10px] text-left px-2 py-1 rounded border border-gray-200 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:border-[var(--org-primary)] text-gray-600 truncate">{c.label}</button>
             ))}
           </div>
         </div>
@@ -5014,8 +5038,8 @@ function ColumnBlockPickerDialog({ open, onOpenChange, onAddBlock }: {
         </DialogHeader>
         {/* Tabs */}
         <div className="flex border-b border-gray-100 px-4 shrink-0">
-          <button onClick={() => setTab("catalog")} className={cn("px-3 py-2 text-xs font-semibold transition-colors", tab === "catalog" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>Block Catalog</button>
-          <button onClick={() => setTab("templates")} className={cn("px-3 py-2 text-xs font-semibold transition-colors", tab === "templates" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>Saved Templates</button>
+          <button onClick={() => setTab("catalog")} className={cn("px-3 py-2 text-xs font-semibold transition-colors", tab === "catalog" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>Block Catalog</button>
+          <button onClick={() => setTab("templates")} className={cn("px-3 py-2 text-xs font-semibold transition-colors", tab === "templates" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>Saved Templates</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {tab === "catalog" && (
@@ -5023,14 +5047,14 @@ function ColumnBlockPickerDialog({ open, onOpenChange, onAddBlock }: {
               {/* Category pills */}
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {categories.map(c => (
-                  <button key={c} onClick={() => setCat(c)} className={cn("px-2.5 py-1 rounded-full text-xs font-medium transition-colors", cat === c ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}>{c}</button>
+                  <button key={c} onClick={() => setCat(c)} className={cn("px-2.5 py-1 rounded-full text-xs font-medium transition-colors", cat === c ? "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}>{c}</button>
                 ))}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {catalogItems.map(b => (
-                  <button key={b.type} onClick={() => { onAddBlock({ id: uid(), type: b.type, data: { ...b.defaultData } }); onOpenChange(false); }}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
-                    <span className="text-teal-500" style={{ fontSize: 20 }}>{b.icon}</span>
+                  <button key={b.type} onClick={() => { onAddBlock(createOrgThemedBlock(b)); onOpenChange(false); }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-gray-600 hover:text-[var(--org-primary)] transition-all text-center">
+                    <span className="text-[var(--org-primary)]" style={{ fontSize: 20 }}>{b.icon}</span>
                     <span className="text-[10px] font-medium text-gray-600 truncate w-full text-center">{b.label}</span>
                   </button>
                 ))}
@@ -5726,7 +5750,7 @@ export default function LandingPageBuilder() {
   const addBlock = useCallback((type: BlockType) => {
     const catalog = BLOCK_CATALOG.find(c => c.type === type);
     if (!catalog) return;
-    const newBlock: Block = { id: uid(), type, data: { ...catalog.defaultData } };
+    const newBlock = createOrgThemedBlock(catalog);
     setBlocks(prev => [...prev, newBlock]);
     setSelectedId(newBlock.id);
   }, []);
