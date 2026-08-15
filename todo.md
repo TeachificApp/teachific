@@ -4597,6 +4597,7 @@
 - [x] Download Analytics: display stored order amounts as dollars without legacy cents conversion
 - [x] Course Builder orders: display stored purchase amounts as dollars without legacy cents conversion
 - [x] Platform LMS order administration: display stored purchase amounts as dollars without legacy cents conversion
+- [x] Platform Digital Downloads: display purchaser and average-order amounts as dollars without legacy cents conversion
 - [x] RelatedProductsBlock formats membership and other related product prices directly from stored dollar values
 
 ## Org-Sender Buyer Confirmation Emails

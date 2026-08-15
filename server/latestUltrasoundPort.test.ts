@@ -334,6 +334,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadAnalyticsSource).not.toContain("o.amount ?? 0) / 100");
   });
 
+  it("displays platform digital download purchaser and average-order amounts as stored dollars", () => {
+    const platformDownloadsSource = readFileSync(new URL("../client/src/pages/admin/DigitalDownloadsAdmin.tsx", import.meta.url), "utf8");
+    expect(platformDownloadsSource).toContain("$${Number(p.amountPaid).toFixed(2)}");
+    expect(platformDownloadsSource).toContain("$${avgOrder.toFixed(2)}");
+    expect(platformDownloadsSource).not.toContain("Number(p.amountPaid) / 100");
+    expect(platformDownloadsSource).not.toContain("avgOrder / 100");
+  });
+
   it("displays active-organization Course Builder order amounts as stored dollars", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain("${Number(o.amount).toFixed(2)}");
