@@ -914,4 +914,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(checkoutConfigSource).toContain("saveCheckoutPageConfig: protectedProcedure");
     expect((checkoutConfigSource.match(/await assertCourseOwnership\(ctx, input\.courseId\);/g) ?? []).length).toBe(2);
   });
+
+  it("scopes membership administration list and editor controls to the active organization theme", () => {
+    const membershipSource = readFileSync(new URL("../client/src/pages/admin/MembershipsAdmin.tsx", import.meta.url), "utf8");
+    const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    expect((membershipSource.match(/membership-admin-org-theme lms-org-theme/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(membershipSource).toContain("text-[var(--org-primary)]");
+    expect(themeCss).toContain(".lms-org-theme :is(");
+    expect(themeCss).toContain("background-color: var(--org-primary);");
+  });
 });

@@ -4613,6 +4613,7 @@
 - [x] Platform Digital Downloads: display purchaser and average-order amounts as dollars without legacy cents conversion
 - [x] Bundles administration: display and edit stored option prices as dollars without legacy cents conversion
 - [x] Membership administration: display and edit plan prices as dollars without legacy cents conversion
+- [x] Apply active organization theme variables to membership administration controls and primary actions
 - [x] Keep embedded checkout purchase amounts dollar-denominated after Stripe payment confirmation
 - [x] Product analytics and manual invoice transactions: keep internal amounts dollar-denominated outside Stripe boundaries
 - [x] Require explicit active-organization context for product analytics administrative reads and actions

@@ -186,7 +186,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className="membership-admin-org-theme lms-org-theme p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -411,8 +411,8 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
 
   if (isLoading || !data) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-6 h-6 animate-spin text-teal-500" />
+      <div className="membership-admin-org-theme lms-org-theme flex items-center justify-center h-64">
+        <RefreshCw className="w-6 h-6 animate-spin text-[var(--org-primary)]" />
       </div>
     );
   }
@@ -420,7 +420,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
   const { plan, items, discountCodes, subscribers } = data;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="membership-admin-org-theme lms-org-theme flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white shrink-0">
         <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-500">
