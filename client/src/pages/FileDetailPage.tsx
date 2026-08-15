@@ -755,7 +755,7 @@ export default function FileDetailPage() {
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [autoFullscreenMobile, setAutoFullscreenMobile] = useState(false);
-  const [displayMode, setDisplayMode] = useState<"native" | "lms_shell" | "quiz">("native");
+  const [displayMode, setDisplayMode] = useState<"native" | "lms_shell">("native");
   const [lmsShellSettings, setLmsShellSettings] = useState<LmsShellSettings>({});
   const [allowDownload, setAllowDownload] = useState(false);
   const [maxPlays, setMaxPlays] = useState("");
@@ -769,7 +769,7 @@ export default function FileDetailPage() {
     setDescription(pkg.description ?? "");
     setIsPublic(pkg.isPublic ?? false);
     setAutoFullscreenMobile(packageRecord.autoFullscreenMobile ?? false);
-    setDisplayMode(packageRecord.displayMode ?? "native");
+    setDisplayMode(packageRecord.displayMode === "lms_shell" ? "lms_shell" : "native");
     setLmsShellSettings(parseLmsShellSettings(packageRecord.lmsShellConfig));
   }, [pkg]);
   useEffect(() => {
@@ -931,7 +931,6 @@ export default function FileDetailPage() {
                   {([
                     ["native", "Native", "Play the imported package exactly as supplied."],
                     ["lms_shell", "LMS Shell", "Wrap the package in your configured learner shell."],
-                    ["quiz", "Quiz", "Deliver extracted questions through the quiz experience."],
                   ] as const).map(([value, label, helper]) => (
                     <button
                       key={value}
@@ -944,6 +943,7 @@ export default function FileDetailPage() {
                     </button>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground">To deliver extracted questions, use <span className="font-medium">Save to Question Bank</span> below, then link the resulting quiz to an LMS course or lesson.</p>
               </div>
               {displayMode === "lms_shell" && (
                 <div className="space-y-4 rounded-lg border border-primary/25 bg-primary/[0.03] p-4">

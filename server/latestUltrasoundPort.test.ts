@@ -97,6 +97,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(fileDetailSource).toContain("showSessionStatus");
     expect(fileDetailSource).toContain("showSidebar");
     expect(fileDetailSource).toContain("allowNotes");
+    expect(fileDetailSource).toContain("Save to Question Bank");
+    expect(fileDetailSource).not.toContain('["quiz", "Quiz", "Deliver extracted questions through the quiz experience."]');
   });
 
   it("routes direct Media Repository extraction into a same-organization Question Bank preview", () => {

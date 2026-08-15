@@ -23,6 +23,7 @@
 - [x] Require organization-admin ownership before native SCORM package creation from the Question Bank import workflow
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
+- [x] Prevent package settings from presenting unsupported standalone quiz playback as an available display mode
 - [x] Apply organization-owned LMS shell branding, core visibility, and light/dark theme settings during package playback
 - [x] Add active-organization package controls for display mode, shell branding, visibility, sidebar, and learner notes
 - [x] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
