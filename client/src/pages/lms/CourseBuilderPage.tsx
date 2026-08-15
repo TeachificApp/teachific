@@ -7522,7 +7522,7 @@ function FreePreviewEnrollmentsTab() {
         <button
           onClick={handleExport}
           disabled={exportLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[#189aa1] hover:bg-[#147f86] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[var(--org-primary)] hover:opacity-90 disabled:opacity-50 transition-colors"
         >
           {exportLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           Export CSV
