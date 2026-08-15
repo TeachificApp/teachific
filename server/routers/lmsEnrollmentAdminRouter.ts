@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, isPlatformAdmin, getOrgIdForUser } from "../db";
+import { getDb, getOrCreateAccessToken, isPlatformAdmin, getOrgIdForUser, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -2238,6 +2238,7 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const rows = await db.select({
         userId: users.id,
         name: users.name,
@@ -2258,10 +2259,10 @@ CRITICAL REQUIREMENTS:
         })
           .from(lmsCourseInstructors)
           .leftJoin(lmsCourses, eq(lmsCourses.id, lmsCourseInstructors.courseId))
-          .where(eq(lmsCourseInstructors.instructorId, r.userId));
+          .where(and(eq(lmsCourseInstructors.instructorId, r.userId), eq(lmsCourses.orgId, orgId)));
         return { ...r, courseShares };
       }));
-      return enriched;
+      return enriched.filter((instructor) => instructor.courseShares.length > 0);
     }),
 
   /** Admin: update revenue share % for an instructor on a course */
@@ -2275,6 +2276,11 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses)
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, orgId)))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization" });
       await db.update(lmsCourseInstructors)
         .set({ revenueSharePct: input.revenueSharePct })
         .where(and(

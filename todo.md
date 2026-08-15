@@ -7,6 +7,7 @@
 - [x] Resolve BrandingPage theme settings from the active organization rather than the first membership
 - [x] Persist the originating lesson ID on standalone quiz attempts completed inside Course Player
 - [x] Display resolved product-level checkout terms before organization defaults in hosted checkout
+- [x] Scope instructor revenue-share listings and updates to the active organization
 
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)
