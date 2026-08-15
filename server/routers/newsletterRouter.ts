@@ -9,7 +9,7 @@ import { z } from "zod";
 import { eq, and, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { newsletterSubscribers, organizations } from "../../drizzle/schema";
 import { notifyOwner } from "../_core/notification";
 import {
@@ -234,11 +234,12 @@ export const newsletterRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const isSiteLevel = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      if (!isSiteLevel) throw new TRPCError({ code: "FORBIDDEN" });
 
       const limit = input?.limit ?? 200;
       const offset = input?.offset ?? 0;
-      const orgId = input?.orgId;
+      const orgId = isSiteLevel
+        ? input?.orgId
+        : await requireOrgAdmin(ctx.user.id, ctx.user.role, input?.orgId);
 
       const whereClause = orgId
         ? eq(newsletterSubscribers.orgId, orgId)
@@ -264,7 +265,16 @@ export const newsletterRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const isSiteLevel = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      if (!isSiteLevel) throw new TRPCError({ code: "FORBIDDEN" });
+      const [subscriber] = await db
+        .select({ orgId: newsletterSubscribers.orgId })
+        .from(newsletterSubscribers)
+        .where(eq(newsletterSubscribers.id, input.id))
+        .limit(1);
+      if (!subscriber) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isSiteLevel) {
+        if (!subscriber.orgId) throw new TRPCError({ code: "FORBIDDEN" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, subscriber.orgId);
+      }
       await db
         .update(newsletterSubscribers)
         .set({
@@ -283,7 +293,16 @@ export const newsletterRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const isSiteLevel = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      if (!isSiteLevel) throw new TRPCError({ code: "FORBIDDEN" });
+      const [subscriber] = await db
+        .select({ orgId: newsletterSubscribers.orgId })
+        .from(newsletterSubscribers)
+        .where(eq(newsletterSubscribers.id, input.id))
+        .limit(1);
+      if (!subscriber) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!isSiteLevel) {
+        if (!subscriber.orgId) throw new TRPCError({ code: "FORBIDDEN" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, subscriber.orgId);
+      }
       await db
         .delete(newsletterSubscribers)
         .where(eq(newsletterSubscribers.id, input.id));

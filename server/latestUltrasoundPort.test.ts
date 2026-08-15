@@ -1100,5 +1100,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cmeDisclosureSource).toContain('message: "Course not found in this organization."');
     expect(cmeDisclosureSource).toContain("const baseUrl = getOrgBaseUrl(");
     expect(cmeDisclosureSource).not.toContain("const baseUrl = input.origin || getOrgBaseUrl(");
+    const newsletterSource = readFileSync(new URL("./routers/newsletterRouter.ts", import.meta.url), "utf8");
+    expect(newsletterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input?.orgId)");
+    expect(newsletterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, subscriber.orgId)");
   });
 });
