@@ -1301,7 +1301,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
 
               <DragOverlay>
                 {activeDragId ? (
-                  <div className="bg-white border border-teal-300 rounded-lg px-4 py-2 shadow-xl text-sm text-teal-700 font-medium opacity-90 cursor-grabbing">
+                  <div className="bg-white border border-[var(--org-primary)] rounded-lg px-4 py-2 shadow-xl text-sm text-[var(--org-primary)] font-medium opacity-90 cursor-grabbing">
                     Moving...
                   </div>
                 ) : null}
@@ -1309,7 +1309,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
             </DndContext>
 
             <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setAddLessonAtCourseLevel(true)}>
+              <Button size="sm" variant="outline" className="border-dashed border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" onClick={() => setAddLessonAtCourseLevel(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Lesson (No Section)
               </Button>
               <Button size="sm" variant="outline" className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => setAddSectionOpen(true)}>
@@ -1502,14 +1502,14 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
               </p>
               <div className="space-y-3">
                 <button
-                  className="w-full text-left border border-teal-300 rounded-lg px-4 py-3 hover:bg-teal-50 transition-colors group"
+                  className="w-full text-left border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-lg px-4 py-3 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors group"
                   onClick={async () => {
                     await bulkSetLessonStatus.mutateAsync({ courseId, lessonStatus: "published", onlyDrafts: true });
                     updateCourse.mutate({ id: courseId, ...publishDialog.pendingData });
                     setPublishDialog(null);
                   }}
                 >
-                  <p className="text-sm font-semibold text-teal-700 group-hover:text-teal-800">Publish all lessons</p>
+                  <p className="text-sm font-semibold text-[var(--org-primary)] group-hover:opacity-80">Publish all lessons</p>
                   <p className="text-xs text-gray-500 mt-0.5">All {draftCount} draft {draftCount === 1 ? "lesson" : "lessons"} will be published and visible to enrolled learners.</p>
                 </button>
                 <button
@@ -1821,10 +1821,10 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           <p className="text-xs text-orange-600 mt-0.5">When enabled, new students cannot enroll in this course. Existing enrollments are not affected.</p>
         </div>
       </div>
-      <div className="md:col-span-2 rounded-lg border border-teal-200 bg-teal-50/50 p-4 space-y-4">
+      <div className="md:col-span-2 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] p-4 space-y-4">
         <div>
-          <Label className="text-sm font-semibold text-teal-900">Enrollment Availability</Label>
-          <p className="text-xs text-teal-700 mt-1">This setting applies only to this organization’s course. Existing student access is never changed.</p>
+          <Label className="text-sm font-semibold text-[var(--org-primary)]">Enrollment Availability</Label>
+          <p className="text-xs text-[var(--org-primary)] mt-1">This setting applies only to this organization’s course. Existing student access is never changed.</p>
         </div>
         <Select value={availabilityStatus} onValueChange={(value) => setAvailabilityStatus(value as typeof availabilityStatus)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1864,7 +1864,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
               type="button"
               size="sm"
               variant="outline"
-              className="border-teal-300 text-teal-800 hover:bg-teal-100"
+              className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]"
               disabled={saveWaitlistSettings.isPending}
               onClick={() => saveWaitlistSettings.mutate({
                 courseId: course.id,
@@ -1902,7 +1902,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           <Button
             type="button"
             variant="outline"
-            className="border-teal-300 text-teal-800 hover:bg-teal-100"
+            className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]"
             disabled={saveAvailability.isPending}
             onClick={() => saveAvailability.mutate({
               productType: "course",
@@ -1939,7 +1939,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
               <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
                 uploadingCover
                   ? "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
-                  : "border-teal-300 text-teal-600 bg-white hover:bg-teal-50 cursor-pointer"
+                  : "border-[var(--org-primary)] text-[var(--org-primary)] bg-white hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] cursor-pointer"
               }`}>
                 <Upload className="w-3 h-3" />
                 {uploadingCover ? "Uploading..." : "Upload Photo"}
@@ -2276,7 +2276,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           <PublishDomainSelect value={publishDomain} onChange={setPublishDomain} />
           <p className="text-xs text-gray-400 mt-1">Override the default publish domain for this course only. Leave blank to use the global default set in LMS Settings.</p>
         </div>
-        <Button size="sm" variant="outline" className="border-teal-300 text-teal-600 hover:bg-teal-50"
+        <Button size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
           disabled={updateCourseSettings.isPending}
           onClick={() => updateCourseSettings.mutate({ courseId: course.id, slug: slug.trim() || course.slug, metaTitle: metaTitle.trim() || null, metaDescription: metaDescription.trim() || null, status, hasCertificate, certificateTemplateId, isFeatured, publishDomain: publishDomain || null })}
         >
@@ -2302,7 +2302,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
             <p className="text-xs text-gray-400 mt-0.5">Configure welcome and completion emails, thank-you content, upsells, and post-purchase redirects for this course.</p>
           </div>
           <Link href={`/lms/courses/${course.id}/after_purchase`} className="shrink-0">
-            <Button type="button" size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50">
+            <Button type="button" size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]">
               Configure
             </Button>
           </Link>
@@ -2331,7 +2331,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
               type="button"
               size="sm"
               variant="outline"
-              className="border-teal-300 text-teal-700 hover:bg-teal-50"
+              className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
               disabled={saveLifecycleAutomation.isPending}
               onClick={() => saveLifecycleAutomation.mutate({ courseId: course.id, welcomeEmailEnabled, completionEmailEnabled, upsellEnabled })}
             >
@@ -2831,7 +2831,7 @@ function CourseOverviewEditor({
       {/* Toolbar */}
       <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <span className="text-teal-700 font-bold text-sm">Course Overview Page Builder</span>
+          <span className="text-[var(--org-primary)] font-bold text-sm">Course Overview Page Builder</span>
           <span className="text-gray-400 text-xs">Shown to enrolled students at /learn/{courseSlug}/overview</span>
         </div>
         <div className="flex items-center gap-2">
@@ -2840,7 +2840,7 @@ function CourseOverviewEditor({
             size="sm"
             variant="outline"
             onClick={() => setPreviewMode(p => !p)}
-            className={cn("text-xs h-7", previewMode ? "border-teal-500 text-teal-700 bg-teal-50" : "text-gray-500 hover:text-teal-700")}
+            className={cn("text-xs h-7", previewMode ? "border-[var(--org-primary)] text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "text-gray-500 hover:text-[var(--org-primary)]")}
           >
             {previewMode ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
             {previewMode ? "Edit" : "Preview"}
@@ -2903,10 +2903,10 @@ function CourseOverviewEditor({
 
           <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
             {/* ── Top Zone (above progress bar) ── */}
-            <div className={cn("rounded-xl border-2 overflow-hidden bg-white", activeZone === "top" ? "border-teal-400" : "border-dashed border-teal-200")}>
+            <div className={cn("rounded-xl border-2 overflow-hidden bg-white", activeZone === "top" ? "border-[var(--org-primary)]" : "border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]")}>
               <div className="px-4 py-2 flex items-center justify-between" style={{ background: activeZone === "top" ? "#7c3aed" : "#f5f3ff" }}>
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: activeZone === "top" ? "#fff" : "#7c3aed" }}>🔝 Top Zone — Above Progress Bar</span>
-                {activeZone !== "top" && <button onClick={() => { setActiveZone("top"); setSelectedBlockId(null); }} className="text-[10px] text-teal-500 hover:text-teal-700 font-medium">Edit this zone</button>}
+                {activeZone !== "top" && <button onClick={() => { setActiveZone("top"); setSelectedBlockId(null); }} className="text-[10px] text-[var(--org-primary)] hover:opacity-80 font-medium">Edit this zone</button>}
               </div>
               {topBlocks.length === 0 && activeZone !== "top" ? (
                 <div className="text-center text-gray-400 py-4 text-xs italic">No blocks in Top Zone</div>
@@ -2930,7 +2930,7 @@ function CourseOverviewEditor({
                         ))}
                       </SortableContext>
                     </DndContext>
-                    <button onClick={() => setAddMenuOpen(true)} className="w-full border-2 border-dashed border-teal-200 hover:border-teal-400 rounded-xl py-3 text-teal-500 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors mt-2">
+                    <button onClick={() => setAddMenuOpen(true)} className="w-full border-2 border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-xl py-3 text-[var(--org-primary)] hover:opacity-80 text-sm flex items-center justify-center gap-2 transition-colors mt-2">
                       <Plus className="w-4 h-4" /> Add Block to Top Zone
                     </button>
                   </div>
@@ -2951,7 +2951,7 @@ function CourseOverviewEditor({
             <div className="bg-white rounded-xl border border-gray-200 p-5 opacity-60 pointer-events-none select-none">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">Your Progress</span>
-                <span className="text-sm font-bold text-teal-700">0%</span>
+                <span className="text-sm font-bold text-[var(--org-primary)]">0%</span>
               </div>
               <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-[var(--org-primary)] rounded-full" style={{ width: "0%" }} />
@@ -2962,10 +2962,10 @@ function CourseOverviewEditor({
             })()}
 
             {/* ── Main Zone (between progress bar and curriculum) ── */}
-            <div className={cn("rounded-xl border-2 overflow-hidden bg-white", activeZone === "main" ? "border-teal-400" : "border-dashed border-teal-200")}>
-              <div className="px-4 py-2 bg-teal-50 border-b border-teal-200 flex items-center justify-between" style={{ background: activeZone === "main" ? "#0d9488" : undefined }}>
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: activeZone === "main" ? "#fff" : "#0d9488" }}>✏️ Main Zone — Between Progress Bar and Curriculum</span>
-                {activeZone !== "main" && <button onClick={() => { setActiveZone("main"); setSelectedBlockId(null); }} className="text-[10px] text-teal-500 hover:text-teal-700 font-medium">Edit this zone</button>}
+            <div className={cn("rounded-xl border-2 overflow-hidden bg-white", activeZone === "main" ? "border-[var(--org-primary)]" : "border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]")}>
+              <div className="px-4 py-2 bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border-b border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] flex items-center justify-between" style={{ background: activeZone === "main" ? "var(--org-primary)" : undefined }}>
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: activeZone === "main" ? "#fff" : "var(--org-primary)" }}>✏️ Main Zone — Between Progress Bar and Curriculum</span>
+                {activeZone !== "main" && <button onClick={() => { setActiveZone("main"); setSelectedBlockId(null); }} className="text-[10px] text-[var(--org-primary)] hover:opacity-80 font-medium">Edit this zone</button>}
               </div>
               {blocks.length === 0 && activeZone !== "main" ? (
                 <div className="text-center text-gray-400 py-4 text-xs italic">No blocks in Main Zone</div>
@@ -2989,7 +2989,7 @@ function CourseOverviewEditor({
                         ))}
                       </SortableContext>
                     </DndContext>
-                    <button onClick={() => setAddMenuOpen(true)} className="w-full border-2 border-dashed border-teal-200 hover:border-teal-400 rounded-xl py-3 text-teal-500 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors mt-2">
+                    <button onClick={() => setAddMenuOpen(true)} className="w-full border-2 border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-xl py-3 text-[var(--org-primary)] hover:opacity-80 text-sm flex items-center justify-center gap-2 transition-colors mt-2">
                       <Plus className="w-4 h-4" /> Add Block to Main Zone
                     </button>
                   </div>
@@ -3004,7 +3004,7 @@ function CourseOverviewEditor({
             {/* ── Read-only: Curriculum outline ── */}
             <div className="opacity-60 pointer-events-none select-none">
               <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <ListChecks className="w-5 h-5 text-teal-600" /> Course Curriculum
+                <ListChecks className="w-5 h-5 text-[var(--org-primary)]" /> Course Curriculum
               </h2>
               {(topLevelLessons ?? []).length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3 shadow-sm">
@@ -3020,7 +3020,7 @@ function CourseOverviewEditor({
               {(sections ?? []).map((section: any) => (
                 <div key={section.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-3 shadow-sm">
                   <div className="flex items-center gap-3 px-5 py-4 bg-gray-50 border-b border-gray-200">
-                    <BookOpen className="w-4 h-4 text-teal-600 shrink-0" />
+                    <BookOpen className="w-4 h-4 text-[var(--org-primary)] shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 text-sm">{section.title}</p>
                       <p className="text-[10px] text-gray-500">{(section.lessons ?? []).length} lessons</p>
@@ -3526,7 +3526,7 @@ function AddSectionDialog({ open, courseId, onClose, onCreated }: { open: boolea
           {(["blank", "template", "course"] as const).map(m => (
             <button key={m} onClick={() => setMode(m)}
               className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${
-                mode === m ? "bg-white shadow text-teal-700 border border-gray-200" : "text-gray-500 hover:text-gray-700"
+                mode === m ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
               }`}>
               {m === "blank" ? "Blank Section" : m === "template" ? "From Template" : "Copy from Course"}
             </button>
@@ -3983,7 +3983,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
               {([null, true, false] as const).map(v => (
                 <button key={String(v)} onClick={() => setRequireManualComplete(v)}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    requireManualComplete === v ? "bg-white shadow text-teal-700 border border-gray-200" : "text-gray-500 hover:text-gray-700"
+                    requireManualComplete === v ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
                   }`}>
                   {v === null ? "Inherit from course" : v ? "Always show" : "Always hide"}
                 </button>
@@ -4044,7 +4044,7 @@ function CopyLessonDialog({
                 {(courses1).map((c: any) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     <span className="flex items-center gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${c.type === "quiz" ? "bg-teal-100 text-teal-700" : "bg-teal-100 text-teal-700"}`}>{c.type === "quiz" ? "Quiz" : "Course"}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${c.type === "quiz" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]" : "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]"}`}>{c.type === "quiz" ? "Quiz" : "Course"}</span>
                       <span>{c.title}</span>
                       {c.status !== "public" && <span className="text-xs text-gray-400">({c.status})</span>}
                     </span>
@@ -4112,7 +4112,7 @@ function CopyModuleDialog({
                 {(courses2).map((c: any) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     <span className="flex items-center gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${c.type === "quiz" ? "bg-teal-100 text-teal-700" : "bg-teal-100 text-teal-700"}`}>{c.type === "quiz" ? "Quiz" : "Course"}</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${c.type === "quiz" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]" : "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]"}`}>{c.type === "quiz" ? "Quiz" : "Course"}</span>
                       <span>{c.title}</span>
                       {c.status !== "public" && <span className="text-xs text-gray-400">({c.status})</span>}
                     </span>
@@ -4351,7 +4351,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             onClick={() => prevLesson && onNavigateLesson?.(prevLesson)}
             disabled={!prevLesson}
             title={prevLesson ? `← ${prevLesson.title}` : "No previous lesson"}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-teal-700 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-gray-200 hover:border-[var(--org-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden md:inline max-w-[110px] truncate">{prevLesson ? prevLesson.title : "Prev"}</span>
@@ -4360,7 +4360,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             onClick={() => nextLesson && onNavigateLesson?.(nextLesson)}
             disabled={!nextLesson}
             title={nextLesson ? `${nextLesson.title} →` : "No next lesson"}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-teal-700 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-gray-200 hover:border-[var(--org-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <span className="hidden md:inline max-w-[110px] truncate">{nextLesson ? nextLesson.title : "Next"}</span>
             <ChevronRight className="w-3.5 h-3.5 shrink-0" />
@@ -4798,7 +4798,7 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
                     <Label htmlFor="use-lessons" className="text-sm font-medium cursor-pointer">Generate from specific lesson content</Label>
                   </div>
                   {useFromLessons && (
-                    <div className="border border-teal-200 rounded-lg p-3 bg-white space-y-1 max-h-48 overflow-y-auto">
+                    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3 bg-white space-y-1 max-h-48 overflow-y-auto">
                       <div className="flex gap-2 mb-2">
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setSelectedLessonIds(courseLessonList.map(l => l.id))}>Select All</Button>
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setSelectedLessonIds([])}>Clear</Button>
