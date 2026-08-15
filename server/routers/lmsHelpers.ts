@@ -16,7 +16,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgIdForUser, requireOrgAdmin } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUser, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { overlayLearnerData } from "../lib/certificatePdfOverlay";
@@ -304,6 +304,10 @@ export async function assertCourseOwnership(
     .where(eq(lmsCourses.id, courseId))
     .limit(1);
   if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId || activeOrgId !== course.orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This course does not belong to the active organization" });
+  }
   await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
 }
 

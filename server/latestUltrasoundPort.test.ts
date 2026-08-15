@@ -428,6 +428,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(filesPageSource).toContain("trpc.packages.list.useQuery");
     const lmsHelpersSource = readFileSync(new URL("../server/routers/lmsHelpers.ts", import.meta.url), "utf8");
     expect(lmsHelpersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);");
+    expect(lmsHelpersSource).toContain("getOrgIdForUserWithFallback");
+    expect(lmsHelpersSource).toContain("This course does not belong to the active organization");
     const courseOwnershipHelper = lmsHelpersSource.slice(
       lmsHelpersSource.indexOf("export async function assertCourseOwnership"),
       lmsHelpersSource.indexOf("export async function assertSectionOwnership"),
