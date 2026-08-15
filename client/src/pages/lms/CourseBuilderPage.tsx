@@ -7651,7 +7651,7 @@ function PublishRequestsTab() {
           {(["pending", "approved", "rejected", "all"] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                statusFilter === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
+                statusFilter === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
               }`}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
