@@ -5812,7 +5812,7 @@ function CreateTeamDialog({ open, onClose, onCreated }: { open: boolean; onClose
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+            className="bg-[var(--org-primary)] hover:opacity-90 text-white"
             disabled={!name.trim() || create.isPending}
             onClick={() => create.mutate({ name: name.trim(), orgName: orgName || undefined, adminEmail: adminEmail || undefined, adminPhone: adminPhone || undefined, website: website || undefined, notes: notes || undefined })}
           >
@@ -5872,7 +5872,7 @@ function EditTeamDialog({ team, onClose, onSaved }: { team: any; onClose: () => 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+            className="bg-[var(--org-primary)] hover:opacity-90 text-white"
             disabled={!name.trim() || update.isPending}
             onClick={() => update.mutate({ id: team.id, name: name.trim(), orgName: orgName || null, adminEmail: adminEmail || null, adminPhone: adminPhone || null, website: website || null, notes: notes || null })}
           >
