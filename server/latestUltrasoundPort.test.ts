@@ -354,6 +354,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundlesSource).not.toContain("o.price / 100");
   });
 
+  it("displays, edits, and saves membership plan prices as stored dollars", () => {
+    const membershipsSource = readFileSync(new URL("../client/src/pages/admin/MembershipsAdmin.tsx", import.meta.url), "utf8");
+    expect(membershipsSource).toContain(".format(price);");
+    expect(membershipsSource).toContain("price: String(plan.price)");
+    expect(membershipsSource).toContain("price: parseFloat(form.price || \"0\")");
+    expect(membershipsSource).toContain("compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null");
+    expect(membershipsSource).not.toContain("plan.price / 100");
+    expect(membershipsSource).not.toContain("parseFloat(form.price || \"0\") * 100");
+  });
+
   it("displays active-organization Course Builder order amounts as stored dollars", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain("${Number(o.amount).toFixed(2)}");

@@ -133,7 +133,7 @@ const BILLING_LABELS: Record<string, string> = {
 };
 
 function formatPrice(price: number, currency = "usd") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(price / 100);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(price);
 }
 
 // ─── Membership List ──────────────────────────────────────────────────────────
@@ -833,8 +833,8 @@ function MembershipSettingsTab({
     subtitle: plan.subtitle ?? "",
     description: plan.description ?? "",
     billingInterval: plan.billingInterval,
-    price: String(plan.price / 100),
-    compareAtPrice: plan.compareAtPrice ? String(plan.compareAtPrice / 100) : "",
+    price: String(plan.price),
+    compareAtPrice: plan.compareAtPrice ? String(plan.compareAtPrice) : "",
     trialDays: String(plan.trialDays ?? 0),
     accentColor: plan.accentColor ?? "#189aa1",
     coverImage: plan.coverImage ?? "",
@@ -880,8 +880,8 @@ function MembershipSettingsTab({
       subtitle: form.subtitle || null,
       description: form.description || null,
       billingInterval: form.billingInterval as any,
-      price: Math.round(parseFloat(form.price || "0") * 100),
-      compareAtPrice: form.compareAtPrice ? Math.round(parseFloat(form.compareAtPrice) * 100) : null,
+      price: parseFloat(form.price || "0"),
+      compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
       trialDays: parseInt(form.trialDays || "0", 10),
       accentColor: form.accentColor,
       coverImage: form.coverImage || null,
