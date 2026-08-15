@@ -4972,7 +4972,7 @@
 
 - [ ] Expand BrandingPage: add favicon upload, student logo, button color, page bg color, invoice/email branding JSON
 - [ ] Apply org branding (primaryColor, logo, font) to landing pages (LandingPageBuilder block renderer)
-- [ ] Conditionally hide CME Management nav item in DashboardLayout when org.cmeEnabled is false
+- [x] Conditionally hide CME Management nav item in DashboardLayout when the active org has CME disabled
 - [ ] Conditionally hide CME tab in CourseBuilderPage when org.cmeEnabled is false
 - [ ] Expose cmeEnabled in myContext or a dedicated org features query for the client
 
@@ -5279,3 +5279,10 @@
 ## Draft Pull Request Integration (Aug 14, 2026)
 - [x] Review and integrate the user-provided draft pull request without overwriting current reconciliation work
 - [x] Reconcile draft changes with organization-scoped Quiz Creator attempt storage and results filtering
+
+## Comprehensive Multi-Area Completion Program (Aug 14, 2026)
+- [ ] Complete remaining SCORM/native import, extraction, and hosted-content authoring workflows
+- [ ] Complete remaining member-management, role, organization-linking, and learner-access workflows
+- [ ] Complete remaining organization branding, theme propagation, and site-builder workflows
+- [ ] Complete remaining checkout, product fulfillment, and revenue-sharing workflows
+- [ ] Complete remaining course, quiz, Question Bank, and product authoring workflows
