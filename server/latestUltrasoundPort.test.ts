@@ -952,4 +952,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundleSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
     expect((bundleSource.match(/await requireLegacyBundleAccess\(ctx, input\.id\);/g) ?? []).length).toBe(3);
   });
+
+  it("requires organization-admin ownership throughout mounted legacy LMS flashcard administration", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const flashcardSource = routerSource.slice(
+      routerSource.indexOf("flashcards: router({"),
+      routerSource.indexOf("// ── Media")
+    );
+    expect(routerSource).toContain("async function requireLegacyFlashcardDeckAccess");
+    expect(flashcardSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect((flashcardSource.match(/await requireLegacyFlashcardDeckAccess\(ctx, input\.(?:id|deckId)\);/g) ?? []).length).toBe(3);
+  });
 });

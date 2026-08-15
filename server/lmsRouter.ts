@@ -228,6 +228,13 @@ async function requireLegacyBundleAccess(ctx: { user: { id: number; role: string
   return bundle;
 }
 
+async function requireLegacyFlashcardDeckAccess(ctx: { user: { id: number; role: string } }, deckId: number) {
+  const deck = await getFlashcardDeckById(deckId);
+  if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "Flashcard deck not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, deck.orgId);
+  return deck;
+}
+
 async function getTeachificOrgId(): Promise<number | null> {
   const teachOrg = await getOrgBySlug("teach");
   return teachOrg?.id ?? null;
@@ -1826,28 +1833,33 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getFlashcardDecksByOrg(orgId);
       }),
     createDeck: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), title: z.string(), description: z.string().optional(), category: z.string().optional(), isPublic: z.boolean().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return createFlashcardDeck({ orgId, title: input.title, description: input.description, category: input.category, isPublic: input.isPublic, createdBy: ctx.user.id });
       }),
     deleteDeck: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyFlashcardDeckAccess(ctx, input.id);
         await deleteFlashcardDeck(input.id);
         return { ok: true };
       }),
     getCards: protectedProcedure
       .input(z.object({ deckId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyFlashcardDeckAccess(ctx, input.deckId);
         return getCardsByDeck(input.deckId);
       }),
     saveCards: protectedProcedure
       .input(z.object({ deckId: z.number(), cards: z.array(z.object({ front: z.string(), back: z.string(), frontImageUrl: z.string().optional(), backImageUrl: z.string().optional(), sortOrder: z.number() })) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyFlashcardDeckAccess(ctx, input.deckId);
         await bulkUpsertCards(input.deckId, input.cards);
         return { ok: true };
       }),
