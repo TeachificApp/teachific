@@ -5123,7 +5123,7 @@ function ColumnChildBlock({ block, onMoveOut, onMoveToOther, onDelete, onMoveUp,
       <div className="absolute top-1 left-1 z-10 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         <div {...attributes} {...listeners} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-gray-600 flex items-center justify-center cursor-grab active:cursor-grabbing" title="Drag to reorder"><GripVertical size={11} /></div>
         {onMoveToOther && (
-          <button onClick={e => { e.stopPropagation(); onMoveToOther(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-teal-600 flex items-center justify-center" title="Move to other column"><ArrowLeftRight size={11} /></button>
+          <button onClick={e => { e.stopPropagation(); onMoveToOther(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-[var(--org-primary)] flex items-center justify-center" title="Move to other column"><ArrowLeftRight size={11} /></button>
         )}
         <button onClick={e => { e.stopPropagation(); onMoveOut(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-orange-500 flex items-center justify-center" title="Move out of column"><ArrowRight size={11} /></button>
         {onDelete && (
@@ -5134,10 +5134,10 @@ function ColumnChildBlock({ block, onMoveOut, onMoveToOther, onDelete, onMoveUp,
       {(onMoveUp || onMoveDown) && (
         <div className="absolute top-1 right-1 z-10 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {onMoveUp && (
-            <button onClick={e => { e.stopPropagation(); onMoveUp(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-teal-600 flex items-center justify-center" title="Move up"><ChevronUp size={11} /></button>
+            <button onClick={e => { e.stopPropagation(); onMoveUp(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-[var(--org-primary)] flex items-center justify-center" title="Move up"><ChevronUp size={11} /></button>
           )}
           {onMoveDown && (
-            <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-teal-600 flex items-center justify-center" title="Move down"><ChevronDown size={11} /></button>
+            <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-[var(--org-primary)] flex items-center justify-center" title="Move down"><ChevronDown size={11} /></button>
           )}
         </div>
       )}
@@ -6163,7 +6163,7 @@ export default function LandingPageBuilder() {
     <Dialog open={addMenuOpen} onOpenChange={open => { setAddMenuOpen(open); if (!open) setBlockSearch(""); }}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
         <DialogHeader className="shrink-0">
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">
             <Plus className="w-5 h-5" /> Add Content Block
           </DialogTitle>
         </DialogHeader>
@@ -6181,7 +6181,7 @@ export default function LandingPageBuilder() {
               className={cn(
                 "px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 shrink-0",
                 pickerTab === tab.id
-                  ? "text-teal-700 border-b-2 border-teal-500"
+                  ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -6196,7 +6196,7 @@ export default function LandingPageBuilder() {
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-none bg-gray-50 shrink-0 -mx-4 sm:-mx-6 px-4 sm:px-6">
               {CATALOG_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setActiveCat(cat)} className={cn("px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0", activeCat === cat ? "text-teal-700 border-b-2 border-teal-500 bg-white" : "text-gray-500 hover:text-gray-700")}>{cat}</button>
+                <button key={cat} onClick={() => setActiveCat(cat)} className={cn("px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0", activeCat === cat ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)] bg-white" : "text-gray-500 hover:text-gray-700")}>{cat}</button>
               ))}
             </div>
             {activeCat === "Saved" ? (
@@ -6206,8 +6206,8 @@ export default function LandingPageBuilder() {
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
                 {catalogByCat.map(b => (
-                  <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
-                    <span className="text-teal-600 text-2xl">{b.icon}</span>
+                  <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-gray-600 hover:text-[var(--org-primary)] transition-all text-center">
+                    <span className="text-[var(--org-primary)] text-2xl">{b.icon}</span>
                     <span className="text-xs leading-tight font-medium">{b.label}</span>
                   </button>
                 ))}
@@ -6252,7 +6252,7 @@ export default function LandingPageBuilder() {
                     <div className="space-y-1 mt-1">
                       {pages.map((p: any) => (
                         <button key={p.id} onClick={() => { setSelectedSourceFunnelPageId(p.id); setBlockSearch(""); }}
-                          className={cn("w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors", selectedSourceFunnelPageId === p.id ? "bg-teal-50 text-teal-700 font-semibold border border-teal-200" : "text-gray-600 hover:bg-gray-50")}>
+                          className={cn("w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors", selectedSourceFunnelPageId === p.id ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] font-semibold border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]" : "text-gray-600 hover:bg-gray-50")}>
                           {p.title}<span className="text-[10px] text-gray-400 ml-1 capitalize">({p.pageType})</span>
                         </button>
                       ))}
@@ -6275,7 +6275,7 @@ export default function LandingPageBuilder() {
                       <Input value={blockSearch} onChange={e => setBlockSearch(e.target.value)} placeholder="Search blocks…" className="pl-7 h-7 text-xs" />
                     </div>
                     {activeSourceBlocks.length > 0 && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 shrink-0" onClick={copyAllBlocksFromSource}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] shrink-0" onClick={copyAllBlocksFromSource}>
                         <Copy className="w-3 h-3 mr-1" /> Copy All ({activeSourceBlocks.length})
                       </Button>
                     )}
@@ -6286,15 +6286,15 @@ export default function LandingPageBuilder() {
                     ) : filteredSourceBlocks.map((b: Block) => {
                       const catalogEntry = BLOCK_CATALOG.find(c => c.type === b.type);
                       return (
-                        <div key={b.id} className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+                        <div key={b.id} className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] group transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                            {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-gray-700 truncate">{catalogEntry?.label ?? b.type}</p>
                               <p className="text-xs text-gray-400 truncate">{b.type}</p>
                             </div>
                           </div>
-                          <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => copyBlockFromSource(b)}>
+                          <Button size="sm" variant="outline" className="h-6 text-xs border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => copyBlockFromSource(b)}>
                             <Copy className="w-3 h-3 mr-1" /> Copy
                           </Button>
                         </div>
@@ -6325,7 +6325,7 @@ export default function LandingPageBuilder() {
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 disabled={!importUrl.trim() || scrapeUrlMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[var(--org-primary)] hover:opacity-90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {scrapeUrlMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                 {scrapeUrlMutation.isPending ? "Scraping..." : "Scrape"}
@@ -6338,7 +6338,7 @@ export default function LandingPageBuilder() {
                     Found <strong>{importPreview.blockCount}</strong> blocks from <em>{importPreview.pageTitle || importUrl}</em>. Select which to import:
                   </p>
                   <div className="flex gap-2">
-                    <button onClick={() => setImportSelectedBlocks(new Set(importPreview.blocks.map((_: any, i: number) => i)))} className="text-xs text-teal-600 hover:underline">All</button>
+                    <button onClick={() => setImportSelectedBlocks(new Set(importPreview.blocks.map((_: any, i: number) => i)))} className="text-xs text-[var(--org-primary)] hover:underline">All</button>
                     <button onClick={() => setImportSelectedBlocks(new Set())} className="text-xs text-gray-500 hover:underline">None</button>
                   </div>
                 </div>
@@ -6353,10 +6353,10 @@ export default function LandingPageBuilder() {
                           if (e.target.checked) next.add(i); else next.delete(i);
                           setImportSelectedBlocks(next);
                         }}
-                        className="mt-0.5 accent-teal-600"
+                        className="mt-0.5 accent-[var(--org-primary)]"
                       />
                       <div className="min-w-0">
-                        <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">{block.type}</span>
+                        <span className="text-xs font-semibold text-[var(--org-primary)] uppercase tracking-wide">{block.type}</span>
                         <p className="text-xs text-gray-500 truncate">
                           {block.type === "hero" ? block.data?.headline :
                            block.type === "text" ? (block.data?.html || "").replace(/<[^>]+>/g, "").slice(0, 80) :
@@ -6378,7 +6378,7 @@ export default function LandingPageBuilder() {
                     setAddMenuOpen(false);
                     toast.success(`Imported ${toAdd.length} block${toAdd.length !== 1 ? "s" : ""} from URL!`);
                   }}
-                  className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-2 bg-[var(--org-primary)] hover:opacity-90 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                 >
                   Import {importSelectedBlocks.size} Selected Block{importSelectedBlocks.size !== 1 ? "s" : ""}
                 </button>

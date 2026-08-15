@@ -216,6 +216,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).not.toMatch(/data: \{ \.\.\.(c|b|catalog)\.defaultData \}/);
   });
 
+  it("keeps Landing Page Builder checkout defaults in dollars and review creation blank", () => {
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(landingBuilderSource).toContain("price: 97");
+    expect(landingBuilderSource).toContain("price: 27");
+    expect(landingBuilderSource).not.toContain("price: 9700");
+    expect(landingBuilderSource).not.toContain("price: 2700");
+    expect(landingBuilderSource).toContain('reviews, { name: "", rating: 0, text: "" }');
+    expect(landingBuilderSource).not.toContain('reviews, { name: "Student Name", rating: 5, text: "Great course!" }');
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");
