@@ -623,13 +623,13 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
       scrollToBlock(newBlock.id);
     }}>
     <>
-    <div className={embedded ? "flex flex-col flex-1 overflow-hidden" : "fixed inset-0 z-40 flex bg-black/40"}>
+    <div className={embedded ? "lesson-block-editor-org-theme lms-org-theme flex flex-col flex-1 overflow-hidden" : "lesson-block-editor-org-theme lms-org-theme fixed inset-0 z-40 flex bg-black/40"}>
       {/* Main editor panel */}
       <div className={embedded ? "flex flex-col flex-1 overflow-hidden" : "flex flex-col w-full max-w-6xl mx-auto bg-white shadow-2xl overflow-hidden"}>
         {/* Header — hidden when embedded inside LessonEditorPage (which has its own header) */}
         {!embedded && <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-teal-700 font-bold text-sm uppercase tracking-wide">{editorLabel ?? "Lesson Editor"}</span>
+            <span className="org-text font-bold text-sm uppercase tracking-wide">{editorLabel ?? "Lesson Editor"}</span>
             {lessonTitle ? (
               <span className="text-gray-700 text-sm font-medium truncate max-w-xs" title={lessonTitle}>{lessonTitle}</span>
             ) : !onBlocksChange ? (
@@ -641,7 +641,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   onClick={() => prevLesson && onNavigateLesson?.(prevLesson)}
                   disabled={!prevLesson}
                   title={prevLesson ? `← ${prevLesson.title}` : "No previous lesson"}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-500 hover:text-teal-700 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-500 org-hover-text org-hover-bg-light border border-gray-200 org-hover-border disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
                   <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
                   <span className="hidden md:inline max-w-[100px] truncate">{prevLesson?.title ?? "Prev"}</span>
@@ -650,7 +650,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   onClick={() => nextLesson && onNavigateLesson?.(nextLesson)}
                   disabled={!nextLesson}
                   title={nextLesson ? `${nextLesson.title} →` : "No next lesson"}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-500 hover:text-teal-700 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-500 org-hover-text org-hover-bg-light border border-gray-200 org-hover-border disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 >
                   <span className="hidden md:inline max-w-[100px] truncate">{nextLesson?.title ?? "Next"}</span>
                   <ChevronRight className="w-3.5 h-3.5 shrink-0" />
@@ -662,7 +662,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             {!previewMode && (
               <Button
                 size="sm"
-                className="bg-[#189aa1] hover:bg-[#147f86] text-white text-xs h-7 font-semibold"
+                className="bg-[var(--org-primary)] hover:opacity-90 text-white text-xs h-7 font-semibold"
                 onClick={() => setAddMenuOpen(true)}
               >
                 <Plus className="w-3 h-3 mr-1" /> Add Block
@@ -677,7 +677,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   const url = `${window.location.origin}/courses/${courseSlug}/player?lesson=${lessonId}&preview=student`;
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
-                className="text-xs h-7 border-teal-300 text-teal-700 hover:bg-teal-50"
+                className="text-xs h-7 org-border org-text org-hover-bg-light"
                 title="Preview this lesson as a student would see it (new window)"
               >
                 <ExternalLink className="w-3 h-3 mr-1" /> Preview as Student
@@ -689,7 +689,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               onClick={() => setPreviewMode(p => !p)}
               className={cn(
                 "text-xs h-7",
-                previewMode ? "border-teal-500 text-teal-700 bg-teal-50" : "text-gray-500 hover:text-teal-700"
+                previewMode ? "org-border org-text org-bg-light" : "text-gray-500 org-hover-text"
               )}
             >
               {previewMode ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
@@ -699,7 +699,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             <Button
               size="sm"
               variant="outline"
-              className="border-teal-300 text-teal-700 hover:bg-teal-50 text-xs h-7 font-semibold"
+              className="org-border org-text org-hover-bg-light text-xs h-7 font-semibold"
               onClick={() => handleSave(false)}
               disabled={saving}
             >
@@ -708,7 +708,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             </Button>
             <Button
               size="sm"
-              className="bg-[#189aa1] hover:bg-[#147f86] text-white text-xs h-7 font-semibold"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white text-xs h-7 font-semibold"
               onClick={() => handleSave(true)}
               disabled={saving}
             >
@@ -717,7 +717,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             <button
               title="Save lesson as template"
               onClick={() => { setLessonTemplateName(""); setLessonTemplateTags(""); setSaveLessonTemplateOpen(true); }}
-              className="text-gray-400 hover:text-teal-600 ml-1 p-1 rounded transition-colors"
+              className="text-gray-400 org-hover-text ml-1 p-1 rounded transition-colors"
             >
               <Bookmark className="w-4 h-4" />
             </button>
@@ -733,15 +733,15 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
           {/* Embedded mini-toolbar (shown only in controlled/assignment mode) */}
           {embedded && (
             <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
-              <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide mr-1">{editorLabel ?? "Content Editor"}</span>
-              <Button size="sm" className="bg-[#189aa1] hover:bg-[#147f86] text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
+              <span className="text-xs font-semibold org-text uppercase tracking-wide mr-1">{editorLabel ?? "Content Editor"}</span>
+              <Button size="sm" className="bg-[var(--org-primary)] hover:opacity-90 text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
                 <Plus className="w-3 h-3 mr-1" /> Add Block
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setPreviewMode(p => !p)}
-                className={cn("text-xs h-7", previewMode ? "border-teal-500 text-teal-700 bg-teal-50" : "text-gray-500 hover:text-teal-700")}
+                className={cn("text-xs h-7", previewMode ? "org-border org-text org-bg-light" : "text-gray-500 org-hover-text")}
               >
                 {previewMode ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
                 {previewMode ? "Edit" : "Preview"}
@@ -861,7 +861,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               <div className="mt-4">
                 <button
                   onClick={() => setAddMenuOpen(true)}
-                  className="w-full border-2 border-dashed border-teal-300 hover:border-teal-500 rounded-xl py-3 text-teal-600 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
+                  className="w-full border-2 border-dashed org-border org-hover-border rounded-xl py-3 org-text text-sm flex items-center justify-center gap-2 transition-colors bg-white"
                 >
                   <Plus className="w-4 h-4" /> Add Block
                 </button>
@@ -874,7 +874,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             <>
               {/* Resize handle */}
               <div
-                className="w-1.5 shrink-0 cursor-col-resize bg-gray-100 hover:bg-teal-200 active:bg-teal-300 transition-colors flex items-center justify-center group"
+                className="w-1.5 shrink-0 cursor-col-resize bg-gray-100 org-hover-bg-light org-active-bg transition-colors flex items-center justify-center group"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   isResizingPanel.current = true;
@@ -898,7 +898,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   document.body.style.userSelect = "none";
                 }}
               >
-                <GripVertical className="w-3 h-3 text-gray-400 group-hover:text-teal-600" />
+                <GripVertical className="w-3 h-3 text-gray-400 group-hover:org-text" />
               </div>
               <div style={{ width: settingsPanelWidth }} className="shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
@@ -927,7 +927,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     <Dialog open={addMenuOpen} onOpenChange={open => { setAddMenuOpen(open); if (!open) setBlockSearch(""); }}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
         <DialogHeader className="shrink-0">
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="org-text flex items-center gap-2">
             <Plus className="w-5 h-5" /> Add Content Block
           </DialogTitle>
         </DialogHeader>
@@ -946,7 +946,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               className={cn(
                 "px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 shrink-0",
                 pickerTab === tab.id
-                  ? "text-teal-700 border-b-2 border-teal-500"
+                  ? "org-text border-b-2 org-border"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -969,7 +969,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   className={cn(
                     "px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0",
                     activeCategory === cat
-                      ? "text-teal-700 border-b-2 border-teal-500 bg-white"
+                      ? "org-text border-b-2 org-border bg-white"
                       : "text-gray-500 hover:text-gray-700"
                   )}
                 >
@@ -983,9 +983,9 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 <button
                   key={b.type}
                   onClick={() => { addBlock(b.type); setAddMenuOpen(false); }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl org-hover-bg-light border border-transparent org-hover-border text-gray-600 org-hover-text transition-all text-center"
                 >
-                  <span className="text-teal-600 text-2xl">{b.icon}</span>
+                  <span className="org-text text-2xl">{b.icon}</span>
                   <span className="text-xs leading-tight font-medium">{b.label}</span>
                 </button>
               ))}
@@ -1001,7 +1001,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course</label>
                 <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none org-focus-ring"
                   value={selectedSourceCourseId ?? ""}
                   onChange={e => {
                     setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null);
@@ -1030,7 +1030,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                           className={cn(
                             "w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors",
                             selectedSourceLessonId === l.id
-                              ? "bg-teal-50 text-teal-700 font-semibold border border-teal-200"
+                              ? "org-bg-light org-text font-semibold border org-border"
                               : "text-gray-600 hover:bg-gray-50"
                           )}
                         >
@@ -1044,7 +1044,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               <div className="border-t border-gray-100 pt-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Funnel Page</label>
                 <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none org-focus-ring"
                   value={selectedSourceFunnelId ?? ""}
                   onChange={e => { setSelectedSourceFunnelId(e.target.value ? Number(e.target.value) : null); setSelectedSourceFunnelPageId(null); setSelectedSourceCourseId(null); setSelectedSourceLessonId(null); setBlockSearch(""); }}
                 >
@@ -1061,7 +1061,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                     <div className="space-y-1 mt-1">
                       {pages.map((p: any) => (
                         <button key={p.id} onClick={() => { setSelectedSourceFunnelPageId(p.id); setBlockSearch(""); }}
-                          className={cn("w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors", selectedSourceFunnelPageId === p.id ? "bg-teal-50 text-teal-700 font-semibold border border-teal-200" : "text-gray-600 hover:bg-gray-50")}>
+                          className={cn("w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors", selectedSourceFunnelPageId === p.id ? "org-bg-light org-text font-semibold border org-border" : "text-gray-600 hover:bg-gray-50")}>
                           {p.title}<span className="text-[10px] text-gray-400 ml-1 capitalize">({p.pageType})</span>
                         </button>
                       ))}
@@ -1094,7 +1094,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 shrink-0"
+                        className="h-7 text-xs org-border org-text org-hover-bg-light shrink-0"
                         onClick={copyAllBlocksFromLesson}
                       >
                         <Copy className="w-3 h-3 mr-1" /> Copy All ({activeSourceBlocks.length})
@@ -1110,14 +1110,14 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                       return (
                       <div
                         key={b.id}
-                        className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors"
+                        className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 org-hover-border org-hover-bg-light group transition-colors"
                       >
                         <div className="flex items-start gap-2.5 min-w-0">
                           {/* Position number */}
                           <span className="text-gray-300 text-xs font-mono w-5 shrink-0 mt-0.5 text-right">{i + 1}</span>
                           {/* Block icon */}
                           {catalogEntry && (
-                            <span className="shrink-0 text-teal-500 mt-0.5" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>
+                            <span className="shrink-0 org-text mt-0.5" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>
                           )}
                           <div className="min-w-0 flex-1">
                             {/* Block type label */}
@@ -1133,7 +1133,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-6 text-xs shrink-0 border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"
+                          className="h-6 text-xs shrink-0 org-border org-text org-hover-bg-light opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"
                           onClick={() => copyBlockFromLesson(b)}
                         >
                           <Copy className="w-3 h-3 mr-1" /> Copy
@@ -1168,12 +1168,12 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 onChange={e => setImportUrl(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 placeholder="https://example.com/page-to-import"
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none org-focus-ring"
               />
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 disabled={!importUrl.trim() || scrapeUrlMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#189aa1] hover:bg-[#147f86] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[var(--org-primary)] hover:opacity-90 text-white text-sm font-medium rounded-lg transition-opacity disabled:opacity-50"
               >
                 {scrapeUrlMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                 {scrapeUrlMutation.isPending ? "Scraping..." : "Scrape"}
@@ -1186,7 +1186,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                     Found <strong>{importPreview.blockCount}</strong> blocks from <em>{importPreview.pageTitle || importUrl}</em>. Select which to import:
                   </p>
                   <div className="flex gap-2">
-                    <button onClick={() => setImportSelectedBlocks(new Set(importPreview.blocks.map((_: any, i: number) => i)))} className="text-xs text-teal-600 hover:underline">All</button>
+                    <button onClick={() => setImportSelectedBlocks(new Set(importPreview.blocks.map((_: any, i: number) => i)))} className="text-xs org-text hover:underline">All</button>
                     <button onClick={() => setImportSelectedBlocks(new Set())} className="text-xs text-gray-500 hover:underline">None</button>
                   </div>
                 </div>
@@ -1201,10 +1201,10 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                           if (e.target.checked) next.add(i); else next.delete(i);
                           setImportSelectedBlocks(next);
                         }}
-                        className="mt-0.5 accent-teal-600"
+                        className="mt-0.5 accent-[var(--org-primary)]"
                       />
                       <div className="min-w-0">
-                        <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">{block.type}</span>
+                        <span className="text-xs font-semibold org-text uppercase tracking-wide">{block.type}</span>
                         <p className="text-xs text-gray-500 truncate">
                           {block.type === "hero" ? block.data?.headline :
                            block.type === "text" ? (block.data?.html || "").replace(/<[^>]+>/g, "").slice(0, 80) :
@@ -1226,7 +1226,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                     setAddMenuOpen(false);
                     toast.success(`Imported ${toAdd.length} block${toAdd.length !== 1 ? "s" : ""} from URL!`);
                   }}
-                  className="w-full py-2 bg-[#189aa1] hover:bg-[#147f86] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-2 bg-[var(--org-primary)] hover:opacity-90 text-white text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
                 >
                   Import {importSelectedBlocks.size} Selected Block{importSelectedBlocks.size !== 1 ? "s" : ""}
                 </button>
@@ -1244,21 +1244,21 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
       </DialogContent>
     </Dialog>
     {/* Save Block as Template Dialog */}
-    <Dialog open={!!saveTemplateDialogBlock} onOpenChange={(open) => { if (!open) setSaveTemplateDialogBlock(null); }}>
-      <DialogContent className="max-w-md">
+    <Dialog open={!!saveTemplateDialogBlock} onOpenChange={open => { if (!open) setSaveTemplateDialogBlock(null); }}>
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="org-text flex items-center gap-2">
             Save Block as Template
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Template Name <span className="text-red-500">*</span></label>
-            <input type="text" value={saveTemplateName} onChange={e => setSaveTemplateName(e.target.value)} placeholder="e.g. Hero Banner" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" autoFocus />
+            <input type="text" value={saveTemplateName} onChange={e => setSaveTemplateName(e.target.value)} placeholder="e.g. Hero Banner" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none org-focus-ring" autoFocus />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Description <span className="text-gray-400">(optional)</span></label>
-            <input type="text" value={saveTemplateDesc} onChange={e => setSaveTemplateDesc(e.target.value)} placeholder="Brief description" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+            <input type="text" value={saveTemplateDesc} onChange={e => setSaveTemplateDesc(e.target.value)} placeholder="Brief description" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none org-focus-ring" />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
@@ -1274,7 +1274,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 blockData: JSON.parse(JSON.stringify(saveTemplateDialogBlock.data ?? {})),
               });
             }}
-            className="text-sm bg-[#189aa1] hover:bg-[#147f86] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm bg-[var(--org-primary)] hover:opacity-90 text-white px-4 py-2 rounded-lg transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveBlockTemplateMutation.isPending ? "Saving..." : "Save Template"}
           </button>
@@ -1297,7 +1297,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               value={lessonTemplateName}
               onChange={e => setLessonTemplateName(e.target.value)}
               placeholder="e.g. Video Lesson with Quiz"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none org-focus-ring"
               autoFocus
             />
           </div>
@@ -1308,7 +1308,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               value={lessonTemplateTags}
               onChange={e => setLessonTemplateTags(e.target.value)}
               placeholder="e.g. video, quiz, echo"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none org-focus-ring"
             />
           </div>
         </div>
@@ -1324,7 +1324,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 tags: lessonTemplateTags.trim() || undefined,
               });
             }}
-            className="text-sm bg-[#189aa1] hover:bg-[#147f86] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm bg-[var(--org-primary)] hover:opacity-90 text-white px-4 py-2 rounded-lg transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveLessonTemplateMutation.isPending ? "Saving..." : "Save Template"}
           </button>
@@ -1381,9 +1381,9 @@ function BlockTemplatesTabContent({ onInsert }: { onInsert: (block: Block) => vo
             const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
             const block: Block = { id: uid(), type: tpl.blockType as any, data: blockData };
             return (
-              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 org-hover-border org-hover-bg-light group transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                  {catalogEntry && <span className="shrink-0 org-text" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
                     {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
@@ -1391,7 +1391,7 @@ function BlockTemplatesTabContent({ onInsert }: { onInsert: (block: Block) => vo
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                  <Button size="sm" variant="outline" className="h-6 text-xs org-border org-text org-hover-bg-light opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => onInsert({ ...block, id: uid() })}>
                     <Plus className="w-3 h-3 mr-1" /> Insert
                   </Button>

@@ -54,6 +54,9 @@
 - [x] Remove platform-specific membership labels from Landing Page Builder product-access controls
 - [x] Remove unsupported default claims from Landing Page Builder ticker block creation
 - [x] Apply active organization theme variables to Form Builder authoring controls
+- [x] Apply active organization theme variables to shared Lesson Block Editor controls while preserving lesson content overrides
+- [x] Replace remaining Lesson Block Editor teal control utilities with active organization theme variables
+- [x] Confirm shared platform layout is intentionally excluded from organization-specific theme migration
 - [x] Route new Landing Page Builder block creation through active organization primary-color defaults
 - [x] Verify and correct Landing Page Builder inline-checkout default product prices to use dollar-denominated values
 - [x] Remove fabricated review defaults from Landing Page Builder review block creation
