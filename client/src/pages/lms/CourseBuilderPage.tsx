@@ -3103,12 +3103,12 @@ function CourseOverviewEditor({
       <Dialog open={addMenuOpen} onOpenChange={open => { setAddMenuOpen(open); if (!open) { setTplSearch(""); setPickerTab("catalog"); } }}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader className="shrink-0">
-            <DialogTitle className="text-teal-700 flex items-center gap-2"><Plus className="w-5 h-5" /> Add Content Block</DialogTitle>
+            <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2"><Plus className="w-5 h-5" /> Add Content Block</DialogTitle>
           </DialogHeader>
           {/* Top-level tabs */}
           <div className="flex gap-1 border-b border-gray-200 shrink-0 overflow-x-auto pb-px">
-            <button onClick={() => setPickerTab("catalog")} className={cn("px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors", pickerTab === "catalog" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>Block Catalog</button>
-            <button onClick={() => setPickerTab("templates")} className={cn("px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors", pickerTab === "templates" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>Saved Templates</button>
+            <button onClick={() => setPickerTab("catalog")} className={cn("px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors", pickerTab === "catalog" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>Block Catalog</button>
+            <button onClick={() => setPickerTab("templates")} className={cn("px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors", pickerTab === "templates" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>Saved Templates</button>
           </div>
           {pickerTab === "catalog" && (
             <>
@@ -3119,7 +3119,7 @@ function CourseOverviewEditor({
                     onClick={() => setActiveCategory(cat)}
                     className={cn(
                       "px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors",
-                      activeCategory === cat ? "text-teal-700 border-b-2 border-teal-500 bg-white" : "text-gray-500 hover:text-gray-700"
+                      activeCategory === cat ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)] bg-white" : "text-gray-500 hover:text-gray-700"
                     )}
                   >{cat}</button>
                 ))}
@@ -3130,11 +3130,11 @@ function CourseOverviewEditor({
                     <button
                       key={item.type}
                       onClick={() => { addBlock(item.type); setAddMenuOpen(false); }}
-                      className="flex items-start gap-2 p-3 rounded-lg border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-left transition-colors group"
+                      className="flex items-start gap-2 p-3 rounded-lg border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] text-left transition-colors group"
                     >
                       <span className="text-lg shrink-0">{item.icon}</span>
                       <div>
-                        <p className="text-xs font-semibold text-gray-800 group-hover:text-teal-700">{item.label}</p>
+                        <p className="text-xs font-semibold text-gray-800 group-hover:text-[var(--org-primary)]">{item.label}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{(item as any).description ?? item.label}</p>
                       </div>
                     </button>
@@ -3147,7 +3147,7 @@ function CourseOverviewEditor({
             <div className="flex-1 overflow-y-auto p-3">
               <div className="relative mb-3">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input value={tplSearch} onChange={e => setTplSearch(e.target.value)} placeholder="Search saved templates…" className="w-full pl-8 pr-3 h-8 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-teal-400" />
+                <input value={tplSearch} onChange={e => setTplSearch(e.target.value)} placeholder="Search saved templates…" className="w-full pl-8 pr-3 h-8 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" />
               </div>
               {tplLoading ? (
                 <p className="text-xs text-gray-400 text-center py-6">Loading…</p>
@@ -3163,16 +3163,16 @@ function CourseOverviewEditor({
                     try { blockData = typeof tpl.blockData === "string" ? JSON.parse(tpl.blockData) : (tpl.blockData ?? {}); } catch { /* ignore */ }
                     const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
                     return (
-                      <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+                      <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] group transition-colors">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                          {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
                             {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
                           </div>
                         </div>
                         <button onClick={() => { addBlock(tpl.blockType, blockData); setAddMenuOpen(false); }}
-                          className="shrink-0 px-2.5 py-1 text-xs bg-[#189aa1] text-white rounded-lg hover:bg-[#147f86] transition-colors">Add</button>
+                          className="shrink-0 px-2.5 py-1 text-xs bg-[var(--org-primary)] text-white rounded-lg hover:opacity-90 transition-colors">Add</button>
                       </div>
                     );
                   })}
