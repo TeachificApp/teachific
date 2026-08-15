@@ -367,9 +367,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membersPageSource).toContain('m.role === "org_super_admin" ? "Org Super Admin"');
     expect(membersPageSource).toContain("Member access");
     expect(membersPageSource).toContain('SelectItem value="instructor"');
+    expect(membersPageSource).toContain("memberSubRole");
+    expect(membersPageSource).toContain("bulkImport.mutate({ orgId, users: bulkPreview })");
+    expect(membersPageSource).toContain("bulkResult.importedMembers");
+    expect(membersPageSource).toContain('member.memberSubRole === "instructor" ? "Instructor"');
     const membersRouterSource = readFileSync(new URL("../server/routers.ts", import.meta.url), "utf8");
     expect(membersRouterSource).toContain("memberSubRole: z.enum");
     expect(membersRouterSource).toContain("input.memberSubRole");
+    expect(membersRouterSource).toContain("u.memberSubRole");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {

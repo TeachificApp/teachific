@@ -26,7 +26,11 @@
 - [x] Add organization-owned course waitlist settings read and update procedures for Course Builder
 - [x] Display organization super-admin membership roles distinctly throughout active-organization member management
 - [x] Allow active-organization administrators to assign the existing instructor member subrole during member creation
-- [ ] Support instructor member subrole assignment during active-organization bulk member import
+- [x] Submit active-organization bulk member imports through the server users contract while preserving instructor subroles
+- [x] Display imported instructor subroles in active-organization bulk import previews
+- [x] Display submitted instructor subrole counts in active-organization post-import summaries
+- [x] Return server-confirmed member access labels from active-organization bulk import results
+- [x] Display server-confirmed instructor subroles per member in active-organization bulk import results
 - [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [ ] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone

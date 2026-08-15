@@ -1920,6 +1920,7 @@ export const appRouter = router({
             email: z.string().email(),
             password: z.string().optional(),
             role: z.enum(["org_admin", "user"]).default("user"),
+            memberSubRole: z.enum(["basic_member", "instructor", "group_manager", "group_member"]).default("basic_member"),
           })),
         }))
         .mutation(async ({ input, ctx }) => {
@@ -1929,6 +1930,7 @@ export const appRouter = router({
           }
           let created = 0, updated = 0, failed = 0;
           const errors: string[] = [];
+          const importedMembers: Array<{ name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated" }> = [];
           const bcrypt = await import("bcryptjs");
           for (const u of input.users) {
             try {
@@ -1936,9 +1938,10 @@ export const appRouter = router({
               if (existing) {
                 const existingMember = await getOrgMember(input.orgId, existing.id);
                 const orgRole = u.role === "org_admin" ? "org_admin" : "member";
-                if (!existingMember) await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
+                if (!existingMember) await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id, u.memberSubRole);
                 if (orgRole === "org_admin") await grantTeachificSchoolAccess(existing.id);
                 updated++;
+                importedMembers.push({ name: u.name, email: u.email, role: existingMember?.role ?? orgRole, memberSubRole: existingMember?.memberSubRole ?? u.memberSubRole, status: "updated" });
               } else {
                 const password = u.password || nanoid(12);
                 const passwordHash = await bcrypt.default.hash(password, 10);
@@ -1947,13 +1950,14 @@ export const appRouter = router({
                 const newUser = await getUserByEmail(u.email);
                 if (!newUser) throw new Error("Failed to create user");
                 const orgRole = u.role === "org_admin" ? "org_admin" : "member";
-                await addOrgMember(input.orgId, newUser.id, orgRole, ctx.user.id);
+                await addOrgMember(input.orgId, newUser.id, orgRole, ctx.user.id, u.memberSubRole);
                 if (orgRole === "org_admin") await grantTeachificSchoolAccess(newUser.id);
                 created++;
+                importedMembers.push({ name: u.name, email: u.email, role: orgRole, memberSubRole: u.memberSubRole, status: "created" });
               }
             } catch (e: any) { failed++; errors.push(`${u.email}: ${e.message}`); }
           }
-                    return { total: input.users.length, created, updated, failed, errors };
+                    return { total: input.users.length, created, updated, failed, errors, importedMembers };
         }),
       // Org admin (or platform admin) manually sets a member's password
       resetPassword: orgAdminProcedure

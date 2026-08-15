@@ -44,10 +44,10 @@ export default function MembersPage() {
 
   // Bulk import state
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
-  const [bulkPreview, setBulkPreview] = useState<Array<{name: string; email: string; password?: string; role: "org_admin" | "user"}>>([]);
+  const [bulkPreview, setBulkPreview] = useState<Array<{name: string; email: string; password?: string; role: "org_admin" | "user"; memberSubRole: "basic_member" | "instructor"}>>([]);
   const [bulkFileName, setBulkFileName] = useState("");
   const [bulkParseError, setBulkParseError] = useState("");
-  const [bulkResult, setBulkResult] = useState<{created: number; updated: number; failed: number; errors: string[]; total: number} | null>(null);
+  const [bulkResult, setBulkResult] = useState<{created: number; updated: number; failed: number; errors: string[]; total: number; importedMembers: Array<{name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated"}>} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: orgs } = trpc.orgs.myOrgs.useQuery();
@@ -90,6 +90,7 @@ export default function MembersPage() {
       const emailIdx = headers.findIndex(h => h.includes("email"));
       const passIdx = headers.findIndex(h => h.includes("pass"));
       const roleIdx = headers.findIndex(h => h.includes("role"));
+      const subRoleIdx = headers.findIndex(h => h.includes("subrole") || h.includes("memberaccess"));
       if (nameIdx < 0 || emailIdx < 0) { setBulkParseError("CSV must have 'name' and 'email' columns."); return; }
       const rows = lines.slice(1).map(line => {
         const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
@@ -98,6 +99,7 @@ export default function MembersPage() {
           email: cols[emailIdx] ?? "",
           password: passIdx >= 0 && cols[passIdx] ? cols[passIdx] : "Teachific@123",
           role: (roleIdx >= 0 && cols[roleIdx]?.toLowerCase().includes("admin") ? "org_admin" : "user") as "org_admin" | "user",
+          memberSubRole: (subRoleIdx >= 0 && cols[subRoleIdx]?.toLowerCase().includes("instructor") ? "instructor" : "basic_member") as "basic_member" | "instructor",
         };
       }).filter(r => r.name && r.email);
       if (!rows.length) { setBulkParseError("No valid rows found."); return; }
@@ -670,7 +672,7 @@ export default function MembersPage() {
                   <FileSpreadsheet className="h-10 w-10 text-muted-foreground mx-auto" />
                   <div>
                     <p className="text-sm font-medium">Upload a CSV file</p>
-                    <p className="text-xs text-muted-foreground mt-1">Required columns: <code className="bg-muted px-1 rounded">name</code>, <code className="bg-muted px-1 rounded">email</code>. Optional: <code className="bg-muted px-1 rounded">password</code>, <code className="bg-muted px-1 rounded">role</code></p>
+                    <p className="text-xs text-muted-foreground mt-1">Required columns: <code className="bg-muted px-1 rounded">name</code>, <code className="bg-muted px-1 rounded">email</code>. Optional: <code className="bg-muted px-1 rounded">password</code>, <code className="bg-muted px-1 rounded">role</code>, <code className="bg-muted px-1 rounded">memberSubRole</code> (use <code className="bg-muted px-1 rounded">instructor</code>).</p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -699,7 +701,7 @@ export default function MembersPage() {
                           <TableRow>
                             <TableHead className="text-xs">Name</TableHead>
                             <TableHead className="text-xs">Email</TableHead>
-                            <TableHead className="text-xs">Role</TableHead>
+                            <TableHead className="text-xs">Access</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -708,7 +710,7 @@ export default function MembersPage() {
                               <TableCell className="text-xs py-1.5">{m.name}</TableCell>
                               <TableCell className="text-xs py-1.5">{m.email}</TableCell>
                               <TableCell className="text-xs py-1.5">
-                                <Badge variant={m.role === "org_admin" || m.role === "org_super_admin" ? "default" : "secondary"} className="text-xs">{m.role === "org_super_admin" ? "Org Super Admin" : m.role === "org_admin" ? "Admin" : "Member"}</Badge>
+                                <Badge variant={m.role === "org_admin" || m.role === "org_super_admin" ? "default" : "secondary"} className="text-xs">{m.role === "org_super_admin" ? "Org Super Admin" : m.role === "org_admin" ? "Admin" : m.memberSubRole === "instructor" ? "Instructor" : "Member"}</Badge>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -731,6 +733,22 @@ export default function MembersPage() {
                     <p className="text-xs">{bulkResult.created} created · {bulkResult.updated} updated · {bulkResult.failed} failed out of {bulkResult.total} total</p>
                   </div>
                 </div>
+                {bulkResult.importedMembers.length > 0 && (
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader><TableRow><TableHead className="text-xs">Member</TableHead><TableHead className="text-xs">Access</TableHead><TableHead className="text-xs">Result</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {bulkResult.importedMembers.map((member) => (
+                          <TableRow key={member.email}>
+                            <TableCell className="text-xs py-1.5"><div>{member.name}</div><div className="text-muted-foreground">{member.email}</div></TableCell>
+                            <TableCell className="text-xs py-1.5"><Badge variant={member.role === "org_admin" || member.role === "org_super_admin" ? "default" : "secondary"}>{member.role === "org_super_admin" ? "Org Super Admin" : member.role === "org_admin" ? "Admin" : member.memberSubRole === "instructor" ? "Instructor" : "Member"}</Badge></TableCell>
+                            <TableCell className="text-xs py-1.5 capitalize">{member.status}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
                 {bulkResult.errors.length > 0 && (
                   <div className="max-h-32 overflow-y-auto rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
                     {bulkResult.errors.map((e, i) => (
@@ -745,7 +763,7 @@ export default function MembersPage() {
             <Button variant="outline" onClick={() => setBulkImportOpen(false)}>Close</Button>
             {!bulkResult && bulkPreview.length > 0 && (
               <Button
-                onClick={() => orgId && bulkImport.mutate({ orgId, members: bulkPreview })}
+                onClick={() => orgId && bulkImport.mutate({ orgId, users: bulkPreview })}
                 disabled={bulkImport.isPending}
                 className="gap-2"
               >
