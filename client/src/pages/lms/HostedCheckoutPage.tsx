@@ -635,7 +635,7 @@ export default function HostedCheckoutPage() {
               <Label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
                 {(org as any)?.purchaseTermsAgreement ? (
                   <span className="[&_a]:underline [&_a]:hover:text-foreground">
-                    {/* Render as HTML to support rich-text agreement sentences with embedded links */}
+                    {/* The server resolves content terms before organization and platform defaults. */}
                     <span dangerouslySetInnerHTML={{ __html: (org as any).purchaseTermsAgreement }} />{" "}
                     {(org as any)?.purchaseTermsLink1Url && (
                       <a href={(org as any).purchaseTermsLink1Url} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">

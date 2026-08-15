@@ -269,6 +269,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(quizSource).toContain("sourceLessonId }");
   });
 
+  it("resolves product-level checkout terms before organization defaults across supported paid content", () => {
+    const checkoutSource = readFileSync(new URL("./routers/lmsCheckoutRouter.ts", import.meta.url), "utf8");
+    expect(checkoutSource).toContain("from(digitalProducts)");
+    expect(checkoutSource).toContain("from(webinars)");
+    expect(checkoutSource).toContain("from(workshops)");
+    expect(checkoutSource).toContain("contentTermsRow?.purchaseTermsAgreement || orgPaySettings?.purchaseTermsAgreement");
+    expect(checkoutSource).toContain("purchaseTermsAgreement: resolvedTermsAgreement");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
