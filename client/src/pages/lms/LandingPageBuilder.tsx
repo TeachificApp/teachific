@@ -3641,7 +3641,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Order Bumps */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({icBumps.length})</span><button onClick={() => set("orderBumps", [...icBumps, { title: "Add-on Offer", headline: "✦ Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({icBumps.length})</span><button onClick={() => set("orderBumps", [...icBumps, { title: "Add-on Offer", headline: "✦ Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", animation: "pulse" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
             {icBumps.map((bump: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded p-2 space-y-1">
                 <div className="flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Bump {i + 1}</span><button onClick={() => set("orderBumps", icBumps.filter((_: any, j: number) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div>
@@ -3685,7 +3685,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       const ecCatalog = productCatalog;
       return (
         <div className="space-y-4">
-          <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+          <div className="text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded p-2">
             <strong>Embedded Checkout</strong> — Live Stripe PaymentElement embedded directly on the page. Purchases appear in the student's My Dashboard.
           </div>
           {/* Header */}
@@ -3702,12 +3702,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2"><input type="checkbox" checked={d.collectShipping ?? false} onChange={e => set("collectShipping", e.target.checked)} className="rounded" /><label className="text-xs text-gray-600">Collect shipping address <span className="text-teal-600">(auto-on for physical products)</span></label></div>
+            <div className="flex items-center gap-2"><input type="checkbox" checked={d.collectShipping ?? false} onChange={e => set("collectShipping", e.target.checked)} className="rounded" /><label className="text-xs text-gray-600">Collect shipping address <span className="text-[var(--org-primary)]">(auto-on for physical products)</span></label></div>
             <div className="flex items-center gap-2"><input type="checkbox" checked={d.collectBilling ?? false} onChange={e => set("collectBilling", e.target.checked)} className="rounded" /><label className="text-xs text-gray-600">Collect billing address</label></div>
           </div>
           {/* Products */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({ecProds.length})</span><button onClick={() => set("products", [...ecProds, { name: "New Product", description: "", price: 97, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({ecProds.length})</span><button onClick={() => set("products", [...ecProds, { name: "New Product", description: "", price: 97, imageUrl: "", type: "other" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div>
             {ecCatalog && ecCatalog.length > 0 && (
               <div className="bg-gray-50 rounded p-2 space-y-1">
                 <p className="text-xs text-gray-400 mb-1">Click to add from catalog:</p>
@@ -3761,7 +3761,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <AdditionalAccessEditor data={d} onSet={set} catalog={ecCatalog} />
           {/* Order Bumps */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({ecBumps.length})</span><button onClick={() => set("orderBumps", [...ecBumps, { title: "Add-on Offer", headline: "Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add to my order", highlightColor: "#f59e0b", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({ecBumps.length})</span><button onClick={() => set("orderBumps", [...ecBumps, { title: "Add-on Offer", headline: "Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add to my order", highlightColor: "#f59e0b", animation: "pulse" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
             {ecBumps.map((bump: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded p-2 space-y-1">
                 <div className="flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Bump {i + 1}</span><button onClick={() => set("orderBumps", ecBumps.filter((_: any, j: number) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div>
@@ -3832,7 +3832,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="flex gap-2">
               {["lock","circle","none"].map(s => (
                 <button key={s} onClick={() => set("iconStyle", s)}
-                  className={`flex-1 py-1 rounded text-xs font-medium border ${(d.iconStyle ?? "lock") === s ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                  className={`flex-1 py-1 rounded text-xs font-medium border ${(d.iconStyle ?? "lock") === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200"}`}>
                   {s === "lock" ? "🔒 Lock" : s === "circle" ? "⭕ Circle" : "— None"}
                 </button>
               ))}
@@ -3848,7 +3848,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <div className="flex gap-1">
               {(["left", "center", "right"] as const).map(a => (
                 <button key={a} onClick={() => set("headlineAlign", a)}
-                  className={`flex-1 py-1 rounded text-xs font-medium border capitalize ${(d.headlineAlign ?? "left") === a ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"}`}>
+                  className={`flex-1 py-1 rounded text-xs font-medium border capitalize ${(d.headlineAlign ?? "left") === a ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200"}`}>
                   {a === "left" ? "⬅ Left" : a === "center" ? "⬛ Center" : "➡ Right"}
                 </button>
               ))}
@@ -3903,7 +3903,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div className="border-t pt-3">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Per-Card Overrides</p>
-              <button onClick={() => set("cards", [...pricingCards, { id: `pc-${Date.now()}`, label: "", sublabel: "", ctaLabel: "", ctaUrl: "", imageUrl: "", badge: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Card</button>
+              <button onClick={() => set("cards", [...pricingCards, { id: `pc-${Date.now()}`, label: "", sublabel: "", ctaLabel: "", ctaUrl: "", imageUrl: "", badge: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add Card</button>
             </div>
             <p className="text-xs text-gray-400 mb-2">Override auto-populated data per card. Leave blank to use course pricing data.</p>
             <DndContext sensors={pricingSensors} collisionDetection={closestCenter} onDragEnd={e => { const { active, over } = e; if (over && active.id !== over.id) { const oldIdx = pricingCards.findIndex(c => c.id === active.id); const newIdx = pricingCards.findIndex(c => c.id === over.id); if (oldIdx !== -1 && newIdx !== -1) set("cards", arrayMove(pricingCards, oldIdx, newIdx)); } }}>
@@ -3947,7 +3947,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Selection Mode</label>
             <div className="flex gap-1">
               {(["auto", "manual"] as const).map(m => (
-                <button key={m} onClick={() => set("selectionMode", m)} className={`flex-1 py-1 text-xs rounded border capitalize ${selMode === m ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{m === "auto" ? "Automated" : "Manual Pick"}</button>
+                <button key={m} onClick={() => set("selectionMode", m)} className={`flex-1 py-1 text-xs rounded border capitalize ${selMode === m ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{m === "auto" ? "Automated" : "Manual Pick"}</button>
               ))}
             </div>
           </div>
@@ -4058,7 +4058,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
         </div>
       );
     case "divider":
-      return (<div className="space-y-3"><div><label className="text-xs text-gray-500 block mb-1">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.style ?? "solid") === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div><BSColorField data={d} onSet={set} label="Color" field="color" /><div><label className="text-xs text-gray-500 block mb-1">Thickness (px)</label><Input type="number" value={d.thickness ?? 1} onChange={e => set("thickness", Number(e.target.value))} className="h-8 text-sm" min={1} max={10} /></div><div><label className="text-xs text-gray-500 block mb-1">Rounding (px)</label><Input type="number" value={d.borderRadius ?? 0} onChange={e => set("borderRadius", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div><div><label className="text-xs text-gray-500 block mb-1">Vertical Spacing (px)</label><Input type="number" value={d.spacing ?? 32} onChange={e => set("spacing", Number(e.target.value))} className="h-8 text-sm" min={0} max={200} /></div></div>);
+      return (<div className="space-y-3"><div><label className="text-xs text-gray-500 block mb-1">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("style", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.style ?? "solid") === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div><BSColorField data={d} onSet={set} label="Color" field="color" /><div><label className="text-xs text-gray-500 block mb-1">Thickness (px)</label><Input type="number" value={d.thickness ?? 1} onChange={e => set("thickness", Number(e.target.value))} className="h-8 text-sm" min={1} max={10} /></div><div><label className="text-xs text-gray-500 block mb-1">Rounding (px)</label><Input type="number" value={d.borderRadius ?? 0} onChange={e => set("borderRadius", Number(e.target.value))} className="h-8 text-sm" min={0} max={20} /></div><div><label className="text-xs text-gray-500 block mb-1">Vertical Spacing (px)</label><Input type="number" value={d.spacing ?? 32} onChange={e => set("spacing", Number(e.target.value))} className="h-8 text-sm" min={0} max={200} /></div></div>);
     case "two_column": {
       const COLUMN_TYPES = [
         { value: "rich_text", label: "Rich Text" },
@@ -4117,7 +4117,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
     }
     case "divided_columns": {
       const cols: Array<{ html: string }> = d.columns ?? [{ html: "" }, { html: "" }];
-      return (<div className="space-y-3"><div className="flex items-center justify-between"><label className="text-xs text-gray-500 font-medium">Columns ({cols.length})</label>{cols.length < 4 && <button onClick={() => set("columns", [...cols, { html: "<p>New column</p>" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Column</button>}</div>{cols.map((col, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Column {i + 1}</span>{cols.length > 2 && <button onClick={() => set("columns", cols.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button>}</div><RichTextEditor value={col.html ?? ""} onChange={(html) => { const next = cols.map((c, j) => j === i ? { ...c, html } : c); set("columns", next); }} minHeight={80} maxHeight={250} placeholder={`Column ${i + 1} content...`} /></div>))}<div><label className="text-xs text-gray-500 block mb-1">Gap (px)</label><Input type="number" value={d.gap ?? 32} onChange={e => set("gap", Number(e.target.value))} className="h-8 text-sm" min={0} max={80} /></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /></div>);
+      return (<div className="space-y-3"><div className="flex items-center justify-between"><label className="text-xs text-gray-500 font-medium">Columns ({cols.length})</label>{cols.length < 4 && <button onClick={() => set("columns", [...cols, { html: "<p>New column</p>" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add Column</button>}</div>{cols.map((col, i) => (<div key={i} className="border border-gray-200 rounded p-2 space-y-1"><div className="flex justify-between items-center mb-1"><span className="text-xs text-gray-500">Column {i + 1}</span>{cols.length > 2 && <button onClick={() => set("columns", cols.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button>}</div><RichTextEditor value={col.html ?? ""} onChange={(html) => { const next = cols.map((c, j) => j === i ? { ...c, html } : c); set("columns", next); }} minHeight={80} maxHeight={250} placeholder={`Column ${i + 1} content...`} /></div>))}<div><label className="text-xs text-gray-500 block mb-1">Gap (px)</label><Input type="number" value={d.gap ?? 32} onChange={e => set("gap", Number(e.target.value))} className="h-8 text-sm" min={0} max={80} /></div><BSColorField data={d} onSet={set} label="Background" field="bgColor" /></div>);
     }
     case "three_column":
       return (<div className="space-y-3">
@@ -4127,9 +4127,9 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
         <div className="border-t pt-3 mt-3">
           <label className="text-xs text-gray-500 font-medium flex items-center gap-2"><input type="checkbox" checked={!!d.showDividers} onChange={e => set("showDividers", e.target.checked)} className="rounded" /> Show Vertical Dividers</label>
         </div>
-        {d.showDividers && (<div className="space-y-2 pl-4 border-l-2 border-teal-100">
+        {d.showDividers && (<div className="space-y-2 pl-4 border-l-2 border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]">
           <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-14">Color</label><input type="color" value={d.dividerColor ?? "#e5e7eb"} onChange={e => set("dividerColor", e.target.value)} className="w-7 h-7 rounded cursor-pointer border" /><DebouncedInput value={d.dividerColor ?? "#e5e7eb"} onChange={v => set("dividerColor", v)} className="h-7 text-xs flex-1" /></div>
-          <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-14">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("dividerStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.dividerStyle === s ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
+          <div className="flex items-center gap-2"><label className="text-xs text-gray-400 w-14">Style</label><div className="flex gap-1">{(["solid", "dashed", "dotted"] as const).map(s => <button key={s} onClick={() => set("dividerStyle", s)} className={`flex-1 py-1 text-xs rounded border capitalize ${d.dividerStyle === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{s}</button>)}</div></div>
           <div><label className="text-xs text-gray-400 block mb-0.5">Width (px)</label><Input type="number" value={d.dividerWidth ?? 1} onChange={e => set("dividerWidth", Number(e.target.value))} className="h-7 text-xs" min={1} max={10} /></div>
           <div><label className="text-xs text-gray-400 block mb-0.5">Rounding (px)</label><Input type="number" value={d.dividerRadius ?? 0} onChange={e => set("dividerRadius", Number(e.target.value))} className="h-7 text-xs" min={0} max={20} /></div>
         </div>)}
@@ -4144,7 +4144,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Logo URL</label>
             <div className="flex items-center gap-2">
               <DebouncedInput value={d.logoUrl ?? ""} onChange={v => set("logoUrl", v)} className="h-8 text-sm flex-1" placeholder="Logo image URL or upload" />
-              <button onClick={() => bgImageRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "logoUrl"}>{uploading === "logoUrl" ? "..." : <><Upload size={12} /> Upload</>}</button>
+              <button onClick={() => bgImageRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "logoUrl"}>{uploading === "logoUrl" ? "..." : <><Upload size={12} /> Upload</>}</button>
               <input ref={bgImageRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "logoUrl", "logo-strip"); e.target.value = ""; }} />
             </div>
             {d.logoUrl && <img src={d.logoUrl} className="w-full h-12 object-contain rounded border mt-1" />}
@@ -4166,7 +4166,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Footer Logo URL</label>
             <div className="flex items-center gap-2">
               <DebouncedInput value={d.logoUrl ?? ""} onChange={v => set("logoUrl", v)} className="h-8 text-sm flex-1" placeholder="Logo URL or upload" />
-              <button onClick={() => inlineMediaRef.current?.click()} className="px-2 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 flex items-center gap-1" disabled={uploading === "logoUrl"}>{uploading === "logoUrl" ? "..." : <><Upload size={12} /> Upload</>}</button>
+              <button onClick={() => inlineMediaRef.current?.click()} className="px-2 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:opacity-80 flex items-center gap-1" disabled={uploading === "logoUrl"}>{uploading === "logoUrl" ? "..." : <><Upload size={12} /> Upload</>}</button>
               <input ref={inlineMediaRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, "logoUrl", "footer-logo"); e.target.value = ""; }} />
             </div>
             {d.logoUrl && <img src={d.logoUrl} className="w-full h-10 object-contain rounded border mt-1" />}
@@ -4176,7 +4176,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <BSTextField data={d} onSet={set} label="Copyright Text" field="copyrightText" placeholder={`\u00a9 ${new Date().getFullYear()} Company. All rights reserved.`} />
           {/* Links */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Links ({footerLinks.length})</span><button onClick={() => set("links", [...footerLinks, { text: "New Link", url: "/" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Links ({footerLinks.length})</span><button onClick={() => set("links", [...footerLinks, { text: "New Link", url: "/" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div>
             {footerLinks.map((l, i) => (
               <div key={i} className="flex items-center gap-2">
                 <DebouncedInput value={l.text} onChange={v => { const next = [...footerLinks]; next[i] = { ...next[i], text: v }; set("links", next); }} className="h-7 text-xs flex-1" placeholder="Label" />
@@ -4395,7 +4395,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Slides</label>
-              <button onClick={() => set("items", [...items, { id: uid(), mediaType: "image", url: "", altText: "", captionTitle: "", captionBody: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Slide</button>
+              <button onClick={() => set("items", [...items, { id: uid(), mediaType: "image", url: "", altText: "", captionTitle: "", captionBody: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add Slide</button>
             </div>
             <DndContext
               sensors={carouselSensors}
@@ -4485,7 +4485,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Columns</label>
-              <button onClick={() => set("columns", [...ctCols, { label: "New Column", highlight: false }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("columns", [...ctCols, { label: "New Column", highlight: false }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-1">
               {ctCols.map((col, ci) => (
@@ -4504,7 +4504,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Rows</label>
-              <button onClick={() => set("rows", [...ctRows, { feature: "New Feature", values: ctCols.map(() => false) }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("rows", [...ctRows, { feature: "New Feature", values: ctCols.map(() => false) }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-2">
               {ctRows.map((row, ri) => (
@@ -4598,7 +4598,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] text-gray-400">Features</label>
-                      <button onClick={() => setTier(ti, { features: [...(tier.features ?? []), "New feature"] })} className="text-[10px] text-teal-600 flex items-center gap-0.5"><Plus size={10} /> Add</button>
+                      <button onClick={() => setTier(ti, { features: [...(tier.features ?? []), "New feature"] })} className="text-[10px] text-[var(--org-primary)] flex items-center gap-0.5"><Plus size={10} /> Add</button>
                     </div>
                     <div className="space-y-1">
                       {(tier.features ?? []).map((feat, fi) => (
@@ -5082,16 +5082,16 @@ function ColumnBlockPickerDialog({ open, onOpenChange, onAddBlock }: {
                     const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
                     const block: Block = { id: uid(), type: tpl.blockType as any, data: blockData };
                     return (
-                      <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+                      <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] group transition-colors">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                          {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
                             {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
                           </div>
                         </div>
                         <button onClick={() => { onAddBlock(block); onOpenChange(false); }}
-                          className="shrink-0 px-2.5 py-1 text-xs bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors">Add</button>
+                          className="shrink-0 px-2.5 py-1 text-xs bg-[var(--org-primary)] text-white rounded-lg hover:opacity-90 transition-colors">Add</button>
                       </div>
                     );
                   })}
@@ -5279,12 +5279,12 @@ export function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-2xl shadow-2xl w-[680px] max-h-[80vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-teal-600" /> Template Library</h2>
+          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-[var(--org-primary)]" /> Template Library</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <div className="flex border-b border-gray-100">
           {(["page", "block"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2.5 text-sm font-medium capitalize transition-colors ${tab === t ? "border-b-2 border-teal-600 text-teal-700" : "text-gray-500 hover:text-gray-700"}`}>{t === "page" ? "Full Page Templates" : "Block Templates"}</button>
+            <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2.5 text-sm font-medium capitalize transition-colors ${tab === t ? "border-b-2 border-[var(--org-primary)] text-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700"}`}>{t === "page" ? "Full Page Templates" : "Block Templates"}</button>
           ))}
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -5306,8 +5306,8 @@ export function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
             </div>
           )}
           {/* Save current page as template */}
-          <div className="border border-dashed border-teal-300 rounded-xl p-4 bg-teal-50/50">
-            <p className="text-xs font-semibold text-teal-700 mb-3">Save Current {tab === "page" ? "Page" : "Selection"} as Template</p>
+          <div className="border border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-xl p-4 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
+            <p className="text-xs font-semibold text-[var(--org-primary)] mb-3">Save Current {tab === "page" ? "Page" : "Selection"} as Template</p>
             <div className="space-y-2">
               <DebouncedInput value={saveName} onChange={v => setSaveName(v)} className="h-8 text-sm" placeholder="Template name..." />
               <DebouncedInput value={saveDesc} onChange={v => setSaveDesc(v)} className="h-8 text-sm" placeholder="Description (optional)" />
@@ -5322,7 +5322,7 @@ export function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {templates.map((tpl: any) => (
-                <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-teal-300 transition-colors">
+                <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-[var(--org-primary)] transition-colors">
                   <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{tpl.name}</h3>
                   {tpl.description && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{tpl.description}</p>}
                   <p className="text-xs text-gray-400 mb-3">{Array.isArray(tpl.blocks) ? tpl.blocks.length : 0} block{Array.isArray(tpl.blocks) && tpl.blocks.length !== 1 ? "s" : ""}</p>
@@ -5869,7 +5869,7 @@ export default function LandingPageBuilder() {
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate(`/lms/courses/${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
+          <button onClick={() => navigate(`/lms/courses/${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors">
             <ArrowLeft size={16} /> Back to Course
           </button>
           <div className="w-px h-5 bg-gray-200" />
@@ -5879,25 +5879,25 @@ export default function LandingPageBuilder() {
         <div className="flex items-center gap-2">
           {/* Undo / Redo */}
           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-            <button onClick={handleUndo} disabled={!undoHistory.length} title="Undo (Ctrl+Z)" className="flex items-center justify-center px-2.5 py-1.5 text-gray-500 hover:text-teal-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+            <button onClick={handleUndo} disabled={!undoHistory.length} title="Undo (Ctrl+Z)" className="flex items-center justify-center px-2.5 py-1.5 text-gray-500 hover:text-[var(--org-primary)] hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
               <Undo2 size={14} />
             </button>
             <div className="w-px h-5 bg-gray-200" />
-            <button onClick={handleRedo} disabled={!redoStack.length} title="Redo (Ctrl+Shift+Z)" className="flex items-center justify-center px-2.5 py-1.5 text-gray-500 hover:text-teal-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+            <button onClick={handleRedo} disabled={!redoStack.length} title="Redo (Ctrl+Shift+Z)" className="flex items-center justify-center px-2.5 py-1.5 text-gray-500 hover:text-[var(--org-primary)] hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
               <Redo2 size={14} />
             </button>
           </div>
           {/* Mobile / Desktop preview toggle */}
           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-            <button onClick={() => setPreviewWidth("desktop")} title="Desktop preview" className={`flex items-center justify-center px-2.5 py-1.5 transition-colors ${previewWidth === "desktop" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:text-teal-700 hover:bg-gray-50"}`}>
+            <button onClick={() => setPreviewWidth("desktop")} title="Desktop preview" className={`flex items-center justify-center px-2.5 py-1.5 transition-colors ${previewWidth === "desktop" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-500 hover:text-[var(--org-primary)] hover:bg-gray-50"}`}>
               <Monitor size={14} />
             </button>
             <div className="w-px h-5 bg-gray-200" />
-            <button onClick={() => setPreviewWidth("mobile")} title="Mobile preview (390px)" className={`flex items-center justify-center px-2.5 py-1.5 transition-colors ${previewWidth === "mobile" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:text-teal-700 hover:bg-gray-50"}`}>
+            <button onClick={() => setPreviewWidth("mobile")} title="Mobile preview (390px)" className={`flex items-center justify-center px-2.5 py-1.5 transition-colors ${previewWidth === "mobile" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-500 hover:text-[var(--org-primary)] hover:bg-gray-50"}`}>
               <Smartphone size={14} />
             </button>
           </div>
-          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
             <FolderOpen size={14} /> Page Templates
           </button>
           <OpenTemplateLibraryButton />
@@ -5905,7 +5905,7 @@ export default function LandingPageBuilder() {
             <Bookmark size={14} /> Save as Template
           </button>
           {courseInfo?.slug && (
-            <a href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+            <a href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
               <Eye size={14} /> Preview
             </a>
           )}
@@ -5922,7 +5922,7 @@ export default function LandingPageBuilder() {
           <div className="p-3">
             <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:opacity-80 border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg transition-colors"
             >
               <Plus size={14} /> Add Block
             </button>
@@ -5941,12 +5941,12 @@ export default function LandingPageBuilder() {
               <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center"><Plus size={24} /></div>
               <button
                 onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-[var(--org-primary)] hover:opacity-90 text-white rounded-lg transition-colors"
               >
                 <Plus size={16} /> Add Your First Block
               </button>
               <p className="text-sm">Open the block picker to add content</p>
-              <button onClick={() => setShowTemplates(true)} className="text-sm text-teal-600 hover:text-teal-700 flex items-center gap-1.5"><FolderOpen size={16} /> Or start from a template</button>
+              <button onClick={() => setShowTemplates(true)} className="text-sm text-[var(--org-primary)] hover:opacity-80 flex items-center gap-1.5"><FolderOpen size={16} /> Or start from a template</button>
             </div>
           ) : (
             <div className="bg-white min-h-full shadow-sm mx-auto transition-all duration-300" style={{ maxWidth: previewWidth === "mobile" ? "390px" : "900px", boxShadow: previewWidth === "mobile" ? "0 0 0 1px #e5e7eb, 0 4px 24px rgba(0,0,0,0.08)" : undefined }}>
@@ -6050,14 +6050,14 @@ export default function LandingPageBuilder() {
                   {activeDragId ? (() => {
                     const b = blocks.find(bl => bl.id === activeDragId) ??
                       blocks.flatMap(bl => bl.type === "column_layout" ? [...(bl.data.leftBlocks ?? []), ...(bl.data.rightBlocks ?? [])] : []).find(bl => bl.id === activeDragId);
-                    return b ? <div className="opacity-80 border-2 border-teal-400 rounded shadow-xl bg-white"><BlockPreview block={b} /></div> : null;
+                    return b ? <div className="opacity-80 border-2 border-[var(--org-primary)] rounded shadow-xl bg-white"><BlockPreview block={b} /></div> : null;
                   })() : null}
                 </DragOverlay>
               </DndContext>
               <div className="flex justify-center py-6 border-t border-dashed border-gray-200">
                 <button
                   onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                  className="w-full max-w-xs border-2 border-dashed border-teal-300 hover:border-teal-500 rounded-xl py-3 text-teal-600 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
+                  className="w-full max-w-xs border-2 border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-xl py-3 text-[var(--org-primary)] hover:opacity-80 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
                 >
                   <Plus size={16} /> Add Block
                 </button>
