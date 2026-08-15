@@ -5061,7 +5061,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Quiz Builder — {lesson.title}</DialogTitle>
-            <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50 gap-1.5" onClick={() => { setAIPreview(null); setShowAIDialog(true); }}>
+            <Button size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] gap-1.5" onClick={() => { setAIPreview(null); setShowAIDialog(true); }}>
               <Sparkles className="w-3.5 h-3.5" /> AI Generate
             </Button>
           </div>
@@ -5116,7 +5116,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
 
             {/* Add question */}
             {addingQuestion ? (
-              <div className="border border-teal-200 rounded-lg p-4 space-y-3 bg-teal-50">
+              <div className="border border-[var(--org-primary)] rounded-lg p-4 space-y-3 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]">
                 <div>
                   <Label className="text-sm">Question *</Label>
                   <Input value={newQ.question} onChange={e => setNewQ(q => ({ ...q, question: e.target.value }))} className="mt-1" />
