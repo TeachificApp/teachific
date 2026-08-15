@@ -63,6 +63,8 @@ function OptionButton({
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface EmbeddedQuizPlayerProps {
   quizId: number;
+  /** Source lesson when the quiz is embedded in a Course Player lesson. */
+  sourceLessonId?: number;
   /** When true, shows a compact header. Default: true */
   showHeader?: boolean;
   /** Called when the attempt is completed */
@@ -70,7 +72,7 @@ interface EmbeddedQuizPlayerProps {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function EmbeddedQuizPlayer({ quizId, showHeader = true, onComplete }: EmbeddedQuizPlayerProps) {
+export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader = true, onComplete }: EmbeddedQuizPlayerProps) {
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: quizInfo, isLoading: infoLoading } = trpc.standaloneQuizLearner.getQuizInfo.useQuery(
@@ -122,7 +124,7 @@ export default function EmbeddedQuizPlayer({ quizId, showHeader = true, onComple
 
   function handleStart() {
     startMutation.mutate(
-      { quizId },
+      { quizId, sourceType: sourceLessonId ? "lesson" : "standalone", sourceLessonId },
       {
         onSuccess: (res) => {
           setAttemptId(res.attemptId);

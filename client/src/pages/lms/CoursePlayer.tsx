@@ -1828,6 +1828,7 @@ export default function CoursePlayer() {
                     lessonData.standaloneQuizId ? (
                       <EmbeddedQuizPlayer
                         quizId={lessonData.standaloneQuizId}
+                        sourceLessonId={lessonData.id}
                         onComplete={(_score, passed) => {
                           if (!passed) return;
                           setOptimisticCompleted(prev => new Set([...prev, lessonData.id]));

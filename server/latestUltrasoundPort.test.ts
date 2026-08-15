@@ -260,6 +260,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandingSource).not.toContain("orgs?.[0]?.id");
   });
 
+  it("persists the source lesson on standalone quiz attempts completed in Course Player", () => {
+    const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    const quizSource = readFileSync(new URL("../client/src/components/EmbeddedQuizPlayer.tsx", import.meta.url), "utf8");
+    expect(playerSource).toContain("sourceLessonId={lessonData.id}");
+    expect(quizSource).toContain("sourceLessonId?: number");
+    expect(quizSource).toContain('sourceType: sourceLessonId ? "lesson" : "standalone"');
+    expect(quizSource).toContain("sourceLessonId }");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

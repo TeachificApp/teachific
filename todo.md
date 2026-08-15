@@ -5,6 +5,7 @@
 - [x] Scope learner purchase-history invoice queries to the active organization subdomain
 - [x] Use the Course Builder course organization, not the first membership, to determine CME tab visibility
 - [x] Resolve BrandingPage theme settings from the active organization rather than the first membership
+- [x] Persist the originating lesson ID on standalone quiz attempts completed inside Course Player
 
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)
