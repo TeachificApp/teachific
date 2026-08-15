@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 const COLORS = ["hsl(var(--primary))", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
@@ -212,10 +213,13 @@ function LearnerSessionsTable({ packageId, packageTitle }: { packageId: number; 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
   const [, setLocation] = useLocation();
+  const { activeOrg } = useOrgScope();
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
 
   const { data: summary, isLoading: summaryLoading } = trpc.analytics.summary.useQuery({});
-  const { data: packages, isLoading: pkgsLoading } = trpc.packages.list.useQuery(undefined);
+  const { data: packages, isLoading: pkgsLoading } = trpc.packages.list.useQuery(
+    activeOrg?.id ? { orgId: activeOrg.id } : undefined,
+  );
   const { data: pkgAnalytics } = trpc.analytics.byPackage.useQuery(
     { packageId: selectedPackageId! },
     { enabled: !!selectedPackageId }
