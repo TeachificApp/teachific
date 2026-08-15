@@ -221,6 +221,13 @@ async function requireLegacyMembershipAccess(ctx: { user: { id: number; role: st
   return membership;
 }
 
+async function requireLegacyBundleAccess(ctx: { user: { id: number; role: string } }, bundleId: number) {
+  const bundle = await getBundleById(bundleId);
+  if (!bundle) throw new TRPCError({ code: "NOT_FOUND", message: "Bundle not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, bundle.orgId);
+  return bundle;
+}
+
 async function getTeachificOrgId(): Promise<number | null> {
   const teachOrg = await getOrgBySlug("teach");
   return teachOrg?.id ?? null;
@@ -1782,27 +1789,32 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getBundlesByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyBundleAccess(ctx, input.id);
         return getBundleById(input.id);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), description: z.string().optional(), price: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return createBundle({ orgId, name: input.name, description: input.description ?? null, price: input.price ?? 0, courseIds: "[]" });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyBundleAccess(ctx, input.id);
         return updateBundle(input.id, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyBundleAccess(ctx, input.id);
         await deleteBundle(input.id);
         return { ok: true };
       }),
