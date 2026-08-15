@@ -976,4 +976,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseSource).toContain("const course = await requireLegacyCourseAccess(ctx, id);");
     expect(courseSource).toContain("input.courseIds.map((courseId) => requireLegacyCourseAccess(ctx, courseId))");
   });
+
+  it("requires organization-admin ownership throughout mounted legacy LMS curriculum authoring", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const curriculumSource = routerSource.slice(
+      routerSource.indexOf("curriculum: router({"),
+      routerSource.indexOf("// ── Pricing")
+    );
+    const dbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("async function requireLegacySectionAccess");
+    expect(routerSource).toContain("async function requireLegacyLessonAccess");
+    expect(curriculumSource).toContain("await requireLegacyCourseAccess(ctx, input.courseId);");
+    expect((curriculumSource.match(/await requireLegacySectionAccess\(ctx,/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect((curriculumSource.match(/await requireLegacyLessonAccess\(ctx,/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(curriculumSource).toContain("input.lessonIds.map((lessonId) => requireLegacyLessonAccess(ctx, lessonId))");
+    expect(dbSource).toContain("export async function getCourseIdBySectionId");
+  });
 });

@@ -20,6 +20,7 @@ import {
   deleteCourse,
   reorderCourses,
   getSectionsByCourse,
+  getCourseIdBySectionId,
   createSection,
   updateSection,
   deleteSection,
@@ -242,6 +243,18 @@ async function requireLegacyCourseAccess(ctx: { user: { id: number; role: string
   return course;
 }
 
+async function requireLegacySectionAccess(ctx: { user: { id: number; role: string } }, sectionId: number) {
+  const courseId = await getCourseIdBySectionId(sectionId);
+  if (!courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Course section not found" });
+  return requireLegacyCourseAccess(ctx, courseId);
+}
+
+async function requireLegacyLessonAccess(ctx: { user: { id: number; role: string } }, lessonId: number) {
+  const lesson = await getLessonById(lessonId);
+  if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Course lesson not found" });
+  return requireLegacyCourseAccess(ctx, lesson.courseId);
+}
+
 async function getTeachificOrgId(): Promise<number | null> {
   const teachOrg = await getOrgBySlug("teach");
   return teachOrg?.id ?? null;
@@ -313,34 +326,39 @@ export const lmsRouter = router({
   curriculum: router({
     get: protectedProcedure
       .input(z.object({ courseId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireLegacyCourseAccess(ctx, input.courseId);
         return getFullCurriculum(input.courseId);
       }),
     getLesson: protectedProcedure
       .input(z.object({ id: z.number().optional(), lessonId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         const id = input.id ?? input.lessonId;
         if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await requireLegacyLessonAccess(ctx, id);
         const lesson = await getLessonById(id);
         if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
         return lesson;
       }),
     createSection: protectedProcedure
       .input(z.object({ courseId: z.number(), title: z.string().min(1), sortOrder: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyCourseAccess(ctx, input.courseId);
         return createSection({ courseId: input.courseId, title: input.title, sortOrder: input.sortOrder ?? 0 });
       }),
     updateSection: protectedProcedure
       .input(z.object({ id: z.number() }).passthrough())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacySectionAccess(ctx, input.id);
         const { id, ...data } = input;
         return updateSection(id, data as any);
       }),
     deleteSection: protectedProcedure
       .input(z.object({ id: z.number().optional(), sectionId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const id = input.id ?? input.sectionId;
         if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await requireLegacySectionAccess(ctx, id);
         await deleteSection(id);
         return { ok: true };
       }),
@@ -352,7 +370,9 @@ export const lmsRouter = router({
         type: z.string().optional(),
         sortOrder: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyCourseAccess(ctx, input.courseId);
+        await requireLegacySectionAccess(ctx, input.sectionId);
         return createLesson({
           courseId: input.courseId,
           sectionId: input.sectionId,
@@ -363,21 +383,24 @@ export const lmsRouter = router({
       }),
     updateLesson: protectedProcedure
       .input(z.object({ id: z.number() }).passthrough())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requireLegacyLessonAccess(ctx, input.id);
         const { id, ...data } = input;
         return updateLesson(id, data as any);
       }),
     deleteLesson: protectedProcedure
       .input(z.object({ id: z.number().optional(), lessonId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const id = input.id ?? input.lessonId;
         if (!id) throw new TRPCError({ code: "BAD_REQUEST" });
+        await requireLegacyLessonAccess(ctx, id);
         await deleteLesson(id);
         return { ok: true };
       }),
     reorderLessons: protectedProcedure
       .input(z.object({ lessonIds: z.array(z.number()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await Promise.all(input.lessonIds.map((lessonId) => requireLegacyLessonAccess(ctx, lessonId)));
         await reorderLessons(input.lessonIds);
         return { ok: true };
       }),

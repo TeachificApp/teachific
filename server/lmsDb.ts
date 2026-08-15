@@ -138,6 +138,11 @@ export async function getSectionsByCourse(courseId: number) {
     .orderBy(asc(courseSections.sortOrder));
 }
 
+export async function getCourseIdBySectionId(id: number) {
+  const rows = await db.select({ courseId: courseSections.courseId }).from(courseSections).where(eq(courseSections.id, id)).limit(1);
+  return rows[0]?.courseId ?? null;
+}
+
 export async function createSection(data: typeof courseSections.$inferInsert) {
   const result = await db.insert(courseSections).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;

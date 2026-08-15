@@ -4618,6 +4618,7 @@
 - [x] Require organization-admin ownership for mounted legacy LMS bundle reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS flashcard deck and card reads and mutations
 - [x] Require organization-admin ownership for high-impact mounted legacy LMS course reads and mutations
+- [x] Require organization-admin ownership for mounted legacy LMS curriculum section and lesson reads and mutations
 - [x] Keep embedded checkout purchase amounts dollar-denominated after Stripe payment confirmation
 - [x] Product analytics and manual invoice transactions: keep internal amounts dollar-denominated outside Stripe boundaries
 - [x] Require explicit active-organization context for product analytics administrative reads and actions
