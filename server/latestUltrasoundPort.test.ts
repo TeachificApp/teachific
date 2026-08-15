@@ -1107,5 +1107,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortAdminSource).toContain("await assertCourseOwnership(ctx, input.courseId);");
     expect(cohortAdminSource).toContain("await assertCohortSessionOwnership(ctx, input.id);");
     expect(cohortAdminSource).toContain("await assertCohortAssignmentOwnership(ctx, input.id);");
+    expect(cohortAdminSource).toContain("getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)");
+    expect(cohortAdminSource).not.toContain("https://members.teachific.com/cohort/");
   });
 });

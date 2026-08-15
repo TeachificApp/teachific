@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgById, getOrgIdForUser } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -78,6 +78,7 @@ import {
   lmsCohortStaff,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -161,7 +162,9 @@ export const lmsCohortAdminRouter = router({
       // Notify enrolled students if requested
       if (input.notifyStudents && input.status === "published") {
         try {
-          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const org = course?.orgId ? await getOrgById(course.orgId) : null;
+          const learnerUrl = org ? `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/cohort/${input.courseId}` : null;
           const enrolledUsers = await db
             .select({ email: users.email, name: users.name })
             .from(lmsEnrollments)
@@ -184,7 +187,7 @@ export const lmsCohortAdminRouter = router({
                   ${input.meetingUrl ? `<tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Join Link</td><td style="padding:8px 12px;border:1px solid #d1fae5;"><a href="${input.meetingUrl}" style="color:#0d9488;">Click to join</a></td></tr>` : ""}
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                <p><a href="https://members.teachific.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>
+                ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>` : ""}
                 <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
               </div>`,
             });
@@ -292,7 +295,9 @@ export const lmsCohortAdminRouter = router({
       // Notify enrolled students if requested
       if (input.notifyStudents && input.status === "published") {
         try {
-          const [course] = await db.select({ title: lmsCourses.title }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const [course] = await db.select({ title: lmsCourses.title, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+          const org = course?.orgId ? await getOrgById(course.orgId) : null;
+          const learnerUrl = org ? `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/cohort/${input.courseId}` : null;
           const enrolledUsers = await db
             .select({ email: users.email, name: users.name })
             .from(lmsEnrollments)
@@ -315,7 +320,7 @@ export const lmsCohortAdminRouter = router({
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Submission</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${input.submissionType}</td></tr>
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                <p><a href="https://members.teachific.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>
+                ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>` : ""}
                 <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
               </div>`,
             });
