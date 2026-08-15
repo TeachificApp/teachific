@@ -1033,4 +1033,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((landingSource.match(/await requireActiveWorkshopAdmin\(ctx\.user\.id, ctx\.user\.role, inst\.workshopId\);/g) ?? []).length).toBe(2);
     expect(landingSource).toContain("if (!inst) throw new TRPCError({ code: \"NOT_FOUND\" });");
   });
+
+  it("requires active workshop organization ownership before listing pricing options", () => {
+    const workshopRouterSource = readFileSync(new URL("./routers/workshopRouter.ts", import.meta.url), "utf8");
+    const pricingSource = workshopRouterSource.slice(workshopRouterSource.indexOf("listPricingOptions: protectedProcedure"));
+    expect(pricingSource).toContain("await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);");
+    expect(pricingSource).not.toContain('ctx.user.role !== "admin"');
+  });
 });

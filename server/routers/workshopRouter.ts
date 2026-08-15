@@ -1552,7 +1552,7 @@ export const workshopAdminRouter = router({
   listPricingOptions: protectedProcedure
     .input(z.object({ workshopId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       return db
