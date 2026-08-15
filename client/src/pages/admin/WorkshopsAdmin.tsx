@@ -42,9 +42,9 @@ function fmtDateShort(ts: number | Date | null | undefined) {
   if (!ts) return "—";
   return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
-function fmtPrice(cents: number | null | undefined) {
-  if (cents == null) return "—";
-  return `$${(cents / 100).toFixed(2)}`;
+function fmtPrice(amount: number | null | undefined) {
+  if (amount == null) return "—";
+  return `$${Number(amount).toFixed(2)}`;
 }
 function statusColor(status: string) {
   if (status === "public" || status === "published") return "bg-green-100 text-green-700";
@@ -326,8 +326,8 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
     setSubtitle(w.subtitle ?? "");
     setDescription(w.description ?? "");
     setStatus((w.status as any) ?? "draft");
-    setPrice((w.price ?? 0) / 100);
-    setCompareAtPrice(w.compareAtPrice != null ? w.compareAtPrice / 100 : "");
+    setPrice(w.price ?? 0);
+    setCompareAtPrice(w.compareAtPrice != null ? w.compareAtPrice : "");
     setIsFree(w.isFree ?? false);
     setCurriculumEnabled(w.curriculumEnabled ?? true);
     setShowInLibrary(w.showInLibrary ?? true);
@@ -401,8 +401,8 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
     updateMutation.mutate({
       id: workshopId,
       title, slug, subtitle: subtitle || null, description: description || null,
-      status, price: Math.round(price * 100),
-      compareAtPrice: compareAtPrice !== "" ? Math.round(Number(compareAtPrice) * 100) : null,
+      status, price,
+      compareAtPrice: compareAtPrice !== "" ? Number(compareAtPrice) : null,
       isFree, curriculumEnabled, showInLibrary, isFeatured,
       publishDomain: publishDomain || null,
       primaryColor, accentColor,
@@ -441,7 +441,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
     setInstVenueCity(inst.venueCity ?? "");
     setInstVenueState(inst.venueState ?? "");
     setInstCapacity(inst.capacity ?? "");
-    setInstPrice(inst.price != null ? inst.price / 100 : "");
+    setInstPrice(inst.price != null ? inst.price : "");
     setInstAvailableForPurchase(inst.availableForPurchase ?? false);
     setInstSalesCloseDate(inst.salesCloseDate ? new Date(inst.salesCloseDate).toISOString().slice(0, 16) : "");
     setInstSalesOpenDate(inst.salesOpenDate ? new Date(inst.salesOpenDate).toISOString().slice(0, 16) : "");
@@ -464,7 +464,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
       venueCity: instVenueCity || undefined,
       venueState: instVenueState || undefined,
       capacity: instCapacity !== "" ? Number(instCapacity) : null,
-      price: instPrice !== "" ? Math.round(Number(instPrice) * 100) : null,
+      price: instPrice !== "" ? Number(instPrice) : null,
       availableForPurchase: instAvailableForPurchase,
       salesCloseDate: instSalesCloseDate || null,
       salesOpenDate: instSalesOpenDate || null,

@@ -364,6 +364,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membershipsSource).not.toContain("parseFloat(form.price || \"0\") * 100");
   });
 
+  it("displays, edits, and saves workshop and instance prices as stored dollars", () => {
+    const workshopsSource = readFileSync(new URL("../client/src/pages/admin/WorkshopsAdmin.tsx", import.meta.url), "utf8");
+    expect(workshopsSource).toContain("return `$${Number(amount).toFixed(2)}`");
+    expect(workshopsSource).toContain("setPrice(w.price ?? 0)");
+    expect(workshopsSource).toContain("status, price,");
+    expect(workshopsSource).toContain("setInstPrice(inst.price != null ? inst.price : \"\")");
+    expect(workshopsSource).toContain("price: instPrice !== \"\" ? Number(instPrice) : null");
+    expect(workshopsSource).not.toContain("cents / 100");
+    expect(workshopsSource).not.toContain("Math.round(price * 100)");
+    expect(workshopsSource).not.toContain("Math.round(Number(instPrice) * 100)");
+  });
+
   it("displays active-organization Course Builder order amounts as stored dollars", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain("${Number(o.amount).toFixed(2)}");
