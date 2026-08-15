@@ -339,6 +339,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const analyticsPageSource = readFileSync(new URL("../client/src/pages/AnalyticsPage.tsx", import.meta.url), "utf8");
     expect(analyticsPageSource).toContain("const { activeOrg } = useOrgScope();");
     expect(analyticsPageSource).toContain("activeOrg?.id ? { orgId: activeOrg.id } : undefined");
+    expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);");
+    expect(packageRouterSource).toContain("return getPackagesByOrg(input.orgId);");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {

@@ -2363,8 +2363,12 @@ export const appRouter = router({
         if (ctx.user.role === "site_owner" || ctx.user.role === "site_admin") {
           return input?.orgId ? getPackagesByOrg(input.orgId) : getAllPackages();
         }
-        // org_admin / org_super_admin: always scoped to their assigned org only
+        // Organization administrators may select any organization they administer.
         if (ctx.user.role === "org_admin" || ctx.user.role === "org_super_admin") {
+          if (input?.orgId) {
+            await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+            return getPackagesByOrg(input.orgId);
+          }
           const orgId = await getOrgIdForUser(ctx.user.id);
           if (!orgId) return [];
           return getPackagesByOrg(orgId);
