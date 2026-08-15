@@ -1047,4 +1047,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(webhookSource).toContain("getOrgBaseUrl(bundleOrg.slug");
     expect(webhookSource).not.toContain("https://teachific.app/my-library");
   });
+
+  it("resolves organization-owned enrollment and access email links from organization ID", () => {
+    const enrollmentEmailSource = readFileSync(new URL("./lib/enrollmentEmail.ts", import.meta.url), "utf8");
+    expect(enrollmentEmailSource).toContain("async function resolveOrganizationBaseUrl");
+    expect(enrollmentEmailSource).toContain("const organization = await getOrgById(opts.orgId);");
+    expect((enrollmentEmailSource.match(/const orgBase = await resolveOrganizationBaseUrl\(opts\);/g) ?? []).length).toBe(3);
+    expect((enrollmentEmailSource.match(/if \(opts\.orgId && !orgBase\) return false;/g) ?? []).length).toBe(3);
+  });
 });

@@ -29,6 +29,23 @@ export type ContentType = "course" | "download" | "bundle" | "quiz";
  * Falls back to the destination URL if no token is provided.
  */
 import { getOrgBaseUrl } from "./orgUrl";
+import { getOrgById } from "../db";
+
+async function resolveOrganizationBaseUrl(opts: {
+  orgId?: number | null;
+  orgSlug?: string | null;
+  orgCustomDomain?: string | null;
+  orgDomainVerificationStatus?: string | null;
+}): Promise<string | null> {
+  if (opts.orgSlug) {
+    return getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus);
+  }
+  if (!opts.orgId) return null;
+  const organization = await getOrgById(opts.orgId);
+  return organization?.slug
+    ? getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)
+    : null;
+}
 
 function buildAccessUrl(destination: string, accessToken?: string | null, orgBaseUrl?: string | null): string {
   if (!accessToken) return destination;
@@ -143,7 +160,8 @@ export async function sendEnrollmentEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Welcome to "${opts.courseTitle}" 🎉`;
-  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const orgBase = await resolveOrganizationBaseUrl(opts);
+  if (opts.orgId && !orgBase) return false;
   const courseDestination = orgBase ? `${orgBase}/courses/${opts.courseSlug}` : `https://teachific.app/courses/${opts.courseSlug}`;
   const courseUrl = buildAccessUrl(courseDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
@@ -196,7 +214,8 @@ export async function sendDownloadAccessEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `Your download is ready: "${opts.productTitle}"`;
-  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const orgBase = await resolveOrganizationBaseUrl(opts);
+  if (opts.orgId && !orgBase) return false;
   const filesDestination = orgBase ? `${orgBase}/downloads/${opts.productSlug}/files` : `https://teachific.app/downloads/${opts.productSlug}/files`;
   const filesUrl = buildAccessUrl(filesDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
@@ -248,7 +267,8 @@ export async function sendBundleAccessEmail(opts: {
 }): Promise<boolean> {
   const firstName = opts.to.name.split(" ")[0] || opts.to.name;
   const subject = opts.customSubject || `You've been granted access to "${opts.bundleTitle}"`;
-  const orgBase = opts.orgSlug ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus) : null;
+  const orgBase = await resolveOrganizationBaseUrl(opts);
+  if (opts.orgId && !orgBase) return false;
   const bundleDestination = orgBase ? `${orgBase}/downloads/bundle/${opts.bundleSlug}` : `https://teachific.app/downloads/bundle/${opts.bundleSlug}`;
   const bundleUrl = buildAccessUrl(bundleDestination, opts.accessToken, orgBase);
   const introHtml = opts.customIntro
