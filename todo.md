@@ -20,6 +20,8 @@
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
+- [ ] Surface persisted course welcome, completion, upsell, and waitlist automation controls in the organization-scoped Course Builder
+- [ ] Enforce organization-level course ownership for org administrators without treating them as platform-wide administrators
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 
 ## Phase 1: Database Schema & Migrations

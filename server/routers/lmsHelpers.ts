@@ -16,7 +16,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgIdForUser } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUser, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { overlayLearnerData } from "../lib/certificatePdfOverlay";
@@ -296,19 +296,15 @@ export async function assertCourseOwnership(
   ctx: { user: { id: number; role: string } },
   courseId: number
 ): Promise<void> {
-  const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);
-  if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-  const orgId = await getOrgIdForUser(ctx.user.id);
-  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
   const [course] = await db
     .select({ orgId: lmsCourses.orgId })
     .from(lmsCourses)
     .where(eq(lmsCourses.id, courseId))
     .limit(1);
-  if (!course || course.orgId !== orgId)
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this course" });
+  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
 }
 
 /**

@@ -341,6 +341,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(analyticsPageSource).toContain("activeOrg?.id ? { orgId: activeOrg.id } : undefined");
     expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);");
     expect(packageRouterSource).toContain("return getPackagesByOrg(input.orgId);");
+    const lmsHelpersSource = readFileSync(new URL("../server/routers/lmsHelpers.ts", import.meta.url), "utf8");
+    expect(lmsHelpersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);");
+    const courseOwnershipHelper = lmsHelpersSource.slice(
+      lmsHelpersSource.indexOf("export async function assertCourseOwnership"),
+      lmsHelpersSource.indexOf("export async function assertSectionOwnership"),
+    );
+    expect(courseOwnershipHelper).not.toContain("const isPlatformAdmin");
   });
 
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
