@@ -41,7 +41,7 @@
 - [x] Apply active organization theme variables to Order Bumps administration and product authoring controls
 - [x] Remove fabricated testimonial defaults from Order Bumps landing-page block templates
 - [x] Replace Order Bumps hard-coded teal authoring defaults with active organization theme-derived defaults
-- [ ] Apply active organization theme variables to Landing Page Builder authoring controls while preserving explicit content overrides
+- [x] Apply active organization theme variables to Landing Page Builder authoring controls while preserving explicit content overrides
 - [x] Remove platform-specific membership labels from Landing Page Builder product-access controls
 - [x] Remove unsupported default claims from Landing Page Builder ticker block creation
 - [x] Apply active organization theme variables to Form Builder authoring controls

@@ -213,6 +213,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).toContain("createOrgThemedBlock(catalog)");
     expect(landingBuilderSource).toContain("createOrgThemedBlock(c)");
     expect(landingBuilderSource).toContain("createOrgThemedBlock(b)");
+    expect(landingBuilderSource).toContain('className="lms-org-theme fixed inset-0 z-40 flex flex-col bg-gray-50"');
     expect(landingBuilderSource).not.toMatch(/data: \{ \.\.\.(c|b|catalog)\.defaultData \}/);
   });
 
