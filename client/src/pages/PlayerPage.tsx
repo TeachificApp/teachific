@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrgTheme } from "@/contexts/OrgThemeContext";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import {
   BookOpen, CheckCircle2, ChevronLeft, Clock, Download,
   ExternalLink, Maximize2, Minimize2, Play, Shield, X,
@@ -87,6 +88,7 @@ export default function PlayerPage() {
   const params = useParams<{ id: string }>();
   const packageId = Number(params.id);
   const orgTheme = useOrgTheme();
+  const { orgId } = useOrgScope();
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -100,7 +102,7 @@ export default function PlayerPage() {
   const startedAt = useRef<number>(Date.now());
   const sessionTokenRef = useRef<string | null>(null);
 
-  const { data: pkg, isLoading } = trpc.packages.get.useQuery({ id: packageId });
+  const { data: pkg, isLoading } = trpc.packages.get.useQuery({ id: packageId, orgId: orgId ?? undefined });
   const { data: perms } = trpc.permissions.get.useQuery({ packageId });
   const startSession = trpc.sessions.start.useMutation();
   const endSession = trpc.sessions.end.useMutation();

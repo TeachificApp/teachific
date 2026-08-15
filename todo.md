@@ -1,5 +1,7 @@
 # SCORM Host Platform - TODO
 
+- [x] Remove fabricated testimonials and unsupported social-proof claims from platform marketing content
+- [x] Remove unsupported dashboard-style revenue, enrollment, and completion claims from platform marketing imagery
 - [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support
 - [x] Route remaining checkout confirmations through each organization’s configured transactional email sender
 - [x] Scope learner purchase-history invoice queries to the active organization subdomain
@@ -22,7 +24,8 @@
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
 - [x] Apply organization-owned LMS shell branding, core visibility, and light/dark theme settings during package playback
-- [ ] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
+- [x] Enforce active-organization ownership on content package create, update, get, list, and delete procedures
+- [x] Require explicit active-organization scope for administrator content package list and management reads
 - [x] Link Course Builder settings to the organization-owned after-purchase automation editor
 - [x] Embed or render direct Course Builder controls for welcome, completion, and upsell automation settings
 - [x] Verify whether course waitlistEnabled is distinct from availability status and expose the persisted control when applicable

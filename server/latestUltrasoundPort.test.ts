@@ -252,6 +252,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).not.toContain('reviews, { name: "Student Name", rating: 5, text: "Great course!" }');
   });
 
+  it("does not ship fabricated testimonials or unsupported social-proof claims in platform marketing", () => {
+    const landingPageSource = readFileSync(new URL("../client/src/pages/LandingPage.tsx", import.meta.url), "utf8");
+    expect(landingPageSource).not.toContain("Dr. Sarah Mitchell");
+    expect(landingPageSource).not.toContain("James Okafor");
+    expect(landingPageSource).not.toContain("Priya Sharma");
+    expect(landingPageSource).not.toContain("Trusted by educators worldwide");
+    expect(landingPageSource).not.toContain("10,000+");
+    expect(landingPageSource).not.toContain("250,000+");
+    expect(landingPageSource).not.toContain("$12,480");
+    expect(landingPageSource).not.toContain("Revenue up 34% this month");
+    expect(landingPageSource).not.toContain("847 new enrollments");
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");
@@ -399,7 +412,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(analyticsPageSource).toContain("const { activeOrg } = useOrgScope();");
     expect(analyticsPageSource).toContain("activeOrg?.id ? { orgId: activeOrg.id } : undefined");
     expect(packageRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);");
-    expect(packageRouterSource).toContain("return getPackagesByOrg(input.orgId);");
+    expect(packageRouterSource).toContain("return getPackagesByOrg(activeOrgId);");
+    expect(packageRouterSource).toContain("const requestedOrgId = input?.orgId;");
+    expect(packageRouterSource).toContain("requestedOrgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(packageRouterSource).toContain("requestedOrgId ?? await getOrgIdForUser(ctx.user.id)");
+    expect(packageRouterSource).toContain("This content package does not belong to the active organization.");
+    expect(packageRouterSource).toContain("The selected package belongs to another organisation.");
+    expect(packageRouterSource).toContain("getManaged: protectedProcedure");
+    expect(packageRouterSource).toContain("This content package does not belong to the active organization.");
+    expect(packageRouterSource).toContain("input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(packageRouterSource).toContain("Content can only be created in the active organization.");
+    expect(packageRouterSource).toContain("activeOrgId !== existingPackage.orgId");
+    expect(filesPageSource).toContain("trpc.packages.list.useQuery");
     const lmsHelpersSource = readFileSync(new URL("../server/routers/lmsHelpers.ts", import.meta.url), "utf8");
     expect(lmsHelpersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);");
     const courseOwnershipHelper = lmsHelpersSource.slice(

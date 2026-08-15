@@ -18,7 +18,6 @@ import {
   Video,
   Layers,
   ArrowRight,
-  Star,
   Sparkles,
   TrendingUp,
   Upload,
@@ -223,10 +222,10 @@ function HeroSection() {
               <div className="flex-1 p-6 bg-white">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                   {[
-                    { label: "Revenue", value: "$12,480", color: TEAL },
-                    { label: "Enrollments", value: "847", color: AQUA },
-                    { label: "Active Members", value: "312", color: "#6366f1" },
-                    { label: "Completion Rate", value: "78%", color: "#f59e0b" },
+                    { label: "Sales tracking", value: "Overview", color: TEAL },
+                    { label: "Enrollment tools", value: "Manage", color: AQUA },
+                    { label: "Member access", value: "Organize", color: "#6366f1" },
+                    { label: "Completion data", value: "Review", color: "#f59e0b" },
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-lg border border-gray-100 p-3 bg-gray-50">
                       <div className="text-xs text-gray-400 mb-1">{stat.label}</div>
@@ -238,7 +237,7 @@ function HeroSection() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-gray-100 p-3 bg-gray-50 h-24">
-                    <div className="text-xs text-gray-400 mb-2">Enrollment Activity</div>
+                    <div className="text-xs text-gray-400 mb-2">Activity overview</div>
                     <div className="flex items-end gap-1 h-12">
                       {[40, 65, 45, 80, 60, 90, 75].map((h, i) => (
                         <div
@@ -250,8 +249,8 @@ function HeroSection() {
                     </div>
                   </div>
                   <div className="rounded-lg border border-gray-100 p-3 bg-gray-50 h-24">
-                    <div className="text-xs text-gray-400 mb-2">Top Courses</div>
-                    {["Introduction to Python", "Digital Marketing 101"].map((c) => (
+                    <div className="text-xs text-gray-400 mb-2">Course library</div>
+                    {["Course content", "Learner progress"].map((c) => (
                       <div key={c} className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full" style={{ background: TEAL }} />
                         <div className="text-xs text-gray-600 truncate">{c}</div>
@@ -265,44 +264,12 @@ function HeroSection() {
           {/* Floating badges */}
           <div className="absolute -left-4 top-1/3 bg-white rounded-xl shadow-lg border border-gray-100 px-3 py-2 hidden lg:flex items-center gap-2">
             <TrendingUp className="w-4 h-4" style={{ color: TEAL }} />
-            <span className="text-xs font-semibold text-gray-700">Revenue up 34% this month</span>
+            <span className="text-xs font-semibold text-gray-700">Track sales performance</span>
           </div>
           <div className="absolute -right-4 top-1/2 bg-white rounded-xl shadow-lg border border-gray-100 px-3 py-2 hidden lg:flex items-center gap-2">
             <Award className="w-4 h-4 text-yellow-500" />
-            <span className="text-xs font-semibold text-gray-700">847 new enrollments</span>
+            <span className="text-xs font-semibold text-gray-700">Monitor learner enrollment</span>
           </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Stats bar ────────────────────────────────────────────────────────────────
-function StatsSection() {
-  const stats = [
-    { value: "10,000+", label: "Courses Created" },
-    { value: "250,000+", label: "Learners Enrolled" },
-    { value: "98%", label: "Customer Satisfaction" },
-    { value: "4.9 / 5", label: "Average Rating" },
-  ];
-  return (
-    <section className="py-16 border-y border-gray-100 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p className="text-center text-sm font-medium text-gray-400 uppercase tracking-widest mb-10">
-          Trusted by educators worldwide
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <div
-                className="text-3xl sm:text-4xl font-extrabold mb-1"
-                style={{ color: TEAL, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-              >
-                {s.value}
-              </div>
-              <div className="text-sm text-gray-500">{s.label}</div>
-            </div>
-          ))}
         </div>
       </div>
     </section>
@@ -508,69 +475,6 @@ function HowItWorksSection() {
               </div>
             );
           })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Testimonials ─────────────────────────────────────────────────────────────
-function TestimonialsSection() {
-  const testimonials = [
-    {
-      quote:
-        "Teachific™ replaced three separate tools I was paying for. The SCORM support alone saved me hours every week, and my students love the clean learning experience.",
-      name: "Dr. Sarah Mitchell",
-      role: "Medical Education Director",
-      rating: 5,
-    },
-    {
-      quote:
-        "I launched my first course in under an hour. The analytics dashboard showed me exactly which lessons students were dropping off, so I could fix them fast.",
-      name: "James Okafor",
-      role: "Corporate Trainer",
-      rating: 5,
-    },
-    {
-      quote:
-        "The branded school page looks incredibly professional. My students can't believe I built it myself — they think I hired a developer.",
-      name: "Priya Sharma",
-      role: "Yoga & Wellness Instructor",
-      rating: 5,
-    },
-  ];
-
-  return (
-    <section className="py-24 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2
-            className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            Educators love Teachific™
-          </h2>
-          <p className="text-lg text-gray-500">Real results from real creators.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t) => (
-            <div
-              key={t.name}
-              className="p-6 rounded-2xl border border-gray-100 bg-gray-50 flex flex-col"
-            >
-              <div className="flex gap-0.5 mb-4">
-                {Array.from({ length: t.rating }).map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p className="text-gray-700 text-sm leading-relaxed flex-1 mb-4">"{t.quote}"</p>
-              <div>
-                <div className="font-semibold text-gray-900 text-sm">{t.name}</div>
-                <div className="text-xs text-gray-400">{t.role}</div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </section>
@@ -1057,10 +961,8 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
       <LandingNav user={user} />
       <HeroSection />
-      <StatsSection />
       <FeaturesSection />
       <HowItWorksSection />
-      <TestimonialsSection />
       <PricingSection />
       <CtaSection />
       <LandingFooter />

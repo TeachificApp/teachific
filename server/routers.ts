@@ -57,6 +57,7 @@ import {
   setVersionReplacedAt,
   deleteVersionAssets,
   getOrgIdForUser,
+  getOrgIdForUserWithFallback,
   requireOrgAdmin,
   getPlatformSettings,
   updatePlatformSettings,
@@ -2365,37 +2366,55 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ input, ctx }) => {
-        // Site-wide roles: see everything (or filter by explicit orgId)
-        if (ctx.user.role === "site_owner" || ctx.user.role === "site_admin") {
-          return input?.orgId ? getPackagesByOrg(input.orgId) : getAllPackages();
+        const requestedOrgId = input?.orgId;
+        // Site-wide roles default to their active organization and may explicitly inspect another organization.
+        if (["site_owner", "site_admin", "admin"].includes(ctx.user.role)) {
+          const activeOrgId = requestedOrgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+          return activeOrgId ? getPackagesByOrg(activeOrgId) : [];
         }
-        // Organization administrators may select any organization they administer.
-        if (ctx.user.role === "org_admin" || ctx.user.role === "org_super_admin") {
-          if (input?.orgId) {
-            await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
-            return getPackagesByOrg(input.orgId);
-          }
-          const orgId = await getOrgIdForUser(ctx.user.id);
-          if (!orgId) return [];
-          return getPackagesByOrg(orgId);
+        // Organization administrators default to their active organization and can inspect only organizations they administer.
+        if (["org_admin", "org_super_admin", "sub_admin"].includes(ctx.user.role)) {
+          const activeOrgId = requestedOrgId ?? await getOrgIdForUser(ctx.user.id);
+          if (!activeOrgId) return [];
+          await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+          return getPackagesByOrg(activeOrgId);
         }
-        // Regular users: see packages from their orgs
+        // Regular members can only list packages from a current organization they belong to.
         const orgs = await getOrgsByUserId(ctx.user.id);
         const orgIds = orgs.map((o) => o.id);
-        if (input?.orgId && orgIds.includes(input.orgId)) return getPackagesByOrg(input.orgId);
-        const allPkgs = await Promise.all(orgIds.map((id) => getPackagesByOrg(id)));
-        return allPkgs.flat();
+        const activeOrgId = requestedOrgId ?? await getOrgIdForUser(ctx.user.id);
+        if (!activeOrgId || !orgIds.includes(activeOrgId)) return [];
+        return getPackagesByOrg(activeOrgId);
       }),
 
-    get: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input, ctx }) => {
+    get: publicProcedure.input(z.object({ id: z.number(), orgId: z.number().optional() })).query(async ({ input, ctx }) => {
       const pkg = await getPackageById(input.id);
       if (!pkg) throw new TRPCError({ code: "NOT_FOUND" });
-      // Private packages require authentication
+      // Private packages require an active organization that matches the package owner.
       if (!pkg.isPublic && !ctx.user) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "This content is private. Please sign in to access it." });
       }
+      if (!pkg.isPublic && ctx.user) {
+        const activeOrgId = input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!activeOrgId || activeOrgId !== pkg.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
+        }
+      }
       return pkg;
     }),
+
+    getManaged: protectedProcedure
+      .input(z.object({ id: z.number(), orgId: z.number().optional() }))
+      .query(async ({ input, ctx }) => {
+        const pkg = await getPackageById(input.id);
+        if (!pkg) throw new TRPCError({ code: "NOT_FOUND" });
+        const activeOrgId = input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!activeOrgId || pkg.orgId !== activeOrgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
+        }
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, pkg.orgId);
+        return pkg;
+      }),
 
     create: protectedProcedure
       .input(z.object({
@@ -2413,6 +2432,10 @@ export const appRouter = router({
         lmsShellConfig: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!activeOrgId || activeOrgId !== input.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Content can only be created in the active organization." });
+        }
         await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         await createPackage({
           orgId: input.orgId,
@@ -2459,6 +2482,10 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const existingPackage = await getPackageById(input.id);
         if (!existingPackage) throw new TRPCError({ code: "NOT_FOUND" });
+        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!activeOrgId || activeOrgId !== existingPackage.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
+        }
         await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);
         const { id, tags, ...rest } = input;
         await updatePackage(id, {
@@ -2473,6 +2500,10 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const existingPackage = await getPackageById(input.id);
         if (!existingPackage) throw new TRPCError({ code: "NOT_FOUND" });
+        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (!activeOrgId || activeOrgId !== existingPackage.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
+        }
         await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);
         return deletePackage(input.id);
       }),
@@ -2485,7 +2516,10 @@ export const appRouter = router({
         manifestXml: z.string().optional(),
         sampleHtml: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const existingPackage = await getPackageById(input.packageId);
+        if (!existingPackage) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);
         const prompt = `You are an expert eLearning content analyst. Analyze the following SCORM/HTML content package and provide:
 1. A concise description (2-3 sentences) of what this course covers
 2. 5-8 relevant tags (single words or short phrases)
@@ -2528,6 +2562,12 @@ Respond in JSON format: { "description": "...", "tags": [...], "validationNotes"
         orgId: z.number(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const existingPackage = await getPackageById(input.packageId);
+        if (!existingPackage) throw new TRPCError({ code: "NOT_FOUND" });
+        if (existingPackage.orgId !== input.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "The selected package belongs to another organisation." });
+        }
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, existingPackage.orgId);
         const prompt = `Extract all quiz questions from the following HTML content. For each question identify:
 - The question text
 - Question type (multiple_choice, true_false, short_answer, matching, multiple_select)

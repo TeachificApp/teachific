@@ -706,8 +706,12 @@ export default function FileDetailPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
   const packageId = Number(params.id);
+  const { orgId, ready: orgReady } = useOrgScope();
 
-  const { data: pkg, isLoading, refetch } = trpc.packages.get.useQuery({ id: packageId });
+  const { data: pkg, isLoading, refetch } = trpc.packages.getManaged.useQuery(
+    { id: packageId, orgId: orgId ?? undefined },
+    { enabled: !!orgId && orgReady }
+  );
   const { data: versions } = trpc.versions.list.useQuery({ packageId });
   const { data: perms } = trpc.permissions.get.useQuery({ packageId });
   const { data: analytics } = trpc.analytics.byPackage.useQuery({ packageId });

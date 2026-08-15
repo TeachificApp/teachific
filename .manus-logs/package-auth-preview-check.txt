@@ -1,0 +1,162 @@
+--- server ---
+[2026-08-15T06:20:58.034Z] [AppVersions] Seed complete — all 3 products up to date.
+[2026-08-15T06:20:59.161Z] [Stripe] Plans initialized: [
+[2026-08-15T06:20:59.161Z] 'starter_monthly',
+[2026-08-15T06:20:59.161Z] 'starter_annual',
+[2026-08-15T06:20:59.161Z] 'builder_monthly',
+[2026-08-15T06:20:59.161Z] 'builder_annual',
+[2026-08-15T06:20:59.161Z] 'pro_monthly',
+[2026-08-15T06:20:59.161Z] 'pro_annual',
+[2026-08-15T06:20:59.161Z] 'studio_web_monthly',
+[2026-08-15T06:20:59.162Z] 'studio_web_annual',
+[2026-08-15T06:20:59.162Z] 'studio_desktop_monthly',
+[2026-08-15T06:20:59.162Z] 'studio_desktop_annual',
+[2026-08-15T06:20:59.162Z] 'studio_bundle_monthly',
+[2026-08-15T06:20:59.162Z] 'studio_bundle_annual',
+[2026-08-15T06:20:59.162Z] 'creator_web_monthly',
+[2026-08-15T06:20:59.162Z] 'creator_web_annual',
+[2026-08-15T06:20:59.162Z] 'creator_desktop_monthly',
+[2026-08-15T06:20:59.162Z] 'creator_desktop_annual',
+[2026-08-15T06:20:59.162Z] 'creator_bundle_monthly',
+[2026-08-15T06:20:59.162Z] 'creator_bundle_annual',
+[2026-08-15T06:20:59.162Z] 'quiz_creator_web_monthly',
+[2026-08-15T06:20:59.162Z] 'quiz_creator_web_annual',
+[2026-08-15T06:20:59.162Z] 'quiz_creator_desktop_monthly',
+[2026-08-15T06:20:59.162Z] 'quiz_creator_desktop_annual',
+[2026-08-15T06:20:59.162Z] 'quiz_creator_bundle_monthly',
+[2026-08-15T06:20:59.162Z] 'quiz_creator_bundle_annual'
+[2026-08-15T06:20:59.162Z] ]
+[2026-08-15T06:22:41.404Z] 6:22:41 AM [tsx] change in ./server/routers.ts Restarting...
+[2026-08-15T06:22:43.438Z] c[OAuth] Initialized with baseURL: https://api.manus.im
+[2026-08-15T06:22:45.332Z] Server running on http://0.0.0.0:3000/
+[2026-08-15T06:22:48.644Z] [AppVersions] Seed complete — all 3 products up to date.
+[2026-08-15T06:22:49.378Z] [Stripe] Plans initialized: [
+[2026-08-15T06:22:49.378Z] 'starter_monthly',
+[2026-08-15T06:22:49.378Z] 'starter_annual',
+[2026-08-15T06:22:49.378Z] 'builder_monthly',
+[2026-08-15T06:22:49.378Z] 'builder_annual',
+[2026-08-15T06:22:49.378Z] 'pro_monthly',
+[2026-08-15T06:22:49.378Z] 'pro_annual',
+[2026-08-15T06:22:49.378Z] 'studio_web_monthly',
+[2026-08-15T06:22:49.378Z] 'studio_web_annual',
+[2026-08-15T06:22:49.378Z] 'studio_desktop_monthly',
+[2026-08-15T06:22:49.378Z] 'studio_desktop_annual',
+[2026-08-15T06:22:49.378Z] 'studio_bundle_monthly',
+[2026-08-15T06:22:49.378Z] 'studio_bundle_annual',
+[2026-08-15T06:22:49.378Z] 'creator_web_monthly',
+[2026-08-15T06:22:49.378Z] 'creator_web_annual',
+[2026-08-15T06:22:49.378Z] 'creator_desktop_monthly',
+[2026-08-15T06:22:49.378Z] 'creator_desktop_annual',
+[2026-08-15T06:22:49.378Z] 'creator_bundle_monthly',
+[2026-08-15T06:22:49.378Z] 'creator_bundle_annual',
+[2026-08-15T06:22:49.378Z] 'quiz_creator_web_monthly',
+[2026-08-15T06:22:49.378Z] 'quiz_creator_web_annual',
+[2026-08-15T06:22:49.378Z] 'quiz_creator_desktop_monthly',
+[2026-08-15T06:22:49.379Z] 'quiz_creator_desktop_annual',
+[2026-08-15T06:22:49.379Z] 'quiz_creator_bundle_monthly',
+[2026-08-15T06:22:49.379Z] 'quiz_creator_bundle_annual'
+[2026-08-15T06:22:49.379Z] ]
+[2026-08-15T06:23:32.566Z] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[2026-08-15T06:23:38.663Z] [BABEL] Note: The code generator has deoptimised the styling of /home/ubuntu/scorm-host/client/src/pages/lms/LandingPageBuilder.tsx as it exceeds the max of 500KB.
+[2026-08-15T06:23:40.706Z] [BABEL] Note: The code generator has deoptimised the styling of /home/ubuntu/scorm-host/client/src/pages/lms/CourseBuilderPage.tsx as it exceeds the max of 500KB.
+--- browser ---
+[2026-08-15T04:13:48.908Z] {"timestamp":1786767227969,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:13:48.908Z] {"timestamp":1786767228575,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:23:32.147Z] {"timestamp":1786767810121,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:23:32.147Z] {"timestamp":1786767810149,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:23:32.147Z] {"timestamp":1786767811420,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:23:32.147Z] {"timestamp":1786767812020,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:30:34.687Z] {"timestamp":1786768232652,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:30:34.687Z] {"timestamp":1786768232694,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:30:34.687Z] {"timestamp":1786768233975,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:30:34.687Z] {"timestamp":1786768234570,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:39:12.083Z] {"timestamp":1786768749973,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:39:12.083Z] {"timestamp":1786768750109,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:39:12.083Z] {"timestamp":1786768751338,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:39:12.083Z] {"timestamp":1786768751991,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:50:45.539Z] {"timestamp":1786769443502,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:50:45.539Z] {"timestamp":1786769443567,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:50:45.539Z] {"timestamp":1786769444757,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:50:45.539Z] {"timestamp":1786769445493,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:53:57.002Z] {"timestamp":1786769634998,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:53:57.002Z] {"timestamp":1786769635210,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:53:57.002Z] {"timestamp":1786769635944,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:53:57.002Z] {"timestamp":1786769636758,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:55:48.012Z] {"timestamp":1786769746008,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:55:48.012Z] {"timestamp":1786769746012,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:55:48.012Z] {"timestamp":1786769746761,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:55:48.012Z] {"timestamp":1786769747572,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T04:57:54.426Z] {"timestamp":1786769872422,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T04:57:54.426Z] {"timestamp":1786769872493,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T04:57:54.426Z] {"timestamp":1786769873203,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T04:57:54.426Z] {"timestamp":1786769873937,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:01:56.128Z] {"timestamp":1786770114125,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:01:56.128Z] {"timestamp":1786770114207,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:01:56.128Z] {"timestamp":1786770115010,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:01:56.128Z] {"timestamp":1786770115827,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:07:20.728Z] {"timestamp":1786770438724,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:07:20.728Z] {"timestamp":1786770439202,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:07:20.728Z] {"timestamp":1786770439861,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:07:20.728Z] {"timestamp":1786770440675,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:10:35.655Z] {"timestamp":1786770633619,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:10:35.655Z] {"timestamp":1786770633737,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:10:35.655Z] {"timestamp":1786770634934,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:10:35.655Z] {"timestamp":1786770635540,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:18:19.638Z] {"timestamp":1786771097613,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:18:19.638Z] {"timestamp":1786771097660,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:18:19.638Z] {"timestamp":1786771098860,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:18:19.638Z] {"timestamp":1786771099619,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:23:55.164Z] {"timestamp":1786771433142,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:23:55.164Z] {"timestamp":1786771433267,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:23:55.164Z] {"timestamp":1786771434430,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:23:55.164Z] {"timestamp":1786771435146,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:28:05.940Z] {"timestamp":1786771683919,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:28:05.940Z] {"timestamp":1786771683982,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:28:05.940Z] {"timestamp":1786771685099,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:28:05.940Z] {"timestamp":1786771685922,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:33:26.543Z] {"timestamp":1786772004534,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:33:26.543Z] {"timestamp":1786772004567,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:33:26.543Z] {"timestamp":1786772005694,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:33:26.543Z] {"timestamp":1786772006485,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:38:15.530Z] {"timestamp":1786772293519,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:38:15.530Z] {"timestamp":1786772293584,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:38:15.530Z] {"timestamp":1786772294698,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:38:15.530Z] {"timestamp":1786772295422,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:41:17.619Z] {"timestamp":1786772475590,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:41:17.619Z] {"timestamp":1786772475656,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:41:17.619Z] {"timestamp":1786772476700,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:41:17.619Z] {"timestamp":1786772477410,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:41:37.049Z] {"timestamp":1786772495046,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:41:37.049Z] {"timestamp":1786772495060,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:41:37.049Z] {"timestamp":1786772495761,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:41:37.049Z] {"timestamp":1786772496543,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:56:29.773Z] {"timestamp":1786773387761,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:56:29.773Z] {"timestamp":1786773387881,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:56:29.773Z] {"timestamp":1786773389006,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:56:29.773Z] {"timestamp":1786773389757,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T05:58:49.005Z] {"timestamp":1786773527001,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T05:58:49.005Z] {"timestamp":1786773527145,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T05:58:49.005Z] {"timestamp":1786773527842,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T05:58:49.005Z] {"timestamp":1786773528595,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T06:01:29.482Z] {"timestamp":1786773687449,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T06:01:29.483Z] {"timestamp":1786773687470,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T06:01:29.483Z] {"timestamp":1786773688537,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T06:01:29.483Z] {"timestamp":1786773689270,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T06:05:59.249Z] {"timestamp":1786773957144,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T06:05:59.249Z] {"timestamp":1786773957153,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T06:05:59.249Z] {"timestamp":1786773958308,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T06:06:01.147Z] {"timestamp":1786773959325,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T06:12:15.126Z] {"timestamp":1786774333094,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T06:12:15.126Z] {"timestamp":1786774333112,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T06:12:44.056Z] {"timestamp":1786774362052,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T06:12:44.056Z] {"timestamp":1786774362161,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T06:12:44.056Z] {"timestamp":1786774362853,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T06:12:44.056Z] {"timestamp":1786774363728,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T06:13:35.551Z] {"timestamp":1786774413547,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T06:13:35.551Z] {"timestamp":1786774413554,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T06:13:35.551Z] {"timestamp":1786774414262,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T06:13:35.551Z] {"timestamp":1786774415058,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
+[2026-08-15T06:14:07.981Z] {"timestamp":1786774445977,"level":"DEBUG","args":["[Manus] Debug collector initialized (no rrweb, UI events only)"],"stack":null}
+[2026-08-15T06:14:07.981Z] {"timestamp":1786774445993,"level":"DEBUG","args":["[vite] connected."],"stack":null}
+[2026-08-15T06:14:07.981Z] {"timestamp":1786774446696,"level":"INFO","args":["%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools","font-weight:bold"],"stack":null}
+[2026-08-15T06:14:07.981Z] {"timestamp":1786774447511,"level":"WARN","args":["You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS."],"stack":null}
