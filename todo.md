@@ -4592,8 +4592,9 @@
 - [ ] LandingPageBuilder (admin): remove all item.price/100 display hacks; remove *100 catalog assignments; remove /100 in price input value; remove *100 in price input onChange; fix "Price (cents)" labels to "Price ($)"
 - [ ] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
 - [x] embeddedCheckoutRouter: preserve dollar-denominated pending purchase storage while converting to cents only for Stripe payment intents
-- [ ] lmsEnrollmentAdminRouter CSV export: remove /100 from orderAmount (stored in dollars)
+- [x] Confirm LMS enrollment CSV export already formats stored order amounts directly as dollars
 - [x] Digital Downloads administration: display stored purchase amounts as dollars without legacy cents conversion
+- [x] Download Analytics: display stored order amounts as dollars without legacy cents conversion
 - [x] Course Builder orders: display stored purchase amounts as dollars without legacy cents conversion
 - [x] RelatedProductsBlock formats membership and other related product prices directly from stored dollar values
 

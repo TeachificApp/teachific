@@ -120,7 +120,7 @@ function OrderDetailDialog({
               <div>
                 <p className="text-muted-foreground text-xs">Total</p>
                 <p className="font-medium">
-                  ${((data.amount ?? 0) / 100).toFixed(2)} {data.currency?.toUpperCase()}
+                  ${Number(data.amount ?? 0).toFixed(2)} {data.currency?.toUpperCase()}
                 </p>
               </div>
               <div>
@@ -283,7 +283,7 @@ function OrdersTable() {
                     onClick={() => setSelectedId(o.id)}
                   >
                     <td className="p-3 text-blue-600 font-mono text-xs">{o.orderRef}</td>
-                    <td className="p-3">${((o.amount ?? 0) / 100).toFixed(2)}</td>
+                    <td className="p-3">${Number(o.amount ?? 0).toFixed(2)}</td>
                     <td className="p-3">
                       <p className="font-medium truncate max-w-[160px]">{o.userName ?? "—"}</p>
                       <p className="text-xs text-muted-foreground truncate max-w-[160px]">{o.userEmail}</p>
