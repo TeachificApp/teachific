@@ -4770,7 +4770,7 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
           <Label htmlFor="inline-rand-a" className="text-sm">Randomize answers</Label>
         </div>
         <div className="ml-auto">
-          <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50 gap-1.5" onClick={() => { setAIPreview(null); setShowAIPanel(p => !p); }}>
+          <Button size="sm" variant="outline" className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] gap-1.5" onClick={() => { setAIPreview(null); setShowAIPanel(p => !p); }}>
             <Sparkles className="w-3.5 h-3.5" /> AI Generate
           </Button>
         </div>
@@ -4778,10 +4778,10 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
 
       {/* AI Generate Panel */}
       {showAIPanel && (
-        <div className="border border-teal-200 rounded-xl p-5 bg-teal-50 space-y-4">
+        <div className="border border-[var(--org-primary)] rounded-xl p-5 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-teal-800 flex items-center gap-2"><Sparkles className="w-4 h-4" /> AI Question Generator</h3>
-            {courseId && <span className="text-xs text-teal-600 bg-teal-100 px-2 py-0.5 rounded-full">Course context enabled</span>}
+            <h3 className="text-sm font-semibold text-[var(--org-primary)] flex items-center gap-2"><Sparkles className="w-4 h-4" /> AI Question Generator</h3>
+            {courseId && <span className="text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] px-2 py-0.5 rounded-full">Course context enabled</span>}
           </div>
 
           {!aiPreview ? (
