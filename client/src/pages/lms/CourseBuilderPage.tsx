@@ -5266,7 +5266,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowAIDialog(false)}>Cancel</Button>
                 <Button
-                  className="bg-[#189aa1] hover:bg-[#147f86] text-white gap-2"
+                  className="bg-[var(--org-primary)] hover:opacity-90 text-white gap-2"
                   disabled={(!aiTopic.trim() && !(useFromLessons && selectedLessonIds.length > 0)) || aiGenerate.isPending}
                   onClick={() => aiGenerate.mutate({ quizId: quiz.id, topic: aiTopic.trim() || "based on selected lesson content", count: aiCount, difficulty: aiDifficulty, questionType: aiQType, courseId, lessonIds: useFromLessons && selectedLessonIds.length > 0 ? selectedLessonIds : undefined })}
                 >
@@ -5281,7 +5281,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                 <div className="flex gap-2">
                   <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setAIPreview(p => p!.map(q => ({ ...q, selected: true })))}>Select All</Button>
                   <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setAIPreview(p => p!.map(q => ({ ...q, selected: false })))}>Deselect All</Button>
-                  <Button size="sm" variant="ghost" className="text-xs h-7 text-teal-600" onClick={() => setAIPreview(null)}>← Back</Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 text-[var(--org-primary)]" onClick={() => setAIPreview(null)}>← Back</Button>
                 </div>
               </div>
 
@@ -5292,13 +5292,13 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                     <div
                       key={qi}
                       className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                        q.selected ? "border-teal-400 bg-teal-50" : "border-gray-200 bg-white opacity-60"
+                        q.selected ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-gray-200 bg-white opacity-60"
                       }`}
                       onClick={() => setAIPreview(p => p!.map((item, i) => i === qi ? { ...item, selected: !item.selected } : item))}
                     >
                       <div className="flex items-start gap-2">
                         <div className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
-                          q.selected ? "bg-[#189aa1] border-[#189aa1] text-white" : "border-gray-300"
+                          q.selected ? "bg-[var(--org-primary)] border-[var(--org-primary)] text-white" : "border-gray-300"
                         }`}>{q.selected ? "✓" : ""}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800">{qi + 1}. {q.question}</p>
@@ -5320,7 +5320,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => { setShowAIDialog(false); setAIPreview(null); }}>Cancel</Button>
                 <Button
-                  className="bg-[#189aa1] hover:bg-[#147f86] text-white gap-2"
+                  className="bg-[var(--org-primary)] hover:opacity-90 text-white gap-2"
                   disabled={aiPreview.filter(q => q.selected).length === 0 || bulkInsert.isPending}
                   onClick={() => bulkInsert.mutate({
                     quizId: quiz.id,
