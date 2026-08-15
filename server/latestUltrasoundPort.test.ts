@@ -836,4 +836,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(themeCss).toContain("color-mix(in srgb, var(--org-primary) 82%, #000 18%)");
     expect(themeCss).toContain("background-color: var(--org-primary);");
   });
+
+  it("routes hosted LMS checkout enrollment confirmations through the purchased course organization", () => {
+    const fulfillmentSource = readFileSync(new URL("./lib/lmsCheckoutFulfillment.ts", import.meta.url), "utf8");
+    const emailSource = readFileSync(new URL("./lib/enrollmentEmail.ts", import.meta.url), "utf8");
+    expect(fulfillmentSource).toContain("orgId: lmsCourses.orgId");
+    expect(fulfillmentSource).toContain("orgSlug: organizations.slug");
+    expect(fulfillmentSource).toContain("orgCustomDomain: organizations.customDomain");
+    expect(fulfillmentSource).toContain("orgDomainVerificationStatus: organizations.domainVerificationStatus");
+    expect(fulfillmentSource).toContain("orgId: course.orgId");
+    expect(fulfillmentSource).toContain("getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus)");
+    expect(fulfillmentSource).toContain("orgSlug: course.orgSlug");
+    expect(fulfillmentSource).toContain("orgDomainVerificationStatus: course.orgDomainVerificationStatus");
+    expect(fulfillmentSource).toContain("Purchased course no longer exists");
+    expect(emailSource).toContain("return await sendEmailViaOrg({ to: opts.to, subject: opts.subject, htmlBody: opts.htmlBody }, opts.orgId);");
+    expect(emailSource).toContain("getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus)");
+  });
 });

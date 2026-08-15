@@ -68,6 +68,7 @@
 - [x] Enforce course organization ownership when reading or updating after-purchase automation settings
 - [x] Validate affiliate payout requests against organization-specific affiliate earnings rather than link presence alone
 - [x] Route membership welcome and purchase-confirmation emails through the owning organization sender
+- [x] Route hosted LMS checkout enrollment and quiz confirmation emails through the owning organization sender and domain
 - [x] Scope membership all-course and all-download access grants to the owning organization
 
 ## Phase 1: Database Schema & Migrations

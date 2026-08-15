@@ -14,10 +14,12 @@ import {
   lmsEnrollments,
   lmsOrders,
   lmsPricingOptions,
+  organizations,
   platformSettings,
 } from "../../drizzle/schema";
 import { getOrCreateUserByEmail, getOrCreateAccessToken } from "../db";
 import { sendEnrollmentEmail, sendQuizAccessEmail } from "./enrollmentEmail";
+import { getOrgBaseUrl } from "./orgUrl";
 import { notifyOwner } from "../_core/notification";
 import { isEnrollmentAccessActive } from "./enrollmentAccess";
 
@@ -451,10 +453,23 @@ export async function reconcileLmsCheckoutFromStripeSession(
   }
 
   const [course] = await db
-    .select({ title: lmsCourses.title, slug: lmsCourses.slug, type: lmsCourses.type, sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail })
+    .select({
+      title: lmsCourses.title,
+      slug: lmsCourses.slug,
+      type: lmsCourses.type,
+      sendEnrollmentEmail: lmsCourses.sendEnrollmentEmail,
+      orgId: lmsCourses.orgId,
+      orgSlug: organizations.slug,
+      orgCustomDomain: organizations.customDomain,
+      orgDomainVerificationStatus: organizations.domainVerificationStatus,
+    })
     .from(lmsCourses)
+    .leftJoin(organizations, eq(lmsCourses.orgId, organizations.id))
     .where(eq(lmsCourses.id, courseId))
     .limit(1);
+  if (!course) {
+    return { success: false, userId, courseId, orderId, isNewUser, notes, error: "Purchased course no longer exists" };
+  }
 
   const [existingEnrollment] = await db
     .select({
@@ -552,6 +567,7 @@ export async function reconcileLmsCheckoutFromStripeSession(
 
   if (!existingEnrollment) {
     await db.insert(lmsEnrollments).values({
+      orgId: course.orgId,
       userId,
       courseId,
       orderId,
@@ -600,9 +616,12 @@ export async function reconcileLmsCheckoutFromStripeSession(
         try {
           accessToken = await getOrCreateAccessToken(userId);
         } catch { /* optional */ }
+        const orgBaseUrl = course?.orgSlug
+          ? getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus)
+          : "https://teachific.app";
         // For new guest accounts, include a set-password URL so they can create a permanent login
         const setPasswordUrl = newUserResetToken
-          ? `https://teachific.app/auth/reset-password?token=${newUserResetToken}`
+          ? `${orgBaseUrl}/auth/reset-password?token=${newUserResetToken}`
           : null;
         if (course.type === "quiz") {
           await sendQuizAccessEmail({
@@ -610,6 +629,10 @@ export async function reconcileLmsCheckoutFromStripeSession(
             quizTitle: course.title,
             accessToken,
             setPasswordUrl,
+            orgId: course.orgId,
+            orgSlug: course.orgSlug,
+            orgCustomDomain: course.orgCustomDomain,
+            orgDomainVerificationStatus: course.orgDomainVerificationStatus,
           });
           notes.push("Quiz access email sent");
         } else {
@@ -619,6 +642,10 @@ export async function reconcileLmsCheckoutFromStripeSession(
             courseSlug: course.slug,
             accessToken,
             setPasswordUrl,
+            orgId: course.orgId,
+            orgSlug: course.orgSlug,
+            orgCustomDomain: course.orgCustomDomain,
+            orgDomainVerificationStatus: course.orgDomainVerificationStatus,
           });
           notes.push("Enrollment email sent");
         }
