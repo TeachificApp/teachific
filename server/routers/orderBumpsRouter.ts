@@ -134,15 +134,18 @@ export const orderBumpsAdminRouter = router({
   stats: protectedProcedure
     .input(z.object({ bumpId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
-      const [bump] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.bumpId));
+      const [bump] = await db.select().from(orderBumps).where(and(eq(orderBumps.id, input.bumpId), eq(orderBumps.orgId, orgId)));
       if (!bump) throw new TRPCError({ code: "NOT_FOUND" });
+      const conversions = await db.select().from(orderBumpConversions).where(eq(orderBumpConversions.bumpId, bump.id));
+      const accepted = conversions.filter((conversion: { accepted: boolean }) => conversion.accepted).length;
+      const amount = Number(bump.discountedPrice ?? 0);
       return {
-        impressions: bump.impressions,
-        conversions: bump.conversions,
-        conversionRate: bump.impressions > 0 ? ((bump.conversions / bump.impressions) * 100).toFixed(1) : "0.0",
-        revenue: bump.conversions * bump.bumpPrice,
+        impressions: null,
+        conversions: accepted,
+        conversionRate: null,
+        revenue: accepted * amount,
       };
     }),
 
@@ -150,17 +153,15 @@ export const orderBumpsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
-      const [src] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.id)).limit(1);
+      const [src] = await db.select().from(orderBumps).where(and(eq(orderBumps.id, input.id), eq(orderBumps.orgId, orgId))).limit(1);
       if (!src) throw new TRPCError({ code: "NOT_FOUND" });
-      const { id: _id, impressions: _imp, conversions: _conv, createdAt: _ca, updatedAt: _ua, ...rest } = src;
+      const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = src;
       const [result] = await db.insert(orderBumps).values({
         ...rest,
         headline: rest.headline ? `${rest.headline} [Copy]` : null,
         isActive: false,
-        impressions: 0,
-        conversions: 0,
       });
       return { id: result.insertId };
     }),
@@ -169,8 +170,10 @@ export const orderBumpsAdminRouter = router({
   getPricingOptionsForCourse: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!course || course.orgId !== orgId) throw new TRPCError({ code: "NOT_FOUND" });
       const rows = await db
         .select()
         .from(lmsPricingOptions)
@@ -239,9 +242,7 @@ export const orderBumpsPublicRouter = router({
   recordImpression: publicProcedure
     .input(z.object({ bumpId: z.number() }))
     .mutation(async ({ input }) => {
-      const db = await getDb();
-      await db.execute(sql`UPDATE order_bumps SET impressions = impressions + 1 WHERE id = ${input.bumpId}`);
-      return { success: true };
+      return { success: true, recorded: false };
     }),
 
   /** Accept a bump offer — creates a conversion record */
@@ -257,24 +258,20 @@ export const orderBumpsPublicRouter = router({
       const [bump] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.bumpId));
       if (!bump) throw new TRPCError({ code: "NOT_FOUND", message: "Order bump not found" });
 
-      // Record conversion
+      // Record an organization-owned acceptance event. Payment completion remains
+      // the source of truth for fulfillment in the checkout webhook.
       await db.insert(orderBumpConversions).values({
         bumpId: input.bumpId,
-        userId: ctx.user.id,
-        triggerOrderType: input.triggerOrderType,
+        orgId: bump.orgId,
         triggerOrderId: input.triggerOrderId ?? null,
-        bumpAmount: bump.bumpPrice,
-        status: "pending",
+        accepted: true,
       });
-
-      // Increment conversions counter
-      await db.execute(sql`UPDATE order_bumps SET conversions = conversions + 1 WHERE id = ${input.bumpId}`);
 
       return { 
         success: true, 
         bumpId: bump.id,
-        bumpPrice: bump.bumpPrice,
-        bumpType: bump.bumpType,
+        bumpPrice: bump.discountedPrice,
+        bumpType: bump.bumpProductType,
         bumpProductId: bump.bumpProductId,
         headline: bump.headline,
       };

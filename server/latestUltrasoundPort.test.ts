@@ -1093,5 +1093,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(orderBumpCheckoutSource).toContain("eq(orderBumps.placement, \"before_checkout\")");
     expect(orderBumpCheckoutSource).toContain("orgId: bump.orgId");
     expect(orderBumpCheckoutSource).toContain("accepted: true");
+    expect(orderBumpRouterSource).toContain("impressions: null");
+    expect(orderBumpRouterSource).toContain("conversionRate: null");
+    expect(orderBumpRouterSource).toContain("accepted: true,");
   });
 });
