@@ -342,6 +342,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(platformDownloadsSource).not.toContain("avgOrder / 100");
   });
 
+  it("displays and edits bundle pricing options as stored dollars", () => {
+    const bundlesSource = readFileSync(new URL("../client/src/pages/admin/BundlesAdmin.tsx", import.meta.url), "utf8");
+    expect(bundlesSource).toContain("Number(initial?.price ?? 0).toFixed(2)");
+    expect(bundlesSource).toContain("Number(o.downPayment ?? 0).toFixed(2)");
+    expect(bundlesSource).toContain("Number(o.installmentAmount ?? 0).toFixed(2)");
+    expect(bundlesSource).toContain("Number(o.price).toFixed(2)");
+    expect(bundlesSource).not.toContain("initial?.price ?? 0) / 100");
+    expect(bundlesSource).not.toContain("o.downPayment ?? 0) / 100");
+    expect(bundlesSource).not.toContain("o.installmentAmount ?? 0) / 100");
+    expect(bundlesSource).not.toContain("o.price / 100");
+  });
+
   it("displays active-organization Course Builder order amounts as stored dollars", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain("${Number(o.amount).toFixed(2)}");

@@ -968,12 +968,12 @@ function BundlePricingOptionForm({
   const [label, setLabel] = useState(initial?.label ?? "");
   const [sublabel, setSublabel] = useState(initial?.sublabel ?? "");
   const [pricingType, setPricingType] = useState<BundlePricingOption["pricingType"]>(initial?.pricingType ?? "one_time");
-  const [price, setPrice] = useState(String(Number((initial?.price ?? 0) / 100).toFixed(2)));
+  const [price, setPrice] = useState(String(Number(initial?.price ?? 0).toFixed(2)));
   const [stripePriceId, setStripePriceId] = useState(initial?.stripePriceId ?? "");
   const [subscriptionInterval, setSubscriptionInterval] = useState<"monthly" | "quarterly" | "annual">(initial?.subscriptionInterval ?? "monthly");
-  const [downPayment, setDownPayment] = useState(String(Number((initial?.downPayment ?? 0) / 100).toFixed(2)));
+  const [downPayment, setDownPayment] = useState(String(Number(initial?.downPayment ?? 0).toFixed(2)));
   const [installmentCount, setInstallmentCount] = useState(String(initial?.installmentCount ?? ""));
-  const [installmentAmount, setInstallmentAmount] = useState(String(Number((initial?.installmentAmount ?? 0) / 100).toFixed(2)));
+  const [installmentAmount, setInstallmentAmount] = useState(String(Number(initial?.installmentAmount ?? 0).toFixed(2)));
   const [installmentIntervalDays, setInstallmentIntervalDays] = useState(String(initial?.installmentIntervalDays ?? 30));
   const [ctaLabel, setCtaLabel] = useState(initial?.ctaLabel ?? "");
   const [ctaUrl, setCtaUrl] = useState(initial?.ctaUrl ?? "");
@@ -1117,15 +1117,15 @@ function BundlePricingOptionRow({ opt, editingId, setEditingId, setShowAdd, upda
   const formatPrice = (o: BundlePricingOption) => {
     if (o.pricingType === "free") return "Free";
     if (o.pricingType === "payment_plan") {
-      const dp = Number((o.downPayment ?? 0) / 100).toFixed(2);
-      const inst = Number((o.installmentAmount ?? 0) / 100).toFixed(2);
+      const dp = Number(o.downPayment ?? 0).toFixed(2);
+      const inst = Number(o.installmentAmount ?? 0).toFixed(2);
       const n = o.installmentCount ?? 0;
       return `$${dp} down + ${n}×$${inst}`;
     }
     if (o.pricingType === "subscription") {
-      return `$${Number(o.price / 100).toFixed(2)}/${o.subscriptionInterval ?? "month"}`;
+      return `$${Number(o.price).toFixed(2)}/${o.subscriptionInterval ?? "month"}`;
     }
-    return `$${Number(o.price / 100).toFixed(2)}`;
+    return `$${Number(o.price).toFixed(2)}`;
   };
 
   const copyCheckoutLink = () => {
