@@ -4614,6 +4614,7 @@
 - [x] Bundles administration: display and edit stored option prices as dollars without legacy cents conversion
 - [x] Membership administration: display and edit plan prices as dollars without legacy cents conversion
 - [x] Apply active organization theme variables to membership administration controls and primary actions
+- [x] Replace legacy membership labels with generic organization-scoped labels in membership administration
 - [x] Require organization-admin ownership for mounted legacy LMS membership plan reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS bundle reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS flashcard deck and card reads and mutations

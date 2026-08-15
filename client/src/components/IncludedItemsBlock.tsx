@@ -76,10 +76,10 @@ function typeInfo(type: string): { Icon: IconComponent; label: string } {
     case "workshop":                return { Icon: BookOpen,     label: "Workshop" };
     case "all_courses":             return { Icon: BookOpen,     label: "All Courses" };
     case "all_downloads":           return { Icon: FileDown,     label: "All Downloads" };
-    case "ultrasoundassist_free":   return { Icon: Globe,        label: "UltrasoundAssist™" };
-    case "ultrasoundassist_premium":return { Icon: Globe,        label: "UltrasoundAssist™" };
-    case "echoassist_free":         return { Icon: Globe,        label: "EchoAssist™" };
-    case "echoassist_premium":      return { Icon: Globe,        label: "EchoAssist™" };
+    case "ultrasoundassist_free":   return { Icon: Globe,        label: "Membership access" };
+    case "ultrasoundassist_premium":return { Icon: Globe,        label: "Membership access" };
+    case "echoassist_free":         return { Icon: Globe,        label: "Membership access" };
+    case "echoassist_premium":      return { Icon: Globe,        label: "Membership access" };
     default:                        return { Icon: Package,      label: type };
   }
 }
@@ -98,10 +98,10 @@ function itemHref(item: IncludedItem): string | null {
 /** Derive a short app name for the gradient overlay on app-type items */
 function appOverlayLabel(item: IncludedItem): string | null {
   if (item.appLabel) return item.appLabel;
-  if (item.itemType === "ultrasoundassist_free")    return "UltrasoundAssist™";
-  if (item.itemType === "ultrasoundassist_premium") return "UltrasoundAssist™";
-  if (item.itemType === "echoassist_free")          return "EchoAssist™";
-  if (item.itemType === "echoassist_premium")       return "EchoAssist™";
+  if (item.itemType === "ultrasoundassist_free")    return "Membership access";
+  if (item.itemType === "ultrasoundassist_premium") return "Membership access";
+  if (item.itemType === "echoassist_free")          return "Membership access";
+  if (item.itemType === "echoassist_premium")       return "Membership access";
   return null;
 }
 

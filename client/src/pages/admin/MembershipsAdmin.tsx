@@ -103,10 +103,10 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   product: "Product",
   all_courses: "All Courses",
   all_downloads: "All Downloads",
-  ultrasoundassist_free: "UltrasoundAssist™ (Free Member)",
-  ultrasoundassist_premium: "UltrasoundAssist™ (Premium Member)",
-  echoassist_free: "EchoAssist™ (Free Member)",
-  echoassist_premium: "EchoAssist™ (Premium Member)",
+  ultrasoundassist_free: "Free Member",
+  ultrasoundassist_premium: "Premium Member",
+  echoassist_free: "Free Member",
+  echoassist_premium: "Premium Member",
 };
 
 const ITEM_TYPE_ICONS: Record<string, React.ReactNode> = {
