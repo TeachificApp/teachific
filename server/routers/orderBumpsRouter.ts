@@ -24,9 +24,9 @@ async function getDb() {
 export const orderBumpsAdminRouter = router({
   /** List all order bumps */
   list: protectedProcedure.query(async ({ ctx }) => {
-    const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+    const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
     const db = await getDb();
-    const rows = await db.select().from(orderBumps).orderBy(orderBumps.createdAt);
+    const rows = await db.select().from(orderBumps).where(eq(orderBumps.orgId, orgId)).orderBy(orderBumps.createdAt);
     return rows;
   }),
 
@@ -44,22 +44,19 @@ export const orderBumpsAdminRouter = router({
   /** Create a new order bump */
   create: protectedProcedure
     .input(z.object({
-      triggerType: z.enum(["course", "quiz", "download", "bundle", "physical", "cohort"]),
+      orgId: z.number().optional(),
+      name: z.string().min(1),
+      triggerProductType: z.enum(["course", "quiz", "download"]),
       triggerProductId: z.number(),
-      // Optional: only show this bump when the user is purchasing this specific pricing option
-      triggerPricingOptionId: z.number().nullable().optional(),
-      bumpType: z.enum(["course", "quiz", "download", "bundle", "physical", "cohort"]),
+      bumpProductType: z.enum(["course", "quiz", "download"]),
       bumpProductId: z.number(),
-      timing: z.enum(["before_checkout", "after_checkout"]).default("after_checkout"),
-      bumpPrice: z.number().min(0),
-      discountLabel: z.string().optional(),
+      placement: z.enum(["before_checkout", "during_checkout", "after_checkout"]).default("during_checkout"),
       headline: z.string().optional(),
-      subheadline: z.string().optional(),
-      bodyHtml: z.string().optional(),
+      description: z.string().optional(),
+      discountPercent: z.number().int().min(0).default(0),
       imageUrl: z.string().optional(),
-      ctaText: z.string().default("Add to Order"),
-      ctaColor: z.string().default("#179ca3"),
-      skipText: z.string().default("No thanks, continue"),
+      buttonText: z.string().default("Add to Order"),
+      declineText: z.string().default("No thanks"),
       isActive: z.boolean().default(true),
       presentationMode: z.enum(["widget", "landing_page"]).default("widget"),
       pageBlocks: z.string().optional(), // JSON-serialized Block[]
@@ -67,28 +64,24 @@ export const orderBumpsAdminRouter = router({
       bumpMode: z.enum(["addon", "upgrade"]).default("addon").optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = input.orgId ?? await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const db = await getDb();
       const [result] = await db.insert(orderBumps).values({
-        triggerType: input.triggerType,
+        orgId,
+        name: input.name,
+        triggerProductType: input.triggerProductType,
         triggerProductId: input.triggerProductId,
-        triggerPricingOptionId: input.triggerPricingOptionId ?? null,
-        bumpType: input.bumpType,
+        bumpProductType: input.bumpProductType,
         bumpProductId: input.bumpProductId,
-        timing: input.timing,
-        bumpPrice: input.bumpPrice,
-        discountLabel: input.discountLabel ?? null,
+        placement: input.placement,
         headline: input.headline ?? null,
-        subheadline: input.subheadline ?? null,
-        bodyHtml: input.bodyHtml ?? null,
+        description: input.description ?? null,
+        discountPercent: input.discountPercent,
         imageUrl: input.imageUrl ?? null,
-        ctaText: input.ctaText,
-        ctaColor: input.ctaColor,
-        skipText: input.skipText,
+        buttonText: input.buttonText,
+        declineText: input.declineText,
         isActive: input.isActive,
-        presentationMode: input.presentationMode,
-        pageBlocks: input.pageBlocks ?? null,
-        slug: input.slug ?? null,
         bumpMode: input.bumpMode ?? "addon",
       });
       return { id: result.insertId };

@@ -4621,6 +4621,8 @@
 - [x] Require active-organization ownership for webinar administration reads, registrations, settings, and mutations
 - [ ] Require active-organization ownership for digital download and bundle administration reads and mutations
 - [x] Resolve the active organization before authorizing digital download administration
+- [ ] Add organization ownership and active-organization authorization to order bump administration
+- [x] Align order-bump listing and creation with the organization-owned schema contract
 - [x] Require organization-admin ownership for mounted legacy LMS membership plan reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS bundle reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS flashcard deck and card reads and mutations

@@ -1074,4 +1074,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadsRouterSource).toContain("getOrgIdForUserWithFallback(ctx.user!.id, ctx.user!.role)");
     expect(downloadsRouterSource).toContain("requireOrgAdmin(ctx.user!.id, ctx.user!.role, orgId)");
   });
+
+  it("aligns order bump listing and creation with organization-owned schema fields", () => {
+    const orderBumpRouterSource = readFileSync(new URL("./routers/orderBumpsRouter.ts", import.meta.url), "utf8");
+    expect(orderBumpRouterSource).toContain("eq(orderBumps.orgId, orgId)");
+    expect(orderBumpRouterSource).toContain("triggerProductType: input.triggerProductType");
+    expect(orderBumpRouterSource).toContain("bumpProductType: input.bumpProductType");
+  });
 });
