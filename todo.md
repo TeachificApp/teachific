@@ -4623,6 +4623,7 @@
 - [ ] Require organization-admin ownership for mounted legacy LMS enrollment management reads and mutations
 - [x] Remove prohibited legacy branding from cohort calendar export identifiers
 - [x] Route public workshop waitlist notifications to the owning organization rather than a platform-wide address
+- [x] Require active-organization ownership for workshop instance landing-page reads and saves
 - [x] Keep embedded checkout purchase amounts dollar-denominated after Stripe payment confirmation
 - [x] Product analytics and manual invoice transactions: keep internal amounts dollar-denominated outside Stripe boundaries
 - [x] Require explicit active-organization context for product analytics administrative reads and actions

@@ -1520,7 +1520,7 @@ export const workshopAdminRouter = router({
   // ── Instance Landing Page Builder ─────────────────────────────────────────
   getInstanceLandingBlocks: protectedProcedure
     .input(z.object({ instanceId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [inst] = await db
@@ -1529,13 +1529,18 @@ export const workshopAdminRouter = router({
         .where(eq(workshopInstances.id, input.instanceId))
         .limit(1);
       if (!inst) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, inst.workshopId);
       return inst;
     }),
   saveInstanceLandingBlocks: protectedProcedure
     .input(z.object({ instanceId: z.number(), blocks: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [inst] = await db.select({ workshopId: workshopInstances.workshopId }).from(workshopInstances)
+        .where(eq(workshopInstances.id, input.instanceId)).limit(1);
+      if (!inst) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, inst.workshopId);
       await db
         .update(workshopInstances)
         .set({ landingBlocks: input.blocks })

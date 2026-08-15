@@ -1023,4 +1023,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(waitlistSource).toContain("workshop.orgId");
     expect(waitlistSource).not.toContain("admin@teachific.app");
   });
+
+  it("requires active workshop organization ownership for instance landing page reads and saves", () => {
+    const workshopRouterSource = readFileSync(new URL("./routers/workshopRouter.ts", import.meta.url), "utf8");
+    const landingSource = workshopRouterSource.slice(
+      workshopRouterSource.indexOf("getInstanceLandingBlocks: protectedProcedure"),
+      workshopRouterSource.indexOf("/** List pricing options")
+    );
+    expect((landingSource.match(/await requireActiveWorkshopAdmin\(ctx\.user\.id, ctx\.user\.role, inst\.workshopId\);/g) ?? []).length).toBe(2);
+    expect(landingSource).toContain("if (!inst) throw new TRPCError({ code: \"NOT_FOUND\" });");
+  });
 });
