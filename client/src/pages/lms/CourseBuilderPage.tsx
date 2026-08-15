@@ -5500,7 +5500,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
       <div className="flex rounded-lg border border-gray-200 overflow-hidden">
         <button
           className={`flex-1 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-            mode === "existing" ? "bg-[#189aa1] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+            mode === "existing" ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
           }`}
           onClick={() => setMode("existing")}
         >
@@ -5508,7 +5508,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
         </button>
         <button
           className={`flex-1 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-            mode === "invite" ? "bg-[#189aa1] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+            mode === "invite" ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
           }`}
           onClick={() => setMode("invite")}
         >
