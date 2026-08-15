@@ -261,7 +261,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       collectShipping: false,
       collectBilling: false,
       products: [
-        { name: "Product Name", description: "Product description", price: 9700, imageUrl: "", type: "other" }
+        { name: "Product Name", description: "Product description", price: 97, imageUrl: "", type: "other" }
       ],
       orderBumps: [],
       submitText: "Complete Purchase",
@@ -1168,8 +1168,8 @@ function CTAActionPicker({
         </div>
       )}
       {behavior === "pricing_option" && (
-        <div className="space-y-2 bg-teal-50 border border-teal-200 rounded p-2">
-          <p className="text-[10px] text-teal-700 font-medium">Links directly to a specific pricing option checkout for a course.</p>
+        <div className="space-y-2 bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded p-2">
+          <p className="text-[10px] text-[var(--org-primary)] font-medium">Links directly to a specific pricing option checkout for a course.</p>
           <div>
             <label className="text-xs text-gray-500 block mb-0.5">Course</label>
             <select
@@ -1344,7 +1344,7 @@ function PricingCtaSettings({ d, set, setMany }: { d: Record<string, any>; set: 
 
             {/* Linked from button URL — auto-detected */}
             {priceSource === "linked" && (
-              <div className="rounded bg-teal-50 border border-teal-200 px-2 py-1.5 text-xs text-teal-700">
+              <div className="rounded bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] px-2 py-1.5 text-xs text-[var(--org-primary)]">
                 {linkedFromUrl
                   ? <><span className="font-medium">{linkedFromUrl.title}</span> — {formatItemPrice(linkedFromUrl)} · auto-detected from button URL</>
                   : <span className="text-amber-600">No matching item found for the current button URL. Set the button action to "Link to URL" pointing to a course or download first.</span>}
@@ -1367,7 +1367,7 @@ function PricingCtaSettings({ d, set, setMany }: { d: Record<string, any>; set: 
                   </SelectContent>
                 </Select>
                 {activeItem && (
-                  <p className="text-xs text-teal-600 mt-1">
+                  <p className="text-xs text-[var(--org-primary)] mt-1">
                     {formatItemPrice(activeItem)} · URL auto-set
                   </p>
                 )}
@@ -1428,13 +1428,13 @@ function HeroSendEmailSettings({
   const { data: campaignsData } = trpc.funnelPublic.listCampaignsPublic.useQuery();
   const campaigns = (campaignsData ?? []) as Array<{ id: number; subject: string }>;
   return (
-    <div className="space-y-2 border border-teal-200 bg-teal-50/40 rounded-lg p-2">
-      <p className="text-[10px] font-semibold text-teal-700 flex items-center gap-1">📧 Send Email Campaign to Lead</p>
+    <div className="space-y-2 border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded-lg p-2">
+      <p className="text-[10px] font-semibold text-[var(--org-primary)] flex items-center gap-1">📧 Send Email Campaign to Lead</p>
       <p className="text-[10px] text-gray-500">When clicked, a name/email form will appear first to capture the lead, then the selected campaign will be sent to that address.</p>
       {/* Auto-enable lead capture */}
       <div className="flex items-center gap-2">
-        <input type="checkbox" checked={true} readOnly className="rounded accent-teal-600" />
-        <label className="text-xs text-teal-700 font-medium">Collect lead before sending (required)</label>
+        <input type="checkbox" checked={true} readOnly className="rounded accent-[var(--org-primary)]" />
+        <label className="text-xs text-[var(--org-primary)] font-medium">Collect lead before sending (required)</label>
       </div>
       {/* Lead modal title */}
       <div>
@@ -1487,7 +1487,7 @@ function HeroSendEmailSettings({
         href="/admin/email"
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[10px] text-teal-600 underline flex items-center gap-1 hover:text-teal-800"
+        className="text-[10px] text-[var(--org-primary)] underline flex items-center gap-1 hover:opacity-80"
       >
         ✉ Open Email Campaign Editor
       </a>
@@ -1780,8 +1780,8 @@ function SuccessRedirectPicker({
           <button key={m} onClick={() => handleModeChange(m)}
             className={`text-xs rounded px-2 py-1.5 border transition-colors ${
               mode === m
-                ? "bg-teal-600 text-white border-teal-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
+                ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
             }`}>
             {m === "url" ? "Custom URL" : m === "dashboard" ? "Student Dashboard" : "Funnel Step"}
           </button>
@@ -1796,9 +1796,9 @@ function SuccessRedirectPicker({
         </div>
       )}
       {mode === "dashboard" && (
-        <div className="bg-teal-50 rounded p-2">
-          <p className="text-xs text-teal-700 font-medium">Student Dashboard</p>
-          <p className="text-xs text-teal-600 mt-0.5">Buyer is redirected to their dashboard after purchase. If not logged in, they will be prompted to log in or create an account.</p>
+        <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] rounded p-2">
+          <p className="text-xs text-[var(--org-primary)] font-medium">Student Dashboard</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">Buyer is redirected to their dashboard after purchase. If not logged in, they will be prompted to log in or create an account.</p>
         </div>
       )}
       {mode === "funnel_step" && (
@@ -2024,7 +2024,7 @@ function CheckoutFormBlockSettings({
           <label className="text-xs text-gray-500 font-medium">Order Bumps</label>
           <div className="flex gap-1">
             <button onClick={() => setBumpMode(m => m === "catalog" ? "manual" : "catalog")} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5">{bumpMode === "catalog" ? "Manual" : "Catalog"}</button>
-            <button onClick={() => set("orderBumps", [...cfBumps, { title: "Add-on Offer", headline: "❖ Special Add-On!", description: "", price: 2700, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", externalUrl: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+            <button onClick={() => set("orderBumps", [...cfBumps, { title: "Add-on Offer", headline: "❖ Special Add-On!", description: "", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", externalUrl: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
           </div>
         </div>
         {bumpMode === "catalog" && catalog && catalog.length > 0 && (
@@ -2945,7 +2945,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Reviews</label>
-              <button onClick={() => set("reviews", [...reviews, { name: "Student Name", rating: 5, text: "Great course!" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("reviews", [...reviews, { name: "", rating: 0, text: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <DndContext
               sensors={reviewSensors}
@@ -3311,7 +3311,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Funnel Steps</label>
-              <button onClick={() => set("steps", [...steps, { name: "New Step", role: "Describe this step", url: "#", cta: "Open" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("steps", [...steps, { name: "New Step", role: "Describe this step", url: "#", cta: "Open" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-2">
               {steps.map((step, i) => (
@@ -3342,7 +3342,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Promoted Products</label>
-              <button onClick={() => set("products", [...products, { type: "digital", title: "New Product", description: "Describe the offer", price: "$0", ctaText: "Add to order", ctaLink: "#checkout", fulfillment: "Delivered after checkout." }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("products", [...products, { type: "digital", title: "New Product", description: "Describe the offer", price: "$0", ctaText: "Add to order", ctaLink: "#checkout", fulfillment: "Delivered after checkout." }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-2">
               {products.map((product, i) => (
@@ -3430,7 +3430,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Feature Bullets</label>
-              <button onClick={() => set("features", [...features, "New benefit"])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("features", [...features, "New benefit"])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-1">
               {features.map((feature, i) => (
@@ -3453,7 +3453,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs text-gray-500 font-medium">Value Items</label>
-              <button onClick={() => set("items", [...items, { text: "New item", price: "($XX)" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+              <button onClick={() => set("items", [...items, { text: "New item", price: "($XX)" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button>
             </div>
             <div className="space-y-2">
               {items.map((item, i) => (
@@ -3565,7 +3565,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       const icCatalog = productCatalog;
       return (
         <div className="space-y-4">
-          <div className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded p-2">
+          <div className="text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded p-2">
             <strong>Inline Checkout (Stripe)</strong> — Classic card fields embedded directly on the page. Matches the checkout form layout with contact info, product selector, address toggle, order bumps, and submit. Purchases appear in My Dashboard.
           </div>
           {/* Header */}
@@ -3584,12 +3584,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2"><input type="checkbox" checked={d.showBillingInfo ?? false} onChange={e => set("showBillingInfo", e.target.checked)} className="rounded" /><label className="text-xs text-gray-600">Collect billing address <span className="text-teal-600">(auto-on for physical products)</span></label></div>
+            <div className="flex items-center gap-2"><input type="checkbox" checked={d.showBillingInfo ?? false} onChange={e => set("showBillingInfo", e.target.checked)} className="rounded" /><label className="text-xs text-gray-600">Collect billing address <span className="text-[var(--org-primary)]">(auto-on for physical products)</span></label></div>
             <div className="flex items-center gap-2"><input type="checkbox" checked={d.showProductSelect ?? true} onChange={e => set("showProductSelect", e.target.checked)} className="rounded" /><label className="text-xs text-gray-600">Show product selector</label></div>
           </div>
           {/* Products */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({icProds.length})</span><button onClick={() => set("products", [...icProds, { name: "New Product", description: "", price: 9700, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({icProds.length})</span><button onClick={() => set("products", [...icProds, { name: "New Product", description: "", price: 97, imageUrl: "", type: "other" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={12} /> Add</button></div>
             {icCatalog && icCatalog.length > 0 && (
               <div className="bg-gray-50 rounded p-2 space-y-1">
                 <p className="text-xs text-gray-400 mb-1">Click to add from catalog:</p>
@@ -3641,7 +3641,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Order Bumps */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({icBumps.length})</span><button onClick={() => set("orderBumps", [...icBumps, { title: "Add-on Offer", headline: "✦ Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 2700, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({icBumps.length})</span><button onClick={() => set("orderBumps", [...icBumps, { title: "Add-on Offer", headline: "✦ Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
             {icBumps.map((bump: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded p-2 space-y-1">
                 <div className="flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Bump {i + 1}</span><button onClick={() => set("orderBumps", icBumps.filter((_: any, j: number) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div>
@@ -3707,7 +3707,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Products */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({ecProds.length})</span><button onClick={() => set("products", [...ecProds, { name: "New Product", description: "", price: 9700, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({ecProds.length})</span><button onClick={() => set("products", [...ecProds, { name: "New Product", description: "", price: 97, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
             {ecCatalog && ecCatalog.length > 0 && (
               <div className="bg-gray-50 rounded p-2 space-y-1">
                 <p className="text-xs text-gray-400 mb-1">Click to add from catalog:</p>
@@ -3761,7 +3761,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <AdditionalAccessEditor data={d} onSet={set} catalog={ecCatalog} />
           {/* Order Bumps */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({ecBumps.length})</span><button onClick={() => set("orderBumps", [...ecBumps, { title: "Add-on Offer", headline: "Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 2700, imageUrl: "", ctaText: "+ Add to my order", highlightColor: "#f59e0b", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({ecBumps.length})</span><button onClick={() => set("orderBumps", [...ecBumps, { title: "Add-on Offer", headline: "Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add to my order", highlightColor: "#f59e0b", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
             {ecBumps.map((bump: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded p-2 space-y-1">
                 <div className="flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Bump {i + 1}</span><button onClick={() => set("orderBumps", ecBumps.filter((_: any, j: number) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div>
@@ -7319,7 +7319,7 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
         <textarea
           value={d.description ?? ""}
           onChange={e => set("description", e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
+          className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] resize-none"
           rows={2}
           placeholder="Brief description of the cohort class"
         />
@@ -7332,7 +7332,7 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
             type="date"
             value={d.startDate ?? ""}
             onChange={e => set("startDate", e.target.value)}
-            className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
           />
         </div>
         <div>
@@ -7341,7 +7341,7 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
             type="date"
             value={d.endDate ?? ""}
             onChange={e => set("endDate", e.target.value)}
-            className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
           />
         </div>
       </div>
@@ -7354,7 +7354,7 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
             min={1}
             value={d.maxStudents ?? ""}
             onChange={e => set("maxStudents", e.target.value ? Number(e.target.value) : null)}
-            className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             placeholder="Unlimited"
           />
         </div>
@@ -7369,7 +7369,7 @@ function CohortClassBlockSettings({ d, set }: { d: Record<string, any>; set: (ke
         <select
           value={d.platform ?? "zoom"}
           onChange={e => set("platform", e.target.value)}
-          className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+          className="w-full h-8 text-xs border border-gray-200 rounded-lg px-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
         >
           <option value="zoom">Zoom</option>
           <option value="teams">Microsoft Teams</option>
