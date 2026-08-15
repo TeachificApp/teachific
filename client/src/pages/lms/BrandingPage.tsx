@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -218,8 +219,7 @@ type EmailBranding = {
 };
 
 export default function BrandingPage() {
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
+  const { orgId } = useOrgScope();
 
   const { data: theme, isLoading } = trpc.lms.themes.get.useQuery(
     { orgId: orgId! },

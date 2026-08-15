@@ -4,6 +4,7 @@
 - [x] Route remaining checkout confirmations through each organization’s configured transactional email sender
 - [x] Scope learner purchase-history invoice queries to the active organization subdomain
 - [x] Use the Course Builder course organization, not the first membership, to determine CME tab visibility
+- [x] Resolve BrandingPage theme settings from the active organization rather than the first membership
 
 ## Phase 1: Database Schema & Migrations
 - [x] Organizations table (multi-tenant workspaces)

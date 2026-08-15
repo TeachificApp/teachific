@@ -253,6 +253,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(builderSource).not.toContain("myOrgs?.[0]?.cmeEnabled");
   });
 
+  it("uses the active organization for BrandingPage theme settings", () => {
+    const brandingSource = readFileSync(new URL("../client/src/pages/lms/BrandingPage.tsx", import.meta.url), "utf8");
+    expect(brandingSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
+    expect(brandingSource).toContain("const { orgId } = useOrgScope();");
+    expect(brandingSource).not.toContain("orgs?.[0]?.id");
+  });
+
   it("builds Course Builder checkout and free-preview links from the course organization domain", () => {
     const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
