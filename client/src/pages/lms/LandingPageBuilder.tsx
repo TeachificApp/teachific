@@ -3596,7 +3596,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 <div className="max-h-36 overflow-y-auto space-y-1">
                   {icCatalog.map(item => (
                     <button key={`ic-${item.type}-${item.id}`} onClick={() => set("products", [...icProds, { name: item.name, description: "", price: item.price, imageUrl: item.imageUrl ?? "", type: item.type }])}
-                      className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
+                      className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] text-xs border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] transition-colors">
                       {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                       <span className="flex-1 truncate">{item.name}</span>
                       <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
@@ -3714,7 +3714,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 <div className="max-h-36 overflow-y-auto space-y-1">
                   {ecCatalog.map(item => (
                     <button key={`ec-${item.type}-${item.id}`} onClick={() => set("products", [...ecProds, { name: item.name, description: "", price: item.price, catalogPrice: item.price, imageUrl: item.imageUrl ?? "", type: item.type, productId: item.id }])}
-                      className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-teal-50 hover:text-teal-700 text-xs border border-transparent hover:border-teal-200 transition-colors">
+                      className="w-full text-left flex items-center gap-2 px-2 py-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] text-xs border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] transition-colors">
                       {item.imageUrl && <img src={item.imageUrl} className="w-6 h-6 rounded object-cover flex-shrink-0" />}
                       <span className="flex-1 truncate">{item.name}</span>
                       <span className="text-gray-400 flex-shrink-0">${Number(item.price).toFixed(2)}</span>
@@ -4278,12 +4278,12 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           {/* Alignment */}
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Alignment</label>
-            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
+            <div className="flex gap-1">{(["left","center","right"] as const).map(a => <button key={a} onClick={() => set("align", a)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.align ?? "center") === a ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{a}</button>)}</div>
           </div>
           {/* Width */}
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Width</label>
-            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
+            <div className="flex flex-wrap gap-1 mb-1">{(["100%","75%","50%","33%","25%"] as const).map(w => <button key={w} onClick={() => set("maxWidth", w)} className={`px-2 py-0.5 text-xs rounded border ${(d.maxWidth ?? "100%") === w ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600"}`}>{w}</button>)}</div>
             <DebouncedInput value={d.maxWidth ?? "100%"} onChange={v => set("maxWidth", v)} className="h-8 text-xs" placeholder="100%, 600px, etc." />
           </div>
           {/* Pass-through credentials */}
@@ -4306,7 +4306,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                     type="button"
                     title={`Copy ?${param}=${value}`}
                     onClick={() => { navigator.clipboard.writeText(`${param}=${encodeURIComponent(value)}`); }}
-                    className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-gray-100 hover:bg-teal-50 hover:text-teal-700 text-gray-500 border border-gray-200 transition-colors font-mono"
+                    className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[10px] bg-gray-100 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:text-[var(--org-primary)] text-gray-500 border border-gray-200 transition-colors font-mono"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                     {param}=…
@@ -4330,7 +4330,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                       const full = `${d.url}${d.url.includes("?") ? "&" : "?"}${params}`;
                       navigator.clipboard.writeText(full);
                     }}
-                    className="text-[10px] text-teal-600 hover:text-teal-800 flex items-center gap-1"
+                    className="text-[10px] text-[var(--org-primary)] hover:opacity-80 flex items-center gap-1"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                     Copy full URL
@@ -6098,7 +6098,7 @@ export default function LandingPageBuilder() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Display Name (og:title)</label>
                   <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                     placeholder={courseInfo?.title ?? "Page title"}
                     value={seoTitle}
                     onChange={e => setSeoTitle(e.target.value)}
@@ -6107,7 +6107,7 @@ export default function LandingPageBuilder() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Description (og:description)</label>
                   <textarea
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] resize-none"
                     rows={3}
                     placeholder="Short description shown in link previews…"
                     value={seoDescription}
@@ -6117,7 +6117,7 @@ export default function LandingPageBuilder() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Preview Image URL (og:image)</label>
                   <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                     placeholder="https://…"
                     value={seoImage}
                     onChange={e => setSeoImage(e.target.value)}
@@ -6133,14 +6133,14 @@ export default function LandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || courseInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
+                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
                     </div>
                   </div>
                 )}
                 <button
                   onClick={handleSaveSeo}
                   disabled={saveSeoMutation.isPending}
-                  className="w-full text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-1.5 transition-colors disabled:opacity-50"
+                  className="w-full text-xs font-semibold text-white bg-[var(--org-primary)] hover:opacity-90 rounded-lg py-1.5 transition-colors disabled:opacity-50"
                 >
                   {seoSaved ? "✓ Saved!" : saveSeoMutation.isPending ? "Saving…" : "Save Preview Settings"}
                 </button>
@@ -6222,7 +6222,7 @@ export default function LandingPageBuilder() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course Landing Page</label>
                 <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                   value={selectedSourceCourseId ?? ""}
                   onChange={e => { setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}
                 >
@@ -6235,7 +6235,7 @@ export default function LandingPageBuilder() {
               <div className="border-t border-gray-100 pt-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Funnel Page</label>
                 <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                   value={selectedSourceFunnelId ?? ""}
                   onChange={e => { setSelectedSourceFunnelId(e.target.value ? Number(e.target.value) : null); setSelectedSourceFunnelPageId(null); setSelectedSourceCourseId(null); setBlockSearch(""); }}
                 >
@@ -6320,7 +6320,7 @@ export default function LandingPageBuilder() {
                 onChange={e => setImportUrl(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 placeholder="https://example.com/page-to-import"
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
