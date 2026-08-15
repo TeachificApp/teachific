@@ -4620,6 +4620,8 @@
 - [x] Require organization-admin ownership for high-impact mounted legacy LMS course reads and mutations
 - [x] Require organization-admin ownership for mounted legacy LMS curriculum section and lesson reads and mutations
 - [x] Require organization-admin ownership and dollar-denominated inputs for mounted legacy LMS pricing reads and mutations
+- [ ] Require organization-admin ownership for mounted legacy LMS enrollment management reads and mutations
+- [x] Remove prohibited legacy branding from cohort calendar export identifiers
 - [x] Keep embedded checkout purchase amounts dollar-denominated after Stripe payment confirmation
 - [x] Product analytics and manual invoice transactions: keep internal amounts dollar-denominated outside Stripe boundaries
 - [x] Require explicit active-organization context for product analytics administrative reads and actions

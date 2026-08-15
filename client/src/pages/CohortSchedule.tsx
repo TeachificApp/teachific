@@ -93,7 +93,7 @@ function generateIcs(sessions: any[], courseTitle: string) {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//UltrasoundAssist//Cohort//EN",
+    "PRODID:-//Learning Calendar//Cohort//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${courseTitle}`,
@@ -102,7 +102,7 @@ function generateIcs(sessions: any[], courseTitle: string) {
     const start = new Date(s.sessionDate);
     const end = new Date(start.getTime() + (s.durationMinutes ?? 60) * 60 * 1000);
     lines.push("BEGIN:VEVENT");
-    lines.push(`UID:cohort-session-${s.id}@ultrasoundassist`);
+    lines.push(`UID:cohort-session-${s.id}`);
     lines.push(`DTSTAMP:${toIcsDate(new Date())}`);
     lines.push(`DTSTART:${toIcsDate(start)}`);
     lines.push(`DTEND:${toIcsDate(end)}`);
@@ -1348,4 +1348,3 @@ function RecordingListRow({ recording, courseId }: { recording: any; courseId: n
     </Link>
   );
 }
-

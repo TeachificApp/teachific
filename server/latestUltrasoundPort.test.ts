@@ -1007,4 +1007,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pricingSource).not.toMatch(/price\s*\/\s*100|price\s*\*\s*100/);
     expect(dbSource).toContain("export async function getCourseIdByPricingId");
   });
+
+  it("uses generic non-legacy metadata in learner cohort calendar exports", () => {
+    const cohortScheduleSource = readFileSync(new URL("../client/src/pages/CohortSchedule.tsx", import.meta.url), "utf8");
+    expect(cohortScheduleSource).toContain('"PRODID:-//Learning Calendar//Cohort//EN"');
+    expect(cohortScheduleSource).toContain("UID:cohort-session-${s.id}");
+    expect(cohortScheduleSource).not.toContain("UltrasoundAssist");
+  });
 });
