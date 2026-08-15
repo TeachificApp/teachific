@@ -1062,4 +1062,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((certificateSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, template\.orgId\);/g) ?? []).length).toBe(3);
     expect(certificateSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
   });
+
+  it("requires active organization ownership across webinar administration", () => {
+    const webinarRouterSource = readFileSync(new URL("./routers/webinarAdminRouter.ts", import.meta.url), "utf8");
+    expect(webinarRouterSource).toContain("async function requireActiveWebinarAdmin");
+    expect((webinarRouterSource.match(/await requireActiveWebinarAdmin\(ctx\.user\.id, ctx\.user\.role, input\.webinarId\);/g) ?? []).length).toBeGreaterThanOrEqual(10);
+  });
 });

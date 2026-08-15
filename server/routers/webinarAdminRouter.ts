@@ -17,6 +17,13 @@ import {
 import { createWebinar, getWebinarById, updateWebinar, deleteWebinar, getWebinarRegistrations, getWebinarStats } from "../lmsDb";
 import { nanoid } from "nanoid";
 
+async function requireActiveWebinarAdmin(userId: number, role: string, webinarId: number) {
+  const webinar = await getWebinarById(webinarId);
+  if (!webinar) throw new TRPCError({ code: "NOT_FOUND" });
+  await requireOrgAdmin(userId, role, webinar.orgId);
+  return webinar;
+}
+
 export const webinarAdminRouter = router({
   /** List all webinars for the current org, with CME status joined */
   list: protectedProcedure
@@ -51,10 +58,7 @@ export const webinarAdminRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
-      const w = await getWebinarById(input.id);
-      if (!w) throw new TRPCError({ code: "NOT_FOUND" });
-      return w;
+      return requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.id);
     }),
 
   /** Create a new webinar */
@@ -82,7 +86,7 @@ export const webinarAdminRouter = router({
       data: z.record(z.string(), z.unknown()),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       return updateWebinar(input.webinarId, input.data as any);
     }),
 
@@ -90,7 +94,7 @@ export const webinarAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ webinarId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       await deleteWebinar(input.webinarId);
       return { ok: true };
     }),
@@ -99,7 +103,7 @@ export const webinarAdminRouter = router({
   getRegistrations: protectedProcedure
     .input(z.object({ webinarId: z.number(), page: z.number().optional(), pageSize: z.number().optional() }))
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       return getWebinarRegistrations(input.webinarId);
     }),
 
@@ -107,7 +111,7 @@ export const webinarAdminRouter = router({
   getStats: protectedProcedure
     .input(z.object({ webinarId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       return getWebinarStats(input.webinarId);
     }),
 
@@ -125,7 +129,7 @@ export const webinarAdminRouter = router({
   updateAfterPurchaseWorkflow: protectedProcedure
     .input(z.object({ webinarId: z.number(), workflow: z.array(z.any()) }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       return { ok: true };
     }),
 
@@ -133,7 +137,7 @@ export const webinarAdminRouter = router({
   getHidePricingOptions: protectedProcedure
     .input(z.object({ webinarId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       return { hidePricingOptions: false };
     }),
 
@@ -141,7 +145,7 @@ export const webinarAdminRouter = router({
   updateHidePricingOptions: protectedProcedure
     .input(z.object({ webinarId: z.number(), hidePricingOptions: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       return { ok: true };
     }),
 
@@ -149,7 +153,7 @@ export const webinarAdminRouter = router({
   getCheckoutPageConfig: protectedProcedure
     .input(z.object({ webinarId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [row] = await db.select({ salesPageBlocksJson: webinars.salesPageBlocksJson }).from(webinars).where(eq(webinars.id, input.webinarId)).limit(1);
@@ -160,7 +164,7 @@ export const webinarAdminRouter = router({
   saveCheckoutPageConfig: protectedProcedure
     .input(z.object({ webinarId: z.number(), blocks: z.any() }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(webinars).set({ salesPageBlocksJson: input.blocks } as any).where(eq(webinars.id, input.webinarId));
@@ -171,7 +175,7 @@ export const webinarAdminRouter = router({
   setEnrollmentClosed: protectedProcedure
     .input(z.object({ webinarId: z.number(), enrollmentClosed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      await requireActiveWebinarAdmin(ctx.user.id, ctx.user.role, input.webinarId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(webinars).set({ enrollmentClosed: input.enrollmentClosed } as any).where(eq(webinars.id, input.webinarId));
