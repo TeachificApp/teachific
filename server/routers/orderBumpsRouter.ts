@@ -91,25 +91,19 @@ export const orderBumpsAdminRouter = router({
   update: protectedProcedure
     .input(z.object({
       id: z.number(),
-      triggerType: z.enum(["course", "quiz", "download", "bundle", "physical", "cohort"]).optional(),
+      name: z.string().min(1).optional(),
+      triggerProductType: z.enum(["course", "quiz", "download"]).optional(),
       triggerProductId: z.number().optional(),
-      triggerPricingOptionId: z.number().nullable().optional(),
-      bumpType: z.enum(["course", "quiz", "download", "bundle", "physical", "cohort"]).optional(),
+      bumpProductType: z.enum(["course", "quiz", "download"]).optional(),
       bumpProductId: z.number().optional(),
-      timing: z.enum(["before_checkout", "after_checkout"]).optional(),
-      bumpPrice: z.number().min(0).optional(),
-      discountLabel: z.string().nullable().optional(),
+      placement: z.enum(["before_checkout", "during_checkout", "after_checkout"]).optional(),
       headline: z.string().nullable().optional(),
-      subheadline: z.string().nullable().optional(),
-      bodyHtml: z.string().nullable().optional(),
+      description: z.string().nullable().optional(),
+      discountPercent: z.number().int().min(0).optional(),
       imageUrl: z.string().nullable().optional(),
-      ctaText: z.string().optional(),
-      ctaColor: z.string().optional(),
-      skipText: z.string().optional(),
+      buttonText: z.string().optional(),
+      declineText: z.string().optional(),
       isActive: z.boolean().optional(),
-      presentationMode: z.enum(["widget", "landing_page"]).optional(),
-      pageBlocks: z.string().nullable().optional(), // JSON-serialized Block[]
-      slug: z.string().nullable().optional(),
       bumpMode: z.enum(["addon", "upgrade"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
