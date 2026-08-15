@@ -3,7 +3,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser, getOrgBySlug, getPrimaryOrgId } from "../db";
+import { getDb, getUserById, getOrCreateAccessToken, requireOrgAdmin, isPlatformAdmin, getOrgIdForUser, getOrgIdForUserWithFallback, getOrgBySlug, getPrimaryOrgId } from "../db";
 import {
   digitalProducts,
   digitalProductFiles,
@@ -24,7 +24,10 @@ import { sendDownloadAccessEmail, sendBundleAccessEmail } from "../lib/enrollmen
 import { addToAllContacts } from "../lib/emailListHelper";
 
 async function assertAdmin(ctx: any) {
-  await requireOrgAdmin(ctx.user!.id, ctx.user!.role);
+  const orgId = await getOrgIdForUserWithFallback(ctx.user!.id, ctx.user!.role);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization found" });
+  await requireOrgAdmin(ctx.user!.id, ctx.user!.role, orgId);
+  return orgId;
 }
 
 function isAdminRole(role: string | undefined): boolean {
