@@ -404,7 +404,7 @@ function MembershipSalesTab({ brand }: { brand: "aaus" | "iheartecho" }) {
       <Dialog open={!!revokeTarget} onOpenChange={() => setRevokeTarget(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Revoke Membership</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Revoke {brand === "aaus" ? "AAUS" : "iHeartEcho"} membership for <strong>{revokeTarget?.email}</strong>?</p>
+          <p className="text-sm text-muted-foreground">Revoke membership access for <strong>{revokeTarget?.email}</strong>?</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRevokeTarget(null)}>Cancel</Button>
             <Button variant="destructive" disabled={revokeMutation.isPending}
@@ -420,4 +420,3 @@ function MembershipSalesTab({ brand }: { brand: "aaus" | "iheartecho" }) {
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 export { DownloadSalesTab, BundleSalesTab, MembershipSalesTab };
-
