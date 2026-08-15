@@ -6149,7 +6149,7 @@ function PayoutRequestsPanel() {
         <p className="text-sm font-semibold text-gray-800 flex-1">Payout Requests</p>
         {(["pending","approved","paid","rejected","all"] as const).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`text-xs px-2 py-0.5 rounded-full border ${statusFilter === s ? "bg-[#189aa1] text-white border-[#189aa1]" : "text-gray-500 border-gray-200"}`}>
+            className={`text-xs px-2 py-0.5 rounded-full border ${statusFilter === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "text-gray-500 border-gray-200"}`}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
