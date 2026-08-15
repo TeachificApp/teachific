@@ -724,7 +724,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
             </Button>
           ) : (
             <Button
-              className="bg-[#189aa1] hover:bg-[#147f86] text-white"
+              className="bg-[var(--org-primary)] hover:opacity-90 text-white"
               disabled={create.isPending || aiCommit.isPending}
               onClick={handleAiCreate}
             >
