@@ -803,7 +803,7 @@ function DownloadStudentsTab({ productId, onGrantAccess }: { productId: number; 
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{p.purchasedAt ? new Date(p.purchasedAt).toLocaleDateString() : '—'}</td>
-                  <td className="px-4 py-2.5">{p.amountPaid != null ? `$${(Number(p.amountPaid) / 100).toFixed(2)}` : '—'}</td>
+                  <td className="px-4 py-2.5">{p.amountPaid != null ? `$${Number(p.amountPaid).toFixed(2)}` : '—'}</td>
                   <td className="px-4 py-2.5">
                     {p.userId && (
                       <Button size="sm" variant="ghost" className="text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] h-7" onClick={() => navigate(`/admin/users/${p.userId}`)}>
@@ -832,8 +832,8 @@ function DownloadProductAnalytics({ productId, productTitle }: { productId: numb
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{purchasers.length}</p><p className="text-xs text-muted-foreground mt-1">Total Buyers</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">${(totalRevenue / 100).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Total Revenue</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{purchasers.length > 0 ? `$${(avgOrder / 100).toFixed(2)}` : '—'}</p><p className="text-xs text-muted-foreground mt-1">Avg. Order</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">${totalRevenue.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Total Revenue</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{purchasers.length > 0 ? `$${avgOrder.toFixed(2)}` : '—'}</p><p className="text-xs text-muted-foreground mt-1">Avg. Order</p></CardContent></Card>
       </div>
       {purchasers.length > 0 && (
         <Card>
@@ -850,7 +850,7 @@ function DownloadProductAnalytics({ productId, productTitle }: { productId: numb
                   <tr key={p.transactionId ?? p.customerEmail} className="border-t">
                     <td className="px-4 py-2.5"><p className="font-medium">{p.customerName || 'Unknown'}</p><p className="text-xs text-muted-foreground">{p.customerEmail}</p></td>
                     <td className="px-4 py-2.5 text-muted-foreground">{p.purchasedAt ? new Date(p.purchasedAt).toLocaleDateString() : '—'}</td>
-                    <td className="px-4 py-2.5">{p.amountPaid != null ? `$${(Number(p.amountPaid) / 100).toFixed(2)}` : '—'}</td>
+                    <td className="px-4 py-2.5">{p.amountPaid != null ? `$${Number(p.amountPaid).toFixed(2)}` : '—'}</td>
                   </tr>
                 ))}
               </tbody>

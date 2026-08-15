@@ -316,6 +316,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(embeddedCheckoutSource).not.toContain("amountPaid: totalAmountCents,");
   });
 
+  it("displays organization-scoped digital download purchase amounts as stored dollars", () => {
+    const downloadsSource = readFileSync(new URL("../client/src/pages/lms/DigitalDownloadsAdmin.tsx", import.meta.url), "utf8");
+    expect(downloadsSource).toContain("$${Number(p.amountPaid).toFixed(2)}");
+    expect(downloadsSource).toContain("${totalRevenue.toFixed(2)}");
+    expect(downloadsSource).toContain("$${avgOrder.toFixed(2)}");
+    expect(downloadsSource).not.toContain("Number(p.amountPaid) / 100");
+    expect(downloadsSource).not.toContain("totalRevenue / 100");
+    expect(downloadsSource).not.toContain("avgOrder / 100");
+  });
+
   it("scopes funnel product catalogs to the active organization and preserves dollar prices", () => {
     const routerSource = readFileSync(new URL("./routers/funnelRouter.ts", import.meta.url), "utf8");
     const relatedProductsSource = readFileSync(new URL("../client/src/components/RelatedProductsBlock.tsx", import.meta.url), "utf8");
