@@ -5433,6 +5433,7 @@
 - [x] Scope Kajabi, Teachable, and Thinkific imports to the active organization rather than a first membership
 - [x] Resolve Course Player organization theme from the loaded course rather than a first membership
 - [x] Resolve non-slug School Page courses, theme, legal documents, and branding from the active organization
+- [x] Resolve Members Page data and mutations from the active organization outside an organization subdomain
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

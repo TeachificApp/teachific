@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getSubdomain } from "@/hooks/useSubdomain";
 import { toast } from "sonner";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import {
   Search, Users, BookOpen, TrendingUp, Download, UserPlus,
   ChevronDown, ChevronUp, MoreVertical, Eye, EyeOff, Plus, Upload, FileSpreadsheet, AlertCircle, CheckCircle2
@@ -51,10 +51,7 @@ export default function MembersPage() {
   const [bulkResult, setBulkResult] = useState<{created: number; updated: number; failed: number; errors: string[]; total: number; importedMembers: Array<{name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated"}>} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const currentSubdomain = getSubdomain() ?? undefined;
-  const { data: orgCtx } = trpc.orgs.myContext.useQuery({ subdomain: currentSubdomain });
-  const orgId = orgCtx?.org?.id ?? orgs?.[0]?.id;
+  const { orgId } = useOrgScope();
 
   const { data: members, isLoading, refetch } = trpc.lms.members.listWithEnrollments.useQuery(
     { orgId: orgId! },
