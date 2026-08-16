@@ -1125,5 +1125,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const aiSourceReviewSource = readFileSync(new URL("../client/src/components/AiSourceFileReview.tsx", import.meta.url), "utf8");
     expect(aiSourceReviewSource).toContain("var(--org-primary)");
     expect(aiSourceReviewSource).toContain("application/pdf,image/jpeg,image/png,image/webp");
+    const aiSourceUploadRoute = readFileSync(new URL("./routes/uploadAiGenerationSource.ts", import.meta.url), "utf8");
+    expect(aiSourceUploadRoute).toContain("await requireOrgAdmin(user.id, (user as any).role ?? \"user\", orgId);");
+    expect(aiSourceUploadRoute).toContain("ai-generation-sources/${orgId}/${user.id}");
   });
 });

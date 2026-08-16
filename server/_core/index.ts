@@ -23,6 +23,7 @@ import { registerEmailTrackingRoutes } from "../routes/emailTrackingRoutes";
 import processRichTextHtmlRouter from "../processRichTextHtmlRoute";
 import reconstructMathRouter from "../reconstructMathRoute";
 import uploadCourseImageRouter from "../uploadCourseImageRoute";
+import uploadAiGenerationSourceRouter from "../routes/uploadAiGenerationSource";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -176,6 +177,7 @@ async function startServer() {
 
   // Media upload — server-side proxy for browser file uploads (digital downloads, forms, media library)
   app.use("/api/media-upload", mediaUploadRouter);
+  app.use("/api/upload-ai-generation-source", uploadAiGenerationSourceRouter);
 
   // Embeddable course widgets (card, curriculum) — served as JS for external sites
   app.use("/api/widget", widgetRouter);
