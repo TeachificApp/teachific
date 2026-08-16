@@ -423,7 +423,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
             Landing Builder
           </a>
           <a href={`/admin/webinars/${webinarId}/player-builder`} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium border border-purple-600 text-purple-700 rounded-md hover:bg-purple-50 transition-colors">
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium border border-[var(--org-primary)] text-[var(--org-primary)] rounded-md hover:bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             Player Builder
           </a>

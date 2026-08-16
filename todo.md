@@ -5425,6 +5425,7 @@
 - [x] Apply active organization theme colors to CME management AI-assistance controls
 - [x] Apply active organization theme colors to LMS dashboard violet accents
 - [x] Apply active organization theme colors to LMS analytics report links
+- [x] Apply the active organization theme to the Webinar Player Builder link
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
