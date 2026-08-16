@@ -284,6 +284,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const lessonEditorSource = readFileSync(new URL("../client/src/components/LessonBlockEditor.tsx", import.meta.url), "utf8");
     const formBuilderSource = readFileSync(new URL("../client/src/pages/lms/FormBuilderPage.tsx", import.meta.url), "utf8");
     const formAnalyticsSource = readFileSync(new URL("../client/src/pages/lms/FormAnalyticsPage.tsx", import.meta.url), "utf8");
+    const formsSource = readFileSync(new URL("../client/src/pages/lms/FormsPage.tsx", import.meta.url), "utf8");
     const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
     expect(lessonEditorSource).toContain("bg-[var(--org-primary)]");
     expect(lessonEditorSource).toContain("lesson-block-editor-org-theme lms-org-theme");
@@ -297,6 +298,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formAnalyticsSource).toContain("bg-[var(--org-primary)]");
     expect(formAnalyticsSource).toContain("text-[var(--org-primary)]");
     expect(formAnalyticsSource).not.toContain("bg-purple-100");
+    expect(formsSource).toContain('color: "text-[var(--org-primary)]"');
+    expect(formsSource).not.toContain('color: "text-purple-500"');
     expect(themeCss).toContain(".lms-org-theme");
     expect(themeCss).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
   });

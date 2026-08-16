@@ -93,7 +93,7 @@ const STARTER_TEMPLATES = [
     label: "General Survey",
     description: "Multi-section survey with various question types",
     icon: ClipboardList,
-    color: "text-purple-500",
+    color: "text-[var(--org-primary)]",
     fields: [
       { type: "section_break", label: "About You", required: false, placeholder: "", helpText: "", options: [] },
       { type: "short_answer", label: "Name", required: true, placeholder: "Your name", helpText: "", options: [] },
