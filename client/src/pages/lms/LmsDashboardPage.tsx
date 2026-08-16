@@ -185,7 +185,7 @@ export default function LmsDashboardPage() {
           value={(metrics?.activeMembers ?? 0).toLocaleString()}
           sub="all time"
           icon={Users}
-          color="bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
+          color="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]"
         />
         <StatCard
           title="Paid Sales"
@@ -344,7 +344,7 @@ export default function LmsDashboardPage() {
             {[
               { label: "New Course", icon: Plus, path: "/lms/courses?create=1", color: "text-primary" },
               { label: "Add Member", icon: UserPlus, path: "/lms/members", color: "text-blue-600" },
-              { label: "Analytics", icon: BarChart3, path: "/lms/analytics", color: "text-violet-600" },
+              { label: "Analytics", icon: BarChart3, path: "/lms/analytics", color: "text-[var(--org-primary)]" },
               { label: "Activity Log", icon: Activity, path: "/lms/activity", color: "text-amber-600" },
             ].map((action) => (
               <button
