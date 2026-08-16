@@ -5412,13 +5412,14 @@
 - [ ] Apply organization branding to every organization-owned surface migrated from Ultrasound-App while retaining Teachific platform branding where applicable
 - [ ] Complete remaining checkout, product fulfillment, and revenue-sharing workflows
 - [ ] Complete remaining course, quiz, Question Bank, and product authoring workflows
-- [ ] Adapt source-backed AI course and Question Bank generation from Ultrasound-App with active-organization authorization and Teachific branding
+- [x] Adapt source-backed AI course and Question Bank generation from Ultrasound-App with active-organization authorization and Teachific branding
 - [x] Add generic PDF and image source-file validation primitives for organization-safe AI generation
 - [x] Add organization-themed source-file review controls for future AI authoring flows
 - [x] Add organization-authorized source-file uploads for future AI authoring flows
 - [x] Allow organization-authorized source files to guide course-outline generation
 - [x] Allow organization-authorized source files to guide Quiz Bank question generation
 - [x] Connect organization-authorized source file uploads to Course Builder AI generation controls
+- [x] Connect organization-authorized source file uploads to Question Bank AI generation controls
 - [x] Apply active organization colors to Course Builder AI generation sliders
 - [ ] Apply active organization theme colors to CME management controls and informational surfaces
 - [x] Apply active organization theme colors to CME management AI-assistance controls

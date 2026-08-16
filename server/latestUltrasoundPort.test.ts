@@ -1132,5 +1132,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     const courseBuilderSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
     expect(courseBuilderSource).toContain("buildAiSourceMessage(userPrompt, sourceFiles)");
     expect(courseBuilderSource).toContain("ai-generation-sources/${course?.orgId}/${ctx.user.id}");
+    const courseBuilderPageSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    expect(courseBuilderPageSource).toContain("function QuestionBankAdmin() {");
+    expect(courseBuilderPageSource).toContain("const { orgId } = useOrgScope();");
+    expect(courseBuilderPageSource).toContain('fetch("/api/upload-ai-generation-source"');
+    expect(courseBuilderPageSource).toContain("description=\"Add organization-authorized PDFs or images to ground the generated questions.\"");
+    expect(courseBuilderPageSource).toContain("sourceFiles: aiSourceFiles.map(({ url, mimeType }) => ({ url, mimeType }))");
   });
 });

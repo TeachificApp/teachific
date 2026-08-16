@@ -9134,6 +9134,7 @@ function CoursePricingOptionsEditor({ courseId, courseSlug, courseBaseUrl }: { c
 // ─── Question Bank Admin ──────────────────────────────────────────────────────
 
 function QuestionBankAdmin() {
+  const { orgId } = useOrgScope();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
@@ -9149,6 +9150,8 @@ function QuestionBankAdmin() {
   const [aiDifficulty, setAIDifficulty] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
   const [aiType, setAIType] = useState<"mcq" | "truefalse" | "mixed">("mcq");
   const [aiTagIds, setAITagIds] = useState<number[]>([]);
+  const [aiSourceFiles, setAiSourceFiles] = useState<AiSourceReviewFile[]>([]);
+  const [isUploadingAiSources, setIsUploadingAiSources] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -9169,7 +9172,7 @@ function QuestionBankAdmin() {
 
   const deleteQ = trpc.questionBank.deleteQuestion.useMutation({ onSuccess: () => { refetch(); setSelectedIds(new Set()); } });
   const bulkDelete = trpc.questionBank.bulkDeleteQuestions.useMutation({ onSuccess: () => { refetch(); setSelectedIds(new Set()); } });
-  const aiGenerate = trpc.questionBank.aiGenerateToBank.useMutation({ onSuccess: () => { refetch(); setShowAIPanel(false); setAITopic(""); } });
+  const aiGenerate = trpc.questionBank.aiGenerateToBank.useMutation({ onSuccess: () => { refetch(); setShowAIPanel(false); setAITopic(""); setAiSourceFiles([]); } });
   const createTag = trpc.questionBank.createTag.useMutation({ onSuccess: () => refetch() });
   const deleteTag = trpc.questionBank.deleteTag.useMutation({ onSuccess: () => refetch() });
 
@@ -9183,6 +9186,28 @@ function QuestionBankAdmin() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  };
+
+  const uploadAiSourceFiles = async (files: File[]) => {
+    if (!orgId) { toast.error("Choose an organization before adding source files."); return; }
+    if (aiSourceFiles.length + files.length > 3) { toast.error("You can add up to three source files."); return; }
+    setIsUploadingAiSources(true);
+    try {
+      const uploaded = await Promise.all(files.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("orgId", String(orgId));
+        const response = await fetch("/api/upload-ai-generation-source", { method: "POST", body: formData });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Source upload failed.");
+        return payload.sourceFile as AiSourceReviewFile;
+      }));
+      setAiSourceFiles(current => [...current, ...uploaded]);
+    } catch (error: any) {
+      toast.error(error?.message || "Source upload failed.");
+    } finally {
+      setIsUploadingAiSources(false);
+    }
   };
 
   return (
@@ -9237,6 +9262,15 @@ function QuestionBankAdmin() {
               <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Topic *</Label>
               <Input value={aiTopic} onChange={e => setAITopic(e.target.value)} placeholder="e.g. Doppler physics, DVT diagnosis, Normal fetal echo anatomy" className="bg-white border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]" />
             </div>
+            <div className="md:col-span-2">
+              <AiSourceFileReview
+                sourceFiles={aiSourceFiles}
+                isUploading={isUploadingAiSources}
+                onFiles={uploadAiSourceFiles}
+                onRemove={(index) => setAiSourceFiles(current => current.filter((_, currentIndex) => currentIndex !== index))}
+                description="Add organization-authorized PDFs or images to ground the generated questions."
+              />
+            </div>
             <div>
               <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Number of Questions</Label>
               <select value={aiCount} onChange={e => setAICount(Number(e.target.value))} className="w-full h-9 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-white px-3 text-sm">
@@ -9274,7 +9308,7 @@ function QuestionBankAdmin() {
           </div>
           <div className="flex justify-end">
             <Button className=" hover: gap-1.5" disabled={!aiTopic.trim() || aiGenerate.isPending}
-              onClick={() => aiGenerate.mutate({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, questionType: aiType, tagIds: aiTagIds.length > 0 ? aiTagIds : undefined })}>
+              onClick={() => aiGenerate.mutate({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, questionType: aiType, tagIds: aiTagIds.length > 0 ? aiTagIds : undefined, sourceFiles: aiSourceFiles.map(({ url, mimeType }) => ({ url, mimeType })) })}>
               {aiGenerate.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</> : <><Sparkles className="w-3.5 h-3.5" /> Generate & Add to Bank</>}
             </Button>
           </div>
