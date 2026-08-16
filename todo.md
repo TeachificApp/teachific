@@ -5436,6 +5436,7 @@
 - [x] Resolve Members Page data and mutations from the active organization outside an organization subdomain
 - [x] Resolve Dashboard preview links from the active organization rather than a first membership
 - [x] Resolve Organization Landing Page Editor preview links from the active organization rather than a first membership
+- [x] Resolve Student Layout Browse links from the active organization rather than a first membership
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

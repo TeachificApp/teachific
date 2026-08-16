@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Award, BookOpen, GraduationCap, LayoutDashboard, LogOut, Receipt, User } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "./ui/button";
@@ -22,14 +23,15 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery(undefined, { enabled: !!user });
-  const orgSlug = orgs?.[0]?.slug;
+  const { orgId, orgs } = useOrgScope();
+  const activeOrg = orgs.find((org: any) => org.id === orgId);
+  const orgSlug = activeOrg?.slug;
 
   const navItems = [
     { label: "My Courses", path: "/lms/my-courses", icon: BookOpen },
     { label: "My Certificates", path: "/lms/my-certificates", icon: Award },
     { label: "My Receipts", path: "/my-receipts", icon: Receipt },
-    { label: "Browse", path: orgSlug ? getOrgBaseUrl(orgSlug) : "/school", icon: GraduationCap },
+    { label: "Browse", path: orgSlug ? getOrgBaseUrl(orgSlug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus) : "/school", icon: GraduationCap },
   ];
 
   const initials = user?.name
