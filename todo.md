@@ -5422,6 +5422,7 @@
 - [ ] Apply active organization theme colors to CME management controls and informational surfaces
 - [x] Apply active organization theme colors to CME management AI-assistance controls
 - [x] Apply active organization theme colors to LMS dashboard violet accents
+- [x] Apply active organization theme colors to LMS analytics report links
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 

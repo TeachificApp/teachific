@@ -83,8 +83,8 @@ export default function LmsAnalyticsPage() {
       title: "Student Activity Log",
       description: "Track lesson views, completions, quiz attempts, and downloads per student.",
       icon: Activity,
-      color: "text-violet-600",
-      bg: "bg-violet-500/10",
+      color: "text-[var(--org-primary)]",
+      bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]",
       path: "/lms/activity",
     },
     {
