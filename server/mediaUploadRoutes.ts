@@ -23,7 +23,7 @@ import { nanoid } from "nanoid";
 import { storagePutStream } from "./storage";
 import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
-import { getDb } from "./db";
+import { getDb, requireOrgAdmin } from "./db";
 import { orgMediaLibrary } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
@@ -55,6 +55,9 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
     }
 
     const orgId = req.body.orgId ? Number(req.body.orgId) : 0;
+    if (orgId > 0) {
+      await requireOrgAdmin(user.id, (user as any).role ?? "user", orgId);
+    }
     const folder = (req.body.folder as string) ?? "media";
     const safeName = req.file.originalname
       .replace(/[^a-zA-Z0-9._-]/g, "_")

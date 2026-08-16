@@ -4630,6 +4630,7 @@
 - [ ] Require active-organization ownership for digital download and bundle administration reads and mutations
 - [ ] Keep current bundle checkout pricing dollar-denominated and resolve checkout return URLs from the owning organization domain
 - [x] Keep current bundle checkout prices dollar-denominated and resolve checkout return URLs from the owning organization domain
+- [ ] Require active-organization ownership and organization-specific branding for community administration
 - [x] Resolve the active organization before authorizing digital download administration
 - [ ] Add organization ownership and active-organization authorization to order bump administration
 - [x] Align order-bump listing and creation with the organization-owned schema contract
@@ -5408,8 +5409,12 @@
 - [ ] Complete remaining SCORM/native import, extraction, and hosted-content authoring workflows
 - [ ] Complete remaining member-management, role, organization-linking, and learner-access workflows
 - [ ] Complete remaining organization branding, theme propagation, and site-builder workflows
+- [ ] Apply organization branding to every organization-owned surface migrated from Ultrasound-App while retaining Teachific platform branding where applicable
 - [ ] Complete remaining checkout, product fulfillment, and revenue-sharing workflows
 - [ ] Complete remaining course, quiz, Question Bank, and product authoring workflows
+- [ ] Adapt source-backed AI course and Question Bank generation from Ultrasound-App with active-organization authorization and Teachific branding
+- [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
+- [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
