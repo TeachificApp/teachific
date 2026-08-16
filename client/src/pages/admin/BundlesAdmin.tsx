@@ -333,7 +333,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-teal-500 shrink-0" />
+            <Package className="w-4 h-4 text-[var(--org-primary)] shrink-0" />
             <div><p className="text-xs text-gray-500">Items</p><p className="text-lg font-bold text-gray-800">{items.length}</p></div>
           </div>
         </Card>
@@ -345,7 +345,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-purple-500 shrink-0" />
+            <BarChart2 className="w-4 h-4 text-[var(--org-primary)] shrink-0" />
             <div><p className="text-xs text-gray-500">Status</p><p className="text-sm font-semibold text-gray-800 capitalize">{status}</p></div>
           </div>
         </Card>

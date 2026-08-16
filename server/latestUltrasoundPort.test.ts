@@ -383,6 +383,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundlesSource).not.toContain("o.downPayment ?? 0) / 100");
     expect(bundlesSource).not.toContain("o.installmentAmount ?? 0) / 100");
     expect(bundlesSource).not.toContain("o.price / 100");
+    expect(bundlesSource).toContain("text-[var(--org-primary)]");
+    expect(bundlesSource).not.toContain("text-purple-500");
   });
 
   it("displays, edits, and saves membership plan prices as stored dollars", () => {

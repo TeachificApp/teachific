@@ -5444,6 +5444,7 @@
 - [x] Apply the active organization theme to Forms Page survey-template accents
 - [x] Apply the active organization theme to the Course Builder Stripe payment-link control
 - [x] Apply the active organization theme to the remaining Webinar administration watch-time statistic accent
+- [x] Apply the active organization theme to remaining Bundles administration statistic accents
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
