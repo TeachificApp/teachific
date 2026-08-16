@@ -15,10 +15,10 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 export default function WebinarReportsPage() {
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
+  const { orgId } = useOrgScope();
 
   const [webinarFilter, setWebinarFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -87,7 +87,7 @@ export default function WebinarReportsPage() {
   const selectedWebinar = webinars?.find(w => w.id === selectedWebinarId);
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="lms-org-theme p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Webinar Reports</h1>
@@ -169,8 +169,8 @@ export default function WebinarReportsPage() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="h-5 w-5 text-purple-600" />
+            <div className="h-9 w-9 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="h-5 w-5 text-[var(--org-primary)]" />
             </div>
             <div>
               <p className="text-lg font-bold">{conversionRate}%</p>
@@ -190,7 +190,7 @@ export default function WebinarReportsPage() {
             {[
               { label: "Registered", value: registrations.length, color: "bg-blue-500" },
               { label: "Attended", value: registrations.filter(r => r.attended).length, color: "bg-green-500" },
-              { label: "Converted", value: registrations.filter(r => r.convertedAt).length, color: "bg-purple-500" },
+              { label: "Converted", value: registrations.filter(r => r.convertedAt).length, color: "bg-[var(--org-primary)]" },
             ].map(({ label, value, color }) => (
               <div key={label} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
@@ -251,7 +251,7 @@ export default function WebinarReportsPage() {
                     </div>
                     <div className="flex gap-1">
                       {r.attended && <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-0.5 rounded-full">Attended</span>}
-                      {r.convertedAt && <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 px-2 py-0.5 rounded-full">Converted</span>}
+                      {r.convertedAt && <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] px-2 py-0.5 rounded-full">Converted</span>}
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -291,7 +291,7 @@ export default function WebinarReportsPage() {
                     </TableCell>
                     <TableCell>
                       {r.convertedAt
-                        ? <span className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 px-2 py-0.5 rounded-full">Yes</span>
+                        ? <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] px-2 py-0.5 rounded-full">Yes</span>
                         : <span className="text-xs text-muted-foreground">No</span>
                       }
                     </TableCell>

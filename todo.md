@@ -5426,6 +5426,7 @@
 - [x] Apply active organization theme colors to LMS dashboard violet accents
 - [x] Apply active organization theme colors to LMS analytics report links
 - [x] Apply the active organization theme to the Webinar Player Builder link
+- [x] Scope Webinar Reports to the active organization and replace fixed purple conversion accents with its theme
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
