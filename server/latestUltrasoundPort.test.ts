@@ -830,6 +830,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     const downloadsReportsSource = readFileSync(new URL("../client/src/pages/admin/DigitalDownloadsReportsPage.tsx", import.meta.url), "utf8");
     const emailMarketingSource = readFileSync(new URL("../client/src/pages/lms/EmailMarketingPage.tsx", import.meta.url), "utf8");
     const pageBuilderSource = readFileSync(new URL("../client/src/pages/lms/PageBuilderPage.tsx", import.meta.url), "utf8");
+    const kajabiImportSource = readFileSync(new URL("../client/src/pages/integrations/KajabiImportPage.tsx", import.meta.url), "utf8");
+    const teachableImportSource = readFileSync(new URL("../client/src/pages/integrations/TeachableImportPage.tsx", import.meta.url), "utf8");
+    const thinkificImportSource = readFileSync(new URL("../client/src/pages/integrations/ThinkificImportPage.tsx", import.meta.url), "utf8");
     const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
     expect(webinarSource).toContain('className="webinar-admin-org-theme lms-org-theme p-4 md:p-6 max-w-6xl mx-auto"');
     expect(webinarSource).toContain("bg-[var(--org-button)] hover:opacity-90 text-[var(--org-button-text)]");
@@ -853,6 +856,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(emailMarketingSource).not.toContain("const orgId = orgs?.[0]?.id ?? 0;");
     expect(pageBuilderSource).toContain("const { orgId } = useOrgScope();");
     expect(pageBuilderSource).not.toContain("const orgId = orgs?.[0]?.id;");
+    for (const importSource of [kajabiImportSource, teachableImportSource, thinkificImportSource]) {
+      expect(importSource).toContain("const { orgId: activeOrgId } = useOrgScope();");
+      expect(importSource).not.toContain("const orgId = orgs?.[0]?.id ?? 0;");
+    }
   });
 
   it("routes hosted LMS checkout enrollment confirmations through the purchased course organization", () => {

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import {
   CheckCircle2,
   XCircle,
@@ -22,8 +23,8 @@ import {
 } from "lucide-react";
 
 export default function ThinkificImportPage() {
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id ?? 0;
+  const { orgId: activeOrgId } = useOrgScope();
+  const orgId = activeOrgId ?? 0;
 
   const { data: status, refetch: refetchStatus, isLoading: statusLoading } =
     trpc.platformImport.thinkific.getStatus.useQuery(
