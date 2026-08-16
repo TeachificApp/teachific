@@ -28,6 +28,7 @@ import {
 import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { invokeLLM } from "../_core/llm";
+import { buildAiSourceMessage } from "../lib/aiSourceFile";
 import { parseISpringQuizFromBuffer } from "../lib/iSpringQuizParser";
 import { rewriteStorageRefs, uploadISpringImagesFromZip } from "../lib/iSpringImageImporter";
 
@@ -639,9 +640,14 @@ export const quizBankRouter = router({
       tagIds: z.array(z.number()).default([]),
       folderId: z.number().optional(),
       additionalInstructions: z.string().max(2_000).optional(),
+      sourceFiles: z.array(z.object({ url: z.string().url(), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "image/webp"]), name: z.string().min(1).max(255) })).min(1).max(3).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const bank = await requireBankAccess(ctx, input.bankId);
+      const sourceFiles = input.sourceFiles ?? [];
+      if (sourceFiles.some(source => !source.url.includes(`/ai-generation-sources/${bank.orgId}/${ctx.user.id}/`))) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Source files must belong to your active organization." });
+      }
       if (input.folderId) {
         const folder = await requireFolderAccess(ctx, input.folderId);
         if (folder.orgId !== bank.orgId || folder.bankId !== input.bankId) {
@@ -665,7 +671,7 @@ export const quizBankRouter = router({
       };
 
       const response = await invokeLLM({
-        model: "gpt-5-mini",
+        model: sourceFiles.length ? "gemini-3-flash-preview" : "gpt-5-mini",
         messages: [
           {
             role: "system",
@@ -673,7 +679,7 @@ export const quizBankRouter = router({
           },
           {
             role: "user",
-            content: `Create ${input.count} ${input.difficulty}-difficulty ${typeGuidance[input.questionType]} questions about: ${input.topic}. ${input.additionalInstructions ? `Additional author instructions: ${input.additionalInstructions}` : ""} Include a short explanation for every question.`,
+            content: buildAiSourceMessage(`Create ${input.count} ${input.difficulty}-difficulty ${typeGuidance[input.questionType]} questions about: ${input.topic}. ${input.additionalInstructions ? `Additional author instructions: ${input.additionalInstructions}` : ""} Include a short explanation for every question.`, sourceFiles) as any,
           },
         ],
         response_format: {

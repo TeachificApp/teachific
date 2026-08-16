@@ -738,7 +738,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const questionBankPage = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
     expect(routerSource).toContain("generateQuestions: protectedProcedure");
     expect(routerSource).toContain("const bank = await requireBankAccess(ctx, input.bankId)");
-    expect(routerSource).toContain('model: "gpt-5-mini"');
+    expect(routerSource).toContain('model: sourceFiles.length ? "gemini-3-flash-preview" : "gpt-5-mini"');
+    expect(routerSource).toContain("buildAiSourceMessage(");
     expect(routerSource).toContain("orgId: bank.orgId");
     expect(questionBankPage).toContain("AI Question Generator");
     expect(questionBankPage).toContain("trpc.quizBank.generateQuestions.useMutation");

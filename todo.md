@@ -5417,6 +5417,7 @@
 - [x] Add organization-themed source-file review controls for future AI authoring flows
 - [x] Add organization-authorized source-file uploads for future AI authoring flows
 - [x] Allow organization-authorized source files to guide course-outline generation
+- [x] Allow organization-authorized source files to guide Quiz Bank question generation
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 
