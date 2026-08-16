@@ -120,10 +120,10 @@ function StepIndicator({ step, total }: { step: number; total: number }) {
     <div className="flex items-center gap-1 mb-4">
       {Array.from({ length: total }).map((_, i) => (
         <div key={i} className="flex items-center gap-1">
-          <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${i + 1 <= step ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>
+          <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${i + 1 <= step ? "bg-[var(--org-primary)] text-white" : "bg-muted text-muted-foreground"}`}>
             {i + 1 < step ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
           </div>
-          {i < total - 1 && <div className={`h-0.5 w-6 transition-colors ${i + 1 < step ? "bg-purple-600" : "bg-muted"}`} />}
+          {i < total - 1 && <div className={`h-0.5 w-6 transition-colors ${i + 1 < step ? "bg-[var(--org-primary)]" : "bg-muted"}`} />}
         </div>
       ))}
       <span className="ml-2 text-xs text-muted-foreground">Step {step} of {total}</span>
@@ -419,7 +419,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
               setAiOpen(true);
             }}
           >
-            <Sparkles className="h-4 w-4 text-purple-500" />
+            <Sparkles className="h-4 w-4 text-[var(--org-primary)]" />
             AI Generate
           </Button>
           <Button
@@ -531,7 +531,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
                 setAiOpen(true);
               }}
             >
-              <Sparkles className="h-4 w-4 text-purple-500" />
+              <Sparkles className="h-4 w-4 text-[var(--org-primary)]" />
               Generate with AI
             </Button>
             <Button onClick={() => setCreateOpen(true)} className="gap-2">
@@ -645,7 +645,7 @@ export default function CoursesPage({ typeFilter: typeFilterProp }: { typeFilter
         <DialogContent className={aiStep >= 2 ? "max-w-2xl" : "max-w-lg"}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-500" />
+              <Sparkles className="h-5 w-5 text-[var(--org-primary)]" />
               AI Course Generator
             </DialogTitle>
             <DialogDescription>

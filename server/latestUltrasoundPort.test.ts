@@ -264,6 +264,7 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("scopes Course Builder legacy teal utilities to the active organization theme without changing inline content overrides", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    const coursesSource = readFileSync(new URL("../client/src/pages/lms/CoursesPage.tsx", import.meta.url), "utf8");
     const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
     const blockPreviewSource = readFileSync(new URL("../client/src/components/BlockPreview.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain('className="lms-org-theme w-full"');
@@ -273,6 +274,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(blockPreviewSource).toContain("backgroundColor: d.bgColor");
     expect(blockPreviewSource).toContain("color: d.textColor");
     expect(blockPreviewSource).toContain("backgroundColor: d.ctaColor");
+    expect(coursesSource).toContain("bg-[var(--org-primary)] text-white");
+    expect(coursesSource).toContain("text-[var(--org-primary)]");
+    expect(coursesSource).not.toContain("bg-purple-600");
+    expect(coursesSource).not.toContain("text-purple-500");
   });
 
   it("uses active organization primary variables for Lesson Block Editor actions", () => {
