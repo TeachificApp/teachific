@@ -5438,6 +5438,7 @@
 - [x] Resolve Organization Landing Page Editor preview links from the active organization rather than a first membership
 - [x] Resolve Student Layout Browse links from the active organization rather than a first membership
 - [x] Apply the active organization theme to remaining Course management wizard and AI-generation accents
+- [x] Apply the active organization theme to remaining Form Builder branching accents and informational panels
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

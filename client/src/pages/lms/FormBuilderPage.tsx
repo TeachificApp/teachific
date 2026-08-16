@@ -244,7 +244,7 @@ function SortableFieldRow({
           <span className="text-xs text-red-500 font-medium">*</span>
         )}
         {field.isBranchingSource && (
-          <GitBranch className="h-3 w-3 text-purple-500" />
+          <GitBranch className="h-3 w-3 text-[var(--org-primary)]" />
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -454,7 +454,7 @@ function FieldEditor({
         <div className="flex items-center justify-between">
           <div>
             <Label className="flex items-center gap-1.5">
-              <GitBranch className="h-3.5 w-3.5 text-purple-500" />
+              <GitBranch className="h-3.5 w-3.5 text-[var(--org-primary)]" />
               Enable Branching
             </Label>
             <p className="text-xs text-muted-foreground">Use this field's answer to show/hide other fields</p>
@@ -520,8 +520,8 @@ function BranchingRulesEditor({
   if (sourceFields.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-        <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-          <GitBranch className="h-6 w-6 text-purple-500" />
+        <div className="h-12 w-12 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center">
+          <GitBranch className="h-6 w-6 text-[var(--org-primary)]" />
         </div>
         <div>
           <p className="font-medium text-sm">No branching sources yet</p>
@@ -559,10 +559,10 @@ function BranchingRulesEditor({
             const needsTarget = rule.action !== "submit_form";
 
             return (
-              <Card key={i} className="border-purple-200 dark:border-purple-900/50">
+              <Card key={i} className="border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-xs text-purple-600 border-purple-300">
+                    <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[var(--org-primary)]">
                       Rule {i + 1}
                     </Badge>
                     <Button
