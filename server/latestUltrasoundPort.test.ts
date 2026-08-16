@@ -831,6 +831,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const emailMarketingSource = readFileSync(new URL("../client/src/pages/lms/EmailMarketingPage.tsx", import.meta.url), "utf8");
     const pageBuilderSource = readFileSync(new URL("../client/src/pages/lms/PageBuilderPage.tsx", import.meta.url), "utf8");
     const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
+    const schoolPageSource = readFileSync(new URL("../client/src/pages/lms/SchoolPage.tsx", import.meta.url), "utf8");
     const kajabiImportSource = readFileSync(new URL("../client/src/pages/integrations/KajabiImportPage.tsx", import.meta.url), "utf8");
     const teachableImportSource = readFileSync(new URL("../client/src/pages/integrations/TeachableImportPage.tsx", import.meta.url), "utf8");
     const thinkificImportSource = readFileSync(new URL("../client/src/pages/integrations/ThinkificImportPage.tsx", import.meta.url), "utf8");
@@ -860,6 +861,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(coursePlayerSource).toContain("const courseOrgId = course?.orgId;");
     expect(coursePlayerSource).toContain("{ orgId: courseOrgId! }");
     expect(coursePlayerSource).not.toContain("const orgId = orgs?.[0]?.id;");
+    expect(schoolPageSource).toContain("const { orgId: activeOrgId, orgs: activeOrgs } = useOrgScope();");
+    expect(schoolPageSource).toContain(": (activeOrgId ?? undefined);");
+    expect(schoolPageSource).not.toContain("orgs?.[0]?.id");
     for (const importSource of [kajabiImportSource, teachableImportSource, thinkificImportSource]) {
       expect(importSource).toContain("const { orgId: activeOrgId } = useOrgScope();");
       expect(importSource).not.toContain("const orgId = orgs?.[0]?.id ?? 0;");

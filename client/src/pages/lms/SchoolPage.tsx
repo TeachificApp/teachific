@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { Search, Clock, BookOpen, GraduationCap, ChevronRight, Play, FileText } from "lucide-react";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 function CourseCard({
   course,
@@ -97,6 +98,7 @@ export default function SchoolPage({ subdomainOrg }: { subdomainOrg?: string } =
 
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { orgId: activeOrgId, orgs: activeOrgs } = useOrgScope();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [policyModal, setPolicyModal] = useState<"terms" | "privacy" | null>(null);
@@ -108,16 +110,11 @@ export default function SchoolPage({ subdomainOrg }: { subdomainOrg?: string } =
     { enabled: !!orgSlug }
   );
 
-  // ── Fallback: user's own org (for /school without a slug) ─────────────────
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery(undefined, {
-    // Only fetch if we don't have a slug (or slug lookup hasn't resolved yet)
-    enabled: !orgSlug,
-  });
-
-  // Resolved orgId: prefer slug-based lookup, fall back to user's first org
+  // ── Fallback: active organization (for /school without a slug) ────────────
+  // Resolved orgId: prefer slug-based lookup, then the authenticated active org.
   const orgId: number | undefined = orgSlug
     ? (orgBySlug?.id ?? undefined)
-    : (orgs?.[0]?.id ?? undefined);
+    : (activeOrgId ?? undefined);
 
   // ── Data queries (all keyed on orgId) ────────────────────────────────────
   // When visiting via a subdomain (orgSlug present), always use the public slug-based procedures.
@@ -157,7 +154,8 @@ export default function SchoolPage({ subdomainOrg }: { subdomainOrg?: string } =
   const legalDocs = orgSlug ? legalDocsBySlug : legalDocsByOrgId;
 
   const primaryColor = theme?.studentPrimaryColor || theme?.primaryColor || "#24abbc";
-  const schoolName = theme?.schoolName || orgBySlug?.name || orgs?.[0]?.name || "Our School";
+  const activeOrgName = activeOrgs.find((org: any) => org.id === activeOrgId)?.name;
+  const schoolName = theme?.schoolName || orgBySlug?.name || activeOrgName || "Our School";
 
   // Inject org favicon, SEO meta tags, and custom CSS into document <head>
   useOrgBranding({
