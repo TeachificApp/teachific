@@ -52,8 +52,8 @@ export default function LmsAnalyticsPage() {
       label: "Total Enrollments",
       value: (analytics as any)?.totalEnrollments ?? 0,
       icon: TrendingUp,
-      color: "text-indigo-600",
-      bg: "bg-indigo-500/10",
+      color: "text-[var(--org-primary)]",
+      bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]",
     },
     {
       label: "Completions",
