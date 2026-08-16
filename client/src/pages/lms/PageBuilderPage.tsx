@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { renderBlockPreview } from "@/components/PageBuilder";
 import type { Block as PBBlock } from "@/components/PageBuilder";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 // ─── View Mode Types ─────────────────────────────────────────────────────────
 type ViewMode = "editor" | "visitor" | "customer";
@@ -47,8 +48,7 @@ export default function PageBuilderPage() {
   const context = usePageContext();
   const [, setLocation] = useLocation();
 
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
+  const { orgId } = useOrgScope();
 
   const { data: theme } = trpc.lms.themes.get.useQuery(
     { orgId: orgId! },
