@@ -8993,7 +8993,7 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
           onClick={() => {
             navigator.clipboard.writeText(opt.stripePaymentLinkUrl as string).then(() => toast.success("Stripe Payment Link copied!"));
           }}
-          className="text-xs text-purple-400 hover:text-purple-600 p-1 flex-shrink-0"
+          className="text-xs text-[var(--org-primary)] hover:opacity-75 p-1 flex-shrink-0"
           title={`Copy Stripe Payment Link\n${opt.stripePaymentLinkUrl}`}
         >
           <ExternalLink className="w-3.5 h-3.5" />

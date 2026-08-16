@@ -278,6 +278,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(coursesSource).toContain("text-[var(--org-primary)]");
     expect(coursesSource).not.toContain("bg-purple-600");
     expect(coursesSource).not.toContain("text-purple-500");
+    expect(builderSource).not.toContain("text-purple-400 hover:text-purple-600");
   });
 
   it("uses active organization primary variables for Lesson Block Editor actions", () => {
