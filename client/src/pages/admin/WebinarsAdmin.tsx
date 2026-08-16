@@ -730,7 +730,7 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
               { label: "Attended Live", value: stats.attended, icon: Radio, color: "text-red-500" },
               { label: "Conversion Rate", value: `${stats.conversionRate}%`, icon: BarChart2, color: "text-[var(--org-primary)]" },
               { label: "Conversions", value: stats.converted, icon: CheckCircle, color: "text-green-500" },
-              { label: "Avg Watch Time", value: `${stats.avgWatchMinutes} min`, icon: Clock, color: "text-purple-500" },
+              { label: "Avg Watch Time", value: `${stats.avgWatchMinutes} min`, icon: Clock, color: "text-[var(--org-primary)]" },
               { label: "Attendance Rate", value: stats.totalRegistrations > 0 ? `${Math.round((stats.attended / stats.totalRegistrations) * 100)}%` : "—", icon: Eye, color: "text-orange-500" },
             ].map(s => (
               <Card key={s.label} className="p-4">

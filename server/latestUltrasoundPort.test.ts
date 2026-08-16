@@ -875,6 +875,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(webinarSource).toContain("text-[var(--org-primary)]");
     expect(webinarSource).toContain("bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)]");
     expect(webinarSource).not.toContain("border-purple-600 text-purple-700");
+    expect(webinarSource).not.toContain("text-purple-500");
     expect(themeCss).toContain(".hover\\:bg-teal-700:hover");
     expect(themeCss).toContain("color-mix(in srgb, var(--org-primary) 82%, #000 18%)");
     expect(themeCss).toContain("background-color: var(--org-primary);");
