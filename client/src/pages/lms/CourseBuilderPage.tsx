@@ -68,6 +68,7 @@ import MembershipsPage from "@/pages/products/MembershipsPage";
 import BundlesPage from "@/pages/products/BundlesPage";
 import CmeFormTab from "@/components/CmeFormTab";
 import { useOrgScope } from "@/hooks/useOrgScope";
+import { AiSourceFileReview, type AiSourceReviewFile } from "@/components/AiSourceFileReview";
 /** Convenience alias used in LandingPageEditor */
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
@@ -3699,9 +3700,12 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
   onClose: () => void;
   onGenerated: () => void;
 }) {
+  const { orgId } = useOrgScope();
   const [prompt, setPrompt] = useState("");
   const [numSections, setNumSections] = useState(4);
   const [numLessonsPerSection, setNumLessonsPerSection] = useState(3);
+  const [sourceFiles, setSourceFiles] = useState<AiSourceReviewFile[]>([]);
+  const [isUploadingSources, setIsUploadingSources] = useState(false);
   const [preview, setPreview] = useState<null | { courseTitle: string; sections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }> }>(null);
   const [step, setStep] = useState<"prompt" | "generating" | "done">("prompt");
 
@@ -3719,7 +3723,29 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
   const handleGenerate = () => {
     if (!prompt.trim()) { toast.error("Please enter a course description."); return; }
     setStep("generating");
-    generate.mutate({ courseId, prompt: prompt.trim(), numSections, numLessonsPerSection });
+    generate.mutate({ courseId, prompt: prompt.trim(), numSections, numLessonsPerSection, sourceFiles: sourceFiles.map(({ url, mimeType }) => ({ url, mimeType })) });
+  };
+
+  const uploadSourceFiles = async (files: File[]) => {
+    if (!orgId) { toast.error("Choose an organization before adding source files."); return; }
+    if (sourceFiles.length + files.length > 3) { toast.error("You can add up to three source files."); return; }
+    setIsUploadingSources(true);
+    try {
+      const uploaded = await Promise.all(files.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("orgId", String(orgId));
+        const response = await fetch("/api/upload-ai-generation-source", { method: "POST", body: formData });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Source upload failed.");
+        return payload.sourceFile as AiSourceReviewFile;
+      }));
+      setSourceFiles(current => [...current, ...uploaded]);
+    } catch (error: any) {
+      toast.error(error?.message || "Source upload failed.");
+    } finally {
+      setIsUploadingSources(false);
+    }
   };
 
   return (
@@ -3747,6 +3773,13 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
               />
               <p className="text-xs text-gray-400 mt-1">Be specific — include the target audience, skill level, and key topics to cover.</p>
             </div>
+            <AiSourceFileReview
+              sourceFiles={sourceFiles}
+              isUploading={isUploadingSources}
+              onFiles={uploadSourceFiles}
+              onRemove={(index) => setSourceFiles(current => current.filter((_, currentIndex) => currentIndex !== index))}
+              description="Add organization-authorized PDFs or images to ground the generated course outline."
+            />
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium">Number of Modules</Label>

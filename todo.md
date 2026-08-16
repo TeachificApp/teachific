@@ -5418,6 +5418,7 @@
 - [x] Add organization-authorized source-file uploads for future AI authoring flows
 - [x] Allow organization-authorized source files to guide course-outline generation
 - [x] Allow organization-authorized source files to guide Quiz Bank question generation
+- [x] Connect organization-authorized source file uploads to Course Builder AI generation controls
 - [x] Apply active organization colors to Course Builder AI generation sliders
 - [ ] Apply active organization theme colors to CME management controls and informational surfaces
 - [x] Apply active organization theme colors to CME management AI-assistance controls
