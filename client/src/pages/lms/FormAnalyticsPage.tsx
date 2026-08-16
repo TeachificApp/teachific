@@ -176,13 +176,13 @@ export default function FormAnalyticsPage() {
                   <p className="text-3xl font-bold mt-1">{summary?.completionRate ?? 0}%</p>
                   <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-teal-500 rounded-full transition-all"
+                      className="h-full bg-[var(--org-primary)] rounded-full transition-all"
                       style={{ width: `${summary?.completionRate ?? 0}%` }}
                     />
                   </div>
                 </div>
-                <div className="h-9 w-9 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
-                  <TrendingDown className="h-4.5 w-4.5 text-teal-600" />
+                <div className="h-9 w-9 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center">
+                  <TrendingDown className="h-4.5 w-4.5 text-[var(--org-primary)]" />
                 </div>
               </div>
             </CardContent>
@@ -200,8 +200,8 @@ export default function FormAnalyticsPage() {
                       : "—"}
                   </p>
                 </div>
-                <div className="h-9 w-9 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <Clock className="h-4.5 w-4.5 text-purple-600" />
+                <div className="h-9 w-9 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center">
+                  <Clock className="h-4.5 w-4.5 text-[var(--org-primary)]" />
                 </div>
               </div>
             </CardContent>

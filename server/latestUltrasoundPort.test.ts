@@ -283,6 +283,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("uses active organization primary variables for Lesson Block Editor actions", () => {
     const lessonEditorSource = readFileSync(new URL("../client/src/components/LessonBlockEditor.tsx", import.meta.url), "utf8");
     const formBuilderSource = readFileSync(new URL("../client/src/pages/lms/FormBuilderPage.tsx", import.meta.url), "utf8");
+    const formAnalyticsSource = readFileSync(new URL("../client/src/pages/lms/FormAnalyticsPage.tsx", import.meta.url), "utf8");
     const themeCss = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
     expect(lessonEditorSource).toContain("bg-[var(--org-primary)]");
     expect(lessonEditorSource).toContain("lesson-block-editor-org-theme lms-org-theme");
@@ -293,6 +294,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formBuilderSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]");
     expect(formBuilderSource).not.toContain("text-purple-500");
     expect(formBuilderSource).not.toContain("border-purple-200");
+    expect(formAnalyticsSource).toContain("bg-[var(--org-primary)]");
+    expect(formAnalyticsSource).toContain("text-[var(--org-primary)]");
+    expect(formAnalyticsSource).not.toContain("bg-purple-100");
     expect(themeCss).toContain(".lms-org-theme");
     expect(themeCss).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
   });
