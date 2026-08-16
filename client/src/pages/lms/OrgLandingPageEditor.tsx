@@ -86,7 +86,7 @@ function makeDefaultBlocks(orgName: string): Block[] {
 export default function OrgLandingPageEditor() {
   const [, setLocation] = useLocation();
   const { orgId, orgs, ready } = useOrgScope();
-  const org = orgs?.[0];
+  const activeOrg = orgs.find((org: any) => org.id === orgId);
 
   // ── Fetch landing page data ──────────────────────────────────────────────────
   const { data, isLoading, error } = trpc.orgs.getLandingPageForEditor.useQuery(
@@ -157,8 +157,8 @@ export default function OrgLandingPageEditor() {
   }, [orgId, blocks, isPublished, saveMutation]);
 
   // ── Preview URL ──────────────────────────────────────────────────────────────
-  const previewUrl = org
-    ? `${getOrgBaseUrl(org.slug, (org as any).customDomain, (org as any).domainVerificationStatus)}?preview=1`
+  const previewUrl = activeOrg
+    ? `${getOrgBaseUrl(activeOrg.slug, (activeOrg as any).customDomain, (activeOrg as any).domainVerificationStatus)}?preview=1`
     : null;
 
   // ── Keyboard shortcut: Ctrl/Cmd+S ────────────────────────────────────────────

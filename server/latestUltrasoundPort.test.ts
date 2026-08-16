@@ -243,6 +243,7 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("injects the active organization theme into the LMS administration shell", () => {
     const layoutSource = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+    const landingEditorSource = readFileSync(new URL("../client/src/pages/lms/OrgLandingPageEditor.tsx", import.meta.url), "utf8");
     expect(layoutSource).toContain('import { OrgThemeProvider } from "@/contexts/OrgThemeContext"');
     expect(layoutSource).toContain("<OrgThemeProvider");
     expect(layoutSource).toContain("theme={orgCtx?.org ? {");
@@ -252,6 +253,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(layoutSource).toContain("const { orgId, orgs: activeOrgs } = useOrgScope();");
     expect(layoutSource).toContain("const activeOrg = activeOrgs.find((org: any) => org.id === orgId);");
     expect(layoutSource).not.toContain("orgs?.[0]?.customDomain");
+    expect(landingEditorSource).toContain("const activeOrg = orgs.find((org: any) => org.id === orgId);");
+    expect(landingEditorSource).toContain("getOrgBaseUrl(activeOrg.slug");
+    expect(landingEditorSource).not.toContain("const org = orgs?.[0];");
   });
 
   it("scopes Course Builder legacy teal utilities to the active organization theme without changing inline content overrides", () => {
