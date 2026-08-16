@@ -595,9 +595,8 @@ export default function CoursePlayerPage() {
   const { data: course } = trpc.lms.courses.get.useQuery({ id: courseId });
   const { data: curriculum } = trpc.lms.curriculum.get.useQuery({ courseId });
   const { data: progressData } = trpc.lms.enrollments.progress.useQuery({ courseId }, { enabled: !!user });
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
-  const { data: theme } = trpc.lms.themes.get.useQuery({ orgId: orgId! }, { enabled: !!orgId });
+  const courseOrgId = course?.orgId;
+  const { data: theme } = trpc.lms.themes.get.useQuery({ orgId: courseOrgId! }, { enabled: !!courseOrgId });
 
   const updateProgress = trpc.lms.enrollments.updateLessonProgress.useMutation();
   const utils = trpc.useUtils();
