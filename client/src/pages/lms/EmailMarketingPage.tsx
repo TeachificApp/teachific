@@ -51,6 +51,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 type Campaign = {
   id: number;
@@ -261,8 +262,7 @@ function EmailSettingsPanel({ orgId }: { orgId: number }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function EmailMarketingPage() {
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id ?? 0;
+  const { orgId } = useOrgScope();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
