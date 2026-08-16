@@ -44,8 +44,8 @@ const EVENT_TYPES = [
 const EVENT_COLORS: Record<string, string> = {
   lesson_start: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   lesson_complete: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-  quiz_start: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
-  quiz_submit: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+  quiz_start: "bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] text-[var(--org-primary)]",
+  quiz_submit: "bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] text-[var(--org-primary)]",
   enrollment: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
   course_complete: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
   video_play: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
