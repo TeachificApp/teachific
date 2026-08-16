@@ -1122,5 +1122,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(aiSourceFileSource).toContain("AI_SOURCE_FILE_MAX_BYTES = 50 * 1024 * 1024");
     expect(aiSourceFileSource).toContain("application/pdf");
     expect(aiSourceFileSource).toContain("buildAiSourceMessage");
+    const aiSourceReviewSource = readFileSync(new URL("../client/src/components/AiSourceFileReview.tsx", import.meta.url), "utf8");
+    expect(aiSourceReviewSource).toContain("var(--org-primary)");
+    expect(aiSourceReviewSource).toContain("application/pdf,image/jpeg,image/png,image/webp");
   });
 });

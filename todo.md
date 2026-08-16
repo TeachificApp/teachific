@@ -5414,6 +5414,7 @@
 - [ ] Complete remaining course, quiz, Question Bank, and product authoring workflows
 - [ ] Adapt source-backed AI course and Question Bank generation from Ultrasound-App with active-organization authorization and Teachific branding
 - [x] Add generic PDF and image source-file validation primitives for organization-safe AI generation
+- [x] Add organization-themed source-file review controls for future AI authoring flows
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 
