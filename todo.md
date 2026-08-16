@@ -5418,6 +5418,7 @@
 - [x] Add organization-authorized source-file uploads for future AI authoring flows
 - [x] Allow organization-authorized source files to guide course-outline generation
 - [x] Allow organization-authorized source files to guide Quiz Bank question generation
+- [x] Apply active organization colors to Course Builder AI generation sliders
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 

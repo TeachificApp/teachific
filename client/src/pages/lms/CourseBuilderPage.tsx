@@ -3754,7 +3754,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                   <input
                     type="range" min={1} max={12} value={numSections}
                     onChange={e => setNumSections(Number(e.target.value))}
-                    className="flex-1 accent-violet-600"
+                    className="flex-1 accent-[var(--org-primary)]"
                   />
                   <span className="text-sm font-semibold text-[var(--org-primary)] w-6 text-center">{numSections}</span>
                 </div>
@@ -3765,7 +3765,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                   <input
                     type="range" min={1} max={10} value={numLessonsPerSection}
                     onChange={e => setNumLessonsPerSection(Number(e.target.value))}
-                    className="flex-1 accent-violet-600"
+                    className="flex-1 accent-[var(--org-primary)]"
                   />
                   <span className="text-sm font-semibold text-[var(--org-primary)] w-6 text-center">{numLessonsPerSection}</span>
                 </div>
