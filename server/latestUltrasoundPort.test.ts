@@ -249,6 +249,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(layoutSource).toContain("primaryColor: orgCtx.org.primaryColor");
     expect(layoutSource).toContain("buttonColor: orgCtx.org.buttonColor");
     expect(layoutSource).toContain("customCss: orgCtx.org.customCss");
+    expect(layoutSource).toContain("const { orgId, orgs: activeOrgs } = useOrgScope();");
+    expect(layoutSource).toContain("const activeOrg = activeOrgs.find((org: any) => org.id === orgId);");
+    expect(layoutSource).not.toContain("orgs?.[0]?.customDomain");
   });
 
   it("scopes Course Builder legacy teal utilities to the active organization theme without changing inline content overrides", () => {

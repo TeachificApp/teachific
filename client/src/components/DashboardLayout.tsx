@@ -21,6 +21,7 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSubdomain } from "@/hooks/useSubdomain";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { usePlanLimits, PLAN_DISPLAY } from "@/hooks/usePlanLimits";
 import {
   Activity,
@@ -463,11 +464,12 @@ function DashboardLayoutContent({
   const isAdmin = user?.role === "site_admin" || user?.role === "site_owner";
   const isOwner = user?.role === "site_owner";
 
-  // Fetch org slug for the Preview link
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgSlug = orgs?.[0]?.slug;
+  // Resolve Preview and organization-home links from the active organization.
+  const { orgId, orgs: activeOrgs } = useOrgScope();
+  const activeOrg = activeOrgs.find((org: any) => org.id === orgId);
+  const orgSlug = activeOrg?.slug;
   const previewUrl = orgSlug
-    ? `${getOrgBaseUrl(orgSlug, orgs?.[0]?.customDomain, orgs?.[0]?.domainVerificationStatus)}?preview=1`
+    ? `${getOrgBaseUrl(orgSlug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus)}?preview=1`
     : null;
 
   // Determine which accordion groups are open
@@ -606,7 +608,7 @@ function DashboardLayoutContent({
                                   toggleGroup(item.path);
                                 } else if (item.external) {
                                   const resolvedPath = item.path === "__ORG_HOME__"
-                                    ? (orgSlug ? getOrgBaseUrl(orgSlug, orgs?.[0]?.customDomain, orgs?.[0]?.domainVerificationStatus) : "https://teachific.app")
+                                    ? (orgSlug ? getOrgBaseUrl(orgSlug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus) : "https://teachific.app")
                                     : item.path;
                                   window.open(resolvedPath, "_blank", "noopener,noreferrer");
                                 } else {
