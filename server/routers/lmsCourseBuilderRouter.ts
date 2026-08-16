@@ -30,6 +30,7 @@ import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
+import { buildAiSourceMessage } from "../lib/aiSourceFile";
 import {
   lmsCourses,
   lmsSections,
@@ -1458,12 +1459,16 @@ export const lmsCourseBuilderRouter = router({
       prompt: z.string().min(5).max(2000),
       numSections: z.number().int().min(1).max(20).default(4),
       numLessonsPerSection: z.number().int().min(1).max(15).default(3),
+      sourceFiles: z.array(z.object({ url: z.string().url(), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "image/webp"]), name: z.string().min(1).max(255) })).min(1).max(3).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      const sourceFiles = input.sourceFiles ?? [];
+      if (sourceFiles.some(source => !source.url.includes(`/ai-generation-sources/${course?.orgId}/${ctx.user.id}/`))) throw new TRPCError({ code: "FORBIDDEN", message: "Source files must belong to your active organization." });
 
       const systemPrompt = `You are an expert instructional designer and course creator. You produce well-structured, educationally sound course outlines in United States English. Always respond with valid JSON matching the requested schema exactly.`;
 
@@ -1493,9 +1498,10 @@ Return JSON with this exact shape:
       let outline: { courseTitle: string; sections: Array<{ title: string; lessons: Array<{ title: string; content: string }> }> };
       try {
         const response = await invokeLLM({
+          model: sourceFiles.length ? "gemini-3-flash-preview" : undefined,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
+            { role: "user", content: buildAiSourceMessage(userPrompt, sourceFiles) as any },
           ],
           response_format: {
             type: "json_schema",
