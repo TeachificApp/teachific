@@ -5419,6 +5419,8 @@
 - [x] Allow organization-authorized source files to guide course-outline generation
 - [x] Allow organization-authorized source files to guide Quiz Bank question generation
 - [x] Apply active organization colors to Course Builder AI generation sliders
+- [ ] Apply active organization theme colors to CME management controls and informational surfaces
+- [x] Apply active organization theme colors to CME management AI-assistance controls
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 

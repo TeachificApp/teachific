@@ -375,12 +375,12 @@ function CmeFormEditor({
       )}
 
       {/* AI Generate Banner */}
-      <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-violet-50 border border-violet-200">
+      <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)]">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-violet-600 shrink-0" />
+          <Sparkles className="w-4 h-4 text-[var(--org-primary)] shrink-0" />
           <div>
-            <p className="text-sm font-medium text-violet-800">AI-Assisted Form Completion</p>
-            <p className="text-xs text-violet-600">Generate practice gap, outcomes, and objectives based on the course title and credit hours.</p>
+            <p className="text-sm font-medium text-[var(--org-primary)]">AI-Assisted Form Completion</p>
+            <p className="text-xs text-[var(--org-primary)]">Generate practice gap, outcomes, and objectives based on the course title and credit hours.</p>
           </div>
         </div>
         <Button
@@ -391,7 +391,7 @@ function CmeFormEditor({
             creditHours: field("cmeCreditsRequested") || field("activityLengthHours") || undefined,
           })}
           disabled={generateContent.isPending}
-          className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+          className="org-primary-button gap-1.5 text-xs shrink-0"
         >
           <Sparkles className="w-3.5 h-3.5" />
           {generateContent.isPending ? "Generating…" : "Generate Content"}
