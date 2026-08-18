@@ -5464,6 +5464,7 @@
 - [x] Verify free-preview enrollment course and organization alignment before creating access
 - [x] Require organization and learner-access checks before legacy public announcements and course resources are returned
 - [x] Restrict public legacy course lookup to published courses while preserving organization-admin preview access
+- [x] Require organization-admin ownership before listing or revoking an organization link
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

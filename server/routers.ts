@@ -2365,6 +2365,11 @@ export const appRouter = router({
         .query(async ({ ctx, input }) => {
           const db = await getDb();
           if (!db) return [];
+          const membership = await getOrgMember(input.orgId, ctx.user.id);
+          const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+          if (!isSiteAdmin && !["org_super_admin", "org_admin", "sub_admin"].includes(membership?.role ?? "")) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Organization administrator access is required to view linked organizations" });
+          }
           // Return all accepted links for this org
           const rows = await db
             .select({
@@ -2392,6 +2397,20 @@ export const appRouter = router({
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
           if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+          const links = await db.select().from(orgLinks).where(eq(orgLinks.id, input.linkId)).limit(1);
+          const link = links[0];
+          if (!link) throw new TRPCError({ code: "NOT_FOUND", message: "Organization link not found" });
+          const isSiteAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+          if (!isSiteAdmin) {
+            const [primaryMembership, linkedMembership] = await Promise.all([
+              getOrgMember(link.primaryOrgId, ctx.user.id),
+              getOrgMember(link.linkedOrgId, ctx.user.id),
+            ]);
+            const adminRoles = ["org_super_admin", "org_admin", "sub_admin"];
+            if (!adminRoles.includes(primaryMembership?.role ?? "") && !adminRoles.includes(linkedMembership?.role ?? "")) {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Organization administrator access is required to revoke this link" });
+            }
+          }
           await db
             .update(orgLinks)
             .set({ status: "revoked" })

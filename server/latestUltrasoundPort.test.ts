@@ -1201,6 +1201,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseLookupSource).toContain("await requireOrgAdmin(user.id, user.role, course.orgId);");
   });
 
+  it("requires organization-admin ownership before listing or revoking linked organizations", () => {
+    const routersSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    const linksSource = routersSource.slice(
+      routersSource.indexOf("link: router({"),
+      routersSource.indexOf("// ── Content Packages")
+    );
+    expect(linksSource).toContain("Organization administrator access is required to view linked organizations");
+    expect(linksSource).toContain("Organization administrator access is required to revoke this link");
+    expect(linksSource).toContain("getOrgMember(link.primaryOrgId, ctx.user.id)");
+    expect(linksSource).toContain("getOrgMember(link.linkedOrgId, ctx.user.id)");
+  });
+
   it("requires organization-admin ownership for legacy LMS certificates and certificate templates", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const certificatesSource = routerSource.slice(
