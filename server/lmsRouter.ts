@@ -943,12 +943,16 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getMembersWithEnrollments(orgId);
       }),
     manualEnroll: protectedProcedure
       .input(z.object({ userId: z.number(), courseId: z.number(), orgId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const course = await getCourseById(input.courseId);
+        if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
         const existing = await getEnrollment(input.courseId, input.userId);
         if (existing) return existing;
         return createEnrollment({ courseId: input.courseId, userId: input.userId, orgId, amountPaid: 0, isActive: true });
@@ -962,6 +966,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const openId = `manual-${nanoid(16)}`;
         await createManualUser({
           openId,
@@ -988,6 +993,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const results = [];
         for (const m of input.members) {
           try {
