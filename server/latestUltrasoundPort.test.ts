@@ -1451,6 +1451,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminUserRouterSource.slice(adminUserRouterSource.indexOf("grantBrandMembership"))).toContain("assertPlatformAdmin(ctx.user.role);");
   });
 
+  it("requires platform authority for global coupons and active-organization ownership for purchase access emails", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    const couponSlice = adminUserRouterSource.slice(adminUserRouterSource.indexOf("createCoupon"), adminUserRouterSource.indexOf("// ─── Sales Dashboard"));
+    const accessSlice = adminUserRouterSource.slice(adminUserRouterSource.indexOf("resendAccessEmail"));
+    expect(couponSlice).toContain("assertPlatformAdmin(ctx.user.role);");
+    expect(accessSlice).toContain("Purchase does not belong to the active organization.");
+    expect(accessSlice).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

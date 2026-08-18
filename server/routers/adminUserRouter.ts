@@ -1188,6 +1188,7 @@ export const adminUserRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      assertPlatformAdmin(ctx.user.role);
       const { getStripe } = await import("../stripePlans");
       const stripe = getStripe();
       // Create Stripe coupon
@@ -1214,6 +1215,7 @@ export const adminUserRouter = router({
     .input(z.object({ couponId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      assertPlatformAdmin(ctx.user.role);
       const { getStripe } = await import("../stripePlans");
       const stripe = getStripe();
       await stripe.coupons.del(input.couponId);
@@ -1224,6 +1226,7 @@ export const adminUserRouter = router({
     .input(z.object({ promoCodeId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      assertPlatformAdmin(ctx.user.role);
       const { getStripe } = await import("../stripePlans");
       const stripe = getStripe();
       await stripe.promotionCodes.update(input.promoCodeId, { active: false });
@@ -1234,6 +1237,7 @@ export const adminUserRouter = router({
     .input(z.object({ limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
       await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      assertPlatformAdmin(ctx.user.role);
       const { getStripe } = await import("../stripePlans");
       const stripe = getStripe();
       const coupons = await stripe.coupons.list({ limit: input.limit });
@@ -1396,13 +1400,16 @@ export const adminUserRouter = router({
   resendAccessEmail: protectedProcedure
     .input(z.object({ purchaseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { funnelPurchases } = await import("../../drizzle/schema");
       const { eq } = await import("drizzle-orm");
       const [purchase] = await db.select().from(funnelPurchases).where(eq(funnelPurchases.id, input.purchaseId)).limit(1);
       if (!purchase) throw new TRPCError({ code: "NOT_FOUND", message: "Purchase not found" });
+      if (purchase.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Purchase does not belong to the active organization." });
       const { sendEmail } = await import("../sendgrid");
       await sendEmail({
         to: [{ email: purchase.email, name: purchase.name ?? undefined }],

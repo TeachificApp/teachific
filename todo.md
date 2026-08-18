@@ -5500,6 +5500,7 @@
 - [x] Require active-organization target-user, cohort, and course ownership for user administration cohort assignments
 - [x] Restrict cross-organization user search and merge administration to platform administrators
 - [x] Require active-organization target-user ownership for remaining user profile, role, password, and reset administration actions
+- [x] Require active-organization authorization for user administration coupon, sales analytics, sales listing, and access-email procedures
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
