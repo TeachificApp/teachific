@@ -1248,6 +1248,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(`${adminBundlesSource}\n${lmsBundlesSource}\n${adminProductsSource}\n${lmsProductsSource}`).not.toContain("Ultrasound Reference Card Set");
   });
 
+  it("uses a generic manual access grant product placeholder", () => {
+    const fulfillmentSource = readFileSync(new URL("../client/src/pages/admin/FulfillmentAdmin.tsx", import.meta.url), "utf8");
+    expect(fulfillmentSource).toContain("Professional Development Course");
+    expect(fulfillmentSource).not.toContain("Vascular Ultrasound Course");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

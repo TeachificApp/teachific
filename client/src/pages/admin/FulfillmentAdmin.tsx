@@ -163,7 +163,7 @@ export default function FulfillmentAdmin() {
                 <div>
                   <Label>Product Name</Label>
                   <Input
-                    placeholder="e.g. Vascular Ultrasound Course"
+                    placeholder="e.g. Professional Development Course"
                     value={manualForm.productName}
                     onChange={e => setManualForm(f => ({ ...f, productName: e.target.value }))}
                   />
