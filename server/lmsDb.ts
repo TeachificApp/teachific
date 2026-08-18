@@ -2040,6 +2040,10 @@ export async function deleteWorkshop(id: number) {
 export async function getWorkshopRegistrations(workshopId: number) {
   return db.select().from(workshopRegistrations).where(eq(workshopRegistrations.workshopId, workshopId)).orderBy(desc(workshopRegistrations.registeredAt));
 }
+export async function getWorkshopRegistrationById(id: number) {
+  const rows = await db.select().from(workshopRegistrations).where(eq(workshopRegistrations.id, id));
+  return rows[0] ?? null;
+}
 export async function createWorkshopRegistration(data: typeof workshopRegistrations.$inferInsert) {
   const result = await db.insert(workshopRegistrations).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;

@@ -194,6 +194,7 @@ import {
   updateWorkshop,
   deleteWorkshop,
   getWorkshopRegistrations,
+  getWorkshopRegistrationById,
   createWorkshopRegistration,
   updateWorkshopRegistration,
 } from "./lmsDb";
@@ -242,6 +243,13 @@ async function requireLegacyCourseAccess(ctx: { user: { id: number; role: string
   if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
   await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
   return course;
+}
+
+async function requireLegacyWorkshopAccess(ctx: { user: { id: number; role: string } }, workshopId: number) {
+  const workshop = await getWorkshopById(workshopId);
+  if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, workshop.orgId);
+  return workshop;
 }
 
 async function requireLegacySectionAccess(ctx: { user: { id: number; role: string } }, sectionId: number) {
@@ -2573,14 +2581,13 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getWorkshopsByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        const w = await getWorkshopById(input.id);
-        if (!w) throw new TRPCError({ code: "NOT_FOUND" });
-        return w;
+      .query(async ({ input, ctx }) => {
+        return requireLegacyWorkshopAccess(ctx, input.id);
       }),
     create: protectedProcedure
       .input(z.object({
@@ -2603,6 +2610,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
         return createWorkshop({
           orgId,
@@ -2627,7 +2635,8 @@ export const lmsRouter = router({
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number() }).passthrough())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireLegacyWorkshopAccess(ctx, input.id);
         const { id, ...data } = input;
         const payload: any = { ...data };
         if (payload.startDate) payload.startDate = new Date(payload.startDate);
@@ -2636,18 +2645,23 @@ export const lmsRouter = router({
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireLegacyWorkshopAccess(ctx, input.id);
         await deleteWorkshop(input.id);
         return { ok: true };
       }),
     getRegistrations: protectedProcedure
       .input(z.object({ workshopId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireLegacyWorkshopAccess(ctx, input.workshopId);
         return getWorkshopRegistrations(input.workshopId);
       }),
     updateRegistration: protectedProcedure
       .input(z.object({ id: z.number() }).passthrough())
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const registration = await getWorkshopRegistrationById(input.id);
+        if (!registration) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop registration not found" });
+        await requireLegacyWorkshopAccess(ctx, registration.workshopId);
         const { id, ...data } = input;
         await updateWorkshopRegistration(id, data as any);
         return { ok: true };
@@ -2671,19 +2685,27 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number(), courseId: z.number(), title: z.string(), body: z.string().optional(), isPinned: z.boolean().optional(), sendEmail: z.boolean().optional() }))
       .mutation(async ({ input, ctx }) => {
         const { createAnnouncement } = await import("./lmsDb");
+        const course = await requireLegacyCourseAccess(ctx, input.courseId);
+        if (course.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
         return createAnnouncement({ ...input, authorId: ctx.user.id });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), title: z.string().optional(), body: z.string().optional(), isPinned: z.boolean().optional() }))
-      .mutation(async ({ input }) => {
-        const { updateAnnouncement } = await import("./lmsDb");
+      .mutation(async ({ input, ctx }) => {
+        const { getAnnouncementById, updateAnnouncement } = await import("./lmsDb");
+        const announcement = await getAnnouncementById(input.id);
+        if (!announcement) throw new TRPCError({ code: "NOT_FOUND", message: "Course announcement not found" });
+        await requireLegacyCourseAccess(ctx, announcement.courseId);
         const { id, ...data } = input;
         return updateAnnouncement(id, data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const { deleteAnnouncement } = await import("./lmsDb");
+      .mutation(async ({ input, ctx }) => {
+        const { getAnnouncementById, deleteAnnouncement } = await import("./lmsDb");
+        const announcement = await getAnnouncementById(input.id);
+        if (!announcement) throw new TRPCError({ code: "NOT_FOUND", message: "Course announcement not found" });
+        await requireLegacyCourseAccess(ctx, announcement.courseId);
         await deleteAnnouncement(input.id);
         return { ok: true };
       }),
@@ -2699,21 +2721,29 @@ export const lmsRouter = router({
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number(), courseId: z.number(), lessonId: z.number().optional(), title: z.string(), description: z.string().optional(), fileUrl: z.string().optional(), fileKey: z.string().optional(), fileName: z.string().optional(), fileSize: z.number().optional(), mimeType: z.string().optional(), externalUrl: z.string().optional(), resourceType: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { createResource } = await import("./lmsDb");
+        const course = await requireLegacyCourseAccess(ctx, input.courseId);
+        if (course.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
         return createResource(input as any);
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number() }).passthrough())
-      .mutation(async ({ input }) => {
-        const { updateResource } = await import("./lmsDb");
+      .mutation(async ({ input, ctx }) => {
+        const { getResourceById, updateResource } = await import("./lmsDb");
+        const resource = await getResourceById(input.id);
+        if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "Course resource not found" });
+        await requireLegacyCourseAccess(ctx, resource.courseId);
         const { id, ...data } = input;
         return updateResource(id, data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        const { deleteResource } = await import("./lmsDb");
+      .mutation(async ({ input, ctx }) => {
+        const { getResourceById, deleteResource } = await import("./lmsDb");
+        const resource = await getResourceById(input.id);
+        if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "Course resource not found" });
+        await requireLegacyCourseAccess(ctx, resource.courseId);
         await deleteResource(input.id);
         return { ok: true };
       }),

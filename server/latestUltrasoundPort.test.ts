@@ -1070,6 +1070,30 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(copySource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, original.orgId!);");
   });
 
+  it("requires organization-admin ownership for legacy LMS workshops, announcements, and course resources", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const lmsDbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
+    const workshopsSource = routerSource.slice(
+      routerSource.indexOf("workshops: router({"),
+      routerSource.indexOf("// ── Course Announcements")
+    );
+    const announcementsSource = routerSource.slice(
+      routerSource.indexOf("announcements: router({"),
+      routerSource.indexOf("// ── Course Resources")
+    );
+    const resourcesSource = routerSource.slice(
+      routerSource.indexOf("resources: router({"),
+      routerSource.indexOf("// ── Aliased sub-routers")
+    );
+    expect(routerSource).toContain("async function requireLegacyWorkshopAccess");
+    expect(workshopsSource).toContain("await requireLegacyWorkshopAccess(ctx, input.id);");
+    expect(workshopsSource).toContain("await requireLegacyWorkshopAccess(ctx, registration.workshopId);");
+    expect(lmsDbSource).toContain("export async function getWorkshopRegistrationById");
+    expect(announcementsSource).toContain("await requireLegacyCourseAccess(ctx, announcement.courseId);");
+    expect(resourcesSource).toContain("await requireLegacyCourseAccess(ctx, resource.courseId);");
+    expect(resourcesSource).toContain("Course does not belong to the requested organization");
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(
