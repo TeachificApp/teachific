@@ -46,7 +46,7 @@ const VALUE_PROPS = [
   },
   {
     headline: "The Pocket Reference for Real-Time Scanning",
-    body: "UltrasoundAssist™ Premium is your guideline-based companion at the probe — from protocol to pathology, in seconds.",
+    body: "Teachific™ Premium is your adaptable, guideline-based learning companion — from curriculum to practical application, in seconds.",
     cta: "Upgrade Now →",
   },
 ];
@@ -232,7 +232,7 @@ export default function UpgradePrompt({ eligible }: UpgradePromptProps) {
         {/* Brand footer */}
         <div className="px-6 py-2 text-center" style={{ background: "#0e1e2e" }}>
           <p className="text-xs text-white/40">
-            Teachific™ · UltrasoundAssist™
+            Teachific™
           </p>
         </div>
       </div>

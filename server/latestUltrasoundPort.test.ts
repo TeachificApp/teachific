@@ -1271,6 +1271,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(`${healthAlertSource}\n${sharingMonitorSource}`).not.toContain("UltrasoundAssist");
   });
 
+  it("uses Teachific-only wording in the account upgrade prompt", () => {
+    const upgradePromptSource = readFileSync(new URL("../client/src/components/UpgradePrompt.tsx", import.meta.url), "utf8");
+    expect(upgradePromptSource).toContain("Teachific™ Premium");
+    expect(upgradePromptSource).not.toContain("UltrasoundAssist");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
