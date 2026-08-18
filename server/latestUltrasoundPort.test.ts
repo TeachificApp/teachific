@@ -1308,6 +1308,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(userDetailSource).not.toContain("UltrasoundAssist™ and EchoAssist™ app subscriptions");
   });
 
+  it("uses generic Teachific labels in the reusable navigation configuration", () => {
+    const brandNavSource = readFileSync(new URL("../client/src/config/brandNav.ts", import.meta.url), "utf8");
+    expect(brandNavSource).toContain("const PLATFORM_NAV_GROUPS");
+    expect(brandNavSource).toContain("const PLATFORM_HIDDEN_NAV");
+    expect(brandNavSource).toContain('label: "Guided Tools"');
+    expect(brandNavSource).toContain('label: "Audio Learning Library"');
+    expect(brandNavSource).toContain("navGroups: PLATFORM_NAV_GROUPS");
+    expect(brandNavSource).not.toContain("UltrasoundAssist");
+    expect(brandNavSource).not.toContain("EchoAssist");
+    expect(brandNavSource).not.toContain("PediatricAssist");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
