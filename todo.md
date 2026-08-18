@@ -5492,6 +5492,7 @@
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Verify and complete resizable-height and sticky editing behavior for the shared rich-text editor across authoring surfaces
 - [x] Apply the active organization theme to Question Bank package importer controls and progress indicators
+- [x] Apply the active organization theme to the LMS administration cohort assignment badge
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

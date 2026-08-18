@@ -1387,6 +1387,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(importPageSource).not.toContain("teal-");
   });
 
+  it("uses the active organization theme for LMS administration cohort assignment badges", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    expect(lmsAdminSource).toContain("text-[var(--org-primary)] border border-[color-mix(in_srgb,var(--org-primary)_30%,transparent)]");
+    expect(lmsAdminSource).not.toContain("bg-purple-100 text-purple-700 border border-purple-200");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

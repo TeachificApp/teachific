@@ -9145,7 +9145,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
                   {courseType === "cohort" && (
                     <td className="px-4 py-3">
                       {e.cohortGroupName ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] border border-[color-mix(in_srgb,var(--org-primary)_30%,transparent)]">
                           {e.cohortGroupName}
                         </span>
                       ) : (
