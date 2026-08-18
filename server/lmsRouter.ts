@@ -2566,6 +2566,7 @@ export const lmsRouter = router({
       // Always scope to the user's own org; platform admins fall back to the primary org
       const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (!orgId) return { courses: [], total: 0 };
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const all = await getCoursesByOrg(orgId);
       return { courses: all, total: (all as any[]).length };
     }),
@@ -2573,6 +2574,7 @@ export const lmsRouter = router({
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
       const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       return getInstructorsByOrg(orgId);
     }),
   // ── Workshops ─────────────────────────────────────────────────────────────
