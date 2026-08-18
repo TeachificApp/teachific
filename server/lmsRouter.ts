@@ -2759,6 +2759,10 @@ export const lmsRouter = router({
     .input(z.object({ courseId: z.number(), orgId: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
       const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+      const course = await getCourseById(input.courseId);
+      if (!course || course.orgId !== orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
+      }
       const existing = await getEnrollment(input.courseId, ctx.user.id);
       if (existing) return existing;
       return createEnrollment({ courseId: input.courseId, userId: ctx.user.id, orgId, amountPaid: 0, isActive: true });
