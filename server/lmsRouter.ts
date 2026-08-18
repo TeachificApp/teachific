@@ -562,6 +562,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getOrgSubscription(orgId);
       }),
   }),
@@ -572,18 +573,21 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getPagesByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ pageId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         const page = await getPageById(input.pageId);
         if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, page.orgId);
         return page;
       }),
     getByCourse: protectedProcedure
       .input(z.object({ courseId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireLegacyCourseAccess(ctx, input.courseId);
         return getPageByCourse(input.courseId);
       }),
     getBySlug: publicProcedure

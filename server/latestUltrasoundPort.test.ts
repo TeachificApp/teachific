@@ -1147,6 +1147,22 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsDbSource).toContain("export async function getInstructorById");
   });
 
+  it("requires organization-admin ownership for legacy LMS subscriptions and page queries", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const subscriptionSource = routerSource.slice(
+      routerSource.indexOf("subscription: router({"),
+      routerSource.indexOf("// ── Pages")
+    );
+    const pagesSource = routerSource.slice(
+      routerSource.indexOf("pages: router({"),
+      routerSource.indexOf("// ── Instructors")
+    );
+    expect(subscriptionSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(pagesSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, page.orgId);");
+    expect(pagesSource).toContain("await requireLegacyCourseAccess(ctx, input.courseId);");
+    expect(pagesSource).toContain("getPublishedPageBySlug(input.slug)");
+  });
+
   it("requires organization-admin ownership for legacy LMS certificates and certificate templates", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const certificatesSource = routerSource.slice(

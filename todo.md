@@ -5460,6 +5460,7 @@
 - [x] Require organization-admin ownership for legacy LMS analytics, activity reporting, and coupon administration
 - [x] Require organization-admin ownership for legacy LMS notification settings, revenue partners, and course-order administration
 - [x] Require organization-admin ownership for legacy LMS flashcard AI generation
+- [x] Require organization-admin ownership for legacy LMS subscription and page queries while preserving public published-page routes
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
