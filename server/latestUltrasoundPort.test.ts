@@ -1421,6 +1421,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminUserRouterSource).toContain("assertPlatformAdmin(ctx.user.role);");
   });
 
+  it("requires active-organization user and course ownership for enrollment management and confirmation emails", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    expect(adminUserRouterSource).toContain("Course does not belong to the active organization.");
+    expect(adminUserRouterSource).toContain("Enrollment does not belong to the active organization and user.");
+    expect(adminUserRouterSource).toContain("requireActiveOrgUserMembership(ctx, input.userId)");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

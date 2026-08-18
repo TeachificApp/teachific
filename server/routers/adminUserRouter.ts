@@ -551,10 +551,7 @@ export const adminUserRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No org context" });
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
       // Check if already enrolled
       const [existing] = await db
         .select({ id: lmsEnrollments.id, status: lmsEnrollments.status })
@@ -569,8 +566,9 @@ export const adminUserRouter = router({
         await db.update(lmsEnrollments).set({ status: "active" }).where(eq(lmsEnrollments.id, existing.id));
         return { success: true, enrollmentId: existing.id };
       }
-      const [course] = await db.select({ id: lmsCourses.id, title: lmsCourses.title }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      const [course] = await db.select({ id: lmsCourses.id, title: lmsCourses.title, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      if (course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       const [inserted] = await db.insert(lmsEnrollments).values({
         orgId,
         userId: input.userId,
@@ -586,8 +584,9 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), enrollmentId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const [enrollment] = await db.select({ userId: lmsEnrollments.userId, orgId: lmsEnrollments.orgId }).from(lmsEnrollments).where(eq(lmsEnrollments.id, input.enrollmentId)).limit(1);
+      if (!enrollment || enrollment.userId !== input.userId || enrollment.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment does not belong to the active organization and user." });
       await db.update(lmsEnrollments).set({ status: "cancelled" }).where(eq(lmsEnrollments.id, input.enrollmentId));
       return { success: true };
     }),
@@ -598,6 +597,9 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [enrollment] = await db.select({ orgId: lmsEnrollments.orgId }).from(lmsEnrollments).where(eq(lmsEnrollments.id, input.enrollmentId)).limit(1);
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!enrollment || !orgId || enrollment.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment does not belong to the active organization." });
       await db.update(lmsEnrollments).set({
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
         accessExpiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
@@ -609,11 +611,11 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
       if (!user || !course) throw new TRPCError({ code: "NOT_FOUND" });
+      if (course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       if (user.email) {
         await sendEnrollmentEmail({
           to: { name: user.displayName || user.name || user.email, email: user.email },
@@ -629,8 +631,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), brand: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
       if (!user || !user.email) throw new TRPCError({ code: "NOT_FOUND" });
       await sendEmail({

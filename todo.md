@@ -5496,6 +5496,7 @@
 - [x] Scope organization-admin user detail views to the active organization and prevent cross-organization enrollment or membership disclosure
 - [x] Require active-organization ownership for user administration workshop, activity, progress, login-history, and email-alias procedures
 - [x] Require active-organization ownership for user administration membership cancellation, refunds, certificate issuance, and email history
+- [x] Require active-organization target-user and course ownership for user administration enrollment management and membership confirmation emails
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
