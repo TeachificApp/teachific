@@ -1254,6 +1254,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(fulfillmentSource).not.toContain("Vascular Ultrasound Course");
   });
 
+  it("uses active organization colors for General Form Builder score and webhook accents", () => {
+    const formBuilderSource = readFileSync(new URL("../client/src/pages/admin/GeneralFormBuilder.tsx", import.meta.url), "utf8");
+    expect(formBuilderSource).toContain('backgroundColor: "color-mix(in_srgb, var(--org-primary) 14%, transparent)"');
+    expect(formBuilderSource).toContain('backgroundColor: "color-mix(in_srgb, var(--org-primary) 10%, transparent)"');
+    expect(formBuilderSource).toContain('style={{ color: "var(--org-primary)" }}');
+    expect(formBuilderSource).not.toContain("bg-purple-50");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

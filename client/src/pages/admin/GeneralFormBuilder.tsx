@@ -744,7 +744,7 @@ function FormEditor({ formId }: { formId: number }) {
                         <div className="absolute top-2 right-3 flex gap-1">
                           {isAdminOnlyItem(item) && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Admin</span>}
                           {item.isRequired && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Required</span>}
-                          {item.scoreWeight > 0 && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded">{item.scoreWeight}pts</span>}
+                          {item.scoreWeight > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: "color-mix(in_srgb, var(--org-primary) 14%, transparent)", color: "var(--org-primary)" }}>{item.scoreWeight}pts</span>}
                         </div>
                       </div>
                     );
@@ -3217,8 +3217,8 @@ function WebhookCard({ formId }: { formId: number }) {
     <div className="border border-gray-200 rounded-xl p-5 bg-white">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-            <Webhook className="w-5 h-5 text-purple-600" />
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: "color-mix(in_srgb, var(--org-primary) 10%, transparent)" }}>
+            <Webhook className="w-5 h-5" style={{ color: "var(--org-primary)" }} />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Webhook</h3>
