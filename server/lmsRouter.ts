@@ -1928,6 +1928,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), fileName: z.string(), mimeType: z.string().optional(), contentType: z.string().optional(), folder: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const mimeType = input.mimeType ?? input.contentType ?? "application/octet-stream";
         const folder = input.folder ?? "media";
         const ext = input.fileName.split(".").pop() ?? "bin";
@@ -1966,6 +1967,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const resolvedFilename = input.filename ?? input.fileName ?? "untitled";
         const { getDb } = await import("./db");
         const db = await getDb();
@@ -1995,6 +1997,7 @@ export const lmsRouter = router({
         folderId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
         const db = await (await import("./db")).getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
 
@@ -2043,45 +2046,57 @@ export const lmsRouter = router({
       }),
     deleteOrgMedia: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         await db.delete(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id));
         return { ok: true };
       }),
     renameOrgMedia: protectedProcedure
       .input(z.object({ id: z.number(), filename: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         await db.update(orgMediaLibrary).set({ filename: input.filename }).where(eq(orgMediaLibrary.id, input.id));
         return { ok: true };
       }),
     bulkDelete: protectedProcedure
       .input(z.object({ ids: z.array(z.number()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { inArray } = await import("drizzle-orm");
+        const mediaItems = await db.select().from(orgMediaLibrary).where(inArray(orgMediaLibrary.id, input.ids));
+        if (mediaItems.length !== input.ids.length) throw new TRPCError({ code: "NOT_FOUND", message: "One or more media items were not found" });
+        await Promise.all([...new Set(mediaItems.map((item) => item.orgId))].map((orgId) => requireOrgAdmin(ctx.user.id, ctx.user.role, orgId)));
         await db.delete(orgMediaLibrary).where(inArray(orgMediaLibrary.id, input.ids));
         return { ok: true };
       }),
     bulkMoveToFolder: protectedProcedure
       .input(z.object({ ids: z.array(z.number()), folderId: z.number().nullable() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { inArray } = await import("drizzle-orm");
+        const mediaItems = await db.select().from(orgMediaLibrary).where(inArray(orgMediaLibrary.id, input.ids));
+        if (mediaItems.length !== input.ids.length) throw new TRPCError({ code: "NOT_FOUND", message: "One or more media items were not found" });
+        await Promise.all([...new Set(mediaItems.map((item) => item.orgId))].map((orgId) => requireOrgAdmin(ctx.user.id, ctx.user.role, orgId)));
         await db.update(orgMediaLibrary).set({ folderId: input.folderId }).where(inArray(orgMediaLibrary.id, input.ids));
         return { ok: true };
       }),
@@ -2100,6 +2115,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), name: z.string(), parentFolderId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -2109,23 +2125,29 @@ export const lmsRouter = router({
       }),
     deleteFolder: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { mediaFolders } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [folder] = await db.select().from(mediaFolders).where(eq(mediaFolders.id, input.id)).limit(1);
+        if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, folder.orgId);
         await db.delete(mediaFolders).where(eq(mediaFolders.id, input.id));
         return { ok: true };
       }),
     renameFolder: protectedProcedure
       .input(z.object({ id: z.number(), name: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { mediaFolders } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [folder] = await db.select().from(mediaFolders).where(eq(mediaFolders.id, input.id)).limit(1);
+        if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, folder.orgId);
         await db.update(mediaFolders).set({ name: input.name }).where(eq(mediaFolders.id, input.id));
         return { ok: true };
       }),
