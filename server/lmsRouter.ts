@@ -1506,13 +1506,15 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), courseId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getDiscussionsByOrg(orgId, input?.courseId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         const d = await getDiscussionById(input.id);
         if (!d) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, d.orgId);
         const replies = await getRepliesByDiscussion(input.id);
         return { ...d, replies };
       }),
@@ -1520,22 +1522,36 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), courseId: z.number().optional(), title: z.string(), body: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        if (input.courseId) {
+          const course = await getCourseById(input.courseId);
+          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
+        }
         return createDiscussion({ orgId, courseId: input.courseId ?? null, title: input.title, body: input.body ?? null, authorId: ctx.user.id });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const discussion = await getDiscussionById(input.id);
+        if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);
         return updateDiscussion(input.id, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const discussion = await getDiscussionById(input.id);
+        if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);
         await deleteDiscussion(input.id);
         return { ok: true };
       }),
     reply: protectedProcedure
       .input(z.object({ discussionId: z.number(), body: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        const discussion = await getDiscussionById(input.discussionId);
+        if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);
         return createDiscussionReply({ discussionId: input.discussionId, body: input.body, authorId: ctx.user.id });
       }),
   }),
@@ -1546,35 +1562,51 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getAssignmentsByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         const a = await getAssignmentById(input.id);
         if (!a) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, a.orgId);
         return a;
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), courseId: z.number().optional(), title: z.string(), description: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        if (input.courseId) {
+          const course = await getCourseById(input.courseId);
+          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
+        }
         return createAssignment({ orgId, courseId: input.courseId ?? null, title: input.title, description: input.description ?? null });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const assignment = await getAssignmentById(input.id);
+        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);
         return updateAssignment(input.id, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const assignment = await getAssignmentById(input.id);
+        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);
         await deleteAssignment(input.id);
         return { ok: true };
       }),
     submissions: protectedProcedure
       .input(z.object({ assignmentId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const assignment = await getAssignmentById(input.assignmentId);
+        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);
         return getSubmissionsByAssignment(input.assignmentId);
       }),
   }),
@@ -1598,12 +1630,18 @@ export const lmsRouter = router({
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), content: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getNoteById } = await import("./lmsDb");
+        const note = await getNoteById(input.id);
+        if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only update your own notes" });
         return updateNote(input.id, input.content);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getNoteById } = await import("./lmsDb");
+        const note = await getNoteById(input.id);
+        if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete your own notes" });
         await deleteNote(input.id);
         return { ok: true };
       }),
@@ -1625,7 +1663,10 @@ export const lmsRouter = router({
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getBookmarkById } = await import("./lmsDb");
+        const bookmark = await getBookmarkById(input.id);
+        if (!bookmark || bookmark.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete your own bookmarks" });
         await deleteBookmark(input.id);
         return { ok: true };
       }),

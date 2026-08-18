@@ -1179,6 +1179,31 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(groupSource).toContain("Group and course must belong to the requested organization");
   });
 
+  it("requires organization-admin ownership for legacy LMS discussions and assignments and user ownership for notes and bookmarks", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const discussionsSource = routerSource.slice(
+      routerSource.indexOf("discussions: router({"),
+      routerSource.indexOf("// ── Assignments")
+    );
+    const assignmentsSource = routerSource.slice(
+      routerSource.indexOf("assignments: router({"),
+      routerSource.indexOf("// ── Notes")
+    );
+    const notesSource = routerSource.slice(
+      routerSource.indexOf("notes: router({"),
+      routerSource.indexOf("// ── Bookmarks")
+    );
+    const bookmarksSource = routerSource.slice(
+      routerSource.indexOf("bookmarks: router({"),
+      routerSource.indexOf("// ── Dashboard")
+    );
+    expect(discussionsSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);");
+    expect(assignmentsSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);");
+    expect(notesSource).toContain("You can only update your own notes");
+    expect(notesSource).toContain("You can only delete your own notes");
+    expect(bookmarksSource).toContain("You can only delete your own bookmarks");
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(
