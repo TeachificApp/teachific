@@ -88,7 +88,7 @@ function buildEmbedCode(token: string, origin: string): string {
   const widgetUrl = `${origin}/widget/${token}`;
   return `<!-- Teachific Content Widget -->
 <iframe
-  id="aau-widget-${token.slice(0, 8)}"
+  id="teachific-widget-${token.slice(0, 8)}"
   src="${widgetUrl}"
   width="100%"
   height="400"
@@ -99,8 +99,8 @@ function buildEmbedCode(token: string, origin: string): string {
 ></iframe>
 <script>
   window.addEventListener("message", function(e) {
-    if (e.data && e.data.type === "ultrasound-widget-resize") {
-      var iframe = document.getElementById("aau-widget-${token.slice(0, 8)}");
+    if (e.data && e.data.type === "teachific-widget-resize") {
+      var iframe = document.getElementById("teachific-widget-${token.slice(0, 8)}");
       if (iframe) iframe.style.height = (e.data.height + 16) + "px";
     }
   });

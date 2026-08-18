@@ -1201,6 +1201,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseLookupSource).toContain("await requireOrgAdmin(user.id, user.role, course.orgId);");
   });
 
+  it("uses Teachific platform identifiers rather than legacy brand identifiers in widget embed code", () => {
+    const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
+    expect(widgetManagerSource).toContain("teachific-widget-");
+    expect(widgetManagerSource).toContain("teachific-widget-resize");
+    expect(widgetManagerSource).not.toContain("aau-widget-");
+    expect(widgetManagerSource).not.toContain("ultrasound-widget-resize");
+  });
+
   it("requires organization-admin ownership before listing or revoking linked organizations", () => {
     const routersSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const linksSource = routersSource.slice(
