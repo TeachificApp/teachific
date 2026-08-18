@@ -521,6 +521,7 @@ export const lmsEnrollmentAdminRouter = router({
   // ── Affiliates ──
   listAffiliates: protectedProcedure.query(async ({ ctx }) => {
     await assertAdmin(ctx);
+    if (!isPlatformAdmin(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required for global affiliate records." });
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     return db.select().from(lmsAffiliates).orderBy(desc(lmsAffiliates.createdAt));
@@ -530,6 +531,7 @@ export const lmsEnrollmentAdminRouter = router({
     .input(z.object({ name: z.string().min(1), email: z.string().email().optional(), commissionPct: z.number().int().min(0).max(100).default(10), userId: z.number().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      if (!isPlatformAdmin(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required for global affiliate records." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const code = randomBytes(4).toString("hex").toUpperCase();
@@ -544,6 +546,7 @@ export const lmsEnrollmentAdminRouter = router({
     .input(z.object({ id: z.number(), name: z.string().min(1).optional(), commissionPct: z.number().int().min(0).max(100).optional(), isActive: z.boolean().optional(), markPaid: z.boolean().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      if (!isPlatformAdmin(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required for global affiliate records." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, markPaid, ...updates } = input;

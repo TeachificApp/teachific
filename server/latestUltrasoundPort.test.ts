@@ -1469,6 +1469,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(salesSlice).toContain("Order does not belong to the active organization.");
   });
 
+  it("restricts legacy global affiliate records to platform administrators until they carry organization ownership", () => {
+    const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const affiliateSlice = enrollmentRouterSource.slice(enrollmentRouterSource.indexOf("listAffiliates"), enrollmentRouterSource.indexOf("// ── Analytics"));
+    expect(affiliateSlice).toContain("Platform admin access required for global affiliate records.");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
