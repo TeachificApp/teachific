@@ -1441,6 +1441,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mergeSlice).toContain("assertPlatformAdmin(ctx.user.role);");
   });
 
+  it("requires active-organization target-user membership for profile and password actions and platform authority for global roles", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    const profileSlice = adminUserRouterSource.slice(adminUserRouterSource.indexOf("updateUserProfile"), adminUserRouterSource.indexOf("// ─── Brand Memberships"));
+    const appRoleSlice = adminUserRouterSource.slice(adminUserRouterSource.indexOf("getUserAppRoles"), adminUserRouterSource.indexOf("// ─── Profile management"));
+    expect(profileSlice).toContain("requireActiveOrgUserMembership(ctx, userId)");
+    expect(profileSlice).toContain("requireActiveOrgUserMembership(ctx, input.userId)");
+    expect(appRoleSlice).toContain("assertPlatformAdmin(ctx.user.role);");
+    expect(adminUserRouterSource.slice(adminUserRouterSource.indexOf("grantBrandMembership"))).toContain("assertPlatformAdmin(ctx.user.role);");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

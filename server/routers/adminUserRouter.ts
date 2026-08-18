@@ -361,6 +361,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [user] = await db
@@ -379,6 +380,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), role: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Handle special additive roles
@@ -399,6 +401,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), role: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (input.role === "premium_user") {
@@ -416,6 +419,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), role: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const validRoles = ["site_owner", "site_admin", "org_super_admin", "org_admin", "instructor", "affiliate", "member", "user"];
@@ -443,9 +447,8 @@ export const adminUserRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { userId, ...fields } = input;
+      const { db } = await requireActiveOrgUserMembership(ctx, userId);
       const updateData: Record<string, any> = {};
       if (fields.displayName !== undefined) updateData.displayName = fields.displayName;
       if (fields.firstName !== undefined) updateData.firstName = fields.firstName;
@@ -466,8 +469,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
       if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "User has no email address" });
@@ -488,8 +490,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), newPassword: z.string().min(8) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [user] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, input.userId)).limit(1);
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
       const passwordHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS);
@@ -509,6 +510,7 @@ export const adminUserRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Grant premium access within the org context
@@ -520,6 +522,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), brand: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(users).set({ isPremium: false }).where(eq(users.id, input.userId));
