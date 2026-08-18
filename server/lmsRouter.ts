@@ -846,6 +846,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getWebinarsByOrg(orgId);
       }),
     get: protectedProcedure
@@ -862,6 +863,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), title: z.string(), slug: z.string().optional(), scheduledAt: z.date().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const slug = input.slug ?? input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
         return createWebinar({ orgId, title: input.title, slug, scheduledAt: input.scheduledAt ?? null });
       }),
@@ -888,16 +890,21 @@ export const lmsRouter = router({
     register: publicProcedure
       .input(z.object({ webinarId: z.number(), orgId: z.number(), firstName: z.string().optional(), lastName: z.string().optional(), email: z.string().email(), userId: z.number().optional() }))
       .mutation(async ({ input }) => {
+        const webinar = await getWebinarById(input.webinarId);
+        if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
+        if (webinar.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Webinar does not belong to the requested organization" });
         return createWebinarRegistration({ webinarId: input.webinarId, orgId: input.orgId, firstName: input.firstName ?? null, lastName: input.lastName ?? null, email: input.email, userId: input.userId ?? null } as any);
       }),
     getRegistrations: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireWebinarAccess(ctx, input.webinarId);
         return getWebinarRegistrations(input.webinarId);
       }),
     startSession: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireWebinarAccess(ctx, input.webinarId);
         const token = nanoid(32);
         return createWebinarSession({ webinarId: input.webinarId, sessionToken: token, startedAt: new Date() });
       }),
@@ -911,18 +918,21 @@ export const lmsRouter = router({
       }),
     getFunnelSteps: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireWebinarAccess(ctx, input.webinarId);
         return getWebinarFunnelSteps(input.webinarId);
       }),
     saveFunnelSteps: protectedProcedure
       .input(z.object({ webinarId: z.number(), steps: z.array(z.any()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireWebinarAccess(ctx, input.webinarId);
         await upsertWebinarFunnelSteps(input.webinarId, input.steps);
         return { ok: true };
       }),
     getStats: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireWebinarAccess(ctx, input.webinarId);
         return getWebinarStats(input.webinarId);
       }),
   }),

@@ -1103,6 +1103,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((listSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
   });
 
+  it("requires organization-admin ownership for legacy LMS webinar administration", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const webinarSource = routerSource.slice(
+      routerSource.indexOf("webinars: router({"),
+      routerSource.indexOf("// ── Members")
+    );
+    expect(webinarSource).toContain("Webinar does not belong to the requested organization");
+    expect((webinarSource.match(/await requireWebinarAccess\(ctx, input\.webinarId\);/g) ?? []).length).toBeGreaterThanOrEqual(7);
+    expect((webinarSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(
