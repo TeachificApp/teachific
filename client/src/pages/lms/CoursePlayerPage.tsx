@@ -597,6 +597,7 @@ export default function CoursePlayerPage() {
   const { data: progressData } = trpc.lms.enrollments.progress.useQuery({ courseId }, { enabled: !!user });
   const courseOrgId = course?.orgId;
   const { data: theme } = trpc.lms.themes.get.useQuery({ orgId: courseOrgId! }, { enabled: !!courseOrgId });
+  const { data: cmeStatus } = trpc.cme.getCmeStatus.useQuery({ orgId: courseOrgId! }, { enabled: !!user && !!courseOrgId });
 
   const updateProgress = trpc.lms.enrollments.updateLessonProgress.useMutation();
   const utils = trpc.useUtils();
@@ -609,6 +610,8 @@ export default function CoursePlayerPage() {
   const currentIndex = allLessons.findIndex((l: any) => l.id === currentLesson?.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+  const isCmeCourse = Boolean(cmeStatus?.enabled && course?.creditHours);
+  const shouldAutoCompleteCmeLesson = Boolean(isCmeCourse && currentLesson && !["video", "quiz"].includes(currentLesson.type));
 
   // Discussions for current lesson
   const { data: lessonDiscussions, refetch: refetchDiscussions } = trpc.lms.discussions.list.useQuery(
@@ -805,6 +808,15 @@ export default function CoursePlayerPage() {
     }
   };
 
+  const handleNextLesson = () => {
+    if (!nextLesson) return;
+    if (shouldAutoCompleteCmeLesson && getLessonStatus(currentLesson?.id ?? 0) !== "completed") {
+      void handleComplete();
+      return;
+    }
+    handleLessonClick(nextLesson.id);
+  };
+
   const overallProgress = progressData?.enrollment?.progressPct || 0;
   const showCompleteButton = course?.showCompleteButton !== false; // default true
   const showLessonIcons = course?.playerShowLessonIcons !== false; // default true
@@ -886,24 +898,24 @@ export default function CoursePlayerPage() {
               <span className="hidden sm:inline ml-1">Previous</span>
             </Button>
           )}
-          {showCompleteButton && (
+          {(showCompleteButton || shouldAutoCompleteCmeLesson) && (
             <Button
               size="sm"
               style={{ backgroundColor: primaryColor }}
               className="text-white"
-              onClick={handleComplete}
+              onClick={shouldAutoCompleteCmeLesson ? handleNextLesson : handleComplete}
               disabled={updateProgress.isPending}
             >
               <CheckCircle2 className="h-4 w-4 mr-1" />
-              {nextLesson ? "Complete & Continue" : "Complete"}
+              {shouldAutoCompleteCmeLesson ? (nextLesson ? "Continue" : "Complete") : (nextLesson ? "Complete & Continue" : "Complete")}
               {nextLesson && <ChevronRight className="h-4 w-4 ml-1" />}
             </Button>
           )}
-          {!showCompleteButton && nextLesson && (
+          {!showCompleteButton && !shouldAutoCompleteCmeLesson && nextLesson && (
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleLessonClick(nextLesson.id)}
+              onClick={handleNextLesson}
             >
               Next <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
@@ -1179,7 +1191,7 @@ export default function CoursePlayerPage() {
                   {nextLesson && (
                     <button
                       onClick={() => {
-                        if (showCompleteButton) handleComplete();
+                        if (showCompleteButton || shouldAutoCompleteCmeLesson) handleNextLesson();
                         else handleLessonClick(nextLesson.id);
                       }}
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"

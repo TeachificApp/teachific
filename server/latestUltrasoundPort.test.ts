@@ -1350,6 +1350,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderSource).toContain("Course Assessment ({aiPreview.courseQuiz.questions.length} questions)");
   });
 
+  it("auto-completes ordinary CME lessons only when the owning organization has CME enabled", () => {
+    const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayerPage.tsx", import.meta.url), "utf8");
+    expect(coursePlayerSource).toContain("trpc.cme.getCmeStatus.useQuery");
+    expect(coursePlayerSource).toContain("cmeStatus?.enabled && course?.creditHours");
+    expect(coursePlayerSource).toContain('!["video", "quiz"].includes(currentLesson.type)');
+    expect(coursePlayerSource).toContain("shouldAutoCompleteCmeLesson");
+    expect(coursePlayerSource).toContain("void handleComplete()");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
