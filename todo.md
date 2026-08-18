@@ -5446,6 +5446,7 @@
 - [x] Apply the active organization theme to the remaining Webinar administration watch-time statistic accent
 - [x] Apply the active organization theme to remaining Bundles administration statistic accents
 - [x] Require organization-admin ownership for legacy LMS media uploads, external imports, folders, and bulk or single-item management actions
+- [x] Require organization-admin ownership for legacy LMS clips, captions, transcription, speech, and recording procedures
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

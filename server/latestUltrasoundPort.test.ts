@@ -1046,6 +1046,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);");
     expect(mediaSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);");
     expect(mediaSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, folder.orgId);");
+    expect(mediaSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, clip.orgId);");
+    expect(mediaSource).toContain("orgId: mediaItem.orgId,");
+    expect(mediaSource).toContain("createdBy: ctx.user.id,");
+    expect(mediaSource).toContain("const fallbackOrgId = input.orgId ?? await requireOrgId(ctx.user.id);");
     expect(mediaSource).toContain("One or more media items were not found");
     expect((mediaSource.match(/requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });

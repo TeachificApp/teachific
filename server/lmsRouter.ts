@@ -2153,12 +2153,15 @@ export const lmsRouter = router({
       }),
     listClips: protectedProcedure
       .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) return [];
-        const { videoClips } = await import("../drizzle/schema");
+        const { videoClips, orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         return db.select().from(videoClips).where(eq(videoClips.mediaItemId, input.mediaItemId));
       }),
     saveClip: protectedProcedure
@@ -2172,20 +2175,24 @@ export const lmsRouter = router({
         startSeconds: z.number().optional(),
         endSeconds: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const startSec = input.startSec ?? input.startSeconds ?? 0;
         const endSec = input.endSec ?? input.endSeconds ?? 0;
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { videoClips } = await import("../drizzle/schema");
+        const { videoClips, orgMediaLibrary } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         const [result] = await db.insert(videoClips).values({
           mediaItemId: input.mediaItemId,
           label: input.label,
           startSec,
           endSec,
-          orgId: input.orgId ?? 0,
-          createdBy: 0,
+          orgId: mediaItem.orgId,
+          createdBy: ctx.user.id,
         }).$returningId();
         return { ok: true, id: result.id };
       }),
@@ -2201,40 +2208,48 @@ export const lmsRouter = router({
         endSeconds: z.number().optional(),
         sourceUrl: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         // Server-side clip extraction is not supported (requires ffmpeg).
         // Return the source URL so the frontend can download the full video.
         // The frontend will handle trimming client-side or the user can download.
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         const sourceUrl = input.sourceUrl ?? "";
         if (!sourceUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No source URL provided for clip extraction" });
         return { ok: true, url: sourceUrl };
       }),
     deleteClip: protectedProcedure
       .input(z.object({ id: z.number(), orgId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { videoClips } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [clip] = await db.select().from(videoClips).where(eq(videoClips.id, input.id)).limit(1);
+        if (!clip) throw new TRPCError({ code: "NOT_FOUND", message: "Video clip not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, clip.orgId);
         await db.delete(videoClips).where(eq(videoClips.id, input.id));
         return { ok: true };
       }),
     generateCaptions: protectedProcedure
       .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional(), fileUrl: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        // Get the media item URL
-        let audioUrl = input.fileUrl;
-        if (!audioUrl) {
-          const [item] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-          if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-          audioUrl = item.url;
-        }
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
+        const audioUrl = input.fileUrl ?? mediaItem.url;
         if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL available" });
         // Transcribe with word-level timestamps
         const { transcribeAudio } = await import("./_core/voiceTranscription");
@@ -2277,12 +2292,15 @@ export const lmsRouter = router({
         language: z.string().optional(),
         duration: z.number().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
+        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         const fmtVtt = (sec: number) => {
           const h = Math.floor(sec / 3600);
           const m = Math.floor((sec % 3600) / 60);
@@ -2323,17 +2341,20 @@ export const lmsRouter = router({
         orgId: z.number().optional(),
         fileUrl: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         // Delegate to generateCaptions which handles transcription + VTT generation
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const fallbackOrgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, fallbackOrgId);
         let audioUrl = input.fileUrl ?? null;
         if (!audioUrl && input.mediaItemId) {
           const [item] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
           if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
+          await requireOrgAdmin(ctx.user.id, ctx.user.role, item.orgId);
           audioUrl = item.url;
         }
         if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL or media item ID provided" });
@@ -2355,6 +2376,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const { generateSpeech: tts } = await import("./_core/textToSpeech");
         const { buffer, mimeType } = await tts({
           text: input.text,
@@ -2388,6 +2410,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
