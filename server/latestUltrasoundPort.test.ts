@@ -1380,6 +1380,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(richTextEditorSource).toContain("maxHeight = 600");
   });
 
+  it("uses organization theme tokens for Question Bank package importer controls", () => {
+    const importPageSource = readFileSync(new URL("../client/src/pages/QuestionBankImportPage.tsx", import.meta.url), "utf8");
+    expect(importPageSource).toContain("bg-primary border-primary text-primary-foreground");
+    expect(importPageSource).toContain("border-primary bg-primary/5 text-primary");
+    expect(importPageSource).not.toContain("teal-");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
