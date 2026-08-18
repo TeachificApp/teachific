@@ -651,6 +651,8 @@ export const adminUserRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [enrollment] = await db.select().from(lmsEnrollments).where(eq(lmsEnrollments.id, input.enrollmentId)).limit(1);
       if (!enrollment) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || enrollment.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment does not belong to the active organization." });
       if (enrollment.stripeSubscriptionId) {
         try {
           const { getStripe } = await import("../stripePlans");
@@ -672,6 +674,8 @@ export const adminUserRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [order] = await db.select().from(lmsOrders).where(eq(lmsOrders.id, input.orderId)).limit(1);
       if (!order) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || order.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Order does not belong to the active organization." });
       if (order.stripeSubscriptionId) {
         try {
           const { getStripe } = await import("../stripePlans");
@@ -689,6 +693,7 @@ export const adminUserRouter = router({
     .input(z.object({ subscriptionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       try {
         const { getStripe } = await import("../stripePlans");
         const stripe = getStripe();
@@ -703,6 +708,7 @@ export const adminUserRouter = router({
     .input(z.object({ subscriptionId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       try {
         const { getStripe } = await import("../stripePlans");
         const stripe = getStripe();
@@ -723,8 +729,15 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [mm] = await db.select().from(membershipMembers).where(eq(membershipMembers.id, input.membershipMemberId)).limit(1);
+      const [mm] = await db
+        .select({ id: membershipMembers.id, orgId: memberships.orgId })
+        .from(membershipMembers)
+        .leftJoin(memberships, eq(membershipMembers.membershipId, memberships.id))
+        .where(eq(membershipMembers.id, input.membershipMemberId))
+        .limit(1);
       if (!mm) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || mm.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Membership does not belong to the active organization." });
       if (mm.stripeSubscriptionId) {
         try {
           const { getStripe } = await import("../stripePlans");
@@ -744,6 +757,15 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [membership] = await db
+        .select({ orgId: memberships.orgId })
+        .from(membershipMembers)
+        .leftJoin(memberships, eq(membershipMembers.membershipId, memberships.id))
+        .where(eq(membershipMembers.id, input.membershipMemberId))
+        .limit(1);
+      if (!membership) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || membership.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Membership does not belong to the active organization." });
       await db.update(membershipMembers).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(membershipMembers.id, input.membershipMemberId));
       return { success: true };
     }),
@@ -758,6 +780,7 @@ export const adminUserRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       try {
         const { getStripe } = await import("../stripePlans");
         const stripe = getStripe();
@@ -875,8 +898,13 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No org context" });
+      const { orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const [enrollment] = await db
+        .select({ orgId: lmsEnrollments.orgId, courseId: lmsEnrollments.courseId })
+        .from(lmsEnrollments)
+        .where(and(eq(lmsEnrollments.id, input.enrollmentId), eq(lmsEnrollments.userId, input.userId)))
+        .limit(1);
+      if (!enrollment || enrollment.orgId !== orgId || enrollment.courseId !== input.courseId) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment does not belong to the active organization and course." });
       // Check if cert already exists
       const [existing] = await db
         .select({ id: lmsCertificates.id })
@@ -902,6 +930,10 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [certificate] = await db.select({ orgId: lmsCertificates.orgId }).from(lmsCertificates).where(eq(lmsCertificates.id, input.certificateId)).limit(1);
+      if (!certificate) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || certificate.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Certificate does not belong to the active organization." });
       await db.delete(lmsCertificates).where(eq(lmsCertificates.id, input.certificateId));
       return { success: true };
     }),
@@ -912,6 +944,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), page: z.number().default(1), pageSize: z.number().default(25) }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const offset = (input.page - 1) * input.pageSize;
@@ -933,6 +966,7 @@ export const adminUserRouter = router({
     .input(z.object({ emailLogId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [log] = await db.select().from(emailSendLog).where(eq(emailSendLog.id, input.emailLogId)).limit(1);

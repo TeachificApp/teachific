@@ -5495,6 +5495,7 @@
 - [x] Apply the active organization theme to the LMS administration cohort assignment badge
 - [x] Scope organization-admin user detail views to the active organization and prevent cross-organization enrollment or membership disclosure
 - [x] Require active-organization ownership for user administration workshop, activity, progress, login-history, and email-alias procedures
+- [x] Require active-organization ownership for user administration membership cancellation, refunds, certificate issuance, and email history
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

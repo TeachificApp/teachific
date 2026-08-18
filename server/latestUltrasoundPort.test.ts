@@ -1411,6 +1411,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminUserRouterSource).toContain("Email alias not found.");
   });
 
+  it("requires active-organization ownership for user administration membership and certificate actions and platform authority for raw Stripe actions", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    expect(adminUserRouterSource).toContain("Enrollment does not belong to the active organization.");
+    expect(adminUserRouterSource).toContain("Order does not belong to the active organization.");
+    expect(adminUserRouterSource).toContain("Membership does not belong to the active organization.");
+    expect(adminUserRouterSource).toContain("Enrollment does not belong to the active organization and course.");
+    expect(adminUserRouterSource).toContain("Certificate does not belong to the active organization.");
+    expect(adminUserRouterSource).toContain("assertPlatformAdmin(ctx.user.role);");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
