@@ -1393,6 +1393,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).not.toContain("bg-purple-100 text-purple-700 border border-purple-200");
   });
 
+  it("scopes organization-admin user detail records to the active organization", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    expect(adminUserRouterSource).toContain("This user is not a member of the active organization.");
+    expect(adminUserRouterSource).toContain("eq(workshops.orgId, orgId)");
+    expect(adminUserRouterSource).toContain("eq(memberships.orgId, orgId)");
+    expect(adminUserRouterSource).toContain("eq(bundles.orgId, orgId)");
+    expect(adminUserRouterSource).toContain("eq(orgMembers.orgId, orgId)");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

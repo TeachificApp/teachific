@@ -48,11 +48,14 @@ import {
   membershipMembers,
   membershipPlans,
   membershipSubscriptions,
+  memberships,
   emailSendLog,
   userLoginEvents,
   memberActivityEvents,
   userEmailAliases,
   bundleEnrollments,
+  bundles,
+  workshops,
 } from "../../drizzle/schema";
 import { sendEmail, buildPasswordResetEmail } from "../_core/email";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
@@ -94,7 +97,14 @@ export const adminUserRouter = router({
       const orgMemberRows = await db
         .select({ orgId: orgMembers.orgId, role: orgMembers.role })
         .from(orgMembers)
-        .where(eq(orgMembers.userId, input.userId));
+        .where(
+          orgId
+            ? and(eq(orgMembers.userId, input.userId), eq(orgMembers.orgId, orgId))
+            : eq(orgMembers.userId, input.userId)
+        );
+      if (orgId && orgMemberRows.length === 0) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This user is not a member of the active organization." });
+      }
 
       // LMS enrollments with course info
       const enrollmentRows = await db
@@ -177,7 +187,12 @@ export const adminUserRouter = router({
         })
         .from(workshopEnrollments)
         .leftJoin(workshopInstances, eq(workshopEnrollments.instanceId, workshopInstances.id))
-        .where(eq(workshopEnrollments.userId, input.userId))
+        .leftJoin(workshops, eq(workshopEnrollments.workshopId, workshops.id))
+        .where(
+          orgId
+            ? and(eq(workshopEnrollments.userId, input.userId), eq(workshops.orgId, orgId))
+            : eq(workshopEnrollments.userId, input.userId)
+        )
         .orderBy(desc(workshopEnrollments.createdAt));
 
       // Membership members (native memberships)
@@ -192,7 +207,12 @@ export const adminUserRouter = router({
           stripeSubscriptionId: membershipMembers.stripeSubscriptionId,
         })
         .from(membershipMembers)
-        .where(eq(membershipMembers.userId, input.userId))
+        .leftJoin(memberships, eq(membershipMembers.membershipId, memberships.id))
+        .where(
+          orgId
+            ? and(eq(membershipMembers.userId, input.userId), eq(memberships.orgId, orgId))
+            : eq(membershipMembers.userId, input.userId)
+        )
         .orderBy(desc(membershipMembers.joinedAt));
 
       // Membership plan subscriptions
@@ -220,7 +240,12 @@ export const adminUserRouter = router({
       const bundleEnrollRows = await db
         .select()
         .from(bundleEnrollments)
-        .where(eq(bundleEnrollments.userId, input.userId))
+        .leftJoin(bundles, eq(bundleEnrollments.bundleId, bundles.id))
+        .where(
+          orgId
+            ? and(eq(bundleEnrollments.userId, input.userId), eq(bundles.orgId, orgId))
+            : eq(bundleEnrollments.userId, input.userId)
+        )
         .orderBy(desc(bundleEnrollments.enrolledAt));
 
       // Email aliases

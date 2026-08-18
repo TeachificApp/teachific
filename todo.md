@@ -5493,6 +5493,7 @@
 - [x] Verify and complete resizable-height and sticky editing behavior for the shared rich-text editor across authoring surfaces
 - [x] Apply the active organization theme to Question Bank package importer controls and progress indicators
 - [x] Apply the active organization theme to the LMS administration cohort assignment badge
+- [x] Scope organization-admin user detail views to the active organization and prevent cross-organization enrollment or membership disclosure
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
