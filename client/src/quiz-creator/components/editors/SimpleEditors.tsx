@@ -5,26 +5,38 @@ import type { TfData, FillBlankData, ShortAnswerData, ImageChoiceData } from "..
 // ─── True / False ─────────────────────────────────────────────────────────────
 export function TfEditor({ data, onChange }: { data: TfData; onChange: (d: TfData) => void }) {
   return (
-    <div className="flex gap-4">
-      {[true, false].map((val) => (
-        <label
-          key={String(val)}
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 cursor-pointer select-none transition-all ${
-            data.correct === val
-              ? "border-teal-500 bg-teal-50 text-teal-700 font-semibold"
-              : "border-gray-200 text-gray-600 hover:border-gray-300"
-          }`}
-        >
-          <input
-            type="radio"
-            name="tf"
-            checked={data.correct === val}
-            onChange={() => onChange({ correct: val })}
-            className="sr-only"
-          />
-          {val ? "✓ True" : "✗ False"}
-        </label>
-      ))}
+    <div className="space-y-4">
+      <div className="flex gap-4">
+        {[true, false].map((val) => (
+          <label
+            key={String(val)}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl border-2 cursor-pointer select-none transition-all ${
+              data.correct === val
+                ? "border-teal-500 bg-teal-50 text-teal-700 font-semibold"
+                : "border-gray-200 text-gray-600 hover:border-gray-300"
+            }`}
+          >
+            <input
+              type="radio"
+              name="tf"
+              checked={data.correct === val}
+              onChange={() => onChange({ ...data, correct: val })}
+              className="sr-only"
+            />
+            {val ? "✓ True" : "✗ False"}
+          </label>
+        ))}
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-500">Feedback for True</label>
+          <textarea value={data.trueFeedback ?? ""} onChange={(e) => onChange({ ...data, trueFeedback: e.target.value })} rows={2} placeholder="Optional feedback when True is selected" className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-gray-500">Feedback for False</label>
+          <textarea value={data.falseFeedback ?? ""} onChange={(e) => onChange({ ...data, falseFeedback: e.target.value })} rows={2} placeholder="Optional feedback when False is selected" className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+        </div>
+      </div>
     </div>
   );
 }

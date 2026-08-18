@@ -1321,6 +1321,23 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).not.toContain("iHeartEcho");
   });
 
+  it("supports per-question feedback modes in Teachific Quiz Creator authoring and preview", () => {
+    const questionTypesSource = readFileSync(new URL("../client/src/quiz-creator/types/quiz.ts", import.meta.url), "utf8");
+    const quizStoreSource = readFileSync(new URL("../client/src/quiz-creator/store/quizStore.ts", import.meta.url), "utf8");
+    const questionEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionEditor.tsx", import.meta.url), "utf8");
+    const mcqEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/editors/McqEditor.tsx", import.meta.url), "utf8");
+    const previewSource = readFileSync(new URL("../client/src/quiz-creator/components/QuizPreview.tsx", import.meta.url), "utf8");
+    expect(questionTypesSource).toContain('feedbackMode?: "question" | "answer"');
+    expect(questionTypesSource).toContain("trueFeedback?: string");
+    expect(questionTypesSource).toContain("feedbackHtml?: string");
+    expect(quizStoreSource).toContain('feedbackMode: "answer"');
+    expect(questionEditorSource).toContain("Question-based");
+    expect(questionEditorSource).toContain("Answer-based");
+    expect(mcqEditorSource).toContain("Optional feedback for option");
+    expect(previewSource).toContain("feedbackQuestionId");
+    expect(previewSource).toContain('quiz.meta.feedbackMode === "immediate"');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

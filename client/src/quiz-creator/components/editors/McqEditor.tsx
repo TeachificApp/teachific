@@ -19,6 +19,10 @@ export function McqEditor({ data, onChange }: Props) {
     onChange({ ...data, choices: data.choices.map((c) => (c.id === id ? { ...c, text } : c)) });
   };
 
+  const updateFeedback = (id: string, feedback: string) => {
+    onChange({ ...data, choices: data.choices.map((c) => (c.id === id ? { ...c, feedback } : c)) });
+  };
+
   const addChoice = () => {
     onChange({
       ...data,
@@ -47,7 +51,8 @@ export function McqEditor({ data, onChange }: Props) {
 
       <div className="space-y-2">
         {data.choices.map((choice, i) => (
-          <div key={choice.id} className="flex items-center gap-2 group">
+          <div key={choice.id} className="rounded-lg border border-gray-100 p-2.5 space-y-2 group">
+            <div className="flex items-center gap-2">
             <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
             <input
               type={data.multiSelect ? "checkbox" : "radio"}
@@ -70,6 +75,14 @@ export function McqEditor({ data, onChange }: Props) {
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
+            </div>
+            <textarea
+              value={choice.feedback ?? ""}
+              onChange={(e) => updateFeedback(choice.id, e.target.value)}
+              rows={2}
+              placeholder={`Optional feedback for option ${String.fromCharCode(65 + i)}`}
+              className="ml-6 w-[calc(100%-1.5rem)] px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none"
+            />
           </div>
         ))}
       </div>
@@ -83,7 +96,7 @@ export function McqEditor({ data, onChange }: Props) {
       </button>
 
       <p className="text-xs text-gray-400">
-        {data.multiSelect ? "Check all correct answers" : "Select the one correct answer"}
+        {data.multiSelect ? "Check all correct answers" : "Select the one correct answer"}. Option feedback is shown when the question uses answer-based feedback.
       </p>
     </div>
   );

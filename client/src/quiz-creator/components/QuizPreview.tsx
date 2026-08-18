@@ -419,6 +419,7 @@ export function QuizPreview({ onClose }: Props) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [feedbackQuestionId, setFeedbackQuestionId] = useState<string | null>(null);
   const [questionPath, setQuestionPath] = useState<string[]>([]);
   const branchingEnabled = questions.some((qq) => qq.branchRules && qq.branchRules.length > 0);
 
@@ -474,6 +475,39 @@ export function QuizPreview({ onClose }: Props) {
 
   if (!q) return null;
 
+  const isCorrect = (question: QuizQuestion, answer: Answer | undefined) => {
+    if (question.type === "mcq" || question.type === "image_choice") {
+      const data = question.data as McqData;
+      const correctIds = data.choices.filter((choice) => choice.correct).map((choice) => choice.id);
+      const selected = (answer as string[]) ?? [];
+      return JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
+    }
+    if (question.type === "tf") return answer === (question.data as TfData).correct;
+    return false;
+  };
+
+  const feedback = feedbackQuestionId === q.id ? (() => {
+    const correct = isCorrect(q, answers[q.id]);
+    const mode = q.feedbackMode ?? "answer";
+    const shared = correct ? q.feedback?.correct : q.feedback?.incorrect;
+    if (mode === "question") {
+      return { correct, selected: "", rationale: shared || q.explanation };
+    }
+    if (q.type === "mcq" || q.type === "image_choice") {
+      const data = q.data as McqData;
+      const selectedIds = (answers[q.id] as string[]) ?? [];
+      const selected = data.choices.filter((choice) => selectedIds.includes(choice.id)).map((choice) => choice.feedback ?? "").filter(Boolean).join("\n\n");
+      const rationale = !correct ? data.choices.filter((choice) => choice.correct).map((choice) => choice.feedback ?? "").filter(Boolean).join("\n\n") : "";
+      return { correct, selected, rationale: rationale || shared || q.explanation };
+    }
+    if (q.type === "tf") {
+      const data = q.data as TfData;
+      const selected = answers[q.id] === true ? data.trueFeedback : answers[q.id] === false ? data.falseFeedback : "";
+      return { correct, selected: selected ?? "", rationale: shared || q.explanation };
+    }
+    return { correct, selected: "", rationale: shared || q.explanation };
+  })() : null;
+
   if (submitted) {
     const score = calcScore();
     const pct = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
@@ -489,7 +523,7 @@ export function QuizPreview({ onClose }: Props) {
           <p className="text-sm text-gray-400 mb-6">Passing score: {quiz.meta.passingScore}%</p>
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => { setSubmitted(false); setAnswers({}); setCurrentIdx(0); }}
+              onClick={() => { setSubmitted(false); setAnswers({}); setCurrentIdx(0); setFeedbackQuestionId(null); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
             >
               <RotateCcw className="w-4 h-4" /> Retry
@@ -560,6 +594,14 @@ export function QuizPreview({ onClose }: Props) {
           {q.type === "drag_words" && <DragWordsQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "likert" && <LikertQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "essay" && <EssayQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} data={q.data as EssayData} />}
+          {feedback && (
+            <div className={`rounded-xl border p-4 ${feedback.correct ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+              <p className={`text-sm font-semibold ${feedback.correct ? "text-emerald-800" : "text-amber-800"}`}>{feedback.correct ? "Correct" : "Review this response"}</p>
+              {feedback.selected && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{feedback.selected}</p>}
+              {feedback.rationale && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{feedback.rationale}</p>}
+              {!feedback.selected && !feedback.rationale && <p className="mt-2 text-sm text-gray-600">No feedback has been added for this response.</p>}
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
@@ -589,6 +631,11 @@ export function QuizPreview({ onClose }: Props) {
 
           {(() => {
             const handleNext = () => {
+              if (quiz.meta.feedbackMode === "immediate" && feedbackQuestionId !== q.id) {
+                setFeedbackQuestionId(q.id);
+                return;
+              }
+              setFeedbackQuestionId(null);
               if (branchingEnabled && q.branchRules && q.branchRules.length > 0) {
                 setQuestionPath((p) => [...p, q.id]);
                 // Evaluate rules: first matching rule wins

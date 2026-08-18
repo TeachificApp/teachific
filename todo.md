@@ -5482,6 +5482,7 @@
 - [x] Replace legacy app-brand labels in platform user subscription details with Teachific platform wording
 - [x] Replace legacy brand-navigation configuration labels with generic Teachific platform wording while preserving routes
 - [x] Remove the remaining legacy brand comment from reusable navigation configuration
+- [x] Migrate per-question feedback modes into Teachific Quiz Creator with active-organization styling and organization-scoped data
 - [x] Replace legacy brand-specific widget embed identifiers and message names with generic Teachific-compatible identifiers
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

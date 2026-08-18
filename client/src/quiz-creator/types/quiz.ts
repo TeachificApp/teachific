@@ -17,12 +17,14 @@ export type QuestionType =
   | "essay";
 
 export interface McqData {
-  choices: { id: string; text: string; correct: boolean; imageUrl?: string }[];
+  choices: { id: string; text: string; correct: boolean; imageUrl?: string; feedback?: string; feedbackHtml?: string }[];
   multiSelect: boolean;
 }
 
 export interface TfData {
   correct: boolean;
+  trueFeedback?: string;
+  falseFeedback?: string;
 }
 
 export interface MatchingPair {
@@ -80,6 +82,8 @@ export interface ImageChoiceOption {
   imageUrl: string; // data: URI or uploaded URL
   label: string;
   correct: boolean;
+  feedback?: string;
+  feedbackHtml?: string;
 }
 export interface ImageChoiceData {
   choices: ImageChoiceOption[];
@@ -215,6 +219,7 @@ export interface QuizQuestion {
   video?: { url: string; type?: string } | null;
   explanation: string;
   explanationHtml?: string;
+  feedbackMode?: "question" | "answer";
   feedback?: {
     correct?: string;
     incorrect?: string;

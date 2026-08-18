@@ -322,18 +322,34 @@ export function QuestionEditor() {
         </div>
       </div>
 
-      {/* Explanation / Feedback */}
+      {/* Feedback mode and question-level feedback */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Explanation / Feedback (shown after answer)
-        </label>
-        <textarea
-          value={question.explanation}
-          onChange={(e) => update({ explanation: e.target.value })}
-          rows={2}
-          placeholder="Optional: explain why the answer is correct..."
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none"
-        />
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Feedback mode</label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <button type="button" onClick={() => update({ feedbackMode: "question" })} className={`rounded-lg border p-3 text-left transition-colors ${question.feedbackMode === "question" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-teal-300"}`}>
+            <span className="block text-sm font-semibold text-gray-800">Question-based</span>
+            <span className="mt-1 block text-xs text-gray-600">Show the same correct or incorrect feedback for this question.</span>
+          </button>
+          <button type="button" onClick={() => update({ feedbackMode: "answer" })} className={`rounded-lg border p-3 text-left transition-colors ${(question.feedbackMode ?? "answer") === "answer" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-teal-300"}`}>
+            <span className="block text-sm font-semibold text-gray-800">Answer-based</span>
+            <span className="mt-1 block text-xs text-gray-600">Use feedback attached to the learner’s selected answer when available.</span>
+          </button>
+        </div>
+        {question.feedbackMode === "question" && (
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-emerald-700">Correct feedback</label>
+              <textarea value={question.feedback?.correct ?? ""} onChange={(e) => update({ feedback: { ...question.feedback, correct: e.target.value } })} rows={3} placeholder="Explain why this response is correct..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-red-700">Incorrect feedback</label>
+              <textarea value={question.feedback?.incorrect ?? ""} onChange={(e) => update({ feedback: { ...question.feedback, incorrect: e.target.value } })} rows={3} placeholder="Help learners understand an incorrect response..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+            </div>
+          </div>
+        )}
+        {(question.feedbackMode ?? "answer") === "answer" && <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2 text-xs text-teal-900">Add option feedback in the answer editor above. When no answer-specific feedback is available, the shared explanation below is shown.</p>}
+        <label className="mt-4 block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Why the correct answer is correct</label>
+        <textarea value={question.explanation} onChange={(e) => update({ explanation: e.target.value })} rows={2} placeholder="Optional: explain why the answer is correct..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
       </div>
 
       {/* Branching / Conditional Logic */}
