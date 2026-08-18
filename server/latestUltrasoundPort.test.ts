@@ -1359,6 +1359,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(coursePlayerSource).toContain("void handleComplete()");
   });
 
+  it("supports native hosting, Question Bank import, or both for SCORM and quiz packages", () => {
+    const importPageSource = readFileSync(new URL("../client/src/pages/QuestionBankImportPage.tsx", import.meta.url), "utf8");
+    const fileDetailSource = readFileSync(new URL("../client/src/pages/FileDetailPage.tsx", import.meta.url), "utf8");
+    expect(importPageSource).toContain('importMode === "native-only" || importMode === "both"');
+    expect(importPageSource).toContain('importMode === "bank-only" || importMode === "both"');
+    expect(importPageSource).toContain('Host & Import ${selectedIndices.size} Question');
+    expect(importPageSource).toContain("confirm-native");
+    expect(fileDetailSource).toContain("Save to Question Bank");
+    expect(fileDetailSource).toContain("extract-from-package");
+    expect(fileDetailSource).toContain("originalZipKey");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
