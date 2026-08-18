@@ -1209,6 +1209,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetManagerSource).not.toContain("ultrasound-widget-resize");
   });
 
+  it("resolves widget administration from the active organization rather than a fallback membership", () => {
+    const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
+    const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
+    expect(widgetRouterSource).toContain("const widgetOrgInputSchema = z.object({ orgId: z.number().int().positive() });");
+    expect(widgetRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(widgetRouterSource).not.toContain("getOrgIdForUserWithFallback");
+    expect(widgetManagerSource).toContain("const { orgId } = useOrgScope();");
+    expect(widgetManagerSource).toContain("trpc.widgetAdmin.list.useQuery(widgetOrgInput");
+    expect(widgetManagerSource).toContain("regenMutation.mutate({ id: w.id, orgId });");
+  });
+
   it("requires organization-admin ownership before listing or revoking linked organizations", () => {
     const routersSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const linksSource = routersSource.slice(

@@ -6,7 +6,7 @@ import { eq, asc, desc, and, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import {
   embedWidgets,
   lmsCourses,
@@ -44,10 +44,14 @@ const widgetFormSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+const widgetOrgInputSchema = z.object({ orgId: z.number().int().positive() });
+const widgetScopedFormSchema = widgetFormSchema.extend({ orgId: z.number().int().positive() });
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
-async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  await requireOrgAdmin(ctx.user.id, ctx.user.role);
+async function resolveWidgetOrg(ctx: { user: { id: number; role: string } }, orgId: number) {
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return orgId;
 }
 
 function generateToken(): string {
@@ -59,12 +63,10 @@ function generateToken(): string {
 export const widgetAdminRouter = router({
 
   /** List all widgets for the current org */
-  list: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx);
+  list: protectedProcedure.input(widgetOrgInputSchema).query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-    if (!orgId) return [];
+    const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
     const rows = await db
       .select()
@@ -80,13 +82,11 @@ export const widgetAdminRouter = router({
 
   /** Get a single widget by id */
   getById: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(widgetOrgInputSchema.extend({ id: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
       const [row] = await db
         .select()
@@ -150,13 +150,11 @@ export const widgetAdminRouter = router({
 
   /** Create a new widget */
   create: protectedProcedure
-    .input(widgetFormSchema)
+    .input(widgetScopedFormSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+      const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
       const token = generateToken();
       const [result] = await db.insert(embedWidgets).values({
@@ -188,13 +186,11 @@ export const widgetAdminRouter = router({
 
   /** Update an existing widget */
   update: protectedProcedure
-    .input(widgetFormSchema.extend({ id: z.number().int().positive() }))
+    .input(widgetScopedFormSchema.extend({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN" });
+      const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
       const [existing] = await db
         .select({ id: embedWidgets.id })
@@ -225,13 +221,11 @@ export const widgetAdminRouter = router({
 
   /** Delete a widget */
   delete: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(widgetOrgInputSchema.extend({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN" });
+      const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
       const [existing] = await db
         .select({ id: embedWidgets.id })
@@ -246,13 +240,11 @@ export const widgetAdminRouter = router({
 
   /** Regenerate the public token for a widget */
   regenerateToken: protectedProcedure
-    .input(z.object({ id: z.number().int().positive() }))
+    .input(widgetOrgInputSchema.extend({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN" });
+      const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
       const [existing] = await db
         .select({ id: embedWidgets.id })
@@ -270,12 +262,10 @@ export const widgetAdminRouter = router({
    * List all content items for the widget content picker.
    * Returns a flat list of { id, type, title, coverImageUrl, slug? }
    */
-  listAllContent: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx);
+  listAllContent: protectedProcedure.input(widgetOrgInputSchema).query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-    if (!orgId) return [];
+    const orgId = await resolveWidgetOrg(ctx, input.orgId);
 
     const results: Array<{
       id: number;

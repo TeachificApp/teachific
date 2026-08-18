@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,17 +115,20 @@ function ContentPicker({
   onClose,
   selected,
   onSave,
+  orgId,
 }: {
   open: boolean;
   onClose: () => void;
   selected: WidgetItem[];
   onSave: (items: WidgetItem[]) => void;
+  orgId?: number;
 }) {
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState<WidgetItem[]>(selected);
   const [typeFilter, setTypeFilter] = useState<ItemType | "all">("all");
+  const widgetOrgInput = useMemo(() => ({ orgId: orgId ?? -1 }), [orgId]);
 
-  const { data: allContent = [], isLoading } = trpc.widgetAdmin.listAllContent.useQuery(undefined, { enabled: open });
+  const { data: allContent = [], isLoading } = trpc.widgetAdmin.listAllContent.useQuery(widgetOrgInput, { enabled: open && !!orgId });
 
   useEffect(() => { if (open) setDraft(selected); }, [open]);
 
@@ -211,21 +215,24 @@ function WidgetForm({
   onSubmit,
   onCancel,
   isLoading,
+  orgId,
 }: {
   initial: WidgetFormData;
   onSubmit: (data: WidgetFormData) => void;
   onCancel: () => void;
   isLoading: boolean;
+  orgId?: number;
 }) {
   const [form, setForm] = useState<WidgetFormData>(initial);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const widgetOrgInput = useMemo(() => ({ orgId: orgId ?? -1 }), [orgId]);
 
   function set<K extends keyof WidgetFormData>(key: K, value: WidgetFormData[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
   // Fetch all content for the selected-items display names
-  const { data: allContent = [] } = trpc.widgetAdmin.listAllContent.useQuery(undefined, { staleTime: 60_000 });
+  const { data: allContent = [] } = trpc.widgetAdmin.listAllContent.useQuery(widgetOrgInput, { enabled: !!orgId, staleTime: 60_000 });
   const contentMap = new Map(allContent.map(c => [`${c.type}:${c.id}`, c]));
 
   return (
@@ -393,6 +400,7 @@ function WidgetForm({
         onClose={() => setPickerOpen(false)}
         selected={form.items}
         onSave={items => set("items", items)}
+        orgId={orgId}
       />
 
       <div className="flex justify-end gap-2 pt-2 border-t">
@@ -413,6 +421,7 @@ function WidgetForm({
 
 export default function WidgetManager() {
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const utils = trpc.useUtils();
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -423,14 +432,16 @@ export default function WidgetManager() {
   const [mainTab, setMainTab] = useState<"content" | "included-items">("content");
   const [iiCopied, setIiCopied] = useState<string | null>(null);
   const [iiExpandedId, setIiExpandedId] = useState<string | null>(null);
+  const widgetOrgInput = useMemo(() => ({ orgId: orgId ?? -1 }), [orgId]);
+  const editingWidgetInput = useMemo(() => ({ id: editingId ?? -1, orgId: orgId ?? -1 }), [editingId, orgId]);
 
   const { data: memberships, isLoading: membershipsLoading } = trpc.membership.listAll.useQuery();
   const { data: bundlesData, isLoading: bundlesLoading } = trpc.bundlesAdmin.list.useQuery({ pageSize: 500 });
 
-  const { data: widgets, isLoading } = trpc.widgetAdmin.list.useQuery();
+  const { data: widgets, isLoading } = trpc.widgetAdmin.list.useQuery(widgetOrgInput, { enabled: !!orgId });
   const { data: editingWidget } = trpc.widgetAdmin.getById.useQuery(
-    { id: editingId! },
-    { enabled: !!editingId }
+    editingWidgetInput,
+    { enabled: !!editingId && !!orgId }
   );
 
   const createMutation = trpc.widgetAdmin.create.useMutation({
@@ -454,7 +465,11 @@ export default function WidgetManager() {
   });
 
   function handleSubmit(data: WidgetFormData) {
-    const payload = { ...data, items: data.items };
+    if (!orgId) {
+      toast.error("Choose an organization before managing widgets.");
+      return;
+    }
+    const payload = { ...data, items: data.items, orgId };
     if (mode === "create") {
       createMutation.mutate(payload);
     } else if (mode === "edit" && editingId) {
@@ -511,6 +526,7 @@ export default function WidgetManager() {
           onSubmit={handleSubmit}
           onCancel={() => { setMode("list"); setEditingId(null); }}
           isLoading={updateMutation.isPending}
+          orgId={orgId}
         />
       </div>
     );
@@ -531,6 +547,7 @@ export default function WidgetManager() {
           onSubmit={handleSubmit}
           onCancel={() => setMode("list")}
           isLoading={createMutation.isPending}
+          orgId={orgId}
         />
       </div>
     );
@@ -801,14 +818,20 @@ export default function WidgetManager() {
                   </Button>
                   <Button
                     variant="outline" size="sm"
-                    onClick={() => { if (confirm("Regenerate token? Existing embed codes will stop working.")) regenMutation.mutate({ id: w.id }); }}
+                    onClick={() => {
+                      if (!orgId) return toast.error("Choose an organization before managing widgets.");
+                      if (confirm("Regenerate token? Existing embed codes will stop working.")) regenMutation.mutate({ id: w.id, orgId });
+                    }}
                     title="Regenerate token"
                   >
                     <RefreshCw className="w-4 h-4" />
                   </Button>
                   <Button
                     variant="outline" size="sm"
-                    onClick={() => { if (confirm("Delete this widget?")) deleteMutation.mutate({ id: w.id }); }}
+                    onClick={() => {
+                      if (!orgId) return toast.error("Choose an organization before managing widgets.");
+                      if (confirm("Delete this widget?")) deleteMutation.mutate({ id: w.id, orgId });
+                    }}
                     title="Delete"
                     className="text-destructive hover:text-destructive"
                   >
