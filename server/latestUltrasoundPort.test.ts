@@ -1209,6 +1209,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetManagerSource).not.toContain("ultrasound-widget-resize");
   });
 
+  it("applies the owning organization theme to public embed widgets", () => {
+    const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
+    const widgetRendererSource = readFileSync(new URL("../client/src/pages/WidgetRenderer.tsx", import.meta.url), "utf8");
+    expect(widgetRouterSource).toContain('import { getOrgTheme } from "../lmsDb";');
+    expect(widgetRouterSource).toContain("const organizationTheme = await getOrgTheme(row.orgId);");
+    expect(widgetRouterSource).toContain("studentPrimaryColor || organizationTheme.primaryColor");
+    expect(widgetRendererSource).toContain("organizationTheme?.buttonColor || organizationTheme?.primaryColor");
+    expect(widgetRendererSource).toContain("fontFamily: widget.organizationTheme?.fontFamily");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

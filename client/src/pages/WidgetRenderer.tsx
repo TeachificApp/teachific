@@ -40,6 +40,13 @@ type WidgetData = {
   buttonText: string;
   buttonUrl: string;
   maxCards: number;
+  organizationTheme: {
+    primaryColor: string | null;
+    accentColor: string | null;
+    buttonColor: string | null;
+    buttonTextColor: string | null;
+    fontFamily: string | null;
+  } | null;
   items: ResolvedItem[];
 };
 
@@ -106,6 +113,7 @@ function ContentCard({
   showEnrollButton,
   buttonText,
   buttonUrl,
+  organizationTheme,
 }: {
   item: ResolvedItem;
   theme: keyof typeof THEMES;
@@ -114,8 +122,15 @@ function ContentCard({
   showEnrollButton: boolean;
   buttonText: string;
   buttonUrl: string;
+  organizationTheme: WidgetData["organizationTheme"];
 }) {
-  const t = THEMES[theme];
+  const baseTheme = THEMES[theme];
+  const t = {
+    ...baseTheme,
+    btn: organizationTheme?.buttonColor || organizationTheme?.primaryColor || baseTheme.btn,
+    btnText: organizationTheme?.buttonTextColor || baseTheme.btnText,
+    btnHover: organizationTheme?.accentColor || baseTheme.btnHover,
+  };
   const targetUrl = buttonUrl || item.url || "#";
   const isCompact = cardStyle === "compact";
   const isMinimal = cardStyle === "minimal";
@@ -309,7 +324,13 @@ export default function WidgetRenderer() {
     );
   }
 
-  const t = THEMES[widget.theme as keyof typeof THEMES] || THEMES.light;
+  const baseTheme = THEMES[widget.theme as keyof typeof THEMES] || THEMES.light;
+  const t = {
+    ...baseTheme,
+    btn: widget.organizationTheme?.buttonColor || widget.organizationTheme?.primaryColor || baseTheme.btn,
+    btnText: widget.organizationTheme?.buttonTextColor || baseTheme.btnText,
+    btnHover: widget.organizationTheme?.accentColor || baseTheme.btnHover,
+  };
   const items = (widget.items as ResolvedItem[]).slice(0, widget.maxCards);
 
   const gridCols = widget.layout === "list" ? 1
@@ -319,7 +340,7 @@ export default function WidgetRenderer() {
 
   return (
     <div style={{
-      fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+      fontFamily: widget.organizationTheme?.fontFamily || "'Inter', system-ui, -apple-system, sans-serif",
       background: t.bg,
       minHeight: "100vh",
       padding: "20px 16px 24px",
@@ -362,6 +383,7 @@ export default function WidgetRenderer() {
               showEnrollButton={widget.showEnrollButton}
               buttonText={widget.buttonText}
               buttonUrl={widget.buttonUrl}
+              organizationTheme={widget.organizationTheme}
             />
           ))}
         </div>

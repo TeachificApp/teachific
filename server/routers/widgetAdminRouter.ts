@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb, requireOrgAdmin } from "../db";
+import { getOrgTheme } from "../lmsDb";
 import {
   embedWidgets,
   lmsCourses,
@@ -127,6 +128,7 @@ export const widgetAdminRouter = router({
       try { items = JSON.parse(row.itemsJson || "[]"); } catch {}
 
       const resolvedItems = await resolveWidgetItems(db, items, row.orgId);
+      const organizationTheme = await getOrgTheme(row.orgId);
 
       return {
         id: row.id,
@@ -144,6 +146,13 @@ export const widgetAdminRouter = router({
         buttonText: row.buttonText,
         buttonUrl: row.buttonUrl,
         maxCards: row.maxCards,
+        organizationTheme: organizationTheme ? {
+          primaryColor: organizationTheme.studentPrimaryColor || organizationTheme.primaryColor,
+          accentColor: organizationTheme.studentAccentColor || organizationTheme.accentColor,
+          buttonColor: organizationTheme.buttonColor,
+          buttonTextColor: organizationTheme.buttonTextColor,
+          fontFamily: organizationTheme.fontFamily,
+        } : null,
         items: resolvedItems,
       };
     }),
