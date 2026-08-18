@@ -2423,8 +2423,10 @@ export const lmsRouter = router({
   // ── AI Generation ──────────────────────────────────────────────────────────
   ai: router({
     generateCourseOutline: protectedProcedure
-      .input(z.object({ topic: z.string(), targetAudience: z.string().optional(), numSections: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ orgId: z.number().optional(), topic: z.string(), targetAudience: z.string().optional(), numSections: z.number().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const response = await invokeLLM({
           messages: [
             { role: "system", content: "You are a curriculum designer. Generate a course outline as JSON with sections and lessons. Return only valid JSON." },
@@ -2436,8 +2438,10 @@ export const lmsRouter = router({
         catch { return { sections: [] }; }
       }),
     generateLessonContent: protectedProcedure
-      .input(z.object({ lessonTitle: z.string(), courseTitle: z.string().optional(), format: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ orgId: z.number().optional(), lessonTitle: z.string(), courseTitle: z.string().optional(), format: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const response = await invokeLLM({
           messages: [
             { role: "system", content: "You are an expert educator. Generate lesson content in markdown format." },
@@ -2454,8 +2458,10 @@ export const lmsRouter = router({
       .input(z.object({ courseId: z.number(), orgId: z.number().optional(), newTitle: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const original = await getCourseById(input.courseId);
         if (!original) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, original.orgId!);
         const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = original as any;
         const newTitle = input.newTitle ?? `${original.title} (Copy)`;
         const newSlug = (original as any).slug + "-copy-" + nanoid(6);
