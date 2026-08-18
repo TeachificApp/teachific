@@ -1714,18 +1714,21 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getLmsAnalyticsByOrg(orgId);
       }),
     byGroup: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), groupId: z.number().optional(), dateFrom: z.date().optional(), dateTo: z.date().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getOrgAnalyticsByGroup(orgId, { groupId: input?.groupId, dateFrom: input?.dateFrom, dateTo: input?.dateTo });
       }),
     courses: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), dateFrom: z.date().optional(), dateTo: z.date().optional(), groupBy: z.enum(["day", "week", "month"]).optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getOrgCourseAnalytics(orgId, { dateFrom: input?.dateFrom, dateTo: input?.dateTo, groupBy: input?.groupBy });
       }),
   }),
@@ -1760,6 +1763,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), userId: z.number().optional(), courseId: z.number().optional(), limit: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getActivityEventsByOrg(orgId, { userId: input?.userId, courseId: input?.courseId, limit: input?.limit });
       }),
   }),
@@ -1770,6 +1774,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), includeInactive: z.boolean().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getCouponsByOrg(orgId, input?.includeInactive ?? false);
       }),
     create: protectedProcedure
@@ -1806,8 +1811,11 @@ export const lmsRouter = router({
         isActive: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const { getCouponById } = await import("./lmsDb");
+        const coupon = await getCouponById(input.id);
+        if (!coupon) throw new TRPCError({ code: "NOT_FOUND", message: "Coupon not found" });
+        if (input.orgId && input.orgId !== coupon.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon does not belong to the requested organization" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, coupon.orgId);
         const { id, orgId: _orgId, ...data } = input;
         const updateData = {
           ...data,
@@ -1818,8 +1826,11 @@ export const lmsRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number(), orgId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const { getCouponById } = await import("./lmsDb");
+        const coupon = await getCouponById(input.id);
+        if (!coupon) throw new TRPCError({ code: "NOT_FOUND", message: "Coupon not found" });
+        if (input.orgId && input.orgId !== coupon.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon does not belong to the requested organization" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, coupon.orgId);
         await updateCoupon(input.id, { isActive: false });
         return { success: true };
       }),

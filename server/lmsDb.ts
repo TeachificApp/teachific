@@ -574,6 +574,11 @@ export async function getCouponByCode(orgId: number, code: string) {
   return rows[0] ?? null;
 }
 
+export async function getCouponById(id: number) {
+  const rows = await db.select().from(coupons).where(eq(coupons.id, id));
+  return rows[0] ?? null;
+}
+
 export async function createCoupon(data: typeof coupons.$inferInsert) {
   const result = await db.insert(coupons).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;

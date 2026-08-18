@@ -1213,6 +1213,27 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((dashboardSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(4);
   });
 
+  it("requires organization-admin ownership for legacy LMS analytics, activity reporting, and coupon administration", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const lmsDbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
+    const analyticsSource = routerSource.slice(
+      routerSource.indexOf("analytics: router({"),
+      routerSource.indexOf("// ── Activity")
+    );
+    const activitySource = routerSource.slice(
+      routerSource.indexOf("activity: router({"),
+      routerSource.indexOf("// ── Coupons")
+    );
+    const couponSource = routerSource.slice(
+      routerSource.indexOf("coupons: router({"),
+      routerSource.indexOf("// ── Notifications")
+    );
+    expect((analyticsSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(3);
+    expect(activitySource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(couponSource).toContain("Coupon does not belong to the requested organization");
+    expect(lmsDbSource).toContain("export async function getCouponById");
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(
