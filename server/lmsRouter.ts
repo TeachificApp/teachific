@@ -1678,24 +1678,28 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional(), days: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getDashboardMetrics(orgId, input?.days ?? 30);
       }),
     chartData: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), days: z.number().optional(), groupBy: z.enum(["day", "week", "month"]).optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getRevenueChartData(orgId, input?.days ?? 30, input?.groupBy ?? "day");
       }),
     recentActivity: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), limit: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getRecentActivity(orgId, input?.limit ?? 20);
       }),
     recentCourses: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), limit: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getRecentlyEditedCourses(orgId, input?.limit ?? 6);
       }),
     enrolledCourses: protectedProcedure

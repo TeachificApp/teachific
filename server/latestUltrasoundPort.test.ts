@@ -1204,6 +1204,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bookmarksSource).toContain("You can only delete your own bookmarks");
   });
 
+  it("requires organization-admin ownership for legacy LMS dashboard analytics", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const dashboardSource = routerSource.slice(
+      routerSource.indexOf("dashboard: router({"),
+      routerSource.indexOf("// ── Analytics")
+    );
+    expect((dashboardSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(4);
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(
