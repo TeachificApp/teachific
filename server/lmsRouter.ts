@@ -602,6 +602,11 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        if (input.courseId) {
+          const course = await getCourseById(input.courseId);
+          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
+        }
         const slug = input.slug ?? input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
         return createPage({
           orgId,
@@ -615,23 +620,37 @@ export const lmsRouter = router({
       }),
     update: protectedProcedure
       .input(z.object({ pageId: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getPageById } = await import("./lmsDb");
+        const page = await getPageById(input.pageId);
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Page not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, page.orgId);
         return updatePage(input.pageId, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ pageId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getPageById } = await import("./lmsDb");
+        const page = await getPageById(input.pageId);
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Page not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, page.orgId);
         await deletePage(input.pageId);
         return { ok: true };
       }),
     duplicate: protectedProcedure
       .input(z.object({ pageId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getPageById } = await import("./lmsDb");
+        const page = await getPageById(input.pageId);
+        if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Page not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, page.orgId);
         return duplicatePage(input.pageId);
       }),
     aiGenerate: protectedProcedure
-      .input(z.object({ prompt: z.string(), context: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ orgId: z.number().optional(), prompt: z.string(), context: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const response = await invokeLLM({
           messages: [
             { role: "system", content: "You are an expert landing page copywriter. Generate page builder blocks as a JSON array. Return only valid JSON." },
@@ -650,22 +669,32 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getInstructorsByOrg(orgId);
       }),
     upsert: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), userId: z.number(), displayName: z.string().optional(), title: z.string().optional(), bio: z.string().optional(), avatarUrl: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return upsertInstructor({ orgId, userId: input.userId, displayName: input.displayName ?? null, title: input.title ?? null, bio: input.bio ?? null, avatarUrl: input.avatarUrl ?? null });
       }),
     update: protectedProcedure
       .input(z.object({ instructorId: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getInstructorById } = await import("./lmsDb");
+        const instructor = await getInstructorById(input.instructorId);
+        if (!instructor) throw new TRPCError({ code: "NOT_FOUND", message: "Instructor not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, instructor.orgId);
         return updateInstructorById(input.instructorId, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ instructorId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getInstructorById } = await import("./lmsDb");
+        const instructor = await getInstructorById(input.instructorId);
+        if (!instructor) throw new TRPCError({ code: "NOT_FOUND", message: "Instructor not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, instructor.orgId);
         return deleteInstructorById(input.instructorId);
       }),
   }),
@@ -676,23 +705,33 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getAffiliatesByOrg(orgId);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), userId: z.number().optional(), name: z.string(), email: z.string(), code: z.string().optional(), commissionValue: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const code = input.code ?? nanoid(8).toUpperCase();
         return createAffiliate({ orgId, userId: input.userId ?? null, name: input.name, email: input.email, code, commissionValue: input.commissionValue ?? 20 });
       }),
     update: protectedProcedure
       .input(z.object({ affiliateId: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getAffiliateById } = await import("./lmsDb");
+        const affiliate = await getAffiliateById(input.affiliateId);
+        if (!affiliate) throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, affiliate.orgId);
         return updateAffiliate(input.affiliateId, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ affiliateId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getAffiliateById } = await import("./lmsDb");
+        const affiliate = await getAffiliateById(input.affiliateId);
+        if (!affiliate) throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, affiliate.orgId);
         await deleteAffiliate(input.affiliateId);
         return { ok: true };
       }),

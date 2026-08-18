@@ -527,6 +527,11 @@ export async function getInstructorByUserId(userId: number, orgId: number) {
   return rows[0] ?? null;
 }
 
+export async function getInstructorById(id: number) {
+  const rows = await db.select().from(instructors).where(eq(instructors.id, id));
+  return rows[0] ?? null;
+}
+
 export async function upsertInstructor(data: typeof instructors.$inferInsert) {
   const existing = await getInstructorByUserId(data.userId!, data.orgId!);
   if (existing) {
