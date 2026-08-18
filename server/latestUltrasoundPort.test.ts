@@ -1236,6 +1236,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(checkoutEditorSource).not.toContain('"text-indigo-600"');
   });
 
+  it("uses generic placeholders in organization-owned bundle and physical-product creation flows", () => {
+    const adminBundlesSource = readFileSync(new URL("../client/src/pages/admin/BundlesAdmin.tsx", import.meta.url), "utf8");
+    const lmsBundlesSource = readFileSync(new URL("../client/src/pages/lms/BundlesAdmin.tsx", import.meta.url), "utf8");
+    const adminProductsSource = readFileSync(new URL("../client/src/pages/admin/PhysicalProductsAdmin.tsx", import.meta.url), "utf8");
+    const lmsProductsSource = readFileSync(new URL("../client/src/pages/lms/PhysicalProductsAdmin.tsx", import.meta.url), "utf8");
+    expect(adminBundlesSource).toContain("Complete Learning Resource Pack");
+    expect(lmsBundlesSource).toContain("Complete Learning Resource Pack");
+    expect(adminProductsSource).toContain("Professional Reference Card Set");
+    expect(lmsProductsSource).toContain("Professional Reference Card Set");
+    expect(`${adminBundlesSource}\n${lmsBundlesSource}\n${adminProductsSource}\n${lmsProductsSource}`).not.toContain("Ultrasound Reference Card Set");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

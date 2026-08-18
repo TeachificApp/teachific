@@ -140,7 +140,7 @@ function CreateProductDialog({ open, onClose, onCreated }: { open: boolean; onCl
         <div className="space-y-3">
           <div>
             <Label>Product Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Ultrasound Reference Card Set" className="mt-1" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Professional Reference Card Set" className="mt-1" />
           </div>
         </div>
         <DialogFooter>

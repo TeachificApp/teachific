@@ -113,7 +113,7 @@ function CreateBundleDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="space-y-4">
           <div>
             <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Complete Ultrasound Resource Pack" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Complete Learning Resource Pack" />
           </div>
           <div>
             <Label>Subtitle (optional)</Label>

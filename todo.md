@@ -5471,6 +5471,7 @@
 - [x] Apply the owning organization theme to public embed widgets instead of a fixed platform-teal brand palette
 - [x] Replace legacy quiz-brand labels and fixed-purple Question Bank folder controls in LMS administration with Teachific and active-organization theme styling
 - [x] Apply the active organization theme to Checkout Page Editor content-block labels and saved-block controls
+- [x] Replace ultrasound-specific placeholder copy in organization-owned bundle and physical-product administration with generic wording
 - [x] Replace legacy brand-specific widget embed identifiers and message names with generic Teachific-compatible identifiers
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
