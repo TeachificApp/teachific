@@ -1435,6 +1435,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminUserRouterSource).toContain("requireActiveOrgUserMembership(ctx, input.userId)");
   });
 
+  it("restricts cross-organization user search and merge administration to platform administrators", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    const mergeSlice = adminUserRouterSource.slice(adminUserRouterSource.indexOf("searchUsersForMerge"));
+    expect(mergeSlice).toContain("assertPlatformAdmin(ctx.user.role);");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

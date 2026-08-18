@@ -1105,6 +1105,7 @@ export const adminUserRouter = router({
     .input(z.object({ query: z.string().min(2) }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db
