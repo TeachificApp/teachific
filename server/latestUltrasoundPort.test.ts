@@ -1219,6 +1219,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetRendererSource).toContain("fontFamily: widget.organizationTheme?.fontFamily");
   });
 
+  it("uses Teachific labeling and active organization styles for Question Bank folder controls", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    expect(lmsAdminSource).toContain("Teachific Quiz Creator");
+    expect(lmsAdminSource).toContain("org-primary-button");
+    expect(lmsAdminSource).toContain("var(--org-primary)");
+    expect(lmsAdminSource).not.toContain('>SonoQuiz<');
+    expect(lmsAdminSource).not.toContain('Share in SonoQuiz');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
