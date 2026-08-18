@@ -1338,6 +1338,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(previewSource).toContain('quiz.meta.feedbackMode === "immediate"');
   });
 
+  it("offers and persists optional organization-authorized AI course assessments", () => {
+    const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    expect(aiRouterSource).toContain("generateCourseQuiz: z.boolean().default(false)");
+    expect(aiRouterSource).toContain('"courseQuiz": ${generateCourseQuiz');
+    expect(aiRouterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId)");
+    expect(aiRouterSource).toContain("title: \"Course Assessment\"");
+    expect(courseBuilderSource).toContain("aiGenerateCourseQuiz");
+    expect(courseBuilderSource).toContain("Add a <strong>5-question course assessment</strong>");
+    expect(courseBuilderSource).toContain("Course Assessment ({aiPreview.courseQuiz.questions.length} questions)");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

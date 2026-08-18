@@ -336,6 +336,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   const [aiLessonsPerModule, setAiLessonsPerModule] = useState(4);
   const [aiStarterContent, setAiStarterContent] = useState("");
   const [aiGenerateQuizzes, setAiGenerateQuizzes] = useState(true);
+  const [aiGenerateCourseQuiz, setAiGenerateCourseQuiz] = useState(false);
 
   const create = trpc.lmsAdmin.createCourse.useMutation({
     onSuccess: (data) => { toast.success("Course created!"); onCreated(data.id); },
@@ -583,6 +584,20 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                           Generate a <strong>5-question quiz</strong> after each lesson
                         </label>
                       </div>
+                      {type === "course" && (
+                        <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border">
+                          <input
+                            type="checkbox"
+                            id="aiGenerateCourseQuiz"
+                            checked={aiGenerateCourseQuiz}
+                            onChange={e => setAiGenerateCourseQuiz(e.target.checked)}
+                            className="accent-[var(--org-primary)] w-4 h-4"
+                          />
+                          <label htmlFor="aiGenerateCourseQuiz" className="text-sm cursor-pointer">
+                            Add a <strong>5-question course assessment</strong> at the end of the course
+                          </label>
+                        </div>
+                      )}
                       <div>
                         <Label className="text-sm">Starter Content / Outline (optional)</Label>
                         <textarea
@@ -668,6 +683,20 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                         </div>
                       </div>
                     )}
+                    {type === "course" && Array.isArray(aiPreview?.courseQuiz?.questions) && (
+                      <div>
+                        <span className="font-semibold text-[var(--org-primary)]">Course Assessment ({aiPreview.courseQuiz.questions.length} questions):</span>
+                        <div className="mt-2 space-y-2">
+                          {aiPreview.courseQuiz.questions.slice(0, 5).map((q: any, qi: number) => (
+                            <div key={qi} className="border rounded p-2 text-xs">
+                              <div className="font-medium">{qi + 1}. {q.question}</div>
+                              <div className="mt-1 text-gray-500">{q.options?.join(" · ")}</div>
+                              <div className="text-[var(--org-primary)] mt-1">✓ {q.correctAnswer}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {aiPreview?.landingPage && (
                       <div>
                         <span className="font-semibold text-[var(--org-primary)]">Landing Page:</span>
@@ -719,6 +748,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                 lessonsPerModule: aiLessonsPerModule,
                 starterContent: aiStarterContent.trim() || undefined,
                 generateQuizzes: aiGenerateQuizzes,
+                generateCourseQuiz: type === "course" && aiGenerateCourseQuiz,
               })}
             >
               {aiGenerate.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Generate Preview</>}

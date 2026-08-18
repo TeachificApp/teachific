@@ -609,6 +609,7 @@ export const lmsEnrollmentAdminRouter = router({
       lessonsPerModule: z.number().int().min(3).max(10).default(4),
       starterContent: z.string().max(20000).optional(), // optional outline / existing content
       generateQuizzes: z.boolean().default(true), // generate 5-question quiz per lesson
+      generateCourseQuiz: z.boolean().default(false), // generate a final 5-question course assessment
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -622,7 +623,7 @@ IMPORTANT: Each lesson must include exactly 5 MCQ quiz questions with 4 options 
 IMPORTANT: The landing page must have fully written, publication-ready content — not placeholders.`;
 
       const isQuiz = input.productType === "quiz";
-      const { moduleCount, lessonsPerModule, starterContent, generateQuizzes } = input;
+      const { moduleCount, lessonsPerModule, starterContent, generateQuizzes, generateCourseQuiz } = input;
 
       const starterSection = starterContent
         ? `\n\nSTARTER CONTENT / OUTLINE PROVIDED BY AUTHOR (use this as the primary source of truth for topics, structure, and terminology):\n---\n${starterContent}\n---\n`
@@ -694,6 +695,12 @@ Return a JSON object with this exact structure:
       ]
     }
   ],
+  "courseQuiz": ${generateCourseQuiz ? `{
+    "title": "Course Assessment",
+    "questions": [
+      { "question": "Assessment question", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": "Option A", "explanation": "Explain why the answer is correct" }
+    ]
+  }` : "null"},
   "landingPage": {
     "heroTitle": "Compelling course headline (not a placeholder)",
     "heroSubtitle": "One powerful sentence describing the transformation or outcome",
@@ -709,7 +716,7 @@ CRITICAL REQUIREMENTS:
 - EXACTLY ${moduleCount} sections in the sections array
 - EXACTLY ${lessonsPerModule} lessons in each section's lessons array
 - Each lesson content must be minimum 300 words of rich HTML
-- Each lesson quiz must have EXACTLY 5 questions with 4 options each
+- Each requested lesson quiz and optional course-wide assessment must have EXACTLY 5 questions with 4 options each
 - All landing page fields must be fully written — NO placeholders like "[Topic]" or "[Description]"
 - imageSearchQuery should be a specific, descriptive search query for a relevant medical/ultrasound image`;
 
@@ -744,6 +751,9 @@ CRITICAL REQUIREMENTS:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const { courseId, generated, productType } = input;
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
 
       // Upsert landing page
       if (generated.landingPage) {
@@ -827,6 +837,38 @@ CRITICAL REQUIREMENTS:
             for (let idx = 0; idx < allLessons.length; idx++) {
               await db.update(lmsLessons).set({ position: idx }).where(eq(lmsLessons.id, allLessons[idx].id));
             }
+          }
+        }
+        if (generated.courseQuiz && Array.isArray(generated.courseQuiz.questions) && generated.courseQuiz.questions.length > 0) {
+          const [{ lastPosition }] = await db.select({ lastPosition: max(lmsSections.position) }).from(lmsSections).where(eq(lmsSections.courseId, courseId));
+          const assessmentTitle = generated.courseQuiz.title ?? "Course Assessment";
+          const [assessmentSection] = await db.insert(lmsSections).values({
+            courseId,
+            title: "Course Assessment",
+            position: Number(lastPosition ?? -1) + 1,
+          }).$returningId();
+          const [assessmentLesson] = await db.insert(lmsLessons).values({
+            courseId,
+            sectionId: assessmentSection.id,
+            title: assessmentTitle,
+            type: "quiz",
+            position: 0,
+            content: null,
+            durationMinutes: 10,
+            mediaAssetId: null,
+          }).$returningId();
+          const [assessmentQuiz] = await db.insert(lmsQuizzes).values({ lessonId: assessmentLesson.id, title: assessmentTitle }).$returningId();
+          for (let qi = 0; qi < generated.courseQuiz.questions.length; qi++) {
+            const question = generated.courseQuiz.questions[qi];
+            await db.insert(lmsQuizQuestions).values({
+              quizId: assessmentQuiz.id,
+              question: question.question,
+              type: "mcq",
+              options: Array.isArray(question.options) ? JSON.stringify(question.options) : null,
+              correctAnswer: question.correctAnswer,
+              explanation: question.explanation ?? null,
+              position: qi,
+            });
           }
         }
       } else if (productType === "quiz" && Array.isArray(generated.questions)) {
