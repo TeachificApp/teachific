@@ -5467,6 +5467,7 @@
 - [x] Require organization-admin ownership before listing or revoking an organization link
 - [x] Resolve widget administration list and management actions from an authorized active organization rather than a fallback membership
 - [x] Resolve LMS landing-block picker administration from an authorized active organization rather than a fallback membership
+- [x] Honor authorized active-organization preferences in shared fallback resolution, including LMS course-picker administration
 - [x] Replace legacy brand-specific widget embed identifiers and message names with generic Teachific-compatible identifiers
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

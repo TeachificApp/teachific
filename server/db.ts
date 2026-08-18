@@ -327,17 +327,16 @@ export async function getPrimaryOrgId(): Promise<number | null> {
 }
 
 /**
- * Returns the org ID for a user, with a fallback to the primary org for platform admins.
- * This ensures site_owner/site_admin always see their own platform org's content,
- * even if they have no orgMembers row.
+ * Returns the active organization for an authorized administrator, with a fallback
+ * to the primary org for platform admins and the user's membership for other roles.
  */
 export async function getOrgIdForUserWithFallback(
   userId: number,
   userRole: string
 ): Promise<number | null> {
-  // For platform admins, check userActiveOrg first (respects org switcher)
+  const db = await getDb();
+  // Platform administrators can use any selected organization.
   if (userRole === "site_owner" || userRole === "site_admin") {
-    const db = await getDb();
     if (db) {
       const [activeRow] = await db
         .select({ orgId: userActiveOrg.orgId })
@@ -348,6 +347,26 @@ export async function getOrgIdForUserWithFallback(
     }
     // No active org preference — fall back to primary org
     return getPrimaryOrgId();
+  }
+  // Organization administrators can use a selected organization only when they
+  // hold an administrator-level membership in that exact organization. Members
+  // continue to resolve from their own membership and cannot switch contexts.
+  if (db) {
+    const [activeRow] = await db
+      .select({ orgId: userActiveOrg.orgId })
+      .from(userActiveOrg)
+      .where(eq(userActiveOrg.userId, userId))
+      .limit(1);
+    if (activeRow?.orgId) {
+      const [membership] = await db
+        .select({ role: orgMembers.role })
+        .from(orgMembers)
+        .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, activeRow.orgId)))
+        .limit(1);
+      if (["org_super_admin", "org_admin", "sub_admin"].includes(membership?.role ?? "")) {
+        return activeRow.orgId;
+      }
+    }
   }
   const orgId = await getOrgIdForUser(userId);
   return orgId;

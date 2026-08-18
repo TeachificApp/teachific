@@ -1233,6 +1233,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).toContain("getCoursesWithLandingBlocks.useQuery(\n    landingBlockOrgInput");
   });
 
+  it("uses an active organization only for authorized organization administrators", () => {
+    const dbSource = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
+    const fallbackSource = dbSource.slice(
+      dbSource.indexOf("export async function getOrgIdForUserWithFallback"),
+      dbSource.indexOf("export async function requireOrgAdmin")
+    );
+    expect(fallbackSource).toContain("Organization administrators can use a selected organization only when they");
+    expect(fallbackSource).toContain("eq(orgMembers.orgId, activeRow.orgId)");
+    expect(fallbackSource).toContain('["org_super_admin", "org_admin", "sub_admin"]');
+    expect(fallbackSource).toContain("const orgId = await getOrgIdForUser(userId);");
+  });
+
   it("requires organization-admin ownership before listing or revoking linked organizations", () => {
     const routersSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const linksSource = routersSource.slice(
