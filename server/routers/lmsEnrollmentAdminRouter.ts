@@ -506,7 +506,21 @@ export const lmsEnrollmentAdminRouter = router({
     await assertAdmin(ctx);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    return db.select().from(lmsInstructors).orderBy(asc(lmsInstructors.name));
+    const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+    const instructors = await db.select({
+      id: lmsInstructors.id,
+      name: lmsInstructors.displayName,
+      title: lmsInstructors.title,
+      bio: lmsInstructors.bio,
+      avatarUrl: lmsInstructors.profileImageUrl,
+      socialLinks: lmsInstructors.socialLinks,
+      isActive: lmsInstructors.isActive,
+    }).from(lmsInstructors).where(eq(lmsInstructors.orgId, orgId)).orderBy(asc(lmsInstructors.displayName));
+    return instructors.map((instructor) => {
+      let website: string | null = null;
+      try { website = instructor.socialLinks ? JSON.parse(instructor.socialLinks)?.website ?? null : null; } catch { website = instructor.socialLinks ?? null; }
+      return { ...instructor, name: instructor.name ?? "Instructor", website };
+    });
   }),
 
   createInstructor: protectedProcedure
@@ -515,9 +529,17 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
       const [result] = await db.insert(lmsInstructors).values({
-        name: input.name, title: input.title ?? null, bio: input.bio ?? null,
-        avatarUrl: input.avatarUrl ?? null, website: input.website ?? null, userId: input.userId ?? null,
+        orgId,
+        userId: input.userId ?? ctx.user.id,
+        linkedUserId: input.userId ?? ctx.user.id,
+        displayName: input.name,
+        title: input.title ?? null,
+        bio: input.bio ?? null,
+        profileImageUrl: input.avatarUrl ?? null,
+        socialLinks: input.website ? JSON.stringify({ website: input.website }) : null,
+        isActive: true,
       }).$returningId();
       return { id: result.id };
     }),
@@ -528,8 +550,14 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const { id, ...updates } = input;
-      const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [instructor] = await db.select({ orgId: lmsInstructors.orgId }).from(lmsInstructors).where(eq(lmsInstructors.id, input.id)).limit(1);
+      if (!instructor || instructor.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Instructor does not belong to the active organization." });
+      const { id, name, avatarUrl, website, ...updates } = input;
+      const filtered: Record<string, unknown> = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
+      if (name !== undefined) filtered.displayName = name;
+      if (avatarUrl !== undefined) filtered.profileImageUrl = avatarUrl;
+      if (website !== undefined) filtered.socialLinks = website ? JSON.stringify({ website }) : null;
       if (Object.keys(filtered).length > 0) await db.update(lmsInstructors).set(filtered).where(eq(lmsInstructors.id, id));
       return { success: true };
     }),
@@ -543,9 +571,21 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.delete(lmsCourseInstructors).where(eq(lmsCourseInstructors.courseId, input.courseId));
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       if (input.instructors.length > 0) {
-        await db.insert(lmsCourseInstructors).values(input.instructors.map(i => ({ courseId: input.courseId, ...i })));
+        const instructors = await db.select({ id: lmsInstructors.id }).from(lmsInstructors).where(and(eq(lmsInstructors.orgId, orgId), inArray(lmsInstructors.id, input.instructors.map((item) => item.instructorId))));
+        if (instructors.length !== new Set(input.instructors.map((item) => item.instructorId)).size) throw new TRPCError({ code: "FORBIDDEN", message: "One or more instructors do not belong to the active organization." });
+      }
+      await db.delete(lmsCourseInstructors).where(and(eq(lmsCourseInstructors.courseId, input.courseId), eq(lmsCourseInstructors.orgId, orgId)));
+      if (input.instructors.length > 0) {
+        await db.insert(lmsCourseInstructors).values(input.instructors.map((instructor) => ({
+          orgId,
+          courseId: input.courseId,
+          instructorId: instructor.instructorId,
+          role: instructor.isPrimary ? "primary" as const : "secondary" as const,
+        })));
       }
       return { success: true };
     }),

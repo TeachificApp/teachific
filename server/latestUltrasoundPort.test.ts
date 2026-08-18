@@ -1484,6 +1484,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(teamSlice).toContain("Team course allocation does not belong to the active organization.");
   });
 
+  it("reconciles instructor storage and requires active-organization ownership for instructor administration", () => {
+    const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const instructorSlice = enrollmentRouterSource.slice(enrollmentRouterSource.indexOf("listInstructors"), enrollmentRouterSource.indexOf("// ── Affiliates"));
+    expect(schemaSource).toContain('displayName: varchar("display_name"');
+    expect(schemaSource).toContain('socialLinks: text("social_links")');
+    expect(instructorSlice).toContain("requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role)");
+    expect(instructorSlice).toContain("Instructor does not belong to the active organization.");
+    expect(instructorSlice).toContain("One or more instructors do not belong to the active organization.");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

@@ -2968,6 +2968,13 @@ export const lmsInstructors = mysqlTable("lms_instructors", {
   bio: longtext("bio"),
   profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  displayName: varchar("display_name", { length: 255 }),
+  title: varchar("title", { length: 255 }),
+  socialLinks: text("social_links"),
+  isActive: boolean("is_active").default(true).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  requiresLessonApproval: boolean("requires_lesson_approval").default(true).notNull(),
+  linkedUserId: int("linked_user_id"),
 });
 export type LmsInstructor = typeof lmsInstructors.$inferSelect;
 export type InsertLmsInstructor = typeof lmsInstructors.$inferInsert;
