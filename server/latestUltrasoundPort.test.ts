@@ -1277,6 +1277,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(upgradePromptSource).not.toContain("UltrasoundAssist");
   });
 
+  it("uses Teachific branding in platform analytics PDF exports", () => {
+    const pdfExportSource = readFileSync(new URL("../client/src/lib/exportAnalyticsPdf.ts", import.meta.url), "utf8");
+    expect(pdfExportSource).toContain("Teachific™ Analytics");
+    expect(pdfExportSource).not.toContain("UltrasoundAssist");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

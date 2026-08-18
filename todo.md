@@ -5476,6 +5476,7 @@
 - [x] Apply the active organization theme to General Form Builder score-weight and webhook integration accents
 - [x] Replace legacy platform-brand labels in SCORM health and account-sharing operational email notices with Teachific wording
 - [x] Replace legacy platform-brand wording in the account upgrade prompt with Teachific platform wording
+- [x] Replace legacy branding in platform analytics PDF export headers with Teachific wording
 - [x] Replace legacy brand-specific widget embed identifiers and message names with generic Teachific-compatible identifiers
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
