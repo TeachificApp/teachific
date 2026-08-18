@@ -1402,6 +1402,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminUserRouterSource).toContain("eq(orgMembers.orgId, orgId)");
   });
 
+  it("requires active-organization user membership for user administration workshop, progress, activity, and alias actions", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    expect(adminUserRouterSource).toContain("requireActiveOrgUserMembership");
+    expect(adminUserRouterSource).toContain("Workshop does not belong to the active organization.");
+    expect(adminUserRouterSource).toContain("Workshop instance does not belong to the selected workshop.");
+    expect(adminUserRouterSource).toContain("eq(lmsEnrollments.orgId, orgId)");
+    expect(adminUserRouterSource).toContain("Email alias not found.");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

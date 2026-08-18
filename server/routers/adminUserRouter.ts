@@ -67,6 +67,23 @@ async function assertAdmin(ctx: { user: { id: number; role: string } }) {
   await requireOrgAdmin(ctx.user.id, ctx.user.role);
 }
 
+/** Ensure an organization administrator can only manage users in the active organization. */
+async function requireActiveOrgUserMembership(ctx: { user: { id: number; role: string } }, userId: number) {
+  const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [membership] = await db
+    .select({ id: orgMembers.id })
+    .from(orgMembers)
+    .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, orgId)))
+    .limit(1);
+  if (!membership) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This user is not a member of the active organization." });
+  }
+  return { db, orgId };
+}
+
 /** Verify the caller is a platform admin (site_owner or site_admin) */
 function assertPlatformAdmin(role: string) {
   if (role !== "site_owner" && role !== "site_admin") {
@@ -85,9 +102,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
 
       // User record
       const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
@@ -102,9 +117,6 @@ export const adminUserRouter = router({
             ? and(eq(orgMembers.userId, input.userId), eq(orgMembers.orgId, orgId))
             : eq(orgMembers.userId, input.userId)
         );
-      if (orgId && orgMemberRows.length === 0) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "This user is not a member of the active organization." });
-      }
 
       // LMS enrollments with course info
       const enrollmentRows = await db
@@ -816,6 +828,9 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const [workshop] = await db.select({ orgId: workshops.orgId }).from(workshops).where(eq(workshops.id, input.workshopId)).limit(1);
+      if (!workshop || (orgId && workshop.orgId !== orgId)) throw new TRPCError({ code: "FORBIDDEN", message: "Workshop does not belong to the active organization." });
       const rows = await db
         .select({ id: workshopInstances.id, title: workshopInstances.title, startDate: workshopInstances.startDate, status: workshopInstances.status, enrolledCount: workshopInstances.enrolledCount, capacity: workshopInstances.capacity })
         .from(workshopInstances)
@@ -828,8 +843,11 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), workshopId: z.number(), instanceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const [workshop] = await db.select({ orgId: workshops.orgId }).from(workshops).where(eq(workshops.id, input.workshopId)).limit(1);
+      if (!workshop || workshop.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Workshop does not belong to the active organization." });
+      const [instance] = await db.select({ id: workshopInstances.id, title: workshopInstances.title }).from(workshopInstances).where(and(eq(workshopInstances.id, input.instanceId), eq(workshopInstances.workshopId, input.workshopId))).limit(1);
+      if (!instance) throw new TRPCError({ code: "FORBIDDEN", message: "Workshop instance does not belong to the selected workshop." });
       // Check if already enrolled
       const [existing] = await db
         .select({ id: workshopEnrollments.id })
@@ -846,7 +864,6 @@ export const adminUserRouter = router({
           status: "active",
         });
       }
-      const [instance] = await db.select({ title: workshopInstances.title }).from(workshopInstances).where(eq(workshopInstances.id, input.instanceId)).limit(1);
       return { success: true, instanceTitle: instance?.title ?? "Instance" };
     }),
 
@@ -937,12 +954,11 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), enrollmentId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [enrollment] = await db
         .select({ id: lmsEnrollments.id, courseId: lmsEnrollments.courseId, progressPercent: lmsEnrollments.progressPercent, completedAt: lmsEnrollments.completedAt, enrolledAt: lmsEnrollments.enrolledAt, lastAccessedAt: lmsEnrollments.lastAccessedAt })
         .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.id, input.enrollmentId), eq(lmsEnrollments.userId, input.userId)))
+        .where(and(eq(lmsEnrollments.id, input.enrollmentId), eq(lmsEnrollments.userId, input.userId), eq(lmsEnrollments.orgId, orgId)))
         .limit(1);
       if (!enrollment) throw new TRPCError({ code: "NOT_FOUND" });
       // Get all lessons for this course
@@ -977,8 +993,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), page: z.number().default(1), pageSize: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       const offset = (input.page - 1) * input.pageSize;
       const rows = await db
         .select()
@@ -996,8 +1011,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), page: z.number().default(1), pageSize: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       const offset = (input.page - 1) * input.pageSize;
       const rows = await db
         .select()
@@ -1015,8 +1029,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       return db.select().from(userEmailAliases).where(eq(userEmailAliases.userId, input.userId));
     }),
 
@@ -1024,8 +1037,7 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), email: z.string().email(), label: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
       await db.insert(userEmailAliases).values({
         userId: input.userId,
         email: input.email,
@@ -1041,6 +1053,9 @@ export const adminUserRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [alias] = await db.select({ userId: userEmailAliases.userId }).from(userEmailAliases).where(eq(userEmailAliases.id, input.aliasId)).limit(1);
+      if (!alias) throw new TRPCError({ code: "NOT_FOUND", message: "Email alias not found." });
+      await requireActiveOrgUserMembership(ctx, alias.userId);
       await db.delete(userEmailAliases).where(eq(userEmailAliases.id, input.aliasId));
       return { success: true };
     }),
