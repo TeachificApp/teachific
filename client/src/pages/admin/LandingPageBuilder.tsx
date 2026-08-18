@@ -35,6 +35,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -5386,6 +5387,8 @@ export function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
 export default function LandingPageBuilder() {
   const { courseId } = useParams<{ courseId: string }>();
   const [, navigate] = useLocation();
+  const { orgId } = useOrgScope();
+  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);
   const numericCourseId = Number(courseId);
   // ?t=timestamp is appended after AI generate to force a fresh load
   const searchStr = typeof window !== "undefined" ? window.location.search : "";
@@ -5815,8 +5818,8 @@ export default function LandingPageBuilder() {
 
   // Block picker: fetch courses with landing blocks (for "Copy from Other Pages" tab)
   const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(
-    undefined,
-    { enabled: addMenuOpen && pickerTab === "from_pages" }
+    landingBlockOrgInput,
+    { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId }
   );
   const sourceCourseBlocks = useMemo<Block[]>(() => {
     if (!selectedSourceCourseId || !coursesWithBlocks) return [];

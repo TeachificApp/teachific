@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -41,6 +42,8 @@ import { cn } from "@/lib/utils";
 export default function FunnelPageEditor() {
   const { funnelId, pageId } = useParams<{ funnelId: string; pageId: string }>();
   const [, navigate] = useLocation();
+  const { orgId } = useOrgScope();
+  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);
   const numericPageId = Number(pageId);
   const numericFunnelId = Number(funnelId);
 
@@ -370,9 +373,9 @@ export default function FunnelPageEditor() {
 
   // Block picker: fetch funnels with pages (for "Copy from Other Pages" tab)
     const { data: funnelsWithPages } = trpc.funnelAdmin.getFunnelsWithPages.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: downloadsWithBlocks } = trpc.lmsAdmin.getDownloadsWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: productsWithBlocks } = trpc.lmsAdmin.getProductsWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
+  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
+  const { data: downloadsWithBlocks } = trpc.lmsAdmin.getDownloadsWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
+  const { data: productsWithBlocks } = trpc.lmsAdmin.getProductsWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
   // Parse blocks for the selected source page
   const sourcePageBlocks = useMemo<Block[]>(() => {
     if (!selectedSourceFunnelId || !selectedSourcePageId || !funnelsWithPages) return [];
@@ -1822,4 +1825,3 @@ function getDefaultBlocks(pageType: string, title: string): Block[] {
       ];
   }
 }
-

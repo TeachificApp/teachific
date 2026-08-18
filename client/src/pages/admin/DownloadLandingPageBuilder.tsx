@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,6 +40,8 @@ import {
 export default function DownloadLandingPageBuilder() {
   const { productId } = useParams<{ productId: string }>();
   const [, navigate] = useLocation();
+  const { orgId } = useOrgScope();
+  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);
   const numericProductId = Number(productId);
 
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -232,9 +235,9 @@ export default function DownloadLandingPageBuilder() {
   const catalogByCat = BLOCK_CATALOG.filter(c => c.category === activeCat);
 
   // Block picker: fetch all page sources for "Copy from Other Pages" tab
-  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: downloadsWithBlocks } = trpc.lmsAdmin.getDownloadsWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: productsWithBlocks } = trpc.lmsAdmin.getProductsWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
+  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
+  const { data: downloadsWithBlocks } = trpc.lmsAdmin.getDownloadsWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
+  const { data: productsWithBlocks } = trpc.lmsAdmin.getProductsWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
   const { data: funnelsWithPages } = trpc.funnelAdmin.getFunnelsWithPages.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
   const sourceCourseBlocks = useMemo<Block[]>(() => {
     if (!selectedSourceCourseId || !coursesWithBlocks) return [];

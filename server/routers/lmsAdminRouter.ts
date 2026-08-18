@@ -34,12 +34,13 @@ async function assertAdmin(ctx: { user: { id: number; role: string } }) {
 const _lmsAdminBaseRouter = router({
   /** Get all courses with their landing page blocks for the block picker */
   getCoursesWithLandingBlocks: protectedProcedure
-    .query(async ({ ctx }) => {
-      await assertAdmin(ctx);
+    .input(z.object({ orgId: z.number().int().positive().optional() }).optional())
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (orgId === null) return [];
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const courses = await db
         .select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type })
         .from(lmsCourses)
@@ -61,12 +62,13 @@ const _lmsAdminBaseRouter = router({
 
   /** Get all digital download products with their landing page blocks */
   getDownloadsWithLandingBlocks: protectedProcedure
-    .query(async ({ ctx }) => {
-      await assertAdmin(ctx);
+    .input(z.object({ orgId: z.number().int().positive().optional() }).optional())
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (orgId === null) return [];
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const products = await db
         .select({ id: digitalProducts.id, title: digitalProducts.title, landingBlocks: digitalProducts.salesPageBlocksJson })
         .from(digitalProducts)
@@ -80,12 +82,13 @@ const _lmsAdminBaseRouter = router({
 
   /** Get all physical products with their landing page blocks */
   getProductsWithLandingBlocks: protectedProcedure
-    .query(async ({ ctx }) => {
-      await assertAdmin(ctx);
+    .input(z.object({ orgId: z.number().int().positive().optional() }).optional())
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (orgId === null) return [];
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const products = await db
         .select({ id: physicalProducts.id, title: physicalProducts.title, landingBlocks: physicalProducts.landingBlocks })
         .from(physicalProducts)

@@ -6,7 +6,7 @@
  * Thin wrapper — all block catalog, BlockPreview, BlockSettings, and SortableBlock
  * are imported from LandingPageBuilder.tsx so all builders stay in sync.
  */
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent,
@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -31,6 +32,8 @@ import {
 export default function BundleLandingPageBuilder() {
   const { bundleId } = useParams<{ bundleId: string }>();
   const [, navigate] = useLocation();
+  const { orgId } = useOrgScope();
+  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);
   const numericId = Number(bundleId);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -172,9 +175,9 @@ export default function BundleLandingPageBuilder() {
   }, []);
 
   // ── Block picker queries ──
-  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: downloadsWithBlocks } = trpc.lmsAdmin.getDownloadsWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
-  const { data: productsWithBlocks } = trpc.lmsAdmin.getProductsWithLandingBlocks.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
+  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
+  const { data: downloadsWithBlocks } = trpc.lmsAdmin.getDownloadsWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
+  const { data: productsWithBlocks } = trpc.lmsAdmin.getProductsWithLandingBlocks.useQuery(landingBlockOrgInput, { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId });
   const { data: funnelsWithPages } = trpc.funnelAdmin.getFunnelsWithPages.useQuery(undefined, { enabled: addMenuOpen && pickerTab === "from_pages" });
   const { data: pageTemplates = [], isLoading: pageTemplatesLoading, refetch: refetchPageTemplates } = trpc.lmsAdmin.listPageTemplates.useQuery({});
   const deletePageTpl = trpc.lmsAdmin.deletePageTemplate.useMutation({ onSuccess: () => { toast.success("Template deleted"); refetchPageTemplates(); } });

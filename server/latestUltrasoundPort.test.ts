@@ -1220,6 +1220,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetManagerSource).toContain("regenMutation.mutate({ id: w.id, orgId });");
   });
 
+  it("resolves landing-block picker content from the active organization", () => {
+    const lmsAdminSource = readFileSync(new URL("./routers/lmsAdminRouter.ts", import.meta.url), "utf8");
+    const bundleBuilderSource = readFileSync(new URL("../client/src/pages/admin/BundleLandingPageBuilder.tsx", import.meta.url), "utf8");
+    const funnelBuilderSource = readFileSync(new URL("../client/src/pages/admin/FunnelPageEditor.tsx", import.meta.url), "utf8");
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(lmsAdminSource).toContain("input?.orgId ?? await getOrgIdForUserWithFallback");
+    expect(lmsAdminSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(bundleBuilderSource).toContain("const { orgId } = useOrgScope();");
+    expect(bundleBuilderSource).toContain("getDownloadsWithLandingBlocks.useQuery(landingBlockOrgInput");
+    expect(funnelBuilderSource).toContain("getProductsWithLandingBlocks.useQuery(landingBlockOrgInput");
+    expect(landingBuilderSource).toContain("getCoursesWithLandingBlocks.useQuery(\n    landingBlockOrgInput");
+  });
+
   it("requires organization-admin ownership before listing or revoking linked organizations", () => {
     const routersSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const linksSource = routersSource.slice(
