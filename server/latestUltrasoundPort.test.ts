@@ -1294,6 +1294,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(layoutSource).not.toContain("EchoAssist");
   });
 
+  it("uses generic Teachific wording in the premium access guard", () => {
+    const roleGuardSource = readFileSync(new URL("../client/src/components/RoleGuard.tsx", import.meta.url), "utf8");
+    expect(roleGuardSource).toContain("expanded learning tools, guided resources");
+    expect(roleGuardSource).toContain("Unlimited flashcards and case studies");
+    expect(roleGuardSource).not.toContain("EchoAssist");
+    expect(roleGuardSource).not.toContain("Ultrasound Flashcards");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

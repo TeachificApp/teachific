@@ -166,13 +166,13 @@ export function RoleGuard({ roles, allowAdmin = true, teaserHeight, children }: 
           <div className="space-y-2">
             <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "Merriweather, serif" }}>Premium Feature</h1>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              This feature requires a <strong>Premium membership</strong>. Upgrade to unlock all clinical protocols, ScanCoach guides, EchoAssist™ engines, and more.
+              This feature requires a <strong>Premium membership</strong>. Upgrade to unlock expanded learning tools, guided resources, and more.
             </p>
           </div>
           <div className="rounded-xl p-4 text-left space-y-2 border" style={{ borderColor: "#f59e0b30", background: "#f59e0b08" }}>
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Included with Premium</p>
             <ul className="space-y-1 text-sm text-foreground">
-              {["All EchoNavigator protocols (TEE, ICE, Stress, HOCM, Structural, PulmHTN)", "All EchoAssist™ clinical engines", "Unlimited Ultrasound Flashcards", "Daily Challenge Archive", "Report Builder"].map(f => (
+              {["Expanded specialty protocols and reference resources", "Guided learning and clinical tools", "Unlimited flashcards and case studies", "Daily Challenge Archive", "Report Builder"].map(f => (
                 <li key={f} className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-500" />
                   {f}
