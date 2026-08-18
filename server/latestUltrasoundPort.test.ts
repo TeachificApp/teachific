@@ -1460,6 +1460,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(accessSlice).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
   });
 
+  it("requires platform authority for custom domains and active-organization ownership for LMS sales and order actions", () => {
+    const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const customDomainSlice = enrollmentRouterSource.slice(enrollmentRouterSource.indexOf("getCustomDomains"), enrollmentRouterSource.indexOf("// ─── Sales: get all orders"));
+    const salesSlice = enrollmentRouterSource.slice(enrollmentRouterSource.indexOf("getSalesData"), enrollmentRouterSource.indexOf("// ─── Sales: cancel a subscription"));
+    expect(customDomainSlice).toContain("Platform admin access required.");
+    expect(salesSlice).toContain("Course does not belong to the active organization.");
+    expect(salesSlice).toContain("Order does not belong to the active organization.");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

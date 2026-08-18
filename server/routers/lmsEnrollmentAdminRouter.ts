@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, isPlatformAdmin, getOrgIdForUser, requireOrgAdmin } from "../db";
+import { getDb, getOrCreateAccessToken, isPlatformAdmin, getOrgIdForUser, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -1414,7 +1414,7 @@ CRITICAL REQUIREMENTS:
     }),
   /** Get custom domains list */
   getCustomDomains: protectedProcedure.query(async ({ ctx }) => {
-    const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+    if (!isPlatformAdmin(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required." });
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     const [settings] = await db.select({ customDomains: platformSettings.customDomains }).from(platformSettings).where(eq(platformSettings.id, 1)).limit(1);
@@ -1424,7 +1424,7 @@ CRITICAL REQUIREMENTS:
   updateCustomDomains: protectedProcedure
     .input(z.object({ domains: z.array(z.string().min(1).max(255)) }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      if (!isPlatformAdmin(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const json = JSON.stringify(input.domains);
@@ -1443,6 +1443,9 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!course || !orgId || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       const offset = (input.page - 1) * input.pageSize;
       const orders = await db.select().from(lmsOrders)
         .where(eq(lmsOrders.courseId, input.courseId))
@@ -1481,6 +1484,8 @@ CRITICAL REQUIREMENTS:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       const pricingOptions = await db.select().from(lmsPricingOptions)
         .where(and(eq(lmsPricingOptions.courseId, input.courseId), eq(lmsPricingOptions.isActive, true)))
         .orderBy(asc(lmsPricingOptions.sortOrder));
@@ -1529,6 +1534,8 @@ CRITICAL REQUIREMENTS:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [order] = await db.select().from(lmsOrders).where(eq(lmsOrders.id, input.orderId)).limit(1);
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || order.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Order does not belong to the active organization." });
       if (order.status === "refunded") throw new TRPCError({ code: "BAD_REQUEST", message: "Order already refunded" });
       if (order.status !== "paid") throw new TRPCError({ code: "BAD_REQUEST", message: "Only paid orders can be refunded" });
       const Stripe = (await import("stripe")).default;
@@ -1563,6 +1570,8 @@ CRITICAL REQUIREMENTS:
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [order] = await db.select().from(lmsOrders).where(eq(lmsOrders.id, input.orderId)).limit(1);
       if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId || order.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Order does not belong to the active organization." });
       if (!order.stripeSubscriptionId) {
         // Try to find subscription from session
         if (order.stripeSessionId) {
