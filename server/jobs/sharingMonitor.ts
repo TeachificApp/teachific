@@ -236,7 +236,7 @@ function buildAlertEmail(flaggedUsers: SuspiciousUser[]): string {
       </div>
       <div style="padding: 16px; background: #f9fafb; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
         <p style="margin: 0; font-size: 12px; color: #9ca3af; text-align: center;">
-          This is an automated alert from UltrasoundAssist™ Account Sharing Monitor
+          This is an automated alert from the Teachific™ Account Sharing Monitor
         </p>
       </div>
     </div>

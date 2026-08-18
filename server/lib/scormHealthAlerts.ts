@@ -354,9 +354,9 @@ export async function runScormHealthAlertPass(): Promise<{
       try {
         await sendEmail({
           to: { name: "Platform Admin", email: alertEmail },
-          subject: `[UltrasoundAssist] SCORM health alert — ${toEmail.length} package${toEmail.length === 1 ? "" : "s"} need attention`,
+          subject: `[Teachific] SCORM health alert — ${toEmail.length} package${toEmail.length === 1 ? "" : "s"} need attention`,
           htmlBody: buildAlertEmailHtml(toEmail),
-          brandMode: "aaus",
+          brandMode: "teachific",
         });
         emailed = true;
         console.log(`[ScormHealthAlert] Sent alert to ${alertEmail} for ${toEmail.length} asset(s)`);

@@ -1262,6 +1262,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formBuilderSource).not.toContain("bg-purple-50");
   });
 
+  it("uses Teachific wording in SCORM health and account-sharing operational notices", () => {
+    const healthAlertSource = readFileSync(new URL("./lib/scormHealthAlerts.ts", import.meta.url), "utf8");
+    const sharingMonitorSource = readFileSync(new URL("./jobs/sharingMonitor.ts", import.meta.url), "utf8");
+    expect(healthAlertSource).toContain('subject: `[Teachific] SCORM health alert');
+    expect(healthAlertSource).toContain('brandMode: "teachific"');
+    expect(sharingMonitorSource).toContain("Teachific™ Account Sharing Monitor");
+    expect(`${healthAlertSource}\n${sharingMonitorSource}`).not.toContain("UltrasoundAssist");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
