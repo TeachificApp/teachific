@@ -5502,8 +5502,10 @@
 - [x] Require active-organization target-user ownership for remaining user profile, role, password, and reset administration actions
 - [x] Require active-organization authorization for user administration coupon, sales analytics, sales listing, and access-email procedures
 - [x] Audit and require active-organization ownership for remaining LMS enrollment administration procedures
-- [ ] Require active-organization ownership for remaining LMS enrollment group, instructor, and affiliate procedures
+- [ ] Require active-organization ownership for remaining LMS enrollment instructor procedures
 - [x] Restrict legacy global affiliate administration to platform administrators until affiliate records carry organization ownership
+- [ ] Restrict legacy instructor operations to platform administrators until their storage contract is reconciled with organization ownership
+- [x] Require active-organization ownership for legacy LMS team listing, allocation, seat, and enrolled-student operations
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

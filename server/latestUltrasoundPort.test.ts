@@ -1475,6 +1475,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(affiliateSlice).toContain("Platform admin access required for global affiliate records.");
   });
 
+  it("requires active-organization ownership for legacy LMS teams, team courses, and enrolled-student searches", () => {
+    const enrollmentRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const teamSlice = enrollmentRouterSource.slice(enrollmentRouterSource.indexOf("listTeams"), enrollmentRouterSource.indexOf("// ── Instructors"));
+    expect(teamSlice).toContain("requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role)");
+    expect(teamSlice).toContain("Team does not belong to the active organization.");
+    expect(teamSlice).toContain("Team or course does not belong to the active organization.");
+    expect(teamSlice).toContain("Team course allocation does not belong to the active organization.");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

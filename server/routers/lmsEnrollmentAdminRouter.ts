@@ -88,6 +88,13 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
+async function requireActiveEnrollmentOrg(userId: number, role: string) {
+  const orgId = await getOrgIdForUserWithFallback(userId, role);
+  if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+  await requireOrgAdmin(userId, role, orgId);
+  return orgId;
+}
+
 export const lmsEnrollmentAdminRouter = router({
   listEnrollments: protectedProcedure
     .input(z.object({ courseId: z.number().optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) }))
@@ -236,7 +243,8 @@ export const lmsEnrollmentAdminRouter = router({
     await assertAdmin(ctx);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const groups = await db.select().from(lmsGroups).orderBy(desc(lmsGroups.createdAt));
+    const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+    const groups = await db.select().from(lmsGroups).where(eq(lmsGroups.orgId, orgId)).orderBy(desc(lmsGroups.createdAt));
     const enriched = await Promise.all(groups.map(async (g) => {
       // Get courses for this team
       const groupCourses = await db
@@ -305,7 +313,9 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
       const [result] = await db.insert(lmsGroups).values({
+        orgId,
         name: input.name,
         orgName: input.orgName ?? null,
         adminEmail: input.adminEmail ?? null,
@@ -335,6 +345,9 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [group] = await db.select({ orgId: lmsGroups.orgId }).from(lmsGroups).where(eq(lmsGroups.id, input.id)).limit(1);
+      if (!group || group.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Team does not belong to the active organization." });
       const { id, ...updates } = input;
       const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
       if (Object.keys(filtered).length > 0) await db.update(lmsGroups).set(filtered).where(eq(lmsGroups.id, id));
@@ -352,12 +365,17 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [group] = await db.select({ orgId: lmsGroups.orgId }).from(lmsGroups).where(eq(lmsGroups.id, input.groupId)).limit(1);
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!group || !course || group.orgId !== orgId || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Team or course does not belong to the active organization." });
       // Check not already added
       const [existing] = await db.select().from(lmsGroupCourses)
         .where(and(eq(lmsGroupCourses.groupId, input.groupId), eq(lmsGroupCourses.courseId, input.courseId)))
         .limit(1);
       if (existing) throw new TRPCError({ code: "BAD_REQUEST", message: "Course already added to this team" });
       const [result] = await db.insert(lmsGroupCourses).values({
+        orgId,
         groupId: input.groupId,
         courseId: input.courseId,
         seats: input.seats,
@@ -372,6 +390,9 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [groupCourse] = await db.select({ orgId: lmsGroupCourses.orgId }).from(lmsGroupCourses).where(eq(lmsGroupCourses.id, input.groupCourseId)).limit(1);
+      if (!groupCourse || groupCourse.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Team course allocation does not belong to the active organization." });
       await db.delete(lmsGroupCourses).where(eq(lmsGroupCourses.id, input.groupCourseId));
       return { success: true };
     }),
@@ -383,6 +404,9 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [groupCourse] = await db.select({ orgId: lmsGroupCourses.orgId }).from(lmsGroupCourses).where(eq(lmsGroupCourses.id, input.groupCourseId)).limit(1);
+      if (!groupCourse || groupCourse.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Team course allocation does not belong to the active organization." });
       await db.update(lmsGroupCourses).set({ seats: input.seats }).where(eq(lmsGroupCourses.id, input.groupCourseId));
       return { success: true };
     }),
@@ -394,6 +418,9 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [group] = await db.select({ orgId: lmsGroups.orgId }).from(lmsGroups).where(eq(lmsGroups.id, input.groupId)).limit(1);
+      if (!group || group.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Team does not belong to the active organization." });
       await db.delete(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, input.groupId));
       await db.delete(lmsGroupCourses).where(eq(lmsGroupCourses.groupId, input.groupId));
       await db.delete(lmsGroups).where(eq(lmsGroups.id, input.groupId));
@@ -410,9 +437,11 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
       // Verify group exists and has capacity
       const [group] = await db.select().from(lmsGroups).where(eq(lmsGroups.id, input.groupId)).limit(1);
       if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+      if (group.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Team does not belong to the active organization." });
       const seats = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, input.groupId));
       const activeSeats = seats.filter(s => s.status !== "revoked");
       if (activeSeats.length >= group.seats) throw new TRPCError({ code: "BAD_REQUEST", message: "No seats remaining in this group" });
@@ -449,6 +478,9 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       const q = `%${input.query}%`;
       const rows = await db
         .select({
