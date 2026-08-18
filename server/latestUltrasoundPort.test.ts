@@ -1371,6 +1371,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(fileDetailSource).toContain("originalZipKey");
   });
 
+  it("provides draggable editor height and a sticky toolbar for shared rich-text authoring", () => {
+    const richTextEditorSource = readFileSync(new URL("../client/src/components/RichTextEditor.tsx", import.meta.url), "utf8");
+    expect(richTextEditorSource).toContain("const [editorHeight, setEditorHeight]");
+    expect(richTextEditorSource).toContain("Drag to resize editor");
+    expect(richTextEditorSource).toContain("cursor-ns-resize");
+    expect(richTextEditorSource).toContain("sticky top-0 z-10");
+    expect(richTextEditorSource).toContain("maxHeight = 600");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

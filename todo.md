@@ -5488,8 +5488,9 @@
 - [x] Verify and complete SCORM and quiz import options for native hosting, Question Bank import, or both with organization-scoped media
 - [x] Replace legacy brand-specific widget embed identifiers and message names with generic Teachific-compatible identifiers
 - [x] Apply active organization theme colors to student quiz activity badges
-- [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
+- [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
+- [x] Verify and complete resizable-height and sticky editing behavior for the shared rich-text editor across authoring surfaces
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
