@@ -1146,6 +1146,23 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsDbSource).toContain("export async function getInstructorById");
   });
 
+  it("requires organization-admin ownership for legacy LMS certificates and certificate templates", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const certificatesSource = routerSource.slice(
+      routerSource.indexOf("certificates: router({"),
+      routerSource.indexOf("// ── Certificate Templates")
+    );
+    const templatesSource = routerSource.slice(
+      routerSource.indexOf("certificateTemplates: router({"),
+      routerSource.indexOf("// ── Webinars")
+    );
+    expect(certificatesSource).toContain("Course does not belong to the requested organization");
+    expect((certificatesSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
+    expect(templatesSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);");
+    expect(templatesSource).toContain("Certificate template does not belong to the requested organization");
+    expect(templatesSource).toContain("org-${orgId}/certificate-assets/");
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(

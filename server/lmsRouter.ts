@@ -743,6 +743,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }))
       .query(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getCertificatesByUser(orgId);
       }),
     myList: protectedProcedure
@@ -753,6 +754,9 @@ export const lmsRouter = router({
       .input(z.object({ userId: z.number(), courseId: z.number(), enrollmentId: z.number(), orgId: z.number().optional(), certUrl: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const course = await getCourseById(input.courseId);
+        if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
         return createCertificate({ userId: input.userId, courseId: input.courseId, enrollmentId: input.enrollmentId, orgId, certUrl: input.certUrl ?? null });
       }),
   }),
@@ -763,12 +767,16 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getLmsCertificateTemplatesByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return getLmsCertificateTemplateById(input.id);
+      .query(async ({ input, ctx }) => {
+        const template = await getLmsCertificateTemplateById(input.id);
+        if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Certificate template not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+        return template;
       }),
     create: protectedProcedure
       .input(z.object({
@@ -796,6 +804,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const { orgId: _orgId, ...rest } = input;
         return createLmsCertificateTemplate({ orgId, ...rest } as any);
       }),
@@ -823,13 +832,19 @@ export const lmsRouter = router({
         layout: z.enum(["classic", "modern", "minimal"]).optional(),
         isDefault: z.boolean().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const template = await getLmsCertificateTemplateById(input.id);
+        if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Certificate template not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
         const { id, ...data } = input;
         return updateLmsCertificateTemplate(id, data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const template = await getLmsCertificateTemplateById(input.id);
+        if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Certificate template not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
         await deleteLmsCertificateTemplate(input.id);
         return { ok: true };
       }),
@@ -837,15 +852,22 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return listIssuedCertificates(orgId);
       }),
     preview: protectedProcedure
       .input(z.object({ templateId: z.number().optional(), orgId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const { generateCertificatePdf } = await import("./lib/certificateGenerator");
+        const requestedOrgId = input.orgId ?? await requireOrgId(ctx.user.id);
         let template = null;
         if (input.templateId) {
           template = await getLmsCertificateTemplateById(input.templateId);
+          if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Certificate template not found" });
+          if (input.orgId && template.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Certificate template does not belong to the requested organization" });
+          await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+        } else {
+          await requireOrgAdmin(ctx.user.id, ctx.user.role, requestedOrgId);
         }
         const pdfBuffer = await generateCertificatePdf({
           learnerName: "Jane Smith",
@@ -870,9 +892,11 @@ export const lmsRouter = router({
         return { url };
       }),
     uploadAsset: protectedProcedure
-      .input(z.object({ filename: z.string(), contentType: z.string() }))
-      .mutation(async ({ input }) => {
-        const key = `certificate-assets/${Date.now()}-${input.filename}`;
+      .input(z.object({ orgId: z.number().optional(), filename: z.string(), contentType: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const key = `org-${orgId}/certificate-assets/${Date.now()}-${input.filename}`;
         const { url: uploadUrl } = await storagePresignedPut(key, input.contentType);
         const publicUrl = uploadUrl.split("?")[0];
         return { uploadUrl, publicUrl, key };
