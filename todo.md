@@ -5479,6 +5479,7 @@
 - [x] Replace legacy branding in platform analytics PDF export headers with Teachific wording
 - [x] Replace legacy platform-brand labels in the shared layout navigation with Teachific platform wording
 - [x] Replace legacy product-brand wording in the premium access guard with Teachific platform copy
+- [x] Replace legacy app-brand labels in platform user subscription details with Teachific platform wording
 - [x] Replace legacy brand-specific widget embed identifiers and message names with generic Teachific-compatible identifiers
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
