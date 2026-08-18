@@ -2132,8 +2132,10 @@ export const lmsRouter = router({
         return { ok: true };
       }),
     generateAI: protectedProcedure
-      .input(z.object({ topic: z.string(), count: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ orgId: z.number().optional(), topic: z.string(), count: z.number().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const response = await invokeLLM({
           messages: [
             { role: "system", content: "Generate flashcards as a JSON array of {front, back} objects. Return only valid JSON." },

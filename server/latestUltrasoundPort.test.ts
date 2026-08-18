@@ -1034,6 +1034,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     );
     expect(routerSource).toContain("async function requireLegacyFlashcardDeckAccess");
     expect(flashcardSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(flashcardSource).toContain("orgId: z.number().optional(), topic: z.string()");
     expect((flashcardSource.match(/await requireLegacyFlashcardDeckAccess\(ctx, input\.(?:id|deckId)\);/g) ?? []).length).toBe(3);
   });
 
