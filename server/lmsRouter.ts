@@ -2787,13 +2787,21 @@ export const lmsRouter = router({
   // ── Top-level convenience procedures (legacy compat) ────────────────────
   getCourse: publicProcedure
     .input(z.object({ slug: z.string(), orgId: z.number().optional(), preview: z.boolean().optional() }))
-    .query(async ({ input }) => {
-      if (!input.orgId) {
-        const teachOrgId = await getTeachificOrgId();
-        if (!teachOrgId) return null;
-        return getCourseBySlug(teachOrgId, input.slug);
+    .query(async ({ input, ctx }) => {
+      const orgId = input.orgId ?? await getTeachificOrgId();
+      if (!orgId) {
+        return null;
       }
-      return getCourseBySlug(input.orgId, input.slug);
+      const course = await getCourseBySlug(orgId, input.slug);
+      if (!course || course.status === "published") {
+        return course;
+      }
+      const user = (ctx as any).user;
+      if (!user) {
+        return null;
+      }
+      await requireOrgAdmin(user.id, user.role, course.orgId);
+      return course;
     }),
   listCourses: protectedProcedure
     .input(z.object({ orgId: z.number().optional(), pageSize: z.number().optional() }).optional())

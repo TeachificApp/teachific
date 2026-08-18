@@ -5463,6 +5463,7 @@
 - [x] Require organization-admin ownership for legacy LMS subscription and page queries while preserving public published-page routes
 - [x] Verify free-preview enrollment course and organization alignment before creating access
 - [x] Require organization and learner-access checks before legacy public announcements and course resources are returned
+- [x] Restrict public legacy course lookup to published courses while preserving organization-admin preview access
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation

@@ -1190,6 +1190,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(freePreviewSource).toContain("Course does not belong to the requested organization");
   });
 
+  it("returns only published legacy courses publicly while allowing organization-admin draft previews", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const courseLookupSource = routerSource.slice(
+      routerSource.indexOf("getCourse: publicProcedure"),
+      routerSource.indexOf("listCourses: protectedProcedure")
+    );
+    expect(courseLookupSource).toContain('if (!course || course.status === "published")');
+    expect(courseLookupSource).toContain("if (!user)");
+    expect(courseLookupSource).toContain("await requireOrgAdmin(user.id, user.role, course.orgId);");
+  });
+
   it("requires organization-admin ownership for legacy LMS certificates and certificate templates", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const certificatesSource = routerSource.slice(
