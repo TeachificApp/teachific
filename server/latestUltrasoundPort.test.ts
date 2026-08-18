@@ -1095,6 +1095,23 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(resourcesSource).toContain("Course does not belong to the requested organization");
   });
 
+  it("requires authenticated learner or organization-admin course access before returning legacy announcements and resources", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const announcementSource = routerSource.slice(
+      routerSource.indexOf("announcements: router({"),
+      routerSource.indexOf("// ── Course Resources")
+    );
+    const resourcesSource = routerSource.slice(
+      routerSource.indexOf("resources: router({"),
+      routerSource.indexOf("// ── Aliased sub-routers")
+    );
+    expect(routerSource).toContain("async function requireLegacyCourseLearnerAccess");
+    expect(announcementSource).toContain("list: protectedProcedure");
+    expect(resourcesSource).toContain("list: protectedProcedure");
+    expect(announcementSource).toContain("await requireLegacyCourseLearnerAccess(ctx, input.courseId);");
+    expect(resourcesSource).toContain("await requireLegacyCourseLearnerAccess(ctx, input.courseId);");
+  });
+
   it("requires organization-admin ownership for legacy LMS course and instructor listings", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const listSource = routerSource.slice(

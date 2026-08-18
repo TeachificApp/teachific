@@ -245,6 +245,15 @@ async function requireLegacyCourseAccess(ctx: { user: { id: number; role: string
   return course;
 }
 
+async function requireLegacyCourseLearnerAccess(ctx: { user: { id: number; role: string } }, courseId: number) {
+  const course = await getCourseById(courseId);
+  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  const enrollment = await getEnrollment(courseId, ctx.user.id);
+  if (enrollment?.isActive) return course;
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
+  return course;
+}
+
 async function requireLegacyWorkshopAccess(ctx: { user: { id: number; role: string } }, workshopId: number) {
   const workshop = await getWorkshopById(workshopId);
   if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
@@ -2903,9 +2912,10 @@ export const lmsRouter = router({
 
   // ── Course Announcements ────────────────────────────────────────────────────
   announcements: router({
-    list: publicProcedure
+    list: protectedProcedure
       .input(z.object({ courseId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireLegacyCourseLearnerAccess(ctx, input.courseId);
         const { getAnnouncementsByCourse } = await import("./lmsDb");
         return getAnnouncementsByCourse(input.courseId);
       }),
@@ -2941,9 +2951,10 @@ export const lmsRouter = router({
 
   // ── Course Resources ────────────────────────────────────────────────────────
   resources: router({
-    list: publicProcedure
+    list: protectedProcedure
       .input(z.object({ courseId: z.number(), lessonId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireLegacyCourseLearnerAccess(ctx, input.courseId);
         const { getResourcesByCourse } = await import("./lmsDb");
         return getResourcesByCourse(input.courseId, input.lessonId);
       }),
