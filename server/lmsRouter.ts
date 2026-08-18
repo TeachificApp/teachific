@@ -1283,23 +1283,33 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getCategoriesByOrg(orgId);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), slug: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const slug = input.slug ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
         return createCategory({ orgId, name: input.name, slug });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getCategoryById } = await import("./lmsDb");
+        const category = await getCategoryById(input.id);
+        if (!category) throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, category.orgId);
         return updateCategory(input.id, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getCategoryById } = await import("./lmsDb");
+        const category = await getCategoryById(input.id);
+        if (!category) throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, category.orgId);
         await deleteCategory(input.id);
         return { ok: true };
       }),
@@ -1311,38 +1321,59 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getGroupsByOrg(orgId);
       }),
     listManaged: protectedProcedure
       .query(async ({ ctx }) => {
         const orgId = await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getGroupsByOrg(orgId);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), seats: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return createGroup({ orgId, name: input.name, seats: input.seats ?? 10 });
       }),
     update: protectedProcedure
       .input(z.object({ groupId: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         return updateGroup(input.groupId, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ groupId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         await deleteGroup(input.groupId);
         return { ok: true };
       }),
     addMember: protectedProcedure
       .input(z.object({ groupId: z.number(), email: z.string().email(), name: z.string().optional(), userId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         return addGroupMember({ groupId: input.groupId, email: input.email, name: input.name ?? null, userId: input.userId ?? null });
       }),
     removeMember: protectedProcedure
       .input(z.object({ memberId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getGroupMemberById, getGroupById } = await import("./lmsDb");
+        const member = await getGroupMemberById(input.memberId);
+        if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Group member not found" });
+        const group = await getGroupById(member.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         await removeGroupMember(input.memberId);
         return { ok: true };
       }),
@@ -1350,6 +1381,10 @@ export const lmsRouter = router({
       .input(z.object({ groupId: z.number(), userId: z.number(), orgId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        if (!group || group.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Group does not belong to the requested organization" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -1359,12 +1394,18 @@ export const lmsRouter = router({
       }),
     revokeSeat: protectedProcedure
       .input(z.object({ seatId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { lmsGroupSeats } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
+        const [seat] = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.id, input.seatId)).limit(1);
+        if (!seat) throw new TRPCError({ code: "NOT_FOUND", message: "Group seat not found" });
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(seat.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         await db.delete(lmsGroupSeats).where(eq(lmsGroupSeats.id, input.seatId));
         return { ok: true };
       }),
@@ -1372,6 +1413,13 @@ export const lmsRouter = router({
       .input(z.object({ groupId: z.number(), courseId: z.number(), orgId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        const course = await getCourseById(input.courseId);
+        if (!group || group.orgId !== orgId || !course || course.orgId !== orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Group and course must belong to the requested organization" });
+        }
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const members = await getGroupMembers(input.groupId);
         const results = [];
         for (const m of members) {
@@ -1386,7 +1434,11 @@ export const lmsRouter = router({
       }),
     generateInviteLink: protectedProcedure
       .input(z.object({ groupId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -1421,7 +1473,11 @@ export const lmsRouter = router({
         groupId: z.number(),
         rows: z.array(z.object({ email: z.string().email(), name: z.string().optional() })),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const { getGroupById } = await import("./lmsDb");
+        const group = await getGroupById(input.groupId);
+        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });

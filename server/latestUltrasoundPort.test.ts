@@ -1163,6 +1163,22 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(templatesSource).toContain("org-${orgId}/certificate-assets/");
   });
 
+  it("requires organization-admin ownership for legacy LMS category and group administration", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const categorySource = routerSource.slice(
+      routerSource.indexOf("categories: router({"),
+      routerSource.indexOf("// ── Groups")
+    );
+    const groupSource = routerSource.slice(
+      routerSource.indexOf("groups: router({"),
+      routerSource.indexOf("// ── Cohorts")
+    );
+    expect(categorySource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, category.orgId);");
+    expect(groupSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);");
+    expect(groupSource).toContain("Group does not belong to the requested organization");
+    expect(groupSource).toContain("Group and course must belong to the requested organization");
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(

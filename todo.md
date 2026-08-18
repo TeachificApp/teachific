@@ -5454,6 +5454,7 @@
 - [x] Require organization-admin ownership for legacy LMS member listings, enrollment, creation, and bulk import
 - [x] Require organization-admin ownership for legacy LMS pages, instructors, and affiliate administration
 - [x] Require organization-admin ownership for legacy LMS certificate issuance and certificate-template administration
+- [x] Require organization-admin ownership for legacy LMS category, group, membership, seat, enrollment, and invitation management
 - [x] Apply active organization theme colors to student quiz activity badges
 - [ ] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
 - [x] Require organization-admin ownership for organization-scoped media uploads used by branding and source-backed AI generation
