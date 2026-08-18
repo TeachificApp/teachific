@@ -1318,6 +1318,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).not.toContain("UltrasoundAssist");
     expect(brandNavSource).not.toContain("EchoAssist");
     expect(brandNavSource).not.toContain("PediatricAssist");
+    expect(brandNavSource).not.toContain("iHeartEcho");
   });
 
   it("resolves widget administration from the active organization rather than a fallback membership", () => {

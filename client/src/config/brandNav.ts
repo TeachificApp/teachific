@@ -156,7 +156,7 @@ const PLATFORM_HIDDEN_NAV: NavItem[] = [
   { path: "/educator-assist", label: "Educator Tools" },
 ];
 
-// ─── iHeartEcho Navigation ──────────────────────────────────────────────────────
+// ─── Alternate Platform Navigation ──────────────────────────────────────────────
 const ALTERNATE_NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
