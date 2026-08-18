@@ -1234,6 +1234,26 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsDbSource).toContain("export async function getCouponById");
   });
 
+  it("requires organization-admin ownership for legacy LMS notifications, revenue partners, and course orders", () => {
+    const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const notificationsSource = routerSource.slice(
+      routerSource.indexOf("notifications: router({"),
+      routerSource.indexOf("// ── Revenue Partners")
+    );
+    const partnersSource = routerSource.slice(
+      routerSource.indexOf("revenuePartners: router({"),
+      routerSource.indexOf("// ── Course Orders")
+    );
+    const ordersSource = routerSource.slice(
+      routerSource.indexOf("courseOrders: router({"),
+      routerSource.indexOf("// ── Memberships")
+    );
+    expect((notificationsSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
+    expect(partnersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, partner.orgId);");
+    expect(ordersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, order.orgId);");
+    expect(ordersSource).toContain("delete data.orgId;");
+  });
+
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const courseSource = routerSource.slice(

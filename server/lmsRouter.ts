@@ -1842,6 +1842,7 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getOrgNotificationSettings(orgId);
       }),
     updateOrgSettings: protectedProcedure
@@ -1858,6 +1859,7 @@ export const lmsRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return updateOrgNotificationSettings(orgId, input.settings);
       }),
   }),
@@ -1868,22 +1870,30 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getRevenuePartnersByOrg(orgId);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), email: z.string(), shareValue: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return createRevenuePartner({ orgId, name: input.name, email: input.email, shareValue: input.shareValue ?? 10 });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const partner = await getRevenuePartnerById(input.id);
+        if (!partner) throw new TRPCError({ code: "NOT_FOUND", message: "Revenue partner not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, partner.orgId);
         return updateRevenuePartner(input.id, input.data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const partner = await getRevenuePartnerById(input.id);
+        if (!partner) throw new TRPCError({ code: "NOT_FOUND", message: "Revenue partner not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, partner.orgId);
         await deleteRevenuePartner(input.id);
         return { ok: true };
       }),
@@ -1895,28 +1905,43 @@ export const lmsRouter = router({
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getCourseOrdersByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return getCourseOrderById(input.id);
+      .query(async ({ input, ctx }) => {
+        const order = await getCourseOrderById(input.id);
+        if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Course order not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, order.orgId);
+        return order;
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), userId: z.number().optional(), courseId: z.number().optional(), customerEmail: z.string(), amount: z.number().optional(), status: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        if (input.courseId) {
+          const course = await getCourseById(input.courseId);
+          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
+        }
         return createCourseOrder({ orgId, userId: input.userId ?? null, courseId: input.courseId ?? null, customerEmail: input.customerEmail, amount: input.amount ?? 0, status: (input.status ?? "pending") as any });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
-        return updateCourseOrder(input.id, input.data as any);
+      .mutation(async ({ input, ctx }) => {
+        const order = await getCourseOrderById(input.id);
+        if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Course order not found" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, order.orgId);
+        const data = { ...input.data } as Record<string, unknown>;
+        delete data.orgId;
+        return updateCourseOrder(input.id, data as any);
       }),
     stats: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getCourseOrderStats(orgId);
       }),
   }),
