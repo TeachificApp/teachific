@@ -1283,6 +1283,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pdfExportSource).not.toContain("UltrasoundAssist");
   });
 
+  it("uses generic Teachific labels in the shared platform navigation", () => {
+    const layoutSource = readFileSync(new URL("../client/src/components/Layout.tsx", import.meta.url), "utf8");
+    expect(layoutSource).toContain('label: "Guided Tools"');
+    expect(layoutSource).toContain('label: "Clinical Calculators"');
+    expect(layoutSource).toContain("Submit Clinical Case");
+    expect(layoutSource).toContain("Educator Tools");
+    expect(layoutSource).not.toContain("UltrasoundAssist");
+    expect(layoutSource).not.toContain("PediatricAssist");
+    expect(layoutSource).not.toContain("EchoAssist");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

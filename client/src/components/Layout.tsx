@@ -67,10 +67,10 @@ const BASE_NAV_GROUPS = [
   {
     label: "Clinical Tools",
     items: [
-      { path: "/ultrasound-assist", label: "UltrasoundAssist™", icon: Stethoscope },
-      { path: "/calculators", label: "UltrasoundAssist™ Calculators", icon: Calculator },
-      { path: "/pediatric-navigator", label: "PediatricAssist™", icon: Stethoscope },
-      { path: "/pediatric-calculators", label: "PediatricAssist™ Calculators", icon: Calculator },
+      { path: "/ultrasound-assist", label: "Guided Tools", icon: Stethoscope },
+      { path: "/calculators", label: "Clinical Calculators", icon: Calculator },
+      { path: "/pediatric-navigator", label: "Pediatric Tools", icon: Stethoscope },
+      { path: "/pediatric-calculators", label: "Pediatric Calculators", icon: Calculator },
       { path: "/clinical-intelligence", label: "Clinical Intelligence", icon: Brain },
     ],
   },
@@ -78,7 +78,7 @@ const BASE_NAV_GROUPS = [
     label: "Learning",
     items: [
       { path: "/quickfire", label: "Daily Challenge", icon: Zap },
-      { path: "/flashcards", label: "Ultrasound Flashcards", icon: Layers },
+      { path: "/flashcards", label: "Flashcards", icon: Layers },
       { path: "/case-library", label: "Case Library", icon: Library },
       { path: "/soundbytes", label: "SoundBytes™", icon: BookMarked },
       { path: "/cme", label: "CME Hub", icon: GraduationCap },
@@ -124,9 +124,9 @@ const hiddenNavItems = [
   { path: "/admin/cases-aaus", label: "Case Management" },
   { path: "/admin/quickfire-aaus", label: "Daily Challenge Admin" },
   { path: "/admin/thinkific-webhook-aaus", label: "Thinkific Webhook" },
-  { path: "/echo-assist-hub", label: "EchoAssist™" },
-  { path: "/scan-coach", label: "EchoAssist™ — Scan Coach" },
-  { path: "/pocus-assist-hub", label: "POCUS-Assist™" },
+  { path: "/echo-assist-hub", label: "Echo Tools" },
+  { path: "/scan-coach", label: "Scan Coach" },
+  { path: "/pocus-assist-hub", label: "Point-of-Care Tools" },
   { path: "/pocus-efast-navigator", label: "eFAST Navigator" },
   { path: "/pocus-rush-navigator", label: "RUSH Navigator" },
   { path: "/pocus-cardiac-navigator", label: "Cardiac POCUS Navigator" },
@@ -137,20 +137,20 @@ const hiddenNavItems = [
   { path: "/pocus-lung-scan-coach", label: "Lung POCUS ScanCoach™" },
   { path: "/ecg-navigator", label: "ECG Navigator" },
   { path: "/ecg-coach", label: "ECG Coach" },
-  { path: "/ecg-assist", label: "ECG-Assist™" },
-  { path: "/fetal-echo-assist", label: "FetalEchoAssist™" },
+  { path: "/ecg-assist", label: "ECG Tools" },
+  { path: "/fetal-echo-assist", label: "Fetal Echo Tools" },
   { path: "/fetal-navigator", label: "Fetal Echo Navigator" },
   { path: "/fetal-scan-coach", label: "Fetal Echo ScanCoach™" },
-  { path: "/pediatric-echo-assist", label: "PediatricEchoAssist™" },
-  { path: "/achd-echo-assist", label: "ACHDEchoAssist™" },
+  { path: "/pediatric-echo-assist", label: "Pediatric Echo Tools" },
+  { path: "/achd-echo-assist", label: "Congenital Echo Tools" },
   { path: "/diy-accreditation-plans", label: "DIY Accreditation™ Plans" },
   { path: "/diy-accreditation-smart", label: "DIY Accreditation™" },
   { path: "/diy-register", label: "Register Your Lab" },
   { path: "/lab-admin", label: "Lab Admin Portal" },
   { path: "/diy-member", label: "Member Portal" },
-  // Ultrasound specialty navigators
-  { path: "/ultrasound-assist", label: "UltrasoundAssist™" },
-  { path: "/calculators", label: "UltrasoundAssist™ Calculators" },
+  // Specialty navigators
+  { path: "/ultrasound-assist", label: "Guided Tools" },
+  { path: "/calculators", label: "Clinical Calculators" },
   { path: "/abdominal-navigator", label: "Abdominal Navigator" },
   { path: "/abdominal-scan-coach", label: "Abdominal ScanCoach™" },
   { path: "/pelvic-gyn-navigator", label: "Pelvic/Gyn Navigator" },
@@ -179,12 +179,12 @@ const hiddenNavItems = [
   { path: "/tcd-scan-coach", label: "TCD ScanCoach™" },
   { path: "/msk-navigator", label: "MSK Navigator" },
   { path: "/msk-scan-coach", label: "MSK ScanCoach™" },
-  { path: "/pocus-assist", label: "POCUS-Assist™ Hub" },
-  { path: "/pediatric-navigator", label: "PediatricAssist™ Navigator" },
-  { path: "/pediatric-scan-coach", label: "PediatricAssist™ ScanCoach™" },
-  { path: "/pediatric-calculators", label: "PediatricAssist™ Calculators" },
+  { path: "/pocus-assist", label: "Point-of-Care Tools" },
+  { path: "/pediatric-navigator", label: "Pediatric Navigator" },
+  { path: "/pediatric-scan-coach", label: "Pediatric Scan Coach" },
+  { path: "/pediatric-calculators", label: "Pediatric Calculators" },
   { path: "/soundbytes", label: "SoundBytes™" },
-  { path: "/educator-assist", label: "EducatorAssist™" },
+  { path: "/educator-assist", label: "Educator Tools" },
 ];
 // staticNavItems is now resolved inside the Layout function body (brand-aware)
 
@@ -533,7 +533,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           <button onClick={() => setAccountOpen(false)}
                             className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs md:text-sm text-gray-700 hover:bg-[#f0fbfc] hover:text-[#189aa1] transition-all text-left">
                             <Plus className="w-3.5 h-3.5 text-[#189aa1]" />
-                            Submit Ultrasound Case
+                            Submit Clinical Case
                           </button>
                         </WouterLink>
                         <SiteNavProfileLinks
@@ -566,7 +566,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         </div>
                       )}
 
-                      {/* EducatorAssist™ — admin-only */}
+                      {/* Educator tools — admin-only */}
                       {hasPlatformAdmin && (
                         <div className="px-2 py-1.5 border-t border-gray-100">
                           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Educator Platform</div>
@@ -574,7 +574,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             <button onClick={() => setAccountOpen(false)}
                               className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-teal-50 hover:text-[#189aa1] transition-all text-left">
                               <GraduationCap className="w-3.5 h-3.5 text-[#189aa1]" />
-                              <span className="flex-1">EducatorAssist™</span>
+                              <span className="flex-1">Educator Tools</span>
                               <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Admin</span>
                             </button>
                           </WouterLink>
