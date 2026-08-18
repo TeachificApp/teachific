@@ -107,7 +107,7 @@ const SECTION_META: Record<Exclude<CheckoutSectionType, 'content_block'>, { labe
   trust_seals: { label: "Trust Seals & Badges", icon: <ShieldCheck className="h-4 w-4" />, description: "Security badges and guarantee icons", color: "text-teal-600" },
   guarantee: { label: "Money-Back Guarantee", icon: <Award className="h-4 w-4" />, description: "Refund policy with icon and text", color: "text-amber-600" },
   testimonials: { label: "Testimonials", icon: <MessageSquare className="h-4 w-4" />, description: "Student reviews and ratings", color: "text-blue-600" },
-  faq: { label: "FAQ", icon: <HelpCircle className="h-4 w-4" />, description: "Frequently asked questions", color: "text-purple-600" },
+  faq: { label: "FAQ", icon: <HelpCircle className="h-4 w-4" />, description: "Frequently asked questions", color: "text-[var(--org-primary)]" },
   custom_html: { label: "Custom HTML", icon: <Code2 className="h-4 w-4" />, description: "Raw HTML block", color: "text-gray-600" },
   course_includes: { label: "What's Included", icon: <BookOpen className="h-4 w-4" />, description: "Course content highlights", color: "text-green-600" },
 };
@@ -134,7 +134,7 @@ function getSectionIcon(section: CheckoutSection): React.ReactNode {
 }
 
 function getSectionColor(section: CheckoutSection): string {
-  if (section.type === "content_block") return "text-indigo-600";
+  if (section.type === "content_block") return "text-[var(--org-primary)]";
   return SECTION_META[section.type as Exclude<CheckoutSectionType, 'content_block'>].color;
 }
 
@@ -1046,7 +1046,7 @@ export default function CheckoutPageEditorPage() {
                 .map((section, sortedIdx) => {
                   const originalIdx = config.sections.indexOf(section);
                   const meta = section.type === "content_block"
-                    ? { label: section.label || (section as ContentBlockSection).blockType || "Content Block", icon: <Code2 className="h-4 w-4" />, description: "Saved block", color: "text-indigo-600" }
+                    ? { label: section.label || (section as ContentBlockSection).blockType || "Content Block", icon: <Code2 className="h-4 w-4" />, description: "Saved block", color: "text-[var(--org-primary)]" }
                     : SECTION_META[section.type as Exclude<CheckoutSectionType, 'content_block'>];
                   const isSelected = selectedIdx === originalIdx;
                   return (
@@ -1057,14 +1057,15 @@ export default function CheckoutPageEditorPage() {
                         !section.enabled ? "opacity-40" : ""
                       } ${
                         isSelected
-                          ? "border-teal-500 shadow-lg shadow-teal-100"
-                          : "border-transparent hover:border-teal-300 hover:shadow-md"
+                          ? "shadow-lg"
+                          : "border-transparent hover:border-[var(--org-primary)] hover:shadow-md"
                       } bg-white`}
+                      style={isSelected ? { borderColor: "var(--org-primary)", boxShadow: "0 10px 20px color-mix(in_srgb, var(--org-primary) 16%, transparent)" } : undefined}
                     >
                       {/* Section header bar */}
                       <div className={`flex items-center justify-between px-3 py-2 rounded-t-2xl border-b ${
-                        isSelected ? "bg-teal-50 border-teal-200" : "bg-gray-50 border-gray-100"
-                      }`}>
+                        isSelected ? "" : "bg-gray-50 border-gray-100"
+                      }`} style={isSelected ? { backgroundColor: "color-mix(in_srgb, var(--org-primary) 8%, transparent)", borderColor: "color-mix(in_srgb, var(--org-primary) 28%, transparent)" } : undefined}>
                         <div className="flex items-center gap-2">
                           <span className={meta.color}>{meta.icon}</span>
                           <span className="text-xs font-semibold text-gray-700">{meta.label}</span>

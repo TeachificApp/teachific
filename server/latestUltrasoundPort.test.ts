@@ -1228,6 +1228,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).not.toContain('Share in SonoQuiz');
   });
 
+  it("uses active organization colors for Checkout Page Editor content-block controls", () => {
+    const checkoutEditorSource = readFileSync(new URL("../client/src/pages/admin/CheckoutPageEditorPage.tsx", import.meta.url), "utf8");
+    expect(checkoutEditorSource).toContain('if (section.type === "content_block") return "text-[var(--org-primary)]";');
+    expect(checkoutEditorSource).toContain('color: "text-[var(--org-primary)]"');
+    expect(checkoutEditorSource).toContain('borderColor: "var(--org-primary)"');
+    expect(checkoutEditorSource).not.toContain('"text-indigo-600"');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
