@@ -1428,6 +1428,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminUserRouterSource).toContain("requireActiveOrgUserMembership(ctx, input.userId)");
   });
 
+  it("requires active-organization user, cohort, and course ownership for cohort administration", () => {
+    const adminUserRouterSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    expect(adminUserRouterSource).toContain("Cohort group does not belong to the active organization and course.");
+    expect(adminUserRouterSource).toContain("eq(lmsCohortGroups.orgId, orgId)");
+    expect(adminUserRouterSource).toContain("requireActiveOrgUserMembership(ctx, input.userId)");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

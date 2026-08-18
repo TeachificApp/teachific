@@ -804,6 +804,8 @@ export const adminUserRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!course || !orgId || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
       const rows = await db
         .select({ id: lmsCohortGroups.id, name: lmsCohortGroups.name, status: lmsCohortGroups.status, startDate: lmsCohortGroups.startDate, endDate: lmsCohortGroups.endDate, maxStudents: lmsCohortGroups.maxStudents })
         .from(lmsCohortGroups)
@@ -821,10 +823,13 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), courseId: z.number(), cohortGroupId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No org context" });
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const [group] = await db
+        .select({ name: lmsCohortGroups.name, orgId: lmsCohortGroups.orgId, courseId: lmsCohortGroups.courseId })
+        .from(lmsCohortGroups)
+        .where(eq(lmsCohortGroups.id, input.cohortGroupId))
+        .limit(1);
+      if (!group || group.orgId !== orgId || group.courseId !== input.courseId) throw new TRPCError({ code: "FORBIDDEN", message: "Cohort group does not belong to the active organization and course." });
       // Check if already assigned
       const [existing] = await db
         .select({ id: lmsCohortGroupEnrollments.id })
@@ -840,7 +845,6 @@ export const adminUserRouter = router({
           enrolledAt: new Date(),
         });
       }
-      const [group] = await db.select({ name: lmsCohortGroups.name }).from(lmsCohortGroups).where(eq(lmsCohortGroups.id, input.cohortGroupId)).limit(1);
       return { success: true, groupName: group?.name ?? "Group" };
     }),
 
