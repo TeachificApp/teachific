@@ -9,7 +9,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
-import { getDb, getOrCreateUserByEmail } from "../db";
+import { getDb, getOrgById, getOrCreateUserByEmail } from "../db";
 import { funnelPurchases, lmsEnrollments, brandMemberships, digitalPurchases, lmsCourses, digitalProducts, digitalBundles, physicalProducts, funnelPages } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
@@ -17,6 +17,7 @@ import { sendEmail, buildFunnelPurchaseConfirmationEmail } from "../_core/email"
 import { generateAutoLoginToken } from "../routes/autoLogin";
 import { assertFreeOrderEligible, resolveEmbeddedCheckoutExpectedCents } from "../lib/checkoutPricing";
 import { getStripeClient } from "../lib/stripeClient";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 const billingAddressSchema = z.object({
   address: z.string(),
@@ -113,6 +114,9 @@ export const embeddedCheckoutRouter = router({
 
       const orgId = await resolveCheckoutOrgId(db, input);
       if (orgId === null) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable to resolve the checkout organization" });
+      const organization = await getOrgById(orgId);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Checkout organization not found" });
+      const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
 
       let totalAmountCents = await resolveEmbeddedCheckoutExpectedCents(db, {
         productName: input.productName,
@@ -168,11 +172,11 @@ export const embeddedCheckoutRouter = router({
 
       // Success URL — resolve special values
       const resolveEcSuccessUrl = (redirect: string | undefined) => {
-        if (!redirect) return `${input.origin}/?checkout_success=1`;
-        if (redirect === "__dashboard__") return `${input.origin}/my-dashboard?purchase=success`;
-        if (redirect.startsWith("__funnel__:")) return `${input.origin}/${redirect.slice(11)}?success=1`;
+        if (!redirect) return `${orgBaseUrl}/?checkout_success=1`;
+        if (redirect === "__dashboard__") return `${orgBaseUrl}/my-dashboard?purchase=success`;
+        if (redirect.startsWith("__funnel__:")) return `${orgBaseUrl}/${redirect.slice(11)}?success=1`;
         if (redirect.startsWith("http")) return redirect;
-        return `${input.origin}${redirect}`;
+        return `${orgBaseUrl}${redirect}`;
       };
       const successUrl = resolveEcSuccessUrl(input.successRedirect);
 
@@ -341,6 +345,9 @@ export const embeddedCheckoutRouter = router({
 
       const orgId = await resolveCheckoutOrgId(db, input);
       if (orgId === null) throw new TRPCError({ code: "BAD_REQUEST", message: "Unable to resolve the checkout organization" });
+      const organization = await getOrgById(orgId);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Checkout organization not found" });
+      const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
 
       await assertFreeOrderEligible(db, {
         productName: input.productName,
@@ -356,17 +363,15 @@ export const embeddedCheckoutRouter = router({
 
       // Resolve success URL
       const resolveSuccessUrl = (redirect: string | undefined) => {
-        if (!redirect) return `${input.origin}/?checkout_success=1`;
-        if (redirect === "__dashboard__") return `${input.origin}/my-dashboard?purchase=success`;
-        if (redirect.startsWith("__funnel__:")) return `${input.origin}/${redirect.slice(11)}?success=1`;
+        if (!redirect) return `${orgBaseUrl}/?checkout_success=1`;
+        if (redirect === "__dashboard__") return `${orgBaseUrl}/my-dashboard?purchase=success`;
+        if (redirect.startsWith("__funnel__:")) return `${orgBaseUrl}/${redirect.slice(11)}?success=1`;
         if (redirect.startsWith("http")) return redirect;
-        return `${input.origin}${redirect}`;
+        return `${orgBaseUrl}${redirect}`;
       };
       const successUrl = resolveSuccessUrl(input.successRedirect);
 
       // ── Auto-create account for guests ──────────────────────────────────────
-      const brandMode = "aaus"; // default; could be extended via input if needed
-      const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://teachific.app";
       if (!userId) {
         try {
           const nameParts = (customerName || "").split(" ");
@@ -380,12 +385,11 @@ export const embeddedCheckoutRouter = router({
           if (result.isNew && result.resetToken) {
             try {
               const { buildPasswordResetEmail, sendEmailViaOrg } = await import("../_core/email");
-              const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${result.resetToken}`;
+              const setPasswordUrl = `${orgBaseUrl}/auth/reset-password?token=${result.resetToken}`;
               const firstName = input.firstName || nameParts[0] || "there";
               const emailContent = buildPasswordResetEmail({
                 firstName,
                 resetUrl: setPasswordUrl,
-                brandMode: brandMode as any,
               });
               await sendEmailViaOrg({
                 to: { name: customerName || firstName, email: input.email },

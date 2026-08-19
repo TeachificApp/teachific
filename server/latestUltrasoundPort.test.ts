@@ -1802,6 +1802,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsHelpersSource).not.toContain('const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);\n  if (isPlatformAdmin) return;');
   });
 
+  it("builds embedded checkout success and account setup links from the owning organization domain", () => {
+    const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
+    expect(embeddedCheckoutSource.match(/const orgBaseUrl = getOrgBaseUrl\(organization\.slug, organization\.customDomain, organization\.domainVerificationStatus\);/g)).toHaveLength(2);
+    expect(embeddedCheckoutSource).toContain('const setPasswordUrl = `${orgBaseUrl}/auth/reset-password?token=${result.resetToken}`;');
+    expect(embeddedCheckoutSource).not.toContain('const brandMode = "aaus"');
+    expect(embeddedCheckoutSource).not.toContain('https://app.iheartecho.net');
+    expect(embeddedCheckoutSource).not.toContain('https://teachific.app');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');

@@ -5559,6 +5559,7 @@
 - [x] Require active-organization course ownership when creating cohort groups
 - [x] Scope enrollment administration listings to the authorized active organization
 - [x] Align legacy LMS section and lesson ownership helpers with active-organization course authorization
+- [x] Build embedded checkout account setup links from the owning organization domain
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
