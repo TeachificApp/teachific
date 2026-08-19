@@ -5507,6 +5507,8 @@
 - [x] Reconcile legacy instructor operations with organization ownership rather than restricting them to platform administrators
 - [x] Require active-organization ownership for legacy LMS team listing, allocation, seat, and enrolled-student operations
 - [x] Reconcile legacy instructor storage fields with the organization-owned schema and active-organization administration
+- [ ] Resolve protected legacy LMS instructor listing from the active organization rather than a caller-selected organization
+- [x] Add a signed-in-only dismissible yellow maintenance banner with review and removal after August 25, 2026 at 9:00 AM Eastern Time
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

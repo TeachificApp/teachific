@@ -2816,7 +2816,12 @@ export const lmsRouter = router({
   listInstructors: protectedProcedure
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId) return [];
+      if (input?.orgId !== undefined && input.orgId !== activeOrgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Instructor records must be loaded from the active organization." });
+      }
+      const orgId = activeOrgId;
       await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       return getInstructorsByOrg(orgId);
     }),

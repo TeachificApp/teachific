@@ -1495,6 +1495,24 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(instructorSlice).toContain("One or more instructors do not belong to the active organization.");
   });
 
+  it("resolves protected legacy LMS instructor listing from the active organization", () => {
+    const legacyLmsSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const listingSlice = legacyLmsSource.slice(legacyLmsSource.indexOf("listInstructors: protectedProcedure"), legacyLmsSource.indexOf("// ── Workshops"));
+    expect(listingSlice).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(listingSlice).toContain("Instructor records must be loaded from the active organization.");
+  });
+
+  it("shows the maintenance banner only to signed-in users with dismissal and August 25 removal safeguards", () => {
+    const bannerSource = readFileSync(new URL("../client/src/components/MaintenanceBanner.tsx", import.meta.url), "utf8");
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    expect(bannerSource).toContain("!user");
+    expect(bannerSource).toContain("teachific-maintenance-2026-08");
+    expect(bannerSource).toContain("Date.UTC(2026, 7, 25, 13, 0, 0)");
+    expect(bannerSource).toContain("Scheduled Server Maintenance Aug 22–24, 2026");
+    expect(bannerSource).toContain("Dismiss scheduled maintenance notice");
+    expect(appSource).toContain("<MaintenanceBanner />");
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
