@@ -1537,6 +1537,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(campaignSource).toContain('color-mix(in_srgb,var(--org-primary)_18%,transparent)');
   });
 
+  it("uses active organization theme tokens for CME form AI controls, badges, and send actions", () => {
+    const dialogSource = readFileSync(new URL("../client/src/components/CmeActivityFormDialog.tsx", import.meta.url), "utf8");
+    const tabSource = readFileSync(new URL("../client/src/components/CmeFormTab.tsx", import.meta.url), "utf8");
+    for (const source of [dialogSource, tabSource]) {
+      expect(source).toContain('text-[var(--org-primary)]');
+      expect(source).toContain('org-primary-button');
+      expect(source).toContain('color-mix(in_srgb,var(--org-primary)_30%,transparent)');
+    }
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

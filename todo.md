@@ -5513,6 +5513,7 @@
 - [x] Resolve CME disclosure administration from the active organization rather than a caller-selected organization
 - [x] Confirm CME assessments are handled through existing organization-scoped course and quiz workflows rather than a separate administration router
 - [x] Apply the active organization theme to Email Campaigns click analytics, link indicators, and CTA hover states
+- [x] Apply the active organization theme to CME form AI-generation controls and AI-generated status badges
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

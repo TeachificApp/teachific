@@ -326,7 +326,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           disabled={generating || generateContent.isPending}
           className="gap-1.5"
         >
-          {generating || generateContent.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-violet-500" />}
+          {generating || generateContent.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-[var(--org-primary)]" />}
           AI Generate Content
         </Button>
         <Button size="sm" variant="outline" onClick={handleSave} disabled={saveForm.isPending} className="gap-1.5">
@@ -339,23 +339,23 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={downloadPdf.isPending} className="gap-1.5">
           <Download className="w-3.5 h-3.5" /> PDF
         </Button>
-        <Button size="sm" onClick={openSendDialog} className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
+        <Button size="sm" onClick={openSendDialog} className="gap-1.5 org-primary-button">
           <Send className="w-3.5 h-3.5" /> Send CME Form
         </Button>
       </div>
 
       {/* Send dialog */}
       {showSendDialog && (
-        <Card className="border-sky-200 bg-sky-50">
+        <Card className="border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
           <CardContent className="pt-4 pb-4 space-y-3">
-            <p className="text-sm font-medium text-sky-800">Send PDF to CME Provider</p>
-            <p className="text-xs text-sky-700">Edit the recipient list below. Defaults are pre-filled; remove or add as needed.</p>
+            <p className="text-sm font-medium text-[var(--org-primary)]">Send PDF to CME Provider</p>
+            <p className="text-xs text-[var(--org-primary)]">Edit the recipient list below. Defaults are pre-filled; remove or add as needed.</p>
             {/* Email chips */}
             <div className="flex flex-wrap gap-1.5">
               {sendEmailList.map(email => (
-                <span key={email} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-xs font-medium border border-sky-200">
+                <span key={email} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] text-xs font-medium border border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]">
                   {email}
-                  <button type="button" onClick={() => removeSendEmail(email)} className="ml-0.5 text-sky-500 hover:text-sky-800 leading-none" aria-label={`Remove ${email}`}>×</button>
+                  <button type="button" onClick={() => removeSendEmail(email)} className="ml-0.5 text-[var(--org-primary)] hover:opacity-70 leading-none" aria-label={`Remove ${email}`}>×</button>
                 </span>
               ))}
             </div>
@@ -371,7 +371,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
               <Button size="sm" variant="outline" onClick={addSendEmail} className="whitespace-nowrap">Add</Button>
             </div>
             <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={handleSend} disabled={sendCmeForm.isPending || sendEmailList.length === 0} className="bg-sky-600 hover:bg-sky-700 text-white whitespace-nowrap">
+              <Button size="sm" onClick={handleSend} disabled={sendCmeForm.isPending || sendEmailList.length === 0} className="org-primary-button whitespace-nowrap">
                 {sendCmeForm.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : `Send to ${sendEmailList.length} recipient${sendEmailList.length !== 1 ? 's' : ''}`}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowSendDialog(false)}>Cancel</Button>
@@ -478,7 +478,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             Section 2: Professional Practice Gap
-            <Badge variant="outline" className="text-xs text-violet-600 border-violet-200 bg-violet-50">AI Generated</Badge>
+            <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]">AI Generated</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -498,7 +498,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             Section 3: Educational Needs
-            <Badge variant="outline" className="text-xs text-violet-600 border-violet-200 bg-violet-50">AI Generated</Badge>
+            <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]">AI Generated</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -526,7 +526,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             Section 4: Learning Objectives
-            <Badge variant="outline" className="text-xs text-violet-600 border-violet-200 bg-violet-50">AI Generated</Badge>
+            <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]">AI Generated</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
