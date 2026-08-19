@@ -276,14 +276,14 @@ export default function CommunityPage() {
 
       {/* Upgrade prompt when at limit */}
       {atLimit && maxCommunities !== null && maxCommunities > 0 && (
-        <div className="flex items-center gap-4 border-2 border-dashed border-purple-200 rounded-xl p-4 bg-purple-50/40">
-          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <Plus className="h-5 w-5 text-purple-500" />
+        <div className="flex items-center gap-4 border-2 border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] rounded-xl p-4 bg-[color:color-mix(in_srgb,var(--org-primary)_7%,transparent)]">
+          <div className="w-10 h-10 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center flex-shrink-0">
+            <Plus className="h-5 w-5 text-[var(--org-primary)]" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <Gem className="h-3.5 w-3.5 text-purple-500" />
-              <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide">Upgrade</span>
+              <Gem className="h-3.5 w-3.5 text-[var(--org-primary)]" />
+              <span className="text-xs font-semibold text-[var(--org-primary)] uppercase tracking-wide">Upgrade</span>
             </div>
             <p className="font-semibold text-slate-800 text-sm">Expand your impact with more communities</p>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -291,7 +291,7 @@ export default function CommunityPage() {
               {plan === "starter" ? "Builder" : plan === "builder" ? "Pro" : "Enterprise"} plan. Upgrade today to access.
             </p>
           </div>
-          <Button size="sm" className=" hover: gap-1.5 flex-shrink-0" onClick={() => toast.info("Contact your platform admin to upgrade your plan.")}>
+          <Button size="sm" className="org-primary-button hover:gap-1.5 flex-shrink-0" onClick={() => toast.info("Contact your platform admin to upgrade your plan.")}>
             Upgrade <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>

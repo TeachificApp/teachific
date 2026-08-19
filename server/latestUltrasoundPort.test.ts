@@ -1634,6 +1634,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).toContain('await resolveActiveAdminOrg(ctx, input.orgId);');
   });
 
+  it("uses the active organization theme for Community product page upgrade callouts", () => {
+    const communityPageSource = readFileSync(new URL("../client/src/pages/products/CommunityPage.tsx", import.meta.url), "utf8");
+    expect(communityPageSource).toContain('text-[var(--org-primary)]');
+    expect(communityPageSource).toContain('className="org-primary-button hover:gap-1.5 flex-shrink-0"');
+    expect(communityPageSource).not.toContain('border-purple-200');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
