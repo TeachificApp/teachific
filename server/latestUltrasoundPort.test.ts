@@ -1795,6 +1795,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(enrollmentAdminRouterSource).not.toContain('if (!isPlatformAdmin(ctx.user.role)) {\n        const orgId = await getOrgIdForUser(ctx.user.id);');
   });
 
+  it("uses active-organization course authorization for legacy LMS section and lesson ownership", () => {
+    const lmsHelpersSource = readFileSync(new URL("./routers/lmsHelpers.ts", import.meta.url), "utf8");
+    expect(lmsHelpersSource).toContain('await assertCourseOwnership(ctx, section.courseId);');
+    expect(lmsHelpersSource).toContain('await assertCourseOwnership(ctx, courseId);');
+    expect(lmsHelpersSource).not.toContain('const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);\n  if (isPlatformAdmin) return;');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');

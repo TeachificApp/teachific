@@ -5558,6 +5558,7 @@
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups
 - [x] Scope enrollment administration listings to the authorized active organization
+- [x] Align legacy LMS section and lesson ownership helpers with active-organization course authorization
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
