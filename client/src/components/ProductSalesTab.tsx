@@ -47,7 +47,7 @@ function ResendConfirmationButton({ userId, brand }: { userId: number; brand: "a
     onError: (e) => toast.error(e.message),
   });
   return (
-    <Button size="sm" variant="outline" className="h-7 text-xs text-teal-700 border-teal-200 hover:bg-teal-50"
+    <Button size="sm" variant="outline" className="h-7 text-xs text-[var(--org-primary)] border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
       disabled={resend.isPending}
       onClick={() => resend.mutate({ userId, brand })}>
       {resend.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Mail className="h-3 w-3 mr-1" />}
@@ -88,15 +88,15 @@ function DownloadSalesTab({ productId }: { productId: number }) {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><Users className="h-3 w-3" /> Total Buyers</div>
-          <div className="text-2xl font-bold text-teal-700">{total}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{total}</div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><DollarSign className="h-3 w-3" /> Total Revenue</div>
-          <div className="text-2xl font-bold text-teal-700">{fmtMoney(totalRevenue)}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{fmtMoney(totalRevenue)}</div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><TrendingUp className="h-3 w-3" /> Avg. Order</div>
-          <div className="text-2xl font-bold text-teal-700">{total > 0 ? fmtMoney(totalRevenue / total) : "—"}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{total > 0 ? fmtMoney(totalRevenue / total) : "—"}</div>
         </div>
       </div>
 
@@ -221,15 +221,15 @@ function BundleSalesTab({ bundleId }: { bundleId: number }) {
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><Users className="h-3 w-3" /> Total Buyers</div>
-          <div className="text-2xl font-bold text-teal-700">{total}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{total}</div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><DollarSign className="h-3 w-3" /> Total Revenue</div>
-          <div className="text-2xl font-bold text-teal-700">{fmtMoney(totalRevenue)}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{fmtMoney(totalRevenue)}</div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><TrendingUp className="h-3 w-3" /> Avg. Order</div>
-          <div className="text-2xl font-bold text-teal-700">{total > 0 ? fmtMoney(totalRevenue / total) : "—"}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{total > 0 ? fmtMoney(totalRevenue / total) : "—"}</div>
         </div>
       </div>
 
@@ -339,11 +339,11 @@ function MembershipSalesTab({ brand }: { brand: "aaus" | "iheartecho" }) {
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><Users className="h-3 w-3" /> Active Members</div>
-          <div className="text-2xl font-bold text-teal-700">{members.filter(m => m.status === "active").length}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{members.filter(m => m.status === "active").length}</div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">
           <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1"><Users className="h-3 w-3" /> Total Members</div>
-          <div className="text-2xl font-bold text-teal-700">{members.length}</div>
+          <div className="text-2xl font-bold text-[var(--org-primary)]">{members.length}</div>
         </div>
       </div>
 

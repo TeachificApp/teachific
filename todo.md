@@ -5546,11 +5546,13 @@
 - [x] Apply the active organization theme to Widget Manager quiz content badges
 - [x] Resolve digital download administration listing and creation from the active organization rather than a first membership
 - [x] Require active-organization ownership for digital download management, media, reorder, and bundle actions
+- [x] Apply the active organization theme to Product Sales membership status indicators
 - [x] Require active-organization ownership for core digital download viewing, editing, landing configuration, deletion, and file upload actions
 - [x] Require active-organization product ownership before removing or reordering digital download media
 - [x] Resolve digital download analytics and bundle creation from the active organization and validate bundled products
 - [x] Require active-organization bundle and product ownership for digital download bundle updates and deletion
 - [x] Require active-organization ownership before duplicating digital downloads or bundles, changing settings, and granting download access
+- [x] Apply the active organization theme to Product Sales statistics and membership confirmation actions
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

@@ -1753,6 +1753,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetManagerSource).not.toContain('quiz:       { label: "Quiz",        emoji: "📝", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" }');
   });
 
+  it("uses the active organization theme for Product Sales statistics and confirmation actions", () => {
+    const productSalesTabSource = readFileSync(new URL("../client/src/components/ProductSalesTab.tsx", import.meta.url), "utf8");
+    expect(productSalesTabSource).toContain('text-2xl font-bold text-[var(--org-primary)]');
+    expect(productSalesTabSource).toContain('text-[var(--org-primary)] border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]');
+    expect(productSalesTabSource).not.toContain('text-teal-700');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
