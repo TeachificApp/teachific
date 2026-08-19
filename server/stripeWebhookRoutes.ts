@@ -183,7 +183,7 @@ router.post(
                     console.log(`[Stripe Webhook] User ${user.id} enrolled in course ${courseId}`);
                     const course = await getCourseById(courseId).catch(() => null);
                     // Resolve org base URL for org-scoped link
-                    let courseOrgBase = "https://teachific.app";
+                    let courseOrgBase: string | null = null;
                     try {
                       const dbOrg = await getDb();
                       if (dbOrg) {
@@ -191,21 +191,23 @@ router.post(
                           .from(organizations).where(eq(organizations.id, orgId)).limit(1);
                         if (orgInfo?.slug) courseOrgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
                       }
-                    } catch { /* keep default */ }
+                    } catch { /* suppress email when the organization domain cannot be resolved */ }
                     // Send buyer confirmation via org sender if available
-                    const { subject: enrollSubj, htmlBody: enrollHtml, previewText: enrollPreview } =
-                      buildFunnelPurchaseConfirmationEmail({
-                        firstName: (user.name ?? "there").split(" ")[0],
-                        productName: course?.title ?? "your course",
-                        amountPaid,
-                        loginUrl: `${courseOrgBase}/courses/${course?.slug ?? courseId}`,
-                      });
-                    await sendEmailViaOrg({
-                      to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },
-                      subject: enrollSubj,
-                      htmlBody: enrollHtml,
-                      previewText: enrollPreview,
-                    }, orgId).catch(() => {});
+                    if (courseOrgBase) {
+                      const { subject: enrollSubj, htmlBody: enrollHtml, previewText: enrollPreview } =
+                        buildFunnelPurchaseConfirmationEmail({
+                          firstName: (user.name ?? "there").split(" ")[0],
+                          productName: course?.title ?? "your course",
+                          amountPaid,
+                          loginUrl: `${courseOrgBase}/courses/${course?.slug ?? courseId}`,
+                        });
+                      await sendEmailViaOrg({
+                        to: { name: user.name ?? user.email ?? "", email: user.email ?? "" },
+                        subject: enrollSubj,
+                        htmlBody: enrollHtml,
+                        previewText: enrollPreview,
+                      }, orgId).catch(() => {});
+                    }
                     // Notify org admins via Teachific email (non-blocking)
                     notifyOrgAdminsOfPurchase(orgId, {
                       buyerName: user.name ?? buyerEmail,

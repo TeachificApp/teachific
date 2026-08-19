@@ -5561,6 +5561,7 @@
 - [x] Align legacy LMS section and lesson ownership helpers with active-organization course authorization
 - [x] Build embedded checkout account setup links from the owning organization domain
 - [x] Build Funnel checkout success and account setup links from the owning organization domain
+- [x] Remove the platform-domain fallback from Stripe course purchase confirmation links
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

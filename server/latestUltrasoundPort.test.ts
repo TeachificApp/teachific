@@ -1820,6 +1820,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(funnelRouterSource).not.toContain('const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://teachific.app";');
   });
 
+  it("does not fall back to the platform domain for Stripe course purchase confirmation links", () => {
+    const stripeWebhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
+    expect(stripeWebhookSource).toContain('let courseOrgBase: string | null = null;');
+    expect(stripeWebhookSource).toContain('if (courseOrgBase) {');
+    expect(stripeWebhookSource).not.toContain('let courseOrgBase = "https://teachific.app";');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
