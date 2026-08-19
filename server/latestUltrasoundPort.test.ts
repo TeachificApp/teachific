@@ -1641,6 +1641,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(communityPageSource).not.toContain('border-purple-200');
   });
 
+  it("resolves legacy LMS discussion notification links only from the owning organization domain", () => {
+    const legacyLmsSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    expect(legacyLmsSource).toContain('let discussionOrgBase: string | null = null;');
+    expect(legacyLmsSource).toContain('if (!discussionOrgBase) return;');
+    expect(legacyLmsSource).not.toContain('let discussionOrgBase = "https://teachific.app";');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

@@ -2022,7 +2022,7 @@ export const lmsLearnerRouter = router({
           const groupName = group?.name ?? "";
           const snippet = input.body ? (input.body.length > 200 ? input.body.slice(0, 200) + "…" : input.body) : "[media attachment]";
           // Resolve org base URL for org-scoped discussion link
-          let discussionOrgBase = "https://teachific.app";
+          let discussionOrgBase: string | null = null;
           try {
             const [courseOrg] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
             if (courseOrg?.orgId) {
@@ -2030,7 +2030,8 @@ export const lmsLearnerRouter = router({
                 .from(organizations).where(eq(organizations.id, courseOrg.orgId)).limit(1);
               if (orgInfo?.slug) discussionOrgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
             }
-          } catch { /* keep default */ }
+          } catch { /* Skip notifications when the owning organization domain cannot be resolved. */ }
+          if (!discussionOrgBase) return;
           const discussionUrl = `${discussionOrgBase}/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
           // Collect admins + cohort staff (exclude the poster)
           const adminUsers = await db.select({ id: users.id, email: users.email, name: users.name, displayName: users.displayName, notificationPrefs: users.notificationPrefs })
