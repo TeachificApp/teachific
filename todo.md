@@ -5550,6 +5550,7 @@
 - [x] Require active-organization product ownership before removing or reordering digital download media
 - [x] Resolve digital download analytics and bundle creation from the active organization and validate bundled products
 - [x] Require active-organization bundle and product ownership for digital download bundle updates and deletion
+- [x] Require active-organization ownership before duplicating digital downloads or bundles, changing settings, and granting download access
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

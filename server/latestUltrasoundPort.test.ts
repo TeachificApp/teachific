@@ -1785,6 +1785,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadsRouterSource).toContain('const { db, bundle } = await assertBundleAccess(ctx, input.id);');
   });
 
+  it("requires active-organization ownership before duplicating or granting access to digital downloads", () => {
+    const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
+    expect(downloadsRouterSource).toContain('const { db, product: src } = await assertProductAccess(ctx, input.id);');
+    expect(downloadsRouterSource).toContain('const { db, bundle: src } = await assertBundleAccess(ctx, input.id);');
+    expect(downloadsRouterSource).toContain('await assertProductAccess(ctx, input.productId);');
+    expect(downloadsRouterSource).toContain('await assertBundleAccess(ctx, input.bundleId);');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');

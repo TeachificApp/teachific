@@ -870,12 +870,7 @@ export const downloadsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const [src] = await db.select().from(digitalProducts).where(eq(digitalProducts.id, input.id)).limit(1);
-      if (!src) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, product: src } = await assertProductAccess(ctx, input.id);
 
       const newTitle = `${src.title} [Copy]`;
       let newSlug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -908,12 +903,7 @@ export const downloadsAdminRouter = router({
   duplicateBundle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const [src] = await db.select().from(digitalBundles).where(eq(digitalBundles.id, input.id)).limit(1);
-      if (!src) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, bundle: src } = await assertBundleAccess(ctx, input.id);
 
       const newTitle = `${src.title} [Copy]`;
       let newSlug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -955,6 +945,7 @@ export const downloadsAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await assertProductAccess(ctx, input.productId);
       const [existing] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
         .where(and(eq(digitalProducts.slug, input.slug), sql`${digitalProducts.id} != ${input.productId}`)).limit(1);
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "A product with this slug already exists" });
@@ -973,6 +964,7 @@ export const downloadsAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await assertBundleAccess(ctx, input.bundleId);
       const [existing] = await db.select({ id: digitalBundles.id }).from(digitalBundles)
         .where(and(eq(digitalBundles.slug, input.slug), sql`${digitalBundles.id} != ${input.bundleId}`)).limit(1);
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "A bundle with this slug already exists" });
@@ -1058,6 +1050,7 @@ export const downloadsAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await assertProductAccess(ctx, input.productId);
       // Find or create user
       const [existing] = await db.select({ id: users.id }).from(users)
         .where(sql`LOWER(${users.email}) = LOWER(${input.email})`).limit(1);
