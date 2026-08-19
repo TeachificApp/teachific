@@ -6,12 +6,13 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { getDb, getOrCreateUserByEmail, getOrgBySlug, getPrimaryOrgId } from "../db";
+import { getDb, getOrCreateUserByEmail, getOrgById, getOrgBySlug, getPrimaryOrgId } from "../db";
 import { funnels, funnelPages, funnelLeads, funnelTemplates, lmsCourses, lmsLandingPages, digitalProducts, digitalBundles, funnelBranchRules, funnelBranchConditions, emailCampaigns, funnelPurchases, lmsEnrollments, digitalPurchases, digitalBundlePurchases, digitalBundleItems, brandMemberships, physicalProducts, lmsOrders, users, webinarRegistrations, bundleEnrollments, webinars, workshops, workshopInstances, lmsCohortGroups, membershipPlans, communityHubs } from "../../drizzle/schema";
 import { eq, and, asc, desc, sql, inArray, or, like, isNotNull, gte } from "drizzle-orm";
 import { evaluateBranchRules, type VisitorContext } from "../lib/funnelBranchEngine";
 import { computeFunnelCheckoutTotalCents } from "../lib/checkoutPricing";
 import { getStripeClient } from "../lib/stripeClient";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 function slugify(text: string): string {
   return text
@@ -1331,6 +1332,9 @@ export const funnelPublicRouter = router({
       if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel page not found" });
       const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.funnelId));
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel not found" });
+      const organization = await getOrgById(funnel.orgId);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel organization not found" });
+      const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
 
       // Parse blocks to find checkout_form block
       let checkoutBlock: any = null;
@@ -1368,19 +1372,17 @@ export const funnelPublicRouter = router({
       const thankYouPageForRedirect = allPagesForRedirect.find(p => p.pageType === "thank_you");
       const successRedirectRaw = checkoutBlock.data?.successRedirect;
       const resolveSuccessUrl2 = (redirect: string | undefined) => {
-        if (!redirect) return thankYouPageForRedirect ? `${input.origin}/${funnel.slug}/${thankYouPageForRedirect.slug}?success=1` : `${input.origin}/${funnel.slug}/${page.slug}?success=1`;
-        if (redirect === "__dashboard__") return `${input.origin}/my-dashboard?purchase=success`;
-        if (redirect.startsWith("__funnel__:")) return `${input.origin}/${redirect.slice(11)}?success=1`;
+        if (!redirect) return thankYouPageForRedirect ? `${orgBaseUrl}/${funnel.slug}/${thankYouPageForRedirect.slug}?success=1` : `${orgBaseUrl}/${funnel.slug}/${page.slug}?success=1`;
+        if (redirect === "__dashboard__") return `${orgBaseUrl}/my-dashboard?purchase=success`;
+        if (redirect.startsWith("__funnel__:")) return `${orgBaseUrl}/${redirect.slice(11)}?success=1`;
         if (redirect.startsWith("http")) return redirect;
-        return `${input.origin}${redirect}`;
+        return `${orgBaseUrl}${redirect}`;
       };
       const successUrl = resolveSuccessUrl2(successRedirectRaw);
 
       if (totalAmountCents === 0) {
         // Free product — bypass Stripe entirely
         const customerName = `${input.firstName || ""} ${input.lastName || ""}`.trim();
-        const brandMode = (checkoutBlock.data?.brandMode as string) || "aaus";
-        const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://teachific.app";
 
         // 1. Create or find user account
         let resolvedUserId: number | null = ctx.user?.id ?? null;
@@ -1407,18 +1409,17 @@ export const funnelPublicRouter = router({
         if (isNewUser && resetToken && resolvedUserId) {
           try {
             const { buildPasswordResetEmail, sendEmailViaOrg } = await import("../_core/email");
-            const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${resetToken}`;
+            const setPasswordUrl = `${orgBaseUrl}/auth/reset-password?token=${resetToken}`;
             const firstName = input.firstName || customerName.split(" ")[0] || "there";
             const emailContent = buildPasswordResetEmail({
               firstName,
               resetUrl: setPasswordUrl,
-              brandMode: brandMode as any,
             });
             await sendEmailViaOrg({
               to: { name: customerName || firstName, email: input.email },
               subject: `Your account is ready — set your password to access ${selectedProduct.name || "your purchase"}`,
               htmlBody: emailContent.htmlBody,
-              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${brandMode === "iheartecho" ? "Teachific" : "Teachific"}`,
+              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on Teachific`,
             }, funnel.orgId ?? null);
             console.log(`[FreeCheckout] Sent set-password email to ${input.email} (new user ${resolvedUserId})`);
           } catch (emailErr) {
@@ -1491,23 +1492,22 @@ export const funnelPublicRouter = router({
         try {
           const { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } = await import("../_core/email");
           const firstName = input.firstName || customerName.split(" ")[0] || "there";
-          let loginUrl = `${baseUrl}/my-courses`;
+          let loginUrl = `${orgBaseUrl}/my-courses`;
           if (productType === "course" && productId) {
             try {
               const [courseRow] = await db.select({ slug: lmsCourses.slug }).from(lmsCourses).where(eq(lmsCourses.id, productId)).limit(1);
-              if (courseRow?.slug) loginUrl = `${baseUrl}/courses/${courseRow.slug}`;
+              if (courseRow?.slug) loginUrl = `${orgBaseUrl}/courses/${courseRow.slug}`;
             } catch { /* keep default */ }
           } else if (productType === "download") {
-            loginUrl = `${baseUrl}/my-downloads`;
+            loginUrl = `${orgBaseUrl}/my-downloads`;
           } else if (productType === "bundle") {
-            loginUrl = `${baseUrl}/my-courses`;
+            loginUrl = `${orgBaseUrl}/my-courses`;
           }
           const { subject, htmlBody, previewText } = buildFunnelPurchaseConfirmationEmail({
             firstName,
             productName: selectedProduct.name ?? "Free Product",
             amountPaid: 0,
             loginUrl,
-            brandMode: brandMode as any,
           });
           await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, funnel.orgId ?? null);
           console.log(`[FreeCheckout] Confirmation email sent to ${input.email}`);
@@ -1563,7 +1563,7 @@ export const funnelPublicRouter = router({
             if (!ex) await db.insert(bundleEnrollments).values({ userId: resolvedUserId, bundleId: productId, stripeCheckoutSessionId: freeOrderRef });
           }
         }
-        const successUrl = funnel.thankYouPageUrl || `${input.origin}/`;
+        const successUrl = funnel.thankYouPageUrl || `${orgBaseUrl}/`;
         return { freeSuccess: true, successUrl, clientSecret: null, orderId: null, totalAmountCents: 0 };
       }
 

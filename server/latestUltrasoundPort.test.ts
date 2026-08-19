@@ -1811,6 +1811,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(embeddedCheckoutSource).not.toContain('https://teachific.app');
   });
 
+  it("builds inline Funnel checkout success and account setup links from the owning organization domain", () => {
+    const funnelRouterSource = readFileSync(new URL("./routers/funnelRouter.ts", import.meta.url), "utf8");
+    expect(funnelRouterSource).toContain('const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);');
+    expect(funnelRouterSource).toContain('const setPasswordUrl = `${orgBaseUrl}/auth/reset-password?token=${resetToken}`;');
+    expect(funnelRouterSource).toContain('let loginUrl = `${orgBaseUrl}/my-courses`;');
+    expect(funnelRouterSource).toContain('const successUrl = funnel.thankYouPageUrl || `${orgBaseUrl}/`;');
+    expect(funnelRouterSource).not.toContain('const baseUrl = brandMode === "iheartecho" ? "https://app.iheartecho.net" : "https://teachific.app";');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
