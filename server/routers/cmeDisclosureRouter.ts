@@ -15,7 +15,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { eq, and } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb, requireOrgAdmin } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import {
   cmeFinancialDisclosures,
   lmsCourses,
@@ -33,8 +33,20 @@ function generateToken(): string {
 }
 
 async function resolveOrgId(userId: number, platformRole: string, orgIdInput?: number | null): Promise<number> {
-  if (orgIdInput) return requireOrgAdmin(userId, platformRole, orgIdInput);
-  return requireOrgAdmin(userId, platformRole);
+  const isPlatformAdmin = platformRole === "site_owner" || platformRole === "site_admin";
+  if (isPlatformAdmin) {
+    if (orgIdInput) return requireOrgAdmin(userId, platformRole, orgIdInput);
+    return requireOrgAdmin(userId, platformRole);
+  }
+
+  const activeOrgId = await getOrgIdForUserWithFallback(userId, platformRole);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+  }
+  if (orgIdInput && orgIdInput !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "CME disclosures must be managed from the active organization." });
+  }
+  return requireOrgAdmin(userId, platformRole, activeOrgId);
 }
 
 async function assertCmeEnabled(orgId: number, platformRole: string): Promise<void> {

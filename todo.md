@@ -5510,6 +5510,7 @@
 - [x] Resolve protected legacy LMS instructor listing from the active organization rather than a caller-selected organization
 - [x] Add a signed-in-only dismissible yellow maintenance banner with review and removal after August 25, 2026 at 9:00 AM Eastern Time
 - [x] Resolve CME activity-form administration from the active organization rather than an implicit fallback or caller-selected organization
+- [x] Resolve CME disclosure administration from the active organization rather than a caller-selected organization
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

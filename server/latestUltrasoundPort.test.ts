@@ -1521,6 +1521,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(resolverSlice).toContain('platformRole === "site_owner" || platformRole === "site_admin"');
   });
 
+  it("resolves CME disclosure administration from the active organization for organization administrators", () => {
+    const disclosureRouterSource = readFileSync(new URL("./routers/cmeDisclosureRouter.ts", import.meta.url), "utf8");
+    const resolverSlice = disclosureRouterSource.slice(disclosureRouterSource.indexOf("async function resolveOrgId"), disclosureRouterSource.indexOf("async function assertCmeEnabled"));
+    expect(resolverSlice).toContain("getOrgIdForUserWithFallback(userId, platformRole)");
+    expect(resolverSlice).toContain("CME disclosures must be managed from the active organization.");
+    expect(resolverSlice).toContain('platformRole === "site_owner" || platformRole === "site_admin"');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
