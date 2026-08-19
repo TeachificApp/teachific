@@ -58,7 +58,7 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 
 const ITEM_TYPE_COLORS: Record<string, string> = {
   course: "bg-blue-100 text-blue-700",
-  download: "bg-purple-100 text-purple-700",
+  download: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]",
   product: "bg-orange-100 text-orange-700",
   webinar: "bg-pink-100 text-pink-700",
   quiz: "bg-green-100 text-green-700",

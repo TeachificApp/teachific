@@ -1720,6 +1720,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(emailCampaignRouterSource).not.toContain('await getOrgIdForUser(ctx.user.id)');
   });
 
+  it("uses the active organization theme for Bundles administration download badges", () => {
+    const bundlesAdminSource = readFileSync(new URL("../client/src/pages/admin/BundlesAdmin.tsx", import.meta.url), "utf8");
+    expect(bundlesAdminSource).toContain('download: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]"');
+    expect(bundlesAdminSource).not.toContain('download: "bg-purple-100 text-purple-700"');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
