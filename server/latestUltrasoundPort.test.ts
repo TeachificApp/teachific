@@ -1706,6 +1706,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).toContain('type: "ai_image", label: "AI Generate Image"');
   });
 
+  it("uses the active organization theme for LMS player layout zone editor controls", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    expect(lmsAdminSource).toContain('top: { label: "Top Zone", desc: "Above progress bar", color: "var(--org-primary)" }');
+    expect(lmsAdminSource).toContain('background: activeZone === "top" ? "var(--org-primary)"');
+    expect(lmsAdminSource).not.toContain('top: { label: "Top Zone", desc: "Above progress bar", color: "#7c3aed" }');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
