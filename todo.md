@@ -5542,6 +5542,7 @@
 - [x] Apply the active organization theme to Bundles administration product-type badges
 - [x] Apply the active organization theme to General Form Builder template metadata accents
 - [x] Apply the active organization theme to Course Builder player layout zone editor controls
+- [x] Apply the active organization theme to Form Responses score and tier indicators
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

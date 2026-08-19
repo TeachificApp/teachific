@@ -1739,6 +1739,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formBuilderSource).not.toContain('Form Type", value: FORM_TYPES.find(t => t.value === template.formType)?.label ?? template.formType, color: "#7c3aed"');
   });
 
+  it("uses the active organization theme for Form Responses brand and tier indicators", () => {
+    const formResponsesSource = readFileSync(new URL("../client/src/components/FormResponsesTab.tsx", import.meta.url), "utf8");
+    expect(formResponsesSource).toContain('const BRAND = "var(--org-primary)"');
+    expect(formResponsesSource).toContain('tier: "Unacceptable", color: "var(--org-primary)"');
+    expect(formResponsesSource).toContain('background ?? color + "18"');
+    expect(formResponsesSource).not.toContain('return { tier: "Unacceptable", color: "#7c3aed", bg: "#faf5ff" }');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');

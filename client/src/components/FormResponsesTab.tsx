@@ -43,8 +43,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-const BRAND = "#189aa1";
-const BRAND_DARK = "#0e4a50";
+const BRAND = "var(--org-primary)";
+const BRAND_DARK = "var(--org-primary)";
 
 // ─── Quality Score Tier Helper ─────────────────────────────────────────────────
 function qsTier(score: number): { tier: string; color: string; bg: string } {
@@ -52,7 +52,7 @@ function qsTier(score: number): { tier: string; color: string; bg: string } {
   if (score >= 75) return { tier: "Good", color: "#2563eb", bg: "#eff6ff" };
   if (score >= 60) return { tier: "Acceptable", color: "#d97706", bg: "#fffbeb" };
   if (score >= 40) return { tier: "Needs Improvement", color: "#dc2626", bg: "#fef2f2" };
-  return { tier: "Unacceptable", color: "#7c3aed", bg: "#faf5ff" };
+  return { tier: "Unacceptable", color: "var(--org-primary)", bg: "color-mix(in_srgb, var(--org-primary) 8%, transparent)" };
 }
 
 function QualityBadge({ score, max }: { score: number; max: number }) {
@@ -270,6 +270,7 @@ function StatsCards({ labId }: { labId: number }) {
       value: stats.total,
       icon: ClipboardList,
       color: BRAND,
+      background: "color-mix(in_srgb, var(--org-primary) 10%, transparent)",
     },
     {
       label: "Last 30 Days",
@@ -287,20 +288,21 @@ function StatsCards({ labId }: { labId: number }) {
       label: "Form Types Used",
       value: stats.byType.length,
       icon: FileText,
-      color: "#7c3aed",
+      color: "var(--org-primary)",
+      background: "color-mix(in_srgb, var(--org-primary) 10%, transparent)",
     },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {statCards.map(({ label, value, icon: Icon, color }) => (
+      {statCards.map(({ label, value, icon: Icon, color, background }) => (
         <div
           key={label}
           className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
         >
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: color + "18" }}
+            style={{ background: background ?? color + "18" }}
           >
             <Icon className="w-4 h-4" style={{ color }} />
           </div>
