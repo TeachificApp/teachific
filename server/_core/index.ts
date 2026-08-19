@@ -81,7 +81,7 @@ async function startServer() {
         fontSrc:      ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "data:"],
         imgSrc:       ["'self'", "data:", "blob:", "https:"],
         mediaSrc:     ["'self'", "blob:", "https:"],
-        connectSrc:   ["'self'", "https://api.manus.im", "https://api.stripe.com", "wss:", "https:"],
+        connectSrc:   ["'self'", "https://api.stripe.com", "wss:", "https:"],
         frameSrc:     ["'self'", "https://js.stripe.com", "https:"],
         // Allow embedding from any HTTPS origin (required for LMS integration)
         frameAncestors: ["'self'", "https:"],

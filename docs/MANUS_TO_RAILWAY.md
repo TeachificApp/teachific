@@ -62,7 +62,14 @@ Hosting on Railway while still calling Forge is not a migration. `ultrasound-app
 
 ## Shared Railway layout
 
-Use **one Railway workspace**, then **one project per web app**:
+Use **one Railway workspace**, then **one project per web app**. Both projects already exist — **update them in place**, do not create duplicates.
+
+Recorded project IDs (confirm which name is which in the dashboard):
+
+| Railway project ID | Expected app |
+|---|---|
+| `bd15256f-be9c-4d5e-838d-daae94448fa1` | Teachific **or** UltrasoundAssist |
+| `b708c39f-23fe-4547-b1b5-9a53104e94b4` | the other one |
 
 ```
 Railway workspace
@@ -118,12 +125,12 @@ In the GitHub repo (not in Manus):
 6. Auth: confirm email/password works with `JWT_SECRET`. Leave Manus OAuth vars empty on Railway unless you still need them as a temporary bridge.
 7. Vite `VITE_*` values are baked in at **build** time. Pass them as Railway build args / variables. Do not rely on a committed `.env.production` that still points at `forge.manus.ai`.
 
-### 2. Create the Railway project (staging)
+### 2. Update the existing Railway project (do not create a new one)
 
 In [railway.app](https://railway.app):
 
-1. **New Project → Deploy from GitHub repo** → that app’s repository.
-2. **+ New → Database → MySQL**. Railway injects `DATABASE_URL`.
+1. Open the existing project (`bd15256f-…` or `b708c39f-…`). Connect GitHub if the service source is empty.
+2. If MySQL is missing: **+ New → Database → MySQL** inside that project. Set `DATABASE_URL=${{MySQL.MYSQL_URL}}` on the app service.
 3. Set variables (see checklists below). Do **not** attach the custom domain yet.
 4. Wait for a green deploy on the Railway `*.up.railway.app` URL.
 5. Run schema on the new database:
@@ -239,12 +246,12 @@ This agent can only open PRs on `TeachificApp/teachific`. Apply those storage/LL
 
 ## What this agent cannot do from the teachific checkout
 
-- Create Railway projects or set Railway variables (needs a Railway account token).
+- Call Railway until `RAILWAY_API_TOKEN` is present in the **agent VM** (workspace/account token from [railway.com/account/tokens](https://railway.com/account/tokens), not a project token). Paste-in-chat is not enough — add it via the agent secret prompt. Then run `node scripts/railway-update-existing.mjs`.
 - List or push **private** org repos (`quizcreator-desktop`, `studio-desktop`, `creator-desktop`, and any others). This token sees only the five public repos.
-- Push branches to the other in-scope web repos (`ultrasound-app`, `teachificapp`). `ultrasound-assist` and `echo-assist` are out of scope.
+- Push branches to `ultrasound-app` (`cursor[bot]` is 403). Apply `docs/ultrasound-app-manus-free.patch` in that repo, or grant this environment write access.
 - Dump a live Manus TiDB or copy production files without those credentials in the environment.
 
-Once a Railway API token and org-wide GitHub access are available, the web-app loop is: connect repo → MySQL → variables → migrate data → smoke test → DNS. Desktop apps then get a new release aimed at the Railway Teachific URL.
+Once the Railway token is in the VM, the loop is: inspect existing projects → MySQL if missing → variables → migrate data → smoke test → DNS. Desktop apps then get a new release aimed at the Railway Teachific URL.
 
 ## Teachific-specific runbook
 

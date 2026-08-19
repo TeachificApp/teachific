@@ -1,17 +1,12 @@
 /**
  * LLM abstraction layer
  *
- * Supports two backends, selected automatically by environment variables:
+ * OpenAI only (Railway / self-hosted).
+ *   Required: OPENAI_API_KEY
+ *   Optional: OPENAI_MODEL (default: gpt-4o-mini)
  *
- * 1. OpenAI (for Railway / self-hosted deployments)
- *    Required: OPENAI_API_KEY
- *    Optional: OPENAI_MODEL (default: gpt-4o-mini)
- *
- * 2. Manus built-in LLM (default when running on the Manus platform)
- *    Required: BUILT_IN_FORGE_API_URL, BUILT_IN_FORGE_API_KEY
+ * Manus Forge is not used.
  */
-
-import { ENV } from "./env";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -236,54 +231,6 @@ async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
 
   const response = await client.chat.completions.create(requestParams);
   return response as unknown as InvokeResult;
-}
-
-// ─── Manus Built-in LLM Backend ──────────────────────────────────────────────
-
-const resolveManusApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
-
-async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
-  if (!ENV.forgeApiKey) {
-    throw new Error(
-      "No LLM backend configured. Set OPENAI_API_KEY for OpenAI, or BUILT_IN_FORGE_API_KEY for Manus."
-    );
-  }
-  const {
-    messages, tools, toolChoice, tool_choice,
-    outputSchema, output_schema, responseFormat, response_format,
-  } = params;
-
-  const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
-    messages: messages.map(normalizeMessage),
-    max_tokens: 32768,
-    thinking: { budget_tokens: 128 },
-  };
-
-  if (tools && tools.length > 0) payload.tools = tools;
-  const normalizedToolChoice = normalizeToolChoice(toolChoice || tool_choice, tools);
-  if (normalizedToolChoice) payload.tool_choice = normalizedToolChoice;
-  const normalizedResponseFormat = normalizeResponseFormat({ responseFormat, response_format, outputSchema, output_schema });
-  if (normalizedResponseFormat) payload.response_format = normalizedResponseFormat;
-
-  const response = await fetch(resolveManusApiUrl(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`);
-  }
-
-  return (await response.json()) as InvokeResult;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

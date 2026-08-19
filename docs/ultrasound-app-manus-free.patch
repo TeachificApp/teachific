@@ -1,0 +1,342 @@
+diff --git a/railway.toml b/railway.toml
+index f1b908a..93a5ee0 100644
+--- a/railway.toml
++++ b/railway.toml
+@@ -5,7 +5,7 @@ watchPatterns = ["client/**", "server/**", "shared/**", "drizzle/**", "package.j
+ 
+ [deploy]
+ startCommand = "pnpm start"
+-healthcheckPath = "/api/trpc"
++healthcheckPath = "/api/health"
+ healthcheckTimeout = 300
+ restartPolicyType = "on_failure"
+ restartPolicyMaxRetries = 3
+diff --git a/server/_core/imageGeneration.ts b/server/_core/imageGeneration.ts
+index 0ba0c98..5fca295 100644
+--- a/server/_core/imageGeneration.ts
++++ b/server/_core/imageGeneration.ts
+@@ -1,22 +1,7 @@
+ /**
+- * Image generation helper using internal ImageService
+- *
+- * Example usage:
+- *   const { url: imageUrl } = await generateImage({
+- *     prompt: "A serene landscape with mountains"
+- *   });
+- *
+- * For editing:
+- *   const { url: imageUrl } = await generateImage({
+- *     prompt: "Add a rainbow to this landscape",
+- *     originalImages: [{
+- *       url: "https://example.com/original.jpg",
+- *       mimeType: "image/jpeg"
+- *     }]
+- *   });
++ * Image generation via OpenAI DALL-E 3.
+  */
+ import { storagePut } from "server/storage";
+-import { ENV } from "./env";
+ 
+ export type GenerateImageOptions = {
+   prompt: string;
+@@ -34,59 +19,34 @@ export type GenerateImageResponse = {
+ export async function generateImage(
+   options: GenerateImageOptions
+ ): Promise<GenerateImageResponse> {
+-  if (!ENV.forgeApiUrl) {
+-    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
++  if (!process.env.OPENAI_API_KEY) {
++    throw new Error("OPENAI_API_KEY is not configured. Manus Forge is no longer available.");
+   }
+-  if (!ENV.forgeApiKey) {
+-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+-  }
+-
+-  // Build the full URL by appending the service path to the base URL
+-  const baseUrl = ENV.forgeApiUrl.endsWith("/")
+-    ? ENV.forgeApiUrl
+-    : `${ENV.forgeApiUrl}/`;
+-  const fullUrl = new URL(
+-    "images.v1.ImageService/GenerateImage",
+-    baseUrl
+-  ).toString();
+ 
+-  const response = await fetch(fullUrl, {
++  const response = await fetch("https://api.openai.com/v1/images/generations", {
+     method: "POST",
+     headers: {
+-      accept: "application/json",
+       "content-type": "application/json",
+-      "connect-protocol-version": "1",
+-      authorization: `Bearer ${ENV.forgeApiKey}`,
++      authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+     },
+     body: JSON.stringify({
++      model: "dall-e-3",
+       prompt: options.prompt,
+-      original_images: options.originalImages || [],
++      n: 1,
++      size: "1024x1024",
++      response_format: "b64_json",
+     }),
+   });
+-
+   if (!response.ok) {
+     const detail = await response.text().catch(() => "");
+     throw new Error(
+       `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
+     );
+   }
+-
+-  const result = (await response.json()) as {
+-    image: {
+-      b64Json: string;
+-      mimeType: string;
+-    };
+-  };
+-  const base64Data = result.image.b64Json;
+-  const buffer = Buffer.from(base64Data, "base64");
+-
+-  // Save to S3
+-  const { url } = await storagePut(
+-    `generated/${Date.now()}.png`,
+-    buffer,
+-    result.image.mimeType
+-  );
+-  return {
+-    url,
+-  };
++  const result = (await response.json()) as { data?: Array<{ b64_json?: string }> };
++  const b64 = result.data?.[0]?.b64_json;
++  if (!b64) throw new Error("OpenAI image generation returned no image data");
++  const buffer = Buffer.from(b64, "base64");
++  const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, "image/png");
++  return { url };
+ }
+diff --git a/server/_core/index.ts b/server/_core/index.ts
+index 3ac9b43..5d5dea9 100644
+--- a/server/_core/index.ts
++++ b/server/_core/index.ts
+@@ -84,6 +84,9 @@ async function startServer() {
+   // Trust the reverse proxy so req.protocol reflects HTTPS and SameSite=None;Secure cookies work
+   app.set("trust proxy", 1);
+   const server = createServer(app);
++  app.get("/api/health", (_req, res) => {
++    res.json({ status: "ok", timestamp: new Date().toISOString() });
++  });
+   // Stripe webhook MUST register before express.json().
+   registerStripeWebhook(app);
+   // Configure body parser with larger size limit for file uploads
+@@ -610,8 +613,9 @@ async function startServer() {
+   // Initialize SonoQuiz WebSocket hub BEFORE server.listen so it binds to the same HTTP server
+   initSonoQuizHub(server);
+ 
+-  server.listen(port, () => {
+-    console.log(`Server running on http://localhost:${port}/`);
++  const host = "0.0.0.0";
++  server.listen(port, host, () => {
++    console.log(`Server running on http://${host}:${port}/`);
+     // Start the Daily Challenge lifecycle cron (archive expired, publish next)
+     startChallengeCron();
+     // Start the email campaign scheduler (sends scheduled campaigns every 5 minutes)
+diff --git a/server/_core/llm.ts b/server/_core/llm.ts
+index 8ea4c4a..d523ca7 100644
+--- a/server/_core/llm.ts
++++ b/server/_core/llm.ts
+@@ -215,8 +215,10 @@ const resolveApiUrl = () =>
+     : "https://forge.manus.im/v1/chat/completions";
+ 
+ const assertApiKey = () => {
+-  if (!ENV.forgeApiKey) {
+-    throw new Error("OPENAI_API_KEY is not configured");
++  if (!process.env.OPENAI_API_KEY && !ENV.forgeApiKey) {
++    throw new Error(
++      "OPENAI_API_KEY is not configured. Manus Forge is no longer available — set OPENAI_API_KEY on Railway."
++    );
+   }
+ };
+ 
+@@ -279,6 +281,45 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+     response_format,
+   } = params;
+ 
++  const openaiKey = process.env.OPENAI_API_KEY;
++  const normalizedToolChoice = normalizeToolChoice(
++    toolChoice || tool_choice,
++    tools
++  );
++  const normalizedResponseFormat = normalizeResponseFormat({
++    responseFormat,
++    response_format,
++    outputSchema,
++    output_schema,
++  });
++
++  if (openaiKey) {
++    const payload: Record<string, unknown> = {
++      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
++      messages: messages.map(normalizeMessage),
++      max_tokens: 4096,
++    };
++    if (tools && tools.length > 0) payload.tools = tools;
++    if (normalizedToolChoice) payload.tool_choice = normalizedToolChoice;
++    if (normalizedResponseFormat) payload.response_format = normalizedResponseFormat;
++
++    const response = await fetch("https://api.openai.com/v1/chat/completions", {
++      method: "POST",
++      headers: {
++        "content-type": "application/json",
++        authorization: `Bearer ${openaiKey}`,
++      },
++      body: JSON.stringify(payload),
++    });
++    if (!response.ok) {
++      const errorText = await response.text();
++      throw new Error(
++        `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
++      );
++    }
++    return (await response.json()) as InvokeResult;
++  }
++
+   const payload: Record<string, unknown> = {
+     model: "gemini-2.5-flash",
+     messages: messages.map(normalizeMessage),
+@@ -288,10 +329,6 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+     payload.tools = tools;
+   }
+ 
+-  const normalizedToolChoice = normalizeToolChoice(
+-    toolChoice || tool_choice,
+-    tools
+-  );
+   if (normalizedToolChoice) {
+     payload.tool_choice = normalizedToolChoice;
+   }
+@@ -301,13 +338,6 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+     "budget_tokens": 128
+   }
+ 
+-  const normalizedResponseFormat = normalizeResponseFormat({
+-    responseFormat,
+-    response_format,
+-    outputSchema,
+-    output_schema,
+-  });
+-
+   if (normalizedResponseFormat) {
+     payload.response_format = normalizedResponseFormat;
+   }
+diff --git a/server/storage.ts b/server/storage.ts
+index 3e47b1e..ac876fb 100644
+--- a/server/storage.ts
++++ b/server/storage.ts
+@@ -20,7 +20,7 @@ function getStorageConfig(): StorageConfig {
+ 
+   if (!baseUrl || !apiKey) {
+     throw new Error(
+-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
++      "No storage backend configured. Set CF_R2_ACCOUNT_ID / CF_R2_ACCESS_KEY_ID / CF_R2_SECRET_ACCESS_KEY / CF_R2_BUCKET_NAME (or R2_*) on Railway. Manus Forge storage is no longer available."
+     );
+   }
+ 
+@@ -83,23 +83,45 @@ let r2Client: S3Client | null = null;
+ function getR2Client(): S3Client | null {
+   if (r2Client) return r2Client;
+ 
+-  const accountId = process.env.CF_R2_ACCOUNT_ID;
+-  const accessKeyId = process.env.CF_R2_ACCESS_KEY_ID;
+-  const secretAccessKey = process.env.CF_R2_SECRET_ACCESS_KEY;
++  const accountId = process.env.CF_R2_ACCOUNT_ID || process.env.R2_ACCOUNT_ID;
++  const endpoint =
++    process.env.R2_ENDPOINT ||
++    (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : "");
++  const accessKeyId = process.env.CF_R2_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID;
++  const secretAccessKey = process.env.CF_R2_SECRET_ACCESS_KEY || process.env.R2_SECRET_ACCESS_KEY;
+ 
+-  if (!accountId || !accessKeyId || !secretAccessKey) return null;
++  if (!endpoint || !accessKeyId || !secretAccessKey) return null;
+ 
+   r2Client = new S3Client({
+-    region: "auto",
+-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
++    region: process.env.R2_REGION || "auto",
++    endpoint,
+     credentials: { accessKeyId, secretAccessKey },
++    forcePathStyle: true,
+   });
+ 
+   return r2Client;
+ }
+ 
+ function getR2Bucket(): string {
+-  return process.env.CF_R2_BUCKET_NAME || "ultrasound-assist";
++  return process.env.CF_R2_BUCKET_NAME || process.env.R2_BUCKET_NAME || "ultrasound-assist";
++}
++
++function getR2PublicUrl(): string {
++  return (process.env.CF_R2_PUBLIC_URL || process.env.R2_PUBLIC_URL || "").replace(/\/+$/, "");
++}
++
++function isR2Configured(): boolean {
++  return Boolean(getR2Client());
++}
++
++function r2ObjectUrl(key: string): string {
++  const publicUrl = getR2PublicUrl();
++  if (publicUrl) return `${publicUrl}/${key}`;
++  const accountId = process.env.CF_R2_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || "";
++  const endpoint =
++    process.env.R2_ENDPOINT ||
++    (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : "");
++  return `${endpoint.replace(/\/+$/, "")}/${getR2Bucket()}/${key}`;
+ }
+ 
+ /**
+@@ -216,8 +238,22 @@ export async function storagePut(
+   data: Buffer | Uint8Array | string,
+   contentType = "application/octet-stream"
+ ): Promise<{ key: string; url: string }> {
+-  const { baseUrl, apiKey } = getStorageConfig();
+   const key = normalizeKey(relKey);
++  const client = getR2Client();
++  if (client) {
++    const body = typeof data === "string" ? Buffer.from(data) : data;
++    await client.send(
++      new PutObjectCommand({
++        Bucket: getR2Bucket(),
++        Key: key,
++        Body: body as any,
++        ContentType: contentType,
++      })
++    );
++    return { key, url: r2ObjectUrl(key) };
++  }
++
++  const { baseUrl, apiKey } = getStorageConfig();
+   const uploadUrl = buildUploadUrl(baseUrl, key);
+   const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
+   const response = await fetch(uploadUrl, {
+@@ -241,8 +277,21 @@ export async function storagePut(
+ }
+ 
+ export async function storageGet(relKey: string): Promise<{ key: string; url: string; }> {
+-  const { baseUrl, apiKey } = getStorageConfig();
+   const key = normalizeKey(relKey);
++  if (isR2Configured()) {
++    const publicUrl = getR2PublicUrl();
++    if (publicUrl) return { key, url: `${publicUrl}/${key}` };
++    const client = getR2Client()!;
++    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
++    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
++    const url = await getSignedUrl(
++      client,
++      new GetObjectCommand({ Bucket: getR2Bucket(), Key: key }),
++      { expiresIn: 3600 }
++    );
++    return { key, url };
++  }
++  const { baseUrl, apiKey } = getStorageConfig();
+   return {
+     key,
+     url: await buildDownloadUrl(baseUrl, key, apiKey),

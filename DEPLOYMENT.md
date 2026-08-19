@@ -20,11 +20,25 @@ Moving **every** Manus GitHub repo (Teachific, Ultrasound, Echo Assist, and the 
 
 ---
 
-## Step 1 — Create a Railway Project
+## Step 1 — Update the existing Railway project
 
-1. Go to [railway.app](https://railway.app) and sign in with GitHub.
-2. Click **New Project** → **Deploy from GitHub repo** → select your `scorm-host` repository.
-3. Railway will detect the `railway.toml` and begin building automatically.
+Do **not** create a new Teachific project. The Railway projects already exist:
+
+| Railway project ID | App (confirm in dashboard) |
+|---|---|
+| `bd15256f-be9c-4d5e-838d-daae94448fa1` | Teachific or UltrasoundAssist |
+| `b708c39f-23fe-4547-b1b5-9a53104e94b4` | the other app |
+
+1. Open the project that is Teachific.
+2. Confirm GitHub source is `TeachificApp/teachific` (not a duplicate empty service).
+3. Confirm MySQL is attached in **this** project. If missing: **+ New → Database → MySQL** (still in this project).
+4. Redeploy after variables are set.
+
+To inspect both projects from a machine with a workspace token:
+
+```bash
+RAILWAY_API_TOKEN=... node scripts/railway-update-existing.mjs
+```
 
 ---
 
@@ -108,13 +122,9 @@ In your Railway service, go to **Variables** and add the following:
 | `SENDGRID_FROM_EMAIL` | Verified sender email (e.g., `hello@teachific.app`) |
 | `SENDGRID_FROM_NAME` | Sender name (e.g., `Teachific`) |
 
-### Optional — Manus OAuth (if keeping Manus login)
-If you want to keep Manus OAuth login working alongside email/password:
-| Variable | Value |
-|---|---|
-| `VITE_APP_ID` | Your Manus app ID |
-| `OAUTH_SERVER_URL` | `https://api.manus.im` |
-| `VITE_OAUTH_PORTAL_URL` | `https://manus.im` |
+### Optional — Manus OAuth
+
+Do not set Manus OAuth on Railway. Email/password + magic link is the sign-in path.
 
 ### Optional — Cloudflare (if using Cloudflare for DNS/CDN)
 | Variable | Value |
