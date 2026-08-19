@@ -97,7 +97,7 @@ interface LessonEditorSheetProps {
 
 const LESSON_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
   video: { label: "Video", icon: Video, color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  text: { label: "Text / Rich Content", icon: FileText, color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
+  text: { label: "Text / Rich Content", icon: FileText, color: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" },
   scorm: { label: "SCORM / HTML5", icon: FileArchive, color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
   quiz: { label: "Quiz", icon: HelpCircle, color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
   flashcard: { label: "Flashcards", icon: FileText, color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },

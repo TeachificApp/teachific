@@ -1560,6 +1560,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(funnelSource).toContain('value: "order", label: "Order / Checkout", icon: ShoppingCart, color: "bg-[var(--org-primary)]"');
   });
 
+  it("uses the active organization theme for Lesson Editor text-block accents", () => {
+    const lessonEditorSource = readFileSync(new URL("../client/src/components/lms/LessonEditorSheet.tsx", import.meta.url), "utf8");
+    expect(lessonEditorSource).toContain('text: { label: "Text / Rich Content", icon: FileText, color: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" }');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
