@@ -5544,6 +5544,7 @@
 - [x] Apply the active organization theme to Course Builder player layout zone editor controls
 - [x] Apply the active organization theme to Form Responses score and tier indicators
 - [x] Apply the active organization theme to Widget Manager quiz content badges
+- [x] Resolve digital download administration listing and creation from the active organization rather than a first membership
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

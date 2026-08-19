@@ -461,8 +461,7 @@ export const downloadsAdminRouter = router({
     if (isPlatformAdmin(ctx.user.role)) {
       return db.select().from(digitalProducts).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
     }
-    const orgId = await getOrgIdForUser(ctx.user.id);
-    if (!orgId) return [];
+    const orgId = await assertAdmin(ctx);
     return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId)).orderBy(asc(digitalProducts.libraryOrder), desc(digitalProducts.createdAt));
   }),
 
@@ -524,8 +523,7 @@ export const downloadsAdminRouter = router({
       const [existing] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
         .where(eq(digitalProducts.slug, slug)).limit(1);
             if (existing) slug += `-${Date.now().toString(36)}`;
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+      const orgId = await assertAdmin(ctx);
       const [result] = await db.insert(digitalProducts).values({
         ...input,
         slug,

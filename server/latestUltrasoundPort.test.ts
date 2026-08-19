@@ -1753,6 +1753,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetManagerSource).not.toContain('quiz:       { label: "Quiz",        emoji: "📝", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" }');
   });
 
+  it("resolves digital download listing and creation from the active organization", () => {
+    const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
+    expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
+    expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n      const [result] = await db.insert(digitalProducts).values({');
+    expect(downloadsRouterSource).not.toContain('const orgId = await getOrgIdForUser(ctx.user.id);');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
