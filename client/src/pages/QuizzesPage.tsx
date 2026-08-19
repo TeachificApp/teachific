@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { BookOpen, Clock, Download, Plus, Star, Trash2, Upload, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -10,8 +11,7 @@ import { useLocation } from "wouter";
 
 export default function QuizzesPage() {
   const [, setLocation] = useLocation();
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = myOrgs?.[0]?.id ?? 0;
+  const { orgId } = useOrgScope();
   const { data: quizzes, isLoading, refetch } = trpc.quizzes.list.useQuery({ orgId }, { enabled: !!orgId });
   const deleteQuiz = trpc.quizzes.delete.useMutation({ onSuccess: () => { toast.success("Quiz deleted"); refetch(); } });
 

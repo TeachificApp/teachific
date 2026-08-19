@@ -5,6 +5,7 @@
 import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { chunkedMediaUpload } from "@/lib/chunkedMediaUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,10 +118,8 @@ interface UploadItem {
 
 export default function MediaFilesPage() {
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const utils = trpc.useUtils();
-
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery(undefined, { enabled: !!user });
-  const orgId = myOrgs?.[0]?.id ?? 0;
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");

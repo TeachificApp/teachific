@@ -1571,6 +1571,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(stripePanelSource).toContain('border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]');
   });
 
+  it("resolves core content library pages from the active organization rather than the first membership", () => {
+    const flashcardsSource = readFileSync(new URL("../client/src/pages/FlashcardsPage.tsx", import.meta.url), "utf8");
+    const quizBuilderSource = readFileSync(new URL("../client/src/pages/QuizBuilderPage.tsx", import.meta.url), "utf8");
+    const quizzesSource = readFileSync(new URL("../client/src/pages/QuizzesPage.tsx", import.meta.url), "utf8");
+    const mediaFilesSource = readFileSync(new URL("../client/src/pages/MediaFilesPage.tsx", import.meta.url), "utf8");
+    for (const source of [flashcardsSource, quizBuilderSource, quizzesSource, mediaFilesSource]) {
+      expect(source).toContain('useOrgScope');
+      expect(source).toContain('const { orgId } = useOrgScope();');
+      expect(source).not.toContain('myOrgs?.[0]?.id');
+    }
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

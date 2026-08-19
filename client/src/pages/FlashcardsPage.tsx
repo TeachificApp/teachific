@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -381,8 +382,7 @@ function DeckEditor({ deck, orgId, onBack }: { deck: FlashDeck; orgId: number; o
 
 // ─── Main FlashcardsPage ──────────────────────────────────────────────────────
 export default function FlashcardsPage() {
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = myOrgs?.[0]?.id ?? 0;
+  const { orgId } = useOrgScope();
 
   const { data: decks = [], isLoading, refetch } = trpc.lms.flashcards.listDecks.useQuery(
     { orgId },

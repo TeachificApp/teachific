@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { useOrgPlan } from "@/hooks/useOrgPlan";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import {
   ChevronLeft, Download, GripVertical, Plus, Save, Trash2, Upload, CheckCircle2, Sparkles, Loader2, Info, FileArchive, Eye,
 } from "lucide-react";
@@ -109,8 +110,7 @@ export default function QuizBuilderPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
   const isNew = !params.id || params.id === "new";
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = myOrgs?.[0]?.id ?? 0;
+  const { orgId } = useOrgScope();
 
   const createQuiz = trpc.quizzes.create.useMutation();
   const upsertQuestions = trpc.quizzes.questions.upsert.useMutation();
