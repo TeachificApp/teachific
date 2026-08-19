@@ -1768,6 +1768,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadsRouterSource).toContain('const { db } = await assertProductAccess(ctx, input.productId);');
     expect(downloadsRouterSource).toContain('await assertProductAccess(ctx, file.productId);');
     expect(downloadsRouterSource).toContain('and(eq(digitalProductFiles.id, input.fileIds[i]), eq(digitalProductFiles.productId, input.productId))');
+    expect(downloadsRouterSource).toContain('await Promise.all(input.products.map(({ id }) => assertProductAccess(ctx, id)));');
   });
 
   it("resolves digital download analytics and bundle creation from the active organization", () => {

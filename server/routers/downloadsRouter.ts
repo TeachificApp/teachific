@@ -498,6 +498,7 @@ export const downloadsAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await Promise.all(input.products.map(({ id }) => assertProductAccess(ctx, id)));
       await Promise.all(
         input.products.map(({ id, libraryOrder }) =>
           db.update(digitalProducts).set({ libraryOrder }).where(eq(digitalProducts.id, id))

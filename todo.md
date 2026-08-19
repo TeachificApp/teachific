@@ -5545,7 +5545,7 @@
 - [x] Apply the active organization theme to Form Responses score and tier indicators
 - [x] Apply the active organization theme to Widget Manager quiz content badges
 - [x] Resolve digital download administration listing and creation from the active organization rather than a first membership
-- [ ] Require active-organization ownership for digital download management, media, reorder, and bundle actions
+- [x] Require active-organization ownership for digital download management, media, reorder, and bundle actions
 - [x] Require active-organization ownership for core digital download viewing, editing, landing configuration, deletion, and file upload actions
 - [x] Require active-organization product ownership before removing or reordering digital download media
 - [x] Resolve digital download analytics and bundle creation from the active organization and validate bundled products
