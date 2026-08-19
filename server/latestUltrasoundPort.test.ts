@@ -1513,6 +1513,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(appSource).toContain("<MaintenanceBanner />");
   });
 
+  it("resolves CME activity-form administration from the active organization for organization administrators", () => {
+    const cmeRouterSource = readFileSync(new URL("./routers/cmeActivityFormRouter.ts", import.meta.url), "utf8");
+    const resolverSlice = cmeRouterSource.slice(cmeRouterSource.indexOf("async function resolveOrgId"), cmeRouterSource.indexOf("/** Assert the org has CME enabled"));
+    expect(resolverSlice).toContain("getOrgIdForUserWithFallback(userId, platformRole)");
+    expect(resolverSlice).toContain("CME activity forms must be managed from the active organization.");
+    expect(resolverSlice).toContain('platformRole === "site_owner" || platformRole === "site_admin"');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
