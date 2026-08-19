@@ -1670,6 +1670,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membershipFulfillmentSource).not.toContain(': "https://teachific.app";');
   });
 
+  it("sends organization-owned enrollment and access email links only when an organization domain is available", () => {
+    const enrollmentEmailSource = readFileSync(new URL("./lib/enrollmentEmail.ts", import.meta.url), "utf8");
+    expect(enrollmentEmailSource).toContain('if (!orgBase) return false;');
+    expect(enrollmentEmailSource).toContain('return orgBaseUrl ? `${orgBaseUrl}/auth/access?token=${accessToken}&next=${encoded}` : destination;');
+    expect(enrollmentEmailSource).not.toContain('https://teachific.app/courses/${opts.courseSlug}');
+    expect(enrollmentEmailSource).not.toContain('https://teachific.app/downloads/${opts.productSlug}/files');
+    expect(enrollmentEmailSource).not.toContain('https://teachific.app/downloads/bundle/${opts.bundleSlug}');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
@@ -1914,8 +1923,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const enrollmentEmailSource = readFileSync(new URL("./lib/enrollmentEmail.ts", import.meta.url), "utf8");
     expect(enrollmentEmailSource).toContain("async function resolveOrganizationBaseUrl");
     expect(enrollmentEmailSource).toContain("const organization = await getOrgById(opts.orgId);");
-    expect((enrollmentEmailSource.match(/const orgBase = await resolveOrganizationBaseUrl\(opts\);/g) ?? []).length).toBe(3);
-    expect((enrollmentEmailSource.match(/if \(opts\.orgId && !orgBase\) return false;/g) ?? []).length).toBe(3);
+    expect((enrollmentEmailSource.match(/const orgBase = await resolveOrganizationBaseUrl\(opts\);/g) ?? []).length).toBe(4);
+    expect((enrollmentEmailSource.match(/if \(!orgBase\) return false;/g) ?? []).length).toBe(4);
   });
 
   it("requires organization-admin ownership for certificate template administration", () => {
