@@ -17,6 +17,7 @@ import { getDb } from "../db";
 import { orgInvoices, orgMembers, organizations, users, orgPaymentSettings } from "../../drizzle/schema";
 import { sendEmailViaOrg } from "../_core/email";
 import { buildFunnelPurchaseConfirmationEmail } from "../_core/email";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,25 @@ const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"] as const;
 
 function isPlatformAdmin(role: string) {
   return (PLATFORM_ADMIN_ROLES as readonly string[]).includes(role);
+}
+
+async function getOrganizationLoginUrl(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  orgId: number,
+): Promise<string> {
+  const [organization] = await db
+    .select({
+      slug: organizations.slug,
+      customDomain: organizations.customDomain,
+      domainVerificationStatus: organizations.domainVerificationStatus,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  if (!organization?.slug) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Owning organization not found" });
+  }
+  return getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
 }
 
 /** Resolve the orgId the caller is an admin of (or throw FORBIDDEN). */
@@ -329,11 +349,12 @@ export const invoiceRouter = router({
 
       // Optionally send a receipt email to the buyer
       if (input.sendEmail && input.buyerEmail) {
+        const loginUrl = await getOrganizationLoginUrl(db, input.orgId);
         const { subject, htmlBody, previewText } = buildFunnelPurchaseConfirmationEmail({
           firstName: (input.buyerName ?? input.buyerEmail).split(" ")[0],
           productName: input.productTitle,
           amountPaid: input.amountPaid,
-          loginUrl: `https://teachific.app`,
+          loginUrl,
         });
         await sendEmailViaOrg(
           {
@@ -381,11 +402,12 @@ export const invoiceRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No buyer email on this invoice" });
       }
 
+      const loginUrl = await getOrganizationLoginUrl(db, invoice.orgId);
       const { subject, htmlBody, previewText } = buildFunnelPurchaseConfirmationEmail({
         firstName: (invoice.buyerName ?? invoice.buyerEmail).split(" ")[0],
         productName: invoice.productTitle,
         amountPaid: Number(invoice.amountPaid),
-        loginUrl: `https://teachific.app`,
+        loginUrl,
       });
 
       await sendEmailViaOrg(

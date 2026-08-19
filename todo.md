@@ -5529,6 +5529,7 @@
 - [x] Require non-platform LMS administrators to use the active organization when procedures accept an organization identifier
 - [x] Apply the active organization theme to Community product page callouts and action accents
 - [x] Resolve legacy LMS discussion notification links from the owning organization domain rather than a platform fallback
+- [x] Resolve invoice email login links from the owning organization domain rather than a platform fallback
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

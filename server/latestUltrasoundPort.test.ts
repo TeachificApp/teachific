@@ -1648,6 +1648,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(legacyLmsSource).not.toContain('let discussionOrgBase = "https://teachific.app";');
   });
 
+  it("resolves invoice receipt login links from the owning organization domain", () => {
+    const invoiceRouterSource = readFileSync(new URL("./routers/invoiceRouter.ts", import.meta.url), "utf8");
+    expect(invoiceRouterSource).toContain('async function getOrganizationLoginUrl');
+    expect(invoiceRouterSource).toContain('return getOrgBaseUrl(organization.slug');
+    expect(invoiceRouterSource).toContain('loginUrl = await getOrganizationLoginUrl');
+    expect(invoiceRouterSource).not.toContain('loginUrl: `https://teachific.app`');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
