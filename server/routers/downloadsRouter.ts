@@ -30,6 +30,18 @@ async function assertAdmin(ctx: any) {
   return orgId;
 }
 
+async function assertProductAccess(ctx: any, productId: number) {
+  const activeOrgId = await assertAdmin(ctx);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [product] = await db.select().from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+  if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+  if (!isPlatformAdmin(ctx.user!.role) && product.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Digital product does not belong to the active organization" });
+  }
+  return { db, product };
+}
+
 function isAdminRole(role: string | undefined): boolean {
   return ["site_owner", "site_admin", "org_super_admin", "org_admin", "admin"].includes(role ?? "");
 }
@@ -486,12 +498,7 @@ export const downloadsAdminRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db.select().from(digitalProducts)
-        .where(eq(digitalProducts.id, input.id)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, product } = await assertProductAccess(ctx, input.id);
       const files = await db.select().from(digitalProductFiles)
         .where(eq(digitalProductFiles.productId, product.id))
         .orderBy(asc(digitalProductFiles.sortOrder));
@@ -559,9 +566,7 @@ export const downloadsAdminRouter = router({
       enrollmentClosed: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await assertProductAccess(ctx, input.id);
       const { id, ...data } = input;
       await db.update(digitalProducts).set(data).where(eq(digitalProducts.id, id));
       return { success: true };
@@ -571,22 +576,7 @@ export const downloadsAdminRouter = router({
   getLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db.select({
-        id: digitalProducts.id,
-        title: digitalProducts.title,
-        slug: digitalProducts.slug,
-        subtitle: digitalProducts.subtitle,
-        thumbnailUrl: digitalProducts.thumbnailUrl,
-        landingBlocks: digitalProducts.landingBlocks,
-        landingHeadline: digitalProducts.landingHeadline,
-        seoTitle: digitalProducts.seoTitle,
-        seoDescription: digitalProducts.seoDescription,
-        seoImage: digitalProducts.seoImage,
-      }).from(digitalProducts).where(eq(digitalProducts.id, input.productId)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { product } = await assertProductAccess(ctx, input.productId);
       return {
         blocks: product.landingBlocks ? JSON.parse(product.landingBlocks) : null,
         productTitle: product.title,
@@ -609,9 +599,7 @@ export const downloadsAdminRouter = router({
       seoImage: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await assertProductAccess(ctx, input.productId);
       await db.update(digitalProducts)
         .set({
           seoTitle: input.seoTitle ?? null,
@@ -629,9 +617,7 @@ export const downloadsAdminRouter = router({
       blocks: z.array(z.any()),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await assertProductAccess(ctx, input.productId);
       const blocksJson = JSON.stringify(input.blocks);
       await db.update(digitalProducts)
         .set({ landingBlocks: blocksJson })
@@ -643,11 +629,7 @@ export const downloadsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db.select().from(digitalProducts).where(eq(digitalProducts.id, input.id)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, product } = await assertProductAccess(ctx, input.id);
       const purgeAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       await db.insert(lmsArchive).values({
         itemType: "download",
@@ -672,9 +654,7 @@ export const downloadsAdminRouter = router({
       fileSize: z.number().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await assertProductAccess(ctx, input.productId);
 
       const buffer = Buffer.from(input.fileBase64, "base64");
       const suffix = Math.random().toString(36).slice(2, 8);
@@ -730,10 +710,10 @@ export const downloadsAdminRouter = router({
 
   /** Get download analytics for all products (admin) — scoped to caller's org unless platform admin */
   getAnalytics: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx);
+    const activeOrgId = await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return { products: [], recentDownloads: [] };
-    const orgId = isPlatformAdmin(ctx.user.role) ? null : await getOrgIdForUser(ctx.user.id);
+    const orgId = isPlatformAdmin(ctx.user.role) ? null : activeOrgId;
 
     // Per-product stats
     const products = await db.select({
@@ -766,10 +746,10 @@ export const downloadsAdminRouter = router({
   // ─── Bundle Admin CRUD ─────────────────────────────────────────────────────
   /** List all bundles (admin) — scoped to caller's org unless platform admin */
   listBundles: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx);
+    const activeOrgId = await assertAdmin(ctx);
     const db = await getDb();
     if (!db) return [];
-    const orgId = isPlatformAdmin(ctx.user.role) ? null : await getOrgIdForUser(ctx.user.id);
+    const orgId = isPlatformAdmin(ctx.user.role) ? null : activeOrgId;
     const bundles = await db.select().from(digitalBundles)
       .where(orgId !== null ? eq(digitalBundles.orgId, orgId) : undefined)
       .orderBy(desc(digitalBundles.createdAt));
@@ -809,7 +789,9 @@ export const downloadsAdminRouter = router({
       if (existing) slug += `-${Date.now().toString(36)}`;
 
       const { productIds, ...bundleData } = input;
-      const [result] = await db.insert(digitalBundles).values({ ...bundleData, slug }).$returningId();
+      const orgId = await assertAdmin(ctx);
+      await Promise.all(productIds.map((productId) => assertProductAccess(ctx, productId)));
+      const [result] = await db.insert(digitalBundles).values({ ...bundleData, slug, orgId }).$returningId();
 
       if (productIds.length > 0) {
         await db.insert(digitalBundleItems).values(

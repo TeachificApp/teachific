@@ -1760,6 +1760,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadsRouterSource).not.toContain('const orgId = await getOrgIdForUser(ctx.user.id);');
   });
 
+  it("requires active-organization ownership for core digital download management", () => {
+    const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
+    expect(downloadsRouterSource).toContain('async function assertProductAccess(ctx: any, productId: number)');
+    expect(downloadsRouterSource).toContain('Digital product does not belong to the active organization');
+    expect(downloadsRouterSource).toContain('const { db, product } = await assertProductAccess(ctx, input.id);');
+    expect(downloadsRouterSource).toContain('const { db } = await assertProductAccess(ctx, input.productId);');
+  });
+
+  it("resolves digital download analytics and bundle creation from the active organization", () => {
+    const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
+    expect(downloadsRouterSource).toContain('const orgId = isPlatformAdmin(ctx.user.role) ? null : activeOrgId;');
+    expect(downloadsRouterSource).toContain('await Promise.all(productIds.map((productId) => assertProductAccess(ctx, productId)));');
+    expect(downloadsRouterSource).toContain('values({ ...bundleData, slug, orgId })');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
