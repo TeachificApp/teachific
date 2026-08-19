@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { getOrgShopUrl } from "@/lib/orgUrl";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,13 +167,7 @@ export default function DigitalProductEditorPage() {
   const isNew = id === "new";
   const productId = isNew ? null : Number(id);
   const [activeTab, setActiveTab] = useState<TabId>("details");
-
-  // Get orgId from URL query params for new products
-  const orgId = isNew
-    ? Number(new URLSearchParams(window.location.search).get("orgId") ?? "0")
-    : undefined;
-
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
+  const { orgId, orgs } = useOrgScope();
   const { data: product, refetch } = trpc.lms.downloads.getProduct.useQuery(
     { id: productId! },
     { enabled: !!productId }
@@ -401,7 +396,7 @@ export default function DigitalProductEditorPage() {
     setPriceList((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const org = myOrgs?.[0];
+  const org = orgs.find((candidate: any) => candidate.id === orgId);
   const shopUrl = org && slug
     ? getOrgShopUrl(org.slug, slug, org.customDomain, org.domainVerificationStatus)
     : `${window.location.origin}/shop/${slug}`;

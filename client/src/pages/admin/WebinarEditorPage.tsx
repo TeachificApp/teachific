@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { getOrgWebinarUrl, getOrgWebinarWatchUrl } from "@/lib/orgUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +89,7 @@ export default function WebinarEditorPage() {
   const webinarId = Number(id);
   const [activeTab, setActiveTab] = useState<TabId>("details");
 
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
+  const { orgId, orgs } = useOrgScope();
   const { data: webinar, refetch } = trpc.lms.webinars.get.useQuery(
     { id: webinarId },
     { enabled: !!webinarId }
@@ -224,7 +225,7 @@ export default function WebinarEditorPage() {
     saveFunnelMutation.mutate({ webinarId, steps: steps as any });
   };
 
-  const wOrg = myOrgs?.[0];
+  const wOrg = orgs.find((candidate: any) => candidate.id === orgId);
   const regUrl = wOrg && form.slug
     ? getOrgWebinarUrl(wOrg.slug, form.slug, wOrg.customDomain, wOrg.domainVerificationStatus)
     : `${window.location.origin}/webinar/${form.slug}/register`;
