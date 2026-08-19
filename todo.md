@@ -5538,6 +5538,7 @@
 - [x] Replace legacy ultrasound branding in organization-owned enrollment and access email templates with Teachific-neutral platform wording
 - [x] Verify and complete AI image generation blocks across lesson, email, and page authoring surfaces with active-organization scope
 - [x] Apply the active organization theme to LMS player layout zone editor controls
+- [x] Resolve remaining Email Campaign administration actions from the active organization rather than a first membership
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

@@ -40,7 +40,7 @@ import {
   orgThemes,
 } from "../../drizzle/schema";
 import { addToEmailList, ensureAllContactsList } from "../lib/emailListHelper";
-import { getOrgIdForUser } from "../db";
+import { getOrgIdForUserWithFallback } from "../db";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { resolveRecipients } from "../lib/emailCampaignAudienceResolver";
 import {
@@ -1911,7 +1911,7 @@ For promotional emails: use the product URL from the prompt in the cta_standalon
   getProductsForEmailPromo: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    const orgId = await getOrgIdForUser(ctx.user.id);
+    const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
     if (!orgId) return { courses: [], workshops: [], cohorts: [], webinars: [], downloads: [], orgBaseUrl: "" };
 
     // Get org info for URL building

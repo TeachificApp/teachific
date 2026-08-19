@@ -1713,6 +1713,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).not.toContain('top: { label: "Top Zone", desc: "Above progress bar", color: "#7c3aed" }');
   });
 
+  it("resolves AI email promotion products from the active organization", () => {
+    const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
+    expect(emailCampaignRouterSource).toContain('getOrgIdForUserWithFallback');
+    expect(emailCampaignRouterSource).toContain('await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)');
+    expect(emailCampaignRouterSource).not.toContain('await getOrgIdForUser(ctx.user.id)');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
