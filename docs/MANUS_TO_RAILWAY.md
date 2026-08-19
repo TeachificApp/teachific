@@ -109,14 +109,13 @@ In the GitHub repo (not in Manus):
    - Read `process.env.PORT` and bind `0.0.0.0`
    - Expose `GET /api/health` (or change `healthcheckPath` to a route that exists — `ultrasound-app` currently health-checks `/api/trpc`, which is a poor liveness probe)
    - Run `pnpm build` then `node dist/index.js` (or `pnpm start`)
-   - Strip `vite-plugin-manus-runtime` from the production HTML (`scripts/strip-manus-runtime.mjs` in this repo)
 4. Storage must succeed when Forge env vars are **unset**:
-   - Teachific: AWS S3 when `AWS_ACCESS_KEY_ID` + `AWS_S3_BUCKET` are set
+   - Teachific: AWS S3 or Cloudflare R2 when the S3-compatible storage variables in `.env.railway.example` are set
    - Echo-assist: R2 when `R2_ENDPOINT` is set
    - **UltrasoundAssist still throws if Forge is missing** — copy Teachific’s S3 switch (or the R2 dual-backend pattern) before cutover
-5. LLM must succeed when Forge is unset (`OPENAI_API_KEY`). Port Teachific `server/_core/llm.ts` into `ultrasound-app` if it still only calls Forge.
-6. Auth: confirm email/password works with `JWT_SECRET`. Leave Manus OAuth vars empty on Railway unless you still need them as a temporary bridge.
-7. Vite `VITE_*` values are baked in at **build** time. Pass them as Railway build args / variables. Do not rely on a committed `.env.production` that still points at `forge.manus.ai`.
+5. AI must succeed when Forge is unset (`OPENAI_API_KEY` for LLM, image generation, TTS, and transcription). Port Teachific `server/_core/llm.ts` into `ultrasound-app` if it still only calls Forge.
+6. Auth: confirm email/password works with `JWT_SECRET`. Leave Manus OAuth vars empty and `ENABLE_MANUS_OAUTH=false` on Railway unless you still need them as a temporary bridge.
+7. Vite `VITE_*` values are baked in at **build** time. Pass them as Railway build args / variables. Do not rely on a committed `.env.production` that still points at Forge.
 
 ### 2. Create the Railway project (staging)
 
@@ -182,7 +181,7 @@ Do not touch DNS until all of these pass on `*.up.railway.app`:
 
 ### 6. After cutover
 
-- Remove `BUILT_IN_FORGE_*`, `OAUTH_SERVER_URL`, and `VITE_OAUTH_PORTAL_URL` from Railway once nobody logs in via Manus.
+- Keep `ENABLE_LEGACY_FORGE=false` and `ENABLE_MANUS_OAUTH=false`; remove `BUILT_IN_FORGE_*`, `OAUTH_SERVER_URL`, and old `VITE_OAUTH_PORTAL_URL` values once nobody logs in via Manus.
 - Stop committing `.manus/db` query dumps and `.env.production` Forge keys.
 - Rotate any secret that was ever committed to GitHub (`replication-config.json` in this repo historically contained live DB passwords).
 
@@ -206,7 +205,7 @@ Shared on every app:
 | `NODE_ENV` | `production` |
 | `PORT` | Set by Railway; do not hardcode |
 
-**teachific** — see `DEPLOYMENT.md`. Required extras: `AWS_*` **or** R2, `OPENAI_API_KEY`, Stripe, SendGrid. Optional Manus OAuth only as a bridge.
+**teachific** — see `.env.railway.example`. Required extras: `AWS_*` **or** `CF_R2_*`, `OPENAI_API_KEY`, Stripe, SendGrid. Optional legacy Forge/OAuth bridges are off by default.
 
 **ultrasound-app** (UltrasoundAssist) — see that repo’s `RAILWAY_DEPLOY.md`, but **replace** the Forge block with:
 

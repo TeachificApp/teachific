@@ -2,12 +2,16 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
-import { CACHE_KEY } from "@/lib/authCache";
+import { CACHE_KEY, LEGACY_CACHE_KEY } from "@/lib/authCache";
 
 /** Read the last-known user from localStorage — used as optimistic initial state */
 function getCachedUser() {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(CACHE_KEY) ?? localStorage.getItem(LEGACY_CACHE_KEY);
+    if (raw && !localStorage.getItem(CACHE_KEY)) {
+      localStorage.setItem(CACHE_KEY, raw);
+      localStorage.removeItem(LEGACY_CACHE_KEY);
+    }
     if (!raw || raw === "null" || raw === "undefined") return null;
     return JSON.parse(raw) as Record<string, unknown>;
   } catch {
@@ -43,6 +47,7 @@ export function useAuth(options?: UseAuthOptions) {
     onSuccess: () => {
       utils.auth.me.setData(undefined, null);
       localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(LEGACY_CACHE_KEY);
     },
   });
 
@@ -60,6 +65,7 @@ export function useAuth(options?: UseAuthOptions) {
     } finally {
       utils.auth.me.setData(undefined, null);
       localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(LEGACY_CACHE_KEY);
       await utils.auth.me.invalidate();
     }
   }, [logoutMutation, utils]);

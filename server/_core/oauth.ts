@@ -3,7 +3,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
-import { sdk } from "./sdk";
+import { isManusOAuthEnabled, sdk } from "./sdk";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -50,6 +50,11 @@ async function ensureDefaultOrg(openId: string, displayName: string | null, emai
 
 export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+    if (!isManusOAuthEnabled()) {
+      res.status(404).json({ error: "OAuth bridge disabled" });
+      return;
+    }
+
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
 

@@ -87,7 +87,7 @@ const FAQ_CATEGORIES = [
     items: [
       {
         q: "How do I reset my password?",
-        a: "On the login page, click 'Forgot password?' and enter your email address. You'll receive a reset link within a few minutes. If you signed up via Manus OAuth, password reset is managed through your Manus account.",
+        a: "On the login page, click 'Forgot password?' and enter your email address. You'll receive a reset link within a few minutes.",
       },
       {
         q: "Can I have multiple organizations?",

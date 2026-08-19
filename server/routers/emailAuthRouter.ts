@@ -76,8 +76,9 @@ function resolveAppUrl(origin: string | undefined, brandMode: BrandMode): string
   if (origin) {
     try {
       const hostname = new URL(origin).hostname.toLowerCase();
-      // If the origin is a known app domain, use it directly so the link works on any domain
-      if (hostname in BRAND_DOMAINS || hostname.includes("manus.space") || hostname.includes("manus.computer")) {
+      // If the origin is a known app domain, use it directly so the link works on any domain.
+      // Legacy Manus preview domains are accepted only when the OAuth bridge is explicitly enabled.
+      if (hostname in BRAND_DOMAINS || (ENV.enableManusOAuth && (hostname.includes("manus.space") || hostname.includes("manus.computer")))) {
         return origin;
       }
     } catch { /* ignore invalid origins */ }

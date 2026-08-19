@@ -1,5 +1,5 @@
 /**
- * Voice transcription helper using internal Speech-to-Text service
+ * Voice transcription helper using OpenAI speech-to-text.
  *
  * Frontend implementation guide:
  * 1. Capture audio using MediaRecorder API
@@ -152,23 +152,15 @@ export async function transcribeAudio(
   options: TranscribeOptions
 ): Promise<TranscriptionResponse | TranscriptionError> {
   try {
-    // Step 1: Validate environment configuration
-    if (!ENV.forgeApiUrl) {
-      return {
-        error: "Voice transcription service is not configured",
-        code: "SERVICE_ERROR",
-        details: "BUILT_IN_FORGE_API_URL is not set"
-      };
-    }
-    if (!ENV.forgeApiKey) {
+    if (!ENV.openAiApiKey) {
       return {
         error: "Voice transcription service authentication is missing",
         code: "SERVICE_ERROR",
-        details: "BUILT_IN_FORGE_API_KEY is not set"
+        details: "OPENAI_API_KEY is not set"
       };
     }
 
-    // Step 2: Download audio/video from URL
+    // Step 1: Download audio/video from URL
     let audioBuffer: Buffer;
     let mimeType: string;
     try {
@@ -193,7 +185,7 @@ export async function transcribeAudio(
       };
     }
 
-    // Step 3: Prepare audio for Whisper API
+    // Step 2: Prepare audio for Whisper API
     // Strategy:
     //   A) If FFmpeg is available AND file is large (>16MB): extract MP3 to reduce size
     //   B) If FFmpeg is available AND file is video: optionally extract for cleaner audio
@@ -227,17 +219,17 @@ export async function transcribeAudio(
       }
     }
 
-    // Step 4: Normalize MIME type for Whisper API compatibility
+    // Step 3: Normalize MIME type for Whisper API compatibility
     const { mime: finalMime, ext: finalExt } = normalizeAudioMime(mimeType);
     const filename = `audio.${finalExt}`;
 
     console.log(`[transcribeAudio] Sending to Whisper: ${filename} (${finalMime}), size=${(audioBuffer.length / 1024 / 1024).toFixed(2)}MB`);
 
-    // Step 5: Create FormData for multipart upload to Whisper API
+    // Step 4: Create FormData for multipart upload to Whisper API
     const formData = new FormData();
     const audioBlob = new Blob([new Uint8Array(audioBuffer)], { type: finalMime });
     formData.append("file", audioBlob, filename);
-    formData.append("model", "whisper-1");
+    formData.append("model", ENV.openAiTranscriptionModel);
     formData.append("response_format", "verbose_json");
     
     const prompt = options.prompt || (
@@ -255,17 +247,13 @@ export async function transcribeAudio(
       formData.append("timestamp_granularities[]", "segment");
     }
 
-    // Step 6: Call the transcription service
-    const baseUrl = ENV.forgeApiUrl.endsWith("/")
-      ? ENV.forgeApiUrl
-      : `${ENV.forgeApiUrl}/`;
-    
-    const fullUrl = new URL("v1/audio/transcriptions", baseUrl).toString();
+    // Step 5: Call OpenAI transcription
+    const fullUrl = "https://api.openai.com/v1/audio/transcriptions";
 
     const response = await fetch(fullUrl, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${ENV.forgeApiKey}`,
+        authorization: `Bearer ${ENV.openAiApiKey}`,
         "Accept-Encoding": "identity",
       },
       body: formData,
@@ -280,7 +268,7 @@ export async function transcribeAudio(
       };
     }
 
-    // Step 7: Parse and return the transcription result
+    // Step 6: Parse and return the transcription result
     const whisperResponse = await response.json() as WhisperResponse;
     
     if (!whisperResponse.text || typeof whisperResponse.text !== 'string') {

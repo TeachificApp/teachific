@@ -1,14 +1,12 @@
 /**
  * LLM abstraction layer
  *
- * Supports two backends, selected automatically by environment variables:
+ * Supports OpenAI for Railway/self-hosted deployments.
  *
- * 1. OpenAI (for Railway / self-hosted deployments)
- *    Required: OPENAI_API_KEY
+ * Required: OPENAI_API_KEY
  *    Optional: OPENAI_MODEL (default: gpt-4o-mini)
  *
- * 2. Manus built-in LLM (default when running on the Manus platform)
- *    Required: BUILT_IN_FORGE_API_URL, BUILT_IN_FORGE_API_KEY
+ * Legacy Forge is available only when ENABLE_LEGACY_FORGE=true.
  */
 
 import { ENV } from "./env";
@@ -126,7 +124,7 @@ export type ResponseFormat =
 // ─── Backend detection ────────────────────────────────────────────────────────
 
 function isOpenAIConfigured(): boolean {
-  return !!process.env.OPENAI_API_KEY;
+  return !!ENV.openAiApiKey;
 }
 
 // ─── Shared normalizers ───────────────────────────────────────────────────────
@@ -141,7 +139,7 @@ const normalizeContentPart = (
   if (typeof part === "string") return { type: "text", text: part };
   if (part.type === "text") return part;
   if (part.type === "image_url") return part;
-  // file_url is Manus-specific; convert to text note for OpenAI
+  // file_url came from the legacy Forge bridge; convert to a text note for OpenAI.
   if (part.type === "file_url") return { type: "text", text: `[File: ${part.file_url.url}]` };
   throw new Error("Unsupported message content part");
 };
@@ -215,8 +213,8 @@ const normalizeResponseFormat = ({
 
 async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
   const { default: OpenAI } = await import("openai");
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const client = new OpenAI({ apiKey: ENV.openAiApiKey });
+  const model = ENV.openAiModel;
   const {
     messages, tools, toolChoice, tool_choice,
     outputSchema, output_schema, responseFormat, response_format,
@@ -238,7 +236,7 @@ async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
   return response as unknown as InvokeResult;
 }
 
-// ─── Manus Built-in LLM Backend ──────────────────────────────────────────────
+// ─── Legacy Forge LLM bridge ─────────────────────────────────────────────────
 
 const resolveManusApiUrl = () =>
   ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
@@ -248,7 +246,7 @@ const resolveManusApiUrl = () =>
 async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
   if (!ENV.forgeApiKey) {
     throw new Error(
-      "No LLM backend configured. Set OPENAI_API_KEY for OpenAI, or BUILT_IN_FORGE_API_KEY for Manus."
+      "Legacy Forge LLM bridge is enabled but BUILT_IN_FORGE_API_KEY is missing."
     );
   }
   const {
@@ -289,7 +287,7 @@ async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  return isOpenAIConfigured()
-    ? invokeOpenAI(params)
-    : invokeManusLLM(params);
+  if (isOpenAIConfigured()) return invokeOpenAI(params);
+  if (ENV.allowLegacyForge) return invokeManusLLM(params);
+  throw new Error("No LLM backend configured. Set OPENAI_API_KEY for Railway.");
 }

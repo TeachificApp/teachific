@@ -30,13 +30,16 @@ const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
 
+export function isManusOAuthEnabled(): boolean {
+  return ENV.enableManusOAuth && ENV.oAuthServerUrl.trim().length > 0;
+}
+
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
+    if (isManusOAuthEnabled()) {
+      console.log("[OAuth] Manus OAuth bridge enabled with baseURL:", ENV.oAuthServerUrl);
+    } else {
+      console.log("[OAuth] Manus OAuth bridge disabled; using Teachific email/password sessions.");
     }
   }
 
@@ -49,6 +52,9 @@ class OAuthService {
     code: string,
     state: string
   ): Promise<ExchangeTokenResponse> {
+    if (!isManusOAuthEnabled()) {
+      throw ForbiddenError("Manus OAuth bridge is disabled");
+    }
     const payload: ExchangeTokenRequest = {
       clientId: ENV.appId,
       grantType: "authorization_code",
@@ -133,6 +139,9 @@ class SDKServer {
    * const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
    */
   async getUserInfo(accessToken: string): Promise<GetUserInfoResponse> {
+    if (!isManusOAuthEnabled()) {
+      throw ForbiddenError("Manus OAuth bridge is disabled");
+    }
     const data = await this.oauthService.getUserInfoByToken({
       accessToken,
     } as ExchangeTokenResponse);
@@ -161,11 +170,7 @@ class SDKServer {
     return new TextEncoder().encode(secret);
   }
 
-  /**
-   * Create a session token for a Manus user openId
-   * @example
-   * const sessionToken = await sdk.createSessionToken(userInfo.openId);
-   */
+  /** Create a signed app session token for a user openId. */
   async createSessionToken(
     openId: string,
     options: { expiresInMs?: number; name?: string } = {}
@@ -265,6 +270,9 @@ class SDKServer {
   async getUserInfoWithJwt(
     jwtToken: string
   ): Promise<GetUserInfoWithJwtResponse> {
+    if (!isManusOAuthEnabled()) {
+      throw ForbiddenError("Manus OAuth bridge is disabled");
+    }
     const payload: GetUserInfoWithJwtRequest = {
       jwtToken,
       projectId: ENV.appId,
@@ -287,6 +295,9 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<User & { impersonatedBy?: string }> {
+    if (!isManusOAuthEnabled()) {
+      throw ForbiddenError("Manus OAuth bridge is disabled");
+    }
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
     const session = await this.verifySession(sessionCookie);

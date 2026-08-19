@@ -79,7 +79,7 @@ In your Railway service, go to **Variables** and add the following:
 | `JWT_SECRET` | A long random string (e.g., `openssl rand -hex 64`) |
 | `NODE_ENV` | `production` |
 
-### Required — AWS S3 Storage
+### Required — S3-Compatible Storage
 | Variable | Value |
 |---|---|
 | `AWS_ACCESS_KEY_ID` | Your IAM user access key |
@@ -87,12 +87,16 @@ In your Railway service, go to **Variables** and add the following:
 | `AWS_REGION` | Your bucket region (e.g., `us-east-1`) |
 | `AWS_S3_BUCKET` | Your bucket name (e.g., `teachific-files`) |
 | `AWS_S3_PUBLIC_URL` | Optional: CloudFront CDN URL if you set one up |
+| `CF_R2_*` | Alternative Cloudflare R2 aliases; see `.env.railway.example` |
 
 ### Required — AI Features (Course Generator, Transcription, etc.)
 | Variable | Value |
 |---|---|
 | `OPENAI_API_KEY` | Your OpenAI API key from [platform.openai.com](https://platform.openai.com) |
 | `OPENAI_MODEL` | Optional: model to use (default: `gpt-4o-mini`) |
+| `OPENAI_IMAGE_MODEL` | Optional: image model (default: `gpt-image-1`) |
+| `OPENAI_TTS_MODEL` | Optional: TTS model (default: `tts-1`) |
+| `OPENAI_TRANSCRIPTION_MODEL` | Optional: transcription model (default: `whisper-1`) |
 
 ### Required — Stripe Payments
 | Variable | Value |
@@ -108,13 +112,16 @@ In your Railway service, go to **Variables** and add the following:
 | `SENDGRID_FROM_EMAIL` | Verified sender email (e.g., `hello@teachific.app`) |
 | `SENDGRID_FROM_NAME` | Sender name (e.g., `Teachific`) |
 
-### Optional — Manus OAuth (if keeping Manus login)
-If you want to keep Manus OAuth login working alongside email/password:
+### Optional Legacy Bridge — Manus OAuth / Forge
+Leave these unset on Railway. Use only as a temporary bridge while cutting over old sessions/data:
 | Variable | Value |
 |---|---|
+| `ENABLE_MANUS_OAUTH` | `true` only to temporarily allow Manus OAuth sessions |
+| `ENABLE_LEGACY_FORGE` | `true` only to temporarily allow Forge-backed legacy helpers |
 | `VITE_APP_ID` | Your Manus app ID |
 | `OAUTH_SERVER_URL` | `https://api.manus.im` |
-| `VITE_OAUTH_PORTAL_URL` | `https://manus.im` |
+| `BUILT_IN_FORGE_API_URL` | Legacy Forge API URL |
+| `BUILT_IN_FORGE_API_KEY` | Legacy Forge API key |
 
 ### Optional — Cloudflare (if using Cloudflare for DNS/CDN)
 | Variable | Value |

@@ -1,5 +1,5 @@
 /**
- * Image generation helper using internal ImageService
+ * Image generation helper using OpenAI Images.
  *
  * Example usage:
  *   const { url: imageUrl } = await generateImage({
@@ -15,7 +15,7 @@
  *     }]
  *   });
  */
-import { storagePut } from "server/storage";
+import { storagePut } from "../storage";
 import { ENV } from "./env";
 
 export type GenerateImageOptions = {
@@ -34,57 +34,32 @@ export type GenerateImageResponse = {
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResponse> {
-  if (!ENV.forgeApiUrl) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
-  }
-  if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  if (!ENV.openAiApiKey) {
+    throw new Error("OPENAI_API_KEY is not configured");
   }
 
-  // Build the full URL by appending the service path to the base URL
-  const baseUrl = ENV.forgeApiUrl.endsWith("/")
-    ? ENV.forgeApiUrl
-    : `${ENV.forgeApiUrl}/`;
-  const fullUrl = new URL(
-    "images.v1.ImageService/GenerateImage",
-    baseUrl
-  ).toString();
-
-  const response = await fetch(fullUrl, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      "connect-protocol-version": "1",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify({
-      prompt: options.prompt,
-      original_images: options.originalImages || [],
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Image generation request failed (${response.status} ${response.statusText})${detail ? `: ${detail}` : ""}`
-    );
+  if (options.originalImages?.length) {
+    console.warn("[ImageGeneration] Image edits are not supported in the Railway OpenAI path yet; generating from prompt only.");
   }
 
-  const result = (await response.json()) as {
-    image: {
-      b64Json: string;
-      mimeType: string;
-    };
-  };
-  const base64Data = result.image.b64Json;
+  const { default: OpenAI } = await import("openai");
+  const client = new OpenAI({ apiKey: ENV.openAiApiKey });
+  const result = await client.images.generate({
+    model: ENV.openAiImageModel,
+    prompt: options.prompt,
+    size: "1024x1024",
+  } as any);
+  const image = result.data?.[0] as any;
+  const base64Data = image?.b64_json;
+  if (!base64Data) {
+    throw new Error("Image generation returned no image data");
+  }
   const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
   const { url } = await storagePut(
     `generated/${Date.now()}.png`,
     buffer,
-    result.image.mimeType
+    "image/png"
   );
   return {
     url,

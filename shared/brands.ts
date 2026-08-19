@@ -45,7 +45,7 @@ export function getBrandDisplayConfig(_mode?: BrandMode): BrandDisplayConfig {
     senderName: process.env.SENDGRID_FROM_NAME || "Teachific™",
     supportEmail: "support@teachific.com",
     websiteUrl: "https://www.teachific.com",
-    appUrl: process.env.VITE_OAUTH_PORTAL_URL || "https://app.teachific.com",
+    appUrl: process.env.VITE_APP_URL || process.env.APP_URL || "https://teachific.app",
     logoUrl: "",
     primaryColor: "#189aa1",
     darkColor: "#0e1e2e",

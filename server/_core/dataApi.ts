@@ -1,7 +1,12 @@
 /**
+ * Optional legacy Forge Data API bridge.
+ *
+ * Railway deployments should call first-party provider APIs directly from their
+ * feature modules. This helper only runs when ENABLE_LEGACY_FORGE=true.
+ *
  * Quick example (matches curl usage):
  *   await callDataApi("Youtube/search", {
- *     query: { gl: "US", hl: "en", q: "manus" },
+ *     query: { gl: "US", hl: "en", q: "teachific" },
  *   })
  */
 import { ENV } from "./env";
@@ -17,11 +22,14 @@ export async function callDataApi(
   apiId: string,
   options: DataApiCallOptions = {}
 ): Promise<unknown> {
+  if (!ENV.allowLegacyForge) {
+    throw new Error("Legacy Forge Data API bridge is disabled. Configure a first-party API integration for Railway.");
+  }
   if (!ENV.forgeApiUrl) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
+    throw new Error("ENABLE_LEGACY_FORGE is true but BUILT_IN_FORGE_API_URL is not configured");
   }
   if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+    throw new Error("ENABLE_LEGACY_FORGE is true but BUILT_IN_FORGE_API_KEY is not configured");
   }
 
   // Build the full URL by appending the service path to the base URL
