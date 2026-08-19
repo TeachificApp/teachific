@@ -363,7 +363,7 @@ interface UploadQueueItem {
 export default function FilesPage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { activeOrg } = useOrgScope();
+  const { orgId } = useOrgScope();
   const utils = trpc.useUtils();
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -399,10 +399,8 @@ export default function FilesPage() {
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: packages, isLoading: pkgsLoading, refetch: refetchPkgs } = trpc.packages.list.useQuery(
-    activeOrg?.id ? { orgId: activeOrg.id } : undefined,
+    orgId ? { orgId } : undefined,
   );
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = activeOrg?.id ?? myOrgs?.[0]?.id ?? 0;
   const { data: foldersRaw = [], refetch: refetchFolders } = trpc.folders.list.useQuery({ orgId }, { enabled: orgId > 0 });
   const { data: mediaData, isLoading: mediaLoading, refetch: refetchMedia } = trpc.lms.media.listOrgMedia.useQuery(
     { orgId, typeFilter: "all", pageSize: 200 },

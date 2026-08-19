@@ -583,8 +583,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(packageRouterSource).toContain("delete: protectedProcedure");
     expect(packageRouterSource).toContain("return deletePackage(input.id);");
     const filesPageSource = readFileSync(new URL("../client/src/pages/FilesPage.tsx", import.meta.url), "utf8");
-    expect(filesPageSource).toContain("const { activeOrg } = useOrgScope();");
-    expect(filesPageSource).toContain("activeOrg?.id ? { orgId: activeOrg.id } : undefined");
+    expect(filesPageSource).toContain("const { orgId } = useOrgScope();");
+    expect(filesPageSource).toContain("orgId ? { orgId } : undefined");
     const dashboardSource = readFileSync(new URL("../client/src/pages/Dashboard.tsx", import.meta.url), "utf8");
     expect(dashboardSource).toContain("const { activeOrg } = useOrgScope();");
     expect(dashboardSource).toContain("activeOrg?.id ? { orgId: activeOrg.id } : undefined");
@@ -1617,6 +1617,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     const recordEditSource = readFileSync(new URL("../client/src/pages/RecordEditPage.tsx", import.meta.url), "utf8");
     expect(recordEditSource).toContain('const { orgId } = useOrgScope();');
     expect(recordEditSource).not.toContain('myOrgs?.[0]?.id');
+  });
+
+  it("resolves Files page package, folder, and media queries from the active organization", () => {
+    const filesPageSource = readFileSync(new URL("../client/src/pages/FilesPage.tsx", import.meta.url), "utf8");
+    expect(filesPageSource).toContain('const { orgId } = useOrgScope();');
+    expect(filesPageSource).toContain('orgId ? { orgId } : undefined');
+    expect(filesPageSource).not.toContain('activeOrg?.id ?? myOrgs?.[0]?.id');
   });
 
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
