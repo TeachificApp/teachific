@@ -68,11 +68,8 @@ function emailWrapper(content: string): string {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,#0e4a50 0%,#0e4a50 60%,${brandColor} 100%);padding:28px 32px;text-align:center;">
-              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp"
-                alt="Teachific™" width="80" height="80"
-                style="border-radius:50%;display:block;margin:0 auto 12px;" />
-              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Teachific™</div>
-              <div style="font-size:12px;color:#4ad9e0;margin-top:4px;">General &amp; Vascular Ultrasound Clinical Intelligence</div>
+              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Teachific™ Learning</div>
+              <div style="font-size:12px;color:#4ad9e0;margin-top:4px;">Your online learning access</div>
             </td>
           </tr>
           <tr>

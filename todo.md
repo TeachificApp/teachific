@@ -5534,6 +5534,8 @@
 - [x] Resolve membership fulfillment links from the owning organization domain rather than a platform fallback
 - [x] Remove platform fallback links from organization-owned enrollment and access emails
 - [x] Resolve embedded checkout confirmation links from the owning organization domain rather than a platform fallback
+- [x] Confirm email campaign tracking URLs intentionally use the application origin while campaign destinations remain organization-scoped
+- [x] Replace legacy ultrasound branding in organization-owned enrollment and access email templates with Teachific-neutral platform wording
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
