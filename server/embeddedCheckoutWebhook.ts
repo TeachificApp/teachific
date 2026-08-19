@@ -286,35 +286,38 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
         if (orgInfo?.slug) orgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
       } catch { /* keep default */ }
     }
-    const fallbackBase = orgBase ?? "https://teachific.app";
-    let loginUrl = `${fallbackBase}/my-courses`;
-    if (purchase.fulfillmentCourseId) {
-      try {
-        const { lmsCourses } = await import("../drizzle/schema");
-        const [courseRow] = await db.select({ slug: lmsCourses.slug }).from(lmsCourses)
-          .where(eq(lmsCourses.id, purchase.fulfillmentCourseId)).limit(1);
-        if (courseRow?.slug) loginUrl = `${fallbackBase}/courses/${courseRow.slug}`;
-      } catch { /* keep default */ }
-    } else if (purchase.productType === "download") {
-      loginUrl = `${fallbackBase}/my-downloads`;
+    if (orgBase) {
+      let loginUrl = `${orgBase}/my-courses`;
+      if (purchase.fulfillmentCourseId) {
+        try {
+          const { lmsCourses } = await import("../drizzle/schema");
+          const [courseRow] = await db.select({ slug: lmsCourses.slug }).from(lmsCourses)
+            .where(eq(lmsCourses.id, purchase.fulfillmentCourseId)).limit(1);
+          if (courseRow?.slug) loginUrl = `${orgBase}/courses/${courseRow.slug}`;
+        } catch { /* keep default */ }
+      } else if (purchase.productType === "download") {
+        loginUrl = `${orgBase}/my-downloads`;
+      }
+      const orderBumpsForEmail = purchase.orderBumps
+        ? (() => { try { return JSON.parse(purchase.orderBumps); } catch { return []; } })()
+        : [];
+      const { subject: confirmSubject, htmlBody: confirmHtml, previewText: confirmPreview } =
+        buildFunnelPurchaseConfirmationEmail({
+          firstName: buyerFirstName,
+          productName: purchase.productName,
+          amountPaid: Number(purchase.amount),
+          orderBumps: orderBumpsForEmail,
+          loginUrl,
+        });
+      await sendEmailViaOrg({
+        to: { name: purchase.name ?? purchase.email, email: purchase.email },
+        subject: confirmSubject,
+        htmlBody: confirmHtml,
+        previewText: confirmPreview,
+      }, purchase.orgId ?? null).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
+    } else {
+      console.warn(`[Embedded Checkout Webhook] Confirmation email skipped for purchase ${purchase.id}: organization domain unavailable`);
     }
-    const orderBumpsForEmail = purchase.orderBumps
-      ? (() => { try { return JSON.parse(purchase.orderBumps); } catch { return []; } })()
-      : [];
-    const { subject: confirmSubject, htmlBody: confirmHtml, previewText: confirmPreview } =
-      buildFunnelPurchaseConfirmationEmail({
-        firstName: buyerFirstName,
-        productName: purchase.productName,
-        amountPaid: Number(purchase.amount),
-        orderBumps: orderBumpsForEmail,
-        loginUrl,
-      });
-    await sendEmailViaOrg({
-      to: { name: purchase.name ?? purchase.email, email: purchase.email },
-      subject: confirmSubject,
-      htmlBody: confirmHtml,
-      previewText: confirmPreview,
-    }, purchase.orgId ?? null).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
 
     // Notify org admins via Teachific email (not Manus)
     if (purchase.orgId) {

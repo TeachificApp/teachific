@@ -5533,6 +5533,7 @@
 - [x] Resolve LMS checkout confirmation links from the owning organization domain rather than a platform fallback
 - [x] Resolve membership fulfillment links from the owning organization domain rather than a platform fallback
 - [x] Remove platform fallback links from organization-owned enrollment and access emails
+- [x] Resolve embedded checkout confirmation links from the owning organization domain rather than a platform fallback
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
