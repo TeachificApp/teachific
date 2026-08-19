@@ -1726,6 +1726,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundlesAdminSource).not.toContain('download: "bg-purple-100 text-purple-700"');
   });
 
+  it("uses the active organization theme for General Form Builder template metadata", () => {
+    const formBuilderSource = readFileSync(new URL("../client/src/pages/admin/GeneralFormBuilder.tsx", import.meta.url), "utf8");
+    expect(formBuilderSource).toContain('Form Type", value: FORM_TYPES.find(t => t.value === template.formType)?.label ?? template.formType, color: "var(--org-primary)"');
+    expect(formBuilderSource).not.toContain('Form Type", value: FORM_TYPES.find(t => t.value === template.formType)?.label ?? template.formType, color: "#7c3aed"');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');

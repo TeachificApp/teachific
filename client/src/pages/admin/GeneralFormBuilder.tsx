@@ -2532,7 +2532,7 @@ function AnalyticsTab({ formId, template }: { formId: number; template: any }) {
           { label: "Total Submissions", value: analytics?.totalSubmissions ?? 0, color: BRAND },
           { label: "Avg Score", value: analytics?.avgScore != null ? `${analytics.avgScore}%` : "N/A", color: "#059669" },
           { label: "Status", value: template.status, color: template.status === "open" ? "#059669" : "#6b7280" },
-          { label: "Form Type", value: FORM_TYPES.find(t => t.value === template.formType)?.label ?? template.formType, color: "#7c3aed" },
+          { label: "Form Type", value: FORM_TYPES.find(t => t.value === template.formType)?.label ?? template.formType, color: "var(--org-primary)" },
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="pt-4 pb-4">
