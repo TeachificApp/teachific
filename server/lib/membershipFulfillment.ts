@@ -423,9 +423,11 @@ async function sendMembershipWelcomeEmail(opts: {
   orgCustomDomain?: string | null;
   orgDomainVerificationStatus?: string | null;
 }): Promise<void> {
-  const baseUrl = opts.orgSlug
-    ? getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus)
-    : "https://teachific.app";
+  if (!opts.orgSlug) {
+    console.warn(`[MembershipFulfillment] Skipping welcome email for plan ${opts.planId}: organization domain unavailable`);
+    return;
+  }
+  const baseUrl = getOrgBaseUrl(opts.orgSlug, opts.orgCustomDomain, opts.orgDomainVerificationStatus);
   const learnBase = baseUrl;
   const firstName = opts.name.split(" ")[0] || "there";
   const destination = opts.primaryCourseSlug
