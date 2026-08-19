@@ -13,7 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb, isPlatformAdmin, getOrgIdForUser } from "../db";
+import { getDb, getOrgIdForUserWithFallback, isPlatformAdmin, requireOrgAdmin } from "../db";
 import {
   blueprints,
   blueprintVersions,
@@ -54,6 +54,13 @@ async function assertOrgAdmin(ctx: { user: { role: string } }) {
   if (!allowed.includes(ctx.user.role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Organization admin access required" });
   }
+}
+
+async function resolveActiveBlueprintOrg(ctx: { user: { id: number; role: string } }) {
+  const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return orgId;
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -406,8 +413,7 @@ export const blueprintRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organization found" });
+      const orgId = await resolveActiveBlueprintOrg(ctx);
 
       await assertBlueprintAccess(orgId, db);
 
@@ -447,8 +453,7 @@ export const blueprintRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST" });
+      const orgId = await resolveActiveBlueprintOrg(ctx);
       await assertBlueprintAccess(orgId, db);
 
       const [bp] = await db.select().from(blueprints).where(and(eq(blueprints.slug, input.slug), eq(blueprints.status, "published"))).limit(1);
@@ -486,8 +491,7 @@ export const blueprintRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organization found" });
+      const orgId = await resolveActiveBlueprintOrg(ctx);
 
       await assertBlueprintAccess(orgId, db);
 
@@ -516,8 +520,7 @@ export const blueprintRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST" });
+      const orgId = await resolveActiveBlueprintOrg(ctx);
 
       const installations = await db
         .select({
@@ -540,8 +543,7 @@ export const blueprintRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST" });
+      const orgId = await resolveActiveBlueprintOrg(ctx);
 
       const [installation] = await db
         .select()
@@ -568,8 +570,7 @@ export const blueprintRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST" });
+      const orgId = await resolveActiveBlueprintOrg(ctx);
 
       await db
         .update(blueprintInstallations)

@@ -5553,6 +5553,8 @@
 - [x] Require active-organization bundle and product ownership for digital download bundle updates and deletion
 - [x] Require active-organization ownership before duplicating digital downloads or bundles, changing settings, and granting download access
 - [x] Apply the active organization theme to Product Sales statistics and membership confirmation actions
+- [ ] Apply the active organization theme to Funnel Builder controls, analytics, and page-type accents
+- [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

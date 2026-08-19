@@ -1760,6 +1760,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(productSalesTabSource).not.toContain('text-teal-700');
   });
 
+  it("resolves Blueprint organization administration from the authorized active organization", () => {
+    const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
+    expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');
+    expect(blueprintRouterSource).toContain('await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)');
+    expect(blueprintRouterSource).toContain('await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId)');
+    expect(blueprintRouterSource.match(/await resolveActiveBlueprintOrg\(ctx\)/g)).toHaveLength(6);
+    expect(blueprintRouterSource).not.toContain('getOrgIdForUser(ctx.user.id)');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
