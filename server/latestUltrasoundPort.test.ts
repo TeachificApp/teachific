@@ -1766,6 +1766,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadsRouterSource).toContain('Digital product does not belong to the active organization');
     expect(downloadsRouterSource).toContain('const { db, product } = await assertProductAccess(ctx, input.id);');
     expect(downloadsRouterSource).toContain('const { db } = await assertProductAccess(ctx, input.productId);');
+    expect(downloadsRouterSource).toContain('await assertProductAccess(ctx, file.productId);');
+    expect(downloadsRouterSource).toContain('and(eq(digitalProductFiles.id, input.fileIds[i]), eq(digitalProductFiles.productId, input.productId))');
   });
 
   it("resolves digital download analytics and bundle creation from the active organization", () => {

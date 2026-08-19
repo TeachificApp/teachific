@@ -686,6 +686,9 @@ export const downloadsAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [file] = await db.select().from(digitalProductFiles).where(eq(digitalProductFiles.id, input.fileId)).limit(1);
+      if (!file) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertProductAccess(ctx, file.productId);
       await db.delete(digitalProductFiles).where(eq(digitalProductFiles.id, input.fileId));
       return { success: true };
     }),
@@ -697,13 +700,11 @@ export const downloadsAdminRouter = router({
       fileIds: z.array(z.number()),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await assertProductAccess(ctx, input.productId);
       for (let i = 0; i < input.fileIds.length; i++) {
         await db.update(digitalProductFiles)
           .set({ sortOrder: i })
-          .where(eq(digitalProductFiles.id, input.fileIds[i]));
+          .where(and(eq(digitalProductFiles.id, input.fileIds[i]), eq(digitalProductFiles.productId, input.productId)));
       }
       return { success: true };
     }),
