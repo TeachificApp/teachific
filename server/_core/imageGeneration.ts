@@ -34,11 +34,28 @@ export type GenerateImageResponse = {
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResponse> {
+  if (process.env.OPENAI_API_KEY) {
+    const OpenAI = (await import("openai")).default;
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const result = await client.images.generate({
+      model: "dall-e-3",
+      prompt: options.prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json",
+    });
+    const b64 = result.data?.[0]?.b64_json;
+    if (!b64) throw new Error("OpenAI image generation returned no image data");
+    const buffer = Buffer.from(b64, "base64");
+    const { url } = await storagePut(`generated/${Date.now()}.png`, buffer, "image/png");
+    return { url };
+  }
+
   if (!ENV.forgeApiUrl) {
-    throw new Error("BUILT_IN_FORGE_API_URL is not configured");
+    throw new Error("OPENAI_API_KEY is not configured. Manus Forge is no longer available.");
   }
   if (!ENV.forgeApiKey) {
-    throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+    throw new Error("OPENAI_API_KEY is not configured. Manus Forge is no longer available.");
   }
 
   // Build the full URL by appending the service path to the base URL

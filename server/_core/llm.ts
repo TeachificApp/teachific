@@ -289,7 +289,10 @@ async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  return isOpenAIConfigured()
-    ? invokeOpenAI(params)
-    : invokeManusLLM(params);
+  if (!isOpenAIConfigured()) {
+    throw new Error(
+      "OPENAI_API_KEY is not configured. Manus Forge is no longer available — set OPENAI_API_KEY on Railway."
+    );
+  }
+  return invokeOpenAI(params);
 }
