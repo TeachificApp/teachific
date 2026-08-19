@@ -40,7 +40,7 @@ import { addToSendGridGlobalUnsubscribes, removeFromSendGridGlobalUnsubscribes }
 import { randomBytes } from "crypto";
 import { nanoid } from "nanoid";
 
-const SITE_URL = process.env.VITE_SITE_URL || process.env.VITE_OAUTH_PORTAL_URL || "https://teachific.app";
+const SITE_URL = process.env.VITE_SITE_URL || process.env.VITE_APP_URL || process.env.APP_URL || "https://teachific.app";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

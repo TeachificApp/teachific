@@ -5,7 +5,7 @@
  * (e.g. myorg.teachific.app) and returns the subdomain slug.
  *
  * Returns null when running on the root domain (teachific.app, www.teachific.app,
- * localhost, Railway preview URLs, or any Manus preview URL).
+ * localhost or Railway preview URLs).
  */
 
 const ROOT_DOMAINS = new Set([
@@ -18,9 +18,6 @@ const ROOT_DOMAINS = new Set([
   "localhost",
   "127.0.0.1",
 ]);
-
-// Manus preview domains follow the pattern: *.manus.space or *.manus.computer
-const MANUS_PREVIEW_PATTERN = /\.manus\.(space|computer)$/;
 
 // Railway preview domains follow the pattern: *.up.railway.app
 const RAILWAY_PREVIEW_PATTERN = /\.up\.railway\.app$/;
@@ -35,9 +32,8 @@ function isTeachificSubdomain(hostname: string): boolean {
 export function getSubdomain(): string | null {
   const hostname = window.location.hostname;
 
-  // Never treat root domains or Manus/Railway preview URLs as subdomains
+  // Never treat root domains or Railway preview URLs as subdomains
   if (ROOT_DOMAINS.has(hostname)) return null;
-  if (MANUS_PREVIEW_PATTERN.test(hostname)) return null;
   if (RAILWAY_PREVIEW_PATTERN.test(hostname)) return null;
 
   // Only treat as a subdomain if it's actually a subdomain of teachific.app
@@ -87,11 +83,10 @@ export function getOrgSubdomainUrl(slug: string, path = ""): string {
   const protocol = window.location.protocol;
   const port = window.location.port;
 
-  // On localhost, Manus preview, or Railway preview — use /school/:slug fallback
+  // On localhost or Railway preview — use /school/:slug fallback
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    MANUS_PREVIEW_PATTERN.test(hostname) ||
     RAILWAY_PREVIEW_PATTERN.test(hostname)
   ) {
     const portSuffix = port ? `:${port}` : "";

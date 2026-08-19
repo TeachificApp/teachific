@@ -1067,7 +1067,7 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
 
 /**
  * Notify org admins of a new purchase made through their school.
- * Sent from Teachific email (not Manus) to all org_super_admin / org_admin members.
+ * Sent from Teachific email to all org_super_admin / org_admin members.
  */
 export function buildOrgAdminNewPurchaseEmail(opts: {
   orgName: string;

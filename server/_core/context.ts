@@ -85,13 +85,11 @@ export async function createContext(
   let user: (User & { impersonatedBy?: string }) | null = null;
 
   try {
-    // Primary: Manus OAuth / app_session_id cookie
     user = await sdk.authenticateRequest(opts.req);
   } catch {
-    // SDK threw — fall through to Teachific session below
+    // Fall through to teachific_session below.
   }
   // Fallback: custom Teachific email/password session cookie.
-  // Runs when Manus SDK returns null (no Manus session) OR when it throws.
   if (!user) {
     user = await resolveTeachificSession(opts.req.headers.cookie);
   }

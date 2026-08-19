@@ -1,6 +1,6 @@
 /**
  * Shared request authentication helper.
- * Supports both Manus OAuth (app_session_id) and Teachific email/password (teachific_session) cookies.
+ * Supports Teachific-owned app_session_id and teachific_session cookies.
  * Use this instead of sdk.authenticateRequest directly for all Express route handlers.
  */
 import type { Request } from "express";
@@ -31,22 +31,14 @@ async function resolveTeachificSession(cookieHeader: string | undefined): Promis
 }
 
 /**
- * Authenticate an Express request using both auth methods:
- * 1. Primary: Manus OAuth (app_session_id cookie)
- * 2. Fallback: Teachific email/password (teachific_session cookie)
- *
- * Returns the authenticated User or null if neither method succeeds.
+ * Authenticate an Express request using first-party Teachific sessions.
  */
 export async function authenticateRequest(req: Request): Promise<(User & { impersonatedBy?: string }) | null> {
-  // Try Manus OAuth first
   try {
-    const user = await sdk.authenticateRequest(req);
-    return user;
+    return await sdk.authenticateRequest(req);
   } catch {
-    // Fall through to teachific_session
+    // Fall through to teachific_session.
   }
 
-  // Fallback: custom Teachific email/password session (HMAC-verified)
-  const user = await resolveTeachificSession(req.headers.cookie);
-  return user;
+  return resolveTeachificSession(req.headers.cookie);
 }

@@ -1,5 +1,5 @@
 /**
- * Text-to-Speech helper using the Manus Forge API (OpenAI-compatible /audio/speech endpoint).
+ * Text-to-Speech helper using OpenAI's /audio/speech endpoint.
  *
  * Usage:
  *   const { buffer, mimeType } = await generateSpeech({ text: "Hello world", voice: "nova", speed: 1.0 });
@@ -19,15 +19,12 @@ export type TTSResult = {
 };
 
 export async function generateSpeech(options: TTSOptions): Promise<TTSResult> {
-  if (!ENV.forgeApiUrl) throw new Error("BUILT_IN_FORGE_API_URL is not configured");
-  if (!ENV.forgeApiKey) throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
+  if (!ENV.openAiApiKey) throw new Error("OPENAI_API_KEY is not configured");
 
-  const baseUrl = ENV.forgeApiUrl.endsWith("/") ? ENV.forgeApiUrl : `${ENV.forgeApiUrl}/`;
-  // OpenAI-compatible endpoint exposed by the Forge proxy
-  const url = new URL("v1/audio/speech", baseUrl).toString();
+  const url = "https://api.openai.com/v1/audio/speech";
 
   const body = {
-    model: options.model ?? "tts-1",
+    model: options.model ?? ENV.openAiTtsModel,
     input: options.text,
     voice: options.voice ?? "nova",
     speed: options.speed ?? 1.0,
@@ -38,7 +35,7 @@ export async function generateSpeech(options: TTSOptions): Promise<TTSResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${ENV.openAiApiKey}`,
     },
     body: JSON.stringify(body),
   });

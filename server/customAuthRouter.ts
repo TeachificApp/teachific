@@ -1,7 +1,7 @@
 /**
  * Custom Teachific Authentication Router
  * Handles email/password registration, login, logout, email verification,
- * and password reset — completely independent of Manus OAuth.
+ * and password reset.
  */
 import { z } from "zod";
 import bcrypt from "bcryptjs";
