@@ -4,6 +4,7 @@ import { getSubdomain } from "@/hooks/useSubdomain";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -343,6 +344,7 @@ export default function CommunityLearnerPage() {
   const params = useParams<{ hubId: string }>();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const hubId = parseInt(params.hubId);
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(null);
@@ -355,8 +357,6 @@ export default function CommunityLearnerPage() {
 
   const { data: hub, isLoading: hubLoading } = trpc.community.getHubById.useQuery({ hubId });
   const { data: spaces, isLoading: spacesLoading } = trpc.community.listSpacesByHubId.useQuery({ hubId });
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
 
   // Auto-select first space
   useEffect(() => {
