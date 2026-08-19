@@ -110,14 +110,14 @@ const ACTION_COLORS: Record<WorkflowActionType, string> = {
   redirect_url: "bg-blue-50 border-blue-200",
   send_email: "bg-green-50 border-green-200",
   order_bump: "bg-amber-50 border-amber-200",
-  window_message: "bg-purple-50 border-purple-200",
+  window_message: "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]",
 };
 
 const ACTION_ICON_COLORS: Record<WorkflowActionType, string> = {
   redirect_url: "text-blue-600",
   send_email: "text-green-600",
   order_bump: "text-amber-600",
-  window_message: "text-purple-600",
+  window_message: "text-[var(--org-primary)]",
 };
 
 function defaultAction(type: WorkflowActionType): WorkflowAction {

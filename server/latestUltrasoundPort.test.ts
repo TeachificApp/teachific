@@ -1547,6 +1547,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     }
   });
 
+  it("uses the active organization theme for After Purchase Workflow message actions", () => {
+    const workflowSource = readFileSync(new URL("../client/src/components/AfterPurchaseWorkflowEditor.tsx", import.meta.url), "utf8");
+    expect(workflowSource).toContain('window_message: "text-[var(--org-primary)]"');
+    expect(workflowSource).toContain('window_message: "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
