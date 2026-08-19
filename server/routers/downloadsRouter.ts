@@ -42,6 +42,18 @@ async function assertProductAccess(ctx: any, productId: number) {
   return { db, product };
 }
 
+async function assertBundleAccess(ctx: any, bundleId: number) {
+  const activeOrgId = await assertAdmin(ctx);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [bundle] = await db.select().from(digitalBundles).where(eq(digitalBundles.id, bundleId)).limit(1);
+  if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+  if (!isPlatformAdmin(ctx.user!.role) && bundle.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Digital bundle does not belong to the active organization" });
+  }
+  return { db, bundle };
+}
+
 function isAdminRole(role: string | undefined): boolean {
   return ["site_owner", "site_admin", "org_super_admin", "org_admin", "admin"].includes(role ?? "");
 }
@@ -820,9 +832,11 @@ export const downloadsAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, productIds, ...data } = input;
+      await assertBundleAccess(ctx, id);
       await db.update(digitalBundles).set(data).where(eq(digitalBundles.id, id));
 
       if (productIds !== undefined) {
+        await Promise.all(productIds.map((productId) => assertProductAccess(ctx, productId)));
         await db.delete(digitalBundleItems).where(eq(digitalBundleItems.bundleId, id));
         if (productIds.length > 0) {
           await db.insert(digitalBundleItems).values(
@@ -837,11 +851,7 @@ export const downloadsAdminRouter = router({
   deleteBundle: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [bundle] = await db.select().from(digitalBundles).where(eq(digitalBundles.id, input.id)).limit(1);
-      if (!bundle) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, bundle } = await assertBundleAccess(ctx, input.id);
       const purgeAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       await db.insert(lmsArchive).values({
         itemType: "bundle",

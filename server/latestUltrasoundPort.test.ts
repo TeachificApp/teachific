@@ -1777,6 +1777,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadsRouterSource).toContain('values({ ...bundleData, slug, orgId })');
   });
 
+  it("requires active-organization ownership for digital download bundle updates and deletion", () => {
+    const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
+    expect(downloadsRouterSource).toContain('async function assertBundleAccess(ctx: any, bundleId: number)');
+    expect(downloadsRouterSource).toContain('Digital bundle does not belong to the active organization');
+    expect(downloadsRouterSource).toContain('await assertBundleAccess(ctx, id);');
+    expect(downloadsRouterSource).toContain('const { db, bundle } = await assertBundleAccess(ctx, input.id);');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
