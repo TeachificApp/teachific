@@ -1626,6 +1626,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(filesPageSource).not.toContain('activeOrg?.id ?? myOrgs?.[0]?.id');
   });
 
+  it("requires non-platform LMS administrators to use the active organization for caller-supplied organization inputs", () => {
+    const lmsAdminSource = readFileSync(new URL("./routers/lmsAdminRouter.ts", import.meta.url), "utf8");
+    expect(lmsAdminSource).toContain('async function resolveActiveAdminOrg');
+    expect(lmsAdminSource).toContain('requestedOrgId !== activeOrgId && !isPlatformAdministrator');
+    expect(lmsAdminSource).toContain('await resolveActiveAdminOrg(ctx, input?.orgId);');
+    expect(lmsAdminSource).toContain('await resolveActiveAdminOrg(ctx, input.orgId);');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
@@ -1642,8 +1650,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const bundleBuilderSource = readFileSync(new URL("../client/src/pages/admin/BundleLandingPageBuilder.tsx", import.meta.url), "utf8");
     const funnelBuilderSource = readFileSync(new URL("../client/src/pages/admin/FunnelPageEditor.tsx", import.meta.url), "utf8");
     const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
-    expect(lmsAdminSource).toContain("input?.orgId ?? await getOrgIdForUserWithFallback");
-    expect(lmsAdminSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(lmsAdminSource).toContain("async function resolveActiveAdminOrg");
+    expect(lmsAdminSource).toContain("await resolveActiveAdminOrg(ctx, input?.orgId);");
     expect(bundleBuilderSource).toContain("const { orgId } = useOrgScope();");
     expect(bundleBuilderSource).toContain("getDownloadsWithLandingBlocks.useQuery(landingBlockOrgInput");
     expect(funnelBuilderSource).toContain("getProductsWithLandingBlocks.useQuery(landingBlockOrgInput");
@@ -1878,7 +1886,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const certificateRouterSource = readFileSync(new URL("./routers/lmsAdminRouter.ts", import.meta.url), "utf8");
     const certificateSource = certificateRouterSource.slice(certificateRouterSource.indexOf("const _lmsCertificateTemplatesRouter"));
     expect((certificateSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, template\.orgId\);/g) ?? []).length).toBe(3);
-    expect(certificateSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(certificateSource).toContain("await resolveActiveAdminOrg(ctx, input?.orgId);");
   });
 
   it("requires active organization ownership across webinar administration", () => {

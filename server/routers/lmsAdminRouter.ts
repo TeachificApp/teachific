@@ -31,6 +31,24 @@ async function assertAdmin(ctx: { user: { id: number; role: string } }) {
   await requireOrgAdmin(ctx.user.id, ctx.user.role);
 }
 
+function isPlatformAdministrator(role: string) {
+  return role === "site_owner" || role === "site_admin";
+}
+
+async function resolveActiveAdminOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+) {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization found" });
+  if (requestedOrgId && requestedOrgId !== activeOrgId && !isPlatformAdministrator(ctx.user.role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the requested organization before managing its LMS data" });
+  }
+  const orgId = requestedOrgId && isPlatformAdministrator(ctx.user.role) ? requestedOrgId : activeOrgId;
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return orgId;
+}
+
 const _lmsAdminBaseRouter = router({
   /** Get all courses with their landing page blocks for the block picker */
   getCoursesWithLandingBlocks: protectedProcedure
@@ -38,9 +56,7 @@ const _lmsAdminBaseRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (orgId === null) return [];
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
       const courses = await db
         .select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type })
         .from(lmsCourses)
@@ -66,9 +82,7 @@ const _lmsAdminBaseRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (orgId === null) return [];
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
       const products = await db
         .select({ id: digitalProducts.id, title: digitalProducts.title, landingBlocks: digitalProducts.salesPageBlocksJson })
         .from(digitalProducts)
@@ -86,9 +100,7 @@ const _lmsAdminBaseRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (orgId === null) return [];
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
       const products = await db
         .select({ id: physicalProducts.id, title: physicalProducts.title, landingBlocks: physicalProducts.landingBlocks })
         .from(physicalProducts)
@@ -330,9 +342,7 @@ const _lmsCertificateTemplatesRouter = router({
   listCertificateTemplates: protectedProcedure
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = input?.orgId ?? await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
       return getLmsCertificateTemplatesByOrg(orgId);
     }),
   getCertificateTemplate: protectedProcedure
@@ -368,9 +378,7 @@ const _lmsCertificateTemplatesRouter = router({
       isDefault: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const orgId = input.orgId ?? await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+      const orgId = await resolveActiveAdminOrg(ctx, input.orgId);
       const { orgId: _orgId, ...rest } = input;
       return createLmsCertificateTemplate({ orgId, ...rest } as any);
     }),
@@ -417,8 +425,7 @@ const _lmsCertificateTemplatesRouter = router({
   listIssuedCertificates: protectedProcedure
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = input?.orgId ?? await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
+      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
       return listIssuedCertificates(orgId);
     }),
   previewCertificateTemplate: protectedProcedure
