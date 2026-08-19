@@ -1565,6 +1565,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lessonEditorSource).toContain('text: { label: "Text / Rich Content", icon: FileText, color: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" }');
   });
 
+  it("uses the active organization theme for Form Stripe Settings information panels", () => {
+    const stripePanelSource = readFileSync(new URL("../client/src/components/admin/FormStripeSettingsPanel.tsx", import.meta.url), "utf8");
+    expect(stripePanelSource).toContain('bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]');
+    expect(stripePanelSource).toContain('border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

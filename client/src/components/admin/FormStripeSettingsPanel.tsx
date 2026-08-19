@@ -34,7 +34,7 @@ export default function FormStripeSettingsPanel({ value, onChange }: Props) {
   return (
     <div className="space-y-4">
       {/* Enable toggle */}
-      <div className="flex items-center justify-between p-3 bg-violet-50 rounded-lg border border-violet-200">
+      <div className="flex items-center justify-between p-3 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]">
         <div>
           <p className="text-sm font-medium text-gray-800">Enable Stripe Checkout</p>
           <p className="text-xs text-gray-500">
