@@ -1529,6 +1529,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(resolverSlice).toContain('platformRole === "site_owner" || platformRole === "site_admin"');
   });
 
+  it("uses active organization theme tokens for Email Campaigns click analytics and status indicators", () => {
+    const campaignSource = readFileSync(new URL("../client/src/pages/marketing/EmailCampaignsPage.tsx", import.meta.url), "utf8");
+    expect(campaignSource).toContain('color: "bg-[var(--org-primary)]"');
+    expect(campaignSource).toContain('color: "text-[var(--org-primary)]"');
+    expect(campaignSource).toContain('text-[var(--org-primary)]');
+    expect(campaignSource).toContain('color-mix(in_srgb,var(--org-primary)_18%,transparent)');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

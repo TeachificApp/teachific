@@ -34,7 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "bg-red-100 text-red-700",
   bounced: "bg-orange-100 text-orange-700",
   opened: "bg-blue-100 text-blue-700",
-  clicked: "bg-purple-100 text-purple-700",
+  clicked: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)]",
 };
 
 // ── Analytics Modal ────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ function CampaignAnalyticsModal({
     ? [
         { label: "Delivered", value: s.totalSent, color: "bg-blue-500", pct: 100 },
         { label: "Opened", value: s.totalOpened, color: "bg-green-500", pct: s.totalSent > 0 ? (s.totalOpened / s.totalSent) * 100 : 0 },
-        { label: "Clicked", value: s.totalClicked, color: "bg-purple-500", pct: s.totalSent > 0 ? (s.totalClicked / s.totalSent) * 100 : 0 },
+        { label: "Clicked", value: s.totalClicked, color: "bg-[var(--org-primary)]", pct: s.totalSent > 0 ? (s.totalClicked / s.totalSent) * 100 : 0 },
         { label: "Failed", value: s.totalFailed, color: "bg-red-400", pct: s.totalSent > 0 ? (s.totalFailed / s.totalSent) * 100 : 0 },
       ]
     : [];
@@ -118,7 +118,7 @@ function CampaignAnalyticsModal({
                 { label: "Recipients", value: s!.totalRecipients, icon: Users, color: "text-blue-600" },
                 { label: "Delivered", value: s!.totalSent, icon: CheckCircle2, color: "text-green-600" },
                 { label: "Opens", value: s!.totalOpened, icon: Eye, color: "text-sky-600" },
-                { label: "Clicks", value: s!.totalClicked, icon: MousePointerClick, color: "text-purple-600" },
+                { label: "Clicks", value: s!.totalClicked, icon: MousePointerClick, color: "text-[var(--org-primary)]" },
                 { label: "Failed", value: s!.totalFailed, icon: XCircle, color: "text-red-500" },
                 { label: "Bounced", value: s!.totalBounced, icon: AlertTriangle, color: "text-orange-500" },
               ].map(({ label, value, icon: Icon, color }) => (
@@ -138,7 +138,7 @@ function CampaignAnalyticsModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { label: "Open Rate", value: `${s!.openRate}%`, sub: "of delivered emails opened", icon: TrendingUp, color: "text-green-600" },
-                { label: "Click Rate", value: `${s!.clickRate}%`, sub: "of delivered emails clicked", icon: MousePointerClick, color: "text-purple-600" },
+                { label: "Click Rate", value: `${s!.clickRate}%`, sub: "of delivered emails clicked", icon: MousePointerClick, color: "text-[var(--org-primary)]" },
                 { label: "Click-to-Open Rate", value: `${s!.clickToOpenRate}%`, sub: "of opens that resulted in a click", icon: BarChart2, color: "text-sky-600" },
               ].map(({ label, value, sub, icon: Icon, color }) => (
                 <Card key={label}>
@@ -237,7 +237,7 @@ function CampaignAnalyticsModal({
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground">
                                 {r.clickedAt ? (
-                                  <span className="flex items-center gap-1 text-purple-700">
+                                  <span className="flex items-center gap-1 text-[var(--org-primary)]">
                                     <MousePointerClick className="h-3 w-3" />
                                     {new Date(r.clickedAt).toLocaleString()}
                                   </span>
