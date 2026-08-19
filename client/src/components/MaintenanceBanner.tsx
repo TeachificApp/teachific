@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AlertTriangle, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const DISMISSAL_KEY = "teachific-maintenance-2026-08";
 // August 25, 2026 at 9:00 AM Eastern Daylight Time (UTC-4). Remove this component after review.
@@ -9,7 +9,17 @@ const REMOVE_AFTER = Date.UTC(2026, 7, 25, 13, 0, 0);
 export function MaintenanceBanner() {
   const { user, loading } = useAuth();
   const [dismissed, setDismissed] = useState(false);
-  const isActive = useMemo(() => Date.now() < REMOVE_AFTER, []);
+  const [isActive, setIsActive] = useState(() => Date.now() < REMOVE_AFTER);
+
+  useEffect(() => {
+    const remainingMs = REMOVE_AFTER - Date.now();
+    if (remainingMs <= 0) {
+      setIsActive(false);
+      return;
+    }
+    const removalTimer = window.setTimeout(() => setIsActive(false), remainingMs);
+    return () => window.clearTimeout(removalTimer);
+  }, []);
 
   useEffect(() => {
     if (!user || !isActive) return;

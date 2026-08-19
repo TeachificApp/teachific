@@ -1508,6 +1508,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bannerSource).toContain("!user");
     expect(bannerSource).toContain("teachific-maintenance-2026-08");
     expect(bannerSource).toContain("Date.UTC(2026, 7, 25, 13, 0, 0)");
+    expect(bannerSource).toContain("window.setTimeout(() => setIsActive(false), remainingMs)");
+    expect(bannerSource).toContain("window.clearTimeout(removalTimer)");
     expect(bannerSource).toContain("Scheduled Server Maintenance Aug 22–24, 2026");
     expect(bannerSource).toContain("Dismiss scheduled maintenance notice");
     expect(appSource).toContain("<MaintenanceBanner />");

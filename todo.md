@@ -5509,6 +5509,7 @@
 - [x] Reconcile legacy instructor storage fields with the organization-owned schema and active-organization administration
 - [x] Resolve protected legacy LMS instructor listing from the active organization rather than a caller-selected organization
 - [x] Add a signed-in-only dismissible yellow maintenance banner with review and removal after August 25, 2026 at 9:00 AM Eastern Time
+- [x] Automatically hide the signed-in maintenance banner at the August 25 removal time for already-open sessions
 - [x] Resolve CME activity-form administration from the active organization rather than an implicit fallback or caller-selected organization
 - [x] Resolve CME disclosure administration from the active organization rather than a caller-selected organization
 - [x] Confirm CME assessments are handled through existing organization-scoped course and quiz workflows rather than a separate administration router
