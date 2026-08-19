@@ -1769,6 +1769,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(blueprintRouterSource).not.toContain('getOrgIdForUser(ctx.user.id)');
   });
 
+  it("builds LMS Administration learner and preview links from the active organization domain", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    expect(lmsAdminSource).toContain('function useActiveOrgLearnerUrl(path: string)');
+    expect(lmsAdminSource).toContain('return getOrgLearnUrl(path, activeOrg?.slug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus);');
+    expect(lmsAdminSource).toContain('const url = useActiveOrgLearnerUrl(path);');
+    expect(lmsAdminSource).toContain('const previewUrl = useActiveOrgLearnerUrl(`/courses/${data.courseSlug}?open_preview=1`);');
+    expect(lmsAdminSource).not.toContain('const url = `https://teachific.app/learn${path}`;');
+    expect(lmsAdminSource).not.toContain('const previewUrl = `https://teachific.app/learn/courses/${data.courseSlug}?open_preview=1`;');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');

@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
+import { getOrgLearnUrl } from "@/hooks/useLearnLink";
 import LessonEffectEditor from "@/components/LessonEffectEditor";
 import ThinkificImporter from "@/pages/admin/ThinkificImporter";
 import { LMSSalesTab } from "@/components/LMSSalesTab";
@@ -79,6 +81,12 @@ import { QuizQuestionGroups } from "@/components/QuizQuestionGroups";
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
   return openLearnLink;
+}
+
+function useActiveOrgLearnerUrl(path: string) {
+  const { orgId, orgs } = useOrgScope();
+  const activeOrg = orgs.find((org: any) => org.id === orgId);
+  return getOrgLearnUrl(path, activeOrg?.slug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -115,7 +123,7 @@ const LESSON_TYPE_LABELS: Record<string, string> = {
 /** @param slug - either a bare slug ("my-course") or a full path ("my-course/overview") */
 function SsoLearnLinkButton({ slug, label }: { slug: string; label?: string }) {
   const path = slug.startsWith("/") ? slug : `/courses/${slug}`;
-  const url = `https://teachific.app/learn${path}`;
+  const url = useActiveOrgLearnerUrl(path);
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
       <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500 hover:bg-gray-50" title="View landing page">
@@ -2578,7 +2586,7 @@ function FreePreviewLinkPanel({ courseId }: { courseId: number }) {
   if (isLoading) return null;
   if (!data || data.lessons.length === 0) return null;
   // Use ?open_preview=1 so the registration modal auto-opens when the visitor lands on the page
-  const previewUrl = `https://teachific.app/learn/courses/${data.courseSlug}?open_preview=1`;
+  const previewUrl = useActiveOrgLearnerUrl(`/courses/${data.courseSlug}?open_preview=1`);
   const handleCopy = () => {
     navigator.clipboard.writeText(previewUrl)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
