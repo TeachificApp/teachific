@@ -1779,6 +1779,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).not.toContain('const previewUrl = `https://teachific.app/learn/courses/${data.courseSlug}?open_preview=1`;');
   });
 
+  it("requires active-organization course ownership before cohort-group creation", () => {
+    const cohortRouterSource = readFileSync(new URL("./routers/lmsCohortAdminRouter.ts", import.meta.url), "utf8");
+    expect(cohortRouterSource).toContain('await assertCourseOwnership(ctx, courseId);');
+    expect(cohortRouterSource).toContain('const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);');
+    expect(cohortRouterSource).toContain('orgId: course.orgId, courseId, name, slug, description,');
+    expect(cohortRouterSource).not.toContain('const orgId = await getOrgIdForUser(ctx.user.id);');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');

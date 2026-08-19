@@ -847,10 +847,11 @@ export const lmsCohortAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, name, slug, description, startDate, endDate, enrollmentCloseDate, maxStudents, status, sortOrder } = input;
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organisation found for user" });
+      await assertCourseOwnership(ctx, courseId);
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
       const [result] = await db.insert(lmsCohortGroups).values({
-        orgId, courseId, name, slug, description,
+        orgId: course.orgId, courseId, name, slug, description,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
         enrollmentCloseDate: enrollmentCloseDate ? new Date(enrollmentCloseDate) : undefined,
