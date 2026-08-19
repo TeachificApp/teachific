@@ -1787,6 +1787,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortRouterSource).not.toContain('const orgId = await getOrgIdForUser(ctx.user.id);');
   });
 
+  it("scopes enrollment administration listings to the authorized active organization", () => {
+    const enrollmentAdminRouterSource = readFileSync(new URL("./routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    expect(enrollmentAdminRouterSource).toContain('const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);');
+    expect(enrollmentAdminRouterSource).toContain('const orgCourseIds = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.orgId, orgId));');
+    expect(enrollmentAdminRouterSource).toContain('conditions.push(inArray(lmsEnrollments.courseId, ids));');
+    expect(enrollmentAdminRouterSource).not.toContain('if (!isPlatformAdmin(ctx.user.role)) {\n        const orgId = await getOrgIdForUser(ctx.user.id);');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');

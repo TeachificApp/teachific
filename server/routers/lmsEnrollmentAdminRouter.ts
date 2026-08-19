@@ -102,17 +102,12 @@ export const lmsEnrollmentAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Scope to org unless platform admin
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
       const conditions = input.courseId ? [eq(lmsEnrollments.courseId, input.courseId)] : [];
-      if (!isPlatformAdmin(ctx.user.role)) {
-        const orgId = await getOrgIdForUser(ctx.user.id);
-        // Safety: if no org found, return empty to prevent data leak
-        if (!orgId) return { enrollments: [], total: 0 };
-        const orgCourseIds = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.orgId, orgId));
-        const ids = orgCourseIds.map(r => r.id);
-        if (ids.length === 0) return { enrollments: [], total: 0 };
-        conditions.push(inArray(lmsEnrollments.courseId, ids));
-      }
+      const orgCourseIds = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.orgId, orgId));
+      const ids = orgCourseIds.map(r => r.id);
+      if (ids.length === 0) return { enrollments: [], total: 0 };
+      conditions.push(inArray(lmsEnrollments.courseId, ids));
       const offset = (input.page - 1) * input.pageSize;
       const rows = await db.select().from(lmsEnrollments).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(lmsEnrollments.enrolledAt)).limit(input.pageSize).offset(offset);
       const enriched = await Promise.all(rows.map(async (e) => {
