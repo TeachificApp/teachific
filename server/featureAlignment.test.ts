@@ -15,10 +15,10 @@ describe("Groups invite token", () => {
   });
 
   it("invite URL is constructed correctly", () => {
-    const origin = "https://example.manus.space";
+    const origin = "https://example.up.railway.app";
     const token = "abc123def456";
     const url = `${origin}/join-group?token=${token}`;
-    expect(url).toBe("https://example.manus.space/join-group?token=abc123def456");
+    expect(url).toBe("https://example.up.railway.app/join-group?token=abc123def456");
   });
 });
 

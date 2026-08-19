@@ -112,17 +112,6 @@ In your Railway service, go to **Variables** and add the following:
 | `SENDGRID_FROM_EMAIL` | Verified sender email (e.g., `hello@teachific.app`) |
 | `SENDGRID_FROM_NAME` | Sender name (e.g., `Teachific`) |
 
-### Optional Legacy Bridge — Manus OAuth / Forge
-Leave these unset on Railway. Use only as a temporary bridge while cutting over old sessions/data:
-| Variable | Value |
-|---|---|
-| `ENABLE_MANUS_OAUTH` | `true` only to temporarily allow Manus OAuth sessions |
-| `ENABLE_LEGACY_FORGE` | `true` only to temporarily allow Forge-backed legacy helpers |
-| `VITE_APP_ID` | Your Manus app ID |
-| `OAUTH_SERVER_URL` | `https://api.manus.im` |
-| `BUILT_IN_FORGE_API_URL` | Legacy Forge API URL |
-| `BUILT_IN_FORGE_API_KEY` | Legacy Forge API key |
-
 ### Optional — Cloudflare (if using Cloudflare for DNS/CDN)
 | Variable | Value |
 |---|---|

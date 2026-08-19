@@ -4,7 +4,6 @@ import { createServer } from "http";
 import net from "net";
 import helmet from "helmet";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./staticServer";
@@ -155,9 +154,6 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "3gb" }));
   app.use(express.urlencoded({ limit: "3gb", extended: true }));
-
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
 
   // Quiz Excel import/export
   app.use("/api/quiz", quizImportRouter);

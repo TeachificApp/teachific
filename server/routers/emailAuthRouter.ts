@@ -19,7 +19,6 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "../_core/cookies";
 import { sdk } from "../_core/sdk";
 import { addToAllContacts } from "../lib/emailListHelper";
-import { ENV } from "../_core/env";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb, ensureUserRole, markThinkificEnrolled } from "../db";
 import { sendEmail, buildWelcomeEmail, buildVerificationEmail, buildPasswordResetEmail } from "../_core/email";
@@ -77,8 +76,7 @@ function resolveAppUrl(origin: string | undefined, brandMode: BrandMode): string
     try {
       const hostname = new URL(origin).hostname.toLowerCase();
       // If the origin is a known app domain, use it directly so the link works on any domain.
-      // Legacy Manus preview domains are accepted only when the OAuth bridge is explicitly enabled.
-      if (hostname in BRAND_DOMAINS || (ENV.enableManusOAuth && (hostname.includes("manus.space") || hostname.includes("manus.computer")))) {
+      if (hostname in BRAND_DOMAINS) {
         return origin;
       }
     } catch { /* ignore invalid origins */ }

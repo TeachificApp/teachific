@@ -14,7 +14,7 @@ This agent’s GitHub token can list **public** org repos only (`public_repos: 5
 
 | GitHub repo | Visibility | Product | Last push | Railway files today | Still depends on Manus at runtime? | Treat as |
 |---|---|---|---|---|---|---|
-| [teachific](https://github.com/TeachificApp/teachific) | public | Teachific LMS (web) | 2026-08-13 | `Dockerfile`, `railway.toml`, data-copy scripts | Dual backends exist (S3 + OpenAI). Manus is fallback only. | **Canonical web — migrate first** |
+| [teachific](https://github.com/TeachificApp/teachific) | public | Teachific LMS (web) | 2026-08-13 | `Dockerfile`, `railway.toml`, data-copy scripts | Runtime now uses Railway MySQL, S3/R2, OpenAI, SendGrid, and Teachific auth. | **Canonical web — migrate first** |
 | [ultrasound-app](https://github.com/TeachificApp/ultrasound-app) | public | UltrasoundAssist (web). Current repo. iHeartEcho / EchoAssist are built in. Package name is still `ultrasound-assist`. | 2026-08-13 | `nixpacks.toml`, `railway.toml`, `railway.json`, `RAILWAY_DEPLOY.md` | **Yes.** Storage and LLM still require Forge. | **Canonical UltrasoundAssist — migrate** |
 | [teachificapp](https://github.com/TeachificApp/teachificapp) | public | Older Teachific snapshot | 2026-06-23 | `Dockerfile`, `railway.toml` | Same Manus coupling as old Teachific | Likely **archive** after confirming no unique domain/data |
 
@@ -114,7 +114,7 @@ In the GitHub repo (not in Manus):
    - Echo-assist: R2 when `R2_ENDPOINT` is set
    - **UltrasoundAssist still throws if Forge is missing** — copy Teachific’s S3 switch (or the R2 dual-backend pattern) before cutover
 5. AI must succeed when Forge is unset (`OPENAI_API_KEY` for LLM, image generation, TTS, and transcription). Port Teachific `server/_core/llm.ts` into `ultrasound-app` if it still only calls Forge.
-6. Auth: confirm email/password works with `JWT_SECRET`. Leave Manus OAuth vars empty and `ENABLE_MANUS_OAUTH=false` on Railway unless you still need them as a temporary bridge.
+6. Auth: confirm email/password works with `JWT_SECRET`. Manus OAuth is not used by Teachific runtime.
 7. Vite `VITE_*` values are baked in at **build** time. Pass them as Railway build args / variables. Do not rely on a committed `.env.production` that still points at Forge.
 
 ### 2. Create the Railway project (staging)
@@ -181,7 +181,7 @@ Do not touch DNS until all of these pass on `*.up.railway.app`:
 
 ### 6. After cutover
 
-- Keep `ENABLE_LEGACY_FORGE=false` and `ENABLE_MANUS_OAUTH=false`; remove `BUILT_IN_FORGE_*`, `OAUTH_SERVER_URL`, and old `VITE_OAUTH_PORTAL_URL` values once nobody logs in via Manus.
+- Remove `BUILT_IN_FORGE_*`, `OAUTH_SERVER_URL`, and old `VITE_OAUTH_PORTAL_URL` values from Railway; Teachific runtime no longer reads them.
 - Stop committing `.manus/db` query dumps and `.env.production` Forge keys.
 - Rotate any secret that was ever committed to GitHub (`replication-config.json` in this repo historically contained live DB passwords).
 
@@ -205,7 +205,7 @@ Shared on every app:
 | `NODE_ENV` | `production` |
 | `PORT` | Set by Railway; do not hardcode |
 
-**teachific** — see `.env.railway.example`. Required extras: `AWS_*` **or** `CF_R2_*`, `OPENAI_API_KEY`, Stripe, SendGrid. Optional legacy Forge/OAuth bridges are off by default.
+**teachific** — see `.env.railway.example`. Required extras: `AWS_*` **or** `CF_R2_*`, `OPENAI_API_KEY`, Stripe, SendGrid.
 
 **ultrasound-app** (UltrasoundAssist) — see that repo’s `RAILWAY_DEPLOY.md`, but **replace** the Forge block with:
 

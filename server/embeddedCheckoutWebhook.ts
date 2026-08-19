@@ -316,7 +316,7 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
       previewText: confirmPreview,
     }, purchase.orgId ?? null).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
 
-    // Notify org admins via Teachific email (not Manus)
+    // Notify org admins via Teachific email.
     if (purchase.orgId) {
       try {
         const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];

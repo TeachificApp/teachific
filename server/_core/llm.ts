@@ -6,7 +6,6 @@
  * Required: OPENAI_API_KEY
  *    Optional: OPENAI_MODEL (default: gpt-4o-mini)
  *
- * Legacy Forge is available only when ENABLE_LEGACY_FORGE=true.
  */
 
 import { ENV } from "./env";
@@ -139,7 +138,7 @@ const normalizeContentPart = (
   if (typeof part === "string") return { type: "text", text: part };
   if (part.type === "text") return part;
   if (part.type === "image_url") return part;
-  // file_url came from the legacy Forge bridge; convert to a text note for OpenAI.
+  // file_url parts are represented as a text note for OpenAI chat completions.
   if (part.type === "file_url") return { type: "text", text: `[File: ${part.file_url.url}]` };
   throw new Error("Unsupported message content part");
 };
@@ -236,58 +235,9 @@ async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
   return response as unknown as InvokeResult;
 }
 
-// ─── Legacy Forge LLM bridge ─────────────────────────────────────────────────
-
-const resolveManusApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
-
-async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
-  if (!ENV.forgeApiKey) {
-    throw new Error(
-      "Legacy Forge LLM bridge is enabled but BUILT_IN_FORGE_API_KEY is missing."
-    );
-  }
-  const {
-    messages, tools, toolChoice, tool_choice,
-    outputSchema, output_schema, responseFormat, response_format,
-  } = params;
-
-  const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
-    messages: messages.map(normalizeMessage),
-    max_tokens: 32768,
-    thinking: { budget_tokens: 128 },
-  };
-
-  if (tools && tools.length > 0) payload.tools = tools;
-  const normalizedToolChoice = normalizeToolChoice(toolChoice || tool_choice, tools);
-  if (normalizedToolChoice) payload.tool_choice = normalizedToolChoice;
-  const normalizedResponseFormat = normalizeResponseFormat({ responseFormat, response_format, outputSchema, output_schema });
-  if (normalizedResponseFormat) payload.response_format = normalizedResponseFormat;
-
-  const response = await fetch(resolveManusApiUrl(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`);
-  }
-
-  return (await response.json()) as InvokeResult;
-}
-
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   if (isOpenAIConfigured()) return invokeOpenAI(params);
-  if (ENV.allowLegacyForge) return invokeManusLLM(params);
   throw new Error("No LLM backend configured. Set OPENAI_API_KEY for Railway.");
 }

@@ -48,8 +48,7 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
 
 /**
  * Dispatches a project-owner notification.
- * Railway deployments do not depend on Manus Forge notification services; until
- * a first-party channel is configured, this validates and logs the notification.
+ * Until a first-party channel is configured, this validates and logs the notification.
  * Validation errors bubble up as TRPC errors so callers can fix the payload.
  */
 export async function notifyOwner(

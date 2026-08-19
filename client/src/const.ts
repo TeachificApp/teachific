@@ -1,6 +1,6 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-// Returns the internal Teachific login page — no Manus/OAuth branding visible.
+// Returns the internal Teachific login page.
 // All unauthenticated redirects across the app use this helper.
 export const getLoginUrl = (returnPath?: string) => {
   if (returnPath) {

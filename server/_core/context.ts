@@ -1,6 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { isManusOAuthEnabled, sdk } from "./sdk";
+import { sdk } from "./sdk";
 import { getUserById } from "../db";
 import { createHmac, timingSafeEqual } from "crypto";
 
@@ -85,15 +85,11 @@ export async function createContext(
   let user: (User & { impersonatedBy?: string }) | null = null;
 
   try {
-    // Optional legacy bridge: Manus OAuth / app_session_id cookie.
-    if (isManusOAuthEnabled()) {
-      user = await sdk.authenticateRequest(opts.req);
-    }
+    user = await sdk.authenticateRequest(opts.req);
   } catch {
-    // SDK threw — fall through to Teachific session below
+    // Fall through to teachific_session below.
   }
   // Fallback: custom Teachific email/password session cookie.
-  // On Railway this is the primary auth path because Manus OAuth is disabled.
   if (!user) {
     user = await resolveTeachificSession(opts.req.headers.cookie);
   }
