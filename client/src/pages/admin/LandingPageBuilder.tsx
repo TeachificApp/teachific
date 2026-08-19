@@ -2505,6 +2505,7 @@ function AIContentBlockSettings({
 
 function AIImageBlockSettings({ data, onSet }: { data: Record<string, any>; onSet: (key: string, value: any) => void }) {
   const [prompt, setPrompt] = React.useState(data.prompt ?? "");
+  const { orgId } = useOrgScope();
   const generateImageMutation = trpc.lmsAdmin.generateImage.useMutation({
     onSuccess: ({ url }) => {
       onSet("url", url);
@@ -2519,7 +2520,11 @@ function AIImageBlockSettings({ data, onSet }: { data: Record<string, any>; onSe
       toast.error("Describe the image you want to create.");
       return;
     }
-    generateImageMutation.mutate({ prompt: prompt.trim() });
+    if (!orgId) {
+      toast.error("Choose an organization before generating an image.");
+      return;
+    }
+    generateImageMutation.mutate({ prompt: prompt.trim(), orgId });
   };
   return (
     <div className="space-y-3">

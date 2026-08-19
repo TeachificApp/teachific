@@ -1687,6 +1687,25 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(enrollmentEmailSource).not.toContain('aaus_logo_ring');
   });
 
+  it("requires active-organization authorization for AI image generation and passes scope from Landing Page Builder", () => {
+    const courseBuilderRouterSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(courseBuilderRouterSource).toContain('orgId: z.number().int().positive()');
+    expect(courseBuilderRouterSource).toContain('Select the active organization before generating an image');
+    expect(landingBuilderSource).toContain('const { orgId } = useOrgScope();');
+    expect(landingBuilderSource).toContain('generateImageMutation.mutate({ prompt: prompt.trim(), orgId });');
+  });
+
+  it("supports the shared AI image block across lesson, email, and page authoring surfaces", () => {
+    const lessonBlockEditorSource = readFileSync(new URL("../client/src/components/LessonBlockEditor.tsx", import.meta.url), "utf8");
+    const emailBlockEditorSource = readFileSync(new URL("../client/src/components/EmailBlockEditor.tsx", import.meta.url), "utf8");
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(lessonBlockEditorSource).toContain('BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings');
+    expect(emailBlockEditorSource).toContain('"ai_image"');
+    expect(emailBlockEditorSource).toContain('BlockSettings');
+    expect(landingBuilderSource).toContain('type: "ai_image", label: "AI Generate Image"');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');

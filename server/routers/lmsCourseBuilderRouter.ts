@@ -1641,8 +1641,17 @@ Return JSON with this exact shape:
   generateImage: protectedProcedure
     .input(z.object({
       prompt: z.string().min(1).max(1000),
+      orgId: z.number().int().positive(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const isPlatformAdmin = ["site_owner", "site_admin"].includes(ctx.user.role);
+      if (!isPlatformAdmin) {
+        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (activeOrgId !== input.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Select the active organization before generating an image" });
+        }
+      }
       try {
         const { url } = await generateImage({ prompt: input.prompt });
         return { success: true, url: url ?? "" };
