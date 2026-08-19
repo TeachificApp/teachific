@@ -5541,6 +5541,7 @@
 - [x] Resolve remaining Email Campaign administration actions from the active organization rather than a first membership
 - [x] Apply the active organization theme to Bundles administration product-type badges
 - [x] Apply the active organization theme to General Form Builder template metadata accents
+- [x] Apply the active organization theme to Course Builder player layout zone editor controls
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

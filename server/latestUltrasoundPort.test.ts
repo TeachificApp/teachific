@@ -1713,6 +1713,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).not.toContain('top: { label: "Top Zone", desc: "Above progress bar", color: "#7c3aed" }');
   });
 
+  it("uses the active organization theme for Course Builder player layout zone editor controls", () => {
+    const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    expect(courseBuilderSource).toContain('top: { label: "Top Zone", desc: "Above progress bar", color: "var(--org-primary)" }');
+    expect(courseBuilderSource).toContain('background: activeZone === "top" ? "var(--org-primary)"');
+    expect(courseBuilderSource).not.toContain('top: { label: "Top Zone", desc: "Above progress bar", color: "#7c3aed" }');
+  });
+
   it("resolves AI email promotion products from the active organization", () => {
     const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
     expect(emailCampaignRouterSource).toContain('getOrgIdForUserWithFallback');

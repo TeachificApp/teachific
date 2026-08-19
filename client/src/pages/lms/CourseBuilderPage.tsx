@@ -2852,9 +2852,9 @@ function CourseOverviewEditor({
   const selectedBlock = activeBlocks.find(b => b.id === selectedBlockId) ?? null;
 
   const ZONE_LABELS: Record<"main" | "top" | "bottom", { label: string; desc: string; color: string }> = {
-    top: { label: "Top Zone", desc: "Above progress bar", color: "#7c3aed" },
-    main: { label: "Main Zone", desc: "Between progress bar and curriculum", color: "#0d9488" },
-    bottom: { label: "Bottom Zone", desc: "Below curriculum outline", color: "#0891b2" },
+    top: { label: "Top Zone", desc: "Above progress bar", color: "var(--org-primary)" },
+    main: { label: "Main Zone", desc: "Between progress bar and curriculum", color: "var(--org-primary)" },
+    bottom: { label: "Bottom Zone", desc: "Below curriculum outline", color: "var(--org-primary)" },
   };
 
   return (
@@ -2935,8 +2935,8 @@ function CourseOverviewEditor({
           <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
             {/* ── Top Zone (above progress bar) ── */}
             <div className={cn("rounded-xl border-2 overflow-hidden bg-white", activeZone === "top" ? "border-[var(--org-primary)]" : "border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]")}>
-              <div className="px-4 py-2 flex items-center justify-between" style={{ background: activeZone === "top" ? "#7c3aed" : "#f5f3ff" }}>
-                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: activeZone === "top" ? "#fff" : "#7c3aed" }}>🔝 Top Zone — Above Progress Bar</span>
+              <div className="px-4 py-2 flex items-center justify-between" style={{ background: activeZone === "top" ? "var(--org-primary)" : "color-mix(in_srgb, var(--org-primary) 10%, transparent)" }}>
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: activeZone === "top" ? "#fff" : "var(--org-primary)" }}>🔝 Top Zone — Above Progress Bar</span>
                 {activeZone !== "top" && <button onClick={() => { setActiveZone("top"); setSelectedBlockId(null); }} className="text-[10px] text-[var(--org-primary)] hover:opacity-80 font-medium">Edit this zone</button>}
               </div>
               {topBlocks.length === 0 && activeZone !== "top" ? (
