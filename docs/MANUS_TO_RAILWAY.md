@@ -66,10 +66,10 @@ Use **one Railway workspace**, then **one project per web app**. Both projects a
 
 Recorded project IDs (confirm which name is which in the dashboard):
 
-| Railway project ID | Expected app |
+| Railway project ID | App |
 |---|---|
-| `bd15256f-be9c-4d5e-838d-daae94448fa1` | Teachific **or** UltrasoundAssist |
-| `b708c39f-23fe-4547-b1b5-9a53104e94b4` | the other one |
+| `bd15256f-be9c-4d5e-838d-daae94448fa1` | **UltrasoundAssist** (`TeachificApp/ultrasound-app`) |
+| `b708c39f-23fe-4547-b1b5-9a53104e94b4` | **Teachific** (`TeachificApp/teachific`) |
 
 ```
 Railway workspace
@@ -129,7 +129,7 @@ In the GitHub repo (not in Manus):
 
 In [railway.app](https://railway.app):
 
-1. Open the existing project (`bd15256f-…` or `b708c39f-…`). Connect GitHub if the service source is empty.
+1. Open the existing project (UltrasoundAssist `bd15256f-…` or Teachific `b708c39f-…`). Connect GitHub if the service source is empty.
 2. If MySQL is missing: **+ New → Database → MySQL** inside that project. Set `DATABASE_URL=${{MySQL.MYSQL_URL}}` on the app service.
 3. Set variables (see checklists below). Do **not** attach the custom domain yet.
 4. Wait for a green deploy on the Railway `*.up.railway.app` URL.

@@ -3,8 +3,8 @@
  * Inspect / update the existing Teachific + UltrasoundAssist Railway projects.
  *
  * Does NOT create new projects. Known IDs (from dashboard):
- *   bd15256f-be9c-4d5e-838d-daae94448fa1
- *   b708c39f-23fe-4547-b1b5-9a53104e94b4
+ *   bd15256f-be9c-4d5e-838d-daae94448fa1  UltrasoundAssist (ultrasound-app)
+ *   b708c39f-23fe-4547-b1b5-9a53104e94b4  Teachific
  *
  * Usage:
  *   RAILWAY_API_TOKEN=... node scripts/railway-update-existing.mjs
@@ -19,10 +19,21 @@
 import { randomBytes } from "node:crypto";
 
 const API = "https://backboard.railway.com/graphql/v2";
-const KNOWN_PROJECT_IDS = [
-  "bd15256f-be9c-4d5e-838d-daae94448fa1",
-  "b708c39f-23fe-4547-b1b5-9a53104e94b4",
+const PROJECTS = [
+  {
+    id: "bd15256f-be9c-4d5e-838d-daae94448fa1",
+    app: "ultrasound-app",
+    github: "TeachificApp/ultrasound-app",
+    siteUrl: "https://app.allaboutultrasound.com",
+  },
+  {
+    id: "b708c39f-23fe-4547-b1b5-9a53104e94b4",
+    app: "teachific",
+    github: "TeachificApp/teachific",
+    siteUrl: "https://teachific.app",
+  },
 ];
+const KNOWN_PROJECT_IDS = PROJECTS.map((p) => p.id);
 
 const APPLY = process.argv.includes("--apply");
 
@@ -109,13 +120,8 @@ async function upsertVars(projectId, environmentId, serviceId, variables) {
   );
 }
 
-function guessApp(projectName = "", serviceNames = []) {
-  const hay = `${projectName} ${serviceNames.join(" ")}`.toLowerCase();
-  if (hay.includes("ultrasound") || hay.includes("aaus") || hay.includes("iheartecho")) {
-    return "ultrasound-app";
-  }
-  if (hay.includes("teachific")) return "teachific";
-  return "unknown";
+function expectedApp(id) {
+  return PROJECTS.find((p) => p.id === id) || null;
 }
 
 async function main() {
@@ -146,7 +152,8 @@ async function main() {
   }
 
   for (const id of KNOWN_PROJECT_IDS) {
-    console.log(`=== Project ${id} ===`);
+    const expected = expectedApp(id);
+    console.log(`=== ${expected?.app || "unknown"}  ${id} ===`);
     let data;
     try {
       data = await loadProject(id);
@@ -163,9 +170,9 @@ async function main() {
     }
     const services = project.services?.edges?.map((e) => e.node) || [];
     const environments = project.environments?.edges?.map((e) => e.node) || [];
-    const appGuess = guessApp(project.name, services.map((s) => s.name));
-    console.log(`  name: ${project.name}`);
-    console.log(`  guessed app: ${appGuess}`);
+    console.log(`  railway name: ${project.name}`);
+    console.log(`  expected app: ${expected?.app} (${expected?.github})`);
+    if (expected?.siteUrl) console.log(`  public URL: ${expected.siteUrl}`);
     console.log(`  environments: ${environments.map((e) => `${e.name} (${e.id})`).join(", ") || "(none)"}`);
     console.log(`  services:`);
     for (const s of services) {
@@ -201,6 +208,10 @@ async function main() {
         if (!existing.has("JWT_SECRET")) toSet.JWT_SECRET = randomBytes(64).toString("hex");
         if (!existing.has("DATABASE_URL") && mysql) {
           toSet.DATABASE_URL = `\${{${mysql.name}.MYSQL_URL}}`;
+        }
+        if (expected?.siteUrl) {
+          if (!existing.has("VITE_APP_URL")) toSet.VITE_APP_URL = expected.siteUrl;
+          if (!existing.has("VITE_SITE_URL")) toSet.VITE_SITE_URL = expected.siteUrl;
         }
         const extras = ["OPENAI_API_KEY", "SENDGRID_API_KEY", "SENDGRID_FROM_EMAIL", "SENDGRID_FROM_NAME"];
         for (const name of extras) {

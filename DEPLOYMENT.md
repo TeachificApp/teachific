@@ -24,12 +24,12 @@ Moving **every** Manus GitHub repo (Teachific, Ultrasound, Echo Assist, and the 
 
 Do **not** create a new Teachific project. The Railway projects already exist:
 
-| Railway project ID | App (confirm in dashboard) |
+| Railway project ID | App |
 |---|---|
-| `bd15256f-be9c-4d5e-838d-daae94448fa1` | Teachific or UltrasoundAssist |
-| `b708c39f-23fe-4547-b1b5-9a53104e94b4` | the other app |
+| `b708c39f-23fe-4547-b1b5-9a53104e94b4` | **Teachific** (this repo) |
+| `bd15256f-be9c-4d5e-838d-daae94448fa1` | UltrasoundAssist (`ultrasound-app`) |
 
-1. Open the project that is Teachific.
+1. Open the Teachific project (`b708c39f-…`).
 2. Confirm GitHub source is `TeachificApp/teachific` (not a duplicate empty service).
 3. Confirm MySQL is attached in **this** project. If missing: **+ New → Database → MySQL** (still in this project).
 4. Redeploy after variables are set.
