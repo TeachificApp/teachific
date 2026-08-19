@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -418,11 +419,9 @@ export default function InvoicesPage() {
     );
   });
 
-  // Resolve the org context for manual invoice creation
-  // We need the orgId — grab it from the first invoice or from the user's org
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery(undefined, { enabled: !!user });
-  const orgId = myOrgs?.[0]?.id;
-  const orgName = myOrgs?.[0]?.name ?? "Teachific";
+  // Resolve manual invoice creation from the active organization.
+  const { orgId, orgs } = useOrgScope();
+  const orgName = orgs.find((org: any) => org.id === orgId)?.name ?? "Teachific";
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">

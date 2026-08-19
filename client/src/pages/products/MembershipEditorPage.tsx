@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,9 +68,7 @@ export default function MembershipEditorPage() {
   const [, navigate] = useLocation();
   const membershipId = Number(id);
   const [activeTab, setActiveTab] = useState<TabId>("details");
-
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = myOrgs?.[0]?.id;
+  const { orgId } = useOrgScope();
 
   const { data: membership, refetch } = trpc.lms.memberships.list.useQuery(
     { orgId: orgId! },

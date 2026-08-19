@@ -1595,6 +1595,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(communityLearnerSource).not.toContain('const orgId = orgs?.[0]?.id;');
   });
 
+  it("resolves Membership Editor and Invoices from the active organization rather than the first membership", () => {
+    const membershipEditorSource = readFileSync(new URL("../client/src/pages/products/MembershipEditorPage.tsx", import.meta.url), "utf8");
+    const invoicesSource = readFileSync(new URL("../client/src/pages/sales/InvoicesPage.tsx", import.meta.url), "utf8");
+    expect(membershipEditorSource).toContain('const { orgId } = useOrgScope();');
+    expect(membershipEditorSource).not.toContain('myOrgs?.[0]?.id');
+    expect(invoicesSource).toContain('const { orgId, orgs } = useOrgScope();');
+    expect(invoicesSource).not.toContain('myOrgs?.[0]?.id');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
