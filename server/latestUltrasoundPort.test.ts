@@ -1613,6 +1613,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(webinarEditorSource).not.toContain('const wOrg = myOrgs?.[0];');
   });
 
+  it("resolves Record Edit media authoring from the active organization rather than the first membership", () => {
+    const recordEditSource = readFileSync(new URL("../client/src/pages/RecordEditPage.tsx", import.meta.url), "utf8");
+    expect(recordEditSource).toContain('const { orgId } = useOrgScope();');
+    expect(recordEditSource).not.toContain('myOrgs?.[0]?.id');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

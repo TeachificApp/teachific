@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { useLocation } from "wouter";
 import { useUploadQueue } from "@/contexts/UploadQueueContext";
@@ -2611,8 +2612,7 @@ export default function RecordEditPage() {
   const [activeTab, setActiveTab] = useState<StudioTab>("record");
   const [lastSavedItem, setLastSavedItem] = useState<MediaItem | undefined>(undefined);
   const { user } = useAuth();
-  const { data: myOrgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = myOrgs?.[0]?.id ?? 0;
+  const { orgId } = useOrgScope();
   const { isBuilder, isPro, isLoading: planLoading } = usePlanLimits();
 
   const handleItemSaved = useCallback((item: MediaItem) => {
