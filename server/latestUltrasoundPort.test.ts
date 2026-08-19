@@ -1747,6 +1747,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formResponsesSource).not.toContain('return { tier: "Unacceptable", color: "#7c3aed", bg: "#faf5ff" }');
   });
 
+  it("uses the active organization theme for Widget Manager quiz badges", () => {
+    const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
+    expect(widgetManagerSource).toContain('quiz:       { label: "Quiz",        emoji: "📝", color: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]" }');
+    expect(widgetManagerSource).not.toContain('quiz:       { label: "Quiz",        emoji: "📝", color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" }');
+  });
+
   it("sends embedded checkout confirmation links only when the owning organization domain is available", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./embeddedCheckoutWebhook.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain('if (orgBase) {');
