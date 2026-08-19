@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -806,11 +807,8 @@ function FacultyEditor({ value, onChange }: { value: string; onChange: (v: strin
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function CmeManagementPage() {
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const [selectedCourse, setSelectedCourse] = useState<{ id: number; title: string } | null>(null);
-
-  // Check if CME is enabled for this org
-  const { data: orgs } = trpc.orgs.myOrgs.useQuery();
-  const orgId = orgs?.[0]?.id;
 
   // We check CME status via a simple query that will throw FORBIDDEN if not enabled
   const { data: forms, isLoading, error } = trpc.cme.listCmeActivityForms.useQuery(

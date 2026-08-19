@@ -1583,6 +1583,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     }
   });
 
+  it("resolves CME Management from the active organization rather than the first membership", () => {
+    const cmeManagementSource = readFileSync(new URL("../client/src/pages/lms/CmeManagementPage.tsx", import.meta.url), "utf8");
+    expect(cmeManagementSource).toContain('const { orgId } = useOrgScope();');
+    expect(cmeManagementSource).not.toContain('const orgId = orgs?.[0]?.id;');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

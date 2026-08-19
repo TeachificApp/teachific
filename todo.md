@@ -5520,6 +5520,7 @@
 - [x] Apply the active organization theme to Lesson Editor text-block action accents
 - [x] Apply the active organization theme to Form Stripe Settings information panels
 - [x] Resolve Flashcards, Media Files, Quiz Builder, and Quizzes pages from the active organization rather than a first membership
+- [x] Resolve CME Management from the active organization rather than the first membership
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
