@@ -87,9 +87,9 @@ interface Funnel {
 const PAGE_TYPE_META: Record<PageType, { label: string; icon: React.ReactNode; color: string; description: string }> = {
   landing: { label: "Landing Page", icon: <FileText size={16} />, color: "bg-blue-100 text-blue-700", description: "Capture leads and warm up traffic" },
   checkout: { label: "Checkout", icon: <CreditCard size={16} />, color: "bg-green-100 text-green-700", description: "Collect payment for products" },
-  upsell: { label: "Upsell", icon: <Gift size={16} />, color: "bg-teal-100 text-teal-700", description: "Offer additional products after purchase" },
+  upsell: { label: "Upsell", icon: <Gift size={16} />, color: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]", description: "Offer additional products after purchase" },
   downsell: { label: "Downsell", icon: <ShoppingCart size={16} />, color: "bg-orange-100 text-orange-700", description: "Alternative offer if upsell declined" },
-  thank_you: { label: "Thank You", icon: <ThumbsUp size={16} />, color: "bg-teal-100 text-teal-700", description: "Confirm purchase and deliver access" },
+  thank_you: { label: "Thank You", icon: <ThumbsUp size={16} />, color: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]", description: "Confirm purchase and deliver access" },
   custom: { label: "Custom Page", icon: <Layers size={16} />, color: "bg-gray-100 text-gray-700", description: "Flexible page for any purpose" },
 };
 
@@ -141,7 +141,7 @@ function FunnelListView({ onSelect, onCreate }: { onSelect: (id: number) => void
           <h1 className="text-2xl font-bold text-gray-900">Funnel Builder</h1>
           <p className="text-gray-500 mt-1">Create multi-step sales funnels to convert visitors into customers</p>
         </div>
-        <Button onClick={onCreate} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+        <Button onClick={onCreate} className="org-primary-button gap-2">
           <Plus size={16} /> New Funnel
         </Button>
       </div>
@@ -152,7 +152,7 @@ function FunnelListView({ onSelect, onCreate }: { onSelect: (id: number) => void
           <Layers size={48} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">No funnels yet</h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">Create your first sales funnel to start converting visitors into customers. Choose from templates or build from scratch.</p>
-          <Button onClick={onCreate} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+          <Button onClick={onCreate} className="org-primary-button gap-2">
             <Plus size={16} /> Create Your First Funnel
           </Button>
         </div>
@@ -193,7 +193,7 @@ function SortableFunnelCard({ funnel, onClick, onMoveUp, onMoveDown }: { funnel:
 
   return (
     <div ref={setNodeRef} style={style} className={`bg-white rounded-xl border p-5 transition-all group ${
-      isDragging ? "border-teal-400 shadow-xl" : "border-gray-200 hover:shadow-md hover:border-teal-200"
+      isDragging ? "border-[var(--org-primary)] shadow-xl" : "border-gray-200 hover:shadow-md hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]"
     }`}>
       <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -208,8 +208,8 @@ function SortableFunnelCard({ funnel, onClick, onMoveUp, onMoveDown }: { funnel:
             <GripVertical size={14} />
           </button>
           <div className="flex flex-col gap-0">
-            <button disabled={!onMoveUp} onClick={e => { e.stopPropagation(); onMoveUp?.(); }} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp size={12} /></button>
-            <button disabled={!onMoveDown} onClick={e => { e.stopPropagation(); onMoveDown?.(); }} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown size={12} /></button>
+            <button disabled={!onMoveUp} onClick={e => { e.stopPropagation(); onMoveUp?.(); }} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp size={12} /></button>
+            <button disabled={!onMoveDown} onClick={e => { e.stopPropagation(); onMoveDown?.(); }} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown size={12} /></button>
           </div>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: funnel.accentColor + "20", color: funnel.accentColor }}>
             <Layers size={16} />
@@ -218,7 +218,7 @@ function SortableFunnelCard({ funnel, onClick, onMoveUp, onMoveDown }: { funnel:
             {funnel.status}
           </span>
         </div>
-        <button onClick={onClick} className="text-gray-300 group-hover:text-teal-500 transition-colors hover:text-teal-600" title="Open funnel">
+        <button onClick={onClick} className="text-gray-300 group-hover:text-[var(--org-primary)] transition-colors hover:text-[var(--org-primary)]" title="Open funnel">
           <ArrowRight size={16} />
         </button>
       </div>
@@ -316,7 +316,7 @@ function CreateFunnelDialog({ onClose, onCreated }: { onClose: () => void; onCre
               {/* Blank option */}
               <div
                 onClick={() => { setSelectedTemplate(null); setStep("details"); }}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-teal-300 hover:shadow-sm ${!selectedTemplate ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:shadow-sm ${!selectedTemplate ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "border-gray-200"}`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center"><Plus size={20} className="text-gray-400" /></div>
@@ -332,10 +332,10 @@ function CreateFunnelDialog({ onClose, onCreated }: { onClose: () => void; onCre
                 <div
                   key={tpl.name}
                   onClick={() => { setSelectedTemplate(tpl.name); setStep("details"); }}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-teal-300 hover:shadow-sm ${selectedTemplate === tpl.name ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:shadow-sm ${selectedTemplate === tpl.name ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "border-gray-200"}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600"><LayoutTemplate size={20} /></div>
+                    <div className="w-10 h-10 rounded-lg bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] flex items-center justify-center text-[var(--org-primary)]"><LayoutTemplate size={20} /></div>
                     <div>
                       <h3 className="font-semibold text-gray-900">{tpl.name}</h3>
                       <p className="text-sm text-gray-500">{tpl.description}</p>
@@ -353,10 +353,10 @@ function CreateFunnelDialog({ onClose, onCreated }: { onClose: () => void; onCre
                     <div
                       key={`saved-${tpl.id}`}
                       onClick={() => { setSelectedTemplate(`saved:${tpl.id}`); setStep("details"); }}
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-teal-300 hover:shadow-sm ${selectedTemplate === `saved:${tpl.id}` ? "border-teal-500 bg-teal-50" : "border-gray-200"}`}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:shadow-sm ${selectedTemplate === `saved:${tpl.id}` ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "border-gray-200"}`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600"><LayoutTemplate size={20} /></div>
+                        <div className="w-10 h-10 rounded-lg bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] flex items-center justify-center text-[var(--org-primary)]"><LayoutTemplate size={20} /></div>
                         <div>
                           <h3 className="font-semibold text-gray-900">{tpl.name}</h3>
                           <p className="text-sm text-gray-500">{tpl.description || "Custom saved template"}</p>
@@ -378,9 +378,9 @@ function CreateFunnelDialog({ onClose, onCreated }: { onClose: () => void; onCre
                 <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Brief description of this funnel's purpose..." className="min-h-[80px]" />
               </div>
               {selectedTemplate && (
-                <div className="bg-teal-50 rounded-lg p-3 flex items-center gap-2 text-sm text-teal-700">
+                <div className="bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] rounded-lg p-3 flex items-center gap-2 text-sm text-[var(--org-primary)]">
                   <LayoutTemplate size={16} /> Using template: <span className="font-semibold">{selectedTemplate}</span>
-                  <button onClick={() => setStep("template")} className="ml-auto text-teal-600 hover:text-teal-800 text-xs underline">Change</button>
+                  <button onClick={() => setStep("template")} className="ml-auto text-[var(--org-primary)] hover:opacity-80 text-xs underline">Change</button>
                 </div>
               )}
             </div>
@@ -392,7 +392,7 @@ function CreateFunnelDialog({ onClose, onCreated }: { onClose: () => void; onCre
           {step === "details" ? (
             <>
               <button onClick={() => setStep("template")} className="text-sm text-gray-500 hover:text-gray-700">← Back to templates</button>
-              <Button onClick={handleCreate} disabled={createFunnel.isPending || !name.trim()} className="bg-teal-600 hover:bg-teal-700 text-white gap-2">
+              <Button onClick={handleCreate} disabled={createFunnel.isPending || !name.trim()} className="org-primary-button gap-2">
                 {createFunnel.isPending ? "Creating..." : "Create Funnel"}
               </Button>
             </>
@@ -497,7 +497,7 @@ function FunnelSettingsPanel({ funnel, funnelId, onUpdate, onRefetch }: { funnel
           <Input value={thankYouUrl} onChange={e => setThankYouUrl(e.target.value)} placeholder="https://example.com/thank-you (leave blank to use thank-you page)" className="h-8 text-sm" />
           <p className="text-xs text-gray-400 mt-1">Override the default thank-you page with a custom redirect URL after purchase.</p>
         </div>
-        <Button size="sm" variant="outline" className="border-teal-300 text-teal-600 hover:bg-teal-50"
+        <Button size="sm" variant="outline" className="border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
           disabled={updateFunnelSettings.isPending}
           onClick={handleSave}
         >
@@ -630,20 +630,20 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
       {/* Top Bar */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-700 transition-colors">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[var(--org-primary)] transition-colors">
             <ArrowLeft size={16} /> All Funnels
           </button>
           <div className="w-px h-5 bg-gray-200" />
           {editingName ? (
             <div className="flex items-center gap-2">
               <Input value={nameValue} onChange={e => setNameValue(e.target.value)} className="h-8 w-64 text-sm font-semibold" autoFocus />
-              <button onClick={() => { updateFunnel.mutate({ id: funnelId, name: nameValue }); setEditingName(false); }} className="text-teal-600 hover:text-teal-700"><Check size={16} /></button>
+              <button onClick={() => { updateFunnel.mutate({ id: funnelId, name: nameValue }); setEditingName(false); }} className="text-[var(--org-primary)] hover:opacity-80"><Check size={16} /></button>
               <button onClick={() => setEditingName(false)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-bold text-gray-900">{funnel.name}</h1>
-              <button onClick={() => setEditingName(true)} className="text-gray-400 hover:text-teal-600"><Pencil size={14} /></button>
+              <button onClick={() => setEditingName(true)} className="text-gray-400 hover:text-[var(--org-primary)]"><Pencil size={14} /></button>
             </div>
           )}
         </div>
@@ -658,14 +658,14 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                 onClick={handleAutoConnect}
                 className={`gap-1.5 text-xs ${
                   allConnected
-                    ? "text-teal-700 border-teal-300 bg-teal-50 hover:bg-teal-100"
+                    ? "text-[var(--org-primary)] border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_16%,transparent)]"
                     : "text-gray-600 border-gray-200 hover:bg-gray-50"
                 }`}
                 title={allConnected ? "Pages are connected in sequence" : "Click to auto-connect pages in order"}
               >
-                <Zap size={14} className={allConnected ? "fill-teal-500 text-teal-600" : ""} />
+                <Zap size={14} className={allConnected ? "fill-[var(--org-primary)] text-[var(--org-primary)]" : ""} />
                 Auto-Connect
-                {allConnected && <span className="ml-1 text-[10px] font-normal text-teal-600">ON</span>}
+                {allConnected && <span className="ml-1 text-[10px] font-normal text-[var(--org-primary)]">ON</span>}
               </Button>
             );
           })()}
@@ -674,7 +674,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
           </Button>
           <Button variant="outline" size="sm" onClick={() => duplicateFunnel.mutate({ id: funnelId })} className="gap-1.5 text-xs">
             <Copy size={14} /> Duplicate
-          <Button variant="outline" size="sm" onClick={() => { const tplName = prompt("Template name:", funnel.name + " Template"); if (tplName) saveAsTemplate.mutate({ id: funnelId, templateName: tplName }); }} className="gap-1.5 text-xs text-teal-600 border-teal-200 hover:bg-teal-50">
+          <Button variant="outline" size="sm" onClick={() => { const tplName = prompt("Template name:", funnel.name + " Template"); if (tplName) saveAsTemplate.mutate({ id: funnelId, templateName: tplName }); }} className="gap-1.5 text-xs text-[var(--org-primary)] border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]">
             <LayoutTemplate size={14} /> Save as Template
           </Button>
           </Button>
@@ -693,7 +693,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
             const base = funnelPublishBase(funnel);
             const displayBase = funnel.customDomain ? funnel.customDomain : (platformSettings?.funnelPublishDomain ?? window.location.host);
             return (
-              <a href={`${base}/${funnel.slug}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-teal-600 hover:text-teal-700">
+              <a href={`${base}/${funnel.slug}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[var(--org-primary)] hover:opacity-80">
                 <ExternalLink size={14} /> {displayBase}/{funnel.slug}
               </a>
             );
@@ -714,7 +714,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.id
-                ? "border-teal-600 text-teal-700"
+                ? "border-[var(--org-primary)] text-[var(--org-primary)]"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
@@ -737,7 +737,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
             <button
               onClick={() => setPageView("list")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors ${
-                pageView === "list" ? "bg-teal-600 text-white" : "text-gray-500 hover:bg-gray-50"
+                pageView === "list" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:bg-gray-50"
               }`}
             >
               <List size={13} /> List
@@ -745,7 +745,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
             <button
               onClick={() => setPageView("diagram")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors ${
-                pageView === "diagram" ? "bg-teal-600 text-white" : "text-gray-500 hover:bg-gray-50"
+                pageView === "diagram" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:bg-gray-50"
               }`}
             >
               <GitBranch size={13} /> Diagram
@@ -836,7 +836,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                           <div className="mt-1 flex items-center gap-1">
                             <span className="text-gray-400">→</span>
                             {targetPage ? (
-                              <span className="text-teal-700 font-medium">{targetPage.title}</span>
+                              <span className="text-[var(--org-primary)] font-medium">{targetPage.title}</span>
                             ) : rule.targetUrl ? (
                               <a href={rule.targetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline truncate max-w-xs">{rule.targetUrl}</a>
                             ) : (
@@ -875,9 +875,9 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
               {/* Option 1: Duplicate within same funnel */}
               <button
                 onClick={() => { duplicatePage.mutate({ id: copyPageDialog.pageId }); setCopyPageDialog(null); }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-all text-left"
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-100 text-teal-600"><Copy size={16} /></div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]"><Copy size={16} /></div>
                 <div>
                   <h4 className="font-medium text-gray-900 text-sm">Copy within this funnel</h4>
                   <p className="text-xs text-gray-500">Duplicate the page and add it to the end of this funnel</p>
@@ -906,7 +906,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                   size="sm"
                   disabled={!copyTargetFunnelId || copyPageToFunnel.isPending}
                   onClick={() => copyPageToFunnel.mutate({ pageId: copyPageDialog.pageId, targetFunnelId: parseInt(copyTargetFunnelId) })}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full org-primary-button"
                 >
                   {copyPageToFunnel.isPending ? "Copying..." : "Copy to Selected Funnel"}
                 </Button>
@@ -915,9 +915,9 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
               <button
                 onClick={() => copyPageAsStandalone.mutate({ pageId: copyPageDialog.pageId })}
                 disabled={copyPageAsStandalone.isPending}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-all text-left"
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-100 text-teal-600"><Eye size={16} /></div>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]"><Eye size={16} /></div>
                 <div>
                   <h4 className="font-medium text-gray-900 text-sm">Copy as standalone landing page</h4>
                   <p className="text-xs text-gray-500">Publish at /p/[slug] — accessible without going through the funnel</p>
@@ -941,7 +941,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
               <button
                 onClick={() => setImportTab("new")}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  importTab === "new" ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700"
+                  importTab === "new" ? "border-[var(--org-primary)] text-[var(--org-primary)]" : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
                 Create New
@@ -949,7 +949,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
               <button
                 onClick={() => setImportTab("import")}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                  importTab === "import" ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700"
+                  importTab === "import" ? "border-[var(--org-primary)] text-[var(--org-primary)]" : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
                 Import Existing
@@ -962,7 +962,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                   <button
                     key={type}
                     onClick={() => handleAddPage(type)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all text-left"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-all text-left"
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${meta.color}`}>{meta.icon}</div>
                     <div>
@@ -1012,13 +1012,13 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                         <div className="space-y-1.5 max-h-64 overflow-y-auto">
                           {importablePages[selectedSourceIdx].pages.map((p: any) => {
                             const src = importablePages[selectedSourceIdx];
-                            const typeColor = src.sourceType === "funnel" ? "bg-blue-100 text-blue-700" : src.sourceType === "course" ? "bg-green-100 text-green-700" : "bg-teal-100 text-teal-700";
+                            const typeColor = src.sourceType === "funnel" ? "bg-blue-100 text-blue-700" : src.sourceType === "course" ? "bg-green-100 text-green-700" : "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]";
                             return (
                               <button
                                 key={`${p.sourceType}-${p.id}`}
                                 onClick={() => importPage.mutate({ sourcePageId: p.id, targetFunnelId: funnelId, sourceType: p.sourceType })}
                                 disabled={importPage.isPending}
-                                className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-teal-300 hover:bg-teal-50 transition-all text-left"
+                                className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-all text-left"
                               >
                                 <div className="min-w-0">
                                   <span className="text-sm font-medium text-gray-900 block truncate">{p.title}</span>
@@ -1067,7 +1067,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
               placeholder="Search by name, email, or phone..."
               value={leadSearch}
               onChange={e => { setLeadSearch(e.target.value); setLeadPage(1); }}
-              className="w-full h-9 pl-8 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full h-9 pl-8 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             />
           </div>
           {/* Leads table */}
@@ -1095,7 +1095,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                       {lead.tags ? (
                         <div className="flex flex-wrap gap-1">
                           {lead.tags.split(",").map((t: string) => (
-                            <span key={t} className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full">{t.trim()}</span>
+                            <span key={t} className="text-xs bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] px-1.5 py-0.5 rounded-full">{t.trim()}</span>
                           ))}
                         </div>
                       ) : <span className="text-gray-300 text-xs">—</span>}
@@ -1142,7 +1142,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-4">
                   <p className="text-xs text-gray-500 mb-1">Total Leads</p>
-                  <p className="text-2xl font-bold text-teal-700">{analyticsData.totalLeads.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-[var(--org-primary)]">{analyticsData.totalLeads.toLocaleString()}</p>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-xl p-4">
                   <p className="text-xs text-gray-500 mb-1">Overall Conversion</p>
@@ -1199,7 +1199,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                         </div>
                         <div>
                           <p className="text-xs text-gray-400">Conversions</p>
-                          <p className="text-lg font-bold text-teal-700">{page.conversions.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-[var(--org-primary)]">{page.conversions.toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-400">Conv. Rate</p>
@@ -1218,7 +1218,7 @@ function FunnelDetailView({ funnelId, onBack, onEditPage }: { funnelId: number; 
                           <div className="w-full bg-gray-100 rounded-full h-1.5">
                             <div
                               className={`h-1.5 rounded-full transition-all ${
-                                page.dropOffRate > 70 ? "bg-red-400" : page.dropOffRate > 40 ? "bg-amber-400" : "bg-teal-400"
+                                page.dropOffRate > 70 ? "bg-red-400" : page.dropOffRate > 40 ? "bg-amber-400" : "bg-[var(--org-primary)]"
                               }`}
                               style={{ width: `${100 - page.dropOffRate}%` }}
                             />
@@ -1274,7 +1274,7 @@ function SortableFunnelPageRow({
   return (
     <div ref={setNodeRef} style={style}>
       <div className={`bg-white border rounded-xl p-4 transition-all group ${
-        isDragging ? "border-teal-400 shadow-lg" : "border-gray-200 hover:border-teal-200 hover:shadow-sm"
+        isDragging ? "border-[var(--org-primary)] shadow-lg" : "border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:shadow-sm"
       }`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1288,8 +1288,8 @@ function SortableFunnelPageRow({
               <GripVertical size={16} />
             </button>
             <div className="flex flex-col gap-0">
-              <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp size={12} /></button>
-              <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown size={12} /></button>
+              <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp size={12} /></button>
+              <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown size={12} /></button>
             </div>
             <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-xs font-bold text-gray-500">
               {idx + 1}
@@ -1319,13 +1319,13 @@ function SortableFunnelPageRow({
                     setEditingSlug(false);
                   }}
                   onKeyDown={e => { if (e.key === "Escape") { setSlugValue(page.slug); setEditingSlug(false); } }}
-                  className="text-xs border border-teal-300 rounded px-1.5 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="text-xs border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded px-1.5 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                 />
               </form>
             ) : (
               <button
                 onClick={() => { setSlugValue(page.slug); setEditingSlug(true); }}
-                className="text-xs text-gray-400 hover:text-teal-600 hover:underline flex items-center gap-0.5 group/slug"
+                className="text-xs text-gray-400 hover:text-[var(--org-primary)] hover:underline flex items-center gap-0.5 group/slug"
                 title="Click to edit URL slug"
               >
                 /{page.slug}
@@ -1343,13 +1343,13 @@ function SortableFunnelPageRow({
             >
               <ExternalLink size={12} /> Preview
             </a>
-            <button onClick={() => onEditPage(funnelId, page.id)} className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1 bg-teal-50 px-2 py-1 rounded-lg">
+            <button onClick={() => onEditPage(funnelId, page.id)} className="text-xs text-[var(--org-primary)] hover:opacity-80 flex items-center gap-1 bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] px-2 py-1 rounded-lg">
               <Pencil size={12} /> Edit Page
             </button>
             <button onClick={onDuplicate} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg">
               <Copy size={12} /> Duplicate
             </button>
-            <button onClick={onCopyPage} className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1 bg-teal-50 px-2 py-1 rounded-lg">
+            <button onClick={onCopyPage} className="text-xs text-[var(--org-primary)] hover:opacity-80 flex items-center gap-1 bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] px-2 py-1 rounded-lg">
               <Copy size={12} /> Copy To...
             </button>
             <button onClick={onRename} className="text-xs text-gray-600 hover:text-gray-700 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg">
@@ -1490,13 +1490,13 @@ function GlobalContactsTab({ funnelList }: { funnelList: Funnel[] }) {
             placeholder="Search by email, name, or funnel..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
           />
         </div>
         <select
           value={funnelFilter ?? ""}
           onChange={e => { setFunnelFilter(e.target.value ? Number(e.target.value) : undefined); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] bg-white"
         >
           <option value="">All Funnels</option>
           {funnelList.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -1504,7 +1504,7 @@ function GlobalContactsTab({ funnelList }: { funnelList: Funnel[] }) {
         <select
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
-          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] bg-white"
         >
           <option value="all">All Statuses</option>
           <option value="lead">Lead Only</option>
@@ -1604,7 +1604,7 @@ function ConversionTrackerTab({ funnelList }: { funnelList: Funnel[] }) {
         <select
           value={funnelFilter ?? ""}
           onChange={e => setFunnelFilter(e.target.value ? Number(e.target.value) : undefined)}
-          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] bg-white"
         >
           <option value="">All Funnels</option>
           {funnelList.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}

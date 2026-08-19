@@ -1827,6 +1827,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(stripeWebhookSource).not.toContain('let courseOrgBase = "https://teachific.app";');
   });
 
+  it("uses the active organization theme throughout Funnel Builder controls and analytics accents", () => {
+    const funnelBuilderSource = readFileSync(new URL("../client/src/pages/admin/FunnelBuilder.tsx", import.meta.url), "utf8");
+    expect(funnelBuilderSource).toContain("org-primary-button");
+    expect(funnelBuilderSource).toContain("text-[var(--org-primary)]");
+    expect(funnelBuilderSource).toContain("color-mix(in_srgb,var(--org-primary)");
+    expect(funnelBuilderSource).not.toMatch(/(?:teal|violet|purple)/i);
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
