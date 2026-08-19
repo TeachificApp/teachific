@@ -5516,6 +5516,7 @@
 - [x] Apply the active organization theme to Email Campaigns click analytics, link indicators, and CTA hover states
 - [x] Apply the active organization theme to CME form AI-generation controls and AI-generated status badges
 - [x] Apply the active organization theme to After Purchase Workflow message action accents
+- [x] Apply the active organization theme to Funnel Builder order and checkout action accents
 
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership

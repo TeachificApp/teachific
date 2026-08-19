@@ -1555,6 +1555,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workflowSource).toContain('window_message: "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]');
   });
 
+  it("uses the active organization theme for Funnel Builder order and checkout actions", () => {
+    const funnelSource = readFileSync(new URL("../client/src/pages/marketing/FunnelBuilderPage.tsx", import.meta.url), "utf8");
+    expect(funnelSource).toContain('value: "order", label: "Order / Checkout", icon: ShoppingCart, color: "bg-[var(--org-primary)]"');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");

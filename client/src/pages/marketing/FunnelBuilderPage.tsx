@@ -71,7 +71,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const STEP_TYPES = [
   { value: "landing", label: "Landing Page", icon: Layers, color: "bg-blue-500", desc: "Capture leads or introduce your offer" },
   { value: "sales", label: "Sales Page", icon: TrendingUp, color: "bg-emerald-500", desc: "Present your offer and pricing" },
-  { value: "order", label: "Order / Checkout", icon: ShoppingCart, color: "bg-violet-500", desc: "Collect payment from buyers" },
+  { value: "order", label: "Order / Checkout", icon: ShoppingCart, color: "bg-[var(--org-primary)]", desc: "Collect payment from buyers" },
   { value: "upsell", label: "Upsell", icon: TrendingUp, color: "bg-orange-500", desc: "Offer an upgrade after purchase" },
   { value: "downsell", label: "Downsell", icon: TrendingDown, color: "bg-amber-500", desc: "Offer a lower-priced alternative" },
   { value: "thank_you", label: "Thank You", icon: CheckCircle2, color: "bg-teal-500", desc: "Confirm purchase or registration" },
