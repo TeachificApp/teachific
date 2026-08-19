@@ -612,42 +612,44 @@ export async function reconcileLmsCheckoutFromStripeSession(
       } catch { /* non-fatal */ }
 
       if (courseEmailEnabled && platformEmailEnabled) {
-        let accessToken: string | null = null;
-        try {
-          accessToken = await getOrCreateAccessToken(userId);
-        } catch { /* optional */ }
-        const orgBaseUrl = course?.orgSlug
-          ? getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus)
-          : "https://teachific.app";
+        if (!course?.orgSlug) {
+          notes.push("Enrollment email skipped (organization domain unavailable)");
+        } else {
+          let accessToken: string | null = null;
+          try {
+            accessToken = await getOrCreateAccessToken(userId);
+          } catch { /* optional */ }
+          const orgBaseUrl = getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus);
         // For new guest accounts, include a set-password URL so they can create a permanent login
         const setPasswordUrl = newUserResetToken
           ? `${orgBaseUrl}/auth/reset-password?token=${newUserResetToken}`
           : null;
-        if (course.type === "quiz") {
-          await sendQuizAccessEmail({
-            to: { name: customerName || customerEmail.split("@")[0], email: customerEmail },
-            quizTitle: course.title,
-            accessToken,
-            setPasswordUrl,
-            orgId: course.orgId,
-            orgSlug: course.orgSlug,
-            orgCustomDomain: course.orgCustomDomain,
-            orgDomainVerificationStatus: course.orgDomainVerificationStatus,
-          });
-          notes.push("Quiz access email sent");
-        } else {
-          await sendEnrollmentEmail({
-            to: { name: customerName || customerEmail.split("@")[0], email: customerEmail },
-            courseTitle: course.title,
-            courseSlug: course.slug,
-            accessToken,
-            setPasswordUrl,
-            orgId: course.orgId,
-            orgSlug: course.orgSlug,
-            orgCustomDomain: course.orgCustomDomain,
-            orgDomainVerificationStatus: course.orgDomainVerificationStatus,
-          });
-          notes.push("Enrollment email sent");
+          if (course.type === "quiz") {
+            await sendQuizAccessEmail({
+              to: { name: customerName || customerEmail.split("@")[0], email: customerEmail },
+              quizTitle: course.title,
+              accessToken,
+              setPasswordUrl,
+              orgId: course.orgId,
+              orgSlug: course.orgSlug,
+              orgCustomDomain: course.orgCustomDomain,
+              orgDomainVerificationStatus: course.orgDomainVerificationStatus,
+            });
+            notes.push("Quiz access email sent");
+          } else {
+            await sendEnrollmentEmail({
+              to: { name: customerName || customerEmail.split("@")[0], email: customerEmail },
+              courseTitle: course.title,
+              courseSlug: course.slug,
+              accessToken,
+              setPasswordUrl,
+              orgId: course.orgId,
+              orgSlug: course.orgSlug,
+              orgCustomDomain: course.orgCustomDomain,
+              orgDomainVerificationStatus: course.orgDomainVerificationStatus,
+            });
+            notes.push("Enrollment email sent");
+          }
         }
       } else {
         notes.push(`Enrollment email skipped (course=${courseEmailEnabled}, platform=${platformEmailEnabled})`);

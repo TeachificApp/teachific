@@ -1656,6 +1656,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(invoiceRouterSource).not.toContain('loginUrl: `https://teachific.app`');
   });
 
+  it("sends LMS checkout confirmation links only when the owning organization domain is available", () => {
+    const checkoutFulfillmentSource = readFileSync(new URL("./lib/lmsCheckoutFulfillment.ts", import.meta.url), "utf8");
+    expect(checkoutFulfillmentSource).toContain('Enrollment email skipped (organization domain unavailable)');
+    expect(checkoutFulfillmentSource).toContain('const orgBaseUrl = getOrgBaseUrl(course.orgSlug');
+    expect(checkoutFulfillmentSource).not.toContain(': "https://teachific.app";');
+  });
+
   it("resolves widget administration from the active organization rather than a fallback membership", () => {
     const widgetRouterSource = readFileSync(new URL("./routers/widgetAdminRouter.ts", import.meta.url), "utf8");
     const widgetManagerSource = readFileSync(new URL("../client/src/pages/admin/WidgetManager.tsx", import.meta.url), "utf8");
