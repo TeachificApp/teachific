@@ -1330,6 +1330,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const quizStoreSource = readFileSync(new URL("../client/src/quiz-creator/store/quizStore.ts", import.meta.url), "utf8");
     const questionEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionEditor.tsx", import.meta.url), "utf8");
     const mcqEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/editors/McqEditor.tsx", import.meta.url), "utf8");
+    const simpleEditorsSource = readFileSync(new URL("../client/src/quiz-creator/components/editors/SimpleEditors.tsx", import.meta.url), "utf8");
     const previewSource = readFileSync(new URL("../client/src/quiz-creator/components/QuizPreview.tsx", import.meta.url), "utf8");
     expect(questionTypesSource).toContain('feedbackMode?: "question" | "answer"');
     expect(questionTypesSource).toContain("trueFeedback?: string");
@@ -1345,6 +1346,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mcqEditorSource).toContain("RichTextEditor");
     expect(mcqEditorSource).toContain("feedbackHtml.replace");
     expect(mcqEditorSource).toContain("Why this answer is correct");
+    expect(simpleEditorsSource).toContain('placeholder="Feedback when True is selected"');
+    expect(simpleEditorsSource).toContain('placeholder="Feedback when False is selected"');
+    expect(simpleEditorsSource).toContain('placeholder="Feedback for this answer"');
+    expect(simpleEditorsSource).toContain("event.stopPropagation()");
     expect(previewSource).toContain("feedbackQuestionId");
     expect(previewSource).toContain('quiz.meta.feedbackMode === "immediate"');
     expect(previewSource).toContain("RichTextDisplay");

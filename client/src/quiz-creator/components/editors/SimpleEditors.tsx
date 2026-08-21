@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { Plus, Trash2, X } from "lucide-react";
 import type { TfData, FillBlankData, ShortAnswerData, ImageChoiceData } from "../../types/quiz";
+import RichTextEditor from "@/components/RichTextEditor";
 
 // ─── True / False ─────────────────────────────────────────────────────────────
 export function TfEditor({ data, onChange }: { data: TfData; onChange: (d: TfData) => void }) {
@@ -30,11 +31,11 @@ export function TfEditor({ data, onChange }: { data: TfData; onChange: (d: TfDat
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-semibold text-gray-500">Feedback for True</label>
-          <textarea value={data.trueFeedback ?? ""} onChange={(e) => onChange({ ...data, trueFeedback: e.target.value })} rows={2} placeholder="Optional feedback when True is selected" className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+          <RichTextEditor value={data.trueFeedback ?? ""} onChange={(trueFeedback) => onChange({ ...data, trueFeedback })} placeholder="Feedback when True is selected" minHeight={88} maxHeight={220} />
         </div>
         <div>
           <label className="mb-1 block text-xs font-semibold text-gray-500">Feedback for False</label>
-          <textarea value={data.falseFeedback ?? ""} onChange={(e) => onChange({ ...data, falseFeedback: e.target.value })} rows={2} placeholder="Optional feedback when False is selected" className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+          <RichTextEditor value={data.falseFeedback ?? ""} onChange={(falseFeedback) => onChange({ ...data, falseFeedback })} placeholder="Feedback when False is selected" minHeight={88} maxHeight={220} />
         </div>
       </div>
     </div>
@@ -355,6 +356,18 @@ export function ImageChoiceEditor({
               >
                 <Trash2 className="w-3 h-3" />
               </button>
+            </div>
+            <div className="mx-2 mb-2" onClick={(event) => event.stopPropagation()}>
+              <RichTextEditor
+                value={choice.feedbackHtml ?? choice.feedback ?? ""}
+                onChange={(feedbackHtml) => {
+                  const feedback = feedbackHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+                  onChange({ ...data, choices: data.choices.map((choiceItem) => choiceItem.id === choice.id ? { ...choiceItem, feedback, feedbackHtml } : choiceItem) });
+                }}
+                placeholder="Feedback for this answer"
+                minHeight={72}
+                maxHeight={220}
+              />
             </div>
           </div>
         ))}
