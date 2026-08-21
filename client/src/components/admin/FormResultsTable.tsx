@@ -42,7 +42,7 @@ import {
   type ResultsFilterCondition,
 } from "@shared/formItemUtils";
 
-const BRAND = "#0e7490";
+const BRAND = "var(--org-primary)";
 
 type FilterLogic = "AND" | "OR";
 
@@ -80,7 +80,7 @@ function EditableCell({
   if (!editing) {
     return (
       <div
-        className="min-h-[28px] px-1 py-0.5 cursor-pointer hover:bg-teal-50 rounded text-xs truncate max-w-[160px]"
+        className="min-h-[28px] px-1 py-0.5 cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded text-xs truncate max-w-[160px]"
         title={cellValue(value) || "Click to edit"}
         onClick={e => {
           e.stopPropagation();
@@ -345,7 +345,7 @@ export default function FormResultsTable({
                 setPage(1);
               }}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                statusFilter === t.id ? "bg-white shadow-sm text-[#0e7490]" : "text-gray-500 hover:text-gray-700"
+                statusFilter === t.id ? "bg-white shadow-sm text-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700"
               }`}
             >
               {t.label}
@@ -413,7 +413,7 @@ export default function FormResultsTable({
       </div>
 
       {activeSavedFilter && (
-        <p className="text-xs text-teal-700">
+        <p className="text-xs text-[var(--org-primary)]">
           Filter: <strong>{activeSavedFilter.name}</strong> — showing {filteredSubmissions.length} of{" "}
           {data?.submissions?.length ?? 0} on this page
         </p>
