@@ -1559,6 +1559,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mainRouterSource).not.toContain("const activeOrgId = input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);\n        if (!activeOrgId || activeOrgId !== pkg.orgId)");
   });
 
+  it("does not render a platform-home organization dashboard with a numeric organization fallback", () => {
+    const homeSource = readFileSync(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
+    expect(homeSource).toContain('if (orgCtx?.role === "site_owner" || orgCtx?.role === "site_admin") {\n    return (');
+    expect(homeSource).not.toContain('return <OrgAdminDashboard orgId={orgCtx.org?.id ?? 0}');
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

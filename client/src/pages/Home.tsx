@@ -520,7 +520,12 @@ export default function Home() {
 
   // Platform admins are redirected above.
   if (orgCtx?.role === "site_owner" || orgCtx?.role === "site_admin") {
-    return <OrgAdminDashboard orgId={orgCtx.org?.id ?? 0} orgName={orgCtx.org?.name ?? "Platform"} />;
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   // Org admin (fallback if redirect hasn't fired yet)
