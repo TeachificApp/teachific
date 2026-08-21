@@ -12460,9 +12460,9 @@ function CohortTab({ courseId }: { courseId: number }) {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-sm font-medium text-gray-700">Filter by group:</span>
-              <button onClick={() => setDiscFilterGroupId(null)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${!discFilterGroupId ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-200 text-gray-600 hover:border-teal-400'}`}>All Groups</button>
+              <button onClick={() => setDiscFilterGroupId(null)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${!discFilterGroupId ? 'bg-[var(--org-primary)] text-white border-[var(--org-primary)]' : 'border-gray-200 text-gray-600 hover:border-[var(--org-primary)]'}`}>All Groups</button>
               {cohortGroups.map(g => (
-                <button key={g.id} onClick={() => setDiscFilterGroupId(g.id)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${discFilterGroupId === g.id ? 'bg-teal-600 text-white border-teal-600' : 'border-gray-200 text-gray-600 hover:border-teal-400'}`}>{g.name}</button>
+                <button key={g.id} onClick={() => setDiscFilterGroupId(g.id)} className={`text-xs px-3 py-1 rounded-full border transition-colors ${discFilterGroupId === g.id ? 'bg-[var(--org-primary)] text-white border-[var(--org-primary)]' : 'border-gray-200 text-gray-600 hover:border-[var(--org-primary)]'}`}>{g.name}</button>
               ))}
             </div>
             <button
@@ -12470,7 +12470,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               disabled={setAdminNotifPref.isPending}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 adminNotifPref?.cohortDiscussions !== false
-                  ? "bg-teal-50 border-teal-300 text-teal-700 hover:bg-teal-100"
+                  ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]"
                   : "bg-gray-100 border-gray-300 text-gray-500 hover:bg-gray-200"
               }`}
             >
@@ -12517,11 +12517,11 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <label className="cursor-pointer text-xs text-teal-600 hover:underline">
+              <label className="cursor-pointer text-xs text-[var(--org-primary)] hover:underline">
                 {discUploadingMedia ? 'Uploading...' : '+ Add Image/Video'}
                 <input type="file" accept="image/*,video/*" className="hidden" disabled={discUploadingMedia} onChange={e => { if (e.target.files?.[0]) handleDiscMediaUpload(e.target.files[0]); e.target.value = ''; }} />
               </label>
-              <button disabled={(!discBody.trim() && discMedia.length === 0) || !discTargetGroupId || postAdminMessage.isPending} onClick={() => { if (!discTargetGroupId) return; postAdminMessage.mutate({ cohortGroupId: discTargetGroupId, courseId, body: discBody.trim() || undefined, mediaUrls: discMedia.length > 0 ? discMedia : undefined, aliasId: discAliasId ?? undefined }); }} className="ml-auto px-4 py-1.5 bg-teal-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              <button disabled={(!discBody.trim() && discMedia.length === 0) || !discTargetGroupId || postAdminMessage.isPending} onClick={() => { if (!discTargetGroupId) return; postAdminMessage.mutate({ cohortGroupId: discTargetGroupId, courseId, body: discBody.trim() || undefined, mediaUrls: discMedia.length > 0 ? discMedia : undefined, aliasId: discAliasId ?? undefined }); }} className="ml-auto px-4 py-1.5 bg-[var(--org-primary)] hover:brightness-90 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {postAdminMessage.isPending ? 'Posting...' : 'Post'}
               </button>
             </div>
@@ -12531,24 +12531,24 @@ function CohortTab({ courseId }: { courseId: number }) {
           <div className="space-y-3">
             {allDiscussions.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No discussions yet.</p>}
             {allDiscussions.map(msg => (
-              <div key={msg.id} className={`bg-white border rounded-xl p-4 space-y-2 ${msg.isPinned ? 'border-teal-400 bg-teal-50' : 'border-gray-200'}`}>
+              <div key={msg.id} className={`bg-white border rounded-xl p-4 space-y-2 ${msg.isPinned ? 'border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]' : 'border-gray-200'}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     {(msg as any).userAvatar ? (
                       <img src={(msg as any).userAvatar} alt={(msg as any).userDisplayName || msg.userName || '?'} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-teal-700">{((msg as any).userDisplayName || msg.userName || '?')[0].toUpperCase()}</span>
+                      <div className="w-7 h-7 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-[var(--org-primary)]">{((msg as any).userDisplayName || msg.userName || '?')[0].toUpperCase()}</span>
                       </div>
                     )}
                     <span className="text-sm font-semibold text-gray-800">{(msg as any).displayName || (msg as any).userDisplayName || msg.userName}</span>
-                    {msg.isAdminPost && <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full font-medium">{(msg as any).isAlias ? 'Support' : 'Admin'}</span>}
+                    {msg.isAdminPost && <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] px-2 py-0.5 rounded-full font-medium">{(msg as any).isAlias ? 'Support' : 'Admin'}</span>}
                     {msg.isPinned && <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">📌 Pinned</span>}
                     <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</span>
                     {cohortGroups.find(g => g.id === msg.cohortGroupId) && <span className="text-xs text-gray-400">· {cohortGroups.find(g => g.id === msg.cohortGroupId)?.name}</span>}
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => pinMessage.mutate({ id: msg.id, isPinned: !msg.isPinned })} className="text-xs text-gray-500 hover:text-teal-600">{msg.isPinned ? 'Unpin' : 'Pin'}</button>
+                    <button onClick={() => pinMessage.mutate({ id: msg.id, isPinned: !msg.isPinned })} className="text-xs text-gray-500 hover:text-[var(--org-primary)]">{msg.isPinned ? 'Unpin' : 'Pin'}</button>
                     <button onClick={() => { if (confirm('Delete this message?')) moderateDelete.mutate({ id: msg.id }); }} className="text-xs text-red-500 hover:underline">Delete</button>
                   </div>
                 </div>
@@ -12556,7 +12556,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 {(msg.mediaUrls as any[])?.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {(msg.mediaUrls as any[]).map((m: any, i: number) => (
-                      m.mimeType?.startsWith('image/') ? <img key={i} src={m.url} alt={m.fileName} className="w-24 h-24 object-cover rounded-lg" /> : <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">{m.fileName}</a>
+                      m.mimeType?.startsWith('image/') ? <img key={i} src={m.url} alt={m.fileName} className="w-24 h-24 object-cover rounded-lg" /> : <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--org-primary)] hover:underline">{m.fileName}</a>
                     ))}
                   </div>
                 )}
