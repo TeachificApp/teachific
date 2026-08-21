@@ -62,7 +62,7 @@ function CheckoutLinksSection({ courseId }: { courseId: number }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link2 className="h-4 w-4 text-teal-600" />
+        <Link2 className="h-4 w-4 text-[var(--org-primary)]" />
         <span className="font-semibold text-sm">Checkout Links &amp; Embed Codes</span>
         <Badge variant="outline" className="text-xs">{data.links.length} option{data.links.length !== 1 ? "s" : ""}</Badge>
       </div>
@@ -75,7 +75,7 @@ function CheckoutLinksSection({ courseId }: { courseId: number }) {
                 {(link as any).sublabel && <p className="text-xs text-muted-foreground">{(link as any).sublabel}</p>}
               </div>
               <Badge variant="outline" className="text-xs shrink-0">{link.pricingType}</Badge>
-              {link.price > 0 && <span className="text-sm font-semibold text-teal-700 shrink-0">{fmtMoney(link.price)}</span>}
+              {link.price > 0 && <span className="text-sm font-semibold text-[var(--org-primary)] shrink-0">{fmtMoney(link.price)}</span>}
               {link.price === 0 && <span className="text-sm font-semibold text-green-600 shrink-0">Free</span>}
             </div>
             <div className="px-4 py-3 space-y-2">
@@ -138,7 +138,7 @@ function StudentProfileDrawer({
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="mb-4">
           <SheetTitle className="flex items-center gap-2">
-            <User className="h-4 w-4 text-teal-600" /> Student Profile
+            <User className="h-4 w-4 text-[var(--org-primary)]" /> Student Profile
           </SheetTitle>
         </SheetHeader>
         {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
@@ -155,7 +155,7 @@ function StudentProfileDrawer({
             {/* Enrollments */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="h-4 w-4 text-teal-600" />
+                <BookOpen className="h-4 w-4 text-[var(--org-primary)]" />
                 <span className="font-semibold text-sm">Enrollments ({data.enrollments.length})</span>
               </div>
               {data.enrollments.length === 0 && <p className="text-xs text-muted-foreground">No enrollments.</p>}
@@ -176,7 +176,7 @@ function StudentProfileDrawer({
             {/* Order history */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <ShoppingBag className="h-4 w-4 text-teal-600" />
+                <ShoppingBag className="h-4 w-4 text-[var(--org-primary)]" />
                 <span className="font-semibold text-sm">Order History ({data.orders.length})</span>
               </div>
               {data.orders.length === 0 && <p className="text-xs text-muted-foreground">No orders.</p>}
@@ -190,7 +190,7 @@ function StudentProfileDrawer({
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{fmtDate(o.createdAt)}</span>
                       <span className="font-semibold text-foreground">{fmtMoney(o.amount, o.currency)}</span>
-                      {o.stripeSubscriptionId && <span className="text-teal-600">Subscription</span>}
+                      {o.stripeSubscriptionId && <span className="text-[var(--org-primary)]">Subscription</span>}
                     </div>
                   </div>
                 ))}
@@ -309,19 +309,19 @@ function SalesTable({ courseId }: { courseId: number }) {
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg border bg-white p-3 space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <DollarSign className="h-3.5 w-3.5 text-teal-600" /> Total Revenue
+            <DollarSign className="h-3.5 w-3.5 text-[var(--org-primary)]" /> Total Revenue
           </div>
-          <p className="text-lg font-bold text-teal-700">{fmtMoney(data.totalRevenue)}</p>
+          <p className="text-lg font-bold text-[var(--org-primary)]">{fmtMoney(data.totalRevenue)}</p>
         </div>
         <div className="rounded-lg border bg-white p-3 space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Users className="h-3.5 w-3.5 text-teal-600" /> Total Orders
+            <Users className="h-3.5 w-3.5 text-[var(--org-primary)]" /> Total Orders
           </div>
           <p className="text-lg font-bold">{data.total}</p>
         </div>
         <div className="rounded-lg border bg-white p-3 space-y-1">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5 text-teal-600" /> This Page
+            <TrendingUp className="h-3.5 w-3.5 text-[var(--org-primary)]" /> This Page
           </div>
           <p className="text-lg font-bold">{fmtMoney(runningTotal)}</p>
         </div>
@@ -350,7 +350,7 @@ function SalesTable({ courseId }: { courseId: number }) {
                   <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono">#{o.id}</td>
                   <td className="px-3 py-2.5">
                     <button
-                      className="text-left hover:text-teal-700 transition-colors"
+                      className="text-left hover:text-[var(--org-primary)] transition-colors"
                       onClick={() => setProfileUserId(o.userId)}
                     >
                       <p className="font-medium text-sm leading-tight">{o.user?.displayName ?? "Unknown"}</p>
@@ -364,7 +364,7 @@ function SalesTable({ courseId }: { courseId: number }) {
                     {o.enrollment ? (
                       <div className="flex items-center gap-1.5 justify-center">
                         <div className="w-16 h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                          <div className="h-full bg-teal-500 rounded-full" style={{ width: `${o.enrollment.progressPct ?? 0}%` }} />
+                          <div className="h-full bg-[var(--org-primary)] rounded-full" style={{ width: `${o.enrollment.progressPct ?? 0}%` }} />
                         </div>
                         <span className="text-xs text-muted-foreground">{o.enrollment.progressPct ?? 0}%</span>
                       </div>
@@ -459,7 +459,7 @@ export function LMSSalesTab({ courseId }: { courseId: number }) {
       <Separator />
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-teal-600" />
+          <DollarSign className="h-4 w-4 text-[var(--org-primary)]" />
           <span className="font-semibold text-sm">Sales &amp; Orders</span>
         </div>
         <SalesTable courseId={courseId} />

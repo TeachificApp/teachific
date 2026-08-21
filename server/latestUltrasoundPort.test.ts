@@ -2003,6 +2003,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formAnalyticsSource).not.toContain("#0e7490");
   });
 
+  it("uses active organization theming throughout organization LMS sales controls", () => {
+    const lmsSalesSource = readFileSync(new URL("../client/src/components/LMSSalesTab.tsx", import.meta.url), "utf8");
+    expect(lmsSalesSource).toContain("text-[var(--org-primary)]");
+    expect(lmsSalesSource).toContain("bg-[var(--org-primary)] rounded-full");
+    expect(lmsSalesSource).toContain("hover:text-[var(--org-primary)] transition-colors");
+    expect(lmsSalesSource).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
