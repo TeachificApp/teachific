@@ -5698,6 +5698,7 @@
 - [x] Apply the active organization theme to certificate preview block controls
 - [x] Apply the active organization theme to lesson flashcard block editor controls
 - [x] Apply the active organization theme to lesson effect editor controls
+- [x] Apply the active organization theme to lesson comment controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

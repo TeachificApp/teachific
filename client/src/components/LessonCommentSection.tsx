@@ -44,7 +44,7 @@ function CommentAvatar({ name, displayName, avatarUrl }: { name?: string | null;
   return (
     <Avatar className="w-8 h-8 shrink-0 mt-0.5">
       <AvatarImage src={avatarUrl ?? undefined} />
-      <AvatarFallback className="bg-teal-100 text-teal-700 text-xs font-bold">
+      <AvatarFallback className="bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] text-xs font-bold">
         {getInitials(name, displayName)}
       </AvatarFallback>
     </Avatar>
@@ -112,7 +112,7 @@ function ReplyBox({
             size="sm"
             onClick={handleSubmit}
             disabled={isEmpty || addComment.isPending}
-            className="bg-teal-500 hover:bg-teal-600 text-white text-xs px-3"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white text-xs px-3"
           >
             {addComment.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}
             Reply
@@ -145,7 +145,7 @@ function CommentItem({
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-sm font-semibold text-gray-800">{displayName}</span>
           {comment.authorCredentials && (
-            <span className="text-xs text-teal-600 font-medium">{comment.authorCredentials}</span>
+            <span className="text-xs text-[var(--org-primary)] font-medium">{comment.authorCredentials}</span>
           )}
           <span className="text-xs text-gray-400">{timeAgo}</span>
         </div>
@@ -155,14 +155,14 @@ function CommentItem({
         <div className="flex items-center gap-3 mt-1.5">
           <button
             onClick={() => setShowReplyBox(v => !v)}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-teal-600 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-[var(--org-primary)] transition-colors"
           >
             <Reply size={11} /> Reply
           </button>
           {replyCount > 0 && (
             <button
               onClick={() => setShowReplies(v => !v)}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-teal-600 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-[var(--org-primary)] transition-colors"
             >
               {showReplies ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
               {replyCount} {replyCount === 1 ? "reply" : "replies"}
@@ -193,7 +193,7 @@ function CommentItem({
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-sm font-semibold text-gray-800">{replyName}</span>
                       {reply.authorCredentials && (
-                        <span className="text-xs text-teal-600 font-medium">{reply.authorCredentials}</span>
+                        <span className="text-xs text-[var(--org-primary)] font-medium">{reply.authorCredentials}</span>
                       )}
                       <span className="text-xs text-gray-400">{replyTimeAgo}</span>
                     </div>
@@ -261,9 +261,9 @@ export default function LessonCommentSection({ lessonId, commentsEnabled }: Less
       {/* Header toggle */}
       <button
         onClick={() => setIsExpanded(v => !v)}
-        className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-teal-600 transition-colors mb-4 group"
+        className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-[var(--org-primary)] transition-colors mb-4 group"
       >
-        <MessageSquare className="w-4 h-4 text-teal-500 group-hover:text-teal-600" />
+        <MessageSquare className="w-4 h-4 text-[var(--org-primary)] group-hover:brightness-90" />
         <span>Discussion</span>
         {!isExpanded && (
           <span className="text-xs text-gray-400 font-normal ml-1">Click to expand</span>
@@ -289,7 +289,7 @@ export default function LessonCommentSection({ lessonId, commentsEnabled }: Less
                     size="sm"
                     onClick={handleSubmit}
                     disabled={isEmpty || addComment.isPending}
-                    className="bg-teal-500 hover:bg-teal-600 text-white text-xs px-4"
+                    className="bg-[var(--org-primary)] hover:brightness-90 text-white text-xs px-4"
                   >
                     {addComment.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
                     Post Comment
