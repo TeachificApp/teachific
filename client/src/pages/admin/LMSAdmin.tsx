@@ -5953,7 +5953,7 @@ function GroupsTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8" onClick={() => setCreateOpen(true)}>
           <Plus className="w-4 h-4 mr-1" /> New Team
         </Button>
       </div>
@@ -5967,8 +5967,8 @@ function GroupsTab() {
             <div key={g.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {/* Team header */}
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => setExpandedGroup(expandedGroup === g.id ? null : g.id)}>
-                <div className="p-1.5 bg-teal-50 rounded-lg">
-                  <Users className="w-4 h-4 text-teal-600" />
+                <div className="p-1.5 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded-lg">
+                  <Users className="w-4 h-4 text-[var(--org-primary)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -5988,7 +5988,7 @@ function GroupsTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-gray-400 hover:text-teal-600" onClick={e => { e.stopPropagation(); setEditTeam(g); }}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-gray-400 hover:text-[var(--org-primary)]" onClick={e => { e.stopPropagation(); setEditTeam(g); }}>
                     <Edit2 className="w-3.5 h-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={e => { e.stopPropagation(); if (confirm(`Delete team "${g.name}"?`)) deleteTeam.mutate({ groupId: g.id }); }}>
@@ -6004,9 +6004,9 @@ function GroupsTab() {
                   {(g.orgName || g.adminEmail || g.adminPhone || g.website) && (
                     <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs">
                       {g.orgName && <div><span className="text-gray-400">Org:</span> <span className="text-gray-700 font-medium">{g.orgName}</span></div>}
-                      {g.adminEmail && <div><span className="text-gray-400">Email:</span> <a href={`mailto:${g.adminEmail}`} className="text-teal-600 hover:underline">{g.adminEmail}</a></div>}
+                      {g.adminEmail && <div><span className="text-gray-400">Email:</span> <a href={`mailto:${g.adminEmail}`} className="text-[var(--org-primary)] hover:underline">{g.adminEmail}</a></div>}
                       {g.adminPhone && <div><span className="text-gray-400">Phone:</span> <span className="text-gray-700">{g.adminPhone}</span></div>}
-                      {g.website && <div><span className="text-gray-400">Web:</span> <a href={g.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline truncate">{g.website}</a></div>}
+                      {g.website && <div><span className="text-gray-400">Web:</span> <a href={g.website} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline truncate">{g.website}</a></div>}
                       {g.teamAdmin && <div className="col-span-2"><span className="text-gray-400">Team Admin:</span> <span className="text-gray-700">{g.teamAdmin.name} ({g.teamAdmin.email})</span></div>}
                     </div>
                   )}
@@ -6020,7 +6020,7 @@ function GroupsTab() {
                     <div className="space-y-2">
                       {g.courses.map((gc: any) => (
                         <div key={gc.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-lg px-3 py-2">
-                          <BookOpen className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                          <BookOpen className="w-3.5 h-3.5 text-[var(--org-primary)] shrink-0" />
                           <span className="flex-1 text-sm text-gray-800 truncate">{gc.courseTitle}</span>
                           <span className="text-xs text-gray-500 shrink-0">{gc.seats} seat{gc.seats !== 1 ? "s" : ""}</span>
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-gray-300 hover:text-red-500 shrink-0" onClick={() => removeCourse.mutate({ groupCourseId: gc.id })}>
@@ -6054,7 +6054,7 @@ function GroupsTab() {
                             {seat.status === "revoked" ? "Revoked" : seat.acceptedAt ? "Active" : "Pending invite"}
                           </span>
                           {seat.userId && (
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-teal-500 hover:bg-teal-50 shrink-0" title="View member profile" onClick={() => window.open(`/admin/users/${seat.userId}`, '_blank')}>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] shrink-0" title="View member profile" onClick={() => window.open(`/admin/users/${seat.userId}`, '_blank')}>
                               <ExternalLink className="w-3 h-3" />
                             </Button>
                           )}
@@ -6128,13 +6128,13 @@ function TeamManagersSection({ groupId, onRefresh }: { groupId: number; onRefres
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
-          <Shield className="w-3.5 h-3.5 text-teal-500" />
+          <Shield className="w-3.5 h-3.5 text-[var(--org-primary)]" />
           Managers
           <span className="text-gray-400 font-normal normal-case">({activeManagers.length}/5)</span>
         </p>
         {activeManagers.length < 5 && !showAdd && (
           <button
-            className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
+            className="flex items-center gap-1 text-xs text-[var(--org-primary)] hover:brightness-90 font-medium"
             onClick={() => setShowAdd(true)}
           >
             <Plus className="w-3.5 h-3.5" /> Add Manager
@@ -6151,7 +6151,7 @@ function TeamManagersSection({ groupId, onRefresh }: { groupId: number; onRefres
           .filter((m: any) => m.status !== "revoked")
           .map((m: any) => (
             <div key={m.id} className="flex items-center gap-2 text-sm bg-white border border-gray-100 rounded-lg px-3 py-2">
-              <Shield className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <Shield className="w-3.5 h-3.5 text-[var(--org-primary)] shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-gray-800 truncate text-xs font-medium">{m.managerName || m.email}</p>
                 {m.managerName && <p className="text-gray-400 truncate text-xs">{m.email}</p>}
@@ -6165,7 +6165,7 @@ function TeamManagersSection({ groupId, onRefresh }: { groupId: number; onRefres
                     type="checkbox"
                     checked={!!m.hasSeat}
                     onChange={(e) => setManagerSeat.mutate({ managerId: m.id, hasSeat: e.target.checked })}
-                    className="w-3 h-3 accent-teal-600"
+                    className="w-3 h-3 accent-[var(--org-primary)]"
                   />
                   Seat
                 </label>
@@ -6185,7 +6185,7 @@ function TeamManagersSection({ groupId, onRefresh }: { groupId: number; onRefres
       </div>
 
       {showAdd && (
-        <div className="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-lg p-2 mb-2">
+        <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] rounded-lg p-2 mb-2">
           <Input
             type="email"
             placeholder="manager@example.com"
@@ -6198,13 +6198,13 @@ function TeamManagersSection({ groupId, onRefresh }: { groupId: number; onRefres
               type="checkbox"
               checked={hasSeat}
               onChange={(e) => setHasSeat(e.target.checked)}
-              className="w-3 h-3 accent-teal-600"
+              className="w-3 h-3 accent-[var(--org-primary)]"
             />
             Seat
           </label>
           <Button
             size="sm"
-            className="bg-teal-600 hover:bg-teal-700 text-white h-8 text-xs shrink-0"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8 text-xs shrink-0"
             disabled={!addEmail || addManager.isPending}
             onClick={() => addManager.mutate({ groupId, email: addEmail, hasSeat })}
           >
@@ -6229,12 +6229,12 @@ function AddCourseToTeamInline({ groupId, onAdded }: { groupId: number; onAdded:
     onError: e => toast.error(e.message),
   });
   if (!open) return (
-    <button className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium" onClick={() => setOpen(true)}>
+    <button className="mt-2 flex items-center gap-1 text-xs text-[var(--org-primary)] hover:brightness-90 font-medium" onClick={() => setOpen(true)}>
       <Plus className="w-3.5 h-3.5" /> Add Course
     </button>
   );
   return (
-    <div className="mt-2 flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-lg p-2">
+    <div className="mt-2 flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] rounded-lg p-2">
       <Select value={courseId} onValueChange={setCourseId}>
         <SelectTrigger className="h-8 text-xs flex-1 bg-white"><SelectValue placeholder="Select course" /></SelectTrigger>
         <SelectContent>
@@ -6242,7 +6242,7 @@ function AddCourseToTeamInline({ groupId, onAdded }: { groupId: number; onAdded:
         </SelectContent>
       </Select>
       <Input value={seats} onChange={e => setSeats(e.target.value)} type="number" min="1" className="h-8 text-xs w-20 bg-white" placeholder="Seats" />
-      <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8 text-xs" disabled={!courseId || addCourse.isPending}
+      <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8 text-xs" disabled={!courseId || addCourse.isPending}
         onClick={() => addCourse.mutate({ groupId, courseId: parseInt(courseId), seats: parseInt(seats) || 1 })}>
         {addCourse.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Add"}
       </Button>
@@ -6297,14 +6297,14 @@ function CreateTeamDialog({ open, onClose, onCreated }: { open: boolean; onClose
           </div>
           <div>
             <Label className="text-sm">Notes (internal)</Label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Internal notes about this team..." />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Internal notes about this team..." />
           </div>
           <p className="text-xs text-gray-400">You can add courses and members after creating the team.</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={!name.trim() || create.isPending}
             onClick={() => create.mutate({ name: name.trim(), orgName: orgName || undefined, adminEmail: adminEmail || undefined, adminPhone: adminPhone || undefined, website: website || undefined, notes: notes || undefined })}
           >
@@ -6358,13 +6358,13 @@ function EditTeamDialog({ team, onClose, onSaved }: { team: any; onClose: () => 
           </div>
           <div>
             <Label className="text-sm">Notes</Label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={!name.trim() || update.isPending}
             onClick={() => update.mutate({ id: team.id, name: name.trim(), orgName: orgName || null, adminEmail: adminEmail || null, adminPhone: adminPhone || null, website: website || null, notes: notes || null })}
           >
