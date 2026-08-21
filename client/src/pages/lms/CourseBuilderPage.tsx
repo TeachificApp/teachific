@@ -954,7 +954,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
   const { data: course, isLoading, refetch } = trpc.lmsAdmin.getCourse.useQuery({ id: courseId });
   // CME feature flag — only show CME tab if org has CME enabled (platform admins always see it)
   const { user: authUser } = useAuth();
-  const { orgs: scopedOrgs } = useOrgScope();
+  const { orgs: scopedOrgs, orgId } = useOrgScope();
   const isPlatformAdmin = authUser?.role === "site_admin" || authUser?.role === "site_owner";
   const courseOrganization = (scopedOrgs as any[]).find((org: any) => org.id === (course as any)?.orgId);
   const cmeEnabled = isPlatformAdmin || (courseOrganization?.cmeEnabled ?? false);
@@ -1394,11 +1394,11 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
           <LMSSalesTab courseId={courseId} />
         </TabsContent>
         <TabsContent value="checkout_page" className="mt-4">
-          {visitedTabs.has("checkout_page") && (
+          {visitedTabs.has("checkout_page") && orgId && (
             <CheckoutPageEditor
               contentType="course"
               contentId={courseId}
-              orgId={course.orgId ?? 1}
+              orgId={orgId}
               primaryColor={course.primaryColor ?? "#179ca3"}
               accentColor={course.accentColor ?? "#0d9488"}
               contentSlug={course.slug}

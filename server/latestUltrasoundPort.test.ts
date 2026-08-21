@@ -500,7 +500,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("uses the Course Builder course organization for CME visibility", () => {
     const builderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
     expect(builderSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
-    expect(builderSource).toContain("const { orgs: scopedOrgs } = useOrgScope();");
+    expect(builderSource).toContain("const { orgs: scopedOrgs, orgId } = useOrgScope();");
     expect(builderSource).toContain("org.id === (course as any)?.orgId");
     expect(builderSource).not.toContain("myOrgs?.[0]?.cmeEnabled");
   });
@@ -1469,6 +1469,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(webinarEditorSource).toContain('{activeTab === "checkout_page" && webinar && orgId && (');
     expect(webinarEditorSource).toContain("orgId={orgId}");
     expect(webinarEditorSource).not.toContain("orgId={webinar.orgId ?? 1}");
+  });
+
+  it("uses active organization context for Course Builder checkout editing", () => {
+    const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    expect(courseBuilderSource).toContain("const { orgs: scopedOrgs, orgId } = useOrgScope()");
+    expect(courseBuilderSource).toContain('{visitedTabs.has("checkout_page") && orgId && (');
+    expect(courseBuilderSource).toContain("orgId={orgId}");
+    expect(courseBuilderSource).not.toContain("orgId={course.orgId ?? 1}");
   });
 
   it("offers and persists optional organization-authorized AI course assessments", () => {

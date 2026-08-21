@@ -5645,6 +5645,7 @@
 - [x] Resolve Cloud Quiz Browser context and active states from the active organization
 - [x] Resolve digital product checkout editing from the active organization context
 - [x] Resolve webinar checkout editing from the active organization context
+- [x] Resolve Course Builder checkout editing from the active organization context
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
