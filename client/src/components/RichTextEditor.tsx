@@ -490,7 +490,7 @@ function MediaStylePanel({ editor, onClose }: { editor: any; onClose: () => void
     { label: "Soft", value: "0 2px 8px rgba(0,0,0,0.10)" },
     { label: "Medium", value: "0 4px 16px rgba(0,0,0,0.15)" },
     { label: "Strong", value: "0 8px 32px rgba(0,0,0,0.22)" },
-    { label: "Teal", value: "0 4px 16px rgba(20,144,150,0.30)" },
+    { label: "Organization", value: "0 4px 16px color-mix(in_srgb, var(--org-primary) 30%, transparent)" },
   ];
 
   const RADIUS_PRESETS = [
@@ -530,7 +530,7 @@ function MediaStylePanel({ editor, onClose }: { editor: any; onClose: () => void
           <div className="flex gap-1 flex-wrap">
             {RADIUS_PRESETS.map(p => (
               <button key={p.value} type="button"
-                className={`px-2 py-0.5 text-xs rounded border ${borderRadius === p.value ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                className={`px-2 py-0.5 text-xs rounded border ${borderRadius === p.value ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                 onMouseDown={(e) => { e.preventDefault(); setBorderRadius(p.value); }}>
                 {p.label}
               </button>
@@ -545,7 +545,7 @@ function MediaStylePanel({ editor, onClose }: { editor: any; onClose: () => void
           <div className="flex gap-1 flex-wrap">
             {SHADOW_PRESETS.map(p => (
               <button key={p.label} type="button"
-                className={`px-2 py-0.5 text-xs rounded border ${shadow === p.value ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                className={`px-2 py-0.5 text-xs rounded border ${shadow === p.value ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
                 onMouseDown={(e) => { e.preventDefault(); setShadow(p.value); }}>
                 {p.label}
               </button>
@@ -566,7 +566,7 @@ function MediaStylePanel({ editor, onClose }: { editor: any; onClose: () => void
             ))}
           </div>
         </div>
-        <button type="button" className="w-full py-1.5 text-sm font-medium text-white rounded-lg bg-teal-600 hover:bg-teal-700"
+        <button type="button" className="w-full py-1.5 text-sm font-medium text-white rounded-lg bg-[var(--org-primary)] hover:brightness-90"
           onMouseDown={(e) => { e.preventDefault(); applyStyle(); }}>
           Apply Style
         </button>
@@ -1259,7 +1259,7 @@ export function RichTextEditor({
                       <input type="checkbox" id="table-header-row" defaultChecked className="rounded" />
                       Header row
                     </label>
-                    <button type="button" className="w-full py-1.5 text-sm font-medium text-white rounded-lg bg-teal-600 hover:bg-teal-700"
+                    <button type="button" className="w-full py-1.5 text-sm font-medium text-white rounded-lg bg-[var(--org-primary)] hover:brightness-90"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         const withHeader = (document.getElementById("table-header-row") as HTMLInputElement)?.checked ?? true;
@@ -1279,7 +1279,7 @@ export function RichTextEditor({
                         <button type="button"
                           className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 ${
                             isBorderless
-                              ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+                              ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]"
                               : "hover:bg-gray-50 text-gray-700"
                           }`}
                           onMouseDown={(e) => {
@@ -1305,7 +1305,7 @@ export function RichTextEditor({
                         {[
                           { label: "None", bg: null },
                           { label: "Light gray", bg: "#f3f4f6" },
-                          { label: "Teal tint", bg: "#f0fdfa" },
+                          { label: "Organization tint", bg: "color-mix(in srgb, var(--org-primary) 8%, transparent)" },
                           { label: "Blue tint", bg: "#eff6ff" },
                           { label: "Yellow tint", bg: "#fefce8" },
                           { label: "Pink tint", bg: "#fdf2f8" },
@@ -1327,7 +1327,7 @@ export function RichTextEditor({
                       <div className="flex items-center gap-2">
                         <input type="color" value={cellBgColor} onChange={e => setCellBgColor(e.target.value)}
                           className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0" title="Custom cell background" />
-                        <button type="button" className="flex-1 h-7 text-xs font-medium text-white rounded bg-teal-600 hover:bg-teal-700"
+                        <button type="button" className="flex-1 h-7 text-xs font-medium text-white rounded bg-[var(--org-primary)] hover:brightness-90"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             editor.chain().focus().setCellAttribute("backgroundColor", cellBgColor).run();
@@ -1342,7 +1342,7 @@ export function RichTextEditor({
                         {[
                           { label: "Default", color: "#d1d5db" },
                           { label: "Dark", color: "#374151" },
-                          { label: "Teal", color: "#0d9488" },
+                          { label: "Organization", color: "var(--org-primary)" },
                           { label: "Blue", color: "#3b82f6" },
                           { label: "None", color: "transparent" },
                         ].map(({ label, color }) => (
@@ -1363,7 +1363,7 @@ export function RichTextEditor({
                       <div className="flex items-center gap-2">
                         <input type="color" value={cellBorderColor} onChange={e => setCellBorderColor(e.target.value)}
                           className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0" title="Custom border color" />
-                        <button type="button" className="flex-1 h-7 text-xs font-medium text-white rounded bg-teal-600 hover:bg-teal-700"
+                        <button type="button" className="flex-1 h-7 text-xs font-medium text-white rounded bg-[var(--org-primary)] hover:brightness-90"
                           onMouseDown={(e) => {
                             e.preventDefault();
                             editor.chain().focus().setCellAttribute("borderColor", cellBorderColor).run();
@@ -1479,12 +1479,12 @@ export function RichTextEditor({
       {!disabled && (
         <div
           onMouseDown={handleResizeDragStart}
-          className="flex items-center justify-center h-3 bg-gray-50 border-t border-gray-100 cursor-ns-resize hover:bg-teal-50 hover:border-teal-200 transition-colors group select-none"
+          className="flex items-center justify-center h-3 bg-gray-50 border-t border-gray-100 cursor-ns-resize hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] transition-colors group select-none"
           title="Drag to resize editor"
         >
           <div className="flex gap-0.5">
-            <div className="w-5 h-0.5 rounded-full bg-gray-300 group-hover:bg-teal-400 transition-colors" />
-            <div className="w-5 h-0.5 rounded-full bg-gray-300 group-hover:bg-teal-400 transition-colors" />
+            <div className="w-5 h-0.5 rounded-full bg-gray-300 group-hover:bg-[var(--org-primary)] transition-colors" />
+            <div className="w-5 h-0.5 rounded-full bg-gray-300 group-hover:bg-[var(--org-primary)] transition-colors" />
           </div>
         </div>
       )}
@@ -1621,7 +1621,7 @@ export function RichTextEditor({
                 </p>
               </div>
             )}
-            <div className="p-3 bg-teal-50 rounded-lg border border-teal-100 text-xs text-teal-700 flex items-start gap-2">
+            <div className="p-3 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] text-xs text-[var(--org-primary)] flex items-start gap-2">
               <Video className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>This video will be automatically saved to the <strong>Media Repository</strong> and inserted inline as a playable video.</span>
             </div>
@@ -1786,8 +1786,8 @@ export function RichTextEditor({
               </div>
             )}
             {ctaAction === "direct_checkout" && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs text-teal-700 font-medium">Opens Stripe Checkout. After payment, user is sent to /my-dashboard.</p>
+              <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3 space-y-2">
+                <p className="text-xs text-[var(--org-primary)] font-medium">Opens Stripe Checkout. After payment, user is sent to /my-dashboard.</p>
                 <div>
                   <label className="text-xs text-gray-600 block mb-1">Product</label>
                   <select
@@ -1804,8 +1804,8 @@ export function RichTextEditor({
               </div>
             )}
             {ctaAction === "pricing_option" && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs text-teal-700 font-medium">Links directly to a specific pricing option checkout for this course.</p>
+              <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3 space-y-2">
+                <p className="text-xs text-[var(--org-primary)] font-medium">Links directly to a specific pricing option checkout for this course.</p>
                 {!courseId ? (
                   <p className="text-xs text-amber-600">Pricing option checkout is only available when editing a course landing page.</p>
                 ) : (
@@ -1959,7 +1959,7 @@ export function RichTextDisplay({
         "[&_iframe]:max-w-full [&_iframe]:rounded-lg [&_iframe]:my-2",
         "[&_video]:max-w-full [&_video]:rounded-lg [&_video]:my-2",
         "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm",
-        "[&_th]:border [&_th]:border-gray-300 [&_th]:bg-teal-50 [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-left [&_th]:text-teal-800",
+        "[&_th]:border [&_th]:border-gray-300 [&_th]:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] [&_th]:px-3 [&_th]:py-2 [&_th]:font-semibold [&_th]:text-left [&_th]:text-[var(--org-primary)]",
         "[&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-2 [&_td]:align-top",
         "[&_tr:nth-child(even)_td]:bg-gray-50",
         className,
