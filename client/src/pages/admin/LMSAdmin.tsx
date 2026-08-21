@@ -4838,7 +4838,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           {/* Instructor display override */}
           <div className="border border-gray-200 rounded-lg p-4 space-y-2 bg-gray-50">
             <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-              <User className="w-4 h-4 text-teal-600" /> Instructor Panel
+              <User className="w-4 h-4 text-[var(--org-primary)]" /> Instructor Panel
             </p>
             <p className="text-xs text-gray-500">Override the course-level instructor panel setting for this specific lesson.</p>
             <Select value={showInstructor} onValueChange={(v: any) => setShowInstructor(v)}>
@@ -4854,11 +4854,11 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           </div>
 
           {/* Lesson-level instructor override */}
-          <div className="border border-teal-200 rounded-lg p-4 space-y-3 bg-teal-50">
-            <p className="text-sm font-semibold text-teal-800 flex items-center gap-1.5">
-              <User className="w-4 h-4 text-teal-600" /> Lesson Instructors Override
+          <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-4 space-y-3 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
+            <p className="text-sm font-semibold text-[var(--org-primary)] flex items-center gap-1.5">
+              <User className="w-4 h-4 text-[var(--org-primary)]" /> Lesson Instructors Override
             </p>
-            <p className="text-xs text-teal-700">Select instructors for this specific lesson. When set, these override the course-level instructors in the sidebar. Leave empty to use course-level instructors.</p>
+            <p className="text-xs text-[var(--org-primary)]">Select instructors for this specific lesson. When set, these override the course-level instructors in the sidebar. Leave empty to use course-level instructors.</p>
             <div className="space-y-1.5">
               {(allInstructorsData ?? []).map((inst: any) => (
                 <label key={inst.id} className="flex items-center gap-2 cursor-pointer">
@@ -4872,15 +4872,15 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
                         setSelectedLessonInstructorIds(prev => prev.filter(id => id !== inst.id));
                       }
                     }}
-                    className="rounded border-teal-300 text-teal-600"
+                    className="rounded border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)]"
                   />
-                  <span className="text-xs text-teal-900">{inst.name}{inst.title ? ` — ${inst.title}` : ""}</span>
+                  <span className="text-xs text-[var(--org-primary)]">{inst.name}{inst.title ? ` — ${inst.title}` : ""}</span>
                 </label>
               ))}
             </div>
             <Button
               size="sm"
-              className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-7"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white text-xs h-7"
               disabled={setLessonInstructors.isPending}
               onClick={() => setLessonInstructors.mutate({ lessonId: lesson.id, instructorIds: selectedLessonInstructorIds })}
             >
@@ -4920,7 +4920,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
 
           {/* Effects section */}
           <div className="border-t pt-4">
-            <p className="text-sm font-semibold text-teal-700 mb-3 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Lesson Effect</p>
+            <p className="text-sm font-semibold text-[var(--org-primary)] mb-3 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Lesson Effect</p>
             <LessonEffectEditor
               key={`effect-${lesson.id}`}
               lessonId={lesson.id}
