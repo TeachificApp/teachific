@@ -5588,6 +5588,7 @@
 - [x] Apply the active organization theme to after-purchase workflow controls
 - [x] Remove platform-branded defaults from after-purchase workflow email controls
 - [x] Apply the active organization theme to learner enrollment access notifications
+- [x] Apply the active organization theme to authoring auto-save status indicators
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

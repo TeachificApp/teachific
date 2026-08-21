@@ -1987,6 +1987,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(accessBannerSource).not.toMatch(/(?:teal|violet|purple|20, 184, 166)/);
   });
 
+  it("uses the active organization theme for authoring auto-save progress", () => {
+    const autoSaveSource = readFileSync(new URL("../client/src/components/AutoSaveIndicator.tsx", import.meta.url), "utf8");
+    expect(autoSaveSource).toContain('status === "saving" && "text-[var(--org-primary)]"');
+    expect(autoSaveSource).not.toContain('status === "saving" && "text-teal-500"');
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

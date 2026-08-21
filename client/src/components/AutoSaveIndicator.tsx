@@ -22,7 +22,7 @@ export function AutoSaveIndicator({ status, className }: AutoSaveIndicatorProps)
       className={cn(
         "flex items-center gap-1 text-xs font-medium transition-all duration-300",
         status === "dirty" && "text-amber-500",
-        status === "saving" && "text-teal-500",
+        status === "saving" && "text-[var(--org-primary)]",
         status === "saved" && "text-green-600",
         status === "error" && "text-red-500",
         className,
