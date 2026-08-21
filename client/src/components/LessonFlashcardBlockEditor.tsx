@@ -210,10 +210,10 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
                   onClick={() => setAiSource(opt.value as typeof aiSource)}
                   className={`text-xs px-2 py-1.5 rounded border transition-all ${
                     aiSource === opt.value
-                      ? "bg-teal-600 text-white border-teal-600"
+                      ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
                       : opt.disabled
                       ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-teal-300 hover:text-teal-700"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:text-[var(--org-primary)]"
                   }`}
                 >
                   {opt.label}
@@ -257,7 +257,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
               </div>
               {courseLessons.length > 0 && (
                 <div className="flex gap-2">
-                  <button type="button" className="text-xs text-teal-600 hover:text-teal-700"
+                  <button type="button" className="text-xs text-[var(--org-primary)] hover:brightness-90"
                     onClick={() => setSelectedLessonIds(courseLessons.map((l: any) => l.id))}>Select all</button>
                   <span className="text-gray-300">|</span>
                   <button type="button" className="text-xs text-gray-500 hover:text-gray-700"
@@ -310,7 +310,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
             )}
             <Button
               size="sm"
-              className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs w-full"
+              className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs w-full"
               disabled={!canGenerate || generateMutation.isPending}
               onClick={handleGenerate}
             >
@@ -322,14 +322,14 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
             <div className="space-y-2">
               <p className="text-xs font-medium text-gray-700">Preview ({aiPreview.length} cards):</p>
               {aiPreview.map((c, i) => (
-                <div key={i} className="p-2 bg-teal-50 rounded text-xs">
+                <div key={i} className="p-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded text-xs">
                   <p className="font-medium text-gray-700 mb-0.5">Front: {c.front}</p>
                   <p className="text-gray-600">Back: {c.back}</p>
                   {c.hint && <p className="text-gray-400 italic mt-0.5">Hint: {c.hint}</p>}
                 </div>
               ))}
               <div className="flex gap-2">
-                <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={applyAiPreview}>
+                <Button size="sm" className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs" onClick={applyAiPreview}>
                   Add All to Deck
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAiPreview(null)}>
@@ -357,7 +357,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-6 px-2 text-xs text-teal-600"
+                    className="h-6 px-2 text-xs text-[var(--org-primary)]"
                     onClick={() => { setEditingIndex(i); setEditingCard({ ...c }); }}
                   >Edit</Button>
                   <Button
@@ -373,7 +373,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
 
           {/* Add / Edit form */}
           {editingCard !== null ? (
-            <div className="p-3 bg-white border border-teal-200 rounded-lg space-y-2">
+            <div className="p-3 bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg space-y-2">
               <p className="text-xs font-semibold text-gray-700">{editingIndex === null ? "New Card" : `Edit Card ${editingIndex + 1}`}</p>
               <div>
                 <Label className="text-xs text-gray-600">Front (Question / Term)</Label>
@@ -437,7 +437,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
                 </div>
               )}
               <div className="flex gap-2">
-                <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={saveCard}>
+                <Button size="sm" className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs" onClick={saveCard}>
                   {editingIndex === null ? "Add Card" : "Save Changes"}
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setEditingIndex(null); setEditingCard(null); }}>
@@ -449,7 +449,7 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs w-full border-dashed border-teal-300 text-teal-600 hover:bg-teal-50"
+              className="h-8 text-xs w-full border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
               onClick={() => setEditingCard({ ...EMPTY_CARD })}
             >
               + Add Card
