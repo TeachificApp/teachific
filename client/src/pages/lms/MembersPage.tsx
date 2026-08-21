@@ -416,7 +416,7 @@ export default function MembersPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="mobile-keep-grid mt-3 grid grid-cols-3 gap-2 text-center">
                   <div className="bg-muted/50 rounded-md p-2">
                     <p className="text-sm font-bold">{m.totalEnrollments}</p>
                     <p className="text-xs text-muted-foreground">Enrolled</p>

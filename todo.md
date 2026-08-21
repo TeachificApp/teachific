@@ -5635,6 +5635,8 @@
 - [x] Port rich answer-feedback editing for Quiz Creator true-false and image-choice questions
 - [x] Auto-complete ordinary CME lessons when learners advance while preserving video and quiz gates
 - [x] Add a narrow-phone grid safety net with an explicit layout opt-out class
+- [x] Preserve the compact member summary metrics grid on narrow phones
+- [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

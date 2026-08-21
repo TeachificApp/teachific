@@ -1373,10 +1373,12 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("adds a narrow-phone grid safety net with an explicit compact-layout opt-out", () => {
     const globalStyles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    const membersPageSource = readFileSync(new URL("../client/src/pages/lms/MembersPage.tsx", import.meta.url), "utf8");
     expect(globalStyles).toContain("@media (max-width: 479px)");
     expect(globalStyles).toContain(".grid.grid-cols-2:not(.mobile-keep-grid)");
     expect(globalStyles).toContain(".grid.grid-cols-6:not(.mobile-keep-grid)");
     expect(globalStyles).toContain("grid-template-columns: minmax(0, 1fr) !important");
+    expect(membersPageSource).toContain("mobile-keep-grid mt-3 grid grid-cols-3 gap-2 text-center");
   });
 
   it("offers and persists optional organization-authorized AI course assessments", () => {
