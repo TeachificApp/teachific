@@ -201,7 +201,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
                       style={btn.style === "outline" ? { backgroundColor: "transparent", color: btn.color, border: `2px solid ${btn.color}` } : { backgroundColor: btn.color, color: btn.textColor }}>
                       {btn.text}
                     </button>
-                    {(btn as any).behavior === "direct_checkout" && <span className="text-[10px] bg-teal-700/80 text-white rounded px-1.5 py-0.5">→ Stripe Checkout</span>}
+                    {(btn as any).behavior === "direct_checkout" && <span className="text-[10px] bg-[color:color-mix(in_srgb,var(--org-primary)_80%,transparent)] text-white rounded px-1.5 py-0.5">→ Stripe Checkout</span>}
                     {btn.showStrikethrough && btn.strikethroughPrice && (
                       <span className="text-xs text-white/60 line-through">{btn.strikethroughPrice}</span>
                     )}
@@ -575,7 +575,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
           {d.subtext && <p className="text-gray-600 mb-6 max-w-xl mx-auto" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {priceAbove && priceBlock}
           {ctaBtn}
-          {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-teal-600 mt-1">→ Stripe Checkout</p>}
+          {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-[var(--org-primary)] mt-1">→ Stripe Checkout</p>}
           {!priceAbove && priceBlock}
           <ButtonSubtext d={d} />
         </CC></div>
@@ -599,7 +599,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
             className={`inline-block px-8 py-3 rounded-lg font-semibold shadow cursor-pointer ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`}
             style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}
           >{d.ctaText ?? "Get Started"}</button>
-          {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-teal-600 mt-1">→ Stripe Checkout</p>}
+          {d.ctaBehavior === "direct_checkout" && <p className="text-[10px] text-[var(--org-primary)] mt-1">→ Stripe Checkout</p>}
           <ButtonSubtext d={d} />
           {(d.showOptOut || d.optOutEnabled) && d.optOutText && (
             <div className="mt-3"><a href={d.optOutUrl || d.optOutCustomUrl || "#"} className="text-xs text-gray-400 underline hover:text-gray-600">{d.optOutText}</a></div>
@@ -675,7 +675,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
             <div className="space-y-2 mb-8 max-w-md mx-auto text-left">
               {items.map((item, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-teal-600">▶</span>
+                  <span className="text-[var(--org-primary)]">▶</span>
                   <span className="font-medium">{item.text}</span>
                   <span className="text-gray-500 ml-auto">{item.price}</span>
                 </div>
@@ -766,7 +766,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
               <legend className="text-xs font-bold tracking-wider text-gray-600 px-2">SELECT PRODUCT</legend>
               {cfProducts.map((p, i) => (
                 <div key={i} className="flex items-center gap-3 py-2">
-                  <span className="w-4 h-4 rounded-full border-2 border-teal-500 flex-shrink-0" style={{ backgroundColor: i === 0 ? d.accentColor ?? "#179ca3" : "transparent" }} />
+                  <span className="w-4 h-4 rounded-full border-2 border-[var(--org-primary)] flex-shrink-0" style={{ backgroundColor: i === 0 ? d.accentColor ?? "var(--org-primary)" : "transparent" }} />
                   {p.imageUrl && <img src={p.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />}
                   <div className="flex-1"><div className="font-semibold text-sm">{p.name}</div><div className="text-xs text-gray-500">{p.description}</div></div>
                   <div className="text-right">
@@ -1077,7 +1077,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       return (
         <div className="px-6 py-5 bg-white border border-gray-200 rounded-xl">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center [&_svg]:!text-[var(--org-primary)]">
               <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             </div>
             <div>
@@ -1090,7 +1090,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
               <p className="font-medium mb-1">{i + 1}. {q.question}</p>
               <div className="grid grid-cols-2 gap-1">
                 {(q.options ?? []).slice(0, 4).map((opt: string, j: number) => (
-                  <span key={j} className={`px-2 py-0.5 rounded text-xs ${j === q.correctAnswer ? "bg-teal-100 text-teal-700 font-medium" : "bg-white border border-gray-200 text-gray-500"}`}>{["A","B","C","D"][j]}. {opt}</span>
+                  <span key={j} className={`px-2 py-0.5 rounded text-xs ${j === q.correctAnswer ? "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] font-medium" : "bg-white border border-gray-200 text-gray-500"}`}>{["A","B","C","D"][j]}. {opt}</span>
                 ))}
               </div>
             </div>
@@ -1101,21 +1101,21 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
     }
     case "lesson_certificate": {
       return (
-        <div className="px-6 py-5 bg-white border border-teal-200 rounded-xl">
+        <div className="px-6 py-5 bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-              <Award className="w-4 h-4 text-teal-600" />
+            <div className="w-8 h-8 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center">
+              <Award className="w-4 h-4 text-[var(--org-primary)]" />
             </div>
             <div>
               <p className="font-semibold text-gray-800 text-sm">{d.heading || "Your Certificate of Completion"}</p>
               <p className="text-xs text-gray-500">{d.subtext || "Download and share your achievement."}</p>
             </div>
           </div>
-          <div className="w-full bg-gradient-to-br from-teal-50 to-teal-100 border border-teal-200 rounded-lg h-32 flex items-center justify-center">
+          <div className="w-full bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg h-32 flex items-center justify-center">
             <div className="text-center">
-              <Award className="w-8 h-8 text-teal-400 mx-auto mb-1" />
-              <p className="text-xs text-teal-600 font-medium">Certificate Preview</p>
-              <p className="text-xs text-teal-400">Shown to learners who have earned it</p>
+              <Award className="w-8 h-8 text-[var(--org-primary)] mx-auto mb-1" />
+              <p className="text-xs text-[var(--org-primary)] font-medium">Certificate Preview</p>
+              <p className="text-xs text-[var(--org-primary)] opacity-70">Shown to learners who have earned it</p>
             </div>
           </div>
         </div>
@@ -1126,7 +1126,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       return (
         <div className="px-6 py-5 bg-white border border-gray-200 rounded-xl">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center [&_svg]:!text-[var(--org-primary)]">
               <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
             </div>
             <div>
@@ -1135,7 +1135,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
             </div>
           </div>
           {cards.slice(0, 2).map((c: any, i: number) => (
-            <div key={i} className="mb-2 p-2 bg-gradient-to-r from-teal-50 to-teal-50 rounded text-xs">
+            <div key={i} className="mb-2 p-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded text-xs">
               <p className="font-medium text-gray-700 mb-0.5">Q: {c.front}</p>
               <p className="text-gray-500">A: {c.back}</p>
             </div>
@@ -1415,11 +1415,11 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       const activityId = d.activityId ?? 0;
       const headline = d.headline ?? "SDMS CME Credit";
       return (
-        <div className="px-6 py-5 bg-gradient-to-br from-teal-50 to-white border-2 border-teal-200 rounded-xl">
+        <div className="px-6 py-5 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-2 border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl">
           <div className="flex items-start gap-3">
-            <Award className="w-8 h-8 text-teal-600 shrink-0" />
+            <Award className="w-8 h-8 text-[var(--org-primary)] shrink-0" />
             <div>
-              <p className="font-bold text-teal-900">{headline}</p>
+              <p className="font-bold text-[var(--org-primary)]">{headline}</p>
               <p className="text-sm text-gray-600 mt-1">
                 SDMS CME post-test, pass/fail scoring, and roster submission appear here for learners.
               </p>
@@ -1597,7 +1597,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
                   <div className="p-6 space-y-3">
                     <p className="text-gray-600 text-sm">{g.description}</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="flex items-start gap-2 p-3 rounded-xl bg-teal-50 border border-teal-100"><span className="text-teal-600">📅</span><div><p className="text-xs text-teal-600 font-semibold uppercase">Dates</p><p className="text-sm text-gray-800">{g.dateRange}</p></div></div>
+                      <div className="flex items-start gap-2 p-3 rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]"><span className="text-[var(--org-primary)]">📅</span><div><p className="text-xs text-[var(--org-primary)] font-semibold uppercase">Dates</p><p className="text-sm text-gray-800">{g.dateRange}</p></div></div>
                       <div className="flex items-start gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100"><span>📍</span><div><p className="text-xs text-gray-500 font-semibold uppercase">Location</p><p className="text-sm text-gray-800">{g.location}</p></div></div>
                     </div>
                   </div>
@@ -1936,7 +1936,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
               <div className="prose" dangerouslySetInnerHTML={{ __html: d.html }} />
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 py-8 text-gray-400">
-                <Sparkles className="w-6 h-6 text-violet-400" />
+                <Sparkles className="w-6 h-6 text-[var(--org-primary)] opacity-70" />
                 <p className="text-sm">AI-generated content will appear here</p>
               </div>
             )}
@@ -2054,8 +2054,8 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
       <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
         <div className="text-center">
           {avatarUrl
-            ? <img src={avatarUrl} alt={name} className="w-28 h-28 rounded-full object-cover mx-auto mb-4 border-4 border-teal-100" />
-            : <div className="w-28 h-28 rounded-full bg-teal-100 flex items-center justify-center mx-auto mb-4"><Users size={40} className="text-teal-600" /></div>}
+            ? <img src={avatarUrl} alt={name} className="w-28 h-28 rounded-full object-cover mx-auto mb-4 border-4 border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]" />
+            : <div className="w-28 h-28 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center mx-auto mb-4"><Users size={40} className="text-[var(--org-primary)]" /></div>}
           <h3 className="text-2xl font-bold mb-1" style={{ color: headlineColor }}>{name}</h3>
           {title && <p className="font-semibold mb-3" style={{ color: titleColor }}>{title}</p>}
           {showBio && bio && <div className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: bio }} />}
@@ -2069,8 +2069,8 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
     <div className="py-8 sm:py-10" style={{ backgroundColor: d.bgColor ?? "#fff" }}><CC>
       <div className="flex gap-6 items-start">
         {avatarUrl
-          ? <img src={avatarUrl} alt={name} className="w-24 h-24 rounded-full object-cover flex-shrink-0 border-4 border-teal-100" />
-          : <div className="w-24 h-24 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0"><Users size={32} className="text-teal-600" /></div>}
+          ? <img src={avatarUrl} alt={name} className="w-24 h-24 rounded-full object-cover flex-shrink-0 border-4 border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]" />
+          : <div className="w-24 h-24 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center flex-shrink-0"><Users size={32} className="text-[var(--org-primary)]" /></div>}
         <div className="min-w-0">
           <h3 className="text-xl font-bold" style={{ color: headlineColor }}>{name}</h3>
           {title && <p className="font-semibold mb-2" style={{ color: titleColor }}>{title}</p>}
@@ -2726,7 +2726,7 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
     <div className="space-y-3">
       {isLoading && (
         <div className="flex justify-center py-8">
-          <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-[var(--org-primary)] border-t-transparent rounded-full animate-spin" />
         </div>
       )}
       {!isLoading && !formData && (
@@ -2766,7 +2766,7 @@ export function FormEmbedBlockPreview({ d }: { d: Record<string, any> }) {
                     <div className="space-y-1">
                       {(formData.options ?? []).filter((o: any) => o.itemId === item.id).map((o: any) => (
                         <label key={o.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                          <input type={item.fieldType} name={`item-${item.id}`} value={o.value} className="accent-teal-600" />
+                          <input type={item.fieldType} name={`item-${item.id}`} value={o.value} className="accent-[var(--org-primary)]" />
                           {o.label}
                         </label>
                       ))}

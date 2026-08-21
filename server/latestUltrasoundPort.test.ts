@@ -1813,6 +1813,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(assignmentBlockEditorSource).not.toContain("#0d9488");
   });
 
+  it("uses the active organization theme throughout shared learner and author block previews", () => {
+    const blockPreviewSource = readFileSync(new URL("../client/src/components/BlockPreview.tsx", import.meta.url), "utf8");
+    expect(blockPreviewSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]");
+    expect(blockPreviewSource).toContain("border-[var(--org-primary)] border-t-transparent");
+    expect(blockPreviewSource).toContain("accent-[var(--org-primary)]");
+    expect(blockPreviewSource).toContain("[&_svg]:!text-[var(--org-primary)]");
+    expect(blockPreviewSource).not.toContain("text-violet-400");
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
