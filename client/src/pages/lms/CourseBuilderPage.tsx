@@ -1234,7 +1234,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="mt-4 space-y-4">
-          <CourseSettingsForm course={course} onSave={handleSaveCourseSettings} saving={updateCourse.isPending} />
+          <CourseSettingsForm course={course} activeOrgId={orgId} onSave={handleSaveCourseSettings} saving={updateCourse.isPending} />
           <AffiliateCoursePanel courseId={courseId} />
         </TabsContent>
 
@@ -1594,20 +1594,21 @@ function CertTemplateSelector({ value, onChange }: { value: number | null; onCha
   );
 }
 
-function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (data: any) => void; saving: boolean }) {
+function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: any; activeOrgId: number | null; onSave: (data: any) => void; saving: boolean }) {
   const courseBaseUrl = getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus);
   const [uploadingCover, setUploadingCover] = useState(false);
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10_000_000) { toast.error("Image must be under 10 MB"); return; }
+    if (!activeOrgId) { toast.error("Select an organization before uploading a cover image"); return; }
     e.target.value = "";
     setUploadingCover(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("folder", "course-covers");
-      fd.append("orgId", String(course.orgId ?? 0));
+      fd.append("orgId", String(activeOrgId));
       const res = await fetch("/api/media-upload", { method: "POST", credentials: "include", body: fd });
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error ?? "Upload failed"); }
       const { url } = await res.json();

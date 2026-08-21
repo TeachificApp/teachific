@@ -1511,6 +1511,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(orgLandingEditorSource).not.toContain("orgId={orgId ?? 0}");
   });
 
+  it("uses active organization context for Course Builder cover-image uploads", () => {
+    const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    expect(courseBuilderSource).toContain("<CourseSettingsForm course={course} activeOrgId={orgId}");
+    expect(courseBuilderSource).toContain("activeOrgId: number | null");
+    expect(courseBuilderSource).toContain("if (!activeOrgId) { toast.error");
+    expect(courseBuilderSource).toContain('fd.append("orgId", String(activeOrgId))');
+    expect(courseBuilderSource).not.toContain('fd.append("orgId", String(course.orgId ?? 0))');
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
