@@ -58,7 +58,7 @@ interface BulkCsvUploadPanelProps {
   onSubmit: (emails: string[]) => Promise<BulkResult>;
   /** Whether the mutation is currently running */
   isPending?: boolean;
-  /** Accent color (defaults to brand teal) */
+  /** Accent color (defaults to the active organization theme) */
   accentColor?: string;
   /** Label for the submit button */
   submitLabel?: string;
@@ -71,7 +71,7 @@ interface BulkCsvUploadPanelProps {
 const STATUS_META: Record<BulkRowStatus, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
   success:          { label: "Assigned",         color: "#16a34a", bg: "#dcfce7", Icon: CheckCircle2 },
   already_assigned: { label: "Already had role",  color: "#2563eb", bg: "#dbeafe", Icon: CheckCircle2 },
-  pre_registered:   { label: "Pre-registered",    color: "#7c3aed", bg: "#ede9fe", Icon: CheckCircle2 },
+  pre_registered:   { label: "Pre-registered",    color: "var(--org-primary)", bg: "color-mix(in srgb, var(--org-primary) 12%, transparent)", Icon: CheckCircle2 },
   seat_limit_reached:{ label: "Seat limit",       color: "#dc2626", bg: "#fee2e2", Icon: AlertCircle },
   error:            { label: "Error",             color: "#dc2626", bg: "#fee2e2", Icon: AlertCircle },
 };
@@ -138,7 +138,7 @@ export default function BulkCsvUploadPanel({
   actionSlot,
   onSubmit,
   isPending = false,
-  accentColor = "#189aa1",
+  accentColor = "var(--org-primary)",
   submitLabel = "Assign Roles",
   seatUsage,
 }: BulkCsvUploadPanelProps) {
@@ -255,7 +255,9 @@ export default function BulkCsvUploadPanel({
           onDrop={onDrop}
           onClick={() => fileInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-            isDragging ? "border-[#189aa1] bg-[#189aa1]/05" : "border-gray-200 hover:border-[#189aa1]/50 hover:bg-gray-50"
+            isDragging
+              ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_5%,transparent)]"
+              : "border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_50%,transparent)] hover:bg-gray-50"
           }`}
           style={isDragging ? { borderColor: accentColor } : {}}
         >
@@ -408,7 +410,7 @@ export default function BulkCsvUploadPanel({
                 { label: "Assigned", value: result.succeeded, color: "#16a34a", bg: "#dcfce7" },
                 { label: "Already had role", value: result.alreadyAssigned, color: "#2563eb", bg: "#dbeafe" },
                 ...(result.preRegistered > 0
-                  ? [{ label: "Pre-registered", value: result.preRegistered, color: "#7c3aed", bg: "#ede9fe" }]
+                  ? [{ label: "Pre-registered", value: result.preRegistered, color: "var(--org-primary)", bg: "color-mix(in srgb, var(--org-primary) 12%, transparent)" }]
                   : []),
                 ...(result.seatLimitReached != null && result.seatLimitReached > 0
                   ? [{ label: "Seat limit", value: result.seatLimitReached, color: "#dc2626", bg: "#fee2e2" }]
