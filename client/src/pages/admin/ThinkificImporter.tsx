@@ -223,7 +223,7 @@ export default function ThinkificImporter() {
     const colors: Record<string, string> = {
       video: "bg-blue-100 text-blue-700",
       text: "bg-gray-100 text-gray-700",
-      quiz: "bg-teal-100 text-teal-700",
+      quiz: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
       download: "bg-green-100 text-green-700",
       embed: "bg-orange-100 text-orange-700",
     };
@@ -318,7 +318,7 @@ export default function ThinkificImporter() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-teal-300 text-teal-700 hover:bg-teal-50"
+                        className="border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                         onClick={() => handleOpenResync(imp.lmsCourseId!, imp.thinkificCourseName)}
                         disabled={resyncCourse.isPending}
                       >
@@ -392,7 +392,7 @@ export default function ThinkificImporter() {
                     className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer group ${
                       alreadyImported
                         ? "border-green-200 bg-green-50/40 hover:border-green-400 hover:bg-green-50"
-                        : "hover:border-[#149096] hover:bg-teal-50/30"
+                        : "hover:border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]"
                     }`}
                     onClick={() => handleSelectCourse(course.id)}
                   >
@@ -431,7 +431,7 @@ export default function ThinkificImporter() {
                     <ArrowRight className={`w-4 h-4 transition-colors flex-shrink-0 ${
                       alreadyImported
                         ? "text-green-400 group-hover:text-green-600"
-                        : "text-gray-400 group-hover:text-[#149096]"
+                        : "text-gray-400 group-hover:text-[var(--org-primary)]"
                     }`} />
                   </div>
                 );
@@ -567,7 +567,7 @@ export default function ThinkificImporter() {
                 <Button
                   onClick={handleRunImport}
                   disabled={runImport.isPending}
-                  className="bg-[#149096] hover:bg-[#107a7f] text-white"
+                  className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                 >
                   {runImport.isPending ? (
                     <>
@@ -610,9 +610,9 @@ export default function ThinkificImporter() {
                   <p className="text-2xl font-bold text-green-700">{importResult.lessonsImported}</p>
                   <p className="text-xs text-green-600">Lessons</p>
                 </div>
-                <div className="p-3 rounded-lg bg-teal-50">
-                  <p className="text-2xl font-bold text-teal-700">{importResult.enrolledCount ?? importResult.enrollmentsPending}</p>
-                  <p className="text-xs text-teal-600">Students Enrolled</p>
+                <div className="p-3 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
+                  <p className="text-2xl font-bold text-[var(--org-primary)]">{importResult.enrolledCount ?? importResult.enrollmentsPending}</p>
+                  <p className="text-xs text-[var(--org-primary)]">Students Enrolled</p>
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-800">
@@ -623,7 +623,7 @@ export default function ThinkificImporter() {
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setImportResultOpen(false)}>Close</Button>
                 <Button
-                  className="bg-[#149096] hover:bg-[#107a7f] text-white"
+                  className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                   asChild
                 >
                   <a href={`/admin/lms?courseId=${importResult.lmsCourseId}`}>
@@ -642,7 +642,7 @@ export default function ThinkificImporter() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-teal-600" />
+              <RefreshCw className="w-5 h-5 text-[var(--org-primary)]" />
               Re-sync Course from Thinkific
             </DialogTitle>
             <DialogDescription>
@@ -699,7 +699,7 @@ export default function ThinkificImporter() {
             <Button
               onClick={handleRunResync}
               disabled={resyncCourse.isPending || (!resyncOptions.resyncContent && !resyncOptions.resyncEnrollments && !resyncOptions.resyncLandingPage)}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             >
               {resyncCourse.isPending ? (
                 <>
@@ -736,9 +736,9 @@ export default function ThinkificImporter() {
                   <p className="text-2xl font-bold text-blue-700">{resyncResult.lessonsUpdated}</p>
                   <p className="text-xs text-blue-600">Lessons Updated</p>
                 </div>
-                <div className="p-3 rounded-lg bg-teal-50">
-                  <p className="text-2xl font-bold text-teal-700">{resyncResult.enrollmentsUpdated}</p>
-                  <p className="text-xs text-teal-600">Enrollments Synced</p>
+                <div className="p-3 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
+                  <p className="text-2xl font-bold text-[var(--org-primary)]">{resyncResult.enrollmentsUpdated}</p>
+                  <p className="text-xs text-[var(--org-primary)]">Enrollments Synced</p>
                 </div>
                 <div className="p-3 rounded-lg bg-green-50">
                   <p className="text-2xl font-bold text-green-700">{resyncResult.landingPageUpdated ? "Yes" : "No"}</p>
@@ -761,7 +761,7 @@ export default function ThinkificImporter() {
               <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setResyncResultOpen(false)}>Close</Button>
                 {resyncTargetId && (
-                  <Button className="bg-[#149096] hover:bg-[#107a7f] text-white" asChild>
+                  <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" asChild>
                     <a href={`/admin/lms?courseId=${resyncTargetId}`}>
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Open in LMS Builder

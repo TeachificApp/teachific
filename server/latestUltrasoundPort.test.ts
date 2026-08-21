@@ -2011,6 +2011,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsSalesSource).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout organization Thinkific import controls", () => {
+    const thinkificImporterSource = readFileSync(new URL("../client/src/pages/admin/ThinkificImporter.tsx", import.meta.url), "utf8");
+    expect(thinkificImporterSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(thinkificImporterSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]");
+    expect(thinkificImporterSource).toContain("hover:border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)]");
+    expect(thinkificImporterSource).toContain("text-[var(--org-primary)]");
+    expect(thinkificImporterSource).not.toMatch(/teal|violet|purple/i);
+    expect(thinkificImporterSource).not.toContain("#149096");
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
