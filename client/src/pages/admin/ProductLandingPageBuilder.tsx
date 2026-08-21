@@ -291,7 +291,7 @@ export default function ProductLandingPageBuilder() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/admin/lms?tab=products&editProduct=${productId}`)}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors"
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors"
           >
             <ArrowLeft size={16} /> Back to Product
           </button>
@@ -299,7 +299,7 @@ export default function ProductLandingPageBuilder() {
           <span className="text-sm font-semibold text-gray-800 truncate max-w-xs">
             {productInfo?.title ?? "Loading…"}
           </span>
-          <span className="text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] px-2 py-0.5 rounded-full">
             Product Sales Page
           </span>
         </div>
@@ -309,14 +309,14 @@ export default function ProductLandingPageBuilder() {
               href={`${productPublishBase}/product/${productInfo.slug}?preview=admin`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
             >
               <Eye size={14} /> Preview
             </a>
           )}
           <button
             onClick={() => setShowApplyTemplate(true)}
-            className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 border border-teal-200 bg-teal-50 hover:bg-teal-100 rounded-lg px-3 py-1.5 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-[var(--org-primary)] hover:brightness-90 border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] rounded-lg px-3 py-1.5 transition-colors"
             title="Apply a saved page template"
           >
             <FolderOpen size={14} /> Apply Template
@@ -331,7 +331,7 @@ export default function ProductLandingPageBuilder() {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-1.5 h-8"
+            className="flex items-center gap-1.5 bg-[var(--org-primary)] hover:brightness-90 text-white text-sm px-4 py-1.5 h-8"
           >
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>
@@ -385,7 +385,7 @@ export default function ProductLandingPageBuilder() {
           <div className="p-3">
             <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg transition-colors"
             >
               <Plus size={14} /> Add Block
             </button>
@@ -406,7 +406,7 @@ export default function ProductLandingPageBuilder() {
               </div>
               <button
                 onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-[var(--org-primary)] hover:brightness-90 text-white rounded-lg transition-colors"
               >
                 <Plus size={16} /> Add Your First Block
               </button>
@@ -434,7 +434,7 @@ export default function ProductLandingPageBuilder() {
               <div className="flex justify-center py-6 border-t border-dashed border-gray-200">
                 <button
                   onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                  className="w-full max-w-xs border-2 border-dashed border-teal-300 hover:border-teal-500 rounded-xl py-3 text-teal-600 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
+                  className="w-full max-w-xs border-2 border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-xl py-3 text-[var(--org-primary)] hover:brightness-90 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
                 >
                   <Plus size={16} /> Add Block
                 </button>
@@ -448,7 +448,7 @@ export default function ProductLandingPageBuilder() {
           {/* Drag handle — outside overflow container so it's never clipped */}
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-teal-400 active:bg-teal-500 transition-colors flex items-center justify-center group border-l border-gray-200"
+            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] active:bg-[var(--org-primary)] transition-colors flex items-center justify-center group border-l border-gray-200"
             title="Drag to resize panel"
           >
             <div className="flex flex-col gap-0.5 opacity-40 group-hover:opacity-80">
@@ -484,7 +484,7 @@ export default function ProductLandingPageBuilder() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Display Name (og:title)</label>
                   <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                     placeholder={productInfo?.title ?? "Page title"}
                     value={seoTitle}
                     onChange={e => setSeoTitle(e.target.value)}
@@ -493,7 +493,7 @@ export default function ProductLandingPageBuilder() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Description (og:description)</label>
                   <textarea
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] resize-none"
                     rows={3}
                     placeholder="Short description shown in link previews…"
                     value={seoDescription}
@@ -503,7 +503,7 @@ export default function ProductLandingPageBuilder() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Preview Image URL (og:image)</label>
                   <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                     placeholder="https://…"
                     value={seoImage}
                     onChange={e => setSeoImage(e.target.value)}
@@ -519,14 +519,14 @@ export default function ProductLandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || productInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
+                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
                     </div>
                   </div>
                 )}
                 <button
                   onClick={handleSaveSeo}
                   disabled={saveSeoMutation.isPending}
-                  className="w-full text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-1.5 transition-colors disabled:opacity-50"
+                  className="w-full text-xs font-semibold text-white bg-[var(--org-primary)] hover:brightness-90 rounded-lg py-1.5 transition-colors disabled:opacity-50"
                 >
                   {seoSaved ? "✓ Saved!" : saveSeoMutation.isPending ? "Saving…" : "Save Preview Settings"}
                 </button>
@@ -544,19 +544,19 @@ export default function ProductLandingPageBuilder() {
     <Dialog open={addMenuOpen} onOpenChange={open => { setAddMenuOpen(open); if (!open) setBlockSearch(""); }}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0">
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">
             <Plus className="w-5 h-5" /> Add Content Block
           </DialogTitle>
         </DialogHeader>
         {/* Top-level tabs */}
         <div className="flex gap-1 border-b border-gray-200 shrink-0 -mx-1 px-1 overflow-x-auto scrollbar-hide flex-nowrap">
-          <button onClick={() => setPickerTab("catalog")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "catalog" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>
+          <button onClick={() => setPickerTab("catalog")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "catalog" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>
             <Plus className="w-3.5 h-3.5" /> New Block
           </button>
-          <button onClick={() => setPickerTab("from_pages")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "from_pages" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>
+          <button onClick={() => setPickerTab("from_pages")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "from_pages" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>
             <BookOpen className="w-3.5 h-3.5" /> Copy from Other Pages
           </button>
-          <button onClick={() => setPickerTab("templates")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "templates" ? "text-teal-700 border-b-2 border-teal-500" : "text-gray-500 hover:text-gray-700")}>
+          <button onClick={() => setPickerTab("templates")} className={cn("px-4 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5", pickerTab === "templates" ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>
             <Layers className="w-3.5 h-3.5" /> Block Templates
           </button>
         </div>
@@ -565,13 +565,13 @@ export default function ProductLandingPageBuilder() {
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="flex border-b border-gray-200 overflow-x-auto bg-gray-50 shrink-0">
               {CATALOG_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setActiveCat(cat)} className={cn("px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors", activeCat === cat ? "text-teal-700 border-b-2 border-teal-500 bg-white" : "text-gray-500 hover:text-gray-700")}>{cat}</button>
+                <button key={cat} onClick={() => setActiveCat(cat)} className={cn("px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors", activeCat === cat ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)] bg-white" : "text-gray-500 hover:text-gray-700")}>{cat}</button>
               ))}
             </div>
             <div className="grid grid-cols-4 gap-2 p-1 overflow-y-auto flex-1">
               {catalogByCat.map(b => (
-                <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center">
-                  <span className="text-teal-600 text-2xl">{b.icon}</span>
+                <button key={b.type} onClick={() => { addBlock(b.type); setAddMenuOpen(false); }} className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-gray-600 hover:text-[var(--org-primary)] transition-all text-center">
+                  <span className="text-[var(--org-primary)] text-2xl">{b.icon}</span>
                   <span className="text-xs leading-tight font-medium">{b.label}</span>
                 </button>
               ))}
@@ -584,14 +584,14 @@ export default function ProductLandingPageBuilder() {
             <div className="w-52 shrink-0 flex flex-col gap-2 overflow-y-auto border-r border-gray-100 pr-2">
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course Page</label>
-                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400" value={selectedSourceCourseId ?? ""} onChange={e => { setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null); setSelectedSourceProductId(null); setSelectedSourceDownloadId(null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}>
+                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" value={selectedSourceCourseId ?? ""} onChange={e => { setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null); setSelectedSourceProductId(null); setSelectedSourceDownloadId(null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}>
                   <option value="">— select course —</option>
                   {coursesWithBlocks?.map((c: any) => <option key={c.id} value={c.id} title={c.title}>{c.title}</option>)}
                 </select>
               </div>
               <div className="border-t border-gray-100 pt-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Download Product</label>
-                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400" value={selectedSourceDownloadId ?? ""} onChange={e => { setSelectedSourceDownloadId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceProductId(null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}>
+                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" value={selectedSourceDownloadId ?? ""} onChange={e => { setSelectedSourceDownloadId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceProductId(null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}>
                   <option value="">— select product —</option>
                   {downloadsWithBlocks?.map((d: any) => <option key={d.id} value={d.id}>{d.title}</option>)}
                 </select>
@@ -599,7 +599,7 @@ export default function ProductLandingPageBuilder() {
               <div className="border-t border-gray-100 pt-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Physical Product</label>
                 <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                   value={selectedSourceProductId ?? ""}
                   onChange={e => { setSelectedSourceProductId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceDownloadId(null); setSelectedSourceFunnelId(null); setSelectedSourceFunnelPageId(null); setBlockSearch(""); }}
                 >
@@ -612,7 +612,7 @@ export default function ProductLandingPageBuilder() {
               <div className="border-t border-gray-100 pt-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Funnel Page</label>
                 <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                   value={selectedSourceFunnelId ?? ""}
                   onChange={e => { setSelectedSourceFunnelId(e.target.value ? Number(e.target.value) : null); setSelectedSourceFunnelPageId(null); setSelectedSourceProductId(null); setSelectedSourceCourseId(null); setSelectedSourceDownloadId(null); setBlockSearch(""); }}
                 >
@@ -629,7 +629,7 @@ export default function ProductLandingPageBuilder() {
                     <div className="space-y-1 mt-1">
                       {pages.map((p: any) => (
                         <button key={p.id} onClick={() => { setSelectedSourceFunnelPageId(p.id); setBlockSearch(""); }}
-                          className={cn("w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors", selectedSourceFunnelPageId === p.id ? "bg-teal-50 text-teal-700 font-semibold border border-teal-200" : "text-gray-600 hover:bg-gray-50")}>
+                          className={cn("w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors", selectedSourceFunnelPageId === p.id ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] font-semibold border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]" : "text-gray-600 hover:bg-gray-50")}>
                           {p.title}<span className="text-[10px] text-gray-400 ml-1 capitalize">({p.pageType})</span>
                         </button>
                       ))}
@@ -652,7 +652,7 @@ export default function ProductLandingPageBuilder() {
                       <Input value={blockSearch} onChange={e => setBlockSearch(e.target.value)} placeholder="Search blocks…" className="pl-7 h-7 text-xs" />
                     </div>
                     {activeSourceBlocks.length > 0 && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 shrink-0" onClick={copyAllBlocksFromSource}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] shrink-0" onClick={copyAllBlocksFromSource}>
                         <Copy className="w-3 h-3 mr-1" /> Copy All ({activeSourceBlocks.length})
                       </Button>
                     )}
@@ -663,15 +663,15 @@ export default function ProductLandingPageBuilder() {
                     ) : filteredSourceBlocks.map((b: Block) => {
                       const catalogEntry = BLOCK_CATALOG.find(c => c.type === b.type);
                       return (
-                        <div key={b.id} className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+                        <div key={b.id} className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] group transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                            {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-gray-700 truncate">{catalogEntry?.label ?? b.type}</p>
                               <p className="text-xs text-gray-400 truncate">{b.type}</p>
                             </div>
                           </div>
-                          <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => copyBlockFromSource(b)}>
+                          <Button size="sm" variant="outline" className="h-6 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => copyBlockFromSource(b)}>
                             <Copy className="w-3 h-3 mr-1" /> Copy
                           </Button>
                         </div>
@@ -693,23 +693,23 @@ export default function ProductLandingPageBuilder() {
     <Dialog open={!!saveTemplateDialogBlock} onOpenChange={(open) => { if (!open) setSaveTemplateDialogBlock(null); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">
             <BookmarkPlus className="w-4 h-4" /> Save Block as Template
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Template Name <span className="text-red-500">*</span></label>
-            <input type="text" value={saveTemplateName} onChange={e => setSaveTemplateName(e.target.value)} placeholder="e.g. Hero Banner — Teal" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" autoFocus />
+            <input type="text" value={saveTemplateName} onChange={e => setSaveTemplateName(e.target.value)} placeholder="e.g. Hero Banner" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" autoFocus />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Description <span className="text-gray-400">(optional)</span></label>
-            <input type="text" value={saveTemplateDesc} onChange={e => setSaveTemplateDesc(e.target.value)} placeholder="Brief description" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+            <input type="text" value={saveTemplateDesc} onChange={e => setSaveTemplateDesc(e.target.value)} placeholder="Brief description" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <button onClick={() => setSaveTemplateDialogBlock(null)} className="text-sm text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 transition-colors">Cancel</button>
-          <button disabled={!saveTemplateName.trim() || saveBlockTemplateMutation.isPending} onClick={() => { if (!saveTemplateDialogBlock || !saveTemplateName.trim()) return; saveBlockTemplateMutation.mutate({ name: saveTemplateName.trim(), description: saveTemplateDesc.trim() || undefined, blockType: saveTemplateDialogBlock.type, blockData: JSON.parse(JSON.stringify(saveTemplateDialogBlock.data ?? {})) }); }} className="text-sm bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{saveBlockTemplateMutation.isPending ? "Saving…" : "Save Template"}</button>
+          <button disabled={!saveTemplateName.trim() || saveBlockTemplateMutation.isPending} onClick={() => { if (!saveTemplateDialogBlock || !saveTemplateName.trim()) return; saveBlockTemplateMutation.mutate({ name: saveTemplateName.trim(), description: saveTemplateDesc.trim() || undefined, blockType: saveTemplateDialogBlock.type, blockData: JSON.parse(JSON.stringify(saveTemplateDialogBlock.data ?? {})) }); }} className="text-sm bg-[var(--org-primary)] hover:brightness-90 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{saveBlockTemplateMutation.isPending ? "Saving…" : "Save Template"}</button>
         </div>
       </DialogContent>
     </Dialog>
@@ -730,7 +730,7 @@ function ProductTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Bloc
     <div className="flex flex-col flex-1 overflow-hidden gap-3">
       <div className="flex border-b border-gray-100 shrink-0">
         {(["page", "block"] as const).map(t => (
-          <button key={t} onClick={() => setSubTab(t)} className={cn("flex-1 py-1.5 text-xs font-semibold capitalize transition-colors", subTab === t ? "border-b-2 border-teal-500 text-teal-700" : "text-gray-400 hover:text-gray-600")}>
+          <button key={t} onClick={() => setSubTab(t)} className={cn("flex-1 py-1.5 text-xs font-semibold capitalize transition-colors", subTab === t ? "border-b-2 border-[var(--org-primary)] text-[var(--org-primary)]" : "text-gray-400 hover:text-gray-600")}>
             {t === "page" ? "Page Templates" : "Block Templates"}
           </button>
         ))}
@@ -749,10 +749,10 @@ function ProductTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Bloc
           {filteredPage.map((tpl: any) => {
             const tplBlocks: Block[] = (() => { try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; } })();
             return (
-              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] group transition-colors">
                 <div className="min-w-0"><p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>{tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}<p className="text-xs text-gray-300">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p></div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onInsertBlocks(tplBlocks.map(b => ({ ...b, id: uid() })))}><Plus className="w-3 h-3 mr-1" /> Insert</Button>
+                  <Button size="sm" variant="outline" className="h-6 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onInsertBlocks(tplBlocks.map(b => ({ ...b, id: uid() })))}><Plus className="w-3 h-3 mr-1" /> Insert</Button>
                   <button className="w-6 h-6 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" onClick={() => { if (confirm("Delete this template?")) deletePageTpl.mutate({ id: tpl.id }); }}><X className="w-3 h-3" /></button>
                 </div>
               </div>
@@ -773,13 +773,13 @@ function ProductTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Bloc
             const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
             const block: Block = { id: uid(), type: tpl.blockType as any, data: blockData };
             return (
-              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+              <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] group transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+                  {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                   <div className="min-w-0"><p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>{tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}<p className="text-xs text-gray-300">{catalogEntry?.label ?? tpl.blockType}</p></div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onInsertBlocks([{ ...block, id: uid() }])}><Plus className="w-3 h-3 mr-1" /> Insert</Button>
+                  <Button size="sm" variant="outline" className="h-6 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => onInsertBlocks([{ ...block, id: uid() }])}><Plus className="w-3 h-3 mr-1" /> Insert</Button>
                   <button className="w-6 h-6 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" onClick={() => { if (confirm("Delete this template?")) deleteBlockTpl.mutate({ id: tpl.id }, { onSuccess: () => utils.blockTemplates.list.invalidate() }); }}><X className="w-3 h-3" /></button>
                 </div>
               </div>
@@ -794,24 +794,25 @@ function ProductTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Bloc
 
 // ─── Default blocks for a new product sales page ─────────────────────────────
 function getDefaultBlocks(title: string): Block[] {
+  const primary = getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim();
   return [
     {
       id: uid(), type: "hero",
       data: {
         headline: title || "Your Product Headline",
         subheadline: "A compelling subtitle that explains the value",
-        bgType: "gradient", gradientFrom: "#179ca3", gradientTo: "#0e4a50",
+        bgType: "gradient", gradientFrom: primary, gradientTo: primary,
         gradientDir: "to bottom right", textColor: "#ffffff", align: "left",
-        buttons: [{ text: "Buy Now", color: "#ffffff", textColor: "#179ca3", link: "", style: "filled" }],
+        buttons: [{ text: "Buy Now", color: "#ffffff", textColor: primary, link: "", style: "filled" }],
       },
     },
     {
       id: uid(), type: "bullets",
-      data: { headline: "What's Included", items: ["Feature one", "Feature two", "Feature three"], iconColor: "#179ca3", bgColor: "#f8fffe" },
+      data: { headline: "What's Included", items: ["Feature one", "Feature two", "Feature three"], iconColor: primary, bgColor: "#ffffff" },
     },
     {
       id: uid(), type: "pricing_cta",
-      data: { headline: "Order Now", subtext: "Ships within 3-5 business days.", ctaText: "Buy Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true },
+      data: { headline: "Order Now", subtext: "Ships within 3-5 business days.", ctaText: "Buy Now", ctaColor: primary, ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true },
     },
   ];
 }
@@ -833,13 +834,13 @@ function ProductApplyTemplateModal({ onClose, onApply }: { onClose: () => void; 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-[640px] max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-teal-600" /> Apply Page Template</h2>
+          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-[var(--org-primary)]" /> Apply Page Template</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <div className="px-4 pt-3 pb-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -858,12 +859,12 @@ function ProductApplyTemplateModal({ onClose, onApply }: { onClose: () => void; 
                   try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; }
                 })();
                 return (
-                  <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-teal-300 hover:bg-teal-50/30 transition-colors group">
+                  <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] transition-colors group">
                     <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{tpl.name}</h3>
                     {tpl.description && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{tpl.description}</p>}
                     <p className="text-xs text-gray-400 mb-3">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p>
                     <div className="flex gap-2">
-                      <Button onClick={() => onApply(tplBlocks)} className="flex-1 h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white">Apply Template</Button>
+                      <Button onClick={() => onApply(tplBlocks)} className="flex-1 h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white">Apply Template</Button>
                       <button onClick={() => { if (confirm("Delete this template?")) deletePageTpl.mutate({ id: tpl.id }); }} className="w-7 h-7 border border-gray-200 rounded text-gray-400 hover:text-red-500 flex items-center justify-center flex-shrink-0"><Trash2 size={12} /></button>
                     </div>
                   </div>
