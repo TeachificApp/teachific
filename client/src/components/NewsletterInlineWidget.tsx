@@ -53,11 +53,11 @@ export default function NewsletterInlineWidget({
 
   if (subscribed) {
     return (
-      <div className={`rounded-xl px-6 py-5 flex items-center gap-4 ${dark ? "bg-white/10 text-white" : "bg-teal-50 text-teal-800"}`}>
-        <CheckCircle2 className="w-7 h-7 flex-shrink-0 text-[#189aa1]" />
+      <div className={`rounded-xl px-6 py-5 flex items-center gap-4 ${dark ? "bg-white/10 text-white" : "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]"}`}>
+        <CheckCircle2 className="w-7 h-7 flex-shrink-0 text-[var(--org-primary)]" />
         <div>
           <p className="font-semibold text-sm">You're subscribed!</p>
-          <p className={`text-xs mt-0.5 ${dark ? "text-white/70" : "text-teal-600"}`}>
+          <p className={`text-xs mt-0.5 ${dark ? "text-white/70" : "text-[var(--org-primary)]"}`}>
             Thank you — you'll receive updates from {orgName}.
           </p>
         </div>
@@ -68,10 +68,10 @@ export default function NewsletterInlineWidget({
   const subscribeUrl = orgSlug ? `/subscribe?org=${orgSlug}` : "/subscribe";
 
   return (
-    <div className={`rounded-xl px-6 py-6 ${dark ? "bg-white/10" : "bg-teal-50 border border-teal-100"}`}>
+    <div className={`rounded-xl px-6 py-6 ${dark ? "bg-white/10" : "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]"}`}>
       <div className="flex items-center gap-2 mb-3">
-        <Mail className={`w-4 h-4 ${dark ? "text-[#4ad9e0]" : "text-[#189aa1]"}`} />
-        <span className={`text-xs font-semibold uppercase tracking-wider ${dark ? "text-[#4ad9e0]" : "text-[#189aa1]"}`}>
+        <Mail className="w-4 h-4 text-[var(--org-primary)]" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--org-primary)]">
           Newsletter
         </span>
       </div>
@@ -87,7 +87,7 @@ export default function NewsletterInlineWidget({
           placeholder="First name (optional)"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          className={`sm:w-32 flex-shrink-0 text-sm h-9 ${dark ? "bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#4ad9e0]" : "border-gray-300 focus:border-[#189aa1]"}`}
+          className={`sm:w-32 flex-shrink-0 text-sm h-9 ${dark ? "bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[var(--org-primary)]" : "border-gray-300 focus:border-[var(--org-primary)]"}`}
         />
         <Input
           type="email"
@@ -95,12 +95,12 @@ export default function NewsletterInlineWidget({
           placeholder="Email address"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={`flex-1 text-sm h-9 ${dark ? "bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#4ad9e0]" : "border-gray-300 focus:border-[#189aa1]"}`}
+          className={`flex-1 text-sm h-9 ${dark ? "bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[var(--org-primary)]" : "border-gray-300 focus:border-[var(--org-primary)]"}`}
         />
         <Button
           type="submit"
           disabled={subscribeMutation.isPending}
-          className="h-9 px-4 text-sm font-semibold bg-[#189aa1] hover:bg-[#147f85] text-white flex-shrink-0 flex items-center gap-1.5"
+          className="h-9 px-4 text-sm font-semibold bg-[var(--org-primary)] hover:brightness-90 text-white flex-shrink-0 flex items-center gap-1.5"
         >
           {subscribeMutation.isPending ? "…" : (
             <>Subscribe <ArrowRight className="w-3.5 h-3.5" /></>
@@ -111,7 +111,7 @@ export default function NewsletterInlineWidget({
         No spam. Unsubscribe at any time.{" "}
         <a
           href={subscribeUrl}
-          className={`underline ${dark ? "text-white/60 hover:text-white" : "text-[#189aa1] hover:text-[#147f85]"}`}
+          className={`underline ${dark ? "text-white/60 hover:text-white" : "text-[var(--org-primary)] hover:brightness-90"}`}
         >
           More options →
         </a>

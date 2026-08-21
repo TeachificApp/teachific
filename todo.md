@@ -5660,6 +5660,7 @@
 - [x] Prevent the platform-home redirect state from rendering an organization dashboard with a numeric fallback
 - [x] Apply the active organization theme to recording-library saved state feedback
 - [x] Apply the active organization theme to Question Bank SCORM/QTI import guidance
+- [x] Apply organization-resolved theme colors to public newsletter inline widgets
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
