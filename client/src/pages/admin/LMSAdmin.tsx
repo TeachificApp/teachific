@@ -11990,7 +11990,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <h3 className="text-base font-semibold text-gray-900">Cohort Groups</h3>
               <p className="text-sm text-gray-500 mt-0.5">Create separate cohort groups (e.g. June 2026, January 2027). Each group has its own page and student list. Students only see their assigned group.</p>
             </div>
-            <Button size="sm" onClick={() => openGroupDialog()} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Button size="sm" onClick={() => openGroupDialog()} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
               <Plus className="w-3.5 h-3.5 mr-1" /> New Group
             </Button>
           </div>
@@ -12002,7 +12002,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <div className="text-4xl mb-3">👥</div>
               <p className="text-gray-500 font-medium">No cohort groups yet</p>
               <p className="text-sm text-gray-400 mt-1">Create groups like "June 2026 Cohort" or "January 2027 Cohort"</p>
-              <Button size="sm" onClick={() => openGroupDialog()} className="mt-4 bg-teal-600 hover:bg-teal-700 text-white">
+              <Button size="sm" onClick={() => openGroupDialog()} className="mt-4 bg-[var(--org-primary)] hover:brightness-90 text-white">
                 <Plus className="w-3.5 h-3.5 mr-1" /> Create First Group
               </Button>
             </div>
@@ -12019,7 +12019,7 @@ function CohortTab({ courseId }: { courseId: number }) {
             )}
             <div className="grid gap-3">
               {cohortGroups.map((group: any) => (
-                <div key={group.id} className={cn("border rounded-xl p-4 bg-white shadow-sm", selectedGroupId === group.id && "ring-2 ring-teal-500")}>
+                <div key={group.id} className={cn("border rounded-xl p-4 bg-white shadow-sm", selectedGroupId === group.id && "ring-2 ring-[var(--org-primary)]")}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -12037,7 +12037,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" variant="outline" className="text-xs border-teal-300 text-teal-700 hover:bg-teal-50"
+                      <Button size="sm" variant="outline" className="text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                         onClick={() => window.open(`/admin/lms/${courseId}/cohorts/${group.id}/page-builder`, "_blank")}>
                         Edit Page
                       </Button>
@@ -12071,9 +12071,9 @@ function CohortTab({ courseId }: { courseId: number }) {
                               <div className="flex items-center gap-1">
                                 <Button size="sm" variant="ghost" onClick={() => setActivityDialog({ userId: s.userId, userName: s.userName ?? s.userEmail ?? "Student" })} className="text-xs text-blue-600 hover:text-blue-800 h-6 px-2">Activity</Button>
                                 {cohortGroups.filter((g: any) => g.id !== group.id).length > 0 && (
-                                  <Button size="sm" variant="ghost" onClick={() => setTransferDialog({ userId: s.userId, userName: s.userName ?? s.userEmail ?? "Student", fromGroupId: group.id })} className="text-xs text-teal-600 hover:text-teal-800 h-6 px-2">Transfer</Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setTransferDialog({ userId: s.userId, userName: s.userName ?? s.userEmail ?? "Student", fromGroupId: group.id })} className="text-xs text-[var(--org-primary)] hover:brightness-75 h-6 px-2">Transfer</Button>
                                 )}
-                                <Button size="sm" variant="ghost" title="View student profile" onClick={() => window.open(`/admin/users/${s.userId}`, '_blank')} className="h-6 w-6 p-0 text-teal-500 hover:bg-teal-50">
+                                <Button size="sm" variant="ghost" title="View student profile" onClick={() => window.open(`/admin/users/${s.userId}`, '_blank')} className="h-6 w-6 p-0 text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
                                   <ExternalLink className="w-3 h-3" />
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => removeStudent.mutate({ cohortGroupId: group.id, userId: s.userId })} className="text-xs text-red-500 hover:text-red-700 h-6 px-2">Remove</Button>
@@ -12085,15 +12085,15 @@ function CohortTab({ courseId }: { courseId: number }) {
 
                       {/* Discussion thread button */}
                       <div className="mt-3 flex justify-end">
-                        <Button size="sm" variant="outline" onClick={() => setDiscussionGroupId(discussionGroupId === group.id ? null : group.id)} className="text-xs text-teal-700 border-teal-300 hover:bg-teal-50">
+                        <Button size="sm" variant="outline" onClick={() => setDiscussionGroupId(discussionGroupId === group.id ? null : group.id)} className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
                           💬 {discussionGroupId === group.id ? "Hide Discussion" : "Group Discussion"}
                         </Button>
                       </div>
 
                       {/* Discussion thread panel */}
                       {discussionGroupId === group.id && (
-                        <div className="mt-3 border border-teal-200 rounded-xl bg-teal-50/30 p-4 space-y-3">
-                          <div className="text-sm font-semibold text-teal-800">Group Discussion Thread</div>
+                        <div className="mt-3 border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] p-4 space-y-3">
+                          <div className="text-sm font-semibold text-[var(--org-primary)]">Group Discussion Thread</div>
                           {/* Messages */}
                           <div className="space-y-2 max-h-80 overflow-y-auto">
                             {cohortMessages.length === 0 ? (
@@ -12103,14 +12103,14 @@ function CohortTab({ courseId }: { courseId: number }) {
                                 {msg.userAvatar ? (
                                   <img src={msg.userAvatar} alt={msg.userDisplayName || msg.userName || '?'} className="w-7 h-7 rounded-full object-cover shrink-0" />
                                 ) : (
-                                  <div className="w-7 h-7 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                  <div className="w-7 h-7 rounded-full bg-[var(--org-primary)] flex items-center justify-center text-white text-xs font-bold shrink-0">
                                     {(msg.userDisplayName ?? msg.userName ?? msg.userEmail ?? "?")[0].toUpperCase()}
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-semibold text-gray-800">{msg.userDisplayName ?? msg.userName ?? msg.userEmail}</span>
-                                    {msg.isAdminPost && <span className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">Admin</span>}
+                                    {msg.isAdminPost && <span className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] px-1.5 py-0.5 rounded font-medium">Admin</span>}
                                     <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</span>
                                     <button onClick={() => { if (confirm("Delete this message?")) deleteMessage.mutate({ id: msg.id }); }} className="ml-auto text-xs text-red-400 hover:text-red-600">Delete</button>
                                   </div>
@@ -12123,7 +12123,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                                         ) : m.mimeType?.startsWith("video/") ? (
                                           <video key={i} src={m.url} controls className="max-h-40 rounded-lg border border-gray-200" />
                                         ) : (
-                                          <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 underline">{m.fileName}</a>
+                                          <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--org-primary)] underline">{m.fileName}</a>
                                         )
                                       ))}
                                     </div>
@@ -12133,7 +12133,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                             ))}
                           </div>
                           {/* Compose */}
-                          <div className="border-t border-teal-200 pt-3 space-y-2">
+                          <div className="border-t border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] pt-3 space-y-2">
                             <RichTextEditor value={messageBody} onChange={setMessageBody} placeholder="Write a message to this cohort group..." />
                             {messageMedia.length > 0 && (
                               <div className="flex flex-wrap gap-2">
@@ -12150,11 +12150,11 @@ function CohortTab({ courseId }: { courseId: number }) {
                               </div>
                             )}
                             <div className="flex items-center gap-2">
-                              <label className="cursor-pointer text-xs text-teal-600 hover:text-teal-800 border border-teal-300 rounded px-2 py-1">
+                              <label className="cursor-pointer text-xs text-[var(--org-primary)] hover:brightness-75 border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded px-2 py-1">
                                 {uploadingMedia ? "Uploading..." : "📎 Attach"}
                                 <input type="file" accept="image/*,video/*" className="hidden" disabled={uploadingMedia} onChange={e => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f); e.target.value = ""; }} />
                               </label>
-                              <Button size="sm" onClick={() => postMessage.mutate({ cohortGroupId: group.id, courseId, body: messageBody || undefined, mediaUrls: messageMedia.length > 0 ? messageMedia : undefined })} disabled={postMessage.isPending || (!messageBody.trim() && messageMedia.length === 0)} className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-7 px-3 ml-auto">
+                              <Button size="sm" onClick={() => postMessage.mutate({ cohortGroupId: group.id, courseId, body: messageBody || undefined, mediaUrls: messageMedia.length > 0 ? messageMedia : undefined })} disabled={postMessage.isPending || (!messageBody.trim() && messageMedia.length === 0)} className="bg-[var(--org-primary)] hover:brightness-90 text-white text-xs h-7 px-3 ml-auto">
                                 {postMessage.isPending ? "Posting..." : "Post"}
                               </Button>
                             </div>
@@ -12168,7 +12168,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700">Unassigned students ({unassignedStudents.length})</span>
                             {bulkSelected.length > 0 && (
-                              <Button size="sm" onClick={() => bulkAssign.mutate({ cohortGroupId: group.id, courseId, userIds: bulkSelected })} className="text-xs bg-teal-600 hover:bg-teal-700 text-white h-7">
+                              <Button size="sm" onClick={() => bulkAssign.mutate({ cohortGroupId: group.id, courseId, userIds: bulkSelected })} className="text-xs bg-[var(--org-primary)] hover:brightness-90 text-white h-7">
                                 Assign {bulkSelected.length} selected
                               </Button>
                             )}
@@ -12176,12 +12176,12 @@ function CohortTab({ courseId }: { courseId: number }) {
                           <div className="divide-y divide-gray-100 rounded-lg border border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
                             {unassignedStudents.map((s: any) => (
                               <div key={s.userId} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-gray-50">
-                                <input type="checkbox" checked={bulkSelected.includes(s.userId)} onChange={e => setBulkSelected(prev => e.target.checked ? [...prev, s.userId] : prev.filter(id => id !== s.userId))} className="w-3.5 h-3.5 accent-teal-600" />
+                                <input type="checkbox" checked={bulkSelected.includes(s.userId)} onChange={e => setBulkSelected(prev => e.target.checked ? [...prev, s.userId] : prev.filter(id => id !== s.userId))} className="w-3.5 h-3.5 accent-[var(--org-primary)]" />
                                 <div className="flex-1 min-w-0">
                                   <span className="text-sm font-medium text-gray-800">{s.userName}</span>
                                   <span className="text-xs text-gray-400 ml-2">{s.userEmail}</span>
                                 </div>
-                                <Button size="sm" variant="ghost" onClick={() => assignStudent.mutate({ cohortGroupId: group.id, userId: s.userId, courseId })} className="text-xs text-teal-600 hover:text-teal-800 h-6 px-2">Assign</Button>
+                                <Button size="sm" variant="ghost" onClick={() => assignStudent.mutate({ cohortGroupId: group.id, userId: s.userId, courseId })} className="text-xs text-[var(--org-primary)] hover:brightness-75 h-6 px-2">Assign</Button>
                               </div>
                             ))}
                           </div>
