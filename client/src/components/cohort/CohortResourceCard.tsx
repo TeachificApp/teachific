@@ -23,7 +23,7 @@ export function CohortResourceCard({ resource }: { resource: CohortResourceView 
   const actionButton = href ? (
     <Button
       size="sm"
-      className="h-8 text-xs gap-1.5 bg-teal-600 hover:bg-teal-700 text-white"
+      className="h-8 text-xs gap-1.5 bg-[var(--org-primary)] hover:brightness-90 text-white"
       asChild
     >
       <a
@@ -51,11 +51,11 @@ export function CohortResourceCard({ resource }: { resource: CohortResourceView 
           />
         </div>
       ) : (
-        <div className="aspect-[16/9] bg-gradient-to-br from-teal-50 to-teal-100 flex items-center justify-center">
+        <div className="aspect-[16/9] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] flex items-center justify-center">
           {isDownload ? (
-            <Download className="w-10 h-10 text-teal-400" />
+            <Download className="w-10 h-10 text-[var(--org-primary)] opacity-55" />
           ) : (
-            <Link2 className="w-10 h-10 text-teal-400" />
+            <Link2 className="w-10 h-10 text-[var(--org-primary)] opacity-55" />
           )}
         </div>
       )}
@@ -66,7 +66,7 @@ export function CohortResourceCard({ resource }: { resource: CohortResourceView 
           </h3>
           <Badge
             variant="outline"
-            className="text-[10px] flex-shrink-0 border-teal-200 text-teal-700 bg-teal-50"
+            className="text-[10px] flex-shrink-0 border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
           >
             {isDownload ? "Download" : "Link"}
           </Badge>
