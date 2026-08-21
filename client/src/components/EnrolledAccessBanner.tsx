@@ -3,7 +3,7 @@
  *
  * Shown at the very top of a landing page when the logged-in user already has
  * access to the content (enrolled in a course, purchased a download/bundle, etc.).
- * Teal, slightly transparent, sticky, clickable — takes the user straight to the
+ * Organization-themed, slightly transparent, sticky, clickable — takes the user straight to the
  * content.
  *
  * Usage:
@@ -28,11 +28,11 @@ export function EnrolledAccessBanner({ href, label = "Continue Learning", subtit
       href={href}
       className="block w-full sticky top-0 z-50 group"
       style={{
-        background: "rgba(20, 184, 166, 0.88)", // teal-500 at ~88% opacity
+        background: "color-mix(in srgb, var(--org-primary) 88%, transparent)",
         backdropFilter: "blur(6px)",
         WebkitBackdropFilter: "blur(6px)",
         borderBottom: "1px solid rgba(255,255,255,0.18)",
-        boxShadow: "0 2px 12px rgba(20,184,166,0.25)",
+        boxShadow: "0 2px 12px color-mix(in srgb, var(--org-primary) 25%, transparent)",
       }}
     >
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">

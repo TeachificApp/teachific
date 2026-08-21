@@ -1980,6 +1980,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workflowSource).not.toMatch(/(?:Teachific|teal|violet|purple)/);
   });
 
+  it("uses the active organization theme for learner enrollment access notifications", () => {
+    const accessBannerSource = readFileSync(new URL("../client/src/components/EnrolledAccessBanner.tsx", import.meta.url), "utf8");
+    expect(accessBannerSource).toContain("var(--org-primary)");
+    expect(accessBannerSource).toContain("color-mix(in srgb, var(--org-primary) 88%, transparent)");
+    expect(accessBannerSource).not.toMatch(/(?:teal|violet|purple|20, 184, 166)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
