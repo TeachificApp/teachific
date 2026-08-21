@@ -1701,6 +1701,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lessonQuizSource).not.toContain("border-teal-500 bg-teal-500 text-white");
   });
 
+  it("uses active organization theming throughout digital download administration controls", () => {
+    const downloadsAdminSource = readFileSync(new URL("../client/src/pages/admin/DigitalDownloadsAdmin.tsx", import.meta.url), "utf8");
+    expect(downloadsAdminSource).toContain("data-[state=active]:border-[var(--org-primary)]");
+    expect(downloadsAdminSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(downloadsAdminSource).toContain("text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]");
+    expect(downloadsAdminSource).toContain("hover:border-[var(--org-primary)]");
+    expect(downloadsAdminSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]");
+    expect(downloadsAdminSource).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

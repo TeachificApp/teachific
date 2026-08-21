@@ -5677,6 +5677,7 @@
 - [x] Remove seeded testimonials from WYSIWYG add controls and funnel authoring defaults
 - [x] Verify authoring defaults contain no seeded testimonial or review examples
 - [x] Apply the active organization theme to Lesson Quiz Block Editor authoring controls
+- [x] Apply the active organization theme to digital download administration controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
