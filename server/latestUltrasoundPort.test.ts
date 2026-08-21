@@ -1054,6 +1054,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaSource).toContain("const fallbackOrgId = input.orgId ?? await requireOrgId(ctx.user.id);");
     expect(mediaSource).toContain("One or more media items were not found");
     expect((mediaSource.match(/requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(routerSource).toContain("const user = await getUserById(userId);");
+    expect(routerSource).toContain("getOrgIdForUserWithFallback(userId, user?.role ?? \"member\")");
+    expect(routerSource).not.toContain("const orgId = await getOrgIdForUser(userId);");
   });
 
   it("requires organization-admin ownership for legacy LMS AI generation and course-copy operations", () => {

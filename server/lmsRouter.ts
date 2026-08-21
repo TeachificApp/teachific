@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getOrgIdForUser, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
@@ -205,7 +205,8 @@ import { funnelRouter } from "./routers/funnelRouter";
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 async function requireOrgId(userId: number): Promise<number> {
-  const orgId = await getOrgIdForUser(userId);
+  const user = await getUserById(userId);
+  const orgId = await getOrgIdForUserWithFallback(userId, user?.role ?? "member");
   if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found for user" });
   return orgId;
 }
