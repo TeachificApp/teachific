@@ -2067,6 +2067,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).not.toMatch(/(?:text-teal-400|bg-teal-500\/20|hover:bg-teal-500\/30|hover:text-teal-300)/);
   });
 
+  it("uses the active organization theme for quiz builder authoring surfaces", () => {
+    const quizBuilderSource = readFileSync(new URL("../client/src/pages/QuizBuilderPage.tsx", import.meta.url), "utf8");
+    expect(quizBuilderSource).toContain('Sparkles className="h-4 w-4 text-[var(--org-primary)]"');
+    expect(quizBuilderSource).toContain('Sparkles className="h-5 w-5 text-[var(--org-primary)]"');
+    expect(quizBuilderSource).not.toContain("text-purple-500");
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

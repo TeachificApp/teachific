@@ -5601,6 +5601,8 @@
 - [x] Apply the active organization theme to quiz administration surfaces
 - [x] Apply the active organization theme to form analytics learner surfaces
 - [x] Apply the active organization theme to learner course player surfaces
+- [x] Review Page Builder authoring surfaces; retain its existing theme-derived accent configuration
+- [x] Apply the active organization theme to quiz builder authoring surfaces
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

@@ -297,7 +297,7 @@ export default function QuizBuilderPage() {
             setAiOpen(true);
           }}
         >
-          <Sparkles className="h-4 w-4 text-purple-500" />
+          <Sparkles className="h-4 w-4 text-[var(--org-primary)]" />
           AI Generate
         </Button>
         <Button variant="outline" onClick={handleImportExcel} className="gap-2"><Upload className="h-4 w-4" />Import</Button>
@@ -379,7 +379,7 @@ export default function QuizBuilderPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-500" />
+              <Sparkles className="h-5 w-5 text-[var(--org-primary)]" />
               AI Quiz Generator
             </DialogTitle>
             <DialogDescription>
