@@ -1285,12 +1285,12 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
         <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
         <Button
           size="sm" variant="outline"
-          className="h-8 text-xs text-teal-600 border-teal-300"
+          className="h-8 text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]"
           onClick={() => openLearnLink(`/courses/${course.slug}/player`)}
         >
           <Eye className="w-3 h-3 mr-1" /> Preview Course
         </Button>
-        <Button size="sm" variant="outline" className="h-8 text-xs text-teal-600 border-teal-300 hover:bg-teal-50"
+        <Button size="sm" variant="outline" className="h-8 text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
           onClick={() => openLearnLink(`/courses/${course.slug}/player?preview=student`)}
         >
           <Users className="w-3 h-3 mr-1" /> Preview as Student
@@ -1332,7 +1332,7 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
           <div className="space-y-4">
             {/* Quick-add buttons at the top */}
             <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setAddLessonAtCourseLevel(true)}>
+              <Button size="sm" variant="outline" className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => setAddLessonAtCourseLevel(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Lesson (No Section)
               </Button>
               <Button size="sm" variant="outline" className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => setAddSectionOpen(true)}>
@@ -1349,9 +1349,9 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
               {/* Top-level lessons (no section) */}
               {localTopLessons.length > 0 && (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-teal-50 border-b border-teal-200">
-                    <span className="font-medium text-sm text-teal-800 flex-1">Course-Level Lessons</span>
-                    <span className="text-xs text-teal-600">Not inside any section</span>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-b border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
+                    <span className="font-medium text-sm text-[var(--org-primary)] flex-1">Course-Level Lessons</span>
+                    <span className="text-xs text-[var(--org-primary)]">Not inside any section</span>
                   </div>
                   <SortableContext items={localTopLessons.map((l: any) => l.id)} strategy={verticalListSortingStrategy}>
                     <div className="divide-y divide-gray-100">
@@ -1418,7 +1418,7 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
 
               <DragOverlay>
                 {activeDragId ? (
-                  <div className="bg-white border border-teal-300 rounded-lg px-4 py-2 shadow-xl text-sm text-teal-700 font-medium opacity-90 cursor-grabbing">
+                  <div className="bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-lg px-4 py-2 shadow-xl text-sm text-[var(--org-primary)] font-medium opacity-90 cursor-grabbing">
                     Moving...
                   </div>
                 ) : null}
@@ -1426,7 +1426,7 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
             </DndContext>
 
             <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setAddLessonAtCourseLevel(true)}>
+              <Button size="sm" variant="outline" className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => setAddLessonAtCourseLevel(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Lesson (No Section)
               </Button>
               <Button size="sm" variant="outline" className="border-dashed border-gray-300 text-gray-600 hover:bg-gray-50" onClick={() => setAddSectionOpen(true)}>
@@ -1507,7 +1507,7 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
                     <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       Customise the sections shown on the hosted checkout page at{" "}
-                      <a href={`/checkout/${course.slug}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                      <a href={`/checkout/${course.slug}`} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline font-medium">
                         /checkout/{course.slug}
                       </a>.
                       Use the full-screen editor to add trust seals, testimonials, FAQs, guarantees, and more.
@@ -1525,7 +1525,7 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
                     </a>
                     <a
                       href={`/admin/checkout-editor/course/${courseId}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90 font-medium"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       Open Page Editor
@@ -1535,7 +1535,7 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
                 <div className="mt-5 grid grid-cols-3 gap-3">
                   {["Trust Seals & Badges","Course Includes","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
                     <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="w-2 h-2 rounded-full bg-teal-400" />
+                      <div className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
                       <span className="text-xs text-gray-600">{s}</span>
                     </div>
                   ))}
@@ -1668,14 +1668,14 @@ function CourseEditor({ courseId, onBack, onTypeChangedToWorkshop }: { courseId:
               </p>
               <div className="space-y-3">
                 <button
-                  className="w-full text-left border border-teal-300 rounded-lg px-4 py-3 hover:bg-teal-50 transition-colors group"
+                  className="w-full text-left border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-lg px-4 py-3 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors group"
                   onClick={async () => {
                     await bulkSetLessonStatus.mutateAsync({ courseId, lessonStatus: "published", onlyDrafts: true });
                     updateCourse.mutate({ id: courseId, ...publishDialog.pendingData });
                     setPublishDialog(null);
                   }}
                 >
-                  <p className="text-sm font-semibold text-teal-700 group-hover:text-teal-800">Publish all lessons</p>
+                  <p className="text-sm font-semibold text-[var(--org-primary)] group-hover:brightness-90">Publish all lessons</p>
                   <p className="text-xs text-gray-500 mt-0.5">All {draftCount} draft {draftCount === 1 ? "lesson" : "lessons"} will be published and visible to enrolled learners.</p>
                 </button>
                 <button
