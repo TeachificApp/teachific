@@ -751,12 +751,12 @@ export default function MembershipEditorPage() {
             </div>
           </div>
         )}
-        {activeTab === "checkout_page" && currentMembership && (
+        {activeTab === "checkout_page" && currentMembership && orgId && (
           <div className="max-w-3xl mx-auto">
             <CheckoutPageEditor
               contentType="membership"
               contentId={currentMembership.id}
-              orgId={currentMembership.orgId ?? orgId ?? 1}
+              orgId={orgId}
               contentSlug={String(currentMembership.id)}
             />
           </div>
