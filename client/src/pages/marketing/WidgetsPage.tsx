@@ -161,7 +161,7 @@ export default function WidgetsPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Code2 className="h-4 w-4 text-teal-600" /> Embed Code
+                  <Code2 className="h-4 w-4 text-[var(--org-primary)]" /> Embed Code
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Copy this code and paste it into your website's HTML where you want the widget to appear.
@@ -200,7 +200,7 @@ export default function WidgetsPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-teal-600" /> Live Preview
+                  <Eye className="h-4 w-4 text-[var(--org-primary)]" /> Live Preview
                 </CardTitle>
                 <CardDescription className="text-xs">
                   This is how the widget will appear on external websites.

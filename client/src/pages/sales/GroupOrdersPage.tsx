@@ -34,10 +34,10 @@ export default function GroupOrdersPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="w-6 h-6 text-teal-600" /> Group Orders</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="w-6 h-6 text-[var(--org-primary)]" /> Group Orders</h1>
           <p className="text-muted-foreground mt-1">Manage bulk registrations and seat allocations for organizations</p>
         </div>
-        <Button onClick={() => setShowNew(true)} className=" hover:"><Plus className="w-4 h-4 mr-2" /> New Group Order</Button>
+        <Button onClick={() => setShowNew(true)} className="org-primary-button"><Plus className="w-4 h-4 mr-2" /> New Group Order</Button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{orders.filter(o => o.status === "active").length}</p><p className="text-sm text-muted-foreground">Active Orders</p></CardContent></Card>
@@ -67,7 +67,7 @@ export default function GroupOrdersPage() {
                 <tr key={o.id} className="border-b hover:bg-muted/20">
                   <td className="p-3"><div className="font-medium">{o.org}</div><div className="text-xs text-muted-foreground">{o.contact}</div></td>
                   <td className="p-3">{o.course}</td>
-                  <td className="p-3"><div>{o.used} / {o.seats} used</div><div className="w-full bg-gray-200 rounded-full h-1.5 mt-1"><div className="bg-teal-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (o.used / o.seats) * 100)}%` }}></div></div></td>
+                  <td className="p-3"><div>{o.used} / {o.seats} used</div><div className="w-full bg-gray-200 rounded-full h-1.5 mt-1"><div className="bg-[var(--org-primary)] h-1.5 rounded-full" style={{ width: `${Math.min(100, (o.used / o.seats) * 100)}%` }}></div></div></td>
                   <td className="p-3">${o.amount.toLocaleString()}</td>
                   <td className="p-3"><Badge className={o.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}>{o.status}</Badge></td>
                   <td className="p-3"><Button size="sm" variant="outline" onClick={() => toast.info("Opening order details...")}><Eye className="w-3 h-3 mr-1" />View</Button></td>
@@ -88,7 +88,7 @@ export default function GroupOrdersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancel</Button>
-            <Button onClick={handleCreate} className=" hover:">Create Order</Button>
+            <Button onClick={handleCreate} className="org-primary-button">Create Order</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

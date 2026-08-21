@@ -5617,6 +5617,9 @@
 - [x] Apply the active organization theme to admin users page role badge colors
 - [x] Apply the active organization theme to Kajabi importer product synchronization cues
 - [x] Apply the active organization theme to Teachable and Thinkific importer product synchronization cues
+- [x] Apply the active organization theme to widget embed-code and preview controls
+- [x] Apply the active organization theme to group order creation and allocation controls
+- [x] Apply the active organization theme to the highlighted Builder billing plan
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

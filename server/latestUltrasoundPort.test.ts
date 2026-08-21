@@ -1825,6 +1825,30 @@ describe("latest Ultrasound-App learning feature port", () => {
     }
   });
 
+  it("uses the active organization theme for widget embed-code and preview controls", () => {
+    const widgetsPageSource = readFileSync(new URL("../client/src/pages/marketing/WidgetsPage.tsx", import.meta.url), "utf8");
+    expect(widgetsPageSource).toContain('Code2 className="h-4 w-4 text-[var(--org-primary)]"');
+    expect(widgetsPageSource).toContain('Eye className="h-4 w-4 text-[var(--org-primary)]"');
+    expect(widgetsPageSource).not.toContain('text-teal-600');
+  });
+
+  it("uses the active organization theme for group order creation and allocation controls", () => {
+    const groupOrdersSource = readFileSync(new URL("../client/src/pages/sales/GroupOrdersPage.tsx", import.meta.url), "utf8");
+    expect(groupOrdersSource).toContain('Users className="w-6 h-6 text-[var(--org-primary)]"');
+    expect(groupOrdersSource).toContain('className="org-primary-button"');
+    expect(groupOrdersSource).toContain('bg-[var(--org-primary)] h-1.5 rounded-full');
+    expect(groupOrdersSource).not.toContain('text-teal-600');
+    expect(groupOrdersSource).not.toContain('bg-teal-500');
+  });
+
+  it("uses the active organization theme for the highlighted Builder billing plan", () => {
+    const billingPageSource = readFileSync(new URL("../client/src/pages/profile/BillingPage.tsx", import.meta.url), "utf8");
+    expect(billingPageSource).toContain('color: "text-[var(--org-primary)]"');
+    expect(billingPageSource).toContain('from-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]');
+    expect(billingPageSource).not.toContain('text-violet-500');
+    expect(billingPageSource).not.toContain('from-violet-50');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');

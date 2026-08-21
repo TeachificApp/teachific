@@ -69,8 +69,8 @@ const PLAN_META: Record<PlanTier, {
   builder: {
     name: "Builder",
     icon: Rocket,
-    color: "text-violet-500",
-    gradient: "from-violet-50 to-violet-50/30",
+    color: "text-[var(--org-primary)]",
+    gradient: "from-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] to-[color:color-mix(in_srgb,var(--org-primary)_4%,transparent)]",
     monthlyPrice: 99,
     annualPrice: 999,
     description: "Scale your learning platform",
