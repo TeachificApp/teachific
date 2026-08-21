@@ -145,10 +145,10 @@ export function SdmsCmeConfigPanel({ activityType, activityId, defaultTitle }: P
   }
 
   return (
-    <div className="border border-teal-200 rounded-xl p-5 space-y-5 bg-teal-50/30">
+    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-5 space-y-5 bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)]">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-teal-900 uppercase tracking-wide">SDMS CME Credit</h3>
+          <h3 className="text-sm font-bold text-[var(--org-primary)] uppercase tracking-wide">SDMS CME Credit</h3>
           <p className="text-xs text-gray-600 mt-0.5">
             Enable accredited CME submission to SDMS after learners pass the attached form.
           </p>
@@ -218,14 +218,14 @@ export function SdmsCmeConfigPanel({ activityType, activityId, defaultTitle }: P
           </div>
 
 
-          <div className="rounded-lg border border-teal-200 bg-white p-3 text-xs text-gray-700 space-y-1">
-            <p className="font-semibold text-teal-900">Curriculum placement</p>
+          <div className="rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-white p-3 text-xs text-gray-700 space-y-1">
+            <p className="font-semibold text-[var(--org-primary)]">Curriculum placement</p>
             <p>
               Saving with SDMS CME enabled adds a dedicated <strong>SDMS CME Credit</strong> section and lesson to this course curriculum.
               Learners complete the post-test in that lesson; edit lesson blocks in the Curriculum tab.
             </p>
             {config?.cmeLessonId ? (
-              <p className="text-teal-700 font-medium">
+              <p className="text-[var(--org-primary)] font-medium">
                 CME lesson #{config.cmeLessonId}
                 {config.cmeSectionId ? ` · section #${config.cmeSectionId}` : ""}
               </p>
@@ -234,7 +234,7 @@ export function SdmsCmeConfigPanel({ activityType, activityId, defaultTitle }: P
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-teal-100 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] pt-4">
             <div>
               <Label>SDMS API Username</Label>
               <Input value={apiUsername} onChange={(e) => setApiUsername(e.target.value)} autoComplete="off" />
@@ -258,7 +258,7 @@ export function SdmsCmeConfigPanel({ activityType, activityId, defaultTitle }: P
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-teal-100 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] pt-4">
             <div>
               <Label>Form Type</Label>
               <Select value={formKind} onValueChange={setFormKind}>
@@ -296,7 +296,7 @@ export function SdmsCmeConfigPanel({ activityType, activityId, defaultTitle }: P
             />
           </div>
 
-          <div className="flex flex-wrap gap-2 border-t border-teal-100 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] pt-4">
             <Button
               type="button"
               variant="outline"
@@ -334,7 +334,7 @@ export function SdmsCmeConfigPanel({ activityType, activityId, defaultTitle }: P
 
       <div className="flex justify-end">
         <Button
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-primary)] hover:brightness-90 text-white"
           disabled={updateConfig.isPending}
           onClick={handleSave}
         >

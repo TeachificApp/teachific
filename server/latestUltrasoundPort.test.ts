@@ -1632,6 +1632,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(waitlistSource).not.toContain("bg-teal-600 hover:bg-teal-700 text-white");
   });
 
+  it("uses active organization theming for CME configuration panel controls", () => {
+    const cmeConfigSource = readFileSync(new URL("../client/src/components/admin/SdmsCmeConfigPanel.tsx", import.meta.url), "utf8");
+    expect(cmeConfigSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]");
+    expect(cmeConfigSource).toContain("text-[var(--org-primary)] uppercase tracking-wide");
+    expect(cmeConfigSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]");
+    expect(cmeConfigSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(cmeConfigSource).not.toContain("bg-teal-600 hover:bg-teal-700 text-white");
+    expect(cmeConfigSource).not.toContain("border-teal-200");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
