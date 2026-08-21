@@ -161,7 +161,7 @@ function WorkshopList({ onSelect }: { onSelect: (id: number) => void }) {
           {workshops.map((w: any) => (
             <Card key={w.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onSelect(w.id)}>
               <CardContent className="flex items-center gap-4 py-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-[var(--org-primary)] flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
