@@ -7708,7 +7708,7 @@ function CommunityFormInline({
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSubmit} disabled={isCreating || isUpdating}>
+        <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={handleSubmit} disabled={isCreating || isUpdating}>
           {community ? "Save Changes" : "Create Community"}
         </Button>
       </div>
@@ -7750,7 +7750,7 @@ function ChannelFormInline({
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSubmit} disabled={isAdding}>
+        <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={handleSubmit} disabled={isAdding}>
           Add Channel
         </Button>
       </div>
@@ -7857,7 +7857,7 @@ function CommunitiesTab() {
           <h2 className="text-xl font-bold text-gray-900">Community Management</h2>
           <p className="text-sm text-gray-500 mt-0.5">Manage communities, channels, moderation, and announcements</p>
         </div>
-        <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => { setEditCommunity(null); setShowCommunityForm(true); }}>
+        <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => { setEditCommunity(null); setShowCommunityForm(true); }}>
           <Plus className="w-4 h-4 mr-2" /> New Community
         </Button>
       </div>
@@ -7877,7 +7877,7 @@ function CommunitiesTab() {
             className={cn(
               "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors",
               activeSubTab === key
-                ? "border-teal-500 text-teal-700"
+                ? "border-[var(--org-primary)] text-[var(--org-primary)]"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             )}
           >
@@ -7894,7 +7894,7 @@ function CommunitiesTab() {
       {activeSubTab === "communities" && (
         <div className="space-y-3">
           {showCommunityForm && (
-            <div className="border border-teal-200 rounded-xl bg-teal-50/40 p-5">
+            <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] p-5">
               <h3 className="font-semibold text-gray-900 mb-4">{editCommunity ? "Edit Community" : "Create Community"}</h3>
               <CommunityFormInline
                 community={editCommunity}
@@ -7918,7 +7918,7 @@ function CommunitiesTab() {
             communities.map((c: any) => (
               <div key={c.id} className={cn(
                 "flex items-center gap-4 bg-white rounded-xl border px-4 py-3 transition-all",
-                activeCommunityId === c.id ? "ring-2 ring-teal-400 border-teal-200" : "border-gray-200 hover:border-teal-200"
+                activeCommunityId === c.id ? "ring-2 ring-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]" : "border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]"
               )}>
                 <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-white font-bold text-lg"
                   style={{ backgroundColor: c.accentColor || "#189aa1" }}>
@@ -7969,13 +7969,13 @@ function CommunitiesTab() {
                 ))}
               </SelectContent>
             </Select>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!activeCommunityId}
+            <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!activeCommunityId}
               onClick={() => setShowChannelForm(true)}>
               <Plus className="w-4 h-4 mr-2" /> Add Channel
             </Button>
           </div>
           {showChannelForm && activeCommunityId && (
-            <div className="border border-teal-200 rounded-xl bg-teal-50/40 p-5">
+            <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] p-5">
               <h3 className="font-semibold text-gray-900 mb-4">Add Channel</h3>
               <ChannelFormInline
                 communityId={activeCommunityId}
@@ -8002,7 +8002,7 @@ function CommunitiesTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-gray-900">{ch.name}</span>
-                      {ch.isDefault && <Badge className="text-xs bg-teal-100 text-teal-700 border-teal-200">Default</Badge>}
+                      {ch.isDefault && <Badge className="text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]">Default</Badge>}
                       <Badge variant="secondary" className="text-xs capitalize">{ch.type?.replace("_", " ")}</Badge>
                     </div>
                     {ch.description && <p className="text-sm text-gray-500">{ch.description}</p>}
@@ -8060,9 +8060,9 @@ function CommunitiesTab() {
       {/* Announcements sub-tab */}
       {activeSubTab === "announcements" && (
         <div className="space-y-4">
-          <div className="border border-teal-200 rounded-xl bg-teal-50/40 p-5">
+          <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] p-5">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-teal-600" /> Post Announcement
+              <Megaphone className="w-4 h-4 text-[var(--org-primary)]" /> Post Announcement
             </h3>
             <div className="space-y-3">
               <div>
@@ -8090,7 +8090,7 @@ function CommunitiesTab() {
                 />
               </div>
               <div className="flex justify-end">
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+                <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                   disabled={!activeCommunityId || !announcementTitle.trim() || !announcementBody.trim() || postAnnouncement.isPending}
                   onClick={() => postAnnouncement.mutate({ communityId: activeCommunityId!, title: announcementTitle, body: announcementBody })}>
                   <Megaphone className="w-4 h-4 mr-2" /> Post Announcement
@@ -8105,13 +8105,13 @@ function CommunitiesTab() {
       {activeSubTab === "badges" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Award className="w-4 h-4 text-teal-600" /> Badge Management</h3>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" size="sm" onClick={() => setShowBadgeForm(v => !v)}>
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Award className="w-4 h-4 text-[var(--org-primary)]" /> Badge Management</h3>
+            <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" size="sm" onClick={() => setShowBadgeForm(v => !v)}>
               <Plus className="w-4 h-4 mr-1" /> New Badge
             </Button>
           </div>
           {showBadgeForm && (
-            <div className="border border-teal-200 rounded-xl bg-teal-50/40 p-5 space-y-3">
+            <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] p-5 space-y-3">
               <h4 className="font-medium text-gray-900">Create Badge</h4>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -8137,7 +8137,7 @@ function CommunitiesTab() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowBadgeForm(false)}>Cancel</Button>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white"
+                <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                   disabled={!badgeName.trim() || !badgeSlug.trim() || createBadge.isPending}
                   onClick={() => createBadge.mutate({ name: badgeName, slug: badgeSlug, iconEmoji: badgeEmoji, xpRequired: badgeXP, description: badgeDesc || undefined })}>
                   Create Badge
@@ -8158,7 +8158,7 @@ function CommunitiesTab() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900 text-sm truncate">{b.name}</div>
                     {b.description && <div className="text-xs text-gray-500 truncate">{b.description}</div>}
-                    {b.xpRequired > 0 && <div className="text-xs text-teal-600">{b.xpRequired} XP required</div>}
+                    {b.xpRequired > 0 && <div className="text-xs text-[var(--org-primary)]">{b.xpRequired} XP required</div>}
                   </div>
                 </div>
               ))}

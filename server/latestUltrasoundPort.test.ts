@@ -2242,6 +2242,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(navigation).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout LMS community administration controls", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const communityAdministration = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("function CommunityFormInline"),
+      lmsAdminSource.indexOf("// ─── Coming Soon Placeholder Tab")
+    );
+    expect(communityAdministration).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(communityAdministration).toContain("border-[var(--org-primary)] text-[var(--org-primary)]");
+    expect(communityAdministration).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)]");
+    expect(communityAdministration).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
