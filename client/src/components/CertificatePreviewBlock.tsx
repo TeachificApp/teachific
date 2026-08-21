@@ -150,11 +150,11 @@ export default function CertificatePreviewBlock({ data, courseSlug, isAdmin, has
   if (isAdmin && !hasRealEnrollment) {
     return (
       <div
-        className="rounded-2xl border border-teal-200 p-6 flex flex-col items-center gap-4 text-center"
+        className="rounded-2xl border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] p-6 flex flex-col items-center gap-4 text-center"
         style={{ backgroundColor: bgColor }}
       >
-        <div className="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center">
-          <Award className="w-7 h-7 text-teal-600" />
+        <div className="w-14 h-14 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center">
+          <Award className="w-7 h-7 text-[var(--org-primary)]" />
         </div>
         <div>
           <p className="font-semibold text-gray-800 text-base">{heading}</p>
@@ -170,7 +170,7 @@ export default function CertificatePreviewBlock({ data, courseSlug, isAdmin, has
           Certificate preview will appear here for enrolled learners
         </div>
         <div className="flex flex-wrap gap-2 justify-center opacity-50 pointer-events-none">
-          <Button size="sm" disabled className="gap-2 bg-teal-600 text-white">
+          <Button size="sm" disabled className="gap-2 bg-[var(--org-primary)] text-white">
             <Download size={14} /> Download Certificate
           </Button>
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ backgroundColor: "#0A66C2" }}>
@@ -247,10 +247,10 @@ function CertificatePreviewLearner({
   if (isLoading) {
     return (
       <div
-        className="rounded-2xl border border-teal-100 p-8 flex items-center justify-center"
+        className="rounded-2xl border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] p-8 flex items-center justify-center"
         style={{ backgroundColor: bgColor }}
       >
-        <Loader2 className="w-6 h-6 text-teal-500 animate-spin" />
+        <Loader2 className="w-6 h-6 text-[var(--org-primary)] animate-spin" />
       </div>
     );
   }
@@ -301,13 +301,13 @@ function CertificatePreviewLearner({
 
   return (
     <div
-      className="rounded-2xl border border-teal-200 p-6 flex flex-col items-center gap-5"
+      className="rounded-2xl border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] p-6 flex flex-col items-center gap-5"
       style={{ backgroundColor: bgColor }}
     >
       {/* Header */}
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center">
-          <Award className="w-7 h-7 text-teal-600" />
+        <div className="w-14 h-14 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center">
+          <Award className="w-7 h-7 text-[var(--org-primary)]" />
         </div>
         <p className="font-semibold text-gray-800 text-base">{heading}</p>
         <p className="text-sm text-gray-500">{subtext}</p>
@@ -319,7 +319,7 @@ function CertificatePreviewLearner({
           <span className="text-xs text-gray-500 font-medium">Certificate Preview</span>
           <button
             type="button"
-            className="text-xs text-teal-600 hover:underline"
+            className="text-xs text-[var(--org-primary)] hover:underline"
             onClick={() => setShowEmbed(!showEmbed)}
           >
             {showEmbed ? "Hide preview" : "Show preview"}
@@ -340,7 +340,7 @@ function CertificatePreviewLearner({
       {/* Download / open buttons */}
       <div className="flex flex-wrap gap-3 justify-center">
         <a href={certUrl} download target="_blank" rel="noopener noreferrer">
-          <Button size="sm" className="gap-2 bg-teal-600 hover:bg-teal-700 text-white">
+          <Button size="sm" className="gap-2 bg-[var(--org-primary)] hover:brightness-90 text-white">
             <Download size={14} /> Download Certificate
           </Button>
         </a>
