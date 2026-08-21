@@ -598,11 +598,7 @@ BLOCK_CATALOG.push(
     label: "Social Proof / Live Activity",
     icon: <Users size={14} />,
     category: "Marketing",
-    defaultData: { headline: "Join thousands of learners", enrollCount: "2,847", recentActivity: [
-      { name: "Sarah M.", action: "just enrolled", time: "2 min ago" },
-      { name: "James T.", action: "completed the course", time: "5 min ago" },
-      { name: "Priya K.", action: "just enrolled", time: "8 min ago" },
-    ], accentColor: "#179ca3", bgColor: "#f0fdfa" },
+    defaultData: { headline: "Join fellow learners", enrollCount: "0", recentActivity: [], accentColor: "#179ca3", bgColor: "#f0fdfa" },
   },
 );
 
@@ -6413,7 +6409,7 @@ export default function LandingPageBuilder() {
             <Input
               value={saveTemplateName}
               onChange={e => setSaveTemplateName(e.target.value)}
-              placeholder="e.g. Hero Banner — Teal"
+              placeholder="e.g. Hero Banner — Featured Content"
               className="text-sm"
               autoFocus
             />
@@ -7116,7 +7112,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       <div className="border border-gray-100 rounded p-2 space-y-2">
         <p className="text-xs font-semibold text-gray-600 mb-1">Player Theme</p>
         <BSColorField data={d} onSet={set} label="Accent Color (play button &amp; progress bar)" field="accentColor" />
-        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to Teachific teal (#189aa1).</p>
+        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to your organization’s primary color.</p>
       </div>
     </div>
   );

@@ -1849,6 +1849,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(billingPageSource).not.toContain('from-violet-50');
   });
 
+  it("keeps Landing Page Builder default controls organization-safe and free of fabricated social proof", () => {
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(landingBuilderSource).toContain('className="lms-org-theme fixed inset-0 z-40 flex flex-col bg-gray-50"');
+    expect(landingBuilderSource).toContain('Defaults to your organization’s primary color.');
+    expect(landingBuilderSource).toContain('recentActivity: [], accentColor: "#179ca3"');
+    expect(landingBuilderSource).not.toContain('Defaults to Teachific teal');
+    expect(landingBuilderSource).not.toContain('Sarah M.');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');
