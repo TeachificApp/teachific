@@ -367,7 +367,7 @@ export default function CustomPagesPage() {
                       <Button
                         variant="default"
                         size="sm"
-                        className="gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs h-7 px-2"
+                        className="gap-1.5 org-primary-button text-xs h-7 px-2"
                         onClick={() => setLocation(`/lms/page-builder/${page.id}`)}
                         title="Open in Page Builder"
                       >
@@ -496,7 +496,7 @@ export default function CustomPagesPage() {
                   </p>
                   {editingPage.id && (
                     <Button
-                      className="gap-2 bg-teal-600 hover:bg-teal-700"
+                      className="gap-2 org-primary-button"
                       onClick={() => { setEditingPage(null); setLocation(`/lms/page-builder/${editingPage.id}`); }}
                     >
                       <ExternalLink className="h-4 w-4" />
