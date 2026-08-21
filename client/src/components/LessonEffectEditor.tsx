@@ -58,10 +58,20 @@ const BANNER_PRESETS: string[] = [
 const CONFETTI_THEMES: { value: string; label: string; colors: string[] }[] = [
   { value: "rainbow", label: "Rainbow", colors: ["#ff0000","#ff7700","#ffff00","#00cc00","#0000ff","#8b00ff"] },
   { value: "gold", label: "Gold & White", colors: ["#ffd700","#ffec80","#ffffff","#c8a200"] },
-  { value: "teal", label: "Brand Teal", colors: ["#179ca3","#4ad9e0","#0e4a50","#ffffff"] },
-  { value: "pink", label: "Pink & Purple", colors: ["#ff69b4","#da70d6","#9370db","#ff1493"] },
+  { value: "organization", label: "Organization colors", colors: [] },
+  { value: "celebration", label: "Celebration", colors: ["#ff69b4","#da70d6","#9370db","#ff1493"] },
   { value: "custom", label: "Custom colors…", colors: [] },
 ];
+
+function getActiveOrganizationPrimary() {
+  if (typeof document === "undefined") return "#000000";
+  return getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000";
+}
+
+function getConfettiThemeColors(theme: string) {
+  if (theme === "organization") return [getActiveOrganizationPrimary(), "#ffffff"];
+  return CONFETTI_THEMES.find((item) => item.value === theme)?.colors ?? [];
+}
 
 interface LessonEffectEditorProps {
   lessonId: number;
@@ -91,7 +101,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
     (initialData?.effectTrigger as "lesson_start" | "lesson_complete") ?? "lesson_start"
   );
   const [bannerText, setBannerText] = useState(initialData?.effectBannerText ?? "");
-  const [bannerBg, setBannerBg] = useState(initialData?.effectBannerBgColor ?? "#179ca3");
+  const [bannerBg, setBannerBg] = useState(initialData?.effectBannerBgColor ?? getActiveOrganizationPrimary());
   const [bannerTextColor, setBannerTextColor] = useState(initialData?.effectBannerTextColor ?? "#ffffff");
   const [bannerDuration, setBannerDuration] = useState(initialData?.effectBannerDuration ?? 5);
   const [soundPreset, setSoundPreset] = useState(initialData?.effectSound ?? "none");
@@ -115,7 +125,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
     setEnabled(initialData.effectEnabled ?? false);
     setTrigger((initialData.effectTrigger as "lesson_start" | "lesson_complete") ?? "lesson_start");
     setBannerText(initialData.effectBannerText ?? "");
-    setBannerBg(initialData.effectBannerBgColor ?? "#179ca3");
+    setBannerBg(initialData.effectBannerBgColor ?? getActiveOrganizationPrimary());
     setBannerTextColor(initialData.effectBannerTextColor ?? "#ffffff");
     setBannerDuration(initialData.effectBannerDuration ?? 5);
     setSoundPreset(initialData.effectSound ?? "none");
@@ -148,7 +158,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
         effectSound: soundPreset !== "none" ? soundPreset : undefined,
         effectSoundUrl: soundPreset === "custom" ? customSoundUrl : (SOUND_PRESETS.find(p => p.value === soundPreset)?.url ?? undefined),
         effectConfetti: confetti,
-        effectConfettiColors: confetti ? (confettiTheme === "custom" ? customColors : (CONFETTI_THEMES.find(t => t.value === confettiTheme)?.colors.join(",") ?? "")) : undefined,
+        effectConfettiColors: confetti ? (confettiTheme === "custom" ? customColors : getConfettiThemeColors(confettiTheme).join(",")) : undefined,
         effectConfettiMode: confettiMode,
         effectBannerDuration: bannerDuration,
       };
@@ -161,7 +171,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
   const handleSave = () => {
     const colorsStr = confettiTheme === "custom"
       ? customColors
-      : (CONFETTI_THEMES.find(t => t.value === confettiTheme)?.colors.join(",") ?? "");
+      : getConfettiThemeColors(confettiTheme).join(",");
     updateEffect.mutate({
       id: lessonId,
       effectEnabled: enabled,
@@ -201,7 +211,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
 
       {/* Active effect status badge */}
       {savedState?.effectEnabled && (
-        <div className="flex items-center gap-2 text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-md px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-md px-3 py-2">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           <span>
             Effect active: fires on <strong>{savedState.effectTrigger === "lesson_complete" ? "lesson complete" : "lesson start"}</strong>
@@ -233,7 +243,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
           {/* Banner */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Megaphone className="h-4 w-4 text-teal-600" />
+              <Megaphone className="h-4 w-4 text-[var(--org-primary)]" />
               <span className="text-sm font-semibold">Banner Message</span>
               <Badge variant="outline" className="text-xs">optional</Badge>
             </div>
@@ -291,10 +301,10 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-teal-600" />
+                  <Clock className="h-3.5 w-3.5 text-[var(--org-primary)]" />
                   <Label className="text-xs font-medium">Banner Display Duration</Label>
                 </div>
-                <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                <span className="text-xs font-semibold text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] px-2 py-0.5 rounded-full border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
                   {bannerDuration}s
                 </span>
               </div>
@@ -329,7 +339,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
           {/* Sound */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Volume2 className="h-4 w-4 text-teal-600" />
+              <Volume2 className="h-4 w-4 text-[var(--org-primary)]" />
               <span className="text-sm font-semibold">Sound Effect</span>
             </div>
             <div className="flex gap-2">
@@ -365,7 +375,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-teal-600" />
+                <Sparkles className="h-4 w-4 text-[var(--org-primary)]" />
                 <span className="text-sm font-semibold">Confetti</span>
               </div>
               <Switch checked={confetti} onCheckedChange={setConfetti} />
@@ -381,7 +391,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
                       onClick={() => setConfettiMode("fall")}
                       className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
                         confettiMode === "fall"
-                          ? "border-teal-500 bg-teal-50 text-teal-700 font-medium"
+                          ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] font-medium"
                           : "border-border hover:bg-muted text-muted-foreground"
                       }`}
                     >
@@ -396,7 +406,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
                       onClick={() => setConfettiMode("cannon")}
                       className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
                         confettiMode === "cannon"
-                          ? "border-teal-500 bg-teal-50 text-teal-700 font-medium"
+                          ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] font-medium"
                           : "border-border hover:bg-muted text-muted-foreground"
                       }`}
                     >
@@ -422,7 +432,7 @@ export default function LessonEffectEditor({ lessonId, initialData, onSaved }: L
                           <div className="flex items-center gap-2">
                             {t.value !== "custom" && (
                               <div className="flex gap-0.5">
-                                {t.colors.slice(0,4).map(c => (
+                                {getConfettiThemeColors(t.value).slice(0,4).map(c => (
                                   <div key={c} className="h-3 w-3 rounded-full border border-white/30" style={{ backgroundColor: c }} />
                                 ))}
                               </div>

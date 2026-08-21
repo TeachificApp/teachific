@@ -1890,6 +1890,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(flashcardEditorSource).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout lesson effect editor controls and defaults", () => {
+    const lessonEffectEditorSource = readFileSync(new URL("../client/src/components/LessonEffectEditor.tsx", import.meta.url), "utf8");
+    expect(lessonEffectEditorSource).toContain("getActiveOrganizationPrimary");
+    expect(lessonEffectEditorSource).toContain("getConfettiThemeColors");
+    expect(lessonEffectEditorSource).toContain('value: "organization", label: "Organization colors"');
+    expect(lessonEffectEditorSource).toContain("border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] font-medium");
+    expect(lessonEffectEditorSource).not.toMatch(/teal|violet|purple/i);
+    expect(lessonEffectEditorSource).not.toContain("#179ca3");
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
