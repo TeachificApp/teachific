@@ -7156,7 +7156,7 @@ function OrdersManagementTab() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {orders.map((o: any) => (
-                <tr key={o.id} className={cn("hover:bg-gray-50", selectedIds.includes(o.id) && "bg-teal-50")}>
+                <tr key={o.id} className={cn("hover:bg-gray-50", selectedIds.includes(o.id) && "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]")}>
                   <td className="px-4 py-2.5">
                     <input type="checkbox" checked={selectedIds.includes(o.id)}
                       onChange={() => setSelectedIds(ids => ids.includes(o.id) ? ids.filter(i => i !== o.id) : [...ids, o.id])}
