@@ -1847,6 +1847,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(generalFormBuilderSource).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout the shared block template library", () => {
+    const blockTemplateLibrarySource = readFileSync(new URL("../client/src/components/BlockTemplateLibrary.tsx", import.meta.url), "utf8");
+    expect(blockTemplateLibrarySource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(blockTemplateLibrarySource).toContain("border-[var(--org-primary)]");
+    expect(blockTemplateLibrarySource).toContain("text-white border-[var(--org-primary)]");
+    expect(blockTemplateLibrarySource).toContain("hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]");
+    expect(blockTemplateLibrarySource).toContain('placeholder="e.g. Hero Banner"');
+    expect(blockTemplateLibrarySource).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

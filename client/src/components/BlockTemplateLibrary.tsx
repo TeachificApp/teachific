@@ -96,7 +96,7 @@ export function OpenTemplateLibraryButton({ className }: { className?: string })
       size="sm"
       variant="outline"
       onClick={openLibrary}
-      className={`gap-1.5 text-xs h-7 border-teal-300 text-teal-700 hover:bg-teal-50 ${className ?? ""}`}
+      className={`gap-1.5 text-xs h-7 border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] ${className ?? ""}`}
     >
       <LayoutTemplate className="w-3.5 h-3.5" />
       Templates
@@ -112,7 +112,7 @@ export function SaveAsTemplateButton({ block, blockLabel, className }: { block: 
     <button
       title="Save as template"
       onClick={(e) => { e.stopPropagation(); saveAsTemplate(block, blockLabel); }}
-      className={`p-1 rounded hover:bg-teal-50 text-gray-400 hover:text-teal-600 transition-colors ${className ?? ""}`}
+      className={`p-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-gray-400 hover:text-[var(--org-primary)] transition-colors ${className ?? ""}`}
     >
       <BookmarkPlus className="w-3.5 h-3.5" />
     </button>
@@ -156,7 +156,7 @@ function SaveTemplateDialog({ open, block, defaultName, onClose }: {
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-teal-700">
+          <DialogTitle className="flex items-center gap-2 text-[var(--org-primary)]">
             <BookmarkPlus className="w-4 h-4" />
             Save Block as Template
           </DialogTitle>
@@ -167,7 +167,7 @@ function SaveTemplateDialog({ open, block, defaultName, onClose }: {
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Teal Hero Banner"
+              placeholder="e.g. Hero Banner"
               className="h-8 text-sm"
               autoFocus
             />
@@ -186,19 +186,19 @@ function SaveTemplateDialog({ open, block, defaultName, onClose }: {
             <Input
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g. hero, teal, course"
+              placeholder="e.g. hero, course"
               className="h-8 text-sm"
             />
           </div>
           <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-500">
-            Block type: <span className="font-mono text-teal-700">{block.type}</span>
+            Block type: <span className="font-mono text-[var(--org-primary)]">{block.type}</span>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
           <Button
             size="sm"
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             onClick={handleSave}
             disabled={saveMutation.isPending}
           >
@@ -251,7 +251,7 @@ function BlockTemplateLibraryDrawer({ open, onClose, onInsert }: {
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <SheetContent side="right" className="w-[420px] sm:w-[480px] p-0 flex flex-col">
         <SheetHeader className="px-5 py-4 border-b border-gray-200 bg-gray-50">
-          <SheetTitle className="flex items-center gap-2 text-teal-700 text-base">
+          <SheetTitle className="flex items-center gap-2 text-[var(--org-primary)] text-base">
             <LayoutTemplate className="w-4 h-4" />
             Block Template Library
           </SheetTitle>
@@ -278,13 +278,13 @@ function BlockTemplateLibraryDrawer({ open, onClose, onInsert }: {
             <div className="flex flex-wrap gap-1">
               <button
                 onClick={() => setFilterType("")}
-                className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${!filterType ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-500 hover:border-teal-300 hover:text-teal-600"}`}
+                className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${!filterType ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-500 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:text-[var(--org-primary)]"}`}
               >All</button>
               {allTypes.map(t => (
                 <button
                   key={t}
                   onClick={() => setFilterType(f => f === t ? "" : t)}
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${filterType === t ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-500 hover:border-teal-300 hover:text-teal-600"}`}
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${filterType === t ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 text-gray-500 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:text-[var(--org-primary)]"}`}
                 >{t}</button>
               ))}
             </div>
@@ -309,13 +309,13 @@ function BlockTemplateLibraryDrawer({ open, onClose, onInsert }: {
             return (
               <div
                 key={template.id}
-                className="bg-white border border-gray-200 rounded-xl p-3 hover:border-teal-300 hover:shadow-sm transition-all group"
+                className="bg-white border border-gray-200 rounded-xl p-3 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:shadow-sm transition-all group"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-semibold text-sm text-gray-800 truncate">{template.name}</span>
-                      <Badge variant="secondary" className="text-xs shrink-0 font-mono bg-teal-50 text-teal-700 border-teal-200">
+                      <Badge variant="secondary" className="text-xs shrink-0 font-mono bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
                         {template.blockType}
                       </Badge>
                     </div>
@@ -342,7 +342,7 @@ function BlockTemplateLibraryDrawer({ open, onClose, onInsert }: {
                     </button>
                     <Button
                       size="sm"
-                      className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+                      className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white"
                       onClick={() => handleInsert(template)}
                     >
                       Insert
