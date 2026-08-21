@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import CheckoutPageEditor from "@/components/CheckoutPageEditor";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { toast } from "sonner";
 import {
   ChevronLeft, Save, Package, BookOpen, DollarSign, Settings,
@@ -24,6 +25,7 @@ export default function BundleEditorPage() {
   const bundleId = parseInt(id ?? "0");
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
+  const { orgId } = useOrgScope();
 
   const { data: bundle, isLoading } = trpc.lms.bundles.get.useQuery({ id: bundleId }, { enabled: !!bundleId });
   const { data: courses } = trpc.lms.courses.list.useQuery();
@@ -335,14 +337,16 @@ export default function BundleEditorPage() {
         </TabsContent>
         {/* ── Checkout Page Tab ── */}
         <TabsContent value="checkout_page">
+          {orgId && (
           <div className="max-w-3xl mx-auto">
             <CheckoutPageEditor
               contentType="bundle"
               contentId={bundle.id}
-              orgId={(bundle as any).orgId ?? 1}
+              orgId={orgId}
               contentSlug={String(bundle.id)}
             />
           </div>
+          )}
         </TabsContent>
         {/* ── Embed Tab ── */}
         <TabsContent value="embed">
