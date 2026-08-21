@@ -103,7 +103,7 @@ export default function AdminLessonComments() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-teal-600" />
+              <MessageSquare className="w-5 h-5 text-[var(--org-primary)]" />
               Lesson Comments
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -208,7 +208,7 @@ export default function AdminLessonComments() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => confirmBan && banUser.mutate({ userId: confirmBan.userId, banned: !confirmBan.isBanned })}
-              className={confirmBan?.isBanned ? "bg-teal-600 hover:bg-teal-700 text-white" : "bg-orange-600 hover:bg-orange-700 text-white"}
+              className={confirmBan?.isBanned ? "org-primary-button" : "bg-orange-600 hover:bg-orange-700 text-white"}
             >
               {banUser.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
               {confirmBan?.isBanned ? "Remove restriction" : "Restrict user"}
@@ -246,7 +246,7 @@ function CommentRow({ comment, onDelete, onToggleBan, onDeleteReply, onToggleBan
       <div className="flex gap-3 p-4">
         <Avatar className="w-9 h-9 shrink-0 mt-0.5">
           <AvatarImage src={comment.authorAvatarUrl ?? undefined} />
-          <AvatarFallback className="bg-teal-100 text-teal-700 text-xs font-bold">
+          <AvatarFallback className="bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] text-xs font-bold">
             {getInitials(comment.authorDisplayName || comment.authorName)}
           </AvatarFallback>
         </Avatar>
@@ -269,7 +269,7 @@ function CommentRow({ comment, onDelete, onToggleBan, onDeleteReply, onToggleBan
                 className={cn(
                   "h-7 px-2 text-xs",
                   isBanned
-                    ? "text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                    ? "text-[var(--org-primary)] hover:text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                     : "text-orange-500 hover:text-orange-700 hover:bg-orange-50"
                 )}
                 title={isBanned ? "Remove comment restriction" : "Restrict user from commenting"}
@@ -288,7 +288,7 @@ function CommentRow({ comment, onDelete, onToggleBan, onDeleteReply, onToggleBan
             </div>
           </div>
           {(comment.courseTitle || comment.lessonTitle) && (
-            <p className="text-xs text-teal-600 mt-0.5">
+            <p className="text-xs text-[var(--org-primary)] mt-0.5">
               {comment.courseTitle && <span className="font-medium">{comment.courseTitle}</span>}
               {comment.courseTitle && comment.lessonTitle && <span className="text-gray-400 mx-1">›</span>}
               {comment.lessonTitle && <span>{comment.lessonTitle}</span>}
@@ -302,7 +302,7 @@ function CommentRow({ comment, onDelete, onToggleBan, onDeleteReply, onToggleBan
           {comment.replyCount > 0 && (
             <button
               onClick={() => setShowReplies(v => !v)}
-              className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
+              className="mt-2 flex items-center gap-1 text-xs text-[var(--org-primary)] hover:text-[var(--org-primary)] font-medium transition-colors"
             >
               {showReplies
                 ? <ChevronDown className="w-3.5 h-3.5" />
@@ -359,7 +359,7 @@ function ReplyRow({ reply, onDelete, onToggleBan }: {
       <CornerDownRight className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-1" />
       <Avatar className="w-7 h-7 shrink-0 mt-0.5">
         <AvatarImage src={reply.authorAvatarUrl ?? undefined} />
-        <AvatarFallback className="bg-teal-100 text-teal-700 text-[10px] font-bold">
+        <AvatarFallback className="bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] text-[10px] font-bold">
           {getInitials(reply.authorDisplayName || reply.authorName)}
         </AvatarFallback>
       </Avatar>
@@ -382,7 +382,7 @@ function ReplyRow({ reply, onDelete, onToggleBan }: {
               className={cn(
                 "h-6 px-1.5 text-[10px]",
                 isBanned
-                  ? "text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                  ? "text-[var(--org-primary)] hover:text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                   : "text-orange-500 hover:text-orange-700 hover:bg-orange-50"
               )}
               title={isBanned ? "Remove comment restriction" : "Restrict user from commenting"}
