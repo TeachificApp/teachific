@@ -3578,22 +3578,22 @@ function CourseInstructorsEditor({ courseId, courseInstructors, onSaved }: { cou
 
       {/* Action buttons */}
       <div className="flex gap-3 flex-wrap">
-        <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={addAssignment}>
+        <Button size="sm" variant="outline" className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={addAssignment}>
           <Plus className="w-4 h-4 mr-1" /> {(allInstructors ?? []).length > 0 ? "Add Instructor" : "Create & Add Instructor"}
         </Button>
         {(allInstructors ?? []).length > 0 && (
-          <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setCreateOpen(true)}>
+          <Button size="sm" variant="outline" className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => setCreateOpen(true)}>
             <Plus className="w-4 h-4 mr-1" /> Create New Profile
           </Button>
         )}
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={setCourseInstructors.isPending} onClick={() => setCourseInstructors.mutate({ courseId, instructors: assignments })}>
+        <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={setCourseInstructors.isPending} onClick={() => setCourseInstructors.mutate({ courseId, instructors: assignments })}>
           {setCourseInstructors.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
 
       {/* Hint about global profiles */}
       <p className="text-xs text-gray-400">
-        Instructor profiles are saved globally and can be reused across all courses. Manage all profiles from the <span className="font-medium text-teal-600">Instructors</span> tab in the main LMS admin view.
+        Instructor profiles are saved globally and can be reused across all courses. Manage all profiles from the <span className="font-medium text-[var(--org-primary)]">Instructors</span> tab in the main LMS admin view.
       </p>
 
       {/* Create Instructor Dialog */}
