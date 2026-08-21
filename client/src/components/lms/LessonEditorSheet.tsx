@@ -104,7 +104,7 @@ const LESSON_TYPE_META: Record<string, { label: string; icon: any; color: string
   exam: { label: "Exam", icon: CheckCircle, color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
   pdf: { label: "PDF", icon: FileText, color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
   audio: { label: "Audio", icon: Music, color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400" },
-  assignment: { label: "Assignment", icon: Edit, color: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" },
+  assignment: { label: "Assignment", icon: Edit, color: "bg-[color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" },
   download: { label: "Download", icon: Download, color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400" },
   weblink: { label: "Web Link / Embed", icon: Eye, color: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400" },
   zoom: { label: "Zoom / Live Session", icon: Users, color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400" },

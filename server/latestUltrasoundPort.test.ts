@@ -2007,6 +2007,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(checkoutSource).not.toContain("accent-teal-600");
   });
 
+  it("uses the active organization theme for lesson editor assignment badges", () => {
+    const lessonEditorSource = readFileSync(new URL("../client/src/components/lms/LessonEditorSheet.tsx", import.meta.url), "utf8");
+    expect(lessonEditorSource).toContain('assignment: { label: "Assignment", icon: Edit, color: "bg-[color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" }');
+    expect(lessonEditorSource).not.toContain('assignment: { label: "Assignment", icon: Edit, color: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" }');
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
