@@ -9742,7 +9742,7 @@ function PricingOptionForm({
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
 
   return (
-    <div className="border border-teal-200 rounded-lg p-4 bg-teal-50/30 space-y-3">
+    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-4 bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label className="text-xs font-medium">Label *</Label>
@@ -9833,7 +9833,7 @@ function PricingOptionForm({
           <Button size="sm" variant="outline" onClick={onCancel} className="h-7 text-xs">Cancel</Button>
           <Button
             size="sm"
-            className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+            className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={saving || !label.trim()}
             onClick={() => onSave({
               label: label.trim(),
@@ -9910,12 +9910,12 @@ function PricingOptionRow({ opt, editingId, setEditingId, setShowAdd, updateOpti
       <button onClick={() => updateOption.mutate({ id: opt.id, isActive: !opt.isActive })} className="text-xs text-gray-400 hover:text-gray-600 p-1 flex-shrink-0" title={opt.isActive ? "Hide" : "Show"}>
         {opt.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
       </button>
-      <button onClick={() => { setEditingId(opt.id); setShowAdd(false); }} className="text-xs text-teal-500 hover:text-teal-700 p-1 flex-shrink-0">
+      <button onClick={() => { setEditingId(opt.id); setShowAdd(false); }} className="text-xs text-[var(--org-primary)] hover:brightness-75 p-1 flex-shrink-0">
         <Edit2 className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={copyHostedCheckoutLink}
-        className="text-xs text-teal-500 hover:text-teal-700 p-1 flex-shrink-0"
+        className="text-xs text-[var(--org-primary)] hover:brightness-75 p-1 flex-shrink-0"
         title="Copy hosted checkout link for this pricing option"
       >
         <Link2 className="w-3.5 h-3.5" />
@@ -9997,9 +9997,9 @@ function CoursePricingOptionsEditor({ courseId, courseSlug }: { courseId: number
     <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-teal-600" /> Secondary Pricing Options
+          <DollarSign className="w-4 h-4 text-[var(--org-primary)]" /> Secondary Pricing Options
         </h3>
-        <Button size="sm" variant="outline" className="h-7 text-xs border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => { setShowAdd(true); setEditingId(null); }}>
+        <Button size="sm" variant="outline" className="h-7 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => { setShowAdd(true); setEditingId(null); }}>
           <Plus className="w-3 h-3 mr-1" /> Add Option
         </Button>
       </div>
