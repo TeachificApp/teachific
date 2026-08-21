@@ -193,10 +193,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   },
   testimonials: {
     headline: "What Our Students Say",
-    testimonials: [
-      { id: nanoid(4), quote: "This course changed my career!", author: "Jane D.", role: "Software Engineer", avatarUrl: "" },
-      { id: nanoid(4), quote: "Incredibly well structured and practical.", author: "Mark T.", role: "Product Manager", avatarUrl: "" },
-    ],
+    testimonials: [],
     backgroundColor: "#f8fafc",
     textColor: "#1e293b",
     layout: "grid",

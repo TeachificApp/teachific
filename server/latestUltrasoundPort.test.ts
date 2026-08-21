@@ -1701,6 +1701,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(wysiwygBuilderSource).not.toContain("Jane D.");
   });
 
+  it("keeps Page Builder and landing templates free of fabricated testimonial and review defaults", () => {
+    const pageBuilderSource = readFileSync(new URL("../client/src/components/PageBuilder.tsx", import.meta.url), "utf8");
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    expect(pageBuilderSource).toContain("testimonials: [],");
+    expect(pageBuilderSource).not.toContain("This course changed my career!");
+    expect(landingBuilderSource).toContain('defaultData: { headline: "What Students Say", reviews: [], bgColor: "#ffffff" }');
+    expect(landingBuilderSource).not.toContain("Excellent course!");
+    expect(landingBuilderSource).not.toContain("Very practical content.");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
