@@ -1342,7 +1342,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionEditorSource).toContain("RichTextEditor");
     expect(questionEditorSource).toContain("uploadFeedbackImage");
     expect(questionEditorSource).toContain("uploadFeedbackVideo");
-    expect(mcqEditorSource).toContain("Optional feedback for option");
+    expect(mcqEditorSource).toContain("RichTextEditor");
+    expect(mcqEditorSource).toContain("feedbackHtml.replace");
+    expect(mcqEditorSource).toContain("Why this answer is correct");
     expect(previewSource).toContain("feedbackQuestionId");
     expect(previewSource).toContain('quiz.meta.feedbackMode === "immediate"');
     expect(previewSource).toContain("RichTextDisplay");

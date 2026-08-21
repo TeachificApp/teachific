@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { Trash2, Plus, GripVertical } from "lucide-react";
 import type { McqData } from "../../types/quiz";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface Props {
   data: McqData;
@@ -19,8 +20,9 @@ export function McqEditor({ data, onChange }: Props) {
     onChange({ ...data, choices: data.choices.map((c) => (c.id === id ? { ...c, text } : c)) });
   };
 
-  const updateFeedback = (id: string, feedback: string) => {
-    onChange({ ...data, choices: data.choices.map((c) => (c.id === id ? { ...c, feedback } : c)) });
+  const updateFeedback = (id: string, feedbackHtml: string) => {
+    const feedback = feedbackHtml.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    onChange({ ...data, choices: data.choices.map((c) => (c.id === id ? { ...c, feedback, feedbackHtml } : c)) });
   };
 
   const addChoice = () => {
@@ -51,7 +53,7 @@ export function McqEditor({ data, onChange }: Props) {
 
       <div className="space-y-2">
         {data.choices.map((choice, i) => (
-          <div key={choice.id} className="rounded-lg border border-gray-100 p-2.5 space-y-2 group">
+          <div key={choice.id} className="rounded-lg border border-gray-100 bg-gray-50/60 p-2.5 space-y-2 group">
             <div className="flex items-center gap-2">
             <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />
             <input
@@ -76,13 +78,15 @@ export function McqEditor({ data, onChange }: Props) {
               <Trash2 className="w-3.5 h-3.5" />
             </button>
             </div>
-            <textarea
-              value={choice.feedback ?? ""}
-              onChange={(e) => updateFeedback(choice.id, e.target.value)}
-              rows={2}
-              placeholder={`Optional feedback for option ${String.fromCharCode(65 + i)}`}
-              className="ml-6 w-[calc(100%-1.5rem)] px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none"
-            />
+            <div className="ml-11 w-[calc(100%-2.75rem)]">
+              <RichTextEditor
+                value={choice.feedbackHtml ?? choice.feedback ?? ""}
+                onChange={(html) => updateFeedback(choice.id, html)}
+                placeholder={choice.correct ? "Why this answer is correct" : "Why this answer is incorrect"}
+                minHeight={72}
+                maxHeight={220}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -96,7 +100,7 @@ export function McqEditor({ data, onChange }: Props) {
       </button>
 
       <p className="text-xs text-gray-400">
-        {data.multiSelect ? "Check all correct answers" : "Select the one correct answer"}. Option feedback is shown when the question uses answer-based feedback.
+        {data.multiSelect ? "Check all correct answers" : "Select the one correct answer"}
       </p>
     </div>
   );
