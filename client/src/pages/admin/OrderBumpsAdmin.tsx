@@ -62,11 +62,11 @@ type OrderBump = {
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
-  course: <BookOpen size={14} className="text-teal-600" />,
-  quiz: <BookOpen size={14} className="text-teal-600" />,
+  course: <BookOpen size={14} className="text-[var(--org-primary)]" />,
+  quiz: <BookOpen size={14} className="text-[var(--org-primary)]" />,
   cohort: <BookOpen size={14} className="text-orange-500" />,
   download: <Download size={14} className="text-blue-600" />,
-  bundle: <Layers size={14} className="text-teal-600" />,
+  bundle: <Layers size={14} className="text-[var(--org-primary)]" />,
   physical: <Package size={14} className="text-amber-600" />,
 };
 
@@ -98,7 +98,7 @@ function getDefaultData(type: BlockType): Record<string, any> {
     case "video": return { url: "" };
     case "bullets": return { headline: "", items: ["Benefit 1", "Benefit 2", "Benefit 3"] };
     case "checklist": return { headline: "", items: ["Feature 1", "Feature 2", "Feature 3"] };
-    case "testimonial": return { quote: "This was amazing!", author: "Happy Customer", role: "" };
+    case "testimonial": return { quote: "", author: "", role: "" };
     case "faq": return { headline: "Frequently Asked Questions", items: [{ q: "Question?", a: "Answer." }] };
     case "pricing_cta": return { ctaText: "Add to Order", ctaColor: "#179ca3", bgColor: "#fff" };
     case "countdown": return { headline: "Offer expires in:", bgColor: "#179ca3", textColor: "#fff", durationMinutes: 30 };
@@ -169,7 +169,7 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
                 <button onClick={() => set("items", d.items.filter((_: any, j: number) => j !== i))} className="text-xs text-red-400">Remove</button>
               </div>
             ))}
-            <button onClick={() => set("items", [...(d.items ?? []), { q: "", a: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={10} /> Add Q&amp;A</button>
+            <button onClick={() => set("items", [...(d.items ?? []), { q: "", a: "" }])} className="text-xs text-[var(--org-primary)] flex items-center gap-1"><Plus size={10} /> Add Q&amp;A</button>
           </div>
         </div>
       );
@@ -202,7 +202,7 @@ function BlockDataEditor({ block, onUpdate }: { block: Block; onUpdate: (data: R
             <label className="text-xs text-gray-500 block mb-1">Type</label>
             <div className="flex gap-1">
               {(["info", "warning", "success", "error"] as const).map(t => (
-                <button key={t} onClick={() => set("type", t)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.type ?? "info") === t ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 text-gray-600"}`}>{t}</button>
+                <button key={t} onClick={() => set("type", t)} className={`flex-1 py-1 text-xs rounded border capitalize ${(d.type ?? "info") === t ? "org-primary-button text-white" : "border-gray-200 text-gray-600"}`}>{t}</button>
               ))}
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function OrderBumpsAdmin() {
           <h3 className="text-lg font-semibold text-gray-800">Order Bumps</h3>
           <p className="text-xs text-gray-500">Show upsell offers before or after checkout to increase average order value.</p>
         </div>
-        <Button size="sm" onClick={() => setIsCreating(true)} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button size="sm" onClick={() => setIsCreating(true)} className="org-primary-button">
           <Plus size={14} className="mr-1" /> New Order Bump
         </Button>
       </div>
@@ -335,20 +335,20 @@ export default function OrderBumpsAdmin() {
       ) : (
         <div className="space-y-3">
           {(bumps as OrderBump[]).map((bump) => (
-            <div key={bump.id} className={`border rounded-lg p-4 transition-all ${bump.isActive ? "border-teal-200 bg-white" : "border-gray-200 bg-gray-50 opacity-70"}`}>
+            <div key={bump.id} className={`border rounded-lg p-4 transition-all ${bump.isActive ? "border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-white" : "border-gray-200 bg-gray-50 opacity-70"}`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${bump.timing === "before_checkout" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
                       {bump.timing === "before_checkout" ? "Before Checkout" : "After Checkout"}
                     </span>
-                    {bump.presentationMode === "landing_page" && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-teal-700 flex items-center gap-1"><LayoutTemplate size={9} /> Landing Page</span>}
+                    {bump.presentationMode === "landing_page" && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] flex items-center gap-1"><LayoutTemplate size={9} /> Landing Page</span>}
                     {!bump.isActive && <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-600">Inactive</span>}
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <span className="flex items-center gap-1">{TYPE_ICONS[bump.triggerType]} {getProductName(bump.triggerType, bump.triggerProductId)}</span>
                     <ArrowRight size={12} className="text-gray-400" />
-                    <span className="flex items-center gap-1 font-medium text-teal-700">{TYPE_ICONS[bump.bumpType]} {getProductName(bump.bumpType, bump.bumpProductId)}</span>
+                    <span className="flex items-center gap-1 font-medium text-[var(--org-primary)]">{TYPE_ICONS[bump.bumpType]} {getProductName(bump.bumpType, bump.bumpProductId)}</span>
                   </div>
                   <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                     <span>Price: <strong className="text-gray-700">${Number(bump.bumpPrice).toFixed(2)}</strong></span>
@@ -358,9 +358,9 @@ export default function OrderBumpsAdmin() {
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => toggleActive(bump)} className="p-1.5 rounded hover:bg-gray-100" title={bump.isActive ? "Deactivate" : "Activate"}>
-                    {bump.isActive ? <ToggleRight size={18} className="text-teal-600" /> : <ToggleLeft size={18} className="text-gray-400" />}
+                    {bump.isActive ? <ToggleRight size={18} className="text-[var(--org-primary)]" /> : <ToggleLeft size={18} className="text-gray-400" />}
                   </button>
-                  <button onClick={() => setEditingBump(bump)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-teal-600" title="Edit"><Edit size={14} /></button>
+                  <button onClick={() => setEditingBump(bump)} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[var(--org-primary)]" title="Edit"><Edit size={14} /></button>
                   <button onClick={() => duplicateMutation.mutate({ id: bump.id })} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-500" title="Duplicate" disabled={duplicateMutation.isPending}><Copy size={14} /></button>
                   <button onClick={() => { if (confirm("Delete this order bump?")) deleteMutation.mutate({ id: bump.id }); }} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500" title="Delete"><Trash2 size={14} /></button>
                 </div>
@@ -513,13 +513,13 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
         <div className="flex gap-2">
           <button
             onClick={() => setForm(f => ({ ...f, presentationMode: "widget" }))}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "widget" ? "border-teal-600 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "widget" ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
           >
             <Rows size={16} /> Widget (inline at checkout)
           </button>
           <button
             onClick={() => setForm(f => ({ ...f, presentationMode: "landing_page" }))}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "landing_page" ? "border-teal-600 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.presentationMode === "landing_page" ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
           >
             <LayoutTemplate size={16} /> Landing Page (full page)
           </button>
@@ -580,7 +580,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
         <div className="flex gap-2">
           <button
             onClick={() => setForm(f => ({ ...f, bumpMode: "addon" }))}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.bumpMode === "addon" ? "border-teal-600 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.bumpMode === "addon" ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
           >
             <span className="text-base">➕</span>
             <span>Add-on</span>
@@ -588,7 +588,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
           </button>
           <button
             onClick={() => setForm(f => ({ ...f, bumpMode: "upgrade" }))}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.bumpMode === "upgrade" ? "border-teal-600 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-lg border-2 text-sm font-medium transition-all ${form.bumpMode === "upgrade" ? "border-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
           >
             <span className="text-base">⬆️</span>
             <span>Upgrade / Replace</span>
@@ -646,7 +646,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
                 const img = getProductImage(form.bumpType, form.bumpProductId);
                 if (img) setForm(f => ({ ...f, imageUrl: img }));
                 else toast.info("No image found for this product");
-              }} className="mt-1 text-xs text-teal-600 underline">Auto-fill from product</button>
+              }} className="mt-1 text-xs text-[var(--org-primary)] underline">Auto-fill from product</button>
             )}
           </div>
         </div>
@@ -654,7 +654,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
         <div className="border border-gray-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-gray-700">Landing Page Blocks</h4>
-            <button onClick={() => setShowAddBlock(v => !v)} className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
+            <button onClick={() => setShowAddBlock(v => !v)} className="flex items-center gap-1 text-xs text-[var(--org-primary)] hover:opacity-80 font-medium">
               <Plus size={13} /> Add Block
             </button>
           </div>
@@ -667,7 +667,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
                   <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">{cat}</p>
                   <div className="flex flex-wrap gap-1">
                     {items.map(b => (
-                      <button key={b.type} onClick={() => addBlock(b.type)} className="px-2 py-1 text-xs rounded border border-gray-200 bg-white hover:border-teal-400 hover:text-teal-700 transition-colors">
+                      <button key={b.type} onClick={() => addBlock(b.type)} className="px-2 py-1 text-xs rounded border border-gray-200 bg-white hover:border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:text-[var(--org-primary)] transition-colors">
                         {b.label}
                       </button>
                     ))}
@@ -749,7 +749,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
       {/* Active toggle */}
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+          <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[var(--org-primary)] focus:ring-[var(--org-primary)]" />
           <span className="text-sm text-gray-700">Active (show to customers)</span>
         </label>
       </div>
@@ -757,7 +757,7 @@ function OrderBumpEditor({ bump, onClose, onSaved }: {
       {/* Save */}
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending} className="org-primary-button">
           {(createMutation.isPending || updateMutation.isPending) ? "Saving..." : isNew ? "Create Order Bump" : "Save Changes"}
         </Button>
       </div>

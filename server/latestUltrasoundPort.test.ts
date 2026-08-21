@@ -1851,6 +1851,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundleLandingBuilderSource).not.toMatch(/(?:teal|violet|purple)/);
   });
 
+  it("uses the active organization theme for Order Bumps and does not seed fabricated testimonials", () => {
+    const orderBumpsSource = readFileSync(new URL("../client/src/pages/admin/OrderBumpsAdmin.tsx", import.meta.url), "utf8");
+    expect(orderBumpsSource).toContain("org-primary-button");
+    expect(orderBumpsSource).toContain("text-[var(--org-primary)]");
+    expect(orderBumpsSource).not.toMatch(/(?:teal|violet|purple)/);
+    expect(orderBumpsSource).toContain('case "testimonial": return { quote: "", author: "", role: "" }');
+    expect(orderBumpsSource).not.toContain("Happy Customer");
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
