@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 type GameStatus = "draft" | "published" | "archived";
 
@@ -24,6 +25,9 @@ function statusLabel(status: GameStatus) {
 export default function TeachGamesPage() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
+  const { orgId, orgs } = useOrgScope();
+  const activeOrg = orgs.find((org: any) => org.id === orgId) as any;
+  const hasTeachGamesAccess = ["pro", "enterprise"].includes(activeOrg?.plan ?? "");
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [gameDraft, setGameDraft] = useState(initialGame);
@@ -31,7 +35,7 @@ export default function TeachGamesPage() {
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
   const [joinCode, setJoinCode] = useState<string | null>(null);
 
-  const { data: games, isLoading } = trpc.teachGames.listGames.useQuery({ status: "all" });
+  const { data: games, isLoading } = trpc.teachGames.listGames.useQuery({ status: "all" }, { enabled: !activeOrg || hasTeachGamesAccess });
   const { data: gameData, isLoading: isGameLoading } = trpc.teachGames.getGame.useQuery(
     { gameId: selectedGameId ?? 0 },
     { enabled: selectedGameId !== null },
@@ -117,6 +121,25 @@ export default function TeachGamesPage() {
       points: question.points,
     });
   };
+
+  if (activeOrg && !hasTeachGamesAccess) {
+    return (
+      <div className="mx-auto max-w-3xl p-4 sm:p-6">
+        <Card className="overflow-hidden border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
+          <CardHeader className="bg-[color-mix(in_srgb,var(--org-primary)_7%,transparent)] text-center">
+            <Gamepad2 className="mx-auto h-10 w-10 text-[var(--org-primary)]" />
+            <CardTitle className="mt-3">Teach Games requires Pro</CardTitle>
+            <CardDescription className="mx-auto max-w-lg">Live organization-owned games, hosting controls, participant scoring, and question media are available on Pro and Enterprise plans.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-3 py-7 text-center">
+            <p className="text-sm text-muted-foreground">Your selected organization is currently on the <strong className="font-medium text-foreground capitalize">{activeOrg.plan ?? "current"}</strong> plan.</p>
+            <Link href="/billing"><Button className="org-primary-button">Upgrade to Pro</Button></Link>
+            <p className="text-xs text-muted-foreground">After the plan is upgraded, return here to create, host, and manage Teach Games for this organization.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (selectedGameId !== null) {
     return (

@@ -881,7 +881,7 @@ export default function FunnelPageEditor() {
                     <div className="flex items-center justify-between gap-1">
                       <span className="font-semibold text-gray-700 truncate">{idx + 1}. {rule.name}</span>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => setEditingRule({ ...rule, conditions: rule.conditions ?? [] })} className="text-gray-400 hover:text-teal-600"><Settings size={10} /></button>
+                        <button onClick={() => setEditingRule({ ...rule, conditions: rule.conditions ?? [] })} className="text-gray-400 hover:text-[var(--org-primary)]"><Settings size={10} /></button>
                         <button onClick={() => { if (confirm("Delete this rule?")) deleteBranchRule.mutate({ id: rule.id }); }} className="text-gray-400 hover:text-red-500"><Trash2 size={10} /></button>
                       </div>
                     </div>
@@ -893,7 +893,7 @@ export default function FunnelPageEditor() {
                 ))}
                 <button
                   onClick={() => setEditingRule(newRule())}
-                  className="w-full flex items-center gap-1 justify-center text-[10px] text-teal-600 hover:text-teal-800 border border-dashed border-teal-300 rounded-lg py-1.5 transition-colors"
+                  className="w-full flex items-center gap-1 justify-center text-[10px] text-[var(--org-primary)] hover:opacity-80 border border-dashed border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-lg py-1.5 transition-colors"
                 >
                   <Plus size={10} /> Add Rule
                 </button>
@@ -911,18 +911,18 @@ export default function FunnelPageEditor() {
                 </div>
                 <div className="p-4 space-y-4">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 block mb-1">Rule Name</label>
-                    <input
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                    <label className="text-xs font-medium text-gray-600 block mb-1">Rule Name</label>
+	                    <input
+	                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                       value={editingRule.name}
                       onChange={e => setEditingRule((r: any) => ({ ...r, name: e.target.value }))}
                     />
                   </div>
                   <div className="flex gap-3">
                     <div className="flex-1">
-                      <label className="text-xs font-medium text-gray-600 block mb-1">Match Mode</label>
-                      <select
-                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                      <label className="text-xs font-medium text-gray-600 block mb-1">Match Mode</label>
+	                      <select
+	                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                         value={editingRule.matchMode}
                         onChange={e => setEditingRule((r: any) => ({ ...r, matchMode: e.target.value }))}
                       >
@@ -948,22 +948,22 @@ export default function FunnelPageEditor() {
                       {editingRule.conditions.map((cond: any, ci: number) => (
                         <div key={ci} className="flex gap-1 items-start">
                           <div className="flex-1 grid grid-cols-3 gap-1">
-                            <select
-                              className="col-span-1 text-xs border border-gray-200 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                              value={cond.variable}
+	                            <select
+	                              className="col-span-1 text-xs border border-gray-200 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
+	                              value={cond.variable}
                               onChange={e => setEditingRule((r: any) => ({ ...r, conditions: r.conditions.map((c: any, i: number) => i === ci ? { ...c, variable: e.target.value } : c) }))}
                             >
                               {VARIABLES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                             </select>
-                            <select
-                              className="col-span-1 text-xs border border-gray-200 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                              value={cond.operator}
+	                            <select
+	                              className="col-span-1 text-xs border border-gray-200 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
+	                              value={cond.operator}
                               onChange={e => setEditingRule((r: any) => ({ ...r, conditions: r.conditions.map((c: any, i: number) => i === ci ? { ...c, operator: e.target.value } : c) }))}
                             >
                               {OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
-                            <input
-                              className="col-span-1 text-xs border border-gray-200 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal-500"
+	                            <input
+	                              className="col-span-1 text-xs border border-gray-200 rounded px-1.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                               placeholder="Value"
                               value={cond.value}
                               onChange={e => setEditingRule((r: any) => ({ ...r, conditions: r.conditions.map((c: any, i: number) => i === ci ? { ...c, value: e.target.value } : c) }))}
@@ -980,7 +980,7 @@ export default function FunnelPageEditor() {
                     </div>
                     <button
                       onClick={() => setEditingRule((r: any) => ({ ...r, conditions: [...r.conditions, newCondition()] }))}
-                      className="mt-2 text-xs text-teal-600 hover:text-teal-800 flex items-center gap-1"
+                      className="mt-2 text-xs text-[var(--org-primary)] hover:opacity-80 flex items-center gap-1"
                     >
                       <Plus size={10} /> Add Condition
                     </button>
@@ -991,9 +991,9 @@ export default function FunnelPageEditor() {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px] text-gray-500 block mb-1">Target Page ID</label>
-                        <input
-                          type="number"
-                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                        <input
+	                          type="number"
+	                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                           placeholder="e.g. 42"
                           value={editingRule.targetPageId ?? ""}
                           onChange={e => setEditingRule((r: any) => ({ ...r, targetPageId: e.target.value ? parseInt(e.target.value) : null }))}
@@ -1001,8 +1001,8 @@ export default function FunnelPageEditor() {
                       </div>
                       <div>
                         <label className="text-[10px] text-gray-500 block mb-1">Or External URL</label>
-                        <input
-                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                        <input
+	                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                           placeholder="https://..."
                           value={editingRule.targetUrl ?? ""}
                           onChange={e => setEditingRule((r: any) => ({ ...r, targetUrl: e.target.value || null }))}
@@ -1012,8 +1012,8 @@ export default function FunnelPageEditor() {
                     {allPages.length > 0 && (
                       <div className="mt-2">
                         <label className="text-[10px] text-gray-500 block mb-1">Or pick a page from this funnel:</label>
-                        <select
-                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                        <select
+	                          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                           value={editingRule.targetPageId ?? ""}
                           onChange={e => setEditingRule((r: any) => ({ ...r, targetPageId: e.target.value ? parseInt(e.target.value) : null, targetUrl: null }))}
                         >
@@ -1031,7 +1031,7 @@ export default function FunnelPageEditor() {
                   <Button
                     onClick={() => upsertBranchRule.mutate(editingRule)}
                     disabled={upsertBranchRule.isPending}
-                    className="bg-teal-600 hover:bg-teal-700 text-white text-sm"
+                    className="org-primary-button text-sm"
                   >
                     {upsertBranchRule.isPending ? "Saving…" : "Save Rule"}
                   </Button>
@@ -1044,7 +1044,7 @@ export default function FunnelPageEditor() {
           <div className="p-2">
             <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_16%,transparent)] border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg transition-colors"
             >
               <Plus size={14} /> Add Block
             </button>
@@ -1062,7 +1062,7 @@ export default function FunnelPageEditor() {
               </div>
               <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm org-primary-button rounded-lg transition-colors"
             >
               <Plus size={16} /> Add Your First Block
             </button>
@@ -1144,7 +1144,7 @@ export default function FunnelPageEditor() {
               <div className="flex justify-center py-6 border-t border-dashed border-gray-200">
                 <button
                   onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                  className="w-full max-w-xs border-2 border-dashed border-teal-300 hover:border-teal-500 rounded-xl py-3 text-teal-600 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
+                  className="w-full max-w-xs border-2 border-dashed border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-xl py-3 text-[var(--org-primary)] hover:opacity-80 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
                 >
                   <Plus size={16} /> Add Block
                 </button>
@@ -1158,7 +1158,7 @@ export default function FunnelPageEditor() {
           {/* Drag handle — outside overflow container so it's never clipped */}
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-teal-400 active:bg-teal-500 transition-colors flex items-center justify-center group border-l border-gray-200"
+            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] active:bg-[var(--org-primary)] transition-colors flex items-center justify-center group border-l border-gray-200"
             title="Drag to resize panel"
           >
             <div className="flex flex-col gap-0.5 opacity-40 group-hover:opacity-80">
@@ -1197,7 +1197,7 @@ export default function FunnelPageEditor() {
     <Dialog open={addMenuOpen} onOpenChange={open => { setAddMenuOpen(open); if (!open) setBlockSearch(""); }}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0">
-          <DialogTitle className="text-teal-700 flex items-center gap-2">
+          <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">
             <Plus className="w-5 h-5" /> Add Content Block
           </DialogTitle>
         </DialogHeader>
@@ -1216,7 +1216,7 @@ export default function FunnelPageEditor() {
               className={cn(
                 "px-3 py-2 text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1 shrink-0",
                 pickerTab === tab.id
-                  ? "text-teal-700 border-b-2 border-teal-500"
+                  ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -1239,7 +1239,7 @@ export default function FunnelPageEditor() {
                   className={cn(
                     "px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0",
                     activeCat === cat
-                      ? "text-teal-700 border-b-2 border-teal-500 bg-white"
+                      ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)] bg-white"
                       : "text-gray-500 hover:text-gray-700"
                   )}
                 >
@@ -1253,9 +1253,9 @@ export default function FunnelPageEditor() {
                 <button
                   key={b.type}
                   onClick={() => { addBlock(b.type); setAddMenuOpen(false); }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-transparent hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-gray-600 hover:text-[var(--org-primary)] transition-all text-center"
                 >
-                  <span className="text-teal-600 text-2xl">{b.icon}</span>
+                  <span className="text-[var(--org-primary)] text-2xl">{b.icon}</span>
                   <span className="text-xs leading-tight font-medium">{b.label}</span>
                 </button>
               ))}
@@ -1268,31 +1268,31 @@ export default function FunnelPageEditor() {
           <div className="flex flex-1 overflow-hidden gap-3 min-h-0">
             {/* Left: All page source pickers */}
             <div className="w-52 shrink-0 flex flex-col gap-2 overflow-y-auto border-r border-gray-100 pr-2">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course Page</label>
-                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400" value={selectedSourceCourseId ?? ""} onChange={e => { setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null); setSelectedSourceDownloadId(null); setSelectedSourceProductId(null); setSelectedSourceFunnelId(null); setSelectedSourcePageId(null); setBlockSearch(""); }}>
+	              <div>
+	                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course Page</label>
+	                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" value={selectedSourceCourseId ?? ""} onChange={e => { setSelectedSourceCourseId(e.target.value ? Number(e.target.value) : null); setSelectedSourceDownloadId(null); setSelectedSourceProductId(null); setSelectedSourceFunnelId(null); setSelectedSourcePageId(null); setBlockSearch(""); }}>
                   <option value="">— select course —</option>
                   {coursesWithBlocks?.map((c: any) => <option key={c.id} value={c.id} title={c.title}>{c.title}</option>)}
                 </select>
               </div>
-              <div className="border-t border-gray-100 pt-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Download Product</label>
-                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400" value={selectedSourceDownloadId ?? ""} onChange={e => { setSelectedSourceDownloadId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceProductId(null); setSelectedSourceFunnelId(null); setSelectedSourcePageId(null); setBlockSearch(""); }}>
+	              <div className="border-t border-gray-100 pt-2">
+	                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Download Product</label>
+	                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" value={selectedSourceDownloadId ?? ""} onChange={e => { setSelectedSourceDownloadId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceProductId(null); setSelectedSourceFunnelId(null); setSelectedSourcePageId(null); setBlockSearch(""); }}>
                   <option value="">— select product —</option>
                   {downloadsWithBlocks?.map((d: any) => <option key={d.id} value={d.id}>{d.title}</option>)}
                 </select>
               </div>
-              <div className="border-t border-gray-100 pt-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Physical Product</label>
-                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400" value={selectedSourceProductId ?? ""} onChange={e => { setSelectedSourceProductId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceDownloadId(null); setSelectedSourceFunnelId(null); setSelectedSourcePageId(null); setBlockSearch(""); }}>
+	              <div className="border-t border-gray-100 pt-2">
+	                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Physical Product</label>
+	                <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" value={selectedSourceProductId ?? ""} onChange={e => { setSelectedSourceProductId(e.target.value ? Number(e.target.value) : null); setSelectedSourceCourseId(null); setSelectedSourceDownloadId(null); setSelectedSourceFunnelId(null); setSelectedSourcePageId(null); setBlockSearch(""); }}>
                   <option value="">— select product —</option>
                   {productsWithBlocks?.map((p: any) => <option key={p.id} value={p.id}>{p.title}</option>)}
                 </select>
               </div>
-              <div className="border-t border-gray-100 pt-2">
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Funnel</label>
-                <select
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400"
+	              <div className="border-t border-gray-100 pt-2">
+	                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Funnel</label>
+	                <select
+	                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
                   value={selectedSourceFunnelId ?? ""}
                   onChange={e => {
                     setSelectedSourceFunnelId(e.target.value ? Number(e.target.value) : null);
@@ -1323,7 +1323,7 @@ export default function FunnelPageEditor() {
                             className={cn(
                               "w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors",
                               selectedSourcePageId === p.id
-                                ? "bg-teal-50 text-teal-700 font-semibold border border-teal-200"
+                                ? "bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)] font-semibold border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]"
                                 : "text-gray-600 hover:bg-gray-50"
                             )}
                           >
@@ -1361,7 +1361,7 @@ export default function FunnelPageEditor() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 shrink-0"
+                        className="h-7 text-xs border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] shrink-0"
                         onClick={copyAllBlocksFromPage}
                       >
                         <Copy className="w-3 h-3 mr-1" /> Copy All ({sourcePageBlocks.length})
@@ -1376,12 +1376,12 @@ export default function FunnelPageEditor() {
                       return (
                         <div
                           key={b.id}
-                          className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors"
+                          className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] group transition-colors"
                         >
                           <div className="flex items-start gap-2.5 min-w-0">
                             <span className="text-gray-300 text-xs font-mono w-5 shrink-0 mt-0.5 text-right">{i + 1}</span>
                             {catalogEntry && (
-                              <span className="shrink-0 text-teal-500 mt-0.5" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>
+                              <span className="shrink-0 text-[var(--org-primary)] mt-0.5" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>
                             )}
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-semibold text-gray-700 leading-tight">
@@ -1395,7 +1395,7 @@ export default function FunnelPageEditor() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-6 text-xs shrink-0 border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"
+                            className="h-6 text-xs shrink-0 border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"
                             onClick={() => copyBlockFromPage(b)}
                           >
                             <Copy className="w-3 h-3 mr-1" /> Copy
@@ -1435,7 +1435,7 @@ export default function FunnelPageEditor() {
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
                 disabled={!importUrl.trim() || scrapeUrlMutation.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 org-primary-button text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
               >
                 {scrapeUrlMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                 {scrapeUrlMutation.isPending ? "Scraping..." : "Scrape"}
@@ -1448,7 +1448,7 @@ export default function FunnelPageEditor() {
                     Found <strong>{importPreview.blockCount}</strong> blocks from <em>{importPreview.pageTitle || importUrl}</em>. Select which to import:
                   </p>
                   <div className="flex gap-2">
-                    <button onClick={() => setImportSelectedBlocks(new Set(importPreview.blocks.map((_: any, i: number) => i)))} className="text-xs text-teal-600 hover:underline">All</button>
+                    <button onClick={() => setImportSelectedBlocks(new Set(importPreview.blocks.map((_: any, i: number) => i)))} className="text-xs text-[var(--org-primary)] hover:underline">All</button>
                     <button onClick={() => setImportSelectedBlocks(new Set())} className="text-xs text-gray-500 hover:underline">None</button>
                   </div>
                 </div>
@@ -1463,10 +1463,10 @@ export default function FunnelPageEditor() {
                           if (e.target.checked) next.add(i); else next.delete(i);
                           setImportSelectedBlocks(next);
                         }}
-                        className="mt-0.5 accent-teal-600"
+                        className="mt-0.5 accent-[var(--org-primary)]"
                       />
                       <div className="min-w-0">
-                        <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">{block.type}</span>
+                        <span className="text-xs font-semibold text-[var(--org-primary)] uppercase tracking-wide">{block.type}</span>
                         <p className="text-xs text-gray-500 truncate">
                           {block.type === "hero" ? block.data?.headline :
                            block.type === "text" ? (block.data?.html || "").replace(/<[^>]+>/g, "").slice(0, 80) :
@@ -1488,7 +1488,7 @@ export default function FunnelPageEditor() {
                     setAddMenuOpen(false);
                     toast.success(`Imported ${toAdd.length} block${toAdd.length !== 1 ? "s" : ""} from URL!`);
                   }}
-                  className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-2 org-primary-button text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
                 >
                   Import {importSelectedBlocks.size} Selected Block{importSelectedBlocks.size !== 1 ? "s" : ""}
                 </button>
@@ -1509,7 +1509,7 @@ export default function FunnelPageEditor() {
     <Dialog open={!!saveTemplateDialogBlock} onOpenChange={(open) => { if (!open) setSaveTemplateDialogBlock(null); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-teal-700 flex items-center gap-2">Save Block as Template</DialogTitle>
+          <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">Save Block as Template</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
@@ -1529,7 +1529,7 @@ export default function FunnelPageEditor() {
               if (!saveTemplateDialogBlock || !saveTemplateBlockName.trim()) return;
               saveBlockTemplateMutation.mutate({ name: saveTemplateBlockName.trim(), description: saveTemplateBlockDesc.trim() || undefined, blockType: saveTemplateDialogBlock.type, blockData: JSON.parse(JSON.stringify(saveTemplateDialogBlock.data ?? {})) });
             }}
-            className="text-sm bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm org-primary-button px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveBlockTemplateMutation.isPending ? "Saving..." : "Save Template"}
           </button>
@@ -1573,7 +1573,7 @@ function FunnelTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Block
           <button key={t} onClick={() => setSubTab(t)}
             className={cn(
               "flex-1 py-1.5 text-xs font-semibold capitalize transition-colors",
-              subTab === t ? "border-b-2 border-teal-500 text-teal-700" : "text-gray-400 hover:text-gray-600"
+              subTab === t ? "border-b-2 border-[var(--org-primary)] text-[var(--org-primary)]" : "text-gray-400 hover:text-gray-600"
             )}>
             {t === "page" ? "Page Templates" : "Block Templates"}
           </button>
@@ -1690,7 +1690,7 @@ function FunnelApplyTemplateModal({ onClose, onApply }: { onClose: () => void; o
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-[640px] max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-teal-600" /> Apply Page Template</h2>
+          <h2 className="font-bold text-gray-900 flex items-center gap-2"><FolderOpen size={18} className="text-[var(--org-primary)]" /> Apply Page Template</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <div className="px-4 pt-3 pb-2">
@@ -1715,12 +1715,12 @@ function FunnelApplyTemplateModal({ onClose, onApply }: { onClose: () => void; o
                   try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; }
                 })();
                 return (
-                  <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-teal-300 hover:bg-teal-50/30 transition-colors group">
+	                  <div key={tpl.id} className="border border-gray-200 rounded-xl p-4 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_6%,transparent)] transition-colors group">
                     <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{tpl.name}</h3>
                     {tpl.description && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{tpl.description}</p>}
                     <p className="text-xs text-gray-400 mb-3">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p>
                     <div className="flex gap-2">
-                      <Button onClick={() => onApply(tplBlocks)} className="flex-1 h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white">Apply Template</Button>
+	                      <Button onClick={() => onApply(tplBlocks)} className="flex-1 h-7 text-xs org-primary-button">Apply Template</Button>
                       <button onClick={() => { if (confirm("Delete this template?")) deletePageTpl.mutate({ id: tpl.id }); }} className="w-7 h-7 border border-gray-200 rounded text-gray-400 hover:text-red-500 flex items-center justify-center flex-shrink-0 group-hover:opacity-100"><Trash2 size={12} /></button>
                     </div>
                   </div>

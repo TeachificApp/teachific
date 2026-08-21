@@ -7,12 +7,14 @@ import {
   teachGameQuestions,
   teachGames,
   teachGameSessions,
+  organizations,
 } from "../../drizzle/schema";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const gameStatus = z.enum(["draft", "published", "archived"]);
 const sessionStatus = z.enum(["lobby", "active", "paused", "ended"]);
+const TEACH_GAME_TIERS = ["pro", "enterprise"] as const;
 
 function calculatePoints(basePoints: number, timeLimitMs: number, responseTimeMs: number): number {
   const speedRatio = Math.max(0, 1 - responseTimeMs / Math.max(timeLimitMs, 1));
@@ -23,12 +25,29 @@ function createParticipantName(): string {
   return `Player ${Math.floor(Math.random() * 9000 + 1000)}`;
 }
 
+async function assertTeachGamesPlan(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  orgId: number,
+) {
+  const [org] = await db.select({ plan: organizations.plan }).from(organizations).where(eq(organizations.id, orgId)).limit(1);
+  if (!org) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+  if (!(TEACH_GAME_TIERS as readonly string[]).includes(org.plan)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Teach Games is available on Pro and Enterprise plans. Upgrade this organization to host or manage games.",
+    });
+  }
+}
+
 async function requireActiveGameOrg(userId: number, role: string): Promise<number> {
   const orgId = await getOrgIdForUserWithFallback(userId, role);
   if (!orgId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing Teach games." });
   }
   await requireOrgAdmin(userId, role, orgId);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  await assertTeachGamesPlan(db, orgId);
   return orgId;
 }
 
@@ -294,6 +313,7 @@ export const teachGamesRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       const [session] = await db.select().from(teachGameSessions).where(eq(teachGameSessions.joinCode, input.joinCode.toUpperCase())).limit(1);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Teach game session not found." });
+      await assertTeachGamesPlan(db, session.orgId);
       const snapshot = JSON.parse(session.gameSnapshot) as { game?: any; questions?: any[] };
       const question = session.status === "active" ? snapshot.questions?.[session.currentQuestionIndex ?? 0] : null;
       return {
@@ -310,6 +330,7 @@ export const teachGamesRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       const [session] = await db.select().from(teachGameSessions).where(and(eq(teachGameSessions.joinCode, input.joinCode.toUpperCase()), eq(teachGameSessions.status, "lobby"))).limit(1);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "This Teach game is not accepting participants." });
+      await assertTeachGamesPlan(db, session.orgId);
       if (!session.allowAnonymous && !input.displayName) throw new TRPCError({ code: "BAD_REQUEST", message: "A display name is required for this Teach game." });
       const displayName = input.displayName || createParticipantName();
       const result = await db.insert(teachGameParticipants).values({ sessionId: session.id, displayName, avatarSeed: Math.random().toString(36).slice(2, 8) });
@@ -324,6 +345,7 @@ export const teachGamesRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
       const [session] = await db.select().from(teachGameSessions).where(and(eq(teachGameSessions.id, input.sessionId), eq(teachGameSessions.status, "active"))).limit(1);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Teach game session is not active." });
+      await assertTeachGamesPlan(db, session.orgId);
       const [participant] = await db.select().from(teachGameParticipants).where(and(eq(teachGameParticipants.id, input.participantId), eq(teachGameParticipants.sessionId, session.id), eq(teachGameParticipants.isActive, true))).limit(1);
       if (!participant) throw new TRPCError({ code: "FORBIDDEN", message: "Participant is not active in this Teach game session." });
       const snapshot = JSON.parse(session.gameSnapshot) as { game?: any; questions?: any[] };

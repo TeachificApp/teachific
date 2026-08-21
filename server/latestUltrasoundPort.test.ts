@@ -1853,10 +1853,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(teachGamesSource).toContain("requireOrgAdmin(userId, role, orgId)");
     expect(teachGamesSource).toContain("eq(teachGames.orgId, orgId)");
     expect(teachGamesSource).toContain("eq(teachGameSessions.orgId, orgId)");
+    expect(teachGamesSource).toContain('const TEACH_GAME_TIERS = ["pro", "enterprise"]');
+    expect(teachGamesSource).toContain("assertTeachGamesPlan(db, orgId)");
+    expect(teachGamesSource).toContain("assertTeachGamesPlan(db, session.orgId)");
     expect(teachGamesSource).toContain("gameId: game.id");
     expect(schemaSource).toContain('export const teachGames = mysqlTable("teach_games"');
     expect(schemaSource).toContain('export const teachGameSessions = mysqlTable("teach_game_sessions"');
     expect(gameLibrarySource).toContain("trpc.teachGames.createGame");
+    expect(gameLibrarySource).toContain("Teach Games requires Pro");
+    expect(gameLibrarySource).toContain('href="/billing"');
+    expect(gameLibrarySource).toContain('["pro", "enterprise"].includes(activeOrg?.plan');
     expect(gameLibrarySource).toContain("mediaUrl: questionDraft.mediaUrl || undefined");
     expect(gameLibrarySource).toContain('option value="video"');
     expect(hostSource).toContain("trpc.teachGames.startSession");
