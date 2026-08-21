@@ -1318,7 +1318,7 @@ function StyleTab({ formId, template }: { formId: number; template: any }) {
                     onClick={() => set("layoutMode", mode)}
                     className={`flex-1 py-2 px-3 text-xs rounded border font-medium transition-all ${
                       theme.layoutMode === mode
-                        ? "border-teal-600 bg-teal-50 text-teal-700"
+                        ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]"
                         : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                     }`}>
                     {mode === "condensed" ? "📦 Condensed (Default)" : "🖥 Full Page"}
@@ -1352,7 +1352,7 @@ function StyleTab({ formId, template }: { formId: number; template: any }) {
                     onClick={() => set("bgType", t)}
                     className={`flex-1 py-1.5 px-2 text-xs rounded border font-medium transition-all capitalize ${
                       theme.bgType === t
-                        ? "border-teal-600 bg-teal-50 text-teal-700"
+                        ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]"
                         : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                     }`}>
                     {t === "color" ? "🎨 Color" : t === "gradient" ? "🌈 Gradient" : t === "image" ? "🖼 Image" : "✨ None"}
@@ -1389,7 +1389,7 @@ function StyleTab({ formId, template }: { formId: number; template: any }) {
                   <Label className="text-xs">Image Opacity ({theme.bgOpacity}%)</Label>
                   <input type="range" min={10} max={100} value={theme.bgOpacity}
                     onChange={e => set("bgOpacity", parseInt(e.target.value))}
-                    className="w-full mt-1 accent-teal-600" />
+                    className="w-full mt-1 accent-[var(--org-primary)]" />
                 </div>
               </>
             )}
@@ -1408,7 +1408,7 @@ function StyleTab({ formId, template }: { formId: number; template: any }) {
                     onClick={() => set("cardShadow", s)}
                     className={`flex-1 py-1.5 px-2 text-xs rounded border font-medium transition-all ${
                       theme.cardShadow === s
-                        ? "border-teal-600 bg-teal-50 text-teal-700"
+                        ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]"
                         : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
                     }`}>
                     {s === "none" ? "None" : s === "sm" ? "Soft" : s === "md" ? "Medium" : "Strong"}
@@ -1421,7 +1421,7 @@ function StyleTab({ formId, template }: { formId: number; template: any }) {
               <Label className="text-xs">Card Background Opacity ({theme.cardBgOpacity}%)</Label>
               <input type="range" min={10} max={100} value={theme.cardBgOpacity}
                 onChange={e => set("cardBgOpacity", parseInt(e.target.value))}
-                className="w-full mt-1 accent-teal-600" />
+                className="w-full mt-1 accent-[var(--org-primary)]" />
             </div>
           </CardContent>
         </Card>
@@ -1856,7 +1856,7 @@ function ShareTab({ formId, template, onRefetch }: { formId: number; template: a
               Append URL parameters to auto-fill form fields. Use the field IDs below to construct your link.
             </p>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 font-mono text-xs text-gray-700 break-all">
-              {publicUrl}?field_<span className="text-teal-600">ID</span>=value&amp;field_<span className="text-teal-600">ID2</span>=value2
+              {publicUrl}?field_<span className="text-[var(--org-primary)]">ID</span>=value&amp;field_<span className="text-[var(--org-primary)]">ID2</span>=value2
             </div>
             <p className="text-xs font-semibold text-gray-600 mt-2">Field ID Reference</p>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1872,11 +1872,11 @@ function ShareTab({ formId, template, onRefetch }: { formId: number; template: a
                 <tbody>
                   {formItems.map((it: any) => (
                     <tr key={it.id} className="border-b border-gray-100 last:border-0">
-                      <td className="px-3 py-2 font-mono text-teal-700">{it.id}</td>
+                      <td className="px-3 py-2 font-mono text-[var(--org-primary)]">{it.id}</td>
                       <td className="px-3 py-2 text-gray-700">{it.label || <span className="italic text-gray-400">(unlabeled)</span>}</td>
                       <td className="px-3 py-2 text-gray-500">{it.itemType}</td>
                       <td className="px-3 py-2">
-                        <code className="bg-gray-100 px-1 rounded text-teal-600">?field_{it.id}=value</code>
+                        <code className="bg-gray-100 px-1 rounded text-[var(--org-primary)]">?field_{it.id}=value</code>
                       </td>
                     </tr>
                   ))}
@@ -2395,11 +2395,11 @@ function SettingsTab({ formId, template, onRefetch }: { formId: number; template
                   onClick={() => setDisplayMode(opt.value)}
                   className={`text-left p-3 rounded-lg border-2 transition-all ${
                     displayMode === opt.value
-                      ? "border-teal-500 bg-teal-50"
+                      ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  <div className={`text-sm font-semibold ${displayMode === opt.value ? "text-teal-700" : "text-gray-700"}`}>{opt.label}</div>
+                  <div className={`text-sm font-semibold ${displayMode === opt.value ? "text-[var(--org-primary)]" : "text-gray-700"}`}>{opt.label}</div>
                   <div className="text-xs text-gray-400 mt-0.5">{opt.desc}</div>
                 </button>
               ))}
@@ -2754,7 +2754,7 @@ function BranchingTab({ formId }: { formId: number }) {
                       <div className="mt-1.5 space-y-0.5">
                         {conditions.map((c: any, i: number) => (
                           <div key={i} className="flex items-center gap-1 text-xs text-gray-500">
-                            {i > 0 && <span className="font-semibold text-teal-600">{rule.logicOperator === "all" ? "AND" : "OR"}</span>}
+                            {i > 0 && <span className="font-semibold text-[var(--org-primary)]">{rule.logicOperator === "all" ? "AND" : "OR"}</span>}
                             <span className="bg-gray-100 rounded px-1.5 py-0.5">{getItemLabel(c.fieldId)}</span>
                             <span>{BRANCH_OPERATORS.find(o => o.value === c.operator)?.label ?? c.operator}</span>
                             {!["is_empty", "is_not_empty"].includes(c.operator) && <span className="font-medium text-gray-700">"{c.value}"</span>}
@@ -2801,7 +2801,7 @@ function BranchingTab({ formId }: { formId: number }) {
                       {(["all", "any"] as const).map(l => (
                         <button key={l} type="button" onClick={() => setEditingRule(r => r ? { ...r, logicOperator: l } : r)}
                           className={`px-2.5 py-1 font-medium transition-colors ${
-                            editingRule.logicOperator === l ? "bg-teal-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+                            editingRule.logicOperator === l ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
                           }`}>{l === "all" ? "ALL" : "ANY"}</button>
                       ))}
                     </div>
@@ -2811,7 +2811,7 @@ function BranchingTab({ formId }: { formId: number }) {
                 <div className="space-y-2">
                   {editingRule.conditions.map((cond, idx) => (
                     <div key={cond.id} className="flex items-center gap-2 flex-wrap bg-gray-50 rounded-lg p-2">
-                      {idx > 0 && <span className="text-xs font-bold text-teal-700 w-8 text-center">{editingRule.logicOperator === "all" ? "AND" : "OR"}</span>}
+                      {idx > 0 && <span className="text-xs font-bold text-[var(--org-primary)] w-8 text-center">{editingRule.logicOperator === "all" ? "AND" : "OR"}</span>}
                       {idx === 0 && <span className="text-xs text-gray-400 w-8">If</span>}
                       <Select value={cond.fieldId} onValueChange={v => updateCondition(cond.id, { fieldId: v })}>
                         <SelectTrigger className="h-7 text-xs w-44"><SelectValue placeholder="Select field" /></SelectTrigger>
@@ -2839,7 +2839,7 @@ function BranchingTab({ formId }: { formId: number }) {
                         }
                         return (
                           <input type="text" value={cond.value} onChange={e => updateCondition(cond.id, { value: e.target.value })}
-                            placeholder="value" className="h-7 px-2 text-xs border border-gray-200 rounded w-32 bg-white focus:outline-none focus:border-teal-400" />
+                            placeholder="value" className="h-7 px-2 text-xs border border-gray-200 rounded w-32 bg-white focus:outline-none focus:border-[var(--org-primary)]" />
                         );
                       })()}
                       <button type="button" onClick={() => removeCondition(cond.id)} className="text-gray-400 hover:text-red-500 ml-auto">
