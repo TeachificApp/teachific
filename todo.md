@@ -5595,6 +5595,8 @@
 - [x] Apply the active organization theme to form success-page block controls
 - [x] Apply the active organization theme to lead-capture modal controls
 - [x] Apply the active organization theme to organization member search controls
+- [x] Review learner certificate surfaces and retain their organization-configurable template color overrides
+- [x] Apply the active organization theme to community learner surfaces
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

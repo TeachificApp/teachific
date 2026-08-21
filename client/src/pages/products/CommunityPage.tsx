@@ -302,7 +302,7 @@ export default function CommunityPage() {
         <DialogContent className="bg-white border-gray-200 text-slate-900 max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-teal-500" />
+              <Globe className="h-5 w-5 text-[var(--org-primary)]" />
               New Community
             </DialogTitle>
             <DialogDescription className="text-slate-500">
