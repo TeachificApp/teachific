@@ -104,7 +104,7 @@ const PRESET_SEALS: Array<{ id: PresetSealId; label: string; description: string
 
 // ─── Section metadata ─────────────────────────────────────────────────────────
 const SECTION_META: Record<Exclude<CheckoutSectionType, 'content_block'>, { label: string; icon: React.ReactNode; description: string; color: string }> = {
-  trust_seals: { label: "Trust Seals & Badges", icon: <ShieldCheck className="h-4 w-4" />, description: "Security badges and guarantee icons", color: "text-teal-600" },
+  trust_seals: { label: "Trust Seals & Badges", icon: <ShieldCheck className="h-4 w-4" />, description: "Security badges and guarantee icons", color: "text-[var(--org-primary)]" },
   guarantee: { label: "Money-Back Guarantee", icon: <Award className="h-4 w-4" />, description: "Refund policy with icon and text", color: "text-amber-600" },
   testimonials: { label: "Testimonials", icon: <MessageSquare className="h-4 w-4" />, description: "Student reviews and ratings", color: "text-blue-600" },
   faq: { label: "FAQ", icon: <HelpCircle className="h-4 w-4" />, description: "Frequently asked questions", color: "text-[var(--org-primary)]" },
@@ -300,7 +300,7 @@ function CanvasCourseIncludes({ section }: { section: CourseIncludesSection }) {
         <div className="space-y-1">
           {items.slice(0, 4).map((item, i) => (
             <div key={i} className="flex items-center gap-2 text-xs text-gray-700">
-              <CheckCircle2 className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-[var(--org-primary)] flex-shrink-0" />
               {item.text}
             </div>
           ))}
@@ -367,7 +367,7 @@ function AddSectionDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
-            <Plus className="h-4 w-4 text-teal-600" /> Add Section
+            <Plus className="h-4 w-4 text-[var(--org-primary)]" /> Add Section
           </DialogTitle>
         </DialogHeader>
 
@@ -387,7 +387,7 @@ function AddSectionDialog({
                 return (
                   <button key={type} onClick={() => onAddNative(type)} disabled={exists}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
-                      exists ? "opacity-40 cursor-not-allowed bg-gray-50 border-gray-100" : "bg-white border-gray-200 hover:border-teal-400 hover:bg-teal-50"
+                      exists ? "opacity-40 cursor-not-allowed bg-gray-50 border-gray-100" : "bg-white border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                     }`}>
                     <span className={meta.color}>{meta.icon}</span>
                     <div className="flex-1 min-w-0">
@@ -416,7 +416,7 @@ function AddSectionDialog({
                 {CATALOG_CATEGORIES.map(cat => (
                   <button key={cat} onClick={() => setSelectedCategory(cat)}
                     className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      selectedCategory === cat ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-teal-50"
+                      selectedCategory === cat ? "bg-[var(--org-primary)] text-white" : "bg-gray-100 text-gray-600 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                     }`}>
                     {cat}
                   </button>
@@ -428,8 +428,8 @@ function AddSectionDialog({
                 {(blockSearch ? BLOCK_CATALOG.filter(b => b.label.toLowerCase().includes(blockSearch.toLowerCase())) : filteredBlocks).map(entry => (
                   <button key={entry.type}
                     onClick={() => onAddBlock(entry.type, entry.defaultData, entry.label)}
-                    className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-left transition-colors bg-white">
-                    <span className="text-teal-600 flex-shrink-0">{entry.icon}</span>
+                    className="flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-left transition-colors bg-white">
+                    <span className="text-[var(--org-primary)] flex-shrink-0">{entry.icon}</span>
                     <p className="text-xs font-medium text-gray-800 truncate">{entry.label}</p>
                   </button>
                 ))}
@@ -461,7 +461,7 @@ function AddSectionDialog({
                   return (
                     <button key={tpl.id}
                       onClick={() => onAddBlock(tpl.blockType, blockData, tpl.name)}
-                      className="flex flex-col gap-1 p-3 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-left transition-colors bg-white">
+                      className="flex flex-col gap-1 p-3 rounded-xl border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-left transition-colors bg-white">
                       <p className="text-xs font-semibold text-gray-800 truncate">{tpl.name}</p>
                       {tpl.description && <p className="text-xs text-gray-500 line-clamp-2">{tpl.description}</p>}
                       <Badge variant="secondary" className="text-[10px] mt-1 self-start">{tpl.blockType}</Badge>
@@ -490,7 +490,7 @@ function TrustSealsPanel({ section, onChange }: { section: TrustSealsSection; on
           {(["row", "grid"] as const).map(l => (
             <button key={l} onClick={() => onChange({ ...section, layout: l })}
               className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                section.layout === l ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:border-teal-400"
+                section.layout === l ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
               }`}>
               {l === "row" ? "Horizontal Row" : "2-Column Grid"}
             </button>
@@ -532,7 +532,7 @@ function TrustSealsPanel({ section, onChange }: { section: TrustSealsSection; on
                 onChange({ ...section, seals: [...section.seals, { id: p.id, preset: p.id, label: p.label, enabled: true }] });
               }} disabled={already}
                 className={`text-left p-2 rounded-lg border text-xs transition-colors ${
-                  already ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed" : "bg-white text-gray-700 border-gray-200 hover:border-teal-400 hover:bg-teal-50"
+                  already ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed" : "bg-white text-gray-700 border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                 }`}>
                 <p className="font-medium truncate">{p.label}</p>
                 <p className="text-gray-400 truncate">{p.description}</p>
@@ -572,7 +572,7 @@ function GuaranteePanel({ section, onChange }: { section: GuaranteeSection; onCh
           {ICONS.map(icon => (
             <button key={icon} onClick={() => onChange({ ...section, icon })}
               className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
-                section.icon === icon ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:border-teal-400"
+                section.icon === icon ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
               }`}>
               {icon.replace(/([A-Z])/g, ' $1').trim().split(' ')[0]}
             </button>
@@ -646,7 +646,7 @@ function TestimonialsPanel({ section, onChange }: { section: TestimonialsSection
               </button>
             ))}
           </div>
-          <Button size="sm" onClick={addTestimonial} className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white">
+          <Button size="sm" onClick={addTestimonial} className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white">
             <Plus className="h-3 w-3 mr-1" /> Add
           </Button>
         </div>
@@ -693,7 +693,7 @@ function FaqPanel({ section, onChange }: { section: FaqSection; onChange: (s: Fa
         <p className="text-xs font-semibold text-gray-600">Add FAQ item</p>
         <Input value={newQ} onChange={e => setNewQ(e.target.value)} placeholder="Question" className="h-7 text-xs" />
         <Textarea value={newA} onChange={e => setNewA(e.target.value)} placeholder="Answer" className="text-xs min-h-[60px] resize-none" />
-        <Button size="sm" onClick={addItem} className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white w-full">
+        <Button size="sm" onClick={addItem} className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white w-full">
           <Plus className="h-3 w-3 mr-1" /> Add Item
         </Button>
       </div>
@@ -726,7 +726,7 @@ function CourseIncludesPanel({ section, onChange }: { section: CourseIncludesSec
           <div className="space-y-1.5">
             {(section.items ?? []).map((item, idx) => (
               <div key={idx} className="flex items-center gap-2 p-2 rounded-lg border border-gray-100 bg-gray-50">
-                <CheckCircle2 className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--org-primary)] flex-shrink-0" />
                 <span className="flex-1 text-xs text-gray-700">{item.text}</span>
                 <button onClick={() => onChange({ ...section, items: (section.items ?? []).filter((_, i) => i !== idx) })} className="text-gray-300 hover:text-red-500">
                   <X className="h-3.5 w-3.5" />
@@ -791,8 +791,8 @@ function SortableSectionRow({
         !section.enabled ? "opacity-50" : ""
       } ${
         isSelected
-          ? "border-teal-400 bg-teal-50"
-          : "border-gray-100 bg-gray-50 hover:bg-teal-50 hover:border-teal-200"
+          ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
+          : "border-gray-100 bg-gray-50 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]"
       }`}
     >
       <button
@@ -965,7 +965,7 @@ export default function CheckoutPageEditorPage() {
     : `/admin/lms`;
 
   const selectedSection = config && selectedIdx !== null ? config.sections[selectedIdx] : null;
-  const primary = "#179ca3";
+  const primary = getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim();
 
   if (isLoading || config === null) {
     return (
@@ -984,7 +984,7 @@ export default function CheckoutPageEditorPage() {
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(backUrl)}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors">
             <ArrowLeft size={16} /> Back
           </button>
           <div className="w-px h-5 bg-gray-200" />
@@ -993,7 +993,7 @@ export default function CheckoutPageEditorPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setTemplatePickerOpen(true)}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
             <LayoutTemplate size={14} /> Templates
           </button>
           <button onClick={() => setTemplateSaveOpen(true)}
@@ -1002,12 +1002,12 @@ export default function CheckoutPageEditorPage() {
           </button>
           {entitySlug && (
             <a href={previewUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] border border-gray-200 rounded-lg px-3 py-1.5 transition-colors">
               <Eye size={14} /> Preview
             </a>
           )}
           <Button onClick={handleSave} disabled={!dirty || isSaving}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-1.5 h-8">
+            className="flex items-center gap-1.5 bg-[var(--org-primary)] hover:brightness-90 text-white text-sm px-4 py-1.5 h-8">
             <Save size={14} /> {isSaving ? "Saving…" : dirty ? "Save" : "Saved"}
           </Button>
         </div>
@@ -1026,7 +1026,7 @@ export default function CheckoutPageEditorPage() {
 
               {/* Fixed course card (non-editable) */}
               <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden opacity-60">
-                <div className="h-20 w-full" style={{ background: `linear-gradient(135deg, ${primary}, #0d9488)` }} />
+                <div className="h-20 w-full" style={{ background: `linear-gradient(135deg, ${primary}, ${primary})` }} />
                 <div className="p-4 space-y-2">
                   <div className="h-4 bg-gray-100 rounded w-3/4" />
                   <div className="h-3 bg-gray-100 rounded w-1/2" />
@@ -1072,7 +1072,7 @@ export default function CheckoutPageEditorPage() {
                           {!section.enabled && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Hidden</Badge>}
                         </div>
                         {isSelected && (
-                          <span className="text-xs text-teal-600 font-medium flex items-center gap-1">
+                          <span className="text-xs text-[var(--org-primary)] font-medium flex items-center gap-1">
                             <Settings2 className="h-3 w-3" /> Editing
                           </span>
                         )}
@@ -1095,7 +1095,7 @@ export default function CheckoutPageEditorPage() {
               {/* Add section button */}
               <button
                 onClick={() => setAddSectionOpen(true)}
-                className="w-full border-2 border-dashed border-teal-300 hover:border-teal-500 rounded-2xl py-4 text-teal-600 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
+                className="w-full border-2 border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-2xl py-4 text-[var(--org-primary)] hover:brightness-90 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
               >
                 <Plus size={16} /> Add Section
               </button>
@@ -1215,7 +1215,7 @@ export default function CheckoutPageEditorPage() {
                     <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
                     <p className="text-xs">No sections yet</p>
                     <button onClick={() => setAddSectionOpen(true)}
-                      className="mt-2 text-xs text-teal-600 hover:text-teal-700 font-medium">
+                      className="mt-2 text-xs text-[var(--org-primary)] hover:brightness-90 font-medium">
                       Add your first section
                     </button>
                   </div>
@@ -1272,8 +1272,8 @@ export default function CheckoutPageEditorPage() {
                           const item = sortedSections.find(s => s.dragId === activeDragId);
                           if (!item) return null;
                           return (
-                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-teal-400 bg-white shadow-xl opacity-95">
-                              <GripVertical className="h-3.5 w-3.5 text-teal-400 flex-shrink-0" />
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[var(--org-primary)] bg-white shadow-xl opacity-95">
+                              <GripVertical className="h-3.5 w-3.5 text-[var(--org-primary)] flex-shrink-0" />
                               <span className={`flex-shrink-0 ${getSectionColor(item.section)}`}>{getSectionIcon(item.section)}</span>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-gray-700 truncate">{getSectionLabel(item.section)}</p>
@@ -1288,7 +1288,7 @@ export default function CheckoutPageEditorPage() {
 
                 <button
                   onClick={() => setAddSectionOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition-colors mt-2"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl transition-colors mt-2"
                 >
                   <Plus size={13} /> Add Section
                 </button>
@@ -1325,7 +1325,7 @@ export default function CheckoutPageEditorPage() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LayoutTemplate className="h-5 w-5 text-teal-600" /> Choose a Template
+              <LayoutTemplate className="h-5 w-5 text-[var(--org-primary)]" /> Choose a Template
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -1335,7 +1335,7 @@ export default function CheckoutPageEditorPage() {
               <div className="grid grid-cols-2 gap-3">
                 {BUILT_IN_TEMPLATES.map(t => (
                   <button key={t.id} onClick={() => applyTemplate(t.config)}
-                    className="text-left p-4 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors bg-white">
+                    className="text-left p-4 rounded-xl border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors bg-white">
                     <div className="text-2xl mb-2">{t.emoji}</div>
                     <p className="text-sm font-semibold text-gray-800">{t.name}</p>
                     <p className="text-xs text-gray-500 mt-1">{t.description}</p>
@@ -1353,7 +1353,7 @@ export default function CheckoutPageEditorPage() {
                   {savedTemplates.map(t => (
                     <div key={t.id} className="relative group">
                       <button onClick={() => applyTemplate(parseCheckoutPageConfig(t.config))}
-                        className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors bg-white">
+                        className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors bg-white">
                         <p className="text-sm font-semibold text-gray-800">{t.name}</p>
                         {t.description && <p className="text-xs text-gray-500 mt-1">{t.description}</p>}
                       </button>
@@ -1393,7 +1393,7 @@ export default function CheckoutPageEditorPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Save className="h-4 w-4 text-teal-600" /> Save as Template
+              <Save className="h-4 w-4 text-[var(--org-primary)]" /> Save as Template
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -1410,7 +1410,7 @@ export default function CheckoutPageEditorPage() {
             <Button variant="outline" onClick={() => setTemplateSaveOpen(false)}>Cancel</Button>
             <Button onClick={() => { if (config && templateName.trim()) saveTemplate.mutate({ name: templateName.trim(), description: templateDesc.trim() || undefined, config: JSON.stringify(config) }); }}
               disabled={!templateName.trim() || saveTemplate.isPending}
-              className="bg-teal-600 hover:bg-teal-700 text-white">
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white">
               {saveTemplate.isPending ? "Saving…" : "Save Template"}
             </Button>
           </DialogFooter>
