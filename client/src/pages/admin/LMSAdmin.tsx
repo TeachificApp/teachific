@@ -11911,7 +11911,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <Button size="sm" variant="ghost" onClick={() => setAssignDialog({ open: false })}><X className="w-4 h-4" /></Button>
               <h3 className="font-bold text-gray-900 text-base">{assignDialog.assignment ? "Edit Assignment" : "New Assignment"}</h3>
             </div>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+            <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white"
               disabled={createAssignment.isPending || updateAssignment.isPending}
               onClick={handleSaveAssignment}>
               {(createAssignment.isPending || updateAssignment.isPending) ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />Saving...</> : assignDialog.assignment ? "Save Changes" : "Create Assignment"}
@@ -11957,11 +11957,11 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1 block">Brief Description (optional)</Label>
-                <textarea value={assignForm.description} onChange={e => setAssignForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Short summary shown in the assignment list..." />
+                <textarea value={assignForm.description} onChange={e => setAssignForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Short summary shown in the assignment list..." />
               </div>
               {!assignDialog.assignment && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <input type="checkbox" id="assign-notify" checked={assignForm.notifyStudents} onChange={e => setAssignForm(p => ({ ...p, notifyStudents: e.target.checked }))} className="w-4 h-4 accent-teal-600" />
+                  <input type="checkbox" id="assign-notify" checked={assignForm.notifyStudents} onChange={e => setAssignForm(p => ({ ...p, notifyStudents: e.target.checked }))} className="w-4 h-4 accent-[var(--org-primary)]" />
                   <label htmlFor="assign-notify" className="text-sm text-amber-800 cursor-pointer">
                     <span className="font-medium">Notify enrolled students</span> — send email when status is Published
                   </label>
