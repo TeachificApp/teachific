@@ -1840,6 +1840,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(funnelPageEditorSource).toContain('className="flex items-center gap-1.5 org-primary-button text-sm px-4 py-1.5 h-8"');
     expect(funnelPageEditorSource).toContain('bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]');
     expect(funnelPageEditorSource).toContain('focus:ring-[var(--org-primary)]');
+    expect(funnelPageEditorSource).not.toMatch(/(?:teal|violet|purple)/);
   });
 
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {

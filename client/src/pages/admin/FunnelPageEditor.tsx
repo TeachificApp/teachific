@@ -808,9 +808,9 @@ export default function FunnelPageEditor() {
               <div className="mt-2 space-y-2 px-1">
                 <p className="text-[10px] text-gray-400">Override what iMessage, WhatsApp, and social media show when this link is shared.</p>
                 <div>
-                  <label className="text-[10px] font-medium text-gray-600 block mb-1">Display Name</label>
-                  <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                  <label className="text-[10px] font-medium text-gray-600 block mb-1">Display Name</label>
+	                  <input
+	                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                     placeholder={currentPage?.title ?? "Page title"}
                     value={seoTitle}
                     onChange={e => setSeoTitle(e.target.value)}
@@ -827,9 +827,9 @@ export default function FunnelPageEditor() {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-medium text-gray-600 block mb-1">Preview Image URL</label>
-                  <input
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+	                  <label className="text-[10px] font-medium text-gray-600 block mb-1">Preview Image URL</label>
+	                  <input
+	                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                     placeholder="https://…"
                     value={seoImage}
                     onChange={e => setSeoImage(e.target.value)}
@@ -1424,13 +1424,13 @@ export default function FunnelPageEditor() {
         {pickerTab === "import_url" && (
           <div className="flex flex-col flex-1 overflow-hidden gap-3 p-1">
             <div className="flex gap-2">
-              <input
-                type="url"
-                value={importUrl}
-                onChange={e => setImportUrl(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
-                placeholder="https://example.com/page-to-import"
-                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+	              <input
+	                type="url"
+	                value={importUrl}
+	                onChange={e => setImportUrl(e.target.value)}
+	                onKeyDown={e => { if (e.key === "Enter" && importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
+	                placeholder="https://example.com/page-to-import"
+	                className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
               <button
                 onClick={() => { if (importUrl.trim()) scrapeUrlMutation.mutate({ url: importUrl.trim() }); }}
@@ -1514,11 +1514,11 @@ export default function FunnelPageEditor() {
         <div className="space-y-4 py-2">
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Template Name <span className="text-red-500">*</span></label>
-            <input type="text" value={saveTemplateBlockName} onChange={e => setSaveTemplateBlockName(e.target.value)} placeholder="e.g. Hero Banner" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" autoFocus />
+	            <input type="text" value={saveTemplateBlockName} onChange={e => setSaveTemplateBlockName(e.target.value)} placeholder="e.g. Hero Banner" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" autoFocus />
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-600 mb-1 block">Description <span className="text-gray-400">(optional)</span></label>
-            <input type="text" value={saveTemplateBlockDesc} onChange={e => setSaveTemplateBlockDesc(e.target.value)} placeholder="Brief description" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400" />
+	            <input type="text" value={saveTemplateBlockDesc} onChange={e => setSaveTemplateBlockDesc(e.target.value)} placeholder="Brief description" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
@@ -1598,18 +1598,18 @@ function FunnelTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Block
         ) : (
           <div className="flex-1 overflow-y-auto space-y-2">
             {filteredPageTemplates.map((tpl: any) => {
-              const tplBlocks: Block[] = (() => {
-                try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; }
-              })();
-              return (
-                <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
+	              const tplBlocks: Block[] = (() => {
+	                try { const b = typeof tpl.blocks === "string" ? JSON.parse(tpl.blocks) : tpl.blocks; return Array.isArray(b) ? b : []; } catch { return []; }
+	              })();
+	              return (
+	                <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] group transition-colors">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
-                    {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
-                    <p className="text-xs text-gray-300">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity"
+	                    {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
+	                    <p className="text-xs text-gray-300">{tplBlocks.length} block{tplBlocks.length !== 1 ? "s" : ""}</p>
+	                  </div>
+	                  <div className="flex items-center gap-1 shrink-0">
+	                    <Button size="sm" variant="outline" className="h-6 text-xs border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => onInsertBlocks(tplBlocks.map(b => ({ ...b, id: uid() })))}>
                       <Plus className="w-3 h-3 mr-1" /> Insert
                     </Button>
@@ -1640,20 +1640,20 @@ function FunnelTemplatesTab({ onInsertBlocks }: { onInsertBlocks: (blocks: Block
             {blockTemplates.map((tpl: any) => {
               let blockData: Record<string, any> = {};
               try { blockData = typeof tpl.blockData === "string" ? JSON.parse(tpl.blockData) : (tpl.blockData ?? {}); } catch { /* ignore */ }
-              const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
-              const block: Block = { id: uid(), type: tpl.blockType as any, data: blockData };
-              return (
-                <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-teal-200 hover:bg-teal-50 group transition-colors">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {catalogEntry && <span className="shrink-0 text-teal-500" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
+	              const catalogEntry = BLOCK_CATALOG.find(c => c.type === tpl.blockType);
+	              const block: Block = { id: uid(), type: tpl.blockType as any, data: blockData };
+	              return (
+	                <div key={tpl.id} className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] group transition-colors">
+	                  <div className="flex items-center gap-2.5 min-w-0">
+	                    {catalogEntry && <span className="shrink-0 text-[var(--org-primary)]" style={{ fontSize: 14 }}>{catalogEntry.icon}</span>}
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-gray-700 truncate">{tpl.name}</p>
                       {tpl.description && <p className="text-xs text-gray-400 truncate">{tpl.description}</p>}
                       <p className="text-xs text-gray-300">{catalogEntry?.label ?? tpl.blockType}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button size="sm" variant="outline" className="h-6 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 opacity-0 group-hover:opacity-100 transition-opacity"
+	                  </div>
+	                  <div className="flex items-center gap-1 shrink-0">
+	                    <Button size="sm" variant="outline" className="h-6 text-xs border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => onInsertBlocks([{ ...block, id: uid() }])}>
                       <Plus className="w-3 h-3 mr-1" /> Insert
                     </Button>
@@ -1696,7 +1696,7 @@ function FunnelApplyTemplateModal({ onClose, onApply }: { onClose: () => void; o
         <div className="px-4 pt-3 pb-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400" />
+	            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
