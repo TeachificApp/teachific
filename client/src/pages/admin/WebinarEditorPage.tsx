@@ -956,12 +956,12 @@ export default function WebinarEditorPage() {
             </div>
           </div>
         )}
-        {activeTab === "checkout_page" && webinar && (
+        {activeTab === "checkout_page" && webinar && orgId && (
           <div className="max-w-3xl mx-auto">
             <CheckoutPageEditor
               contentType="webinar"
               contentId={webinar.id}
-              orgId={webinar.orgId ?? 1}
+              orgId={orgId}
               contentSlug={webinar.slug}
             />
           </div>
