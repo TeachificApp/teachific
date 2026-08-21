@@ -9080,7 +9080,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
         />
         <div className="flex items-center gap-2">
           {data && <span className="text-sm text-gray-500">{data.total} student{data.total !== 1 ? "s" : ""}</span>}
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setEnrollDialogOpen(true)}>
+          <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8" onClick={() => setEnrollDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-1" /> Enroll Student
           </Button>
         </div>
@@ -9124,7 +9124,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="w-20 bg-gray-200 rounded-full h-1.5">
-                        <div className="h-1.5 bg-teal-500 rounded-full" style={{ width: `${e.progressPct ?? 0}%` }} />
+                        <div className="h-1.5 bg-[var(--org-primary)] rounded-full" style={{ width: `${e.progressPct ?? 0}%` }} />
                       </div>
                       <span className="text-xs text-gray-600">{e.progressPct ?? 0}%</span>
                     </div>
@@ -9158,7 +9158,7 @@ function CourseUsersTab({ courseId, courseType }: { courseId: number; courseType
                       {e.user?.id && (
                         <Button
                           size="sm" variant="ghost"
-                          className="h-7 w-7 p-0 text-teal-500 hover:bg-teal-50 hover:text-teal-700"
+                          className="h-7 w-7 p-0 text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                           title="View member profile"
                           onClick={() => window.open(`/admin/users/${e.user.id}`, '_blank')}
                         >
