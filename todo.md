@@ -5622,6 +5622,7 @@
 - [x] Apply the active organization theme to the highlighted Builder billing plan
 - [x] Keep Landing Page Builder controls organization-safe and remove fabricated social-proof defaults
 - [x] Review Studio dashboard and retain intentional platform-level product styling
+- [x] Resolve Page Builder fallback accents from the active organization theme
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

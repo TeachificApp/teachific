@@ -97,8 +97,10 @@ export default function PageBuilderPage() {
   const [isPublished, setIsPublished] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("editor");
 
-  // Theme-based accent color (defaults to teal)
-  const accentColor = theme?.primaryColor || "#189aa1";
+  // Theme-based accent color resolved from the active organization when no saved override exists.
+  const accentColor = theme?.primaryColor || (typeof window !== "undefined"
+    ? window.getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000"
+    : "#000000");
 
   // Initialize state based on context type
   useEffect(() => {

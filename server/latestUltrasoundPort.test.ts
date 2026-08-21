@@ -1858,6 +1858,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).not.toContain('Sarah M.');
   });
 
+  it("resolves Page Builder fallback accents from the active organization CSS variable", () => {
+    const pageBuilderSource = readFileSync(new URL("../client/src/pages/lms/PageBuilderPage.tsx", import.meta.url), "utf8");
+    expect(pageBuilderSource).toContain('getPropertyValue("--org-primary").trim() || "#000000"');
+    expect(pageBuilderSource).not.toContain('defaults to teal');
+    expect(pageBuilderSource).not.toContain('theme?.primaryColor || "#189aa1"');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');
