@@ -861,8 +861,8 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
         <GripVertical className="w-4 h-4 text-gray-400" />
       </button>
       <div className="flex flex-col gap-0">
-        <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
-        <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
+        <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
+        <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
       </div>
       <span className="text-gray-400">{TYPE_ICONS[lesson.type] ?? <FileText className="w-4 h-4" />}</span>
       <span className="text-sm text-gray-700 flex-1">{lesson.title}</span>
@@ -882,7 +882,7 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
       ) : (
         lesson.lessonStatus === "draft" && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">Draft</Badge>
       )}
-      {lesson.isPreview && <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">Preview</Badge>}
+      {lesson.isPreview && <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]">Preview</Badge>}
       {lesson.requireVideoCompletion === 1 && <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">Video req.</Badge>}
       {lesson.requireManualComplete === 1 && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Manual</Badge>}
       {onToggleCountTowardCompletion && (
@@ -894,15 +894,15 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
           }}
           className={`text-xs font-semibold px-2 py-0.5 rounded border transition-colors ${
             lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0
-              ? "text-teal-600 border-teal-300 bg-teal-50 hover:bg-teal-100"
-              : "text-gray-400 border-gray-200 bg-white hover:bg-teal-50 hover:text-teal-600 hover:border-teal-300"
+              ? "text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]"
+              : "text-gray-400 border-gray-200 bg-white hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:text-[var(--org-primary)] hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]"
           }`}
         >
           {lesson.countTowardCompletion !== false && lesson.countTowardCompletion !== 0 ? "Counts" : "Excluded"}
         </button>
       )}
       {lesson.type === "quiz" && (
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onQuiz(lesson)}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => onQuiz(lesson)}>
           <HelpCircle className="w-3 h-3 mr-1" /> Quiz
         </Button>
       )}
@@ -911,7 +911,7 @@ function SortableLessonRow({ lesson, onEdit, onQuiz, onDelete, onCopy, onMoveUp,
           <Copy className="w-3 h-3" />
         </Button>
       )}
-      <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(lesson)}>
+      <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => onEdit(lesson)}>
         <Edit2 className="w-3 h-3" />
       </Button>
       <Button size="sm" variant="ghost" className="h-7 text-red-400 hover:bg-red-50" onClick={() => onDelete(lesson.id)}>
@@ -958,8 +958,8 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
           <GripVertical className="w-4 h-4 text-gray-400" />
         </button>
         <div className="flex flex-col gap-0">
-          <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
-          <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-teal-600 disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
+          <button disabled={!onMoveUp} onClick={onMoveUp} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move up"><ChevronUp className="w-3 h-3" /></button>
+          <button disabled={!onMoveDown} onClick={onMoveDown} className="w-4 h-4 flex items-center justify-center text-gray-300 hover:text-[var(--org-primary)] disabled:opacity-20 disabled:cursor-not-allowed" title="Move down"><ChevronDown className="w-3 h-3" /></button>
         </div>
         {editingTitle ? (
           <input
@@ -968,12 +968,12 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
             onChange={e => setTitleDraft(e.target.value)}
             onBlur={commitRename}
             onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { setEditingTitle(false); setTitleDraft(section.title); } }}
-            className="flex-1 font-medium text-sm text-gray-800 bg-white border border-teal-400 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            className="flex-1 font-medium text-sm text-gray-800 bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
             autoFocus
           />
         ) : (
           <span
-            className="font-medium text-sm text-gray-800 flex-1 cursor-pointer hover:text-teal-700 group/title flex items-center gap-1"
+            className="font-medium text-sm text-gray-800 flex-1 cursor-pointer hover:text-[var(--org-primary)] group/title flex items-center gap-1"
             title="Click pencil or double-click to rename"
             onDoubleClick={() => { setTitleDraft(section.title); setEditingTitle(true); }}
           >
@@ -984,11 +984,11 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
               onClick={(e) => { e.stopPropagation(); setTitleDraft(section.title); setEditingTitle(true); }}
               title="Rename section"
             >
-              <Pencil className="w-3 h-3 text-gray-300 group-hover/title:text-teal-400 transition-colors hover:text-teal-600" />
+              <Pencil className="w-3 h-3 text-gray-300 group-hover/title:text-[var(--org-primary)] transition-colors hover:text-[var(--org-primary)]" />
             </button>
           </span>
         )}
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600" onClick={onAddLesson}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)]" onClick={onAddLesson}>
           <Plus className="w-3 h-3 mr-1" /> Add Lesson
         </Button>
         <Button size="sm" variant="ghost" className="h-7 text-xs text-gray-500 hover:bg-gray-100" title="Drip schedule" onClick={onDrip}>
@@ -1000,7 +1000,7 @@ function SortableSectionRow({ section, children, onAddLesson, onDrip, onDelete, 
           </Button>
         )}
         {onSaveAsTemplate && (
-          <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-500 hover:bg-teal-50" title="Save section as reusable template" onClick={onSaveAsTemplate}>
+          <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" title="Save section as reusable template" onClick={onSaveAsTemplate}>
             <Save className="w-3 h-3 mr-1" /> Template
           </Button>
         )}
