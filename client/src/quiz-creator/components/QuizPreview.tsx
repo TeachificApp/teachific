@@ -3,6 +3,7 @@ import { useQuizStore } from "../store/quizStore";
 import { X, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, DrawConfig } from "../types/quiz";
 import { DndOrdering, DndDragWords } from "./DndQuizInteractions";
+import { RichTextDisplay } from "@/components/RichTextEditor";
 
 interface Props {
   onClose: () => void;
@@ -490,22 +491,23 @@ export function QuizPreview({ onClose }: Props) {
     const correct = isCorrect(q, answers[q.id]);
     const mode = q.feedbackMode ?? "answer";
     const shared = correct ? q.feedback?.correct : q.feedback?.incorrect;
+    const explanation = q.explanationHtml ?? q.explanation ?? "";
     if (mode === "question") {
-      return { correct, selected: "", rationale: shared || q.explanation };
+      return { correct, mode, selectedHtml: "", rationaleHtml: shared || explanation };
     }
     if (q.type === "mcq" || q.type === "image_choice") {
       const data = q.data as McqData;
       const selectedIds = (answers[q.id] as string[]) ?? [];
-      const selected = data.choices.filter((choice) => selectedIds.includes(choice.id)).map((choice) => choice.feedback ?? "").filter(Boolean).join("\n\n");
-      const rationale = !correct ? data.choices.filter((choice) => choice.correct).map((choice) => choice.feedback ?? "").filter(Boolean).join("\n\n") : "";
-      return { correct, selected, rationale: rationale || shared || q.explanation };
+      const selectedHtml = data.choices.filter((choice) => selectedIds.includes(choice.id)).map((choice) => choice.feedbackHtml ?? choice.feedback ?? "").filter(Boolean).join("<hr />");
+      const correctAnswerHtml = !correct ? data.choices.filter((choice) => choice.correct).map((choice) => choice.feedbackHtml ?? choice.feedback ?? "").filter(Boolean).join("<hr />") : "";
+      return { correct, mode, selectedHtml, rationaleHtml: correctAnswerHtml || shared || explanation };
     }
     if (q.type === "tf") {
       const data = q.data as TfData;
-      const selected = answers[q.id] === true ? data.trueFeedback : answers[q.id] === false ? data.falseFeedback : "";
-      return { correct, selected: selected ?? "", rationale: shared || q.explanation };
+      const selectedHtml = answers[q.id] === true ? data.trueFeedback : answers[q.id] === false ? data.falseFeedback : "";
+      return { correct, mode, selectedHtml: selectedHtml ?? "", rationaleHtml: shared || explanation };
     }
-    return { correct, selected: "", rationale: shared || q.explanation };
+    return { correct, mode, selectedHtml: "", rationaleHtml: shared || explanation };
   })() : null;
 
   if (submitted) {
@@ -597,9 +599,11 @@ export function QuizPreview({ onClose }: Props) {
           {feedback && (
             <div className={`rounded-xl border p-4 ${feedback.correct ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
               <p className={`text-sm font-semibold ${feedback.correct ? "text-emerald-800" : "text-amber-800"}`}>{feedback.correct ? "Correct" : "Review this response"}</p>
-              {feedback.selected && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{feedback.selected}</p>}
-              {feedback.rationale && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{feedback.rationale}</p>}
-              {!feedback.selected && !feedback.rationale && <p className="mt-2 text-sm text-gray-600">No feedback has been added for this response.</p>}
+              {feedback.selectedHtml && <RichTextDisplay html={feedback.selectedHtml} className="mt-2" />}
+              {feedback.rationaleHtml && <RichTextDisplay html={feedback.rationaleHtml} className="mt-2" />}
+              {q.feedbackImage && <img src={q.feedbackImage.url} alt={q.feedbackImage.alt} className="mt-3 max-h-64 rounded-lg object-contain" />}
+              {q.feedbackVideo && <video src={q.feedbackVideo.url} controls className="mt-3 max-h-64 w-full rounded-lg bg-black" />}
+              {!feedback.selectedHtml && !feedback.rationaleHtml && !q.feedbackImage && !q.feedbackVideo && <p className="mt-2 text-sm text-gray-600">No feedback has been added for this response.</p>}
             </div>
           )}
         </div>

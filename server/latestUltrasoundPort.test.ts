@@ -1334,12 +1334,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionTypesSource).toContain('feedbackMode?: "question" | "answer"');
     expect(questionTypesSource).toContain("trueFeedback?: string");
     expect(questionTypesSource).toContain("feedbackHtml?: string");
+    expect(questionTypesSource).toContain("feedbackImage?: { url: string; alt: string } | null");
+    expect(questionTypesSource).toContain("feedbackVideo?: { url: string; type?: string } | null");
     expect(quizStoreSource).toContain('feedbackMode: "answer"');
     expect(questionEditorSource).toContain("Question-based");
     expect(questionEditorSource).toContain("Answer-based");
+    expect(questionEditorSource).toContain("RichTextEditor");
+    expect(questionEditorSource).toContain("uploadFeedbackImage");
+    expect(questionEditorSource).toContain("uploadFeedbackVideo");
     expect(mcqEditorSource).toContain("Optional feedback for option");
     expect(previewSource).toContain("feedbackQuestionId");
     expect(previewSource).toContain('quiz.meta.feedbackMode === "immediate"');
+    expect(previewSource).toContain("RichTextDisplay");
+    expect(previewSource).toContain("q.feedbackImage");
+    expect(previewSource).toContain("q.feedbackVideo");
   });
 
   it("offers and persists optional organization-authorized AI course assessments", () => {

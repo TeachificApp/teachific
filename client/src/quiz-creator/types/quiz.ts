@@ -217,6 +217,8 @@ export interface QuizQuestion {
   image?: { url: string; alt: string } | null;
   audio?: { url: string; label?: string } | null;
   video?: { url: string; type?: string } | null;
+  feedbackImage?: { url: string; alt: string } | null;
+  feedbackVideo?: { url: string; type?: string } | null;
   explanation: string;
   explanationHtml?: string;
   feedbackMode?: "question" | "answer";

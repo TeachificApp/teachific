@@ -5630,6 +5630,7 @@
 - [x] Rescan client code and confirm no first-membership organization fallback remains
 - [x] Rescan server routers and confirm organization resolution uses the authorized active-organization helper
 - [x] Rescan learner-facing links and confirm no hard-coded platform learning URL remains
+- [x] Port rich question feedback and feedback media controls from the upstream Quiz Creator
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

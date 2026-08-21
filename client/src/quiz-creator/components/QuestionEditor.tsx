@@ -8,6 +8,7 @@ import { BranchingEditor } from "./BranchingEditor";
 import type { QuizQuestion, QuestionData, BranchRule } from "../types/quiz";
 import { Upload, Trash2, Music, Video, Image, Palette, GitBranch } from "lucide-react";
 import { useState } from "react";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const TYPE_LABELS: Record<string, string> = {
   mcq: "Multiple Choice",
@@ -43,6 +44,9 @@ export function QuestionEditor() {
 
   const update = (updates: Partial<QuizQuestion>) => updateQuestion(question.id, updates);
   const updateData = (data: QuestionData) => update({ data });
+  const updateQuestionFeedback = (kind: "correct" | "incorrect", html: string) => {
+    update({ feedback: { ...question.feedback, [kind]: html } });
+  };
 
   const [showMediaPanel, setShowMediaPanel] = useState(false);
 
@@ -70,6 +74,14 @@ export function QuestionEditor() {
 
   const uploadVideo = () => {
     uploadFile("video/*", (url) => update({ video: { url, type: "file" } }));
+  };
+
+  const uploadFeedbackImage = () => {
+    uploadFile("image/*", (url, name) => update({ feedbackImage: { url, alt: name } }));
+  };
+
+  const uploadFeedbackVideo = () => {
+    uploadFile("video/*", (url) => update({ feedbackVideo: { url, type: "file" } }));
   };
 
   const uploadBackground = () => {
@@ -328,28 +340,44 @@ export function QuestionEditor() {
         <div className="grid gap-3 md:grid-cols-2">
           <button type="button" onClick={() => update({ feedbackMode: "question" })} className={`rounded-lg border p-3 text-left transition-colors ${question.feedbackMode === "question" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-teal-300"}`}>
             <span className="block text-sm font-semibold text-gray-800">Question-based</span>
-            <span className="mt-1 block text-xs text-gray-600">Show the same correct or incorrect feedback for this question.</span>
+            <span className="mt-1 block text-xs text-gray-600">Show the same correct or incorrect feedback for this question, regardless of the option selected.</span>
           </button>
           <button type="button" onClick={() => update({ feedbackMode: "answer" })} className={`rounded-lg border p-3 text-left transition-colors ${(question.feedbackMode ?? "answer") === "answer" ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-teal-300"}`}>
             <span className="block text-sm font-semibold text-gray-800">Answer-based</span>
-            <span className="mt-1 block text-xs text-gray-600">Use feedback attached to the learner’s selected answer when available.</span>
+            <span className="mt-1 block text-xs text-gray-600">Show feedback for the learner’s selected answer and the correct answer’s rationale when needed.</span>
           </button>
         </div>
         {question.feedbackMode === "question" && (
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-semibold text-emerald-700">Correct feedback</label>
-              <textarea value={question.feedback?.correct ?? ""} onChange={(e) => update({ feedback: { ...question.feedback, correct: e.target.value } })} rows={3} placeholder="Explain why this response is correct..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+              <RichTextEditor value={question.feedback?.correct ?? ""} onChange={(html) => updateQuestionFeedback("correct", html)} placeholder="Explain why this question was answered correctly. Add images or video from the toolbar when helpful." minHeight={100} maxHeight={260} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-red-700">Incorrect feedback</label>
-              <textarea value={question.feedback?.incorrect ?? ""} onChange={(e) => update({ feedback: { ...question.feedback, incorrect: e.target.value } })} rows={3} placeholder="Help learners understand an incorrect response..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+              <RichTextEditor value={question.feedback?.incorrect ?? ""} onChange={(html) => updateQuestionFeedback("incorrect", html)} placeholder="Explain what learners should understand after an incorrect response. Add images or video from the toolbar when helpful." minHeight={100} maxHeight={260} />
             </div>
           </div>
         )}
-        {(question.feedbackMode ?? "answer") === "answer" && <p className="mt-3 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2 text-xs text-teal-900">Add option feedback in the answer editor above. When no answer-specific feedback is available, the shared explanation below is shown.</p>}
+        {(question.feedbackMode ?? "answer") === "answer" && <p className="mt-3 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] px-3 py-2 text-xs text-[var(--org-primary)]">Add option feedback in the answer editor above. When no answer-specific feedback is available, the shared explanation below is shown.</p>}
         <label className="mt-4 block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Why the correct answer is correct</label>
-        <textarea value={question.explanation} onChange={(e) => update({ explanation: e.target.value })} rows={2} placeholder="Optional: explain why the answer is correct..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-400/50 resize-none" />
+        <RichTextEditor value={question.explanationHtml ?? question.explanation ?? ""} onChange={(html) => update({ explanationHtml: html, explanation: html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() })} placeholder="Give the shared rationale for the correct answer. Use the image or video controls in the toolbar when helpful." minHeight={120} maxHeight={360} />
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-gray-600">
+              <span className="flex items-center gap-1"><Image className="h-3.5 w-3.5 text-[var(--org-primary)]" />Feedback Image</span>
+              {question.feedbackImage && <button type="button" onClick={() => update({ feedbackImage: null })} className="text-red-600 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button>}
+            </div>
+            {question.feedbackImage ? <img src={question.feedbackImage.url} alt={question.feedbackImage.alt} className="max-h-32 w-full rounded bg-white object-contain" /> : <button type="button" onClick={uploadFeedbackImage} className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] px-3 py-2 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"><Upload className="h-3.5 w-3.5" />Upload Image</button>}
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-gray-600">
+              <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5 text-[var(--org-primary)]" />Feedback Video</span>
+              {question.feedbackVideo && <button type="button" onClick={() => update({ feedbackVideo: null })} className="text-red-600 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button>}
+            </div>
+            {question.feedbackVideo ? <video src={question.feedbackVideo.url} controls className="max-h-32 w-full rounded bg-black" /> : <button type="button" onClick={uploadFeedbackVideo} className="flex w-full items-center justify-center gap-1 rounded border border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] px-3 py-2 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"><Upload className="h-3.5 w-3.5" />Upload Video</button>}
+          </div>
+        </div>
       </div>
 
       {/* Branching / Conditional Logic */}
