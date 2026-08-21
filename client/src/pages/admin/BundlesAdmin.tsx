@@ -89,7 +89,7 @@ function BundleList({ onEdit }: { onEdit: (id: number) => void }) {
           placeholder="Search bundles..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] focus:border-transparent bg-white"
         />
       </div>
       <div className="flex items-center justify-between">
@@ -115,13 +115,13 @@ function BundleList({ onEdit }: { onEdit: (id: number) => void }) {
       ) : (
         <div className="grid gap-3">
           {bundles.map((b) => (
-            <Card key={b.id} className="hover:border-teal-500/50 transition-colors cursor-pointer" onClick={() => onEdit(b.id)}>
+            <Card key={b.id} className="hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] transition-colors cursor-pointer" onClick={() => onEdit(b.id)}>
               <CardContent className="p-4 flex items-center gap-4">
                 {b.coverImage ? (
                   <img src={b.coverImage} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" alt="" />
                 ) : (
-                  <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-teal-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
-                    <Package className="w-6 h-6 text-teal-600" />
+                  <div className="w-14 h-14 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center flex-shrink-0">
+                    <Package className="w-6 h-6 text-[var(--org-primary)]" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -311,7 +311,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-xs font-mono font-semibold text-gray-600 select-all cursor-text" title="Bundle ID">ID: {bundle.id}</span>
         {bundle.slug && (
           <a href={`/bundles/${bundle.slug}`} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600 gap-1">
+            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)] gap-1">
               <Eye className="w-3.5 h-3.5" /> View Sales Page
             </Button>
           </a>
@@ -321,10 +321,10 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
           <Copy className="w-3.5 h-3.5" /> Copy Checkout Link
         </Button>
         <a href={`/admin/bundles/${bundleId}/landing-builder`} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-teal-600 text-teal-700 rounded-lg hover:bg-teal-50 transition-colors">
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[var(--org-primary)] text-[var(--org-primary)] rounded-lg hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors">
           <ExternalLink className="w-3.5 h-3.5" /> Landing Builder
         </a>
-        <Button size="sm" onClick={handleSave} disabled={updateMut.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button size="sm" onClick={handleSave} disabled={updateMut.isPending} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
           {updateMut.isPending ? <><RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> Saving...</> : "Save Changes"}
         </Button>
       </div>
@@ -562,7 +562,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
                 <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
                 <p className="text-sm text-gray-500 mt-1">
                   Customise the sections shown on the hosted checkout page at{" "}
-                  <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                  <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline font-medium">
                     /checkout/{bundle.slug}
                   </a>.
                 </p>
@@ -573,7 +573,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
                   <ExternalLink className="w-3.5 h-3.5" /> Preview
                 </a>
                 <a href={`/admin/bundles/${bundleId}/landing-builder`}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90 font-medium">
                   Open Page Editor
                 </a>
               </div>
@@ -581,7 +581,7 @@ function BundleEditor({ bundleId, onBack }: { bundleId: number; onBack: () => vo
             <div className="mt-5 grid grid-cols-3 gap-3">
               {["Trust Seals & Badges","What You'll Learn","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
                 <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-teal-400" />
+                  <div className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
                   <span className="text-xs text-gray-600">{s}</span>
                 </div>
               ))}
@@ -637,7 +637,7 @@ function BundleAfterPurchaseSection({ bundleId }: { bundleId: number }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Workflow className="w-4 h-4 text-teal-600" /> After Purchase Workflow
+          <Workflow className="w-4 h-4 text-[var(--org-primary)]" /> After Purchase Workflow
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -721,7 +721,7 @@ function AddItemDialog({
               itemsForType.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border hover:border-teal-500 cursor-pointer transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg border hover:border-[var(--org-primary)] cursor-pointer transition-colors"
                   onClick={() => { onAdd(selectedType, item.id); onClose(); }}
                 >
                   <div className={`px-2 py-0.5 rounded text-xs font-medium ${ITEM_TYPE_COLORS[selectedType]}`}>
@@ -731,7 +731,7 @@ function AddItemDialog({
                     <p className="text-sm font-medium truncate">{item.title}</p>
                     {item.status && <p className="text-xs text-muted-foreground">{item.status}</p>}
                   </div>
-                  <Plus className="w-4 h-4 text-teal-600" />
+                  <Plus className="w-4 h-4 text-[var(--org-primary)]" />
                 </div>
               ))
             )}
@@ -759,7 +759,7 @@ function IncludedItemsWidgetCodePanel({ source, id, title }: { source: "membersh
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [columns, setColumns] = useState("3");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [accent, setAccent] = useState("#14b8a6");
+  const [accent, setAccent] = useState(() => getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim());
   const [headline, setHeadline] = useState("");
   const [subtext, setSubtext] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
@@ -808,11 +808,11 @@ function IncludedItemsWidgetCodePanel({ source, id, title }: { source: "membersh
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-        <Code className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+        <Code className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-teal-800">Embeddable Widget</p>
-          <p className="text-xs text-teal-600 mt-0.5">
+          <p className="text-sm font-medium text-[var(--org-primary)]">Embeddable Widget</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">
             Embed the included items for <strong>{title}</strong> on any external website using the snippet below.
             Paste the script tag anywhere in your page's HTML — it auto-sizes to fit its content.
           </p>
@@ -980,7 +980,7 @@ function BundlePricingOptionForm({
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
 
   return (
-    <div className="border border-teal-200 rounded-lg p-4 bg-teal-50/30 space-y-3">
+    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-4 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label className="text-xs font-medium">Label *</Label>
@@ -1071,7 +1071,7 @@ function BundlePricingOptionForm({
           <Button size="sm" variant="outline" onClick={onCancel} className="h-7 text-xs">Cancel</Button>
           <Button
             size="sm"
-            className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+            className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={saving || !label.trim()}
             onClick={() => onSave({
               label: label.trim(),
@@ -1164,10 +1164,10 @@ function BundlePricingOptionRow({ opt, editingId, setEditingId, setShowAdd, upda
       <button onClick={() => updateOption.mutate({ id: opt.id, isActive: !opt.isActive })} className="text-xs text-gray-400 hover:text-gray-600 p-1 flex-shrink-0" title={opt.isActive ? "Hide" : "Show"}>
         {opt.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
       </button>
-      <button onClick={() => { setEditingId(opt.id); setShowAdd(false); }} className="text-xs text-teal-500 hover:text-teal-700 p-1 flex-shrink-0">
+      <button onClick={() => { setEditingId(opt.id); setShowAdd(false); }} className="text-xs text-[var(--org-primary)] hover:brightness-90 p-1 flex-shrink-0">
         <Edit2 className="w-3.5 h-3.5" />
       </button>
-      <button onClick={copyCheckoutLink} className="text-xs text-teal-500 hover:text-teal-700 p-1 flex-shrink-0" title="Copy hosted checkout link">
+      <button onClick={copyCheckoutLink} className="text-xs text-[var(--org-primary)] hover:brightness-90 p-1 flex-shrink-0" title="Copy hosted checkout link">
         <Link2 className="w-3.5 h-3.5" />
       </button>
       <button onClick={() => { if (confirm("Delete this pricing option?")) deleteOption.mutate({ id: opt.id }); }} className="text-xs text-red-400 hover:text-red-600 p-1 flex-shrink-0">
@@ -1232,9 +1232,9 @@ function BundlePricingOptionsEditor({ bundleId, bundleSlug }: { bundleId: number
     <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-teal-600" /> Pricing Options
+          <DollarSign className="w-4 h-4 text-[var(--org-primary)]" /> Pricing Options
         </h3>
-        <Button size="sm" variant="outline" className="h-7 text-xs border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => { setShowAdd(true); setEditingId(null); }}>
+        <Button size="sm" variant="outline" className="h-7 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => { setShowAdd(true); setEditingId(null); }}>
           <Plus className="w-3 h-3 mr-1" /> Add Option
         </Button>
       </div>
