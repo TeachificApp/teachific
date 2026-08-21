@@ -113,9 +113,9 @@ export function ImageComparisonPlayer({ question, submitted }: { question: Inter
         </div>
         {/* Slider handle */}
         <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg" style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-md border-2 border-teal-500 flex items-center justify-center">
-            <ChevronLeft className="w-3 h-3 text-teal-600" />
-            <ChevronRight className="w-3 h-3 text-teal-600" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-md border-2 border-[var(--org-primary)] flex items-center justify-center">
+            <ChevronLeft className="w-3 h-3 text-[var(--org-primary)]" />
+            <ChevronRight className="w-3 h-3 text-[var(--org-primary)]" />
           </div>
         </div>
         {/* Labels */}
@@ -127,7 +127,7 @@ export function ImageComparisonPlayer({ question, submitted }: { question: Inter
         )}
       </div>
       {submitted && (
-        <p className="text-xs text-teal-600 font-medium">✓ Image comparison reviewed</p>
+        <p className="text-xs text-[var(--org-primary)] font-medium">✓ Image comparison reviewed</p>
       )}
     </div>
   );
@@ -186,7 +186,7 @@ export function DragSortPlayer({
                 posCorrect ? "border-green-400 bg-green-50 text-green-800" :
                 posWrong ? "border-red-300 bg-red-50 text-red-700" :
                 submitted ? "border-gray-200 bg-gray-50 text-gray-600" :
-                "border-gray-200 bg-white text-gray-700 cursor-grab hover:border-teal-300 hover:bg-teal-50/30"
+                "border-gray-200 bg-white text-gray-700 cursor-grab hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
               }`}
             >
               {!submitted && <GripVertical className="w-4 h-4 text-gray-300 shrink-0" />}
@@ -251,12 +251,12 @@ export function BranchingPlayer({
                   isCorrect ? "border-green-400 bg-green-50 text-green-800" :
                   isWrong ? "border-red-300 bg-red-50 text-red-700" :
                   showCorrectHint ? "border-green-200 bg-green-50/50 text-green-700" :
-                  isSelected ? "border-teal-400 bg-teal-50 text-teal-800" :
+                  isSelected ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]" :
                   submitted ? "border-gray-200 bg-gray-50 text-gray-400" :
-                  "border-gray-200 hover:border-teal-300 hover:bg-teal-50/30 text-gray-700"
+                  "border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-gray-700"
                 }`}
               >
-                <ArrowRight className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? "text-teal-500" : "text-gray-300"}`} />
+                <ArrowRight className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? "text-[var(--org-primary)]" : "text-gray-300"}`} />
                 {choice.text}
                 {isCorrect && <CheckCircle2 className="w-4 h-4 text-green-500 ml-auto shrink-0" />}
                 {isWrong && <XCircle className="w-4 h-4 text-red-500 ml-auto shrink-0" />}
@@ -323,7 +323,7 @@ export function FillBlankPlayer({
                       ? isBlankCorrect(idx)
                         ? "border-green-400 bg-green-50 text-green-800"
                         : "border-red-300 bg-red-50 text-red-700"
-                      : "border-teal-400 bg-teal-50/30 focus:bg-teal-50 text-gray-800"
+                      : "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] focus:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-gray-800"
                   }`}
                 />
                 {submitted && !isBlankCorrect(idx) && correctAnswers[idx] && (
@@ -388,7 +388,7 @@ export function AnnotationPlayer({
         {click && (
           <div
             className={`absolute w-5 h-5 rounded-full border-2 -translate-x-1/2 -translate-y-1/2 ${
-              submitted ? (isHit() ? "bg-green-400/80 border-green-600" : "bg-red-400/80 border-red-600") : "bg-teal-400/80 border-teal-600"
+              submitted ? (isHit() ? "bg-green-400/80 border-green-600" : "bg-red-400/80 border-red-600") : "bg-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] border-[var(--org-primary)]"
             }`}
             style={{ left: `${click.x}%`, top: `${click.y}%` }}
           />
@@ -440,13 +440,13 @@ export function FlashcardPlayer({
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex items-center justify-center p-6 rounded-2xl border-2 border-teal-200 bg-gradient-to-br from-teal-50 to-white text-gray-800 text-sm font-medium text-center"
+            className="absolute inset-0 flex items-center justify-center p-6 rounded-2xl border-2 border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-gray-800 text-sm font-medium text-center"
             style={{ backfaceVisibility: "hidden" }}
             dangerouslySetInnerHTML={{ __html: question.flashcardFront ?? question.question ?? "" }}
           />
           {/* Back */}
           <div
-            className="absolute inset-0 flex items-center justify-center p-6 rounded-2xl border-2 border-[#189aa1] bg-gradient-to-br from-[#189aa1]/10 to-white text-gray-800 text-sm text-center"
+            className="absolute inset-0 flex items-center justify-center p-6 rounded-2xl border-2 border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-gray-800 text-sm text-center"
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
             dangerouslySetInnerHTML={{ __html: question.flashcardBack ?? "" }}
           />
@@ -468,7 +468,7 @@ export function FlashcardPlayer({
           </Button>
           <Button
             size="sm"
-            className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+            className="flex-1 bg-[var(--org-primary)] hover:brightness-90 text-white"
             onClick={e => { e.stopPropagation(); onAnswer("know"); }}
           >
             Got It ✓

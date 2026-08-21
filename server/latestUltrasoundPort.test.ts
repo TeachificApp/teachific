@@ -1865,6 +1865,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortResourcesSource).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout interactive quiz question controls", () => {
+    const interactiveQuizQuestionsSource = readFileSync(new URL("../client/src/components/InteractiveQuizQuestions.tsx", import.meta.url), "utf8");
+    expect(interactiveQuizQuestionsSource).toContain("border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]");
+    expect(interactiveQuizQuestionsSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(interactiveQuizQuestionsSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]");
+    expect(interactiveQuizQuestionsSource).not.toMatch(/teal|violet|purple/i);
+    expect(interactiveQuizQuestionsSource).not.toContain("#189aa1");
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
