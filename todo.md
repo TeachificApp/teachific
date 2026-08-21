@@ -5638,6 +5638,7 @@
 - [x] Preserve the compact member summary metrics grid on narrow phones
 - [x] Add an organization-scoped direct Member Access catalog for courses, downloads, bundles, and memberships
 - [x] Apply the active organization theme to site navigation active states
+- [x] Resolve course-derived landing page template accent defaults from the active organization theme
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

@@ -5506,11 +5506,11 @@ export default function LandingPageBuilder() {
     if (lpData.blocks && lpData.blocks.length > 0) {
       setBlocks(lpData.blocks as Block[]);
     } else {
-      setBlocks([
+      setBlocks(resolveOrgBlockDefaults([
         { id: uid(), type: "hero", data: { headline: lpData.heroTitle || lpData.courseTitle || "Your Course Title", subheadline: lpData.heroSubtitle || "", bgType: "color", bgColor: "#179ca3", textColor: "#ffffff", align: "left", buttons: [{ text: lpData.ctaText || "Enroll Now", color: "#ffffff", textColor: "#179ca3", link: "", style: "filled" }] } },
         { id: uid(), type: "bullets", data: { headline: "What You'll Learn", items: ["Key skill or concept one", "Key skill or concept two", "Key skill or concept three"], iconColor: "#179ca3", bgColor: "#f8fffe" } },
         { id: uid(), type: "pricing_cta", data: { headline: "Ready to Get Started?", subtext: "Join thousands of educators improving their skills.", ctaText: lpData.ctaText || "Enroll Now", ctaColor: "#179ca3", ctaTextColor: "#ffffff", bgColor: "#ffffff", showPrice: true } },
-      ]);
+      ]));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lpData]);
