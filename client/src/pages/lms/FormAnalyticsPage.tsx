@@ -108,7 +108,7 @@ export default function FormAnalyticsPage() {
           </Button>
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-teal-600" />
+              <BarChart2 className="h-5 w-5 text-[var(--org-primary)]" />
               Form Analytics
             </h1>
             {formData && (
