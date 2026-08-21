@@ -32,7 +32,7 @@ export function SdmsCmeUserTab({ userId }: { userId: number }) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--org-primary)]" />
       </div>
     );
   }
@@ -61,7 +61,7 @@ export function SdmsCmeUserTab({ userId }: { userId: number }) {
               <Badge variant="outline">{row.passStatus}</Badge>
               <Badge variant="outline">{row.sdmsSubmissionStatus}</Badge>
               {row.sdmsResponseCode && (
-                <Badge className={row.sdmsSubmissionStatus === "success" ? "bg-teal-100" : "bg-red-100"}>
+                <Badge className={row.sdmsSubmissionStatus === "success" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)]" : "bg-red-100"}>
                   SDMS {row.sdmsResponseCode}
                 </Badge>
               )}

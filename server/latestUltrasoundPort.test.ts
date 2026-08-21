@@ -1775,6 +1775,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(productSalesTabSource).not.toContain('text-teal-700');
   });
 
+  it("uses the active organization theme for CME user submission feedback", () => {
+    const cmeUserTabSource = readFileSync(new URL("../client/src/components/admin/SdmsCmeUserTab.tsx", import.meta.url), "utf8");
+    expect(cmeUserTabSource).toContain('animate-spin text-[var(--org-primary)]');
+    expect(cmeUserTabSource).toContain('bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]');
+    expect(cmeUserTabSource).not.toContain('text-teal-600');
+    expect(cmeUserTabSource).not.toContain('bg-teal-100');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');
