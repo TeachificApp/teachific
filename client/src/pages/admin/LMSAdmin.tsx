@@ -7350,7 +7350,7 @@ function AnalyticsTab() {
       ) : data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Total Courses", value: data.totalCourses, icon: <BookOpen className="w-5 h-5 text-teal-500" /> },
+            { label: "Total Courses", value: data.totalCourses, icon: <BookOpen className="w-5 h-5 text-[var(--org-primary)]" /> },
             { label: "Enrollments", value: data.totalEnrollments, icon: <Users className="w-5 h-5 text-blue-500" /> },
             { label: "Completions", value: data.completions, icon: <CheckCircle className="w-5 h-5 text-green-500" /> },
             { label: "Revenue", value: `$${Number(data.totalRevenue).toFixed(0)}`, icon: <DollarSign className="w-5 h-5 text-yellow-500" /> },
@@ -7374,7 +7374,7 @@ function AnalyticsTab() {
             {data.topCourses.map((c: any) => (
               <div key={c.courseId} className="flex items-center gap-3">
                 <span className="text-sm text-gray-700 flex-1 truncate">{c.course?.title ?? "Unknown"}</span>
-                <span className="text-sm font-medium text-teal-700">{c.enrollments} enrolled</span>
+                <span className="text-sm font-medium text-[var(--org-primary)]">{c.enrollments} enrolled</span>
               </div>
             ))}
           </div>
