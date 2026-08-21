@@ -1597,7 +1597,7 @@ function getDefaultBlocks(pageType: string, title: string): Block[] {
         },
         {
           id: uid(), type: "testimonial",
-          data: { quote: "This completely transformed my practice.", author: "Happy Customer", avatarUrl: "", bgColor: "#f0fafa", accentColor: "#179ca3" },
+          data: { quote: "", author: "", avatarUrl: "", bgColor: "#f0fafa", accentColor: "#179ca3" },
         },
         {
           id: uid(), type: "cta_standalone",

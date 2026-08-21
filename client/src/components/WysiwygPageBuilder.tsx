@@ -1192,7 +1192,7 @@ function PropertiesPanel({ block, onChange, onDelete, onDuplicate, onToggleVisib
                 <Input value={t.role || ""} onChange={e => { const ts = [...d.testimonials]; ts[i] = { ...t, role: e.target.value }; set("testimonials", ts); }} className="h-7 text-xs" placeholder="Role / title" />
               </div>
             ))}
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => set("testimonials", [...(d.testimonials || []), { id: nanoid(4), quote: "Great course!", author: "Student Name", role: "Role", avatarUrl: "" }])}>
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => set("testimonials", [...(d.testimonials || []), { id: nanoid(4), quote: "", author: "", role: "", avatarUrl: "" }])}>
               <Plus size={12} className="mr-1" /> Add Testimonial
             </Button>
             <Separator />

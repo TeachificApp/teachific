@@ -1711,6 +1711,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).not.toContain("Very practical content.");
   });
 
+  it("keeps WYSIWYG add controls and funnel testimonial defaults free of fabricated content", () => {
+    const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
+    const adminFunnelSource = readFileSync(new URL("../client/src/pages/admin/FunnelPageEditor.tsx", import.meta.url), "utf8");
+    const marketingFunnelSource = readFileSync(new URL("../client/src/pages/marketing/FunnelPageEditor.tsx", import.meta.url), "utf8");
+    expect(wysiwygBuilderSource).toContain('quote: "", author: "", role: "", avatarUrl: ""');
+    expect(wysiwygBuilderSource).not.toContain('quote: "Great course!", author: "Student Name"');
+    for (const funnelSource of [adminFunnelSource, marketingFunnelSource]) {
+      expect(funnelSource).toContain('data: { quote: "", author: "", avatarUrl: "", bgColor: "#f0fafa", accentColor: "#179ca3" }');
+      expect(funnelSource).not.toContain("This completely transformed my practice.");
+      expect(funnelSource).not.toContain("Happy Customer");
+    }
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

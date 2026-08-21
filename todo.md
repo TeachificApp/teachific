@@ -5674,6 +5674,7 @@
 - [x] Apply the active organization theme to membership page authoring controls
 - [x] Remove fabricated WYSIWYG testimonial defaults and resolve page accent defaults from the active organization
 - [x] Remove fabricated testimonial and review defaults from Page Builder and organization landing templates
+- [x] Remove seeded testimonials from WYSIWYG add controls and funnel authoring defaults
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
