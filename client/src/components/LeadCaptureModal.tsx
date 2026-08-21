@@ -97,7 +97,13 @@ export default function LeadCaptureModal({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 mt-2">
           {user && (
-            <p className="text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
+            <p
+              className="text-xs text-[var(--org-primary)] rounded-lg px-3 py-2"
+              style={{
+                background: "color-mix(in srgb, var(--org-primary) 8%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--org-primary) 24%, transparent)",
+              }}
+            >
               Continuing as <strong>{(user as any).email}</strong>
             </p>
           )}
@@ -133,7 +139,7 @@ export default function LeadCaptureModal({
           <Button
             type="submit"
             disabled={submitLead.isPending}
-            className="w-full h-11 font-semibold bg-teal-600 hover:bg-teal-700 text-white"
+            className="w-full h-11 font-semibold org-primary-button"
           >
             {submitLead.isPending ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
             Continue

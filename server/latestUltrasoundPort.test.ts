@@ -2021,6 +2021,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(successPageSource).not.toMatch(/(?:#0e7490|teal-400|text-teal-700)/);
   });
 
+  it("uses the active organization theme for lead-capture modal controls", () => {
+    const leadCaptureSource = readFileSync(new URL("../client/src/components/LeadCaptureModal.tsx", import.meta.url), "utf8");
+    expect(leadCaptureSource).toContain("text-[var(--org-primary)]");
+    expect(leadCaptureSource).toContain("color-mix(in srgb, var(--org-primary) 8%, transparent)");
+    expect(leadCaptureSource).toContain("org-primary-button");
+    expect(leadCaptureSource).not.toMatch(/(?:text-teal-700|bg-teal-50|border-teal-200|bg-teal-600|hover:bg-teal-700)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
