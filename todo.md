@@ -5578,6 +5578,7 @@
 - [x] Apply the active organization theme to Printify administration controls and connection status
 - [x] Apply the active organization theme to Printful administration controls and connection status
 - [x] Apply the active organization theme to Contacts administration controls and subscriber indicators
+- [x] Apply the active organization theme to Site Pages administration controls and page-status indicators
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

@@ -151,7 +151,7 @@ function PageZoneEditor({
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button
-          className="bg-teal-600 hover:bg-teal-700"
+          className="org-primary-button"
           onClick={() => save.mutate({ domain, slug, zones: values })}
           disabled={save.isPending}
         >
@@ -227,7 +227,7 @@ function TreeFolder({
         onClick={() => onSelect(node)}
         className={cn(
           "w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-sm rounded group",
-          isSelected ? "bg-teal-100 text-teal-900" : "hover:bg-gray-50 text-gray-700",
+          isSelected ? "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]" : "hover:bg-gray-50 text-gray-700",
         )}
         style={{ paddingLeft: 8 + depth * 12 }}
       >
@@ -236,7 +236,7 @@ function TreeFolder({
         {node.hiddenFromNav ? (
           <EyeOff className="w-3 h-3 text-gray-300 shrink-0" title="Hidden from nav" />
         ) : (
-          <Eye className="w-3 h-3 text-teal-500 shrink-0 opacity-0 group-hover:opacity-100" title="Visible in nav" />
+          <Eye className="w-3 h-3 text-[var(--org-primary)] shrink-0 opacity-0 group-hover:opacity-100" title="Visible in nav" />
         )}
         {node.status === "draft" && (
           <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded shrink-0">draft</span>
@@ -529,7 +529,7 @@ export default function SitePagesAdmin() {
                   <p className="text-sm text-gray-500">{selectedNode.previewUrl}</p>
                 )}
                 {selectedNode.editorRoute && (
-                  <Button asChild className="bg-teal-600 hover:bg-teal-700">
+                  <Button asChild className="org-primary-button">
                     <Link href={selectedNode.editorRoute}>
                       <Pencil className="w-4 h-4 mr-2" /> Open page editor
                     </Link>
@@ -550,7 +550,7 @@ export default function SitePagesAdmin() {
                   return pageDef ? (
                     <Button
                       variant="outline"
-                      className="border-teal-500 text-teal-700 hover:bg-teal-50"
+                      className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                       onClick={() => setZoneEditorSlug(normalizedSlug)}
                     >
                       <Pencil className="w-4 h-4 mr-2" /> Edit Page Content
@@ -596,7 +596,7 @@ export default function SitePagesAdmin() {
               </Button>
               <Button
                 size="sm"
-                className="bg-teal-600 hover:bg-teal-700 ml-auto"
+                className="org-primary-button ml-auto"
                 onClick={() => saveNav.mutate({ domain, menuKey, items: navItems })}
                 disabled={saveNav.isPending}
               >
@@ -697,7 +697,7 @@ export default function SitePagesAdmin() {
                 createPage.mutate({ domain, title: newTitle, slug: newSlug })
               }
               disabled={!newTitle || !newSlug || createPage.isPending}
-              className="bg-teal-600 hover:bg-teal-700"
+              className="org-primary-button"
             >
               Create &amp; edit
             </Button>
