@@ -6709,7 +6709,7 @@ function AffiliateCourseAccessPanel({ affiliateId }: { affiliateId: number }) {
               {(availableCourses ?? []).map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="ghost" className="h-6 text-xs text-teal-600" disabled={!selectedCourseId || grant.isPending}
+          <Button size="sm" variant="ghost" className="h-6 text-xs text-[var(--org-primary)]" disabled={!selectedCourseId || grant.isPending}
             onClick={() => grant.mutate({ affiliateId, courseId: parseInt(selectedCourseId) })}>
             Grant
           </Button>
@@ -6750,7 +6750,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
     <div className="mt-3 border-t border-gray-100 pt-3 space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-600">Tracking Links</p>
-        <Button size="sm" variant="ghost" className="h-6 text-xs text-teal-600" onClick={() => setOpen(true)}><Plus className="w-3 h-3 mr-1" />Add Link</Button>
+        <Button size="sm" variant="ghost" className="h-6 text-xs text-[var(--org-primary)]" onClick={() => setOpen(true)}><Plus className="w-3 h-3 mr-1" />Add Link</Button>
       </div>
       {isLoading ? <Skeleton className="h-8 w-full" /> : (links ?? []).length === 0 ? (
         <p className="text-xs text-gray-400">No links yet</p>
@@ -6799,7 +6799,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!destUrl.trim() || create.isPending}
+            <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!destUrl.trim() || create.isPending}
               onClick={() => create.mutate({ affiliateId, destinationUrl: destUrl.trim(), slug: slug.trim() || undefined, courseId: courseId ? parseInt(courseId) : undefined })}>
               {create.isPending ? "Creating..." : "Create"}
             </Button>
@@ -6831,7 +6831,7 @@ function PayoutRequestsPanel() {
         <p className="text-sm font-semibold text-gray-800 flex-1">Payout Requests</p>
         {(["pending","approved","paid","rejected","all"] as const).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`text-xs px-2 py-0.5 rounded-full border ${statusFilter === s ? "bg-teal-600 text-white border-teal-600" : "text-gray-500 border-gray-200"}`}>
+            className={`text-xs px-2 py-0.5 rounded-full border ${statusFilter === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "text-gray-500 border-gray-200"}`}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
@@ -6881,7 +6881,7 @@ function PayoutRequestsPanel() {
                 )}
                 {r.status === "approved" && (
                   <div className="pt-1 border-t border-gray-100">
-                    <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white" onClick={() => review.mutate({ id: r.id, decision: "paid" })}>
+                    <Button size="sm" className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => review.mutate({ id: r.id, decision: "paid" })}>
                       Mark as Paid
                     </Button>
                   </div>
@@ -6911,7 +6911,7 @@ function InstructorRevenueSharePanel() {
       {instructors.map((instr: any) => (
         <div key={instr.userId} className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-sm">{(instr.name ?? "?")[0]}</div>
+            <div className="w-8 h-8 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center text-[var(--org-primary)] font-semibold text-sm">{(instr.name ?? "?")[0]}</div>
             <div>
               <p className="text-sm font-medium text-gray-900">{instr.name}</p>
               <p className="text-xs text-gray-400">{instr.email}</p>
@@ -6934,7 +6934,7 @@ function InstructorRevenueSharePanel() {
                         <div className="flex items-center gap-1">
                           <Input type="number" min="0" max="100" value={editing.pct} onChange={e => setEditing(v => v ? { ...v, pct: e.target.value } : v)} className="w-16 h-6 text-xs" />
                           <span className="text-gray-500">%</span>
-                          <Button size="sm" className="h-6 text-xs bg-teal-600 hover:bg-teal-700 text-white" onClick={() => { setShare.mutate({ instructorId: instr.userId, courseId: cs.courseId, revenueSharePct: parseInt(editing.pct) || 0 }); setEditing(null); }}>Save</Button>
+                          <Button size="sm" className="h-6 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => { setShare.mutate({ instructorId: instr.userId, courseId: cs.courseId, revenueSharePct: parseInt(editing.pct) || 0 }); setEditing(null); }}>Save</Button>
                           <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditing(null)}>Cancel</Button>
                         </div>
                       ) : (
@@ -6943,7 +6943,7 @@ function InstructorRevenueSharePanel() {
                     </td>
                     <td className="py-1 text-right">
                       {!(editing?.instructorId === instr.userId && editing?.courseId === cs.courseId) && (
-                        <button className="text-teal-600 hover:underline text-xs" onClick={() => setEditing({ instructorId: instr.userId, courseId: cs.courseId, pct: String(cs.revenueSharePct) })}>Edit</button>
+                        <button className="text-[var(--org-primary)] hover:underline text-xs" onClick={() => setEditing({ instructorId: instr.userId, courseId: cs.courseId, pct: String(cs.revenueSharePct) })}>Edit</button>
                       )}
                     </td>
                   </tr>
@@ -6982,7 +6982,7 @@ function AffiliatesTab() {
         {(["affiliates", "payouts", "instructors"] as const).map(t => (
           <button key={t} onClick={() => setSubTab(t)}
             className={`px-3 py-1.5 text-xs font-medium rounded-t border-b-2 transition-colors ${
-              subTab === t ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700"
+              subTab === t ? "border-[var(--org-primary)] text-[var(--org-primary)]" : "border-transparent text-gray-500 hover:text-gray-700"
             }`}>
             {t === "affiliates" ? "Affiliates" : t === "payouts" ? "Payout Requests" : "Instructor Revenue Share"}
           </button>
@@ -6992,7 +6992,7 @@ function AffiliatesTab() {
       {subTab === "affiliates" && (
         <>
           <div className="flex justify-end">
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4 mr-1" /> New Affiliate
             </Button>
           </div>
@@ -7013,7 +7013,7 @@ function AffiliatesTab() {
                     <Badge variant="outline" className={`text-xs ${a.isActive ? "text-green-600 border-green-300" : "text-gray-400"}`}>{a.isActive ? "Active" : "Inactive"}</Badge>
                     <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                       {a.totalEarned > a.totalPaid && (
-                        <Button size="sm" variant="ghost" className="h-6 text-xs text-teal-600 hover:bg-teal-50" onClick={() => update.mutate({ id: a.id, markPaid: true })}>Mark Paid</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => update.mutate({ id: a.id, markPaid: true })}>Mark Paid</Button>
                       )}
                       <Button size="sm" variant="ghost" className="h-6 text-xs text-gray-500" onClick={() => update.mutate({ id: a.id, isActive: !a.isActive })}>{a.isActive ? "Deactivate" : "Activate"}</Button>
                     </div>
@@ -7051,7 +7051,7 @@ function AffiliatesTab() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!name.trim() || create.isPending}
+                <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!name.trim() || create.isPending}
                   onClick={() => create.mutate({ name: name.trim(), email: email.trim() || undefined, commissionPct: parseInt(commission) || 10 })}>
                   {create.isPending ? "Creating..." : "Create"}
                 </Button>
