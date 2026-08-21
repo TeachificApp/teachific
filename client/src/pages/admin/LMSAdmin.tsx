@@ -7278,7 +7278,7 @@ function EnrollmentExportTab() {
             <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="h-8 text-sm" />
           </div>
         </div>
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8"
+        <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8"
           onClick={() => { setEnabled(true); }}
           disabled={exportLoading}>
           {exportLoading ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Loading...</> : <><RefreshCw className="w-3.5 h-3.5 mr-1.5" />Generate Export</>}
@@ -7297,7 +7297,7 @@ function EnrollmentExportTab() {
               <Button size="sm" variant="outline" className="h-8" onClick={handleDownloadCSV}>
                 <Download className="w-3.5 h-3.5 mr-1.5" /> Download CSV
               </Button>
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={handleExportToEmailCampaign}
+              <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8" onClick={handleExportToEmailCampaign}
                 disabled={!exportData.emails.length}>
                 <Megaphone className="w-3.5 h-3.5 mr-1.5" /> Export to Email Campaign
               </Button>
