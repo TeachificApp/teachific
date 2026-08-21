@@ -6408,7 +6408,7 @@ function InstructorAnalyticsPermissionsDialog({ instructorUserId, instructorName
           <div className="space-y-2 py-2">
             {ALL_METRICS.map(m => (
               <label key={m.key} className="flex items-center gap-3 cursor-pointer rounded-lg border border-gray-100 px-3 py-2 hover:bg-gray-50">
-                <input type="checkbox" checked={selected.has(m.key)} onChange={() => toggle(m.key)} className="w-4 h-4 accent-teal-600" />
+                <input type="checkbox" checked={selected.has(m.key)} onChange={() => toggle(m.key)} className="w-4 h-4 accent-[var(--org-primary)]" />
                 <span className="text-sm text-gray-800">{m.label}</span>
               </label>
             ))}
@@ -6416,7 +6416,7 @@ function InstructorAnalyticsPermissionsDialog({ instructorUserId, instructorName
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={setPermsMut.isPending}
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={setPermsMut.isPending}
             onClick={() => setPermsMut.mutate({ instructorUserId, metrics: [...selected] as any })}>
             {setPermsMut.isPending ? "Saving..." : "Save Permissions"}
           </Button>
@@ -6469,7 +6469,7 @@ function InstructorLinkUserDialog({ instructor, onClose, onLinked }: { instructo
                     <p className="text-sm font-medium">{u.name || u.displayName}</p>
                     <p className="text-xs text-gray-500">{u.email}</p>
                   </div>
-                  <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+                  <Button size="sm" className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white"
                     onClick={() => linkMut.mutate({ instructorId: instructor.id, userId: u.id })}>Link</Button>
                 </div>
               ))}
@@ -6512,7 +6512,7 @@ function InstructorsTab() {
             Link instructor profiles to user accounts, manage analytics access, and open the TEACH workspace for presentations and media.
           </p>
         </div>
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8" onClick={() => setCreateOpen(true)}>
           <Plus className="w-4 h-4 mr-1" /> New Instructor
         </Button>
       </div>
@@ -6525,13 +6525,13 @@ function InstructorsTab() {
                 {ins.avatarUrl ? (
                   <img src={ins.avatarUrl} alt={ins.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center text-lg font-bold text-teal-700 flex-shrink-0">{ins.name?.[0] ?? "?"}</div>
+                  <div className="w-12 h-12 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center text-lg font-bold text-[var(--org-primary)] flex-shrink-0">{ins.name?.[0] ?? "?"}</div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{ins.name}</p>
-                      {ins.title && <p className="text-xs text-teal-600">{ins.title}</p>}
+                      {ins.title && <p className="text-xs text-[var(--org-primary)]">{ins.title}</p>}
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Badge variant="outline" className={`text-xs ${ins.isActive ? "text-green-600 border-green-300" : "text-gray-400"}`}>{ins.isActive ? "Active" : "Inactive"}</Badge>
@@ -6552,7 +6552,7 @@ function InstructorsTab() {
                         <span className="text-xs text-amber-700">No user account linked</span>
                       </div>
                     )}
-                    <Button size="sm" variant="ghost" className="h-6 text-xs text-teal-600 hover:bg-teal-50" onClick={() => setLinkUserInstructor(ins)}>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => setLinkUserInstructor(ins)}>
                       {ins.linkedUser ? "Change" : "Link User"}
                     </Button>
                   </div>
@@ -6564,7 +6564,7 @@ function InstructorsTab() {
                         {ins.courses.map((c: any) => (
                           <span key={c.courseId} className="text-xs bg-gray-100 text-gray-700 rounded px-1.5 py-0.5">
                             {c.courseTitle ?? `#${c.courseId}`}
-                            {c.isPrimary && <span className="ml-1 text-teal-600 font-medium">★</span>}
+                            {c.isPrimary && <span className="ml-1 text-[var(--org-primary)] font-medium">★</span>}
                             {c.revenueSharePct > 0 && <span className="ml-1 text-gray-400">{c.revenueSharePct}%</span>}
                           </span>
                         ))}
@@ -6575,7 +6575,7 @@ function InstructorsTab() {
                   {ins.linkedUser && (
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
                       <Link href="/teach">
-                        <Button size="sm" variant="outline" className="h-6 text-xs text-teal-700 border-teal-200">
+                        <Button size="sm" variant="outline" className="h-6 text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]">
                           <Presentation className="w-3 h-3 mr-1" /> TEACH
                         </Button>
                       </Link>
@@ -6672,7 +6672,7 @@ function InstructorFormDialog({ title, instructor, onClose, onSave, saving }: { 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!name.trim() || saving}
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!name.trim() || saving}
             onClick={() => onSave({ name: name.trim(), title: instrTitle.trim() || undefined, bio: bio || undefined, avatarUrl: avatarUrl.trim() || undefined, website: website.trim() || undefined, isActive })}>
             {saving ? "Saving..." : "Save"}
           </Button>
