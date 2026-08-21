@@ -378,7 +378,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
-              <Mic size={16} className="text-teal-600" /> Select Microphone
+              <Mic size={16} className="text-[var(--org-primary)]" /> Select Microphone
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -449,7 +449,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploading === "audioUrl" || recording}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] disabled:opacity-50"
           >
             <Upload size={12} />
             {uploading === "audioUrl" ? "Uploading…" : "Upload Audio"}
@@ -492,7 +492,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
               {Array.from({ length: 20 }, (_, i) => {
                 const threshold = (i + 1) * 5;
                 const active = audioLevel >= threshold;
-                const color = i < 12 ? "bg-teal-500" : i < 16 ? "bg-yellow-400" : "bg-red-500";
+                const color = i < 12 ? "bg-[var(--org-primary)]" : i < 16 ? "bg-yellow-400" : "bg-red-500";
                 return (
                   <div
                     key={i}
@@ -513,7 +513,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
         <p className="text-[10px] text-gray-400 mt-1">Supported: mp3, wav, ogg, m4a, webm, aac, flac · Max 100 MB</p>
 
         {uploading === "audioUrl" && blobPreviewUrl && (
-          <p className="text-[10px] text-teal-600 mt-1 animate-pulse">⬆ Uploading to cloud… you can trim while waiting.</p>
+          <p className="text-[10px] text-[var(--org-primary)] mt-1 animate-pulse">⬆ Uploading to cloud… you can trim while waiting.</p>
         )}
       </div>
 
@@ -565,7 +565,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
               <button
                 type="button"
                 onClick={togglePreview}
-                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-teal-50 text-teal-700 rounded border border-teal-200 hover:bg-teal-100"
+                className="flex items-center gap-1 px-2 py-0.5 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]"
               >
                 {previewPlaying ? <Pause size={10} /> : <Play size={10} />}
                 {previewPlaying ? "Pause" : "Preview"}
@@ -601,7 +601,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
                     const v = parseFloat(e.target.value);
                     if (v < effectiveTrimEnd) set("trimStart", v);
                   }}
-                  className="flex-1 accent-teal-600"
+                  className="flex-1 accent-[var(--org-primary)]"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -616,7 +616,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
                     const v = parseFloat(e.target.value);
                     if (v > trimStart) set("trimEnd", v);
                   }}
-                  className="flex-1 accent-teal-600"
+                  className="flex-1 accent-[var(--org-primary)]"
                 />
               </div>
             </div>
@@ -663,12 +663,12 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
         <div className="flex gap-2 items-center">
           <input
             type="color"
-            value={d.bgColor ?? "#f8fffe"}
+            value={d.bgColor ?? "#ffffff"}
             onChange={e => set("bgColor", e.target.value)}
             className="h-8 w-10 rounded border border-gray-200 cursor-pointer"
           />
           <Input
-            value={d.bgColor ?? "#f8fffe"}
+            value={d.bgColor ?? "#ffffff"}
             onChange={e => set("bgColor", e.target.value)}
             className="h-8 text-xs flex-1"
           />
@@ -681,7 +681,7 @@ export default function AudioBlockEditor({ d, set, handleFileUpload, uploading }
         <textarea
           value={d.transcript ?? ""}
           onChange={e => set("transcript", e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded p-2 min-h-[60px] resize-y focus:outline-none focus:ring-1 focus:ring-teal-400"
+          className="w-full text-xs border border-gray-200 rounded p-2 min-h-[60px] resize-y focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
           placeholder="Add a text transcript for accessibility…"
         />
       </div>
