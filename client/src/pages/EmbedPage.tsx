@@ -226,6 +226,10 @@ function EmbedPageInner() {
     ? `/api/content/${packageId}/entry?v=${(pkg as any).currentVersionId ?? 0}`
     : null;
   const isLmsShell = pkg?.displayMode === "lms_shell";
+  const embeddedOrganization = (pkg as any)?.publicOrganization;
+  const embeddedOrganizationName = embeddedOrganization?.name || "Learning Portal";
+  const embeddedOrganizationLogoUrl = embeddedOrganization?.logoUrl || null;
+  const embeddedPrimaryColor = embeddedOrganization?.primaryColor || "#189aa1";
 
   if (isLoading) {
     return (
@@ -278,14 +282,18 @@ function EmbedPageInner() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950">
+    <div className="flex flex-col h-screen bg-gray-950" style={{ "--org-primary": embeddedPrimaryColor } as any}>
       {/* Minimal top bar */}
       <div className={`shrink-0 flex items-center px-4 gap-3 ${isLmsShell ? "h-14 bg-gray-900 border-b border-gray-800" : "h-11 bg-gray-900/80 border-b border-gray-800/60"}`}>
         {isLmsShell && (
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-xl font-bold tracking-tight select-none hidden sm:inline" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.02em' }}>
-              <span className="text-white">teach</span><span style={{ color: '#24abbc' }}>ific</span><span className="text-white" style={{ fontSize: '0.45em', verticalAlign: 'super', marginLeft: '1px' }}>&#8482;</span>
-            </span>
+            {embeddedOrganizationLogoUrl ? (
+              <img src={embeddedOrganizationLogoUrl} alt={`${embeddedOrganizationName} logo`} className="h-7 max-w-36 object-contain hidden sm:block" />
+            ) : (
+              <span className="text-xl font-bold tracking-tight select-none text-white hidden sm:inline" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.02em' }}>
+                {embeddedOrganizationName}
+              </span>
+            )}
             <div className="h-4 w-px bg-gray-700 hidden sm:block" />
           </div>
         )}
@@ -320,7 +328,7 @@ function EmbedPageInner() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-gray-400 hover:text-white sm:text-gray-400 sm:hover:text-white sm:bg-transparent text-teal-400 bg-teal-500/20 hover:bg-teal-500/30 hover:text-teal-300"
+            className="h-7 w-7 text-gray-400 hover:text-white sm:text-gray-400 sm:hover:text-white sm:bg-transparent text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] hover:text-[var(--org-primary)]"
             onClick={toggleFullscreen}
             title="Fullscreen"
           >

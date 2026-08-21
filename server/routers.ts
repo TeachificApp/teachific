@@ -89,6 +89,7 @@ import {
   getEnrollmentsByUser,
   createEnrollment,
   getCoursesByOrg,
+  getOrgTheme,
 } from "./lmsDb";
 import {
   getQuizById,
@@ -2460,7 +2461,18 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
         }
       }
-      return pkg;
+      const [organization, organizationTheme] = await Promise.all([
+        getOrgById(pkg.orgId),
+        getOrgTheme(pkg.orgId),
+      ]);
+      return {
+        ...pkg,
+        publicOrganization: {
+          name: organizationTheme?.schoolName?.trim() || organization?.name || null,
+          logoUrl: organizationTheme?.adminLogoUrl || organization?.logoUrl || null,
+          primaryColor: organizationTheme?.studentPrimaryColor || organizationTheme?.buttonColor || organizationTheme?.primaryColor || null,
+        },
+      };
     }),
 
     getManaged: protectedProcedure

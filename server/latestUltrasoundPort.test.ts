@@ -2082,6 +2082,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(embedSnippetSource).not.toContain("Teachific Embed Loader");
   });
 
+  it("uses owning organization branding and theme colors for public embedded learner surfaces", () => {
+    const embedPageSource = readFileSync(new URL("../client/src/pages/EmbedPage.tsx", import.meta.url), "utf8");
+    const routerSource = readFileSync(new URL("../server/routers.ts", import.meta.url), "utf8");
+    expect(routerSource).toContain("publicOrganization");
+    expect(routerSource).toContain("getOrgTheme(pkg.orgId)");
+    expect(embedPageSource).toContain("embeddedOrganizationName");
+    expect(embedPageSource).toContain("embeddedOrganizationLogoUrl");
+    expect(embedPageSource).not.toContain('<span className="text-white">teach</span>');
+    expect(embedPageSource).not.toMatch(/(?:text-teal-400|bg-teal-500\/20|hover:bg-teal-500\/30|hover:text-teal-300)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
