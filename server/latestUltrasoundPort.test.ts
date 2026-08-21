@@ -2161,6 +2161,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingPageBuilder).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout LMS course question-bank authoring controls", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const courseQuestionBank = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("function QuizBuilderInline"),
+      lmsAdminSource.indexOf("// ─── Quiz Builder Dialog")
+    );
+    expect(courseQuestionBank).toContain("text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]");
+    expect(courseQuestionBank).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white gap-2");
+    expect(courseQuestionBank).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]");
+    expect(courseQuestionBank).toContain("border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)]");
+    expect(courseQuestionBank).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
