@@ -8634,7 +8634,7 @@ function SortableCollectionRow({ col, onEdit, onDelete }: { col: any; onEdit: (c
         <p className="text-xs text-gray-400 mt-1">{col.courseCount} course{col.courseCount !== 1 ? "s" : ""}</p>
       </div>
       <div className="flex gap-1 flex-shrink-0">
-        <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(col)}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => onEdit(col)}>
           <Edit2 className="w-3 h-3 mr-1" /> Edit
         </Button>
         <Button size="sm" variant="ghost" className="h-7 text-red-400 hover:bg-red-50" onClick={() => onDelete(col)}>
@@ -8716,7 +8716,7 @@ function CollectionsTab() {
           <h3 className="font-semibold text-gray-800">Collections</h3>
           <p className="text-xs text-gray-500 mt-0.5">Group any content (courses, webinars, downloads, bundles, memberships, products) — shown as filter tabs on the Education Library. Drag to reorder.</p>
         </div>
-        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => setCreateOpen(true)}>
           <Plus className="w-3.5 h-3.5 mr-1" /> New Collection
         </Button>
       </div>
@@ -8921,7 +8921,7 @@ function CollectionFormDialog({
                   <img src={coverImageUrl} alt="Hero preview" className="w-32 h-20 object-cover rounded-lg border border-gray-200 flex-shrink-0" />
                 )}
                 <div className="flex-1">
-                  <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 hover:border-teal-400 text-sm text-gray-500 hover:text-teal-600 transition-colors ${!initial?.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-gray-300 hover:border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] text-sm text-gray-500 hover:text-[var(--org-primary)] transition-colors ${!initial?.id ? 'opacity-50 pointer-events-none' : ''}`}>
                     {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                     {imageUploading ? "Uploading..." : coverImageUrl ? "Replace image" : "Upload hero image"}
                     <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageFile} disabled={imageUploading || !initial?.id} />
@@ -8946,7 +8946,7 @@ function CollectionFormDialog({
                   onClick={() => { setActiveContentTab(type); setSearch(""); }}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                     activeContentTab === type
-                      ? "bg-teal-600 text-white"
+                      ? "bg-[var(--org-primary)] text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
@@ -8970,11 +8970,11 @@ function CollectionFormDialog({
                     type="checkbox"
                     checked={isSelected(c.type, c.id)}
                     onChange={() => toggleItem(c.type, c.id)}
-                    className="accent-teal-600"
+                    className="accent-[var(--org-primary)]"
                   />
                   <span className="text-sm text-gray-700 flex-1 truncate">{c.title}</span>
                   {isSelected(c.type, c.id) && (
-                    <span className="text-xs text-teal-600 font-medium">#{getPosition(c.type, c.id)}</span>
+                    <span className="text-xs text-[var(--org-primary)] font-medium">#{getPosition(c.type, c.id)}</span>
                   )}
                 </label>
               ))}
@@ -8984,7 +8984,7 @@ function CollectionFormDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSave} disabled={saving || !colTitle.trim()}>
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={handleSave} disabled={saving || !colTitle.trim()}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
             Save Collection
           </Button>
