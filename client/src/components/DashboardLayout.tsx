@@ -181,6 +181,7 @@ const navGroups: NavGroup[] = [
           { label: "Categories", path: "/lms/manage/collections" },
           { label: "Media Library", path: "/media-library" },
           { label: "Question Bank", path: "/lms/manage/question_bank" },
+          { label: "Teach Games", path: "/lms/teach-games" },
           { label: "Teachific Studio™", path: "/studio" },
         ],
       },

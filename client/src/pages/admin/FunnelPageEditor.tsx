@@ -602,7 +602,7 @@ export default function FunnelPageEditor() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/admin/funnels/${funnelId}`)}
-            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors"
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors"
           >
             <ArrowLeft size={16} /> Back to Funnel
           </button>
@@ -614,7 +614,7 @@ export default function FunnelPageEditor() {
             {currentPage?.title ?? "Page Editor"}
           </span>
           {currentPage?.pageType && (
-            <span className="text-xs text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full capitalize">
+            <span className="text-xs text-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] px-2 py-0.5 rounded-full capitalize">
               {currentPage.pageType.replace("_", " ")}
             </span>
           )}
@@ -625,14 +625,14 @@ export default function FunnelPageEditor() {
               href={currentPage?.slug ? `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}/${currentPage.slug}` : `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}?preview=${numericPageId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 border border-teal-200 bg-teal-50 hover:bg-teal-100 rounded-lg px-3 py-1.5 transition-colors font-medium"
+              className="flex items-center gap-1.5 text-sm text-[var(--org-primary)] hover:opacity-80 border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_16%,transparent)] rounded-lg px-3 py-1.5 transition-colors font-medium"
             >
               <Eye size={14} /> Preview Page
             </a>
           )}
           <button
             onClick={() => setShowApplyTemplate(true)}
-            className="flex items-center gap-1.5 text-sm text-teal-600 hover:text-teal-700 border border-teal-200 bg-teal-50 hover:bg-teal-100 rounded-lg px-3 py-1.5 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-[var(--org-primary)] hover:opacity-80 border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_16%,transparent)] rounded-lg px-3 py-1.5 transition-colors"
             title="Apply a saved page template"
           >
             <FolderOpen size={14} /> Apply Template
@@ -648,7 +648,7 @@ export default function FunnelPageEditor() {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-1.5 h-8"
+            className="flex items-center gap-1.5 org-primary-button text-sm px-4 py-1.5 h-8"
           >
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>
@@ -725,7 +725,7 @@ export default function FunnelPageEditor() {
                   <div
                     key={p.id}
                     className={`flex items-center gap-0.5 rounded-lg transition-colors ${
-                      p.id === numericPageId ? "bg-teal-50" : "hover:bg-gray-50"
+                      p.id === numericPageId ? "bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "hover:bg-gray-50"
                     }`}
                   >
                     <button
@@ -736,7 +736,7 @@ export default function FunnelPageEditor() {
                       }}
                       className={`flex-1 text-left px-2 py-1.5 text-xs transition-colors truncate min-w-0 ${
                         p.id === numericPageId
-                          ? "text-teal-700 font-semibold"
+                          ? "text-[var(--org-primary)] font-semibold"
                           : "text-gray-600"
                       }`}
                     >
@@ -751,7 +751,7 @@ export default function FunnelPageEditor() {
                         target="_blank"
                         rel="noopener noreferrer"
                         title={`Preview: ${p.title}`}
-                        className="flex-shrink-0 p-1 mr-1 text-gray-300 hover:text-teal-600 transition-colors"
+                        className="flex-shrink-0 p-1 mr-1 text-gray-300 hover:text-[var(--org-primary)] transition-colors"
                         onClick={e => e.stopPropagation()}
                       >
                         <Eye size={11} />
@@ -799,7 +799,7 @@ export default function FunnelPageEditor() {
           <div className="p-2 border-b border-gray-100">
             <button
               onClick={() => setShowSeoPanel(v => !v)}
-              className="w-full flex items-center justify-between text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 py-1 hover:text-teal-700 transition-colors"
+              className="w-full flex items-center justify-between text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 py-1 hover:text-[var(--org-primary)] transition-colors"
             >
               <span className="flex items-center gap-1"><Bookmark size={12} /> Link Preview</span>
               {showSeoPanel ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -819,7 +819,7 @@ export default function FunnelPageEditor() {
                 <div>
                   <label className="text-[10px] font-medium text-gray-600 block mb-1">Description</label>
                   <textarea
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] resize-none"
                     rows={3}
                     placeholder="Short description shown in link previews…"
                     value={seoDescription}
@@ -845,14 +845,14 @@ export default function FunnelPageEditor() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || currentPage?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
+                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
                     </div>
                   </div>
                 )}
                 <button
                   onClick={handleSaveSeo}
                   disabled={updateSeoMutation.isPending}
-                  className="w-full text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg py-1.5 transition-colors disabled:opacity-50"
+                  className="w-full text-xs font-semibold text-white org-primary-button rounded-lg py-1.5 transition-colors disabled:opacity-50"
                 >
                   {seoSaved ? "✓ Saved!" : updateSeoMutation.isPending ? "Saving…" : "Save Preview Settings"}
                 </button>
@@ -864,7 +864,7 @@ export default function FunnelPageEditor() {
           <div className="p-2 border-b border-gray-100">
             <button
               onClick={() => setShowBranchRules(v => !v)}
-              className="w-full flex items-center justify-between text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 py-1 hover:text-teal-700 transition-colors"
+              className="w-full flex items-center justify-between text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 py-1 hover:text-[var(--org-primary)] transition-colors"
             >
               <span className="flex items-center gap-1"><GitBranch size={12} /> Branch Rules</span>
               {showBranchRules ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -876,7 +876,7 @@ export default function FunnelPageEditor() {
                 )}
                 {(branchRules as any[]).map((rule: any, idx: number) => (
                   <div key={rule.id} className={`rounded-lg border text-[10px] px-2 py-1.5 ${
-                    rule.isActive ? "border-teal-200 bg-teal-50" : "border-gray-200 bg-gray-50 opacity-60"
+                    rule.isActive ? "border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]" : "border-gray-200 bg-gray-50 opacity-60"
                   }`}>
                     <div className="flex items-center justify-between gap-1">
                       <span className="font-semibold text-gray-700 truncate">{idx + 1}. {rule.name}</span>

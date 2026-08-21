@@ -60,6 +60,9 @@ import CoursePlayerPage from "./pages/lms/CoursePlayerPage";
 import CourseLanding from "./pages/lms/CourseLanding";
 import CoursePlayer from "./pages/lms/CoursePlayer";
 import CourseOverviewPage from "./pages/lms/CourseOverviewPage";
+import TeachGamesPage from "./pages/lms/TeachGamesPage";
+import TeachGameHostPage from "./pages/lms/TeachGameHostPage";
+import TeachGamePlayPage from "./pages/TeachGamePlayPage";
 import OrgPoliciesPage from "./pages/OrgPoliciesPage";
 import CustomPagesPage from "./pages/admin/CustomPagesPage";
 import DigitalProductsPage from "./pages/admin/DigitalProductsPage";
@@ -631,6 +634,9 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         {/* ── Missing admin routes (added to match main router) ── */}
         <Route path="/lms/manage/:tab">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
         <Route path="/lms/manage">{() => <DashboardLayout><CourseBuilderPage /></DashboardLayout>}</Route>
+        <Route path="/lms/teach-games">{() => <DashboardLayout><TeachGamesPage /></DashboardLayout>}</Route>
+        <Route path="/teach-games/host/:sessionId">{() => <DashboardLayout><TeachGameHostPage /></DashboardLayout>}</Route>
+        <Route path="/teach-games/join/:joinCode" component={TeachGamePlayPage} />
         <Route path="/lms/downloads">{() => <DashboardLayout><DigitalDownloadsAdminPage /></DashboardLayout>}</Route>
         <Route path="/lms/webinars/reports">{() => <DashboardLayout><WebinarReportsPage /></DashboardLayout>}</Route>
         <Route path="/lms/members">{() => { window.location.replace("/members/users"); return null; }}</Route>

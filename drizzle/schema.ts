@@ -4323,6 +4323,107 @@ export const sonoQuizzes = mysqlTable("sonoQuizzes", {
 });
 export type SonoQuiz = typeof sonoQuizzes.$inferSelect;
 
+// ─── Teach Games ──────────────────────────────────────────────────────────────
+// Live, host-led knowledge games. Every authoring record is owned by one
+// organization; session and response records retain the organization ID so all
+// operational reads can enforce the active organization without cross-tenant joins.
+export const teachGames = mysqlTable("teach_games", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  createdByUserId: int("created_by_user_id").notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  timeLimitSeconds: int("time_limit_seconds").default(20).notNull(),
+  musicTrack: varchar("music_track", { length: 100 }),
+  theme: varchar("theme", { length: 50 }).default("org").notNull(),
+  coverImageUrl: text("cover_image_url"),
+  category: varchar("category", { length: 120 }).default("General").notNull(),
+  questionCount: int("question_count").default(0).notNull(),
+  status: mysqlEnum("teach_game_status", ["draft", "published", "archived"]).default("draft").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  orgUpdatedIndex: index("teach_games_org_updated_idx").on(table.orgId, table.updatedAt),
+  orgStatusIndex: index("teach_games_org_status_idx").on(table.orgId, table.status),
+}));
+export type TeachGame = typeof teachGames.$inferSelect;
+export type InsertTeachGame = typeof teachGames.$inferInsert;
+
+export const teachGameQuestions = mysqlTable("teach_game_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  gameId: int("game_id").notNull(),
+  question: longtext("question").notNull(),
+  options: text("options").notNull(),
+  correctAnswer: int("correct_answer").notNull(),
+  explanation: longtext("explanation"),
+  mediaUrl: text("media_url"),
+  mediaType: mysqlEnum("teach_game_media_type", ["image", "video", "gif"]),
+  timeLimitSeconds: int("time_limit_seconds"),
+  points: int("points").default(100).notNull(),
+  sortOrder: int("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  gameSortIndex: index("teach_game_questions_game_sort_idx").on(table.gameId, table.sortOrder),
+}));
+export type TeachGameQuestion = typeof teachGameQuestions.$inferSelect;
+export type InsertTeachGameQuestion = typeof teachGameQuestions.$inferInsert;
+
+export const teachGameSessions = mysqlTable("teach_game_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  gameId: int("game_id").notNull(),
+  hostUserId: int("host_user_id").notNull(),
+  joinCode: varchar("join_code", { length: 10 }).notNull().unique(),
+  status: mysqlEnum("teach_game_session_status", ["lobby", "active", "paused", "ended"]).default("lobby").notNull(),
+  currentQuestionIndex: int("current_question_index"),
+  questionStartedAt: timestamp("question_started_at"),
+  allowAnonymous: boolean("allow_anonymous").default(true).notNull(),
+  showLeaderboard: boolean("show_leaderboard").default(true).notNull(),
+  gameSnapshot: longtext("game_snapshot").notNull(),
+  participantCount: int("participant_count").default(0).notNull(),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgStatusIndex: index("teach_game_sessions_org_status_idx").on(table.orgId, table.status),
+  gameIndex: index("teach_game_sessions_game_idx").on(table.gameId),
+}));
+export type TeachGameSession = typeof teachGameSessions.$inferSelect;
+export type InsertTeachGameSession = typeof teachGameSessions.$inferInsert;
+
+export const teachGameParticipants = mysqlTable("teach_game_participants", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("session_id").notNull(),
+  userId: int("user_id"),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  avatarSeed: varchar("avatar_seed", { length: 50 }),
+  totalScore: int("total_score").default(0).notNull(),
+  finalRank: int("final_rank"),
+  isActive: boolean("is_active").default(true).notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+}, (table) => ({
+  sessionScoreIndex: index("teach_game_participants_session_score_idx").on(table.sessionId, table.totalScore),
+}));
+export type TeachGameParticipant = typeof teachGameParticipants.$inferSelect;
+export type InsertTeachGameParticipant = typeof teachGameParticipants.$inferInsert;
+
+export const teachGameAnswers = mysqlTable("teach_game_answers", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("session_id").notNull(),
+  participantId: int("participant_id").notNull(),
+  questionId: int("question_id").notNull(),
+  selectedAnswer: int("selected_answer").default(-1).notNull(),
+  isCorrect: boolean("is_correct").default(false).notNull(),
+  pointsEarned: int("points_earned").default(0).notNull(),
+  responseTimeMs: int("response_time_ms"),
+  answeredAt: timestamp("answered_at").defaultNow().notNull(),
+}, (table) => ({
+  responseIndex: uniqueIndex("teach_game_answers_response_idx").on(table.sessionId, table.participantId, table.questionId),
+}));
+export type TeachGameAnswer = typeof teachGameAnswers.$inferSelect;
+export type InsertTeachGameAnswer = typeof teachGameAnswers.$inferInsert;
+
 export const instructorCoursePermissions = mysqlTable("instructor_course_permissions", {
   id: int("id").autoincrement().primaryKey(),
   instructorId: int("instructor_id").notNull(),

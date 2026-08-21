@@ -5554,6 +5554,12 @@
 - [x] Require active-organization ownership before duplicating digital downloads or bundles, changing settings, and granting download access
 - [x] Apply the active organization theme to Product Sales statistics and membership confirmation actions
 - [x] Apply the active organization theme to Funnel Builder controls, analytics, and page-type accents
+- [ ] Apply the active organization theme to Funnel Page Editor controls and authoring accents
+- [x] Inventory upstream Teach games and current Teachific game infrastructure
+- [x] Map Teach game records, assets, permissions, and navigation to active organization ownership
+- [x] Port Teach games from the upstream project with organization-scoped storage and administration
+- [x] Add regression coverage for Teach game organization authorization and visibility
+- [ ] Apply the active organization theme to Funnel Page Editor header, navigation, and SEO controls
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

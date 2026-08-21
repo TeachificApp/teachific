@@ -167,6 +167,7 @@ import { newsletterRouter } from "./routers/newsletterRouter";
 import { cmeDisclosureRouter } from "./routers/cmeDisclosureRouter";
 import { webinarAdminRouter } from "./routers/webinarAdminRouter";
 import { contentAvailabilityRouter } from "./routers/contentAvailabilityRouter";
+import { teachGamesRouter } from "./routers/teachGamesRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { issueEmbedToken, verifyEmbedToken } from "./embedToken";
@@ -294,6 +295,7 @@ export const appRouter = router({
   cmeDisclosure: cmeDisclosureRouter,
   webinarAdmin: webinarAdminRouter,
   contentAvailability: contentAvailabilityRouter,
+  teachGames: teachGamesRouter,
   productAnalytics: router({
     getProductPurchasers: protectedProcedure
       .input(z.object({ productId: z.number(), productType: z.string(), page: z.number().optional(), pageSize: z.number().optional(), search: z.string().optional() }))

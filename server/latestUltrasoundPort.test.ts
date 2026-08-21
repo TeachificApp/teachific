@@ -1835,6 +1835,36 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(funnelBuilderSource).not.toMatch(/(?:teal|violet|purple)/i);
   });
 
+  it("uses the active organization theme for Funnel Page Editor header, navigation, and SEO controls", () => {
+    const funnelPageEditorSource = readFileSync(new URL("../client/src/pages/admin/FunnelPageEditor.tsx", import.meta.url), "utf8");
+    expect(funnelPageEditorSource).toContain('className="flex items-center gap-1.5 org-primary-button text-sm px-4 py-1.5 h-8"');
+    expect(funnelPageEditorSource).toContain('bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]');
+    expect(funnelPageEditorSource).toContain('focus:ring-[var(--org-primary)]');
+  });
+
+  it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
+    const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const gameLibrarySource = readFileSync(new URL("../client/src/pages/lms/TeachGamesPage.tsx", import.meta.url), "utf8");
+    const hostSource = readFileSync(new URL("../client/src/pages/lms/TeachGameHostPage.tsx", import.meta.url), "utf8");
+    const playSource = readFileSync(new URL("../client/src/pages/TeachGamePlayPage.tsx", import.meta.url), "utf8");
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    expect(teachGamesSource).toContain("getOrgIdForUserWithFallback");
+    expect(teachGamesSource).toContain("requireOrgAdmin(userId, role, orgId)");
+    expect(teachGamesSource).toContain("eq(teachGames.orgId, orgId)");
+    expect(teachGamesSource).toContain("eq(teachGameSessions.orgId, orgId)");
+    expect(teachGamesSource).toContain("gameId: game.id");
+    expect(schemaSource).toContain('export const teachGames = mysqlTable("teach_games"');
+    expect(schemaSource).toContain('export const teachGameSessions = mysqlTable("teach_game_sessions"');
+    expect(gameLibrarySource).toContain("trpc.teachGames.createGame");
+    expect(gameLibrarySource).toContain("mediaUrl: questionDraft.mediaUrl || undefined");
+    expect(gameLibrarySource).toContain('option value="video"');
+    expect(hostSource).toContain("trpc.teachGames.startSession");
+    expect(playSource).toContain("trpc.teachGames.submitAnswer");
+    expect(appSource).toContain('path="/lms/teach-games"');
+    expect(appSource).toContain('path="/teach-games/join/:joinCode"');
+  });
+
   it("resolves digital download listing and creation from the active organization", () => {
     const downloadsRouterSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
     expect(downloadsRouterSource).toContain('const orgId = await assertAdmin(ctx);\n    return db.select().from(digitalProducts).where(eq(digitalProducts.orgId, orgId))');
