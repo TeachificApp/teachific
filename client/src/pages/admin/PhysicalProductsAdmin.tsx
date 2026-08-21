@@ -74,7 +74,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
           placeholder="Search products..."
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] focus:border-transparent bg-white"
         />
       </div>
       <div className="flex items-center justify-between">
@@ -107,7 +107,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
       ) : (
         <div className="grid gap-3">
           {filteredProducts.map((p) => (
-            <Card key={p.id} className="hover:border-teal-500/50 transition-colors">
+            <Card key={p.id} className="hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] transition-colors">
               <CardContent className="p-4 flex items-center gap-4">
                 {p.thumbnailUrl ? (
                   <img src={p.thumbnailUrl} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" />
@@ -121,7 +121,7 @@ function ProductList({ onEdit }: { onEdit: (id: number) => void }) {
                     <span className="font-medium truncate">{p.title}</span>
                     <StatusBadge status={p.status} />
                     {p.checkoutMode !== "native" && (
-                      <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">
+                      <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]">
                         {p.checkoutMode === "shopify" ? "Shopify" : "External"}
                       </Badge>
                     )}
@@ -462,7 +462,7 @@ function PricingOptionsManager({ productId }: { productId: number }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-sm flex items-center gap-2"><DollarSign className="w-4 h-4 text-teal-600" /> Pricing Options</CardTitle>
+        <CardTitle className="text-sm flex items-center gap-2"><DollarSign className="w-4 h-4 text-[var(--org-primary)]" /> Pricing Options</CardTitle>
         <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)}>
           <Plus className="w-4 h-4 mr-1" /> Add Option
         </Button>
@@ -554,7 +554,7 @@ function OrdersTab({ productId }: { productId: number }) {
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-700",
     processing: "bg-blue-100 text-blue-700",
-    shipped: "bg-teal-100 text-teal-700",
+    shipped: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
     delivered: "bg-green-100 text-green-700",
     cancelled: "bg-gray-100 text-gray-600",
     refunded: "bg-red-100 text-red-600",
@@ -599,7 +599,7 @@ function OrdersTab({ productId }: { productId: number }) {
                       </div>
                     )}
                     {order.trackingNumber && (
-                      <div className="text-xs text-teal-600 mt-1">
+                      <div className="text-xs text-[var(--org-primary)] mt-1">
                         Tracking: {order.trackingCarrier} {order.trackingNumber}
                       </div>
                     )}
@@ -615,8 +615,8 @@ function OrdersTab({ productId }: { productId: number }) {
                       </div>
                     )}
                     {(order.printfulOrderId || order.printfulStatus || order.printfulError) && (
-                      <div className="text-xs mt-1 rounded p-1.5 bg-teal-50 border border-teal-200">
-                        <span className="font-medium text-teal-700">Printful:</span>{" "}
+                      <div className="text-xs mt-1 rounded p-1.5 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
+                        <span className="font-medium text-[var(--org-primary)]">Printful:</span>{" "}
                         {order.printfulStatus ?? "pending"}
                         {order.printfulOrderId ? ` · ${order.printfulOrderId}` : ""}
                         {order.printfulError ? (
@@ -703,13 +703,13 @@ function AnalyticsTab({ productId }: { productId: number }) {
       <div className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-teal-600">{data.totalOrders}</div>
+            <div className="text-2xl font-bold text-[var(--org-primary)]">{data.totalOrders}</div>
             <div className="text-sm text-muted-foreground">Total Orders</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold text-teal-600">${Number(data.totalRevenue).toFixed(2)}</div>
+            <div className="text-2xl font-bold text-[var(--org-primary)]">${Number(data.totalRevenue).toFixed(2)}</div>
             <div className="text-sm text-muted-foreground">Total Revenue</div>
           </CardContent>
         </Card>
@@ -748,7 +748,7 @@ function GrantAccessDialog({ open, productId, onClose }: { open: boolean; produc
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { setSelectedUser(null); onClose(); } }}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-teal-600" /> Grant Product Access</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5 text-[var(--org-primary)]" /> Grant Product Access</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <Label>Search User</Label>
@@ -882,7 +882,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
       {/* Top Save Button */}
       <div className="flex justify-end pb-2 border-b border-gray-100">
-        <Button onClick={handleSave} disabled={updateMut.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button onClick={handleSave} disabled={updateMut.isPending} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
           {updateMut.isPending ? "Saving..." : "Save Settings"}
         </Button>
       </div>
@@ -895,13 +895,13 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         </Button>
         {product.slug && (
           <a href={`/product/${product.slug}?preview=admin`} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600">
+            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)]">
               <Eye className="w-3 h-3 mr-1" /> Preview Sales Page
             </Button>
           </a>
         )}
         {product.slug && (
-          <Button size="sm" variant="outline" className="text-xs gap-1 text-teal-600 border-teal-300 hover:bg-teal-50"
+          <Button size="sm" variant="outline" className="text-xs gap-1 text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
             onClick={() => {
               const url = `${window.location.origin}/checkout/${product.slug}?type=physical`;
               navigator.clipboard.writeText(url);
@@ -911,7 +911,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
             <Copy className="w-3 h-3" /> Copy Checkout Link
           </Button>
         )}
-        <Button size="sm" variant="outline" className="text-xs text-teal-600 border-teal-300 hover:bg-teal-50"
+        <Button size="sm" variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
           onClick={() => setShowGrantDialog(true)}>
           <UserPlus className="w-3 h-3 mr-1" /> Grant Access
         </Button>
@@ -1007,7 +1007,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
 
           {/* URL & SEO */}
           <Card>
-            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Tag className="w-4 h-4 text-teal-600" /> URL &amp; SEO</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Tag className="w-4 h-4 text-[var(--org-primary)]" /> URL &amp; SEO</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label className="text-sm">URL Slug</Label>
@@ -1081,7 +1081,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                   { value: "shopify", label: "Shopify", desc: "Redirect to a Shopify product URL or embed a Shopify Buy Button." },
                   { value: "external", label: "External URL", desc: "Redirect to any external checkout URL (e.g. Gumroad, Etsy, WooCommerce)." },
                 ].map((opt) => (
-                  <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${form.checkoutMode === opt.value ? "border-teal-500 bg-teal-50/50" : "border-border hover:border-teal-300"}`}>
+                  <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${form.checkoutMode === opt.value ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-border hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)]"}`}>
                     <input type="radio" name="checkoutMode" value={opt.value} checked={form.checkoutMode === opt.value} onChange={() => setForm({ ...form, checkoutMode: opt.value })} className="mt-0.5" />
                     <div>
                       <div className="text-sm font-medium">{opt.label}</div>
@@ -1145,21 +1145,21 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
         {/* ── Sales Page Tab ── */}
         <TabsContent value="landing" className="mt-4 space-y-3">
           {/* Info banner */}
-          <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-            <LayoutTemplate className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+          <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+            <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-teal-800">Sales Page Builder</p>
-              <p className="text-xs text-teal-600 mt-0.5">Design your product sales page with blocks, images, pricing sections, and more.</p>
+              <p className="text-sm font-medium text-[var(--org-primary)]">Sales Page Builder</p>
+              <p className="text-xs text-[var(--org-primary)] mt-0.5">Design your product sales page with blocks, images, pricing sections, and more.</p>
             </div>
           </div>
           {/* Quick actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button
               onClick={() => navigate(`/admin/products/${productId}/landing-builder`)}
-              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-colors text-left"
+              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors text-left"
             >
-              <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <LayoutTemplate className="w-5 h-5 text-teal-600" />
+              <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+                <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)]" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-800">Open Full Builder</p>
@@ -1180,10 +1180,10 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
             )}
           </div>
           {/* AI Generate */}
-          <div className="bg-white border border-teal-200 rounded-xl p-5">
+          <div className="bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-5">
             <div className="flex items-start gap-3 mb-4">
-              <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-teal-600" />
+              <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-5 h-5 text-[var(--org-primary)]" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-800">AI Generate Sales Page</p>
@@ -1191,7 +1191,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               </div>
             </div>
             <Button
-              className="bg-teal-600 hover:bg-teal-700 text-white gap-2 w-full"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-2 w-full"
               disabled={aiGenerateLandingPage.isPending}
               onClick={() => aiGenerateLandingPage.mutate({ productId })}
             >
@@ -1200,7 +1200,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                 : <><Sparkles className="w-4 h-4" /> Generate Sales Page with AI</>}
             </Button>
             {aiGenerateLandingPage.isPending && (
-              <p className="text-xs text-teal-500 text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
+              <p className="text-xs text-[var(--org-primary)] text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
             )}
           </div>
         </TabsContent>
@@ -1229,7 +1229,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                   <p className="text-sm text-gray-500 mt-1">
                     Customise the sections shown on the hosted checkout page{product.slug && (
                       <>{" "}at{" "}
-                        <a href={`/checkout/${product.slug}?type=physical`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                        <a href={`/checkout/${product.slug}?type=physical`} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline font-medium">
                           /checkout/{product.slug}
                         </a>
                       </>
@@ -1246,7 +1246,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
                     </a>
                   )}
                   <a href={`/admin/checkout-editor/physical/${productId}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90 font-medium">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     Open Page Editor
                   </a>
@@ -1255,7 +1255,7 @@ function ProductEditor({ productId, onBack }: { productId: number; onBack: () =>
               <div className="mt-5 grid grid-cols-3 gap-3">
                 {["Trust Seals & Badges","Product Includes","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
                   <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="w-2 h-2 rounded-full bg-teal-400" />
+                    <div className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
                     <span className="text-xs text-gray-600">{s}</span>
                   </div>
                 ))}
@@ -1359,11 +1359,11 @@ function ProductAfterPurchaseTab({ productId }: { productId: number }) {
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
   return (
     <div className="space-y-4">
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-        <Workflow className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+        <Workflow className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-teal-800">After Purchase Workflow</p>
-          <p className="text-xs text-teal-600 mt-0.5">Configure what happens immediately after a customer completes their purchase. Actions run in order.</p>
+          <p className="text-sm font-medium text-[var(--org-primary)]">After Purchase Workflow</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">Configure what happens immediately after a customer completes their purchase. Actions run in order.</p>
         </div>
       </div>
 
@@ -1480,7 +1480,7 @@ function ProductAfterPurchaseTab({ productId }: { productId: number }) {
           >
             {testPfulMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Test connection"}
           </Button>
-          <a href="/admin/printful" className="text-xs text-teal-600 hover:underline">Open Printful admin →</a>
+          <a href="/admin/printful" className="text-xs text-[var(--org-primary)] hover:underline">Open Printful admin →</a>
         </div>
 
         {(pfulData?.printfulEnabled) && (
