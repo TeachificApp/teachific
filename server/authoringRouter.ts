@@ -6,7 +6,7 @@ import { z } from "zod";
 import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, getOrgIdForUserWithFallback } from "./db";
 import { authoringProjects, authoringSlides, users } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import JSZip from "jszip";
@@ -15,6 +15,12 @@ import JSZip from "jszip";
 
 function randomSuffix() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+async function requireActiveAuthoringOrg(userId: number, userRole: string): Promise<number> {
+  const orgId = await getOrgIdForUserWithFallback(userId, userRole);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Select an organization before managing creator projects" });
+  return orgId;
 }
 
 // Default slide content for a new project
@@ -400,13 +406,14 @@ export const authoringRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const rows = await db
         .select()
         .from(authoringProjects)
         .where(
           and(
             eq(authoringProjects.userId, ctx.user.id),
-            input.orgId ? eq(authoringProjects.orgId, input.orgId) : undefined
+            eq(authoringProjects.orgId, orgId)
           )
         )
         .orderBy(desc(authoringProjects.updatedAt));
@@ -431,14 +438,15 @@ export const authoringRouter = router({
       z.object({
         title: z.string().min(1).max(255).default("Untitled Project"),
         description: z.string().optional(),
-        orgId: z.number().default(0),
+        orgId: z.number().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [result] = await db.insert(authoringProjects).values({
-        orgId: input.orgId,
+        orgId,
         userId: ctx.user.id,
         title: input.title,
         description: input.description,

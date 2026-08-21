@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { ProductSwitcher } from "@/components/ProductSwitcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,6 +60,7 @@ const TEMPLATES = [
 export default function CreatorDashboardPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
 
   const [search, setSearch] = useState("");
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -71,7 +73,7 @@ export default function CreatorDashboardPage() {
 
   const utils = trpc.useUtils();
 
-  const { data: projects = [], isLoading } = trpc.authoring.listProjects.useQuery({});
+  const { data: projects = [], isLoading } = trpc.authoring.listProjects.useQuery({ orgId: orgId! }, { enabled: !!orgId });
   const { data: roleData } = trpc.authoring.getMyCreatorRole.useQuery();
 
   const createProject = trpc.authoring.createProject.useMutation({
@@ -108,7 +110,8 @@ export default function CreatorDashboardPage() {
 
   const handleCreate = () => {
     if (!newTitle.trim()) return;
-    createProject.mutate({ title: newTitle.trim(), orgId: 0 });
+    if (!orgId) { toast.error("Select an organization before creating a project"); return; }
+    createProject.mutate({ title: newTitle.trim(), orgId });
   };
 
   const showWatermarkBanner = roleData && !roleData.isPaid;

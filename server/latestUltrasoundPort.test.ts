@@ -1520,6 +1520,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderSource).not.toContain('fd.append("orgId", String(course.orgId ?? 0))');
   });
 
+  it("scopes Creator Dashboard projects to the authorized active organization", () => {
+    const creatorDashboardSource = readFileSync(new URL("../client/src/pages/CreatorDashboardPage.tsx", import.meta.url), "utf8");
+    const authoringRouterSource = readFileSync(new URL("../server/authoringRouter.ts", import.meta.url), "utf8");
+    expect(creatorDashboardSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
+    expect(creatorDashboardSource).toContain("const { orgId } = useOrgScope()");
+    expect(creatorDashboardSource).toContain("listProjects.useQuery({ orgId: orgId! }, { enabled: !!orgId })");
+    expect(creatorDashboardSource).not.toContain("createProject.mutate({ title: newTitle.trim(), orgId: 0 })");
+    expect(authoringRouterSource).toContain("async function requireActiveAuthoringOrg");
+    expect(authoringRouterSource).toContain("const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role)");
+    expect(authoringRouterSource).toContain("eq(authoringProjects.orgId, orgId)");
+    expect(authoringRouterSource).not.toContain("orgId: z.number().default(0)");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
