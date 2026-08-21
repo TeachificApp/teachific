@@ -50,8 +50,8 @@ function OptionButton({
   let cls = "w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-all ";
   if (correct) cls += "border-green-500 bg-green-50 text-green-800";
   else if (incorrect) cls += "border-red-400 bg-red-50 text-red-800";
-  else if (selected) cls += "border-teal-500 bg-teal-50 text-teal-800";
-  else cls += "border-gray-200 bg-white hover:border-teal-300 hover:bg-teal-50/40 text-gray-800";
+  else if (selected) cls += "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]";
+  else cls += "border-gray-200 bg-white hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-gray-800";
   if (disabled && !correct && !incorrect && !selected) cls += " opacity-60";
   return (
     <button className={cls} onClick={onClick} disabled={disabled}>
@@ -198,7 +198,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
     return (
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         {showHeader && (
-          <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-4">
+          <div className="bg-[var(--org-primary)] px-5 py-4">
             <div className="flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-white/80" />
               <h3 className="text-white font-semibold text-base">{quizInfo.title}</h3>
@@ -214,7 +214,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
           )}
           <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-5">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-500" />
+              <span className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
               {quizInfo.questionCount} question{quizInfo.questionCount !== 1 ? "s" : ""}
             </span>
             {quizInfo.timeLimitMinutes && (
@@ -237,7 +237,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
             <Button
               onClick={handleStart}
               disabled={startMutation.isPending}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             >
               {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {quizInfo.attemptCount > 0 ? "Retake Quiz" : "Start Quiz"}
@@ -340,7 +340,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-3">
+      <div className="bg-[var(--org-primary)] px-5 py-3">
         <div className="flex items-center justify-between">
           <span className="text-white/80 text-xs font-medium">
             Question {currentIdx + 1} of {questions.length}
@@ -419,7 +419,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
               <Button
                 size="sm"
                 onClick={() => handleReveal(q.questionBankId)}
-                className="bg-teal-600 hover:bg-teal-700 text-white"
+                className="bg-[var(--org-primary)] hover:brightness-90 text-white"
               >
                 Check Answer
               </Button>
@@ -441,7 +441,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
                 size="sm"
                 onClick={handleSubmit}
                 disabled={submitMutation.isPending || (isMockExam && Object.keys(answers).length < questions.length)}
-                className="bg-teal-600 hover:bg-teal-700 text-white gap-1"
+                className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-1"
               >
                 {submitMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 Submit Quiz
