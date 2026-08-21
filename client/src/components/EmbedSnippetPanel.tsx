@@ -145,8 +145,8 @@ export function EmbedSnippetPanel({
   const embedUrl = buildEmbedUrl(true);
   const iframeSnippet = `<iframe\n  src="${embedUrl}"\n  width="${iframeWidth}"\n  height="${iframeHeight}"\n  frameborder="0"\n  allowfullscreen\n  loading="lazy"\n  title="${title.replace(/"/g, "&quot;")}"\n></iframe>`;
 
-  const jsSnippet = `<!-- Teachific Embed Loader -->
-<div id="teachific-embed-${Math.abs(fullUrl.split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0))}"></div>
+  const jsSnippet = `<!-- Learning Content Embed Loader -->
+<div id="learning-content-embed-${Math.abs(fullUrl.split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0))}"></div>
 <script>
 (function() {
   var container = document.currentScript.previousElementSibling;
@@ -180,7 +180,7 @@ ${EMBED_PARAMS.filter((p) => enabledParams[p.key]).map((p) => `  src = src.repla
           <TabsTrigger
             key={t.value}
             value={t.value}
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 px-3 py-2 text-sm font-medium bg-transparent hover:text-teal-600 gap-1.5"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-[var(--org-primary)] data-[state=active]:text-[var(--org-primary)] px-3 py-2 text-sm font-medium bg-transparent hover:text-[var(--org-primary)] gap-1.5"
           >
             {t.icon}{t.label}
           </TabsTrigger>

@@ -2074,6 +2074,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(quizBuilderSource).not.toContain("text-purple-500");
   });
 
+  it("uses organization theming and generic identifiers for organization embed snippets", () => {
+    const embedSnippetSource = readFileSync(new URL("../client/src/components/EmbedSnippetPanel.tsx", import.meta.url), "utf8");
+    expect(embedSnippetSource).toContain("data-[state=active]:border-[var(--org-primary)]");
+    expect(embedSnippetSource).toContain("learning-content-embed-");
+    expect(embedSnippetSource).not.toContain("teachific-embed-");
+    expect(embedSnippetSource).not.toContain("Teachific Embed Loader");
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
