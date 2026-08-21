@@ -34,9 +34,9 @@ export const orderBumpsAdminRouter = router({
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
       const db = await getDb();
-      const [row] = await db.select().from(orderBumps).where(eq(orderBumps.id, input.id));
+      const [row] = await db.select().from(orderBumps).where(and(eq(orderBumps.id, input.id), eq(orderBumps.orgId, orgId)));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       return row;
     }),
