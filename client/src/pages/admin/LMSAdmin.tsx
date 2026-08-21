@@ -11751,8 +11751,8 @@ function CohortTab({ courseId }: { courseId: number }) {
                             className={cn(
                               "w-9 h-9 rounded-full text-xs font-medium border transition-colors",
                               sessionForm.recurrenceDaysOfWeek.includes(idx)
-                                ? "bg-teal-600 text-white border-teal-600"
-                                : "bg-white text-gray-600 border-gray-200 hover:border-teal-400"
+                                ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                                : "bg-white text-gray-600 border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]"
                             )}
                           >{label}</button>
                         ))}
@@ -11763,11 +11763,11 @@ function CohortTab({ courseId }: { courseId: number }) {
                       <Label className="text-xs font-medium text-gray-600 mb-1.5 block">End condition</Label>
                       <div className="flex gap-3 mb-2">
                         <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                          <input type="radio" checked={sessionForm.recurrenceEndType === "date"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "date" }))} className="accent-teal-600" />
+                          <input type="radio" checked={sessionForm.recurrenceEndType === "date"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "date" }))} className="accent-[var(--org-primary)]" />
                           End date
                         </label>
                         <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                          <input type="radio" checked={sessionForm.recurrenceEndType === "count"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "count" }))} className="accent-teal-600" />
+                          <input type="radio" checked={sessionForm.recurrenceEndType === "count"} onChange={() => setSessionForm(p => ({ ...p, recurrenceEndType: "count" }))} className="accent-[var(--org-primary)]" />
                           # of occurrences
                         </label>
                       </div>
@@ -11816,7 +11816,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
               {!sessionDialog.session && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <input type="checkbox" id="session-notify" checked={sessionForm.notifyStudents} onChange={e => setSessionForm(p => ({ ...p, notifyStudents: e.target.checked }))} className="w-4 h-4 accent-teal-600" />
+                  <input type="checkbox" id="session-notify" checked={sessionForm.notifyStudents} onChange={e => setSessionForm(p => ({ ...p, notifyStudents: e.target.checked }))} className="w-4 h-4 accent-[var(--org-primary)]" />
                   <label htmlFor="session-notify" className="text-sm text-amber-800 cursor-pointer">
                     <span className="font-medium">Notify enrolled students</span> — send email with session details when status is Published
                   </label>
@@ -11825,7 +11825,7 @@ function CohortTab({ courseId }: { courseId: number }) {
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
               <Button variant="outline" onClick={() => setSessionDialog({ open: false })}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+              <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                 disabled={createSession.isPending || updateSession.isPending}
                 onClick={handleSaveSession}>
                 {(createSession.isPending || updateSession.isPending) ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />Saving...</> : sessionDialog.session ? "Save Changes" : "Create Session"}
