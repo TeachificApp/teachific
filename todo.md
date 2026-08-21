@@ -5668,6 +5668,7 @@
 - [x] Apply the active organization theme to course waitlist navigation and actions
 - [x] Apply the active organization theme to CME configuration panel controls
 - [x] Apply the active organization theme to interactive question upload and add controls
+- [x] Apply the active organization theme to quiz question group authoring controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

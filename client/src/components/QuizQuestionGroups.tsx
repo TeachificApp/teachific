@@ -172,7 +172,7 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
       <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-gray-50">
         <div>
           <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-teal-600" />
+            <Layers className="w-4 h-4 text-[var(--org-primary)]" />
             Question Groups Mode
           </p>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -224,11 +224,11 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
                       )}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <Badge variant="outline" className="text-xs border-teal-200 text-teal-700 bg-teal-50">
+                      <Badge variant="outline" className="text-xs border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
                         Show {group.displayCount} of {group.questionCount}
                       </Badge>
                       <button
-                        className="text-gray-400 hover:text-blue-600 p-1"
+                        className="text-gray-400 hover:text-[var(--org-primary)] p-1"
                         onClick={e => { e.stopPropagation(); handleEditOpen(group); }}
                         title="Edit group"
                       >
@@ -329,7 +329,7 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
                             {(bankData?.questions ?? []).map(q => {
                               const inGroup = groupQuestionsSet.has(q.id);
                               return (
-                                <div key={q.id} className={`flex items-start gap-2 border rounded-lg px-3 py-2 ${inGroup ? "bg-teal-50 border-teal-200" : "bg-white border-gray-100"}`}>
+                                <div key={q.id} className={`flex items-start gap-2 border rounded-lg px-3 py-2 ${inGroup ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]" : "bg-white border-gray-100"}`}>
                                   <div className="flex-1 min-w-0">
                                     <p className="text-xs text-gray-700 line-clamp-2">{q.question}</p>
                                     <p className="text-xs text-gray-400 mt-0.5">{q.type ?? "mcq"}</p>
@@ -337,8 +337,8 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
                                   <button
                                     className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded font-medium transition-colors ${
                                       inGroup
-                                        ? "bg-teal-100 text-teal-700 cursor-default"
-                                        : "bg-teal-600 text-white hover:bg-teal-700"
+                                        ? "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] cursor-default"
+                                        : "bg-[var(--org-primary)] text-white hover:brightness-90"
                                     }`}
                                     disabled={inGroup || addToGroup.isPending}
                                     onClick={() => !inGroup && addToGroup.mutate({ groupId: group.id, questionBankIds: [q.id] })}
@@ -377,7 +377,7 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
           <Button
             size="sm"
             variant="outline"
-            className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50 w-full"
+            className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] w-full"
             onClick={() => setShowCreate(true)}
           >
             <Plus className="w-4 h-4 mr-1" /> Add Question Group
@@ -427,7 +427,7 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
               disabled={!createForm.name.trim() || createGroup.isPending}
               onClick={() => createGroup.mutate({
                 quizId,
@@ -488,7 +488,7 @@ export function QuizQuestionGroups({ quizId, lessonId, useQuestionGroups, onMode
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingGroup(null)}>Cancel</Button>
             <Button
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
               disabled={!editForm.name.trim() || updateGroup.isPending}
               onClick={() => editingGroup && updateGroup.mutate({
                 groupId: editingGroup.id,
