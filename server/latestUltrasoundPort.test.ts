@@ -270,7 +270,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(builderSource).toContain('className="lms-org-theme w-full"');
     expect(themeCss).toContain(".lms-org-theme");
     expect(themeCss).toContain("var(--org-primary)");
-    expect(themeCss).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
+    expect(themeCss.split("/* Global phone grid safety net")[0]).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
     expect(blockPreviewSource).toContain("backgroundColor: d.bgColor");
     expect(blockPreviewSource).toContain("color: d.textColor");
     expect(blockPreviewSource).toContain("backgroundColor: d.ctaColor");
@@ -302,7 +302,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formsSource).toContain('color: "text-[var(--org-primary)]"');
     expect(formsSource).not.toContain('color: "text-purple-500"');
     expect(themeCss).toContain(".lms-org-theme");
-    expect(themeCss).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
+    expect(themeCss.split("/* Global phone grid safety net")[0]).not.toMatch(/\.lms-org-theme[\s\S]*!important/);
   });
 
   it("derives new Landing Page Builder block defaults from the active organization theme", () => {
@@ -1369,6 +1369,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(coursePlayerSource).toContain("const handleNextLesson = async () =>");
     expect(coursePlayerSource).toContain("await markComplete.mutateAsync({ lessonId: selectedLessonId, courseSlug: slug! })");
     expect(coursePlayerSource).toContain("onClick={handleNextLesson}");
+  });
+
+  it("adds a narrow-phone grid safety net with an explicit compact-layout opt-out", () => {
+    const globalStyles = readFileSync(new URL("../client/src/index.css", import.meta.url), "utf8");
+    expect(globalStyles).toContain("@media (max-width: 479px)");
+    expect(globalStyles).toContain(".grid.grid-cols-2:not(.mobile-keep-grid)");
+    expect(globalStyles).toContain(".grid.grid-cols-6:not(.mobile-keep-grid)");
+    expect(globalStyles).toContain("grid-template-columns: minmax(0, 1fr) !important");
   });
 
   it("offers and persists optional organization-authorized AI course assessments", () => {

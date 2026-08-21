@@ -559,3 +559,17 @@
 .lms-org-theme :is(.accent-teal-600) {
   accent-color: var(--org-primary);
 }
+
+/* Global phone grid safety net. On the narrowest screens, dense fixed Tailwind
+ * grids can compress controls below a usable width. Authored responsive variants
+ * restore multi-column layouts at larger breakpoints. Add mobile-keep-grid when
+ * a compact keypad, swatch, or other intentional small grid must be retained. */
+@media (max-width: 479px) {
+  .grid.grid-cols-2:not(.mobile-keep-grid),
+  .grid.grid-cols-3:not(.mobile-keep-grid),
+  .grid.grid-cols-4:not(.mobile-keep-grid),
+  .grid.grid-cols-5:not(.mobile-keep-grid),
+  .grid.grid-cols-6:not(.mobile-keep-grid) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
