@@ -1791,6 +1791,22 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(analyticsSource).not.toContain('text-purple-500');
   });
 
+  it("uses the active organization theme for sales dashboard KPI and user profile link accents", () => {
+    const salesDashSource = readFileSync(new URL("../client/src/pages/admin/AdminSalesDashboard.tsx", import.meta.url), "utf8");
+    expect(salesDashSource).toContain('color: "text-[var(--org-primary)]"');
+    expect(salesDashSource).toContain('bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]"');
+    expect(salesDashSource).toContain('text-[var(--org-primary)] hover:underline');
+    expect(salesDashSource).not.toContain('text-teal-600');
+  });
+
+  it("uses the active organization theme for admin users page role badge colors", () => {
+    const usersPageSource = readFileSync(new URL("../client/src/pages/admin/AdminUsersPage.tsx", import.meta.url), "utf8");
+    expect(usersPageSource).toContain('site_owner: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]');
+    expect(usersPageSource).toContain('org_admin: "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]');
+    expect(usersPageSource).not.toContain('bg-purple-500/20 text-purple-300');
+    expect(usersPageSource).not.toContain('bg-teal-500/20 text-teal-300');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');

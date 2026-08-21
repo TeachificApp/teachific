@@ -5613,6 +5613,8 @@
 - [x] Apply the active organization theme to organization coupon administration controls
 - [x] Apply the active organization theme to CME user submission feedback
 - [x] Apply the active organization theme to analytics download and quiz accents
+- [x] Apply the active organization theme to sales dashboard KPI and user profile link accents
+- [x] Apply the active organization theme to admin users page role badge colors
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

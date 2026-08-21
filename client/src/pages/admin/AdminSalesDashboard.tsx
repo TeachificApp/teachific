@@ -193,7 +193,7 @@ function SaleDetailSheet({ sale, onClose, onRefunded }: { sale: Sale | null; onC
               <div className="text-sm text-gray-500">{sale.email}</div>
               {sale.userId && (
                 <Link href={`/admin/users/${sale.userId}`}>
-                  <a className="text-xs text-teal-600 hover:underline flex items-center gap-1">
+                  <a className="text-xs text-[var(--org-primary)] hover:underline flex items-center gap-1">
                     View user profile <ExternalLink className="w-3 h-3" />
                   </a>
                 </Link>
@@ -426,7 +426,7 @@ export default function AdminSalesDashboard() {
           {[
             { label: "Total Revenue", value: fmtCurrency(analytics?.summary.totalRevenue ?? 0), icon: DollarSign, color: "text-[#189aa1]", bg: "bg-[#189aa1]/10" },
             { label: "Total Orders", value: (analytics?.summary.totalSales ?? 0).toLocaleString(), icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "Avg. Order Value", value: fmtCurrency(analytics?.summary.avgOrderValue ?? 0), icon: TrendingUp, color: "text-teal-600", bg: "bg-teal-50" },
+            { label: "Avg. Order Value", value: fmtCurrency(analytics?.summary.avgOrderValue ?? 0), icon: TrendingUp, color: "text-[var(--org-primary)]", bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]" },
           ].map(kpi => (
             <Card key={kpi.label} className="border border-gray-200">
               <CardContent className="p-5 flex items-center gap-4">

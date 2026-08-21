@@ -55,10 +55,10 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_COLORS: Record<string, string> = {
-  site_owner: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  site_owner: "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]",
   site_admin: "bg-blue-500/20 text-blue-300 border-blue-500/30",
   org_super_admin: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-  org_admin: "bg-teal-500/20 text-teal-300 border-teal-500/30",
+  org_admin: "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)]",
   member: "bg-slate-500/20 text-slate-300 border-slate-500/30",
   user: "bg-slate-500/20 text-slate-300 border-slate-500/30",
 };
