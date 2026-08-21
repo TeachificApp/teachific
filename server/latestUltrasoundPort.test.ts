@@ -1588,6 +1588,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(inlineWidgetSource).not.toContain("text-[#4ad9e0]");
   });
 
+  it("uses active organization theming for shared drag-and-drop upload states", () => {
+    const uploadZoneSource = readFileSync(new URL("../client/src/components/DragDropUploadZone.tsx", import.meta.url), "utf8");
+    expect(uploadZoneSource).toContain("border-[var(--org-primary)]");
+    expect(uploadZoneSource).toContain("text-[var(--org-primary)]");
+    expect(uploadZoneSource).toContain("color-mix(in_srgb,var(--org-primary)_15%,transparent)");
+    expect(uploadZoneSource).not.toContain("border-[#189aa1]");
+    expect(uploadZoneSource).not.toContain("text-[#189aa1]");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

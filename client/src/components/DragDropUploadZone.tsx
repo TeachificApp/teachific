@@ -152,10 +152,10 @@ export default function DragDropUploadZone({
           "relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed cursor-pointer transition-all select-none",
           "min-h-[96px] px-4 py-5 text-center",
           uploading
-            ? "border-[#189aa1]/40 bg-teal-50 cursor-default"
+            ? "border-[color:color-mix(in_srgb,var(--org-primary)_40%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] cursor-default"
             : dragOver
-            ? "border-[#189aa1] bg-teal-50 scale-[1.01] shadow-sm"
-            : "border-gray-300 bg-gray-50 hover:border-[#189aa1] hover:bg-teal-50/40"
+            ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] scale-[1.01] shadow-sm"
+            : "border-gray-300 bg-gray-50 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_4%,transparent)]"
         )}
       >
         <input
@@ -168,15 +168,15 @@ export default function DragDropUploadZone({
 
         {uploading ? (
           <>
-            <Loader2 className="w-7 h-7 text-[#189aa1] animate-spin" />
-            <span className="text-sm text-[#189aa1] font-medium">Uploading…</span>
+            <Loader2 className="w-7 h-7 text-[var(--org-primary)] animate-spin" />
+            <span className="text-sm text-[var(--org-primary)] font-medium">Uploading…</span>
           </>
         ) : dragOver ? (
           <>
-            <div className="w-10 h-10 rounded-full bg-[#189aa1]/15 flex items-center justify-center">
-              <Upload className="w-5 h-5 text-[#189aa1]" />
+            <div className="w-10 h-10 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] flex items-center justify-center">
+              <Upload className="w-5 h-5 text-[var(--org-primary)]" />
             </div>
-            <span className="text-sm font-semibold text-[#189aa1]">Drop to upload</span>
+            <span className="text-sm font-semibold text-[var(--org-primary)]">Drop to upload</span>
           </>
         ) : (
           <>
