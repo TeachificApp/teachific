@@ -2748,11 +2748,11 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
   return (
     <div className="space-y-4">
       {/* Status banner */}
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-        <LayoutTemplate className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl p-4 flex items-start gap-3">
+        <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-teal-800">Landing Page Builder</p>
-          <p className="text-xs text-teal-600 mt-0.5">
+          <p className="text-sm font-medium text-[var(--org-primary)]">Landing Page Builder</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">
             Use the full builder to design your {typeLabel} landing page with blocks, images, pricing sections, and more.
           </p>
         </div>
@@ -2762,10 +2762,10 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <button
           onClick={() => navigate(`/admin/lms/${courseId}/landing-builder`)}
-          className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-teal-400 hover:bg-teal-50 transition-colors text-left"
+          className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors text-left"
         >
-          <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <LayoutTemplate className="w-5 h-5 text-teal-600" />
+          <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+            <LayoutTemplate className="w-5 h-5 text-[var(--org-primary)]" />
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-800">Open Full Builder</p>
@@ -2788,10 +2788,10 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
       </div>
 
       {/* AI Generate */}
-      <div className="bg-white border border-teal-200 rounded-xl p-5">
+      <div className="bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl p-5">
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-teal-600" />
+          <div className="w-9 h-9 bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] rounded-lg flex items-center justify-center flex-shrink-0">
+            <Sparkles className="w-5 h-5 text-[var(--org-primary)]" />
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-800">AI Generate Landing Page</p>
@@ -2801,7 +2801,7 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
           </div>
         </div>
         <Button
-          className="bg-teal-600 hover:bg-teal-700 text-white gap-2 w-full"
+          className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-2 w-full"
           disabled={aiGenerateLandingPage.isPending}
           onClick={() => aiGenerateLandingPage.mutate({ courseId })}
         >
@@ -2810,7 +2810,7 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
             : <><Sparkles className="w-4 h-4" /> Generate Landing Page with AI</>}
         </Button>
         {aiGenerateLandingPage.isPending && (
-          <p className="text-xs text-teal-500 text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
+          <p className="text-xs text-[var(--org-primary)] text-center mt-2">This may take 15–30 seconds while the AI builds your page...</p>
         )}
       </div>
     </div>

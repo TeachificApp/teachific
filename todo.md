@@ -5725,6 +5725,7 @@
 - [x] Apply the active organization theme to LMS lesson copy and move dialog controls
 - [x] Apply the active organization theme to LMS group-order seat assignment controls
 - [x] Apply the active organization theme to LMS team administration controls
+- [x] Apply the active organization theme to remaining LMS landing-page builder controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
