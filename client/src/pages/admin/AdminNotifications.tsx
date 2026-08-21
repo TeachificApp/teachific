@@ -36,11 +36,11 @@ function timeAgo(ts: Date | string | number): string {
 
 const SOURCE_COLORS: Record<string, string> = {
   system: "bg-slate-100 text-slate-700",
-  lms_checkout: "bg-teal-100 text-teal-800",
-  membership: "bg-purple-100 text-purple-800",
+  lms_checkout: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
+  membership: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
   physical_order: "bg-orange-100 text-orange-800",
   bookvault: "bg-blue-100 text-blue-800",
-  stripe: "bg-violet-100 text-violet-800",
+  stripe: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
   enrollment: "bg-green-100 text-green-800",
   community: "bg-pink-100 text-pink-800",
 };
@@ -97,12 +97,12 @@ export default function AdminNotifications() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Bell className="h-6 w-6 text-teal-600" />
+          <Bell className="h-6 w-6 text-[var(--org-primary)]" />
           <div>
             <h1 className="text-2xl font-bold text-foreground">Admin Notifications</h1>
             <p className="text-sm text-muted-foreground">
               {unreadCount > 0 ? (
-                <span className="text-teal-600 font-medium">{unreadCount} unread</span>
+                <span className="text-[var(--org-primary)] font-medium">{unreadCount} unread</span>
               ) : (
                 "All caught up"
               )}{" "}
@@ -198,14 +198,14 @@ export default function AdminNotifications() {
           {notifications.map((n) => (
             <Card
               key={n.id}
-              className={`transition-colors ${!n.isRead ? "border-teal-200 bg-teal-50/30 dark:bg-teal-950/10" : ""}`}
+              className={`transition-colors ${!n.isRead ? "border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]" : ""}`}
             >
               <CardContent className="py-3 px-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {!n.isRead && (
-                        <span className="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0 mt-0.5" />
+                        <span className="w-2 h-2 rounded-full bg-[var(--org-primary)] flex-shrink-0 mt-0.5" />
                       )}
                       <span className="font-semibold text-sm text-foreground truncate">{n.title}</span>
                       <span
@@ -228,7 +228,7 @@ export default function AdminNotifications() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs text-teal-600 hover:text-teal-700"
+                        className="h-7 px-2 text-xs text-[var(--org-primary)] hover:brightness-90"
                         onClick={() => markRead.mutate({ id: n.id })}
                         disabled={markRead.isPending}
                       >
