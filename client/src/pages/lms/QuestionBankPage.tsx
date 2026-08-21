@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { MediaLibraryPicker } from "@/components/MediaLibraryPicker";
 import { useSearch } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -543,9 +543,8 @@ function ImportDialog({ bankId, orgId, onClose, initialJobId }: { bankId: number
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function QuestionBankPage() {
-  const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const search = useSearch();
-  const orgId = (user as any)?.orgId ?? 0;
   const queryParams = new URLSearchParams(search);
   const directImportJobId = Number(queryParams.get("importJob")) || undefined;
   const directImportBankId = Number(queryParams.get("bankId")) || undefined;
@@ -582,11 +581,11 @@ export default function QuestionBankPage() {
   const utils = trpc.useUtils();
 
   // ─── Data ──────────────────────────────────────────────────────────────────
-  const { data: banks = [], isLoading: banksLoading } = trpc.quizBank.listBanks.useQuery({ orgId }, { enabled: !!orgId });
-  const { data: tags = [] } = trpc.quizBank.listTags.useQuery({ orgId }, { enabled: !!orgId });
+  const { data: banks = [], isLoading: banksLoading } = trpc.quizBank.listBanks.useQuery({ orgId: orgId! }, { enabled: !!orgId });
+  const { data: tags = [] } = trpc.quizBank.listTags.useQuery({ orgId: orgId! }, { enabled: !!orgId });
   const { data: folders = [] } = trpc.quizBank.listFolders.useQuery({ bankId: selectedBankId! }, { enabled: !!selectedBankId });
   const { data: questionsData, isLoading: questionsLoading } = trpc.quizBank.listQuestions.useQuery(
-    { orgId, bankId: selectedBankId!, search: search || undefined, questionType: filterType !== "all" ? filterType : undefined, difficulty: filterDifficulty !== "all" ? filterDifficulty as Difficulty : undefined, tagIds: filterTagId ? [filterTagId] : undefined },
+    { orgId: orgId!, bankId: selectedBankId!, search: search || undefined, questionType: filterType !== "all" ? filterType : undefined, difficulty: filterDifficulty !== "all" ? filterDifficulty as Difficulty : undefined, tagIds: filterTagId ? [filterTagId] : undefined },
     { enabled: !!selectedBankId && !!orgId }
   );
   const questions = questionsData?.questions ?? [];
@@ -854,7 +853,7 @@ export default function QuestionBankPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewBank(false)}>Cancel</Button>
-            <Button onClick={() => createBank.mutate({ orgId, name: newBankName, description: newBankDesc })} disabled={!newBankName.trim() || createBank.isPending}>
+            <Button onClick={() => orgId && createBank.mutate({ orgId, name: newBankName, description: newBankDesc })} disabled={!orgId || !newBankName.trim() || createBank.isPending}>
               Create Bank
             </Button>
           </DialogFooter>
@@ -895,7 +894,7 @@ export default function QuestionBankPage() {
               question={editingQuestion}
               tags={tags}
               folders={folders}
-              orgId={orgId}
+              orgId={orgId!}
               onSave={handleSaveQuestion}
               onCancel={() => setEditingQuestion(null)}
             />
@@ -985,7 +984,7 @@ export default function QuestionBankPage() {
       {/* Import */}
       {showImport && selectedBankId && (
         <Dialog open={showImport} onOpenChange={setShowImport}>
-          <ImportDialog bankId={selectedBankId} orgId={orgId} initialJobId={directImportJobId} onClose={() => setShowImport(false)} />
+          <ImportDialog bankId={selectedBankId} orgId={orgId!} initialJobId={directImportJobId} onClose={() => setShowImport(false)} />
         </Dialog>
       )}
 
@@ -995,8 +994,8 @@ export default function QuestionBankPage() {
           <DialogHeader><DialogTitle>Manage Tags</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
-              <Input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="New tag name..." onKeyDown={e => e.key === "Enter" && newTagName.trim() && createTag.mutate({ orgId, name: newTagName })} />
-              <Button onClick={() => createTag.mutate({ orgId, name: newTagName })} disabled={!newTagName.trim()}>Add</Button>
+              <Input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="New tag name..." onKeyDown={e => e.key === "Enter" && orgId && newTagName.trim() && createTag.mutate({ orgId, name: newTagName })} />
+              <Button onClick={() => orgId && createTag.mutate({ orgId, name: newTagName })} disabled={!orgId || !newTagName.trim()}>Add</Button>
             </div>
             <div className="flex flex-wrap gap-2">
               {tags.map(tag => (
