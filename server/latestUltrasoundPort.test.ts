@@ -2397,6 +2397,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortRecordings).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout LMS cohort recording-dialog controls", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const recordingDialog = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("{/* Recording Dialog */}"),
+      lmsAdminSource.indexOf("{/* Session Dialog */}")
+    );
+    expect(recordingDialog).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(recordingDialog).toContain("focus:ring-[var(--org-primary)]");
+    expect(recordingDialog).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

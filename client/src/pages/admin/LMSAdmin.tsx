@@ -11648,7 +11648,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1 block">Description</Label>
-                <textarea value={recordingForm.description} onChange={e => setRecordingForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="What was covered in this session..." />
+                <textarea value={recordingForm.description} onChange={e => setRecordingForm(p => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="What was covered in this session..." />
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1 block">Status</Label>
@@ -11674,7 +11674,7 @@ function CohortTab({ courseId }: { courseId: number }) {
             </div>
             <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
               <Button variant="outline" onClick={() => setRecordingDialog({ open: false })}>Cancel</Button>
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white"
+              <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                 disabled={createRecording.isPending || updateRecording.isPending}
                 onClick={handleSaveRecording}>
                 {(createRecording.isPending || updateRecording.isPending) ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />Saving...</> : recordingDialog.recording ? "Save Changes" : "Add Recording"}
