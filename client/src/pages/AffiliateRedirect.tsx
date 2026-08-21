@@ -8,8 +8,8 @@ import { trpc } from "@/lib/trpc";
  * This is a public page (no auth required).
  */
 
-export const AFFILIATE_CODE_KEY = "aau_aff_code";
-export const AFFILIATE_CODE_EXPIRY_KEY = "aau_aff_expiry";
+export const AFFILIATE_CODE_KEY = "affiliate_code";
+export const AFFILIATE_CODE_EXPIRY_KEY = "affiliate_code_expiry";
 export const AFFILIATE_WINDOW_DAYS = 30;
 
 export function storeAffiliateCode(code: string) {
@@ -74,7 +74,7 @@ export default function AffiliateRedirect() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center space-y-3">
-        <div className="w-10 h-10 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-10 h-10 border-2 border-[var(--org-primary)] border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm text-gray-500">Redirecting…</p>
       </div>
     </div>

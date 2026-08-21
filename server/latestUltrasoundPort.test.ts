@@ -1414,6 +1414,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).toContain("LEGACY_ORG_PRIMARY_DEFAULTS");
   });
 
+  it("uses organization theming and generic attribution storage keys for affiliate redirects", () => {
+    const affiliateRedirectSource = readFileSync(new URL("../client/src/pages/AffiliateRedirect.tsx", import.meta.url), "utf8");
+    expect(affiliateRedirectSource).toContain('AFFILIATE_CODE_KEY = "affiliate_code"');
+    expect(affiliateRedirectSource).toContain('AFFILIATE_CODE_EXPIRY_KEY = "affiliate_code_expiry"');
+    expect(affiliateRedirectSource).toContain("border-[var(--org-primary)]");
+    expect(affiliateRedirectSource).not.toContain("aau_aff_code");
+    expect(affiliateRedirectSource).not.toContain("border-teal-500");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
