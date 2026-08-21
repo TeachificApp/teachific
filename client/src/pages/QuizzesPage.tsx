@@ -69,8 +69,8 @@ export default function QuizzesPage() {
             <Card key={quiz.id} className="shadow-sm border-border/60 hover:shadow-md transition-shadow">
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
-                    <BookOpen className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <div className="h-10 w-10 rounded-xl bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center shrink-0">
+                    <BookOpen className="h-5 w-5 text-[var(--org-primary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
