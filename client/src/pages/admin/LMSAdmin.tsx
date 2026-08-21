@@ -5482,7 +5482,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
             {/* Question Groups */}
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-teal-600" /> Question Groups
+                <Layers className="w-4 h-4 text-[var(--org-primary)]" /> Question Groups
               </h3>
               <QuizQuestionGroups
                 quizId={quiz.id}
@@ -5521,7 +5521,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
 
             {/* Add question */}
             {addingQuestion ? (
-              <div className="border border-teal-200 rounded-lg p-4 space-y-3 bg-teal-50">
+              <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-4 space-y-3 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]">
                 <div>
                   <Label className="text-sm">Question *</Label>
                   <Input value={newQ.question} onChange={e => setNewQ(q => ({ ...q, question: e.target.value }))} className="mt-1" />
@@ -5564,7 +5564,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => setAddingQuestion(false)}>Cancel</Button>
-                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!newQ.question.trim() || !newQ.correctAnswer.trim() || addQuestion.isPending}
+                  <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!newQ.question.trim() || !newQ.correctAnswer.trim() || addQuestion.isPending}
                     onClick={() => addQuestion.mutate({
                       quizId: quiz.id, question: newQ.question.trim(), type: newQ.type,
                       options: newQ.type === "mcq" ? newQ.options.filter(o => o.trim()) : undefined,
@@ -5576,7 +5576,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                 </div>
               </div>
             ) : (
-              <Button size="sm" variant="outline" className="border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={() => setAddingQuestion(true)}>
+              <Button size="sm" variant="outline" className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => setAddingQuestion(true)}>
                 <Plus className="w-4 h-4 mr-1" /> Add Question
               </Button>
             )}
@@ -5592,7 +5592,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-teal-600" /> AI Generate Questions
+              <Sparkles className="w-4 h-4 text-[var(--org-primary)]" /> AI Generate Questions
             </DialogTitle>
           </DialogHeader>
 
@@ -5616,14 +5616,14 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                     <Label htmlFor="dlg-use-lessons" className="text-sm font-medium cursor-pointer">Generate from specific lesson content</Label>
                   </div>
                   {useFromLessons && (
-                    <div className="border border-teal-200 rounded-lg p-3 bg-white space-y-1 max-h-48 overflow-y-auto">
+                    <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-3 bg-white space-y-1 max-h-48 overflow-y-auto">
                       <div className="flex gap-2 mb-2">
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setSelectedLessonIds(courseLessonList.map(l => l.id))}>Select All</Button>
                         <Button size="sm" variant="ghost" className="text-xs h-6 px-2" onClick={() => setSelectedLessonIds([])}>Clear</Button>
                         <span className="text-xs text-gray-500 ml-auto self-center">{selectedLessonIds.length} selected</span>
                       </div>
                       {courseLessonList.map(l => (
-                        <label key={l.id} className="flex items-center gap-2 cursor-pointer hover:bg-teal-50 rounded px-1 py-0.5">
+                        <label key={l.id} className="flex items-center gap-2 cursor-pointer hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded px-1 py-0.5">
                           <input type="checkbox" className="rounded" checked={selectedLessonIds.includes(l.id)} onChange={e => setSelectedLessonIds(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))} />
                           <span className="text-sm text-gray-700 truncate">{l.title}</span>
                         </label>
@@ -5672,7 +5672,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowAIDialog(false)}>Cancel</Button>
                 <Button
-                  className="bg-teal-600 hover:bg-teal-700 text-white gap-2"
+                  className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-2"
                   disabled={(!aiTopic.trim() && !(useFromLessons && selectedLessonIds.length > 0)) || aiGenerate.isPending}
                   onClick={() => aiGenerate.mutate({ quizId: quiz.id, topic: aiTopic.trim() || "based on selected lesson content", count: aiCount, difficulty: aiDifficulty, questionType: aiQType, courseId, lessonIds: useFromLessons && selectedLessonIds.length > 0 ? selectedLessonIds : undefined })}
                 >
@@ -5687,7 +5687,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                 <div className="flex gap-2">
                   <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setAIPreview(p => p!.map(q => ({ ...q, selected: true })))}>Select All</Button>
                   <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setAIPreview(p => p!.map(q => ({ ...q, selected: false })))}>Deselect All</Button>
-                  <Button size="sm" variant="ghost" className="text-xs h-7 text-teal-600" onClick={() => setAIPreview(null)}>← Back</Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 text-[var(--org-primary)]" onClick={() => setAIPreview(null)}>← Back</Button>
                 </div>
               </div>
 
@@ -5698,13 +5698,13 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
                     <div
                       key={qi}
                       className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                        q.selected ? "border-teal-400 bg-teal-50" : "border-gray-200 bg-white opacity-60"
+                        q.selected ? "border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-gray-200 bg-white opacity-60"
                       }`}
                       onClick={() => setAIPreview(p => p!.map((item, i) => i === qi ? { ...item, selected: !item.selected } : item))}
                     >
                       <div className="flex items-start gap-2">
                         <div className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-xs ${
-                          q.selected ? "bg-teal-600 border-teal-600 text-white" : "border-gray-300"
+                          q.selected ? "bg-[var(--org-primary)] border-[var(--org-primary)] text-white" : "border-gray-300"
                         }`}>{q.selected ? "✓" : ""}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800">{qi + 1}. {q.question}</p>
@@ -5726,7 +5726,7 @@ function QuizBuilderDialog({ lesson, onClose }: { lesson: any; onClose: () => vo
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={() => { setShowAIDialog(false); setAIPreview(null); }}>Cancel</Button>
                 <Button
-                  className="bg-teal-600 hover:bg-teal-700 text-white gap-2"
+                  className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-2"
                   disabled={aiPreview.filter(q => q.selected).length === 0 || bulkInsert.isPending}
                   onClick={() => bulkInsert.mutate({
                     quizId: quiz.id,
