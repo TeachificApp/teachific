@@ -341,9 +341,9 @@ export default function QuestionBankImportPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-purple-200 dark:border-purple-800">
+            <Card className="border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                <CardTitle className="text-sm flex items-center gap-2 text-[var(--org-primary)]">
                   <FileArchive className="h-4 w-4" />
                   SCORM / QTI Import
                 </CardTitle>
@@ -351,7 +351,7 @@ export default function QuestionBankImportPage() {
               <CardContent className="text-xs text-muted-foreground space-y-2">
                 <p>Upload a hosted SCORM package (.zip), iSpring/Teachific .quiz archive, or QTI XML file. Questions can be extracted while the original package remains hosted.</p>
                 <p className="text-xs">Supports SCORM 1.2, SCORM 2004 QTI, and unencrypted .quiz files.</p>
-                <div className="rounded bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 p-2 text-purple-800 dark:text-purple-300 text-xs mt-1">
+                <div className="rounded bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] p-2 text-[var(--org-primary)] text-xs mt-1">
                   Tip: Export your SCORM quiz from your authoring tool (Articulate, iSpring, etc.) and upload the resulting .zip file.
                 </div>
               </CardContent>

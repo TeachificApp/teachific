@@ -1571,6 +1571,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(recordPageSource).not.toContain('savedToLibrary[idx] ? "text-teal-500" : ""');
   });
 
+  it("uses the active organization theme for Question Bank SCORM/QTI import guidance", () => {
+    const importPageSource = readFileSync(new URL("../client/src/pages/QuestionBankImportPage.tsx", import.meta.url), "utf8");
+    expect(importPageSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]");
+    expect(importPageSource).toContain("text-[var(--org-primary)]");
+    expect(importPageSource).not.toContain("border-purple-200 dark:border-purple-800");
+    expect(importPageSource).not.toContain("text-purple-700 dark:text-purple-400");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
