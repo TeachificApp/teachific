@@ -11534,31 +11534,31 @@ function CohortTab({ courseId }: { courseId: number }) {
         <div className="space-y-3">
           {/* Group selector banner when multi-cohort mode is on */}
           {multiCohortMode && cohortGroups.length > 0 && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-teal-700">Viewing group:</span>
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg px-3 py-2">
+              <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+              <span className="text-xs font-medium text-[var(--org-primary)]">Viewing group:</span>
               <select
                 value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
                 onChange={e => setContentGroupId(Number(e.target.value))}
-                className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                className="text-xs border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
               >
                 {cohortGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-teal-500 ml-auto">Recordings added here will be assigned to this group</span>
+              <span className="text-xs text-[var(--org-primary)] ml-auto">Recordings added here will be assigned to this group</span>
             </div>
           )}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="text-sm text-gray-500">Upload and manage recorded session replays. Drag to reorder, or auto-sort by session date.</p>
             <div className="flex items-center gap-2">
               {localRecordings.length > 1 && (
-                <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50" onClick={() => sortBySessionDate.mutate({ courseId, cohortGroupId: effectiveGroupId })} disabled={sortBySessionDate.isPending}>
+                <Button size="sm" variant="outline" className="border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={() => sortBySessionDate.mutate({ courseId, cohortGroupId: effectiveGroupId })} disabled={sortBySessionDate.isPending}>
                   {sortBySessionDate.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CalendarRange className="w-3.5 h-3.5 mr-1" />}
                   Sort by Session Date
                 </Button>
               )}
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => openRecordingDialog()}>
+              <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => openRecordingDialog()}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add Recording
               </Button>
             </div>
