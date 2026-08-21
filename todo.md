@@ -5721,6 +5721,7 @@
 - [x] Apply the active organization theme to LMS question-bank authoring controls
 - [x] Apply the active organization theme to LMS block-picker modal controls
 - [x] Apply the active organization theme to LMS drip-schedule and save-template dialog controls
+- [x] Apply the active organization theme to LMS section template and course-copy picker controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
