@@ -36,8 +36,8 @@ const TYPE_ICONS: Record<string, any> = {
   course: BookOpen, download: Download, physical: ShoppingBag, bundle: Layers, funnel: Megaphone,
 };
 const TYPE_COLORS: Record<string, string> = {
-  course: "bg-teal-100 text-teal-700", download: "bg-cyan-100 text-cyan-700",
-  physical: "bg-amber-100 text-amber-700", bundle: "bg-teal-100 text-teal-700",
+  course: "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]", download: "bg-cyan-100 text-cyan-700",
+  physical: "bg-amber-100 text-amber-700", bundle: "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]",
   funnel: "bg-blue-100 text-blue-700",
 };
 const TYPE_LABELS: Record<string, string> = {
@@ -67,7 +67,7 @@ function GrantAccessDialog({ productId, productType, productTitle, open, onClose
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-teal-600" /> Grant Access
+            <UserPlus className="w-5 h-5 text-[var(--org-primary)]" /> Grant Access
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -82,7 +82,7 @@ function GrantAccessDialog({ productId, productType, productTitle, open, onClose
         <DialogFooter>
           <Button variant="outline" onClick={() => { setSelectedUser(null); onClose(); }}>Cancel</Button>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white gap-2"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-2"
             disabled={!selectedUser || grantMutation.isPending}
             onClick={() => selectedUser && grantMutation.mutate({ productId, productType: productType as any, userEmail: selectedUser.email })}
           >
@@ -129,7 +129,7 @@ function PurchaserSheet({ purchaser, onClose, onRefunded }: {
               <div className="text-sm text-gray-500">{purchaser.userEmail}</div>
               {purchaser.userId && (
                 <Link href={`/admin/users/${purchaser.userId}`}>
-                  <span className="text-xs text-teal-600 hover:underline flex items-center gap-1 cursor-pointer">
+                  <span className="text-xs text-[var(--org-primary)] hover:underline flex items-center gap-1 cursor-pointer">
                     View user profile <ExternalLink className="w-3 h-3" />
                   </span>
                 </Link>
@@ -245,7 +245,7 @@ function ProductDetailView({ product, onBack }: {
           </div>
         </div>
         {["course", "download", "bundle"].includes(product.type) && (
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white gap-2" onClick={() => setGrantDialogOpen(true)}>
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-2" onClick={() => setGrantDialogOpen(true)}>
             <UserPlus className="w-4 h-4" /> Grant Access
           </Button>
         )}
@@ -255,8 +255,8 @@ function ProductDetailView({ product, onBack }: {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="border border-gray-200">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
-              <Users className="w-5 h-5 text-teal-600" />
+            <div className="w-10 h-10 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] flex items-center justify-center">
+              <Users className="w-5 h-5 text-[var(--org-primary)]" />
             </div>
             <div>
               <div className="text-xl font-bold text-gray-900">{data?.total ?? 0}</div>
@@ -300,7 +300,7 @@ function ProductDetailView({ product, onBack }: {
             placeholder="Search by name or email…" className="pl-8 h-9 text-sm"
           />
         </div>
-        <Button size="sm" onClick={() => { setSearch(searchInput.trim()); setPage(1); }} className="bg-teal-600 hover:bg-teal-700 text-white h-9">
+        <Button size="sm" onClick={() => { setSearch(searchInput.trim()); setPage(1); }} className="bg-[var(--org-primary)] hover:brightness-90 text-white h-9">
           <Search className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -330,7 +330,7 @@ function ProductDetailView({ product, onBack }: {
                       <div className="text-xs text-gray-400">{p.userEmail}</div>
                       {p.userId && (
                         <Link href={`/admin/users/${p.userId}`} onClick={e => e.stopPropagation()}>
-                          <span className="text-xs text-teal-600 hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer">
+                          <span className="text-xs text-[var(--org-primary)] hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer">
                             Profile <ExternalLink className="w-2.5 h-2.5" />
                           </span>
                         </Link>
@@ -417,7 +417,7 @@ export default function ProductAnalytics() {
       {/* Header */}
       <div>
         <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-teal-600" /> Product Analytics
+          <BarChart3 className="w-5 h-5 text-[var(--org-primary)]" /> Product Analytics
         </h2>
         <p className="text-sm text-gray-500 mt-1">View purchasers, revenue, and manage access for each product</p>
       </div>
@@ -443,7 +443,7 @@ export default function ProductAnalytics() {
             placeholder="Search products…" className="pl-8 h-9 text-sm"
           />
         </div>
-        <Button size="sm" onClick={() => setSearch(searchInput.trim())} className="bg-teal-600 hover:bg-teal-700 text-white h-9">
+        <Button size="sm" onClick={() => setSearch(searchInput.trim())} className="bg-[var(--org-primary)] hover:brightness-90 text-white h-9">
           <Search className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -470,7 +470,7 @@ export default function ProductAnalytics() {
             return (
               <Card
                 key={`${p.type}-${p.id}`}
-                className="border border-gray-200 hover:border-teal-200 hover:shadow-md transition-all cursor-pointer"
+                className="border border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:shadow-md transition-all cursor-pointer"
                 onClick={() => setSelectedProduct({ id: p.id, type: p.type, title: p.title })}
               >
                 <CardContent className="p-5">

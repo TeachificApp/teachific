@@ -5685,6 +5685,7 @@
 - [x] Apply the active organization theme to download landing-page builder controls
 - [x] Apply the active organization theme to organization widget administration controls
 - [x] Apply the active organization theme to checkout page editor controls
+- [x] Apply the active organization theme to product analytics controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
