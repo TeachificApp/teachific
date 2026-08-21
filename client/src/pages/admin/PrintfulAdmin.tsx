@@ -21,7 +21,7 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
   inprocess: "bg-blue-100 text-blue-700",
   onhold: "bg-orange-100 text-orange-700",
-  partial: "bg-purple-100 text-purple-700",
+  partial: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]",
   fulfilled: "bg-green-100 text-green-700",
   canceled: "bg-red-100 text-red-700",
   archived: "bg-gray-100 text-gray-500",
@@ -133,7 +133,7 @@ function ProductsTab({ storeId }: { storeId: number }) {
             return (
               <Card
                 key={p.id}
-                className={`overflow-hidden cursor-pointer transition-colors ${isSelected ? "ring-2 ring-teal-500" : ""}`}
+                className={`overflow-hidden cursor-pointer transition-colors ${isSelected ? "ring-2 ring-[var(--org-primary)]" : ""}`}
                 onClick={() => toggle(p.printfulProductId)}
               >
                 {p.thumbnailUrl ? (
@@ -156,7 +156,7 @@ function ProductsTab({ storeId }: { storeId: number }) {
                   <p className="font-medium text-sm line-clamp-2">{p.name}</p>
                   <div className="flex items-center justify-between mt-1 gap-1">
                     {price && (
-                      <span className="text-sm text-teal-600 font-semibold">${price}</span>
+                      <span className="text-sm text-[var(--org-primary)] font-semibold">${price}</span>
                     )}
                     <span className="text-xs text-muted-foreground">
                       {p.syncedVariantCount}/{p.variantCount} variants
@@ -257,7 +257,7 @@ function OrdersTab({ storeId }: { storeId: number }) {
                       href={order.dashboard_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-teal-600 hover:underline flex items-center gap-1"
+                      className="text-[var(--org-primary)] hover:underline flex items-center gap-1"
                     >
                       #{order.id}
                       <ExternalLink className="h-3 w-3" />
@@ -304,7 +304,7 @@ function OrdersTab({ storeId }: { storeId: number }) {
                         href={order.shipments[0].tracking_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-teal-600 hover:underline"
+                        className="text-xs text-[var(--org-primary)] hover:underline"
                       >
                         Track
                       </a>
@@ -367,7 +367,7 @@ export default function PrintfulAdmin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Store className="h-6 w-6 text-teal-600" />
+            <Store className="h-6 w-6 text-[var(--org-primary)]" />
             Printful Integration
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -378,7 +378,7 @@ export default function PrintfulAdmin() {
           href="https://www.printful.com/dashboard"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-teal-600 hover:underline flex items-center gap-1"
+          className="text-sm text-[var(--org-primary)] hover:underline flex items-center gap-1"
         >
           Open Printful Dashboard <ExternalLink className="h-3 w-3" />
         </a>

@@ -5576,6 +5576,7 @@
 - [x] Apply the active organization theme to General Form Analytics controls and result indicators
 - [x] Review Teach administration as a platform-level surface and retain its platform styling; active-organization Teach Games uses its separate organization-scoped workspace
 - [x] Apply the active organization theme to Printify administration controls and connection status
+- [x] Apply the active organization theme to Printful administration controls and connection status
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups
