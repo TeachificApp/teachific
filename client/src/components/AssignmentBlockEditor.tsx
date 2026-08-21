@@ -20,7 +20,7 @@ const ASSIGNMENT_BLOCKS: { type: BlockType; label: string; icon: React.ReactNode
   { type: "alert", label: "Alert / Callout", icon: <AlertTriangle size={14} />, defaultData: { type: "info", title: "", message: "Important note for students.", bgColor: "#ffffff" } },
   { type: "divider", label: "Divider", icon: <Minus size={14} />, defaultData: { color: "#e5e7eb", thickness: 1 } },
   { type: "data_table", label: "Data Table", icon: <Table2 size={14} />, defaultData: { rows: [["Header 1", "Header 2", "Header 3"], ["Row 1 Col 1", "Row 1 Col 2", "Row 1 Col 3"]], hasHeader: true, bordered: true, striped: true, bgColor: "#ffffff" } },
-  { type: "file_upload", label: "File Upload", icon: <Upload size={14} />, defaultData: { label: "Upload Your File", instructions: "Please upload your completed work below.", acceptedTypes: "PDF, Word, Images", maxSizeMb: 10, accentColor: "#0d9488", bgColor: "#f8fafc" } },
+  { type: "file_upload", label: "File Upload", icon: <Upload size={14} />, defaultData: { label: "Upload Your File", instructions: "Please upload your completed work below.", acceptedTypes: "PDF, Word, Images", maxSizeMb: 10, bgColor: "#f8fafc" } },
   { type: "embed", label: "Embed / iFrame", icon: <Globe size={14} />, defaultData: { url: "", height: 400, bgColor: "#ffffff" } },
 ];
 
@@ -38,7 +38,7 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
             value={d.html ?? ""}
             onChange={e => set("html", e.target.value)}
             rows={6}
-            className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-teal-400 resize-y"
+            className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)] resize-y"
             placeholder="<p>Your content...</p>"
           />
           <p className="text-[10px] text-gray-400">Supports HTML. Use &lt;p&gt;, &lt;strong&gt;, &lt;ul&gt;, &lt;h2&gt;, etc.</p>
@@ -48,33 +48,33 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
       return (
         <div className="space-y-2">
           <label className="text-xs text-gray-500 block">Image URL</label>
-          <input value={d.src ?? ""} onChange={e => set("src", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="https://..." />
+          <input value={d.src ?? ""} onChange={e => set("src", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="https://..." />
           <label className="text-xs text-gray-500 block">Alt Text</label>
-          <input value={d.alt ?? ""} onChange={e => set("alt", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Describe the image" />
+          <input value={d.alt ?? ""} onChange={e => set("alt", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Describe the image" />
           <label className="text-xs text-gray-500 block">Caption</label>
-          <input value={d.caption ?? ""} onChange={e => set("caption", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Optional caption" />
+          <input value={d.caption ?? ""} onChange={e => set("caption", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Optional caption" />
         </div>
       );
     case "video":
       return (
         <div className="space-y-2">
           <label className="text-xs text-gray-500 block">Video URL (YouTube, Vimeo, or direct)</label>
-          <input value={d.url ?? ""} onChange={e => set("url", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="https://youtube.com/watch?v=..." />
+          <input value={d.url ?? ""} onChange={e => set("url", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="https://youtube.com/watch?v=..." />
           <label className="text-xs text-gray-500 block">Caption</label>
-          <input value={d.caption ?? ""} onChange={e => set("caption", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Optional caption" />
+          <input value={d.caption ?? ""} onChange={e => set("caption", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Optional caption" />
         </div>
       );
     case "bullets":
       return (
         <div className="space-y-2">
           <label className="text-xs text-gray-500 block">Headline (optional)</label>
-          <input value={d.headline ?? ""} onChange={e => set("headline", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Section heading" />
+          <input value={d.headline ?? ""} onChange={e => set("headline", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Section heading" />
           <label className="text-xs text-gray-500 block">Items (one per line)</label>
           <textarea
             value={(d.items ?? []).join("\n")}
             onChange={e => set("items", e.target.value.split("\n"))}
             rows={5}
-            className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs resize-y focus:outline-none focus:ring-1 focus:ring-teal-400"
+            className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs resize-y focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
             placeholder="Item 1&#10;Item 2&#10;Item 3"
           />
         </div>
@@ -90,9 +90,9 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
             <option value="error">Error (red)</option>
           </select>
           <label className="text-xs text-gray-500 block">Title</label>
-          <input value={d.title ?? ""} onChange={e => set("title", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Alert title" />
+          <input value={d.title ?? ""} onChange={e => set("title", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Alert title" />
           <label className="text-xs text-gray-500 block">Message</label>
-          <textarea value={d.message ?? ""} onChange={e => set("message", e.target.value)} rows={3} className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs resize-y focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Alert message..." />
+          <textarea value={d.message ?? ""} onChange={e => set("message", e.target.value)} rows={3} className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs resize-y focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Alert message..." />
         </div>
       );
     case "data_table": {
@@ -111,10 +111,10 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
             <table className="w-full text-xs" style={{ borderCollapse: "collapse" }}>
               <tbody>
                 {rows.map((row, ri) => (
-                  <tr key={ri} className={ri === 0 && d.hasHeader !== false ? "bg-teal-50" : ri % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                  <tr key={ri} className={ri === 0 && d.hasHeader !== false ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : ri % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                     {row.map((cell, ci) => (
                       <td key={ci} className="border border-gray-200 p-0">
-                        <input value={cell} onChange={e => updateCell(ri, ci, e.target.value)} className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-teal-400 min-w-[60px]" placeholder={ri === 0 && d.hasHeader !== false ? `Header ${ci + 1}` : `R${ri}C${ci + 1}`} />
+                        <input value={cell} onChange={e => updateCell(ri, ci, e.target.value)} className="w-full px-1.5 py-1 text-xs bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)] min-w-[60px]" placeholder={ri === 0 && d.hasHeader !== false ? `Header ${ci + 1}` : `R${ri}C${ci + 1}`} />
                       </td>
                     ))}
                     <td className="border border-gray-200 px-1"><button onClick={() => removeRow(ri)} className="text-red-400 hover:text-red-600 text-[10px]">✕</button></td>
@@ -124,8 +124,8 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
             </table>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button onClick={addRow} className="px-2 py-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded hover:bg-teal-100">+ Row</button>
-            <button onClick={addCol} className="px-2 py-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded hover:bg-teal-100">+ Column</button>
+            <button onClick={addRow} className="px-2 py-1 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]">+ Row</button>
+            <button onClick={addCol} className="px-2 py-1 text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]">+ Column</button>
             <button onClick={removeCol} className="px-2 py-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100">− Last Column</button>
           </div>
           <div className="flex items-center gap-2">
@@ -141,11 +141,11 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
       return (
         <div className="space-y-2">
           <label className="text-xs text-gray-500 block">Label</label>
-          <input value={d.label ?? ""} onChange={e => set("label", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Upload Your File" />
+          <input value={d.label ?? ""} onChange={e => set("label", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Upload Your File" />
           <label className="text-xs text-gray-500 block">Instructions</label>
-          <textarea value={d.instructions ?? ""} onChange={e => set("instructions", e.target.value)} rows={2} className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="Please upload your completed work below." />
+          <textarea value={d.instructions ?? ""} onChange={e => set("instructions", e.target.value)} rows={2} className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="Please upload your completed work below." />
           <label className="text-xs text-gray-500 block">Accepted File Types (display text)</label>
-          <input value={d.acceptedTypes ?? ""} onChange={e => set("acceptedTypes", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="PDF, Word, Images" />
+          <input value={d.acceptedTypes ?? ""} onChange={e => set("acceptedTypes", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="PDF, Word, Images" />
           <label className="text-xs text-gray-500 block">Max File Size (MB)</label>
           <input type="number" value={d.maxSizeMb ?? 10} onChange={e => set("maxSizeMb", Number(e.target.value))} className="w-full h-7 rounded border border-gray-200 px-2 text-xs" min={1} max={100} />
           <p className="text-[10px] text-gray-400">In assignments, uploaded files are stored to the student's submission. On other pages, files go to the Media Library.</p>
@@ -155,7 +155,7 @@ function BlockSettings({ block, onUpdate }: { block: Block; onUpdate: (data: Rec
       return (
         <div className="space-y-2">
           <label className="text-xs text-gray-500 block">URL to Embed</label>
-          <input value={d.url ?? ""} onChange={e => set("url", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-teal-400" placeholder="https://..." />
+          <input value={d.url ?? ""} onChange={e => set("url", e.target.value)} className="w-full h-7 rounded border border-gray-200 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]" placeholder="https://..." />
           <label className="text-xs text-gray-500 block">Height (px)</label>
           <input type="number" value={d.height ?? 400} onChange={e => set("height", Number(e.target.value))} className="w-full h-7 rounded border border-gray-200 px-2 text-xs" min={100} max={1200} />
         </div>
@@ -179,18 +179,18 @@ function PasteFromSpreadsheet({ onPaste }: { onPaste: (rows: string[][]) => void
   };
   return (
     <div>
-      <button onClick={() => setOpen(o => !o)} className="text-xs text-teal-600 hover:underline">Paste from spreadsheet</button>
+      <button onClick={() => setOpen(o => !o)} className="text-xs text-[var(--org-primary)] hover:underline">Paste from spreadsheet</button>
       {open && (
         <div className="mt-2 space-y-2">
           <textarea
             value={raw}
             onChange={e => setRaw(e.target.value)}
             rows={5}
-            className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-teal-400"
+            className="w-full rounded border border-gray-200 px-2 py-1.5 text-xs font-mono resize-y focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
             placeholder="Paste tab-separated content from Excel or Google Sheets here..."
           />
           <div className="flex gap-2">
-            <button onClick={apply} className="px-3 py-1 text-xs bg-teal-600 text-white rounded hover:bg-teal-700">Apply</button>
+            <button onClick={apply} className="px-3 py-1 text-xs bg-[var(--org-primary)] text-white rounded hover:brightness-90">Apply</button>
             <button onClick={() => setOpen(false)} className="px-3 py-1 text-xs text-gray-500 hover:text-gray-700">Cancel</button>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function AssignmentBlockEditor({ blocks, onChange }: AssignmentBl
         <Button
           variant="outline"
           size="sm"
-          className="w-full border-dashed border-teal-300 text-teal-600 hover:bg-teal-50 hover:border-teal-400"
+          className="w-full border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:border-[var(--org-primary)]"
           onClick={() => setShowPicker(p => !p)}
         >
           <Plus size={14} className="mr-1" /> Add Block
@@ -315,7 +315,7 @@ export default function AssignmentBlockEditor({ blocks, onChange }: AssignmentBl
                 <button
                   key={b.type}
                   onClick={() => addBlock(b.type, b.defaultData)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-teal-50 hover:text-teal-700 border border-gray-100 hover:border-teal-200 transition-colors text-left"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:text-[var(--org-primary)] border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] transition-colors text-left"
                 >
                   <span className="text-gray-400">{b.icon}</span>
                   {b.label}
