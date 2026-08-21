@@ -534,7 +534,7 @@ function DetailsStep({
             type="checkbox"
             checked={termsAccepted}
             onChange={(e) => setTermsAccepted(e.target.checked)}
-            className="mt-1 w-4 h-4 rounded accent-teal-600"
+            className="mt-1 w-4 h-4 rounded accent-[var(--org-primary)]"
           />
           <span className="text-sm text-gray-600">
             {d.termsText}{" "}

@@ -5590,6 +5590,7 @@
 - [x] Apply the active organization theme to learner enrollment access notifications
 - [x] Apply the active organization theme to authoring auto-save status indicators
 - [x] Apply the active organization theme to organization member bulk-upload controls
+- [x] Apply the active organization theme to embedded checkout content blocks
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups
