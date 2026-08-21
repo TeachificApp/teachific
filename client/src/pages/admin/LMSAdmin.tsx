@@ -7425,7 +7425,7 @@ function AnalyticsTab() {
 const LMS_NAV_GROUPS = [
   {
     label: "Content",
-    color: "teal",
+    color: "org",
     items: [
       { value: "courses",     label: "Courses",     icon: BookOpen },
       { value: "quizzes",     label: "Quizzes",     icon: HelpCircle },
@@ -7441,7 +7441,7 @@ const LMS_NAV_GROUPS = [
   },
   {
     label: "Sales",
-    color: "teal",
+    color: "org",
     items: [
       { value: "orderbumps",  label: "Order Bumps", icon: Tag },
       { value: "collections", label: "Collections", icon: LayoutGrid },
@@ -7450,7 +7450,7 @@ const LMS_NAV_GROUPS = [
   },
   {
     label: "People",
-    color: "teal",
+    color: "org",
     items: [
       { value: "members_hub", label: "Members Hub ↗", icon: Users, href: getAdminUrl("/admin/members") },
       { value: "career_network", label: "Career Network ↗", icon: Briefcase, href: getAdminUrl("/admin/career-network") },
@@ -7465,7 +7465,7 @@ const LMS_NAV_GROUPS = [
   },
   {
     label: "Insights",
-    color: "teal",
+    color: "org",
     items: [
       { value: "analytics",   label: "Analytics",   icon: TrendingUp },
       { value: "affiliates",  label: "Affiliates",  icon: DollarSign },
@@ -7493,10 +7493,7 @@ const LMS_NAV_GROUPS = [
 ] as const;
 
 const GROUP_COLORS: Record<string, { bg: string; text: string; activeBg: string; activeText: string; dot: string }> = {
-  teal:   { bg: "bg-teal-50",   text: "text-teal-700",   activeBg: "bg-teal-600",   activeText: "text-white", dot: "bg-teal-400" },
-  teal2: { bg: "bg-teal-50",   text: "text-teal-700",   activeBg: "bg-teal-600",   activeText: "text-white", dot: "bg-teal-400" },
-  blue:   { bg: "bg-teal-50",   text: "text-teal-700",   activeBg: "bg-teal-600",   activeText: "text-white", dot: "bg-teal-400" },
-  orange: { bg: "bg-teal-50",   text: "text-teal-700",   activeBg: "bg-teal-600",   activeText: "text-white", dot: "bg-teal-400" },
+  org:    { bg: "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]", text: "text-[var(--org-primary)]", activeBg: "bg-[var(--org-primary)]", activeText: "text-white", dot: "bg-[var(--org-primary)]" },
   gray:   { bg: "bg-gray-50",   text: "text-gray-600",   activeBg: "bg-gray-700",   activeText: "text-white", dot: "bg-gray-400" },
 };
 
@@ -7541,11 +7538,6 @@ export default function LMSAdmin() {
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState(null, "", newUrl);
   }, [editingCourseId]);
-
-  // Flatten all tabs to find active group color
-  const allItems = LMS_NAV_GROUPS.flatMap(g => g.items.map(i => ({ ...i, groupColor: g.color })));
-  const activeItem = allItems.find(i => i.value === activeTab);
-  const activeGroupColor = activeItem?.groupColor ?? "teal";
 
   return (
     <div className="w-full">
