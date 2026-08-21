@@ -9565,7 +9565,7 @@ function CourseAnalyticsTab({ courseId }: { courseId: number }) {
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-500 mb-1">Revenue</p>
-          <p className="text-2xl font-bold text-teal-600">${Number(data.totalRevenue).toFixed(0)}</p>
+          <p className="text-2xl font-bold text-[var(--org-primary)]">${Number(data.totalRevenue).toFixed(0)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{data.orders.length} orders</p>
         </div>
       </div>
@@ -9587,9 +9587,9 @@ function CourseAnalyticsTab({ courseId }: { courseId: number }) {
             </div>
             <div>
               <p className="text-xs text-amber-600 mb-0.5">Conversion Rate</p>
-              <p className="text-2xl font-bold text-teal-700">{data.previewConversionRate}%</p>
+              <p className="text-2xl font-bold text-[var(--org-primary)]">{data.previewConversionRate}%</p>
               <div className="mt-1 bg-amber-200 rounded-full h-1.5">
-                <div className="h-1.5 bg-teal-500 rounded-full" style={{ width: `${data.previewConversionRate}%` }} />
+                <div className="h-1.5 bg-[var(--org-primary)] rounded-full" style={{ width: `${data.previewConversionRate}%` }} />
               </div>
             </div>
           </div>
@@ -9601,9 +9601,9 @@ function CourseAnalyticsTab({ courseId }: { courseId: number }) {
         <p className="text-sm font-semibold text-gray-700 mb-3">Average Student Progress</p>
         <div className="flex items-center gap-3">
           <div className="flex-1 bg-gray-200 rounded-full h-3">
-            <div className="h-3 bg-teal-500 rounded-full transition-all" style={{ width: `${data.avgProgress}%` }} />
+            <div className="h-3 bg-[var(--org-primary)] rounded-full transition-all" style={{ width: `${data.avgProgress}%` }} />
           </div>
-          <span className="text-sm font-bold text-teal-700 w-10 text-right">{data.avgProgress}%</span>
+          <span className="text-sm font-bold text-[var(--org-primary)] w-10 text-right">{data.avgProgress}%</span>
         </div>
       </div>
 
@@ -9618,7 +9618,7 @@ function CourseAnalyticsTab({ courseId }: { courseId: number }) {
               return (
                 <div key={m.month} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                   <span className="text-[9px] text-gray-500">{m.count}</span>
-                  <div className="w-full bg-teal-500 rounded-t" style={{ height: `${Math.max(pct, 4)}%`, minHeight: "4px" }} />
+                  <div className="w-full bg-[var(--org-primary)] rounded-t" style={{ height: `${Math.max(pct, 4)}%`, minHeight: "4px" }} />
                   <span className="text-[9px] text-gray-400 truncate w-full text-center">{m.month.slice(5)}</span>
                 </div>
               );
@@ -9646,7 +9646,7 @@ function CourseAnalyticsTab({ courseId }: { courseId: number }) {
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="w-24 bg-gray-200 rounded-full h-1.5">
                         <div
-                          className="h-1.5 bg-teal-500 rounded-full"
+                          className="h-1.5 bg-[var(--org-primary)] rounded-full"
                           style={{ width: `${lesson.views > 0 ? Math.round((lesson.completions / lesson.views) * 100) : 0}%` }}
                         />
                       </div>
