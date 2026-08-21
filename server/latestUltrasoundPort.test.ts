@@ -2109,6 +2109,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(sectionPicker).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout LMS lesson copy and move dialogs", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const copyAndMoveDialogs = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("function AddLessonDialog"),
+      lmsAdminSource.indexOf("function LessonEditorPage")
+    );
+    expect(copyAndMoveDialogs).toContain("text-[var(--org-primary)] mt-1");
+    expect(copyAndMoveDialogs).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]");
+    expect(copyAndMoveDialogs).toContain("border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]");
+    expect(copyAndMoveDialogs).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(copyAndMoveDialogs).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

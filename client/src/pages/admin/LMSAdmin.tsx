@@ -4112,7 +4112,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Lesson{!sectionId ? " (Course Level)" : ""}</DialogTitle>
-          {!sectionId && <p className="text-xs text-teal-600 mt-1">This lesson will appear at the top level, not inside any section.</p>}
+          {!sectionId && <p className="text-xs text-[var(--org-primary)] mt-1">This lesson will appear at the top level, not inside any section.</p>}
         </DialogHeader>
 
         {/* Mode tabs */}
@@ -4120,7 +4120,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
           {(["new", "copy"] as const).map(m => (
             <button key={m} onClick={() => setMode(m)}
               className={`flex-1 text-xs py-1.5 rounded-md font-medium transition-colors ${
-                mode === m ? "bg-white shadow text-teal-700 border border-gray-200" : "text-gray-500 hover:text-gray-700"
+                mode === m ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
               }`}>
               {m === "new" ? "New Lesson" : "Copy Lesson"}
             </button>
@@ -4148,7 +4148,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
                 {([null, true, false] as const).map(v => (
                   <button key={String(v)} onClick={() => setRequireManualComplete(v)}
                     className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                      requireManualComplete === v ? "bg-white shadow text-teal-700 border border-gray-200" : "text-gray-500 hover:text-gray-700"
+                      requireManualComplete === v ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
                     }`}>
                     {v === null ? "Inherit from course" : v ? "Always show" : "Always hide"}
                   </button>
@@ -4177,7 +4177,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
                       {(coursesWithLessons ?? []).map((c: any) => (
                         <SelectItem key={c.id} value={c.id.toString()}>
                           <span className="flex items-center gap-2">
-                            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-teal-100 text-teal-700">{c.type ?? "course"}</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]">{c.type ?? "course"}</span>
                             <span>{c.title}</span>
                           </span>
                         </SelectItem>
@@ -4196,7 +4196,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
                         {allLessonsInCourse.map((l: any) => (
                           <button key={l.id} onClick={() => setCopySourceLessonId(l.id)}
                             className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
-                              copySourceLessonId === l.id ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                              copySourceLessonId === l.id ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                             }`}>
                             <span className="font-medium text-gray-800">{l.title}</span>
                             {l.sectionTitle && <span className="ml-2 text-xs text-gray-400">{l.sectionTitle}</span>}
@@ -4209,7 +4209,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
                 )}
 
                 {copySourceLessonId && (
-                  <p className="text-xs text-teal-600 bg-teal-50 border border-teal-200 rounded px-3 py-2">
+                  <p className="text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded px-3 py-2">
                     A full copy of the selected lesson (including all content blocks, quiz questions, and settings) will be added{sectionId ? " to this section" : " at course level"}.
                   </p>
                 )}
@@ -4221,7 +4221,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={!canSubmit || isPending}
             onClick={handleCreate}
           >
@@ -4270,7 +4270,7 @@ function CopyLessonDialog({
                 {(courses1).map((c: any) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     <span className="flex items-center gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${c.type === "quiz" ? "bg-teal-100 text-teal-700" : "bg-teal-100 text-teal-700"}`}>{c.type === "quiz" ? "Quiz" : "Course"}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]">{c.type === "quiz" ? "Quiz" : "Course"}</span>
                       <span>{c.title}</span>
                       {c.status !== "public" && <span className="text-xs text-gray-400">({c.status})</span>}
                     </span>
@@ -4296,7 +4296,7 @@ function CopyLessonDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => onCopy(selectedCourseId, selectedSectionId)}>
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => onCopy(selectedCourseId, selectedSectionId)}>
             <Copy className="w-4 h-4 mr-2" /> Copy Lesson
           </Button>
         </DialogFooter>
@@ -4338,7 +4338,7 @@ function CopyModuleDialog({
                 {(courses2).map((c: any) => (
                   <SelectItem key={c.id} value={String(c.id)}>
                     <span className="flex items-center gap-2">
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${c.type === "quiz" ? "bg-teal-100 text-teal-700" : "bg-teal-100 text-teal-700"}`}>{c.type === "quiz" ? "Quiz" : "Course"}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]">{c.type === "quiz" ? "Quiz" : "Course"}</span>
                       <span>{c.title}</span>
                       {c.status !== "public" && <span className="text-xs text-gray-400">({c.status})</span>}
                     </span>
@@ -4350,7 +4350,7 @@ function CopyModuleDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => onCopy(selectedCourseId)}>
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => onCopy(selectedCourseId)}>
             <Copy className="w-4 h-4 mr-2" /> Copy Module
           </Button>
         </DialogFooter>
