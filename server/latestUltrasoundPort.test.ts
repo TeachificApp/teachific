@@ -1807,6 +1807,24 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(usersPageSource).not.toContain('bg-teal-500/20 text-teal-300');
   });
 
+  it("uses the active organization theme for the Kajabi importer product sync cue", () => {
+    const kajabiImportSource = readFileSync(new URL("../client/src/pages/integrations/KajabiImportPage.tsx", import.meta.url), "utf8");
+    expect(kajabiImportSource).toContain('bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]');
+    expect(kajabiImportSource).toContain('BookOpen className="w-5 h-5 text-[var(--org-primary)]"');
+    expect(kajabiImportSource).not.toContain('bg-purple-100 dark:bg-purple-950');
+    expect(kajabiImportSource).not.toContain('text-purple-600');
+  });
+
+  it("uses the active organization theme for Teachable and Thinkific importer product sync cues", () => {
+    for (const fileName of ["TeachableImportPage.tsx", "ThinkificImportPage.tsx"]) {
+      const importerSource = readFileSync(new URL(`../client/src/pages/integrations/${fileName}`, import.meta.url), "utf8");
+      expect(importerSource).toContain('bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]');
+      expect(importerSource).toContain('BookOpen className="w-5 h-5 text-[var(--org-primary)]"');
+      expect(importerSource).not.toContain('bg-purple-100 dark:bg-purple-950');
+      expect(importerSource).not.toContain('text-purple-600');
+    }
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');

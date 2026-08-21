@@ -233,8 +233,8 @@ export default function KajabiImportPage() {
               <Card>
                 <CardContent className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-purple-600" />
+                    <div className="w-9 h-9 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-[var(--org-primary)]" />
                     </div>
                     <div>
                       <p className="font-medium text-sm">Sync Products</p>
