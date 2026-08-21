@@ -48,7 +48,7 @@ export default function SubscriptionsPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><RefreshCw className="w-6 h-6 text-teal-600" /> Subscriptions</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><RefreshCw className="w-6 h-6 text-[var(--org-primary)]" /> Subscriptions</h1>
           <p className="text-muted-foreground mt-1">Manage recurring billing, cancellations, and refunds</p>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function SubscriptionsPage() {
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAction(null); setSelected(null); }}>Cancel</Button>
-            <Button className={action === "cancel" ? "bg-red-600 hover:bg-red-700" : " hover:"} onClick={action === "cancel" ? handleCancel : handleRefund}>
+            <Button className={action === "cancel" ? "bg-red-600 hover:bg-red-700" : "org-primary-button"} onClick={action === "cancel" ? handleCancel : handleRefund}>
               {action === "cancel" ? "Confirm Cancel" : "Issue Refund"}
             </Button>
           </DialogFooter>

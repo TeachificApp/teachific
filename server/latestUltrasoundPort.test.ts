@@ -1865,6 +1865,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pageBuilderSource).not.toContain('theme?.primaryColor || "#189aa1"');
   });
 
+  it("resolves new certificate template colors from the active organization theme", () => {
+    const certificatesPageSource = readFileSync(new URL("../client/src/pages/members/MemberCertificatesPage.tsx", import.meta.url), "utf8");
+    expect(certificatesPageSource).toContain('function getOrganizationPrimaryColor()');
+    expect(certificatesPageSource).toContain('getPropertyValue("--org-primary").trim() || "#000000"');
+    expect(certificatesPageSource).toContain('borderColor: getOrganizationPrimaryColor()');
+    expect(certificatesPageSource).toContain('accentColor: getOrganizationPrimaryColor()');
+  });
+
+  it("uses the active organization theme for subscription administration identity and refund controls", () => {
+    const subscriptionsSource = readFileSync(new URL("../client/src/pages/sales/SubscriptionsPage.tsx", import.meta.url), "utf8");
+    expect(subscriptionsSource).toContain('RefreshCw className="w-6 h-6 text-[var(--org-primary)]"');
+    expect(subscriptionsSource).toContain('"org-primary-button"');
+    expect(subscriptionsSource).not.toContain('text-teal-600');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');

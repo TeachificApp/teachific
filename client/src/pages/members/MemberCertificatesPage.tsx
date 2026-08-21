@@ -80,6 +80,11 @@ const DEFAULT_FIELDS: CertFields = {
   fontFamily: "Georgia, serif",
 };
 
+function getOrganizationPrimaryColor() {
+  if (typeof window === "undefined") return "#000000";
+  return window.getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000";
+}
+
 // ─── HTML builder ─────────────────────────────────────────────────────────────
 function buildHtml(fields: CertFields): string {
   return `<div style="width:800px;height:580px;border:8px solid ${fields.borderColor};padding:50px 60px;font-family:${fields.fontFamily};text-align:center;background:${fields.bgColor};box-sizing:border-box;position:relative;">
@@ -180,7 +185,11 @@ function CertificateEditorDialog({
   const [step, setStep] = useState<"pick" | "edit">(isEdit ? "edit" : "pick");
   const [selectedBase, setSelectedBase] = useState<string>(BASE_TEMPLATES[0].id);
   const [name, setName] = useState(initialName);
-  const [fields, setFields] = useState<CertFields>(initialFields ?? DEFAULT_FIELDS);
+  const [fields, setFields] = useState<CertFields>(initialFields ?? {
+    ...DEFAULT_FIELDS,
+    borderColor: getOrganizationPrimaryColor(),
+    accentColor: getOrganizationPrimaryColor(),
+  });
 
   const html = useMemo(() => buildHtml(fields), [fields]);
 
