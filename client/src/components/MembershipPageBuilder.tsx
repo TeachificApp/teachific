@@ -202,7 +202,7 @@ export default function MembershipPageBuilder({
       <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white shrink-0">
         <Button
           size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-primary)] hover:brightness-90 text-white"
           onClick={() => setCatalogOpen((v) => !v)}
         >
           <Plus className="w-4 h-4 mr-1" /> Add Block
@@ -213,7 +213,7 @@ export default function MembershipPageBuilder({
         </Button>
         <Button
           size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-primary)] hover:brightness-90 text-white"
           disabled={isSaving}
           onClick={() => onSave(JSON.stringify(blocks))}
         >
@@ -261,7 +261,7 @@ export default function MembershipPageBuilder({
                       {items.map((b) => (
                         <button
                           key={b.type}
-                          className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors"
+                          className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-xs text-gray-700 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:text-[var(--org-primary)] transition-colors"
                           onClick={() => addBlock(b.type)}
                         >
                           <span className="text-gray-400 shrink-0">{b.icon}</span>
@@ -285,7 +285,7 @@ export default function MembershipPageBuilder({
         >
           {blocks.length === 0 ? (
             <div
-              className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 cursor-pointer hover:border-teal-400 hover:text-teal-500 transition-colors"
+              className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 cursor-pointer hover:border-[var(--org-primary)] hover:text-[var(--org-primary)] transition-colors"
               onClick={() => setCatalogOpen(true)}
             >
               <Plus className="w-8 h-8 mb-2" />
@@ -323,7 +323,7 @@ export default function MembershipPageBuilder({
           <>
             {/* Drag handle */}
             <div
-              className="w-1 cursor-col-resize bg-gray-200 hover:bg-teal-400 transition-colors shrink-0"
+              className="w-1 cursor-col-resize bg-gray-200 hover:bg-[var(--org-primary)] transition-colors shrink-0"
               onMouseDown={handleRightPanelMouseDown}
             />
             <div
