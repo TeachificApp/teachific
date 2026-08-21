@@ -103,7 +103,7 @@ function LeadsList({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Users className="w-6 h-6 text-teal-600" />
+          <Users className="w-6 h-6 text-[var(--org-primary)]" />
           <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
           {data && <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{data.total} total</span>}
         </div>
@@ -179,7 +179,7 @@ function LeadsList({
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">
+                      <div className="w-8 h-8 rounded-full bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] flex items-center justify-center text-xs font-bold">
                         {(lead.name || lead.email).slice(0, 2).toUpperCase()}
                       </div>
                       <div>
@@ -275,10 +275,10 @@ function LeadDetail({ leadId, onBack }: { leadId: number; onBack: () => void }) 
       </div>
 
       {/* Contact Header Card */}
-      <Card className="mb-6 border-teal-200">
+      <Card className="mb-6 border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-lg font-bold">
+            <div className="w-14 h-14 rounded-full bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] flex items-center justify-center text-lg font-bold">
               {(lead.name || lead.email).slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1">
@@ -302,7 +302,7 @@ function LeadDetail({ leadId, onBack }: { leadId: number; onBack: () => void }) 
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-gray-700">Contact Information</CardTitle>
-                <Button variant="ghost" size="sm" className="text-teal-600 text-xs" onClick={() => startEdit("name", lead.name || "")}>
+                <Button variant="ghost" size="sm" className="text-[var(--org-primary)] text-xs" onClick={() => startEdit("name", lead.name || "")}>
                   <Edit2 className="w-3 h-3 mr-1" /> Edit
                 </Button>
               </div>
@@ -410,12 +410,12 @@ function InfoRow({
         ) : (
           <div className="flex items-center gap-1">
             {isUrl && value !== "—" ? (
-              <a href={value} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline text-xs truncate max-w-[250px]">{value}</a>
+              <a href={value} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline text-xs truncate max-w-[250px]">{value}</a>
             ) : (
               <span className="text-gray-700 text-xs">{value}</span>
             )}
             {field && onStartEdit && (
-              <button onClick={() => onStartEdit(field, value === "—" ? "" : value)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-teal-600 transition-opacity">
+              <button onClick={() => onStartEdit(field, value === "—" ? "" : value)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-[var(--org-primary)] transition-opacity">
                 <Edit2 className="w-3 h-3" />
               </button>
             )}
