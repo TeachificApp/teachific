@@ -40,7 +40,7 @@ import { toast } from "sonner";
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     open: "bg-green-100 text-green-800 border-green-200",
-    downloaded: "bg-teal-100 text-teal-800 border-teal-200",
+    downloaded: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]",
     expired: "bg-gray-100 text-gray-600 border-gray-200",
     revoked: "bg-red-100 text-red-800 border-red-200",
     refunded: "bg-amber-100 text-amber-800 border-amber-200",
