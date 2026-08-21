@@ -2492,11 +2492,11 @@ CRITICAL REQUIREMENTS:
         stripe_account_id: z.string().optional(),
       }),
     }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Select an organization before requesting a payout." });
+	    .mutation(async ({ ctx, input }) => {
+	      const db = await getDb();
+	      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+	      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+	      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Select an organization before requesting a payout." });
       let affiliateId: number | null = null;
       if (input.requestorType === "affiliate") {
         const aff = await db.select({ id: lmsAffiliates.id }).from(lmsAffiliates)
@@ -2546,12 +2546,12 @@ CRITICAL REQUIREMENTS:
     }),
 
   /** Affiliate/Instructor: get own payout requests */
-  getMyPayoutRequests: protectedProcedure
-    .query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUser(ctx.user.id);
-      if (!orgId) return [];
+	  getMyPayoutRequests: protectedProcedure
+	    .query(async ({ ctx }) => {
+	      const db = await getDb();
+	      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+	      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+	      if (!orgId) return [];
       const aff = await db.select({ id: lmsAffiliates.id }).from(lmsAffiliates)
         .where(eq(lmsAffiliates.userId, ctx.user.id)).then(r => r[0]);
       const conditions = aff
