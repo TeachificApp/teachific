@@ -2013,6 +2013,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lessonEditorSource).not.toContain('assignment: { label: "Assignment", icon: Edit, color: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" }');
   });
 
+  it("uses the active organization theme for form success-page block controls", () => {
+    const successPageSource = readFileSync(new URL("../client/src/components/FormSuccessPageBlockEditor.tsx", import.meta.url), "utf8");
+    expect(successPageSource).toContain('ctaColor: "var(--org-primary)"');
+    expect(successPageSource).toContain("hover:border-[var(--org-primary)]");
+    expect(successPageSource).toContain("text-[var(--org-primary)] px-2");
+    expect(successPageSource).not.toMatch(/(?:#0e7490|teal-400|text-teal-700)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

@@ -22,7 +22,7 @@ const SUCCESS_PAGE_BLOCKS: {
   { type: "image", label: "Image", icon: <Image size={14} />, defaultData: { src: "", alt: "", caption: "", bgColor: "#ffffff" } },
   { type: "video", label: "Video", icon: <Video size={14} />, defaultData: { url: "", caption: "", bgColor: "#ffffff" } },
   { type: "bullets", label: "Bullet List", icon: <List size={14} />, defaultData: { headline: "Next steps", items: ["Step 1", "Step 2"], bgColor: "#ffffff" } },
-  { type: "cta_standalone", label: "Button / CTA", icon: <MousePointerClick size={14} />, defaultData: { headline: "", ctaText: "Continue", ctaUrl: "/", ctaColor: "#0e7490", bgColor: "#ffffff" } },
+  { type: "cta_standalone", label: "Button / CTA", icon: <MousePointerClick size={14} />, defaultData: { headline: "", ctaText: "Continue", ctaUrl: "/", ctaColor: "var(--org-primary)", bgColor: "#ffffff" } },
   { type: "alert", label: "Alert / Callout", icon: <AlertTriangle size={14} />, defaultData: { type: "info", title: "", message: "Important note.", bgColor: "#ffffff" } },
   { type: "embed", label: "Embed / iFrame", icon: <Globe size={14} />, defaultData: { url: "", height: 400, bgColor: "#ffffff" } },
   { type: "divider", label: "Divider", icon: <Minus size={14} />, defaultData: { color: "#e5e7eb", thickness: 1 } },
@@ -204,7 +204,7 @@ export default function FormSuccessPageBlockEditor({ blocks, onChange }: FormSuc
               key={b.type}
               type="button"
               onClick={() => addBlock(b.type, b.defaultData)}
-              className="flex items-center gap-2 text-left px-2 py-2 rounded border border-gray-200 bg-white hover:border-teal-400 text-xs"
+              className="flex items-center gap-2 text-left px-2 py-2 rounded border border-gray-200 bg-white hover:border-[var(--org-primary)] text-xs"
             >
               {b.icon} {b.label}
             </button>
@@ -225,7 +225,7 @@ export default function FormSuccessPageBlockEditor({ blocks, onChange }: FormSuc
                 <span className="text-xs font-medium text-gray-700 flex-1 capitalize">{block.type.replace(/_/g, " ")}</span>
                 <button type="button" onClick={() => moveBlock(idx, -1)} disabled={idx === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">↑</button>
                 <button type="button" onClick={() => moveBlock(idx, 1)} disabled={idx === blocks.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">↓</button>
-                <button type="button" onClick={() => setExpandedId(expandedId === block.id ? null : block.id)} className="text-xs text-teal-700 px-2">{expandedId === block.id ? "Collapse" : "Edit"}</button>
+                <button type="button" onClick={() => setExpandedId(expandedId === block.id ? null : block.id)} className="text-xs text-[var(--org-primary)] px-2">{expandedId === block.id ? "Collapse" : "Edit"}</button>
                 <button type="button" onClick={() => removeBlock(block.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               {expandedId === block.id && (
