@@ -38,6 +38,7 @@ import {
   workshops,
   bundles,
   orgThemes,
+  organizations,
 } from "../../drizzle/schema";
 import { addToEmailList, ensureAllContactsList } from "../lib/emailListHelper";
 import { getOrgIdForUserWithFallback } from "../db";
@@ -209,13 +210,25 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
   if (!campaign) return;
   // Fetch org accent color for link styling
   let orgAccentColor: string | null = null;
+  let orgTrackingBaseUrl: string | undefined;
   if (campaign.orgId) {
-    const [theme] = await db
-      .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
-      .from(orgThemes)
-      .where(eq(orgThemes.orgId, campaign.orgId))
-      .limit(1);
+    const [theme, org] = await Promise.all([
+      db
+        .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
+        .from(orgThemes)
+        .where(eq(orgThemes.orgId, campaign.orgId))
+        .limit(1),
+      db
+        .select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
+        .from(organizations)
+        .where(eq(organizations.id, campaign.orgId))
+        .limit(1),
+    ]);
     orgAccentColor = theme?.buttonColor ?? theme?.primaryColor ?? null;
+    const organization = org[0];
+    orgTrackingBaseUrl = organization
+      ? getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)
+      : undefined;
   }
 
   let filter: AudienceFilter;
@@ -278,8 +291,8 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
 
     const recipientKey = buildRecipientTrackingKey(recipient);
     const variantKey = recipient.abVariant ?? variant?.key;
-    html = injectTrackingPixel(html, campaignId, recipientKey, variantKey);
-    html = wrapLinksForTracking(html, campaignId, recipientKey, variantKey);
+    html = injectTrackingPixel(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl);
+    html = wrapLinksForTracking(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl);
 
     const displayName = recipient.displayName || recipient.name || recipient.email;
     const ok = await sendEmail({

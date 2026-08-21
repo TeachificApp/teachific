@@ -5584,6 +5584,7 @@
 - [x] Replace remaining first-membership organization fallbacks in main-router package and content procedures
 - [x] Resolve legacy LMS procedures from the active organization rather than a first membership
 - [x] Apply the active organization theme to organization policy management controls
+- [x] Resolve email campaign tracking links from the owning organization domain
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

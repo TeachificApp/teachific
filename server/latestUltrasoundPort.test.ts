@@ -1731,6 +1731,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(emailCampaignRouterSource).not.toContain('await getOrgIdForUser(ctx.user.id)');
   });
 
+  it("routes email campaign tracking links through the owning organization domain", () => {
+    const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
+    const trackingSource = readFileSync(new URL("./lib/emailCampaignTracking.ts", import.meta.url), "utf8");
+    expect(emailCampaignRouterSource).toContain("let orgTrackingBaseUrl: string | undefined;");
+    expect(emailCampaignRouterSource).toContain("getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)");
+    expect(emailCampaignRouterSource).toContain("injectTrackingPixel(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl)");
+    expect(emailCampaignRouterSource).toContain("wrapLinksForTracking(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl)");
+    expect(trackingSource).toContain("getEmailCampaignAppUrl(orgBaseUrl)");
+    expect(trackingSource).toContain("const fromOrganization = orgBaseUrl?.trim();");
+  });
+
   it("uses the active organization theme for Bundles administration download badges", () => {
     const bundlesAdminSource = readFileSync(new URL("../client/src/pages/admin/BundlesAdmin.tsx", import.meta.url), "utf8");
     expect(bundlesAdminSource).toContain('download: "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]"');

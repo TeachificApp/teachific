@@ -12,7 +12,9 @@ type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 export type CampaignEventType = "open" | "click" | "unsubscribe";
 
 /** App origin used in tracking pixel and click-wrap URLs (must include https://). */
-export function getEmailCampaignAppUrl(): string {
+export function getEmailCampaignAppUrl(orgBaseUrl?: string): string {
+  const fromOrganization = orgBaseUrl?.trim();
+  if (fromOrganization) return fromOrganization.replace(/\/$/, "");
   const fromEnv = process.env.VITE_APP_URL?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   const canonical = process.env.CANONICAL_ROOT_DOMAIN?.trim();
@@ -63,8 +65,9 @@ export function injectTrackingPixel(
   campaignId: number,
   recipientKey: string,
   variant?: string,
+  orgBaseUrl?: string,
 ): string {
-  const appUrl = getEmailCampaignAppUrl();
+  const appUrl = getEmailCampaignAppUrl(orgBaseUrl);
   const vq = variant ? `?v=${encodeURIComponent(variant)}` : "";
   const pixelUrl = `${appUrl}/api/email/track/open/${campaignId}/${recipientKey}.gif${vq}`;
   const pixel = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;" />`;
@@ -78,8 +81,9 @@ export function wrapLinksForTracking(
   campaignId: number,
   recipientKey: string,
   variant?: string,
+  orgBaseUrl?: string,
 ): string {
-  const appUrl = getEmailCampaignAppUrl();
+  const appUrl = getEmailCampaignAppUrl(orgBaseUrl);
   const hrefPattern = /href\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
   return html.replace(hrefPattern, (match, dbl: string | undefined, sgl: string | undefined) => {
     const href = (dbl ?? sgl ?? "").trim();
