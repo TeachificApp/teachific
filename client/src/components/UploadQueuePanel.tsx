@@ -46,7 +46,7 @@ function StatusIcon({ item }: { item: UploadQueueItem }) {
     case "saving":
       return <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />;
     case "done":
-      return <CheckCircle className="h-4 w-4 text-teal-500 shrink-0" />;
+      return <CheckCircle className="h-4 w-4 text-[var(--org-primary)] shrink-0" />;
     case "error":
       return <XCircle className="h-4 w-4 text-destructive shrink-0" />;
   }
@@ -69,7 +69,7 @@ function PhaseLabel({ item }: { item: UploadQueueItem }) {
         </span>
       );
     case "done":
-      return <span className="text-xs text-teal-600 font-medium">Complete</span>;
+      return <span className="text-xs text-[var(--org-primary)] font-medium">Complete</span>;
     case "error":
       return (
         <span className="text-xs text-destructive font-medium truncate max-w-[160px]" title={item.errorMessage}>
@@ -107,7 +107,7 @@ export function UploadQueuePanel() {
           {activeCount > 0 ? (
             <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
           ) : (
-            <CheckCircle className="h-4 w-4 text-teal-500 shrink-0" />
+            <CheckCircle className="h-4 w-4 text-[var(--org-primary)] shrink-0" />
           )}
           <span className="text-sm font-semibold truncate">
             {activeCount > 0

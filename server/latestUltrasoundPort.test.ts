@@ -1597,6 +1597,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(uploadZoneSource).not.toContain("text-[#189aa1]");
   });
 
+  it("uses active organization theming for shared upload queue completion feedback", () => {
+    const uploadQueueSource = readFileSync(new URL("../client/src/components/UploadQueuePanel.tsx", import.meta.url), "utf8");
+    expect(uploadQueueSource).toContain('text-[var(--org-primary)] shrink-0');
+    expect(uploadQueueSource).toContain('text-xs text-[var(--org-primary)] font-medium">Complete');
+    expect(uploadQueueSource).not.toContain("text-teal-500");
+    expect(uploadQueueSource).not.toContain("text-teal-600");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
