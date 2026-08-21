@@ -70,7 +70,7 @@ const TYPE_META: Record<ItemType, { label: string; emoji: string; color: string 
   webinar:    { label: "Webinar",     emoji: "🎙️", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
   membership: { label: "Membership",  emoji: "⭐", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" },
   physical:   { label: "Physical",    emoji: "📦", color: "bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300" },
-  workshop:   { label: "Workshop",    emoji: "🛠️", color: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300" },
+  workshop:   { label: "Workshop",    emoji: "🛠️", color: "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]" },
   community:  { label: "Community",   emoji: "👥", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" },
 };
 
@@ -177,7 +177,7 @@ function ContentPicker({
             return (
               <div
                 key={`${c.type}:${c.id}`}
-                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-colors ${sel ? "border-teal-500 bg-teal-50 dark:bg-teal-900/20" : "border-transparent hover:bg-muted"}`}
+                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-colors ${sel ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-transparent hover:bg-muted"}`}
                 onClick={() => toggle(c.id, c.type as ItemType)}
               >
                 {c.coverImageUrl ? (
@@ -191,7 +191,7 @@ function ContentPicker({
                   <div className="text-sm font-medium truncate">{c.title}</div>
                   <span className={`inline-block text-xs px-1.5 py-0.5 rounded font-medium ${meta.color}`}>{meta.label}</span>
                 </div>
-                {sel && <CheckCircle2 className="w-5 h-5 text-teal-500 shrink-0" />}
+                {sel && <CheckCircle2 className="w-5 h-5 text-[var(--org-primary)] shrink-0" />}
               </div>
             );
           })}
@@ -199,7 +199,7 @@ function ContentPicker({
         <DialogFooter className="mt-3">
           <div className="text-sm text-muted-foreground mr-auto">{draft.length} selected</div>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => { onSave(draft); onClose(); }} className="bg-teal-600 hover:bg-teal-700 text-white">
+          <Button onClick={() => { onSave(draft); onClose(); }} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
             Save Selection
           </Button>
         </DialogFooter>
@@ -269,12 +269,11 @@ function WidgetForm({
         </div>
         <div>
           <Label>Theme</Label>
-          <Select value={form.theme} onValueChange={v => set("theme", v as any)}>
+          <Select value={form.theme === "brand" ? "light" : form.theme} onValueChange={v => set("theme", v as any)}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="light">☀️ Light</SelectItem>
               <SelectItem value="dark">🌙 Dark</SelectItem>
-              <SelectItem value="brand">🩵 Brand (Teal)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -408,7 +407,7 @@ function WidgetForm({
         <Button
           onClick={() => onSubmit(form)}
           disabled={isLoading || !form.name.trim()}
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-primary)] hover:brightness-90 text-white"
         >
           {isLoading ? "Saving…" : "Save Widget"}
         </Button>
@@ -493,7 +492,7 @@ export default function WidgetManager() {
       title: w.title ?? "",
       subtitle: w.subtitle ?? "",
       layout: w.layout ?? "grid",
-      theme: w.theme ?? "light",
+      theme: w.theme === "brand" ? "light" : (w.theme ?? "light"),
       cardStyle: w.cardStyle ?? "standard",
       showPrice: w.showPrice ?? true,
       showEnrollButton: w.showEnrollButton ?? true,
@@ -561,9 +560,10 @@ export default function WidgetManager() {
 
   function buildIiScriptSnippet(source: "membership" | "bundle", id: number, title: string) {
     const base = window.location.origin;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim();
     return `<!-- Included Items Widget: ${title} -->
 <div data-included-items-embed="${source}:${id}"
-     data-accent="#14b8a6"
+     data-accent="${accent}"
      data-theme="light"
      data-layout="grid"
      data-columns="3"
@@ -573,7 +573,8 @@ export default function WidgetManager() {
 
   function buildIiIframeSnippet(source: "membership" | "bundle", id: number) {
     const base = window.location.origin;
-    const src = `${base}/embed/included-items?source=${source}&id=${id}&accent=%2314b8a6&theme=light&layout=grid&columns=3`;
+    const accent = encodeURIComponent(getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim());
+    const src = `${base}/embed/included-items?source=${source}&id=${id}&accent=${accent}&theme=light&layout=grid&columns=3`;
     return `<iframe\n  src="${src}"\n  style="width:100%;border:none;display:block;min-height:200px;"\n  scrolling="no" frameborder="0" allowtransparency="true"\n></iframe>`;
   }
 
@@ -590,14 +591,14 @@ export default function WidgetManager() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Code2 className="w-6 h-6 text-teal-500" /> Embed Widgets
+            <Code2 className="w-6 h-6 text-[var(--org-primary)]" /> Embed Widgets
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Create embeddable card grids for any external website — courses, downloads, webinars, memberships, and more
           </p>
         </div>
         {mainTab === "content" && (
-          <Button onClick={() => setMode("create")} className="bg-teal-600 hover:bg-teal-700 text-white">
+          <Button onClick={() => setMode("create")} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
             <Plus className="w-4 h-4 mr-1" /> New Widget
           </Button>
         )}
@@ -612,12 +613,12 @@ export default function WidgetManager() {
 
         {/* ── Included Items tab ── */}
         <TabsContent value="included-items" className="mt-4">
-          <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl p-4 mb-4">
+          <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 mb-4">
             <div className="flex items-start gap-3">
-              <Package className="w-5 h-5 text-teal-600 mt-0.5 shrink-0" />
+              <Package className="w-5 h-5 text-[var(--org-primary)] mt-0.5 shrink-0" />
               <div className="text-sm">
-                <p className="font-semibold text-teal-800 dark:text-teal-200 mb-1">Included Items Widgets</p>
-                <p className="text-teal-700 dark:text-teal-300">
+                <p className="font-semibold text-[var(--org-primary)] mb-1">Included Items Widgets</p>
+                <p className="text-[var(--org-primary)]">
                   Embed the list of included items for any membership plan or bundle on any external website.
                   Copy the script tag or iframe snippet and paste it into your HTML. The widget auto-resizes to fit its content.
                   For advanced options (theme, accent, headline, CTA), use the Widget Code tab inside each membership or bundle editor.
@@ -648,7 +649,7 @@ export default function WidgetManager() {
                           <p className="text-sm font-medium truncate">{m.title}</p>
                           <p className="text-xs text-muted-foreground">membership · id:{m.id}</p>
                         </div>
-                        <a href={getAdminUrl(`/admin/memberships/${m.id}?tab=widget`)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-teal-600 transition-colors px-2 py-1 rounded border border-transparent hover:border-teal-200">
+                        <a href={getAdminUrl(`/admin/memberships/${m.id}?tab=widget`)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-[var(--org-primary)] transition-colors px-2 py-1 rounded border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
                           <Edit2 className="w-3 h-3" /> Advanced
                         </a>
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setIiExpandedId(expanded ? null : key)}>
@@ -706,7 +707,7 @@ export default function WidgetManager() {
                           <p className="text-sm font-medium truncate">{b.title}</p>
                           <p className="text-xs text-muted-foreground">bundle · id:{b.id}</p>
                         </div>
-                        <a href={getAdminUrl(`/admin/bundles/${b.id}?tab=widget`)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-teal-600 transition-colors px-2 py-1 rounded border border-transparent hover:border-teal-200">
+                        <a href={getAdminUrl(`/admin/bundles/${b.id}?tab=widget`)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-[var(--org-primary)] transition-colors px-2 py-1 rounded border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
                           <Edit2 className="w-3 h-3" /> Advanced
                         </a>
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setIiExpandedId(expanded ? null : key)}>
@@ -747,12 +748,12 @@ export default function WidgetManager() {
         <TabsContent value="content" className="mt-4">
 
       {/* How it works */}
-      <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl p-4 mb-6">
+      <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 mb-6">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-teal-600 mt-0.5 shrink-0" />
+          <Sparkles className="w-5 h-5 text-[var(--org-primary)] mt-0.5 shrink-0" />
           <div className="text-sm">
-            <p className="font-semibold text-teal-800 dark:text-teal-200 mb-1">How it works</p>
-            <p className="text-teal-700 dark:text-teal-300">
+            <p className="font-semibold text-[var(--org-primary)] mb-1">How it works</p>
+            <p className="text-[var(--org-primary)]">
               Create a widget, select which content to display (courses, quizzes, downloads, bundles, webinars, workshops, memberships, physical products, or communities), then copy the embed code and paste it into any website or landing page.
             </p>
           </div>
@@ -767,7 +768,7 @@ export default function WidgetManager() {
           <Code2 className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
           <p className="font-medium text-muted-foreground">No widgets yet</p>
           <p className="text-sm text-muted-foreground/70 mb-4">Create your first embeddable widget to get started</p>
-          <Button onClick={() => setMode("create")} className="bg-teal-600 hover:bg-teal-700 text-white">
+          <Button onClick={() => setMode("create")} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
             <Plus className="w-4 h-4 mr-1" /> Create Widget
           </Button>
         </div>
@@ -786,7 +787,7 @@ export default function WidgetManager() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{w.name}</span>
-                    <Badge variant={w.isActive ? "default" : "secondary"} className={w.isActive ? "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300" : ""}>
+                    <Badge variant={w.isActive ? "default" : "secondary"} className={w.isActive ? "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]" : ""}>
                       {w.isActive ? "Active" : "Inactive"}
                     </Badge>
                     <Badge variant="outline" className="capitalize">{w.layout}</Badge>
@@ -873,7 +874,7 @@ export default function WidgetManager() {
           <DialogFooter>
             <Button
               onClick={() => embedDialogToken && copyEmbedCode(embedDialogToken)}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             >
               {copied ? <><CheckCircle2 className="w-4 h-4 mr-1" /> Copied!</> : <><Copy className="w-4 h-4 mr-1" /> Copy Embed Code</>}
             </Button>
