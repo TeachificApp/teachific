@@ -1517,7 +1517,7 @@ function SortableBlockListItem({
       style={style}
       className={`flex items-center gap-2 px-2 py-2 mx-1 my-0.5 rounded-lg cursor-pointer transition-colors ${
         isSelected
-          ? "bg-teal-50 border border-teal-400"
+          ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)]"
           : "hover:bg-slate-50 border border-transparent"
       } ${!block.visible ? "opacity-40" : ""}`}
       onClick={onSelect}
@@ -1533,7 +1533,7 @@ function SortableBlockListItem({
       </div>
       {/* Block info */}
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-semibold truncate ${isSelected ? "text-teal-800" : "text-foreground"}`}>
+        <p className={`text-xs font-semibold truncate ${isSelected ? "text-[var(--org-primary)]" : "text-foreground"}`}>
           {label}
         </p>
         {subtitle && (
@@ -1761,7 +1761,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
                 onClick={() => { setActiveCategory(cat); setShowElementLibrary(true); }}
                 className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors ${
                   activeCategory === cat && showElementLibrary
-                    ? "bg-teal-600 text-white"
+                    ? "bg-[var(--org-primary)] text-white"
                     : "bg-slate-100 text-muted-foreground hover:bg-slate-200 hover:text-foreground"
                 }`}
               >
@@ -1805,7 +1805,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
               {blocks.filter(b => b.visible !== false).map(block => (
                 <div
                   key={block.id}
-                  className={`relative cursor-pointer transition-all ${selectedId === block.id ? "ring-2 ring-teal-500 ring-inset" : "hover:ring-1 hover:ring-teal-300 hover:ring-inset"}`}
+                  className={`relative cursor-pointer transition-all ${selectedId === block.id ? "ring-2 ring-[var(--org-primary)] ring-inset" : "hover:ring-1 hover:ring-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:ring-inset"}`}
                   onClick={(e) => { e.stopPropagation(); setSelectedId(block.id); }}
                 >
                   {renderCanvasBlock(block, (data) => updateBlockData(block.id, data))}
@@ -1849,7 +1849,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
 
       <DragOverlay>
         {activeId && (
-          <div className="bg-white rounded-lg shadow-2xl border-2 border-teal-500 p-3 opacity-90 text-sm font-medium text-teal-700">
+          <div className="bg-white rounded-lg shadow-2xl border-2 border-[var(--org-primary)] p-3 opacity-90 text-sm font-medium text-[var(--org-primary)]">
             {(activeId as string).startsWith("tile-") ? "Drop to add section…" : "Moving block…"}
           </div>
         )}

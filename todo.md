@@ -5706,6 +5706,7 @@
 - [x] Apply the active organization theme to email personalization tag helper controls
 - [x] Apply the active organization theme to lesson audio player controls
 - [x] Apply the active organization theme to cohort resource card controls
+- [x] Apply the active organization theme to remaining shared WYSIWYG page builder controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
