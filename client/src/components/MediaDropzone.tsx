@@ -167,8 +167,8 @@ export function MediaDropzone({
         className={[
           "border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all select-none",
           dragOver
-            ? "border-teal-500 bg-teal-50 scale-[1.01]"
-            : "border-teal-200 hover:border-teal-400 hover:bg-teal-50/40",
+            ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] scale-[1.01]"
+            : "border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]",
         ].join(" ")}
         onClick={() => !uploading && inputRef.current?.click()}
         onKeyDown={(e) => {
@@ -180,7 +180,7 @@ export function MediaDropzone({
         onDrop={handleDrop}
       >
         {uploading ? (
-          <div className="flex items-center justify-center gap-2 text-teal-600 py-4">
+          <div className="flex items-center justify-center gap-2 text-[var(--org-primary)] py-4">
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-sm font-medium">Uploading…</span>
           </div>
@@ -212,13 +212,13 @@ export function MediaDropzone({
             >
               <X className="w-3.5 h-3.5" />
             </button>
-            <p className="text-xs text-teal-600 mt-1.5">
+            <p className="text-xs text-[var(--org-primary)] mt-1.5">
               Click to replace · drag a new file to swap
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-4">
-            <UploadCloud className="w-9 h-9 text-teal-300" />
+            <UploadCloud className="w-9 h-9 text-[var(--org-primary)] opacity-55" />
             <p className="text-sm text-gray-600 font-medium">{hint}</p>
             <p className="text-xs text-gray-400">
               JPEG · PNG · WEBP · GIF · MP4 · WMV &nbsp;·&nbsp; Max 100 MB
