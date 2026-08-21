@@ -140,12 +140,12 @@ function AssetThumbnail({ asset }: { asset: any }) {
   }
   const iconMap: Record<string, { icon: React.ReactNode; bg: string; color: string }> = {
     image:    { icon: <FileImage className="w-10 h-10" />,  bg: "bg-blue-50 dark:bg-blue-950/30",   color: "text-blue-500" },
-    video:    { icon: <FileVideo className="w-10 h-10" />,  bg: "bg-teal-50 dark:bg-teal-950/30", color: "text-teal-500" },
+    video:    { icon: <FileVideo className="w-10 h-10" />,  bg: "bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]", color: "text-[var(--org-primary)]" },
     audio:    { icon: <FileAudio className="w-10 h-10" />,  bg: "bg-pink-50 dark:bg-pink-950/30",   color: "text-pink-500" },
     document: { icon: <FileText className="w-10 h-10" />,   bg: "bg-orange-50 dark:bg-orange-950/30", color: "text-orange-500" },
     html:     { icon: <Code className="w-10 h-10" />,       bg: "bg-green-50 dark:bg-green-950/30",  color: "text-green-500" },
-    scorm:    { icon: <Monitor className="w-10 h-10" />,    bg: "bg-teal-50 dark:bg-teal-950/30",   color: "text-teal-500" },
-    lms:      { icon: <Monitor className="w-10 h-10" />,    bg: "bg-teal-50 dark:bg-teal-950/30",   color: "text-teal-500" },
+    scorm:    { icon: <Monitor className="w-10 h-10" />,    bg: "bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]", color: "text-[var(--org-primary)]" },
+    lms:      { icon: <Monitor className="w-10 h-10" />,    bg: "bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]", color: "text-[var(--org-primary)]" },
     zip:      { icon: <File className="w-10 h-10" />,       bg: "bg-yellow-50 dark:bg-yellow-950/30", color: "text-yellow-600" },
     other:    { icon: <File className="w-10 h-10" />,       bg: "bg-muted",                          color: "text-muted-foreground" },
   };
@@ -1071,10 +1071,10 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                         if (e.key === "Enter" && editTitle.trim()) updateTitleMutation.mutate({ id: asset.id, title: editTitle.trim() });
                         if (e.key === "Escape") setEditingTitle(false);
                       }}
-                      className="flex-1 text-xl font-bold border border-teal-400 rounded px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-background"
+                      className="flex-1 text-xl font-bold border border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] bg-background"
                     />
                     <button
-                      className="text-xs px-2 py-1 rounded border border-teal-300 text-teal-600 hover:bg-teal-50 disabled:opacity-50"
+                      className="text-xs px-2 py-1 rounded border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] disabled:opacity-50"
                       disabled={updateTitleMutation.isPending || !editTitle.trim()}
                       onClick={() => editTitle.trim() && updateTitleMutation.mutate({ id: asset.id, title: editTitle.trim() })}
                     >{updateTitleMutation.isPending ? "Saving…" : "Save"}</button>
@@ -1184,11 +1184,11 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
               <input
                 value={editSlug}
                 onChange={e => setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-"))}
-                className="flex-1 text-xs font-mono border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="flex-1 text-xs font-mono border border-border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                 placeholder="asset-slug"
               />
               <button
-                className="text-xs px-2 py-1 rounded border border-teal-300 text-teal-600 hover:bg-teal-50 disabled:opacity-50"
+                className="text-xs px-2 py-1 rounded border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] disabled:opacity-50"
                 disabled={updateSlugMutation.isPending || !editSlug.trim() || editSlug === asset.slug}
                 onClick={() => updateSlugMutation.mutate({ id: asset.id, slug: editSlug.trim() })}
               >
@@ -1266,9 +1266,9 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                 </div>
               </div>
               {(asset.mediaType === "scorm" || asset.mediaType === "zip" || asset.mediaType === "lms" || asset.filename.toLowerCase().endsWith(".quiz")) && (
-                <div className="mb-3 rounded-lg border border-teal-200 bg-teal-50 p-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                <div className="mb-3 rounded-lg border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] p-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                   <div className="flex-1">
-                    <Label className="text-xs font-semibold text-teal-900">Extract to Question Bank</Label>
+                    <Label className="text-xs font-semibold text-[var(--org-primary)]">Extract to Question Bank</Label>
                     <Select value={targetBankId} onValueChange={setTargetBankId}>
                       <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Choose a Question Bank in this organization" /></SelectTrigger>
                       <SelectContent>
@@ -1297,7 +1297,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                             variant="outline"
                             className={`text-xs ${
                               extractStatus === "done" ? "border-green-500 text-green-600 dark:text-green-400" :
-                              extractStatus === "skipped" ? "border-teal-500 text-teal-600 dark:text-teal-400" :
+                              extractStatus === "skipped" ? "border-[var(--org-primary)] text-[var(--org-primary)]" :
                               extractStatus === "pending" ? "border-yellow-500 text-yellow-600 dark:text-yellow-400" :
                               extractStatus === "failed" ? "border-red-500 text-red-600 dark:text-red-400" :
                               "border-muted-foreground text-muted-foreground"
