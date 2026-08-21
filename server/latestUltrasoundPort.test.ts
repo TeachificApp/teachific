@@ -1896,6 +1896,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(downloadAnalyticsSource).not.toMatch(/(?:teal|violet|purple)/);
   });
 
+  it("uses the active organization theme for Certificate Templates administration preview controls", () => {
+    const certificateTemplatesSource = readFileSync(new URL("../client/src/pages/admin/CertificateTemplatesAdmin.tsx", import.meta.url), "utf8");
+    expect(certificateTemplatesSource).toContain("text-[var(--org-primary)]");
+    expect(certificateTemplatesSource).toContain("color-mix(in_srgb,var(--org-primary)_10%,transparent)");
+    expect(certificateTemplatesSource).not.toMatch(/(?:teal|violet|purple)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

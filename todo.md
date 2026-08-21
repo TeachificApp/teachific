@@ -5572,6 +5572,7 @@
 - [x] Resolve affiliate and instructor payout requests from the selected active organization
 - [x] Apply the active organization theme to Media Repository controls and file-state accents
 - [x] Apply the active organization theme to Download Analytics file-state badges
+- [x] Apply the active organization theme to Certificate Templates administration controls
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

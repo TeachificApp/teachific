@@ -201,7 +201,7 @@ function TemplateEditor({
           variant="outline"
           onClick={handlePreview}
           disabled={previewLoading}
-          className="text-[#189aa1] border-[#189aa1] hover:bg-teal-50"
+          className="text-[var(--org-primary)] border-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
         >
           {previewLoading ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Generating…</> : <><Eye className="w-4 h-4 mr-1" />Preview with Sample Data</>}
         </Button>
@@ -783,4 +783,3 @@ export default function CertificateTemplatesAdmin() {
     </div>
   );
 }
-
