@@ -132,7 +132,7 @@ export default function SitePageBuilder() {
   if (isLoading || !page) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-teal-500 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[var(--org-primary)] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -161,7 +161,7 @@ export default function SitePageBuilder() {
           <Button variant="outline" size="sm" onClick={handleSaveAll} disabled={saveBlocks.isPending}>
             <Save className="w-4 h-4 mr-1" /> Save
           </Button>
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700" onClick={handlePublish}>
+          <Button size="sm" className="org-primary-button" onClick={handlePublish}>
             Publish
           </Button>
         </div>
@@ -177,7 +177,7 @@ export default function SitePageBuilder() {
               onClick={() => setActiveCat(cat)}
               className={cn(
                 "w-full text-left text-xs px-2 py-1.5 rounded mb-0.5",
-                activeCat === cat ? "bg-teal-100 text-teal-800 font-medium" : "text-gray-600 hover:bg-gray-50",
+                activeCat === cat ? "bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] font-medium" : "text-gray-600 hover:bg-gray-50",
               )}
             >
               {cat}
@@ -189,7 +189,7 @@ export default function SitePageBuilder() {
                 key={b.type}
                 type="button"
                 onClick={() => addBlock(b.type)}
-                className="w-full text-left text-xs px-2 py-2 rounded border border-dashed border-gray-200 hover:border-teal-400 hover:bg-teal-50"
+                className="w-full text-left text-xs px-2 py-2 rounded border border-dashed border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
               >
                 + {b.label}
               </button>

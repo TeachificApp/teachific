@@ -1938,6 +1938,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(sitePagesSource).not.toMatch(/(?:teal|violet|purple)/);
   });
 
+  it("uses the active organization theme for Site Page Builder controls", () => {
+    const sitePageBuilderSource = readFileSync(new URL("../client/src/pages/admin/SitePageBuilder.tsx", import.meta.url), "utf8");
+    expect(sitePageBuilderSource).toContain("org-primary-button");
+    expect(sitePageBuilderSource).toContain("border-[var(--org-primary)]");
+    expect(sitePageBuilderSource).not.toMatch(/(?:teal|violet|purple)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
