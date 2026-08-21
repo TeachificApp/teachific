@@ -2434,7 +2434,7 @@ export const appRouter = router({
         }
         // Organization administrators default to their active organization and can inspect only organizations they administer.
         if (["org_admin", "org_super_admin", "sub_admin"].includes(ctx.user.role)) {
-          const activeOrgId = requestedOrgId ?? await getOrgIdForUser(ctx.user.id);
+          const activeOrgId = requestedOrgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
           if (!activeOrgId) return [];
           await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
           return getPackagesByOrg(activeOrgId);
@@ -2442,7 +2442,7 @@ export const appRouter = router({
         // Regular members can only list packages from a current organization they belong to.
         const orgs = await getOrgsByUserId(ctx.user.id);
         const orgIds = orgs.map((o) => o.id);
-        const activeOrgId = requestedOrgId ?? await getOrgIdForUser(ctx.user.id);
+        const activeOrgId = requestedOrgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
         if (!activeOrgId || !orgIds.includes(activeOrgId)) return [];
         return getPackagesByOrg(activeOrgId);
       }),
@@ -2945,7 +2945,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .query(async ({ input, ctx }) => {
         // org_admin / org_super_admin: verify the package belongs to their org
         if (ctx.user.role === "org_admin" || ctx.user.role === "org_super_admin") {
-          const orgId = await getOrgIdForUser(ctx.user.id);
+          const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
           const pkg = await getPackageById(input.packageId);
           if (!pkg || pkg.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
         }
@@ -2991,7 +2991,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .query(async ({ input, ctx }) => {
         // org_admin / org_super_admin: always scope to their assigned org
         if (ctx.user.role === "org_admin" || ctx.user.role === "org_super_admin") {
-          const orgId = await getOrgIdForUser(ctx.user.id);
+          const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
           return getAnalyticsSummary(orgId ?? undefined);
         }
         return getAnalyticsSummary(input.orgId);
@@ -3002,7 +3002,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .query(async ({ input, ctx }) => {
         // org_admin / org_super_admin: verify the package belongs to their org before returning data
         if (ctx.user.role === "org_admin" || ctx.user.role === "org_super_admin") {
-          const orgId = await getOrgIdForUser(ctx.user.id);
+          const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
           const pkg = await getPackageById(input.packageId);
           if (!pkg || pkg.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
         }
@@ -3482,7 +3482,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .query(async ({ input, ctx }) => {
         // org_admin / org_super_admin: always scope to their assigned org, ignore input.orgId
         if (ctx.user.role === "org_admin" || ctx.user.role === "org_super_admin") {
-          const orgId = await getOrgIdForUser(ctx.user.id);
+          const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
           if (!orgId) return [];
           return getFoldersByOrg(orgId);
         }

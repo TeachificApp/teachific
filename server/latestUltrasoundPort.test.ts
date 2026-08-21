@@ -595,7 +595,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(packageRouterSource).toContain("return getPackagesByOrg(activeOrgId);");
     expect(packageRouterSource).toContain("const requestedOrgId = input?.orgId;");
     expect(packageRouterSource).toContain("requestedOrgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
-    expect(packageRouterSource).toContain("requestedOrgId ?? await getOrgIdForUser(ctx.user.id)");
+    expect(packageRouterSource).not.toContain("getOrgIdForUser(ctx.user.id)");
+    expect(packageRouterSource).toContain("const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);");
     expect(packageRouterSource).toContain("This content package does not belong to the active organization.");
     expect(packageRouterSource).toContain("The selected package belongs to another organisation.");
     expect(packageRouterSource).toContain("getManaged: protectedProcedure");
