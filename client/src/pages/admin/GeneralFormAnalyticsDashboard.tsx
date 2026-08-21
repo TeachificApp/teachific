@@ -85,7 +85,7 @@ export default function GeneralFormAnalyticsDashboard() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <Link href="/admin/general-forms" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-teal-700 mb-2">
+        <Link href="/admin/general-forms" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[var(--org-primary)] mb-2">
           <ChevronLeft className="w-3 h-3" /> Form Builder
         </Link>
         <div className="flex items-center justify-between mb-6">
@@ -251,7 +251,7 @@ function WidgetEditor({
               <button
                 key={f.id}
                 type="button"
-                className={`text-xs px-2 py-1 rounded border ${on ? "bg-teal-50 border-teal-300" : ""}`}
+                className={`text-xs px-2 py-1 rounded border ${on ? "bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)]" : ""}`}
                 onClick={() =>
                   onChange({
                     ...widget,
