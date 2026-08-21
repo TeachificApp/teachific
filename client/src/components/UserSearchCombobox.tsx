@@ -137,7 +137,7 @@ export function UserSearchCombobox({ onSelect, placeholder = "Search by name or 
               className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors text-left"
               onMouseDown={(e) => { e.preventDefault(); handleSelect(user as any); }}
             >
-              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-semibold">
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)] flex items-center justify-center text-xs font-semibold">
                 {(user.displayName ?? user.name ?? user.email ?? "?")[0].toUpperCase()}
               </div>
               <div className="min-w-0">
@@ -168,12 +168,18 @@ export function UserSearchCombobox({ onSelect, placeholder = "Search by name or 
       )}
 
       {selected && (
-        <div className={cn(
-          "mt-2 rounded-lg border px-3 py-2 text-sm",
-          selected.isNew
-            ? "bg-amber-50 border-amber-200 text-amber-800"
-            : "bg-teal-50 border-teal-200 text-teal-800"
-        )}>
+        <div
+          className={cn(
+            "mt-2 rounded-lg border px-3 py-2 text-sm",
+            selected.isNew
+              ? "bg-amber-50 border-amber-200 text-amber-800"
+              : "text-[var(--org-primary)]"
+          )}
+          style={selected.isNew ? undefined : {
+            background: "color-mix(in srgb, var(--org-primary) 8%, transparent)",
+            borderColor: "color-mix(in srgb, var(--org-primary) 24%, transparent)",
+          }}
+        >
           {selected.isNew ? (
             <p className="font-medium">New account will be created for <strong>{selected.email}</strong></p>
           ) : (
