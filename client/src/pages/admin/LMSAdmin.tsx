@@ -11849,7 +11849,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 placeholder="Search assignments..."
                 value={copySearch}
                 onChange={e => setCopySearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                 autoFocus
               />
             </div>
@@ -11868,7 +11868,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                       {filtered.map(a => (
                         <button
                           key={a.id}
-                          className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-teal-50 transition-colors group"
+                          className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors group"
                           onClick={() => {
                             // Pre-fill the assignment form with the copied data
                             setAssignForm({
@@ -11887,7 +11887,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                         >
                           <div className="flex items-center gap-2">
                             <ListChecks className="w-4 h-4 text-amber-500 shrink-0" />
-                            <span className="text-sm font-medium text-gray-800 group-hover:text-teal-700">{a.title}</span>
+                            <span className="text-sm font-medium text-gray-800 group-hover:text-[var(--org-primary)]">{a.title}</span>
                             {a.status === "published" && <span className="ml-auto text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Published</span>}
                           </div>
                           {a.description && <p className="text-xs text-gray-400 mt-0.5 ml-6 line-clamp-1">{a.description}</p>}
