@@ -2072,6 +2072,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionBankSection).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout the LMS block-picker modal", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const blockPickerSection = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("{/* Block Picker Modal */}"),
+      lmsAdminSource.indexOf("// ─── Course Instructors Editor")
+    );
+    expect(blockPickerSection).toContain("text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]");
+    expect(blockPickerSection).toContain("hover:border-[color:color-mix(in_srgb,var(--org-primary)_55%,transparent)]");
+    expect(blockPickerSection).toContain("focus:ring-1 focus:ring-[var(--org-primary)]");
+    expect(blockPickerSection).toContain("bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90");
+    expect(blockPickerSection).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
