@@ -210,7 +210,7 @@ export default function BundleLandingPageBuilder() {
               </Button>
             </a>
           )}
-          <Button onClick={handleSave} disabled={isSaving} size="sm" className="gap-1.5 text-sm px-4 py-1.5 h-8 bg-teal-600 hover:bg-teal-700 text-white">
+          <Button onClick={handleSave} disabled={isSaving} size="sm" className="gap-1.5 text-sm px-4 py-1.5 h-8 org-primary-button">
             <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
           </Button>
         </div>
@@ -223,7 +223,7 @@ export default function BundleLandingPageBuilder() {
           <div className="p-3">
             <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-[var(--org-primary)] bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_16%,transparent)] border border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg transition-colors"
             >
               <Plus size={14} /> Add Block
             </button>
@@ -240,7 +240,7 @@ export default function BundleLandingPageBuilder() {
           ) : blocks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
               <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center"><Plus size={24} /></div>
-              <button onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }} className="flex items-center gap-2 px-4 py-2 text-sm bg-teal-600 hover:bg-teal-700 text-white rounded-lg transition-colors">
+              <button onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }} className="flex items-center gap-2 px-4 py-2 text-sm org-primary-button rounded-lg transition-colors">
                 <Plus size={16} /> Add Your First Block
               </button>
               <p className="text-sm">Open the block picker to add content</p>
@@ -267,7 +267,7 @@ export default function BundleLandingPageBuilder() {
               <div className="flex justify-center py-6 border-t border-dashed border-gray-200">
                 <button
                   onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
-                  className="w-full max-w-xs border-2 border-dashed border-teal-300 hover:border-teal-500 rounded-xl py-3 text-teal-600 hover:text-teal-700 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
+                  className="w-full max-w-xs border-2 border-dashed border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:border-[var(--org-primary)] rounded-xl py-3 text-[var(--org-primary)] hover:opacity-80 text-sm flex items-center justify-center gap-2 transition-colors bg-white"
                 >
                   <Plus size={16} /> Add Block
                 </button>
@@ -280,7 +280,7 @@ export default function BundleLandingPageBuilder() {
         <div className="flex-shrink-0 flex flex-row" style={{ width: rightPanelWidth }}>
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-teal-400 active:bg-teal-500 transition-colors flex items-center justify-center group border-l border-gray-200"
+            className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] active:bg-[var(--org-primary)] transition-colors flex items-center justify-center group border-l border-gray-200"
             title="Drag to resize panel"
           />
           <div className="flex-1 overflow-y-auto bg-white border-l border-gray-200">
@@ -300,7 +300,7 @@ export default function BundleLandingPageBuilder() {
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 mb-1 block">Meta Description</label>
-                      <textarea value={seoDescription} onChange={e => setSeoDescription(e.target.value)} placeholder="Brief description for search results" className="w-full text-sm border rounded-md p-2 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <textarea value={seoDescription} onChange={e => setSeoDescription(e.target.value)} placeholder="Brief description for search results" className="w-full text-sm border rounded-md p-2 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 mb-1 block">Social Preview Image URL</label>
@@ -328,7 +328,7 @@ export default function BundleLandingPageBuilder() {
             </div>
             <div className="flex border-b border-gray-100">
               {["catalog", "from_pages", "templates"].map(t => (
-                <button key={t} onClick={() => setPickerTab(t as any)} className={cn("flex-1 py-2 text-xs font-medium capitalize transition-colors", pickerTab === t ? "border-b-2 border-teal-500 text-teal-600" : "text-gray-500 hover:text-gray-700")}>
+                <button key={t} onClick={() => setPickerTab(t as any)} className={cn("flex-1 py-2 text-xs font-medium capitalize transition-colors", pickerTab === t ? "border-b-2 border-[var(--org-primary)] text-[var(--org-primary)]" : "text-gray-500 hover:text-gray-700")}>
                   {t === "catalog" ? "All Blocks" : t === "from_pages" ? "Copy from Page" : "Templates"}
                 </button>
               ))}
@@ -338,12 +338,12 @@ export default function BundleLandingPageBuilder() {
                 <div>
                   <div className="relative mb-3">
                     <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
-                    <input value={blockSearch} onChange={e => setBlockSearch(e.target.value)} placeholder="Search blocks…" className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                    <input value={blockSearch} onChange={e => setBlockSearch(e.target.value)} placeholder="Search blocks…" className="w-full pl-8 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {BLOCK_CATALOG.filter(b => !blockSearch || b.label.toLowerCase().includes(blockSearch.toLowerCase())).map(b => (
                       <button key={b.type} onClick={() => { addBlock(b.type as BlockType); setAddMenuOpen(false); }}
-                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors text-center">
+                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-200 hover:border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] transition-colors text-center">
                         <span className="text-lg">{b.icon ?? "📦"}</span>
                         <span className="text-xs font-medium text-gray-700 leading-tight">{b.label}</span>
                       </button>
@@ -368,7 +368,7 @@ export default function BundleLandingPageBuilder() {
                           <div className="grid grid-cols-1 gap-1.5">
                             {courseBlocks.map((b: Block) => (
                               <button key={b.id} onClick={() => { addBlock(b.type); setBlocks(prev => { const last = prev[prev.length - 1]; return prev.map(x => x.id === last.id ? { ...b, id: uid() } : x); }); setAddMenuOpen(false); }}
-                                className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg hover:bg-teal-50 hover:border-teal-400 transition-colors text-left">
+                                className="flex items-center gap-2 px-3 py-2 text-sm border rounded-lg hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] hover:border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] transition-colors text-left">
                                 <Copy size={12} className="text-gray-400 flex-shrink-0" />
                                 <span className="truncate">{b.type}: {(b.data as any)?.title ?? (b.data as any)?.heading ?? "Block"}</span>
                               </button>
@@ -445,12 +445,12 @@ export default function BundleLandingPageBuilder() {
                     </div>
                   </div>
                   {/* Save current page as template */}
-                  <div className="border border-dashed border-teal-300 rounded-xl p-4 bg-teal-50/50">
-                    <p className="text-xs font-semibold text-teal-700 mb-3">Save Current Page as Template</p>
+                  <div className="border border-dashed border-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded-xl p-4 bg-[color-mix(in_srgb,var(--org-primary)_6%,transparent)]">
+                    <p className="text-xs font-semibold text-[var(--org-primary)] mb-3">Save Current Page as Template</p>
                     <div className="space-y-2">
                       <Input value={savePageTemplateName} onChange={e => setSavePageTemplateName(e.target.value)} className="h-8 text-sm" placeholder="Template name…" />
                       <Input value={savePageTemplateDesc} onChange={e => setSavePageTemplateDesc(e.target.value)} className="h-8 text-sm" placeholder="Description (optional)" />
-                      <Button onClick={handleSavePageAsTemplate} disabled={isSavingPageTemplate || !savePageTemplateName.trim()} className="w-full h-8 text-sm bg-teal-600 hover:bg-teal-700 text-white">
+                      <Button onClick={handleSavePageAsTemplate} disabled={isSavingPageTemplate || !savePageTemplateName.trim()} className="w-full h-8 text-sm org-primary-button">
                         {isSavingPageTemplate ? "Saving…" : "Save as Template"}
                       </Button>
                     </div>
@@ -534,7 +534,7 @@ export default function BundleLandingPageBuilder() {
               </div>
               <div className="flex gap-2 pt-1">
                 <Button variant="outline" className="flex-1 h-8 text-xs" onClick={() => setSaveTemplateDialogBlock(null)}>Cancel</Button>
-                <Button className="flex-1 h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white" disabled={!saveTemplateName.trim()} onClick={() => {
+                <Button className="flex-1 h-8 text-xs org-primary-button" disabled={!saveTemplateName.trim()} onClick={() => {
                   saveBlockTemplateMutation.mutate({ name: saveTemplateName.trim(), description: saveTemplateDesc.trim() || undefined, blockType: saveTemplateDialogBlock.type, blockDataJson: JSON.stringify(saveTemplateDialogBlock.data) });
                 }}>Save Template</Button>
               </div>

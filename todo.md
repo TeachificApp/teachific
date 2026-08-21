@@ -5564,6 +5564,7 @@
 - [x] Add regression coverage for Pro-or-higher Teach Games access enforcement
 - [x] Show an organization-plan upgrade prompt to lower-plan administrators who open Teach Games
 - [x] Apply the active organization theme to Funnel Page Editor header, navigation, and SEO controls
+- [x] Apply the active organization theme to Bundle Landing Page Builder controls and authoring accents
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups
