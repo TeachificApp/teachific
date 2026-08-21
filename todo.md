@@ -5567,6 +5567,7 @@
 - [x] Apply the active organization theme to Bundle Landing Page Builder controls and authoring accents
 - [x] Apply the active organization theme to Order Bumps administration controls and analytics accents
 - [x] Remove fabricated testimonial defaults from Order Bumps landing-page blocks
+- [x] Apply the active organization theme to Workshops administration controls and sales accents
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

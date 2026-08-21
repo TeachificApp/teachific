@@ -1860,6 +1860,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(orderBumpsSource).not.toContain("Happy Customer");
   });
 
+  it("uses the active organization theme throughout Workshops administration", () => {
+    const workshopsSource = readFileSync(new URL("../client/src/pages/admin/WorkshopsAdmin.tsx", import.meta.url), "utf8");
+    expect(workshopsSource).toContain("org-primary-button");
+    expect(workshopsSource).toContain("text-[var(--org-primary)]");
+    expect(workshopsSource).toContain("color-mix(in_srgb,var(--org-primary)_10%,transparent)");
+    expect(workshopsSource).not.toMatch(/(?:teal|violet|purple)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

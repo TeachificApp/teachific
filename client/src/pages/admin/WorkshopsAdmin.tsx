@@ -543,7 +543,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
         </div>
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-xs font-mono font-semibold text-gray-600 select-all cursor-text" title="Workshop ID">ID: {workshop.id}</span>
         <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-          <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600 gap-1">
+          <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)] gap-1">
             <Eye className="w-3.5 h-3.5" /> View Sales Page
           </Button>
         </a>
@@ -798,7 +798,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                             {inst.status}
                           </span>
                           {inst.availableForPurchase && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-teal-100 text-teal-700">
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]">
                               On Sale
                             </span>
                           )}
@@ -837,7 +837,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-teal-300 text-teal-700 hover:bg-teal-50"
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                           onClick={() => window.open(`/admin/workshops/${workshopId}/instances/${inst.id}/page-builder`, "_blank")}>
                           Edit Page
                         </Button>
@@ -940,8 +940,8 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
           <Card>
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-teal-50">
-                  <BookOpen className="w-6 h-6 text-teal-600" />
+                <div className="p-3 rounded-xl bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]">
+                  <BookOpen className="w-6 h-6 text-[var(--org-primary)]" />
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-sm">Curriculum</h3>
@@ -963,7 +963,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                     </Label>
                   </div>
                   {curriculumEnabled && (
-                    <p className="text-xs text-teal-600 mt-2">
+                    <p className="text-xs text-[var(--org-primary)] mt-2">
                       Curriculum content is managed in the Course Builder. Link a course to this workshop to populate the curriculum tab.
                     </p>
                   )}
@@ -1033,7 +1033,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
               </div>
               <div className="text-xs text-gray-400 bg-gray-50 rounded p-3">
                 <strong>Public URL:</strong>{" "}
-                <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline break-all">
+                <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline break-all">
                   {publicUrl}
                 </a>
               </div>
@@ -1134,7 +1134,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                 <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
                 <p className="text-sm text-gray-500 mt-1">
                   Customise the sections shown on the hosted checkout page at{" "}
-                  <a href={`${window.location.origin}/checkout/workshop/${workshop.slug}`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                  <a href={`${window.location.origin}/checkout/workshop/${workshop.slug}`} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline font-medium">
                     /checkout/workshop/{workshop.slug}
                   </a>.
                 </p>
@@ -1145,7 +1145,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                   <ExternalLink className="w-3.5 h-3.5" /> Preview
                 </a>
                 <a href={`/admin/checkout-editor/workshop/${workshopId}`}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm org-primary-button rounded-lg font-medium">
                   Open Page Editor
                 </a>
               </div>
@@ -1153,7 +1153,7 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
             <div className="mt-5 grid grid-cols-3 gap-3">
               {["Trust Seals & Badges","What You'll Learn","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
                 <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-teal-400" />
+                  <div className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
                   <span className="text-xs text-gray-600">{s}</span>
                 </div>
               ))}
@@ -1640,7 +1640,7 @@ function WaitlistSettingsTab({ workshopId }: { workshopId: number }) {
         <Button
           onClick={handleSave}
           disabled={saveMutation.isPending || !dirty}
-          className="bg-teal-600 hover:bg-teal-700 text-white text-sm"
+          className="org-primary-button text-sm"
         >
           {saveMutation.isPending ? "Saving…" : "Save Waitlist Settings"}
         </Button>
