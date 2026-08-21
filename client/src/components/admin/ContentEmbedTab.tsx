@@ -618,7 +618,7 @@ function EmbedVisibilitySection({ courseId, sections }: { courseId: number; sect
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs gap-1 border-teal-300 text-teal-700 hover:bg-teal-50"
+                className="h-7 text-xs gap-1 border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                 disabled={setVisibility.isPending}
                 onClick={() => handleBulkToggle(false)}
               >
@@ -648,7 +648,7 @@ function EmbedVisibilitySection({ courseId, sections }: { courseId: number; sect
               const sectionHidden = !!hiddenMap[sectionKey];
               return (
                 <div key={section.id} className="border border-gray-100 rounded-lg overflow-hidden bg-white">
-                  <div className={`flex items-center gap-3 px-4 py-2.5 ${sectionHidden ? "bg-gray-50" : "bg-teal-50/40"}`}>
+                  <div className={`flex items-center gap-3 px-4 py-2.5 ${sectionHidden ? "bg-gray-50" : "bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]"}`}>
                     <Switch
                       checked={!sectionHidden}
                       onCheckedChange={() => toggle("section", section.id, sectionHidden)}
@@ -664,7 +664,7 @@ function EmbedVisibilitySection({ courseId, sections }: { courseId: number; sect
                         <EyeOff className="w-3.5 h-3.5" /> Hidden
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-teal-600">
+                      <span className="inline-flex items-center gap-1 text-xs text-[var(--org-primary)]">
                         <Eye className="w-3.5 h-3.5" /> Visible
                       </span>
                     )}
