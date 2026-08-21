@@ -228,7 +228,7 @@ function SendEmailEditor({
           <Label className="text-xs font-medium text-gray-700">From Name (optional)</Label>
           <Input
             className="mt-1"
-            placeholder="Teachific"
+            placeholder="Organization name"
             value={action.fromName ?? ""}
             onChange={(e) => onChange({ ...action, fromName: e.target.value })}
           />
@@ -577,7 +577,7 @@ export function AfterPurchaseWorkflowEditor({
           <Button
             onClick={onSave}
             disabled={saving || !dirty}
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="org-primary-button"
           >
             {saving ? "Saving…" : "Save Workflow"}
           </Button>
