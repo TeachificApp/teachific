@@ -813,12 +813,12 @@ export default function DigitalProductEditorPage() {
             </div>
           </div>
         )}
-        {activeTab === "checkout_page" && product && (
+        {activeTab === "checkout_page" && product && orgId && (
           <div className="max-w-3xl mx-auto">
             <CheckoutPageEditor
               contentType="download"
               contentId={product.id}
-              orgId={product.orgId ?? 1}
+              orgId={orgId}
               contentSlug={product.slug}
             />
           </div>

@@ -1457,6 +1457,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cloudQuizSource).not.toContain("bg-teal-50 text-teal-700");
   });
 
+  it("uses active organization context for digital product checkout editing", () => {
+    const productEditorSource = readFileSync(new URL("../client/src/pages/admin/DigitalProductEditorPage.tsx", import.meta.url), "utf8");
+    expect(productEditorSource).toContain('{activeTab === "checkout_page" && product && orgId && (');
+    expect(productEditorSource).toContain("orgId={orgId}");
+    expect(productEditorSource).not.toContain("orgId={product.orgId ?? 1}");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
