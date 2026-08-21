@@ -362,12 +362,12 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
           <legend className="text-xs font-bold tracking-wider text-gray-600 px-2 uppercase">Contact Information</legend>
           {/* Logged-in user notice */}
           {user && (
-            <div className="mb-3 flex items-center gap-2 text-xs text-teal-700 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
+            <div className="mb-3 flex items-center gap-2 text-xs text-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg px-3 py-2">
               <span>Purchasing as <strong>{user.email}</strong></span>
               <button
                 type="button"
                 onClick={logout}
-                className="ml-auto text-xs text-teal-600 underline hover:text-teal-800 whitespace-nowrap"
+                className="ml-auto text-xs text-[var(--org-primary)] underline hover:brightness-90 whitespace-nowrap"
               >
                 Log out to use a different email
               </button>
@@ -380,7 +380,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               value={firstName}
               onChange={(e) => !user && setFirstName(e.target.value)}
               readOnly={!!user}
-              className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 ${user ? "bg-gray-50 text-gray-500 cursor-default" : ""}`}
+              className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] ${user ? "bg-gray-50 text-gray-500 cursor-default" : ""}`}
             />
             <input
               type="text"
@@ -388,7 +388,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               value={lastName}
               onChange={(e) => !user && setLastName(e.target.value)}
               readOnly={!!user}
-              className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 ${user ? "bg-gray-50 text-gray-500 cursor-default" : ""}`}
+              className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] ${user ? "bg-gray-50 text-gray-500 cursor-default" : ""}`}
             />
           </div>
           <input
@@ -398,7 +398,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             onChange={(e) => !user && setEmail(e.target.value)}
             readOnly={!!user}
             required
-            className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-teal-400 ${user ? "bg-gray-50 text-gray-500 cursor-default" : ""}`}
+            className={`w-full border border-gray-200 rounded-lg px-4 py-3 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] ${user ? "bg-gray-50 text-gray-500 cursor-default" : ""}`}
           />
           {d.showPhone !== false && (
             <input
@@ -407,7 +407,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required={d.requirePhone === true}
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             />
           )}
         </fieldset>
@@ -422,7 +422,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               <label
                 key={idx}
                 className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer border-2 transition-colors ${
-                  selectedProductIdx === idx ? "border-teal-500 bg-teal-50/30" : "border-transparent hover:bg-gray-50"
+                  selectedProductIdx === idx ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-transparent hover:bg-gray-50"
                 }`}
               >
                 <input
@@ -430,7 +430,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
                   name="product"
                   checked={selectedProductIdx === idx}
                   onChange={() => setSelectedProductIdx(idx)}
-                  className="w-4 h-4 accent-teal-600"
+                  className="w-4 h-4 accent-[var(--org-primary)]"
                 />
                 {product.imageUrl && (
                   <img src={product.imageUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
@@ -461,20 +461,20 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
               placeholder="Address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             />
             <input
               type="text"
               placeholder="Apartment, building, floor (optional)"
               value={address2}
               onChange={(e) => setAddress2(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
             />
             <div className="grid grid-cols-2 gap-3">
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               >
                 <option>United States</option>
                 <option>Canada</option>
@@ -487,7 +487,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
                 placeholder="State"
                 value={state}
                 onChange={(e) => setState(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -496,14 +496,14 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
                 placeholder="City"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
               <input
                 type="text"
                 placeholder="Postal Code"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
             </div>
           </div>
@@ -517,7 +517,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             <div
               key={idx}
               className={`border-2 rounded-lg p-4 flex items-start gap-4 transition-colors ${
-                addedBumps.has(idx) ? "bg-teal-50/30" : ""
+                addedBumps.has(idx) ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : ""
               }`}
               style={{ borderColor: accent }}
             >
@@ -614,7 +614,7 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             type="checkbox"
             checked={termsAccepted}
             onChange={(e) => setTermsAccepted(e.target.checked)}
-            className="mt-1 w-4 h-4 rounded accent-teal-600"
+            className="mt-1 w-4 h-4 rounded accent-[var(--org-primary)]"
           />
           <span className="text-sm text-gray-700">
             {d.termsText}{" "}

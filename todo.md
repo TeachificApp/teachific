@@ -5690,6 +5690,7 @@
 - [x] Apply the active organization theme to lesson assignment block editor controls
 - [x] Apply the active organization theme to shared block preview controls
 - [x] Apply the active organization theme to shared rich-text editor controls
+- [x] Apply the active organization theme to shared checkout form block controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
