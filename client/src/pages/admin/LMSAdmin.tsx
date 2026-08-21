@@ -10529,7 +10529,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
           {/* Type */}
           <div className="flex gap-2">
             {(["mcq", "truefalse"] as const).map(t => (
-              <button key={t} onClick={() => setQType(t)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium border transition-all", qType === t ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:border-teal-300")}>
+              <button key={t} onClick={() => setQType(t)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium border transition-all", qType === t ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]")}>
                 {t === "mcq" ? "Multiple Choice" : "True / False"}
               </button>
             ))}
@@ -10538,7 +10538,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
           {/* Question text */}
           <div>
             <Label className="text-sm font-medium text-gray-700 mb-1 block">Question *</Label>
-            <textarea value={qText} onChange={e => setQText(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Enter the question..." />
+            <textarea value={qText} onChange={e => setQText(e.target.value)} rows={3} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Enter the question..." />
           </div>
 
           {/* Question media */}
@@ -10560,7 +10560,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
               <div className="space-y-2">
                 {options.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <input type="radio" name="correct" checked={correctAnswer === opt.text} onChange={() => setCorrectAnswer(opt.text)} className="accent-teal-600" />
+                    <input type="radio" name="correct" checked={correctAnswer === opt.text} onChange={() => setCorrectAnswer(opt.text)} className="accent-[var(--org-primary)]" />
                     <Input value={opt.text} onChange={e => setOptions(prev => prev.map((o, j) => j === i ? { ...o, text: e.target.value } : o))} placeholder={`Option ${i + 1}`} className="h-8 text-sm flex-1" />
                     <Input value={opt.imageUrl ?? ""} onChange={e => setOptions(prev => prev.map((o, j) => j === i ? { ...o, imageUrl: e.target.value } : o))} placeholder="Image URL (opt.)" className="h-8 text-sm w-36" />
                     {options.length > 2 && (
@@ -10579,7 +10579,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
               <Label className="text-sm font-medium text-gray-700 mb-2 block">Correct Answer</Label>
               <div className="flex gap-3">
                 {["True", "False"].map(v => (
-                  <button key={v} onClick={() => setCorrectAnswer(v)} className={cn("px-4 py-2 rounded-lg text-sm font-medium border transition-all", correctAnswer === v ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:border-teal-300")}>
+                  <button key={v} onClick={() => setCorrectAnswer(v)} className={cn("px-4 py-2 rounded-lg text-sm font-medium border transition-all", correctAnswer === v ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]")}>
                     {v}
                   </button>
                 ))}
@@ -10590,7 +10590,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
           {/* Explanation */}
           <div>
             <Label className="text-sm font-medium text-gray-700 mb-1 block">Explanation (optional)</Label>
-            <textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={2} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Explain the correct answer..." />
+            <textarea value={explanation} onChange={e => setExplanation(e.target.value)} rows={2} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Explain the correct answer..." />
           </div>
 
           {/* Tags */}
@@ -10610,7 +10610,7 @@ function QuestionBankEditDialog({ question, tags, onClose, onSaved }: {
         </div>
         <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!qText.trim() || !correctAnswer.trim() || isPending} onClick={handleSave}>
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!qText.trim() || !correctAnswer.trim() || isPending} onClick={handleSave}>
             {isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Saving...</> : isEdit ? "Save Changes" : "Add to Bank"}
           </Button>
         </div>
