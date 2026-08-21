@@ -5649,6 +5649,8 @@
 - [x] Resolve membership checkout editing from the active organization context
 - [x] Resolve bundle checkout editing from the active organization context
 - [x] Resolve organization-admin course enrollment actions from the active organization context
+- [x] Review Course Overview organization placeholders and retain disabled-until-course behavior
+- [x] Render the organization landing page builder only with active-organization context
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

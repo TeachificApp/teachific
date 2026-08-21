@@ -289,11 +289,13 @@ export default function OrgLandingPageEditor() {
 
       {/* ── Page Builder canvas ──────────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden">
-        <PageBuilder
-          initialBlocks={blocks}
-          onChange={setBlocks}
-          orgId={orgId ?? 0}
-        />
+        {orgId && (
+          <PageBuilder
+            initialBlocks={blocks}
+            onChange={setBlocks}
+            orgId={orgId}
+          />
+        )}
       </div>
     </div>
   );
