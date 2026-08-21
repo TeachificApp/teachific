@@ -69,6 +69,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -536,6 +537,8 @@ function EnrollmentsTab({
   const [enrollOrgId, setEnrollOrgId] = useState<number | null>(null);
   const [enrollCourseId, setEnrollCourseId] = useState<number | null>(null);
   const [expandedEnrollId, setExpandedEnrollId] = useState<number | null>(null);
+  const { orgId: activeOrgId } = useOrgScope();
+  const selectedEnrollmentOrgId = isPlatformAdmin ? enrollOrgId : activeOrgId;
 
   const { data: enrollments, refetch: refetchEnrollments } = trpc.users.getEnrollments.useQuery({ userId: user.id });
   const { data: ipSummary } = trpc.ipSharing.getEnrollmentIpSummary.useQuery(
@@ -544,8 +547,8 @@ function EnrollmentsTab({
   );
   const { data: orgs } = trpc.orgs.list.useQuery(undefined, { enabled: isPlatformAdmin });
   const { data: courses } = trpc.lms.courses.list.useQuery(
-    { orgId: enrollOrgId ?? 0 },
-    { enabled: !!enrollOrgId }
+    { orgId: selectedEnrollmentOrgId ?? 0 },
+    { enabled: !!selectedEnrollmentOrgId }
   );
 
   const enrollMutation = trpc.users.enrollInCourse.useMutation({
@@ -691,7 +694,7 @@ function EnrollmentsTab({
           </div>
         )}
 
-        {(enrollOrgId || !isPlatformAdmin) && (
+        {selectedEnrollmentOrgId && (
           <div className="space-y-1.5">
             <Label>Course</Label>
             <Select
@@ -710,13 +713,13 @@ function EnrollmentsTab({
           </div>
         )}
 
-        {enrollCourseId && (enrollOrgId || !isPlatformAdmin) && (
+        {enrollCourseId && selectedEnrollmentOrgId && (
           <Button
             className="w-full gap-2"
             onClick={() => enrollMutation.mutate({
               userId: user.id,
               courseId: enrollCourseId,
-              orgId: enrollOrgId ?? (user.orgId ?? 0),
+              orgId: selectedEnrollmentOrgId,
             })}
             disabled={enrollMutation.isPending}
           >

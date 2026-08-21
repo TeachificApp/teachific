@@ -1495,6 +1495,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundleEditorSource).not.toContain("orgId={(bundle as any).orgId ?? 1}");
   });
 
+  it("uses active organization context for organization-admin member enrollment", () => {
+    const userDetailPanelSource = readFileSync(new URL("../client/src/components/UserDetailPanel.tsx", import.meta.url), "utf8");
+    expect(userDetailPanelSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
+    expect(userDetailPanelSource).toContain("const { orgId: activeOrgId } = useOrgScope()");
+    expect(userDetailPanelSource).toContain("const selectedEnrollmentOrgId = isPlatformAdmin ? enrollOrgId : activeOrgId");
+    expect(userDetailPanelSource).toContain("orgId: selectedEnrollmentOrgId,");
+    expect(userDetailPanelSource).not.toContain("enrollOrgId ?? (user.orgId ?? 0)");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
