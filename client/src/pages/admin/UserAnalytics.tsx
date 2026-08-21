@@ -84,9 +84,9 @@ function OverviewTab({ from, to }: { from: string; to: string }) {
           Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
         ) : overview ? (
           <>
-            <StatCard icon={<Users className="w-5 h-5 text-teal-600" />} label="Active Users" value={overview.activeUsers} color="bg-teal-50" />
+            <StatCard icon={<Users className="w-5 h-5 text-[var(--org-primary)]" />} label="Active Users" value={overview.activeUsers} color="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" />
             <StatCard icon={<LogIn className="w-5 h-5 text-blue-600" />} label="Logins" value={overview.logins} color="bg-blue-50" />
-            <StatCard icon={<Eye className="w-5 h-5 text-teal-600" />} label="Page Views" value={overview.pageViews} color="bg-teal-50" />
+            <StatCard icon={<Eye className="w-5 h-5 text-[var(--org-primary)]" />} label="Page Views" value={overview.pageViews} color="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" />
             <StatCard icon={<PlayCircle className="w-5 h-5 text-orange-600" />} label="Video Plays" value={overview.videoPlays} sub={`${overview.videoCompletes} completed`} color="bg-orange-50" />
             <StatCard icon={<HelpCircle className="w-5 h-5 text-pink-600" />} label="Quiz Attempts" value={overview.quizAttempts} color="bg-pink-50" />
             <StatCard icon={<Download className="w-5 h-5 text-green-600" />} label="Downloads" value={overview.downloads} color="bg-green-50" />
@@ -119,7 +119,7 @@ function OverviewTab({ from, to }: { from: string; to: string }) {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={d => d.slice(5)} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => [v, METRIC_LABELS[metric]]} labelFormatter={l => `Date: ${l}`} />
-                <Line type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={2} dot={false} name={METRIC_LABELS[metric]} />
+                <Line type="monotone" dataKey="value" stroke="var(--org-primary)" strokeWidth={2} dot={false} name={METRIC_LABELS[metric]} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -161,7 +161,7 @@ function OverviewTab({ from, to }: { from: string; to: string }) {
                   <div key={c.courseId} className="flex items-center gap-2 text-xs py-1 border-b border-gray-50 last:border-0">
                     <span className="text-gray-400 w-5 text-right">{i + 1}</span>
                     <span className="flex-1 text-gray-700 truncate">{c.courseTitle}</span>
-                    <span className="text-teal-600">{c.videoPlays} plays</span>
+                    <span className="text-[var(--org-primary)]">{c.videoPlays} plays</span>
                     <span className="text-orange-500">{c.videoCompletes} done</span>
                     {c.avgQuizScore != null && <span className="text-pink-500">{c.avgQuizScore}% avg</span>}
                   </div>
@@ -263,7 +263,7 @@ function UserListTab({ onSelectUser, initialSearch = "" }: { onSelectUser: (id: 
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => onSelectUser(u.id)}>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 text-xs font-semibold flex-shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center text-[var(--org-primary)] text-xs font-semibold flex-shrink-0">
                         {(u.name || u.email || "?")[0].toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -277,7 +277,7 @@ function UserListTab({ onSelectUser, initialSearch = "" }: { onSelectUser: (id: 
                     <span className={`text-xs font-medium ${u.loginCount > 0 ? "text-blue-600" : "text-gray-300"}`}>{u.loginCount}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    <span className={`text-xs font-medium ${u.pageViewCount > 0 ? "text-teal-600" : "text-gray-300"}`}>{u.pageViewCount}</span>
+                    <span className={`text-xs font-medium ${u.pageViewCount > 0 ? "text-[var(--org-primary)]" : "text-gray-300"}`}>{u.pageViewCount}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <span className={`text-xs font-medium ${u.videoPlayCount > 0 ? "text-orange-600" : "text-gray-300"}`}>{u.videoPlayCount}</span>
@@ -298,11 +298,11 @@ function UserListTab({ onSelectUser, initialSearch = "" }: { onSelectUser: (id: 
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <div className="flex items-center gap-1 justify-end">
-                      <Button size="sm" variant="ghost" className="h-6 text-xs text-teal-600 hover:bg-teal-50 px-2"
+                      <Button size="sm" variant="ghost" className="h-6 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] px-2"
                         onClick={(e) => { e.stopPropagation(); onSelectUser(u.id); }}>
                         Analytics
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-6 text-xs text-teal-600 hover:bg-teal-50 px-2"
+                      <Button size="sm" variant="ghost" className="h-6 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] px-2"
                         onClick={(e) => { e.stopPropagation(); navigate(`/admin/users/${u.id}`); }}>
                         Manage →
                       </Button>
@@ -365,7 +365,7 @@ function UserDetailView({ userId, onBack }: { userId: number; onBack: () => void
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
         <div className="flex items-center gap-3 flex-1">
-          <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold">
+          <div className="w-10 h-10 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center text-[var(--org-primary)] font-semibold">
             {(user.name || user.email || "?")[0].toUpperCase()}
           </div>
           <div>
@@ -383,7 +383,7 @@ function UserDetailView({ userId, onBack }: { userId: number; onBack: () => void
           <p className="text-xs text-gray-500">Logins (last 50)</p>
         </CardContent></Card>
         <Card className="border border-gray-200"><CardContent className="p-3 text-center">
-          <p className="text-xl font-bold text-teal-600">{pageViewsByPath.reduce((s, p) => s + p.views, 0)}</p>
+          <p className="text-xl font-bold text-[var(--org-primary)]">{pageViewsByPath.reduce((s, p) => s + p.views, 0)}</p>
           <p className="text-xs text-gray-500">Page Views</p>
         </CardContent></Card>
         <Card className="border border-gray-200"><CardContent className="p-3 text-center">
@@ -399,7 +399,7 @@ function UserDetailView({ userId, onBack }: { userId: number; onBack: () => void
           <p className="text-xs text-gray-500">Downloads</p>
         </CardContent></Card>
         <Card className="border border-gray-200"><CardContent className="p-3 text-center">
-          <p className="text-xl font-bold text-teal-600">{enrollments.filter(e => e.completedAt).length}/{enrollments.length}</p>
+          <p className="text-xl font-bold text-[var(--org-primary)]">{enrollments.filter(e => e.completedAt).length}/{enrollments.length}</p>
           <p className="text-xs text-gray-500">Courses Done</p>
         </CardContent></Card>
       </div>
@@ -444,7 +444,7 @@ function UserDetailView({ userId, onBack }: { userId: number; onBack: () => void
                         <td className="px-3 py-2.5 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                              <div className="h-full bg-teal-500 rounded-full" style={{ width: `${e.progressPct}%` }} />
+                              <div className="h-full bg-[var(--org-primary)] rounded-full" style={{ width: `${e.progressPct}%` }} />
                             </div>
                             <span className="text-xs text-gray-600">{e.progressPct}%</span>
                           </div>
@@ -594,7 +594,7 @@ function UserDetailView({ userId, onBack }: { userId: number; onBack: () => void
                     {pageViewsByPath.map(p => (
                       <tr key={p.path} className="hover:bg-gray-50">
                         <td className="px-4 py-2.5 font-mono text-xs text-gray-700">{p.path}</td>
-                        <td className="px-3 py-2.5 text-right text-sm font-medium text-teal-600">{p.views}</td>
+                        <td className="px-3 py-2.5 text-right text-sm font-medium text-[var(--org-primary)]">{p.views}</td>
                         <td className="px-3 py-2.5 text-right text-xs text-gray-400">{fmtDate(p.lastViewed)}</td>
                       </tr>
                     ))}
@@ -749,14 +749,14 @@ function ActivityLogTab({ userId, userName }: { userId: number; userName: string
   ];
 
   const eventTypeColors: Record<string, string> = {
-    page_view: "bg-teal-100 text-teal-700",
+    page_view: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
     login: "bg-blue-100 text-blue-700",
     video_play: "bg-orange-100 text-orange-700",
     video_complete: "bg-green-100 text-green-700",
     quiz_attempt: "bg-pink-100 text-pink-700",
     quiz_pass: "bg-emerald-100 text-emerald-700",
     quiz_fail: "bg-red-100 text-red-700",
-    course_enroll: "bg-teal-100 text-teal-700",
+    course_enroll: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]",
     course_complete: "bg-green-100 text-green-700",
     download: "bg-indigo-100 text-indigo-700",
     module_complete: "bg-cyan-100 text-cyan-700",
@@ -801,7 +801,7 @@ function ActivityLogTab({ userId, userName }: { userId: number; userName: string
       <CardContent className="p-0">
         {isLoading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin h-6 w-6 border-2 border-teal-500 border-t-transparent rounded-full mx-auto" />
+            <div className="animate-spin h-6 w-6 border-2 border-[var(--org-primary)] border-t-transparent rounded-full mx-auto" />
           </div>
         ) : !data?.logs.length ? (
           <p className="text-gray-400 text-sm text-center py-8">
@@ -906,7 +906,7 @@ export default function UserAnalytics() {
       <div className="flex items-center justify-between">
         <div>
           <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
-            <a href="/platform-admin" className="hover:text-teal-600 transition-colors">Platform Admin</a>
+            <a href="/platform-admin" className="hover:text-[var(--org-primary)] transition-colors">Platform Admin</a>
             <span>/</span>
             <span className="text-gray-600 font-medium">User Analytics</span>
           </nav>
