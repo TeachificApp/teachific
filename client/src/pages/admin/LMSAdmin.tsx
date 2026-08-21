@@ -10135,7 +10135,7 @@ function QuestionBankAdmin() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Database className="w-5 h-5 text-teal-600" /> Question Bank</h2>
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Database className="w-5 h-5 text-[var(--org-primary)]" /> Question Bank</h2>
           <p className="text-sm text-gray-500 mt-0.5">{total} question{total !== 1 ? "s" : ""} total</p>
         </div>
         <div className="flex gap-2">
@@ -10148,8 +10148,8 @@ function QuestionBankAdmin() {
             style={{ borderColor: "color-mix(in_srgb, var(--org-primary) 45%, transparent)", color: "var(--org-primary)", backgroundColor: "color-mix(in_srgb, var(--org-primary) 6%, transparent)" }}
           ><FolderOpen className="w-3.5 h-3.5" /> Folders</Button>
           <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50 gap-1.5" onClick={() => { setShowScormImport(p => !p); setShowAIPanel(false); setScormPreview(null); }}><Upload className="w-3.5 h-3.5" /> Import from SCORM</Button>
-          <Button size="sm" variant="outline" className="border-teal-300 text-teal-700 hover:bg-teal-50 gap-1.5" onClick={() => setShowAIPanel(p => !p)}><Sparkles className="w-3.5 h-3.5" /> AI Generate</Button>
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" /> Add Question</Button>
+          <Button size="sm" variant="outline" className="border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] gap-1.5" onClick={() => setShowAIPanel(p => !p)}><Sparkles className="w-3.5 h-3.5" /> AI Generate</Button>
+          <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-1.5" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5" /> Add Question</Button>
         </div>
       </div>
 
@@ -10170,7 +10170,7 @@ function QuestionBankAdmin() {
           </div>
           <div className="flex gap-2">
             <Input id="new-tag-name" placeholder="New tag name..." className="h-8 text-sm flex-1" />
-            <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => {
+            <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => {
               const val = (document.getElementById("new-tag-name") as HTMLInputElement)?.value?.trim();
               if (val) createTag.mutate({ name: val });
             }}>Add</Button>
@@ -10180,40 +10180,40 @@ function QuestionBankAdmin() {
 
       {/* AI Generate Panel */}
       {showAIPanel && (
-        <div className="border border-teal-200 rounded-xl p-5 bg-teal-50 space-y-4">
+        <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-xl p-5 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-teal-800 flex items-center gap-2"><Sparkles className="w-4 h-4" /> AI Question Generator</h3>
+            <h3 className="font-semibold text-[var(--org-primary)] flex items-center gap-2"><Sparkles className="w-4 h-4" /> AI Question Generator</h3>
             <Button size="sm" variant="ghost" onClick={() => setShowAIPanel(false)}><X className="w-3.5 h-3.5" /></Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
-              <Label className="text-xs font-medium text-teal-700 mb-1 block">Topic *</Label>
-              <Input value={aiTopic} onChange={e => setAITopic(e.target.value)} placeholder="e.g. Doppler physics, DVT diagnosis, Normal fetal echo anatomy" className="bg-white border-teal-200" />
+              <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Topic *</Label>
+              <Input value={aiTopic} onChange={e => setAITopic(e.target.value)} placeholder="e.g. Doppler physics, DVT diagnosis, Normal fetal echo anatomy" className="bg-white border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]" />
             </div>
             <div>
-              <Label className="text-xs font-medium text-teal-700 mb-1 block">Number of Questions</Label>
-              <select value={aiCount} onChange={e => setAICount(Number(e.target.value))} className="w-full h-9 rounded-md border border-teal-200 bg-white px-3 text-sm">
+              <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Number of Questions</Label>
+              <select value={aiCount} onChange={e => setAICount(Number(e.target.value))} className="w-full h-9 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] bg-white px-3 text-sm">
                 {[5, 10, 15, 20, 25, 30, 50].map(n => <option key={n} value={n}>{n} questions</option>)}
               </select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-teal-700 mb-1 block">Difficulty</Label>
-              <select value={aiDifficulty} onChange={e => setAIDifficulty(e.target.value as any)} className="w-full h-9 rounded-md border border-teal-200 bg-white px-3 text-sm">
+              <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Difficulty</Label>
+              <select value={aiDifficulty} onChange={e => setAIDifficulty(e.target.value as any)} className="w-full h-9 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] bg-white px-3 text-sm">
                 <option value="beginner">Beginner</option>
                 <option value="intermediate">Intermediate</option>
                 <option value="advanced">Advanced</option>
               </select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-teal-700 mb-1 block">Question Type</Label>
-              <select value={aiType} onChange={e => setAIType(e.target.value as any)} className="w-full h-9 rounded-md border border-teal-200 bg-white px-3 text-sm">
+              <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Question Type</Label>
+              <select value={aiType} onChange={e => setAIType(e.target.value as any)} className="w-full h-9 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] bg-white px-3 text-sm">
                 <option value="mcq">Multiple Choice</option>
                 <option value="truefalse">True / False</option>
                 <option value="mixed">Mixed</option>
               </select>
             </div>
             <div>
-              <Label className="text-xs font-medium text-teal-700 mb-1 block">Tags (optional)</Label>
+              <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Tags (optional)</Label>
               <div className="flex flex-wrap gap-1.5">
                 {tags.map(tag => (
                   <button key={tag.id} onClick={() => setAITagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id])}
@@ -10226,7 +10226,7 @@ function QuestionBankAdmin() {
             </div>
           </div>
           <div className="flex justify-end">
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5" disabled={!aiTopic.trim() || aiGenerate.isPending}
+            <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-1.5" disabled={!aiTopic.trim() || aiGenerate.isPending}
               onClick={() => aiGenerate.mutate({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, questionType: aiType, tagIds: aiTagIds.length > 0 ? aiTagIds : undefined })}>
               {aiGenerate.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</> : <><Sparkles className="w-3.5 h-3.5" /> Generate & Add to Bank</>}
             </Button>
@@ -10422,7 +10422,7 @@ function QuestionBankAdmin() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {questions.map(q => (
-                <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", selectedIds.has(q.id) && "bg-teal-50")}>
+                <tr key={q.id} className={cn("hover:bg-gray-50 transition-colors", selectedIds.has(q.id) && "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]")}>
                   <td className="px-3 py-2.5"><input type="checkbox" checked={selectedIds.has(q.id)} onChange={() => toggleSelect(q.id)} className="rounded" /></td>
                   <td className="px-3 py-2.5">
                     <p className="font-medium text-gray-800 line-clamp-2">{q.question}</p>
