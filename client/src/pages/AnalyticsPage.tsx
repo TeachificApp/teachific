@@ -315,7 +315,7 @@ export default function AnalyticsPage() {
             title="Total Downloads"
             value={totalDownloads.toLocaleString()}
             icon={Download}
-            colorClass="bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
+            colorClass="bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]"
           />
           <StatCard
             title="Completion Rate"
@@ -577,7 +577,7 @@ export default function AnalyticsPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-purple-500" />Quiz Performance
+                  <BookOpen className="h-4 w-4 text-[var(--org-primary)]" />Quiz Performance
                 </CardTitle>
                 <Button size="sm" variant="outline" onClick={() => setLocation("/quizzes")} className="gap-1.5 text-xs">
                   <BookOpen className="h-3.5 w-3.5" />Manage Quizzes

@@ -1783,6 +1783,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cmeUserTabSource).not.toContain('bg-teal-100');
   });
 
+  it("uses the active organization theme for analytics download and quiz accents", () => {
+    const analyticsSource = readFileSync(new URL("../client/src/pages/AnalyticsPage.tsx", import.meta.url), "utf8");
+    expect(analyticsSource).toContain('bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]');
+    expect(analyticsSource).toContain('BookOpen className="h-4 w-4 text-[var(--org-primary)]"');
+    expect(analyticsSource).not.toContain('bg-purple-50 text-purple-600');
+    expect(analyticsSource).not.toContain('text-purple-500');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');
