@@ -1660,6 +1660,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionGroupsSource).not.toContain("border-teal-300 text-teal-600 hover:bg-teal-50");
   });
 
+  it("resolves content embed defaults and cohort override styling from the active organization theme", () => {
+    const contentEmbedSource = readFileSync(new URL("../client/src/components/admin/ContentEmbedTab.tsx", import.meta.url), "utf8");
+    expect(contentEmbedSource).toContain("function getActiveOrganizationPrimary()");
+    expect(contentEmbedSource).toContain('getPropertyValue("--org-primary").trim() || "#179ca3"');
+    expect(contentEmbedSource).toContain("const [accentColor, setAccentColor] = useState(getActiveOrganizationPrimary)");
+    expect(contentEmbedSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]");
+    expect(contentEmbedSource).not.toContain('const [accentColor, setAccentColor] = useState("#14adb8")');
+    expect(contentEmbedSource).not.toContain("border-teal-100 bg-teal-50/40");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

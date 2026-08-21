@@ -58,6 +58,11 @@ function ctaEmbedAttr(entityType: ContentEmbedEntityType, slug: string) {
     : { "data-content-cta-embed": slug, "data-entity-type": entityType };
 }
 
+function getActiveOrganizationPrimary() {
+  if (typeof window === "undefined") return "#179ca3";
+  return window.getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#179ca3";
+}
+
 export function ContentEmbedTab({
   entityType,
   slug,
@@ -93,7 +98,7 @@ export function ContentEmbedTab({
     return [];
   }, [instanceItemsProp, instanceEmbedKind, cohortGroups]);
 
-  const [accentColor, setAccentColor] = useState("#14adb8");
+  const [accentColor, setAccentColor] = useState(getActiveOrganizationPrimary);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [ctaUrl, setCtaUrl] = useState(defaultCheckoutUrl);
   const [ctaLabel, setCtaLabel] = useState("Enroll Now");
@@ -357,11 +362,11 @@ export function ContentEmbedTab({
 
         {/* Cohort/Instance drill-down for CTA card */}
         {instanceEmbedKind && instanceItems.length > 0 && (
-          <div className="mb-4 p-3 rounded-lg border border-teal-100 bg-teal-50/40">
-            <Label className="text-xs font-semibold text-teal-800 block mb-1">
-              {instanceEmbedKind === "cohort" ? "Cohort Group" : "Workshop Instance"} Override <span className="font-normal text-teal-600">(optional)</span>
+          <div className="mb-4 p-3 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)]">
+            <Label className="text-xs font-semibold text-[var(--org-primary)] block mb-1">
+              {instanceEmbedKind === "cohort" ? "Cohort Group" : "Workshop Instance"} Override <span className="font-normal text-[var(--org-primary)]">(optional)</span>
             </Label>
-            <p className="text-[10px] text-teal-700 mb-2">
+            <p className="text-[10px] text-[var(--org-primary)] mb-2">
               Select a specific {instanceEmbedKind === "cohort" ? "cohort group" : "instance"} to point the button URL directly to that {instanceEmbedKind === "cohort" ? "group" : "instance"}'s enrollment page. Leave blank to use the main course URL.
             </p>
             <Select
