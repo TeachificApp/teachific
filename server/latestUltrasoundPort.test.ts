@@ -1565,6 +1565,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(homeSource).not.toContain('return <OrgAdminDashboard orgId={orgCtx.org?.id ?? 0}');
   });
 
+  it("uses the active organization theme for recording-library saved feedback", () => {
+    const recordPageSource = readFileSync(new URL("../client/src/pages/RecordPage.tsx", import.meta.url), "utf8");
+    expect(recordPageSource).toContain('savedToLibrary[idx] ? "text-[var(--org-primary)]" : ""');
+    expect(recordPageSource).not.toContain('savedToLibrary[idx] ? "text-teal-500" : ""');
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

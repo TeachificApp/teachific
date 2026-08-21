@@ -5658,6 +5658,7 @@
 - [x] Require active-organization ownership when reading individual order bumps
 - [x] Resolve private content package reads from the authorized active organization
 - [x] Prevent the platform-home redirect state from rendering an organization dashboard with a numeric fallback
+- [x] Apply the active organization theme to recording-library saved state feedback
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

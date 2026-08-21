@@ -650,7 +650,7 @@ export default function RecordPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className={cn("h-7 w-7", savedToLibrary[idx] ? "text-teal-500" : "")}
+                            className={cn("h-7 w-7", savedToLibrary[idx] ? "text-[var(--org-primary)]" : "")}
                             onClick={() => handleSaveToLibrary(rec, idx)}
                             disabled={savingIdx === idx || savedToLibrary[idx]}
                             title={savedToLibrary[idx] ? "Saved to Library" : "Save to Media Library"}
