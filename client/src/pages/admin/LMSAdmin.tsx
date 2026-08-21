@@ -4553,7 +4553,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-teal-700 font-bold text-sm uppercase tracking-wide shrink-0">Edit Lesson</span>
+            <span className="text-[var(--org-primary)] font-bold text-sm uppercase tracking-wide shrink-0">Edit Lesson</span>
             <span className="text-gray-300 text-sm shrink-0">·</span>
             <span className="text-gray-800 font-semibold text-sm truncate min-w-[15ch] max-w-[40vw]" title={lesson.title}>{lesson.title}</span>
           </div>
@@ -4572,7 +4572,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <Button
             size="sm"
             variant="outline"
-            className="border-teal-300 text-teal-700 hover:bg-teal-50 h-7 text-xs font-semibold"
+            className="border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] h-7 text-xs font-semibold"
             disabled={headerSaving || update.isPending}
             onClick={() => handleHeaderSave(false)}
           >
@@ -4581,7 +4581,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           </Button>
           <Button
             size="sm"
-            className="bg-teal-600 hover:bg-teal-700 text-white h-7 text-xs font-semibold"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white h-7 text-xs font-semibold"
             disabled={headerSaving || update.isPending}
             onClick={() => handleHeaderSave(true)}
           >
@@ -4593,7 +4593,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <Button
             size="sm"
             variant="outline"
-            className="h-7 text-xs text-teal-600 border-teal-300 hover:bg-teal-50 shrink-0"
+            className="h-7 text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] shrink-0"
             onClick={() => openLearnLink(`/courses/${courseData.slug}/player?lesson=${lesson.id}&preview=student`)}
           >
             <Eye className="w-3 h-3 mr-1" /> Preview as Student
@@ -4604,7 +4604,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <button
             onClick={() => setActiveTab("settings")}
             className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              activeTab === "settings" ? "bg-teal-600 text-white" : "text-gray-500 hover:text-gray-800"
+              activeTab === "settings" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:text-gray-800"
             }`}
           >
             Settings
@@ -4612,7 +4612,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <button
             onClick={() => setActiveTab("content")}
             className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              activeTab === "content" ? "bg-teal-600 text-white" : "text-gray-500 hover:text-gray-800"
+              activeTab === "content" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:text-gray-800"
             }`}
           >
             Lesson Editor
@@ -4625,7 +4625,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             onClick={() => prevLesson && onNavigateLesson?.(prevLesson)}
             disabled={!prevLesson}
             title={prevLesson ? `← ${prevLesson.title}` : "No previous lesson"}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-teal-700 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden md:inline max-w-[110px] truncate">{prevLesson ? prevLesson.title : "Prev"}</span>
@@ -4634,7 +4634,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             onClick={() => nextLesson && onNavigateLesson?.(nextLesson)}
             disabled={!nextLesson}
             title={nextLesson ? `${nextLesson.title} →` : "No next lesson"}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-teal-700 hover:bg-teal-50 border border-gray-200 hover:border-teal-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
             <span className="hidden md:inline max-w-[110px] truncate">{nextLesson ? nextLesson.title : "Next"}</span>
             <ChevronRight className="w-3.5 h-3.5 shrink-0" />
@@ -4669,8 +4669,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
                 onClick={() => { setLessonStatus("published"); setIsDirty(true); }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors ${
                   lessonStatus === "published"
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "border-gray-200 text-gray-500 hover:border-teal-300 hover:text-teal-600"
+                    ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                    : "border-gray-200 text-gray-500 hover:border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:text-[var(--org-primary)]"
                 }`}
               >
                 Published
@@ -4694,8 +4694,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           </div>
 
           {/* Preview mode selector */}
-          <div className="border border-teal-100 rounded-lg p-4 space-y-3 bg-teal-50/30">
-            <Label className="text-sm font-semibold text-teal-800">Free Preview Setting</Label>
+          <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-4 space-y-3 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]">
+            <Label className="text-sm font-semibold text-[var(--org-primary)]">Free Preview Setting</Label>
             <Select value={previewMode} onValueChange={(v) => setPreviewMode(v as typeof previewMode)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -4710,7 +4710,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               <p className="text-xs text-gray-500">This lesson is only accessible to enrolled students.</p>
             )}
             {previewMode === "preview" && (
-              <p className="text-xs text-teal-700">Non-enrolled users can view this lesson as a free sample. Preview access supersedes drip and prerequisite rules.</p>
+              <p className="text-xs text-[var(--org-primary)]">Non-enrolled users can view this lesson as a free sample. Preview access supersedes drip and prerequisite rules.</p>
             )}
             {previewMode === "preview_hide_after_purchase" && (
               <p className="text-xs text-amber-700">Shown as a free teaser to non-enrolled users. Once a student purchases the course, this lesson is hidden — useful for "before you buy" teasers that shouldn't clutter the course after purchase.</p>
@@ -4725,7 +4725,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               {([null, true, false] as const).map(v => (
                 <button key={String(v)} onClick={() => setRequireManualComplete(v)}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    requireManualComplete === v ? "bg-white shadow text-teal-700 border border-gray-200" : "text-gray-500 hover:text-gray-700"
+                    requireManualComplete === v ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
                   }`}>
                   {v === null ? "Inherit from course" : v ? "Always show" : "Always hide"}
                 </button>
@@ -4769,8 +4769,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             />
           </div>
           {/* Live meeting link */}
-          <div className="border border-teal-100 rounded-lg p-4 space-y-2 bg-teal-50/40">
-            <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><Video className="w-4 h-4 text-teal-600" /> Live Meeting Link (Zoom / Teams)</p>
+          <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-4 space-y-2 bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)]">
+            <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><Video className="w-4 h-4 text-[var(--org-primary)]" /> Live Meeting Link (Zoom / Teams)</p>
             <p className="text-xs text-gray-500">Paste a Zoom or Teams meeting URL here. A "Join Live" button will appear next to this lesson on the enrolled course overview page only.</p>
             <Input
               type="url"
@@ -4780,13 +4780,13 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               className="text-sm"
             />
             {meetingLink && (
-              <p className="text-xs text-teal-700 flex items-center gap-1">
+              <p className="text-xs text-[var(--org-primary)] flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" /> Join Live button will be shown on the course overview
               </p>
             )}
             {/* Scheduled start/end times for time-gated Join Live button */}
             {meetingLink && (
-              <div className="space-y-2 pt-2 border-t border-teal-100">
+              <div className="space-y-2 pt-2 border-t border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]">
                 <p className="text-xs font-medium text-gray-600 flex items-center gap-1"><Clock className="w-3 h-3" /> Schedule (optional — controls when Join Live button is visible)</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -4815,7 +4815,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
 
           {/* Drip scheduling */}
           <div className="border border-gray-200 rounded-lg p-4 space-y-2 bg-gray-50">
-            <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><Clock className="w-4 h-4 text-teal-600" /> Drip Schedule</p>
+            <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><Clock className="w-4 h-4 text-[var(--org-primary)]" /> Drip Schedule</p>
             <p className="text-xs text-gray-500">Optionally lock this lesson until a set number of days after enrollment. Leave blank to inherit section drip or be available immediately.</p>
             <div className="flex items-center gap-2">
               <Input
@@ -4832,7 +4832,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               )}
             </div>
             {dripDays && parseInt(dripDays) > 0 && (
-              <p className="text-xs text-teal-600">Students enrolled today will unlock this lesson on day {dripDays}.</p>
+              <p className="text-xs text-[var(--org-primary)]">Students enrolled today will unlock this lesson on day {dripDays}.</p>
             )}
           </div>
           {/* Instructor display override */}
