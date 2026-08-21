@@ -8398,7 +8398,7 @@ function PublishRequestsTab() {
           {(["pending", "approved", "rejected", "all"] as const).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                statusFilter === s ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
+                statusFilter === s ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[color:color-mix(in_srgb,var(--org-primary)_40%,transparent)]"
               }`}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
@@ -8407,7 +8407,7 @@ function PublishRequestsTab() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-teal-600" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-[var(--org-primary)]" /></div>
       ) : requests.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
           <CheckCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -8437,8 +8437,8 @@ function PublishRequestsTab() {
                     </p>
                   )}
                   {req.reviewNote && (
-                    <p className="mt-2 text-sm text-gray-600 bg-teal-50 rounded-lg p-3 border border-teal-100">
-                      <span className="text-xs font-bold text-teal-600 uppercase tracking-wide block mb-1">Review Note</span>
+                    <p className="mt-2 text-sm text-gray-600 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded-lg p-3 border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]">
+                      <span className="text-xs font-bold text-[var(--org-primary)] uppercase tracking-wide block mb-1">Review Note</span>
                       {req.reviewNote}
                     </p>
                   )}
@@ -8479,7 +8479,7 @@ function PublishRequestsTab() {
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
                 placeholder={decision === "approved" ? "Great work! Published." : "Please revise the introduction section before publishing."}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
                 rows={3}
               />
             </div>

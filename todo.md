@@ -5735,6 +5735,7 @@
 - [x] Apply the active organization theme to LMS administration navigation controls
 - [x] Apply the active organization theme to LMS community administration controls
 - [x] Apply the active organization theme to LMS free-preview enrollment controls
+- [x] Apply the active organization theme to LMS instructor publish-request controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
