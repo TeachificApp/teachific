@@ -2463,6 +2463,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortGroupDialog).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout LMS cohort settings controls", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const cohortSettings = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("{/* Settings */}"),
+      lmsAdminSource.indexOf("{/* Discussions Tab */}")
+    );
+    expect(cohortSettings).toContain("accent-[var(--org-primary)]");
+    expect(cohortSettings).toContain("text-[var(--org-primary)]");
+    expect(cohortSettings).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

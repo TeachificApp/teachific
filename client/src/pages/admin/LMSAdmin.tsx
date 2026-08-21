@@ -12384,10 +12384,10 @@ function CohortTab({ courseId }: { courseId: number }) {
             <div className="space-y-3">
               {/* Single cohort option */}
               <label className={cn("flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors",
-                !courseData?.multiCohortMode ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300")}>
+                !courseData?.multiCohortMode ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-gray-200 hover:border-gray-300")}>
                 <input type="radio" name="cohortMode" checked={!courseData?.multiCohortMode}
                   onChange={() => updateCourse.mutate({ id: courseId, multiCohortMode: false })}
-                  className="mt-0.5 accent-teal-600" />
+                  className="mt-0.5 accent-[var(--org-primary)]" />
                 <div>
                   <div className="text-sm font-semibold text-gray-800">Single Cohort</div>
                   <div className="text-xs text-gray-500 mt-0.5">All enrolled students share the same live sessions, assignments, and recordings. No group separation.</div>
@@ -12395,10 +12395,10 @@ function CohortTab({ courseId }: { courseId: number }) {
               </label>
               {/* Multi-cohort option */}
               <label className={cn("flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors",
-                courseData?.multiCohortMode ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-gray-300")}>
+                courseData?.multiCohortMode ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" : "border-gray-200 hover:border-gray-300")}>
                 <input type="radio" name="cohortMode" checked={!!courseData?.multiCohortMode}
                   onChange={() => updateCourse.mutate({ id: courseId, multiCohortMode: true })}
-                  className="mt-0.5 accent-teal-600" />
+                  className="mt-0.5 accent-[var(--org-primary)]" />
                 <div>
                   <div className="text-sm font-semibold text-gray-800">Multiple Cohort Groups</div>
                   <div className="text-xs text-gray-500 mt-0.5">Organise students into named groups (e.g. June 2026, January 2027). Each group has its own sessions, assignments, and recordings. Students only see their group's content.</div>
@@ -12406,7 +12406,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               </label>
             </div>
             {courseData?.multiCohortMode && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-xs text-teal-800">
+              <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg p-3 text-xs text-[var(--org-primary)]">
                 <strong>Multi-cohort mode is active.</strong> Go to the <button className="underline font-medium" onClick={() => setActiveTab("groups")}>Cohort Groups</button> tab to manage your groups and assign students.
               </div>
             )}
@@ -12432,18 +12432,18 @@ function CohortTab({ courseId }: { courseId: number }) {
                       <div>
                         <span className="text-sm font-medium text-gray-800">{s.userName}</span>
                         <span className="text-xs text-gray-500 ml-2">{s.userEmail}</span>
-                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${s.role === 'admin' ? 'bg-teal-100 text-teal-700' : 'bg-blue-100 text-blue-700'}`}>{s.role}</span>
+                        <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${s.role === 'admin' ? 'bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]' : 'bg-blue-100 text-blue-700'}`}>{s.role}</span>
                         <span className="text-xs text-gray-400 ml-2">
                           {[s.canManageDiscussions && 'discussions', s.canAddSessions && 'sessions', s.canAddAssignments && 'assignments', s.canAddRecordings && 'recordings'].filter(Boolean).join(', ')}
                         </span>
                       </div>
                       <div className="flex gap-2">
-                        <button className="text-xs text-teal-600 hover:underline" onClick={() => { setStaffForm({ userEmail: s.userEmail ?? '', role: s.role, canManageDiscussions: !!s.canManageDiscussions, canAddSessions: !!s.canAddSessions, canAddAssignments: !!s.canAddAssignments, canAddRecordings: !!s.canAddRecordings }); setStaffDialog({ open: true, staff: s }); }}>Edit</button>
+                        <button className="text-xs text-[var(--org-primary)] hover:underline" onClick={() => { setStaffForm({ userEmail: s.userEmail ?? '', role: s.role, canManageDiscussions: !!s.canManageDiscussions, canAddSessions: !!s.canAddSessions, canAddAssignments: !!s.canAddAssignments, canAddRecordings: !!s.canAddRecordings }); setStaffDialog({ open: true, staff: s }); }}>Edit</button>
                         <button className="text-xs text-red-500 hover:underline" onClick={() => removeStaff.mutate({ id: s.id })}>Remove</button>
                       </div>
                     </div>
                   ))}
-                  <button className="mt-2 flex items-center gap-1 text-sm text-teal-600 hover:underline" onClick={() => { setStaffForm({ userEmail: '', role: 'moderator', canManageDiscussions: true, canAddSessions: false, canAddAssignments: false, canAddRecordings: false }); setStaffDialog({ open: true }); }}>
+                  <button className="mt-2 flex items-center gap-1 text-sm text-[var(--org-primary)] hover:underline" onClick={() => { setStaffForm({ userEmail: '', role: 'moderator', canManageDiscussions: true, canAddSessions: false, canAddAssignments: false, canAddRecordings: false }); setStaffDialog({ open: true }); }}>
                     <span className="text-lg leading-none">+</span> Add Staff Member
                   </button>
                 </div>
