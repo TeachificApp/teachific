@@ -5653,7 +5653,8 @@
 - [x] Render the organization landing page builder only with active-organization context
 - [x] Resolve Course Builder cover-image uploads from the active organization context
 - [x] Scope Creator Dashboard project listing and creation to the authorized active organization
-- [ ] Guard Creator project, slide, duplication, and export operations with the active organization
+- [x] Guard Creator project, slide, duplication, and export operations with the active organization
+- [x] Authorize optional webinar organization inputs against the active organization
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

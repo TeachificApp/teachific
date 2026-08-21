@@ -8,7 +8,7 @@ import { z } from "zod";
 import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import {
   webinars,
   cmeActivityForms,
@@ -29,11 +29,9 @@ export const webinarAdminRouter = router({
   list: protectedProcedure
     .input(z.object({ orgId: z.number().optional(), pageSize: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role, input?.orgId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = input?.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) return [];
       const rows = await db
         .select({
           ...webinars,
@@ -70,11 +68,9 @@ export const webinarAdminRouter = router({
       scheduledAt: z.date().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found" });
       const slug = input.slug ?? input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
       return createWebinar({ orgId, title: input.title, slug, scheduledAt: input.scheduledAt ?? null });
     }),
