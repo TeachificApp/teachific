@@ -12742,7 +12742,7 @@ function CohortWaitlistSettingsPanel({ cohortGroupId }: { cohortGroupId: number 
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saveMutation.isPending || !dirty} className="bg-teal-600 hover:bg-teal-700 text-white">
+        <Button onClick={handleSave} disabled={saveMutation.isPending || !dirty} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
           {saveMutation.isPending ? "Saving…" : "Save Waitlist Settings"}
         </Button>
       </div>
