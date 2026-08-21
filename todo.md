@@ -5656,6 +5656,7 @@
 - [x] Guard Creator project, slide, duplication, and export operations with the active organization
 - [x] Authorize optional webinar organization inputs against the active organization
 - [x] Require active-organization ownership when reading individual order bumps
+- [x] Resolve private content package reads from the authorized active organization
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

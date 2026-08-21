@@ -1553,6 +1553,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(orderBumpsSource).not.toContain("const _orgId = await requireOrgAdmin");
   });
 
+  it("resolves private content package reads from the authorized active organization", () => {
+    const mainRouterSource = readFileSync(new URL("../server/routers.ts", import.meta.url), "utf8");
+    expect(mainRouterSource).toContain("if (!pkg.isPublic && ctx.user) {\n        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(mainRouterSource).not.toContain("const activeOrgId = input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);\n        if (!activeOrgId || activeOrgId !== pkg.orgId)");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

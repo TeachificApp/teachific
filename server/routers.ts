@@ -2456,7 +2456,7 @@ export const appRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "This content is private. Please sign in to access it." });
       }
       if (!pkg.isPublic && ctx.user) {
-        const activeOrgId = input.orgId ?? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
         if (!activeOrgId || activeOrgId !== pkg.orgId) {
           throw new TRPCError({ code: "FORBIDDEN", message: "This content package does not belong to the active organization." });
         }
