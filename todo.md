@@ -5633,6 +5633,7 @@
 - [x] Port rich question feedback and feedback media controls from the upstream Quiz Creator
 - [x] Port rich per-answer feedback editing for Quiz Creator multiple-choice questions
 - [x] Port rich answer-feedback editing for Quiz Creator true-false and image-choice questions
+- [x] Auto-complete ordinary CME lessons when learners advance while preserving video and quiz gates
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

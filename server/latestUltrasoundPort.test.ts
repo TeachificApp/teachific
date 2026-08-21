@@ -1357,6 +1357,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(previewSource).toContain("q.feedbackVideo");
   });
 
+  it("auto-completes ordinary CME lessons on advance without bypassing video or quiz gates", () => {
+    const cmeCompletionSource = readFileSync(new URL("../shared/cmeLessonCompletion.ts", import.meta.url), "utf8");
+    const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    expect(cmeCompletionSource).toContain("shouldAutoCompleteCmeLessonOnAdvance");
+    expect(cmeCompletionSource).toContain("!requiresVideoCompletion");
+    expect(cmeCompletionSource).toContain("!hasInlineQuiz");
+    expect(cmeCompletionSource).toContain('lessonType !== "video"');
+    expect(cmeCompletionSource).toContain('lessonType !== "quiz"');
+    expect(coursePlayerSource).toContain('const hasInlineLessonQuiz = contentBlocks.some((block) => block.type === "lesson_quiz")');
+    expect(coursePlayerSource).toContain("const handleNextLesson = async () =>");
+    expect(coursePlayerSource).toContain("await markComplete.mutateAsync({ lessonId: selectedLessonId, courseSlug: slug! })");
+    expect(coursePlayerSource).toContain("onClick={handleNextLesson}");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

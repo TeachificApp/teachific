@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSubdomain } from "@/hooks/useSubdomain";
+import { shouldAutoCompleteCmeLessonOnAdvance } from "@shared/cmeLessonCompletion";
 import LessonEffectPlayer, { fireLessonCompleteEffect } from "@/components/LessonEffectPlayer";
 import { BlockPreview, type Block } from "@/components/BlockPreview";
 
@@ -1138,6 +1139,33 @@ export default function CoursePlayer() {
     try { return lessonData?.contentBlocks ? JSON.parse(lessonData.contentBlocks) : []; }
     catch { return []; }
   })();
+  const hasInlineLessonQuiz = contentBlocks.some((block) => block.type === "lesson_quiz");
+  const isCmeCourse = Boolean(data?.course?.hasCertificate && Number(data?.course?.creditHours ?? 0) > 0);
+  const shouldAutoCompleteOnAdvance = shouldAutoCompleteCmeLessonOnAdvance({
+    isCmeCourse,
+    lessonType: lessonData?.type,
+    requiresVideoCompletion: requireVideoCompletion,
+    hasInlineQuiz: hasInlineLessonQuiz,
+    isCompleted,
+  });
+  const handleNextLesson = async () => {
+    if (!nextLesson) return;
+    if (shouldAutoCompleteOnAdvance && selectedLessonId) {
+      setOptimisticCompleted((previous) => new Set([...previous, selectedLessonId]));
+      try {
+        await markComplete.mutateAsync({ lessonId: selectedLessonId, courseSlug: slug! });
+        fireLessonCompleteEffect();
+      } catch {
+        setOptimisticCompleted((previous) => {
+          const next = new Set(previous);
+          next.delete(selectedLessonId);
+          return next;
+        });
+        return;
+      }
+    }
+    handleLessonSelect(nextLesson.id);
+  };
   const learningObjectives: string[] = (() => {
     try {
       if (lessonData?.learningObjectives) return JSON.parse(lessonData.learningObjectives);
@@ -1730,7 +1758,7 @@ export default function CoursePlayer() {
                 </Button>
               )}
               {nextLesson && (
-                <Button size="sm" variant="outline" onClick={() => handleLessonSelect(nextLesson.id)} className="text-xs h-7" style={{ borderColor: primaryColor, color: primaryColor }}>
+                <Button size="sm" variant="outline" onClick={handleNextLesson} className="text-xs h-7" style={{ borderColor: primaryColor, color: primaryColor }}>
                   {lbl.nextLesson} <ChevronRight className="w-3 h-3 ml-1" />
                 </Button>
               )}
@@ -1878,7 +1906,7 @@ export default function CoursePlayer() {
                   {lessonData.type !== "quiz" && (
                     <div className="mt-auto pt-5 pb-4 flex items-center justify-end gap-3 flex-wrap">
                       {nextLesson && (
-                        <Button variant="outline" onClick={() => handleLessonSelect(nextLesson.id)} className="text-sm" style={{ borderColor: primaryColor, color: primaryColor }}>
+                        <Button variant="outline" onClick={handleNextLesson} className="text-sm" style={{ borderColor: primaryColor, color: primaryColor }}>
                           {lbl.nextLesson} <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                       )}
