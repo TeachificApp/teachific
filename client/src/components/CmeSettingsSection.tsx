@@ -55,7 +55,7 @@ export default function CmeSettingsSection({
 }: CmeSettingsSectionProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: cmeStatus, isLoading } = trpc.cme.getCmeStatus.useQuery(
+  const { data: cmeData, isLoading } = trpc.cme.getCmeStatus.useQuery(
     { courseId, orgId },
     { enabled: !!courseId }
   );
@@ -65,7 +65,7 @@ export default function CmeSettingsSection({
       <Card>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="w-4 h-4 text-teal-600" />
+            <FileText className="w-4 h-4 text-[var(--org-primary)]" />
             CME
           </CardTitle>
         </CardHeader>
@@ -79,7 +79,7 @@ export default function CmeSettingsSection({
     );
   }
 
-  if (!cmeStatus?.enabled) {
+  if (!cmeData?.enabled) {
     return (
       <Card className="border-dashed border-gray-300">
         <CardHeader>
@@ -98,17 +98,17 @@ export default function CmeSettingsSection({
     );
   }
 
-  const formStatus = cmeStatus?.formStatus ?? "pending";
-  const cmeStatus = cmeStatus?.cmeStatus ?? "draft";
-  const lastSentAt = cmeStatus?.lastSentAt;
+  const formStatus = cmeData?.formStatus ?? "pending";
+  const activityStatus = cmeData?.cmeStatus ?? "draft";
+  const lastSentAt = cmeData?.lastSentAt;
 
   return (
     <>
-      <Card className="border-teal-200">
+      <Card className="border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-teal-600" />
+              <FileText className="w-4 h-4 text-[var(--org-primary)]" />
               CME Activity Form
             </span>
             <FormStatusBadge status={formStatus} />
@@ -118,11 +118,11 @@ export default function CmeSettingsSection({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">Credit Hours</p>
-              <p className="font-medium">{creditHours ?? cmeStatus?.creditHours ?? "—"}</p>
+              <p className="font-medium">{creditHours ?? cmeData?.creditHours ?? "—"}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-0.5">CME Status</p>
-              <p className="font-medium capitalize">{cmeStatus}</p>
+              <p className="font-medium capitalize">{activityStatus}</p>
             </div>
             {lastSentAt && (
               <div>
@@ -133,7 +133,7 @@ export default function CmeSettingsSection({
           </div>
           <Button
             size="sm"
-            className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+            className="gap-2 bg-[var(--org-primary)] hover:brightness-90 text-white"
             onClick={() => setDialogOpen(true)}
           >
             <ExternalLink className="w-3.5 h-3.5" />
