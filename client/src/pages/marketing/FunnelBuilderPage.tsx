@@ -74,7 +74,7 @@ const STEP_TYPES = [
   { value: "order", label: "Order / Checkout", icon: ShoppingCart, color: "bg-[var(--org-primary)]", desc: "Collect payment from buyers" },
   { value: "upsell", label: "Upsell", icon: TrendingUp, color: "bg-orange-500", desc: "Offer an upgrade after purchase" },
   { value: "downsell", label: "Downsell", icon: TrendingDown, color: "bg-amber-500", desc: "Offer a lower-priced alternative" },
-  { value: "thank_you", label: "Thank You", icon: CheckCircle2, color: "bg-teal-500", desc: "Confirm purchase or registration" },
+  { value: "thank_you", label: "Thank You", icon: CheckCircle2, color: "bg-[var(--org-primary)]", desc: "Confirm purchase or registration" },
   { value: "webinar", label: "Webinar Registration", icon: Globe, color: "bg-sky-500", desc: "Collect webinar sign-ups" },
   { value: "custom", label: "Custom Page", icon: FileText, color: "bg-slate-500", desc: "Any other page type" },
 ] as const;

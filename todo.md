@@ -5625,6 +5625,7 @@
 - [x] Resolve Page Builder fallback accents from the active organization theme
 - [x] Resolve new certificate template defaults from the active organization theme
 - [x] Apply the active organization theme to subscription administration identity and refund controls
+- [x] Apply the active organization theme to the funnel builder thank-you step
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

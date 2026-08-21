@@ -1880,6 +1880,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(subscriptionsSource).not.toContain('text-teal-600');
   });
 
+  it("uses the active organization theme for the funnel builder thank-you step", () => {
+    const funnelBuilderPageSource = readFileSync(new URL("../client/src/pages/marketing/FunnelBuilderPage.tsx", import.meta.url), "utf8");
+    expect(funnelBuilderPageSource).toContain('value: "thank_you", label: "Thank You", icon: CheckCircle2, color: "bg-[var(--org-primary)]"');
+    expect(funnelBuilderPageSource).not.toContain('value: "thank_you", label: "Thank You", icon: CheckCircle2, color: "bg-teal-500"');
+  });
+
   it("resolves Blueprint organization administration from the authorized active organization", () => {
     const blueprintRouterSource = readFileSync(new URL("./routers/blueprintRouter.ts", import.meta.url), "utf8");
     expect(blueprintRouterSource).toContain('async function resolveActiveBlueprintOrg');
