@@ -2647,15 +2647,18 @@ export const lmsRouter = router({
         return { ok: true, url, id: result.id, filename: fileName, fileSize: buffer.byteLength };
       }),
     saveRecording: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional() }))
+      .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional(), fileKey: z.string().optional(), durationSeconds: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
         await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        if (input.fileKey && !input.fileKey.startsWith(`org-${orgId}/`)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Recording file key does not belong to the active organization." });
+        }
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id, filename: input.filename, mimeType: input.mimeType ?? "video/webm", fileSize: input.fileSize ?? 0, fileKey: `recordings/${nanoid(16)}`, url: input.url, source: "direct" });
+        await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id, filename: input.filename, mimeType: input.mimeType ?? "video/webm", fileSize: input.fileSize ?? 0, fileKey: input.fileKey ?? `org-${orgId}/recordings/${nanoid(16)}`, url: input.url, source: "direct", durationSeconds: input.durationSeconds });
         return { ok: true };
       }),
   }),

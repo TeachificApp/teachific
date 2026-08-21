@@ -1423,6 +1423,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(affiliateRedirectSource).not.toContain("border-teal-500");
   });
 
+  it("uses active organization context and verified metadata when saving recordings", () => {
+    const recordPageSource = readFileSync(new URL("../client/src/pages/RecordPage.tsx", import.meta.url), "utf8");
+    const lmsRouterSource = readFileSync(new URL("../server/lmsRouter.ts", import.meta.url), "utf8");
+    expect(recordPageSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
+    expect(recordPageSource).toContain("const { orgId } = useOrgScope()");
+    expect(recordPageSource).toContain("filename: rec.name");
+    expect(recordPageSource).toContain("durationSeconds: rec.duration");
+    expect(recordPageSource).not.toContain("(user as any)?.orgId ?? 1");
+    expect(lmsRouterSource).toContain("fileKey: z.string().optional()");
+    expect(lmsRouterSource).toContain("durationSeconds: z.number().optional()");
+    expect(lmsRouterSource).toContain("Recording file key does not belong to the active organization.");
+    expect(lmsRouterSource).toContain("fileKey: input.fileKey ?? `org-${orgId}/recordings/${nanoid(16)}`");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

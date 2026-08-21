@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 
 type RecordMode = "screen" | "camera" | "screen+camera";
 type RecordState = "idle" | "countdown" | "recording" | "paused" | "stopped";
@@ -47,14 +48,13 @@ export default function RecordPage() {
   const [savedToLibrary, setSavedToLibrary] = useState<Record<number, boolean>>({});
 
   const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const getUploadUrl = trpc.lms.media.getUploadUrl.useMutation();
   const saveRecording = trpc.lms.media.saveRecording.useMutation();
   const transcribeMutation = trpc.lms.media.transcribe.useMutation();
 
-  const orgId = (user as any)?.orgId ?? 1;
-
   const handleSaveToLibrary = async (rec: typeof recordings[0], idx: number) => {
-    if (!user) { toast.error("Please log in first"); return; }
+    if (!user || !orgId) { toast.error("Select an organization before saving a recording."); return; }
     setSavingIdx(idx);
     try {
       // Fetch the blob from the object URL
@@ -76,12 +76,12 @@ export default function RecordPage() {
       // Save metadata to media library
       await saveRecording.mutateAsync({
         orgId,
-        fileName: rec.name,
-        contentType,
+        filename: rec.name,
+        mimeType: contentType,
         fileSize: blob.size,
         fileKey: key,
         url: fileUrl,
-        duration: rec.duration,
+        durationSeconds: rec.duration,
       });
       setSavedToLibrary(prev => ({ ...prev, [idx]: true }));
       toast.success("Saved to Media Library");
@@ -93,7 +93,7 @@ export default function RecordPage() {
   };
 
   const handleTranscribe = async (rec: typeof recordings[0], idx: number) => {
-    if (!user) { toast.error("Please log in first"); return; }
+    if (!user || !orgId) { toast.error("Select an organization before transcribing a recording."); return; }
     setTranscribingIdx(idx);
     try {
       // First save to library to get a public URL
