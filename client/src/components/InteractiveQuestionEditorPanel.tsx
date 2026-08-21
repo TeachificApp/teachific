@@ -64,7 +64,7 @@ function ImageComparisonEditor({ question, onChange, onUploadImage }: Interactiv
                   </Button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors">
                   {uploading ? <span className="text-xs text-gray-400">Uploading…</span> : <><Upload className="w-4 h-4 text-gray-400 mb-1" /><span className="text-xs text-gray-400">Upload image</span></>}
                   <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(side, f); e.target.value = ""; }} />
                 </label>
@@ -120,7 +120,7 @@ function DragSortEditor({ question, onChange }: InteractiveQuestionEditorProps) 
           </Button>
         </div>
       ))}
-      <Button size="sm" variant="outline" className="text-xs border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={addItem}>
+      <Button size="sm" variant="outline" className="text-xs border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={addItem}>
         <Plus className="w-3 h-3 mr-1" /> Add Item
       </Button>
     </div>
@@ -179,7 +179,7 @@ function BranchingEditor({ question, onChange }: InteractiveQuestionEditorProps)
             />
           </div>
         ))}
-        <Button size="sm" variant="outline" className="text-xs border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={addChoice}>
+        <Button size="sm" variant="outline" className="text-xs border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={addChoice}>
           <Plus className="w-3 h-3 mr-1" /> Add Choice
         </Button>
       </div>
@@ -274,7 +274,7 @@ function AnnotationEditor({ question, onChange, onUploadImage }: InteractiveQues
             </Button>
           </div>
         ) : (
-          <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-teal-400 hover:bg-teal-50 mt-1">
+          <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-300 rounded cursor-pointer hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] mt-1">
             {uploading ? <span className="text-xs text-gray-400">Uploading…</span> : <><ImageIcon className="w-4 h-4 text-gray-400 mb-1" /><span className="text-xs text-gray-400">Upload image</span></>}
             <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ""; }} />
           </label>
@@ -295,7 +295,7 @@ function AnnotationEditor({ question, onChange, onUploadImage }: InteractiveQues
             </Button>
           </div>
         ))}
-        <Button size="sm" variant="outline" className="text-xs border-dashed border-teal-300 text-teal-600 hover:bg-teal-50" onClick={addZone}>
+        <Button size="sm" variant="outline" className="text-xs border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" onClick={addZone}>
           <Plus className="w-3 h-3 mr-1" /> Add Zone
         </Button>
       </div>
