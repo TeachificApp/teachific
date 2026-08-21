@@ -1623,6 +1623,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cmeSettingsSource).not.toContain("text-teal-600");
   });
 
+  it("uses active organization theming for course waitlist navigation and actions", () => {
+    const waitlistSource = readFileSync(new URL("../client/src/components/CourseWaitlistTab.tsx", import.meta.url), "utf8");
+    expect(waitlistSource).toContain("border-b-2 border-[var(--org-primary)]");
+    expect(waitlistSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(waitlistSource).toContain("text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)]");
+    expect(waitlistSource).not.toContain("bg-teal-50 text-teal-700 border-b-2 border-teal-600");
+    expect(waitlistSource).not.toContain("bg-teal-600 hover:bg-teal-700 text-white");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

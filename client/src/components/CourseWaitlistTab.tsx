@@ -130,8 +130,8 @@ export function CourseWaitlistTab({ courseId, course }: CourseWaitlistTabProps) 
           onClick={() => setActiveSection("entries")}
           className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
             activeSection === "entries"
-              ? "bg-teal-50 text-teal-700 border-b-2 border-teal-600"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]"
+            : "text-gray-500 hover:text-gray-700"
           }`}
         >
           <Users className="w-4 h-4 inline mr-1.5" />
@@ -141,8 +141,8 @@ export function CourseWaitlistTab({ courseId, course }: CourseWaitlistTabProps) 
           onClick={() => setActiveSection("settings")}
           className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
             activeSection === "settings"
-              ? "bg-teal-50 text-teal-700 border-b-2 border-teal-600"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] border-b-2 border-[var(--org-primary)]"
+            : "text-gray-500 hover:text-gray-700"
           }`}
         >
           <Settings2 className="w-4 h-4 inline mr-1.5" />
@@ -209,7 +209,7 @@ export function CourseWaitlistTab({ courseId, course }: CourseWaitlistTabProps) 
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs text-teal-600 border-teal-200 hover:bg-teal-50"
+                          className="h-7 text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                           onClick={() => {
                             setGrantEntry(entry);
                             setAccessType("paid");
@@ -314,7 +314,7 @@ export function CourseWaitlistTab({ courseId, course }: CourseWaitlistTabProps) 
               <Button
                 onClick={handleSaveSettings}
                 disabled={saveSettings.isPending || !settingsDirty}
-                className="bg-teal-600 hover:bg-teal-700 text-white"
+                className="bg-[var(--org-primary)] hover:brightness-90 text-white"
               >
                 {saveSettings.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Save Waitlist Settings
@@ -397,7 +397,7 @@ export function CourseWaitlistTab({ courseId, course }: CourseWaitlistTabProps) 
             <Button
               onClick={handleGrant}
               disabled={grantAccess.isPending}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             >
               {grantAccess.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserCheck className="w-4 h-4 mr-2" />}
               {accessType === "free" ? "Grant Free Access" : "Send Checkout Link"}
