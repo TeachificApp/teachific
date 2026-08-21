@@ -58,6 +58,9 @@ import {
   lmsPricingOptions,
   platformSettings,
   digitalProducts,
+  digitalBundles,
+  membershipPlans,
+  membershipSubscriptions,
   lmsArchive,
   sonoQuizzes,
   physicalProducts,
@@ -96,6 +99,66 @@ async function requireActiveEnrollmentOrg(userId: number, role: string) {
 }
 
 export const lmsEnrollmentAdminRouter = router({
+  /** List access items owned by the authorized active organization for direct member grants. */
+  listMemberAccessCatalog: protectedProcedure
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [courses, downloads, bundles, memberships] = await Promise.all([
+        db.select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type })
+          .from(lmsCourses).where(eq(lmsCourses.orgId, orgId)).orderBy(asc(lmsCourses.title)),
+        db.select({ id: digitalProducts.id, title: digitalProducts.title })
+          .from(digitalProducts).where(eq(digitalProducts.orgId, orgId)).orderBy(asc(digitalProducts.title)),
+        db.select({ id: digitalBundles.id, title: digitalBundles.title })
+          .from(digitalBundles).where(eq(digitalBundles.orgId, orgId)).orderBy(asc(digitalBundles.title)),
+        db.select({ id: membershipPlans.id, name: membershipPlans.name, billingInterval: membershipPlans.billingInterval })
+          .from(membershipPlans).where(eq(membershipPlans.orgId, orgId)).orderBy(asc(membershipPlans.name)),
+      ]);
+      return {
+        courses,
+        products: [
+          ...downloads.map((product) => ({ ...product, type: "download" as const })),
+          ...bundles.map((bundle) => ({ ...bundle, type: "bundle" as const })),
+        ],
+        memberships,
+      };
+    }),
+
+  /** Grant complimentary organization-owned membership access without creating a Stripe subscription. */
+  grantMembershipAccess: protectedProcedure
+    .input(z.object({ userId: z.number(), planId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const [plan] = await db.select({ id: membershipPlans.id })
+        .from(membershipPlans)
+        .where(and(eq(membershipPlans.id, input.planId), eq(membershipPlans.orgId, orgId)))
+        .limit(1);
+      if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Membership plan does not belong to the active organization." });
+
+      const [existing] = await db.select({ id: membershipSubscriptions.id, status: membershipSubscriptions.status })
+        .from(membershipSubscriptions)
+        .where(and(
+          eq(membershipSubscriptions.userId, input.userId),
+          eq(membershipSubscriptions.planId, input.planId),
+          eq(membershipSubscriptions.orgId, orgId),
+        ))
+        .limit(1);
+      if (existing?.status === "active") return { subscriptionId: existing.id, alreadyGranted: true };
+      if (existing) {
+        await db.update(membershipSubscriptions)
+          .set({ status: "active", startDate: new Date(), endDate: null })
+          .where(eq(membershipSubscriptions.id, existing.id));
+        return { subscriptionId: existing.id, alreadyGranted: false };
+      }
+      const [inserted] = await db.insert(membershipSubscriptions)
+        .values({ orgId, userId: input.userId, planId: input.planId, status: "active" })
+        .$returningId();
+      return { subscriptionId: inserted.id, alreadyGranted: false };
+    }),
+
   listEnrollments: protectedProcedure
     .input(z.object({ courseId: z.number().optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) }))
     .query(async ({ ctx, input }) => {

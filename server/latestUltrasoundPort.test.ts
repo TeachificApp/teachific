@@ -1381,6 +1381,23 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membersPageSource).toContain("mobile-keep-grid mt-3 grid grid-cols-3 gap-2 text-center");
   });
 
+  it("scopes direct Member Access catalog and complimentary grants to the authorized active organization", () => {
+    const enrollmentAdminSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
+    const membersPageSource = readFileSync(new URL("../client/src/pages/lms/MembersPage.tsx", import.meta.url), "utf8");
+    const catalogSource = readFileSync(new URL("../client/src/components/admin/MemberAccessCatalogList.tsx", import.meta.url), "utf8");
+    expect(enrollmentAdminSource).toContain("listMemberAccessCatalog: protectedProcedure");
+    expect(enrollmentAdminSource).toContain("const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role)");
+    expect(enrollmentAdminSource).toContain("eq(membershipPlans.orgId, orgId)");
+    expect(enrollmentAdminSource).toContain("grantMembershipAccess: protectedProcedure");
+    expect(enrollmentAdminSource).toContain("eq(membershipSubscriptions.orgId, orgId)");
+    expect(membersPageSource).toContain("trpc.lmsAdmin.listMemberAccessCatalog.useQuery");
+    expect(membersPageSource).toContain("Grant Content Access");
+    expect(membersPageSource).toContain("trpc.lmsAdmin.grantMembershipAccess.useMutation");
+    expect(catalogSource).toContain('"all" | "courses" | "downloads" | "bundles" | "memberships"');
+    expect(catalogSource).toContain("Grant complimentary access");
+    expect(catalogSource).toContain("var(--org-primary)");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

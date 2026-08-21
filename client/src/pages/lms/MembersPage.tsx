@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MemberAccessCatalogList, type MemberAccessCatalogFilter, type MemberAccessProduct } from "@/components/admin/MemberAccessCatalogList";
 import { toast } from "sonner";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import {
@@ -42,6 +43,12 @@ export default function MembersPage() {
   });
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [accessMember, setAccessMember] = useState<{ userId: number; name?: string | null; email?: string | null; role: "org_super_admin" | "org_admin" | "member" | "user"; memberSubRole: "basic_member" | "instructor" | "group_manager" | "group_member" } | null>(null);
+  const [grantAccessMember, setGrantAccessMember] = useState<{ userId: number; name?: string | null; email?: string | null } | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogFilter, setCatalogFilter] = useState<MemberAccessCatalogFilter>("all");
+  const [selectedCatalogCourseIds, setSelectedCatalogCourseIds] = useState<number[]>([]);
+  const [selectedCatalogProducts, setSelectedCatalogProducts] = useState<MemberAccessProduct[]>([]);
+  const [selectedCatalogPlanIds, setSelectedCatalogPlanIds] = useState<number[]>([]);
 
   // Bulk import state
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -62,6 +69,7 @@ export default function MembersPage() {
     { orgId: orgId! },
     { enabled: !!orgId }
   );
+  const { data: memberAccessCatalog } = trpc.lmsAdmin.listMemberAccessCatalog.useQuery(undefined, { enabled: !!orgId });
 
   const bulkImport = trpc.lms.members.bulkImport.useMutation({
     onSuccess: (result) => {
@@ -147,6 +155,40 @@ export default function MembersPage() {
       toast.error("Enrollment failed", { description: err.message });
     },
   });
+  const grantProductAccess = trpc.productAnalytics.grantProductAccess.useMutation();
+  const grantMembershipAccess = trpc.lmsAdmin.grantMembershipAccess.useMutation();
+  const openGrantAccess = (member: { userId: number; name?: string | null; email?: string | null }) => {
+    setGrantAccessMember(member);
+    setCatalogSearch("");
+    setCatalogFilter("all");
+    setSelectedCatalogCourseIds([]);
+    setSelectedCatalogProducts([]);
+    setSelectedCatalogPlanIds([]);
+  };
+  const grantSelectedAccess = async () => {
+    if (!grantAccessMember?.email) {
+      toast.error("This member needs an email address before content access can be granted.");
+      return;
+    }
+    const grantCount = selectedCatalogCourseIds.length + selectedCatalogProducts.length + selectedCatalogPlanIds.length;
+    if (!grantCount) { toast.error("Select at least one item to grant."); return; }
+    try {
+      for (const productId of selectedCatalogCourseIds) {
+        await grantProductAccess.mutateAsync({ productId, productType: "course", userEmail: grantAccessMember.email });
+      }
+      for (const product of selectedCatalogProducts) {
+        await grantProductAccess.mutateAsync({ productId: product.id, productType: product.type, userEmail: grantAccessMember.email });
+      }
+      for (const planId of selectedCatalogPlanIds) {
+        await grantMembershipAccess.mutateAsync({ userId: grantAccessMember.userId, planId });
+      }
+      toast.success(`Granted access to ${grantCount} item${grantCount === 1 ? "" : "s"}.`);
+      setGrantAccessMember(null);
+      refetch();
+    } catch (error: any) {
+      toast.error(error?.message ?? "Unable to grant access. Please try again.");
+    }
+  };
 
   const totalMembers = members?.length ?? 0;
   const totalEnrollments = members?.reduce((s, m) => s + m.totalEnrollments, 0) ?? 0;
@@ -350,6 +392,9 @@ export default function MembersPage() {
                         <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                           Enroll in Course
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openGrantAccess({ userId: m.userId, name: m.name, email: m.email })}>
+                          Grant Content Access
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setResetPwdMember({ userId: m.userId, name: m.name, email: m.email }); setResetPwdValue(""); setResetPwdConfirm(""); }}>
                           Reset Password
                         </DropdownMenuItem>
@@ -410,6 +455,7 @@ export default function MembersPage() {
                       <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                         Enroll in Course
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openGrantAccess({ userId: m.userId, name: m.name, email: m.email })}>Grant Content Access</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => { setResetPwdMember({ userId: m.userId, name: m.name, email: m.email }); setResetPwdValue(""); setResetPwdConfirm(""); }}>
                         Reset Password
                       </DropdownMenuItem>
@@ -788,6 +834,30 @@ export default function MembersPage() {
             {accessMember.role === "user" && <div className="space-y-2"><Label>Member access</Label><Select value={accessMember.memberSubRole} onValueChange={(memberSubRole) => setAccessMember((member) => member ? { ...member, memberSubRole: memberSubRole as typeof member.memberSubRole } : member)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="basic_member">Member</SelectItem><SelectItem value="instructor">Instructor</SelectItem></SelectContent></Select></div>}
           </div>}
           <DialogFooter><Button variant="outline" onClick={() => setAccessMember(null)}>Cancel</Button><Button disabled={!accessMember || updateMemberAccess.isPending || !orgId} onClick={() => accessMember && orgId && updateMemberAccess.mutate({ orgId, userId: accessMember.userId, role: accessMember.role, memberSubRole: accessMember.memberSubRole })}>{updateMemberAccess.isPending ? "Saving..." : "Save Access"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!grantAccessMember} onOpenChange={(open) => !open && setGrantAccessMember(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Grant Content Access</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Select organization-owned content to grant to <strong>{grantAccessMember?.name ?? grantAccessMember?.email ?? "this member"}</strong> at no charge.</p>
+            <Input value={catalogSearch} onChange={(event) => setCatalogSearch(event.target.value)} placeholder="Search courses, downloads, bundles, or memberships..." />
+            <div className="flex flex-wrap gap-2">
+              {(["all", "courses", "downloads", "bundles", "memberships"] as MemberAccessCatalogFilter[]).map((filter) => <Button key={filter} type="button" size="sm" variant={catalogFilter === filter ? "default" : "outline"} className={catalogFilter === filter ? "org-primary-button capitalize" : "capitalize"} onClick={() => setCatalogFilter(filter)}>{filter}</Button>)}
+            </div>
+            <MemberAccessCatalogList
+              catalog={memberAccessCatalog}
+              search={catalogSearch}
+              filter={catalogFilter}
+              selectedCourseIds={selectedCatalogCourseIds}
+              selectedProducts={selectedCatalogProducts}
+              selectedPlanIds={selectedCatalogPlanIds}
+              onToggleCourse={(id) => setSelectedCatalogCourseIds((ids) => ids.includes(id) ? ids.filter((currentId) => currentId !== id) : [...ids, id])}
+              onToggleProduct={(product) => setSelectedCatalogProducts((products) => products.some((item) => item.id === product.id && item.type === product.type) ? products.filter((item) => item.id !== product.id || item.type !== product.type) : [...products, product])}
+              onTogglePlan={(id) => setSelectedCatalogPlanIds((ids) => ids.includes(id) ? ids.filter((currentId) => currentId !== id) : [...ids, id])}
+            />
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setGrantAccessMember(null)}>Cancel</Button><Button className="org-primary-button" disabled={grantProductAccess.isPending || grantMembershipAccess.isPending} onClick={grantSelectedAccess}>{grantProductAccess.isPending || grantMembershipAccess.isPending ? "Granting..." : "Grant Selected Access"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
