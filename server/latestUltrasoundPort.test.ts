@@ -2021,6 +2021,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(thinkificImporterSource).not.toContain("#149096");
   });
 
+  it("uses active organization theming throughout Teach Games administration controls", () => {
+    const teachAdminSource = readFileSync(new URL("../client/src/pages/admin/TeachAdminPanel.tsx", import.meta.url), "utf8");
+    expect(teachAdminSource).toContain("text-[var(--org-primary)]");
+    expect(teachAdminSource).toContain("Presentation className=\"w-4 h-4 text-[var(--org-primary)]\"");
+    expect(teachAdminSource).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

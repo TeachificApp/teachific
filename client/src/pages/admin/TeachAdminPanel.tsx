@@ -48,12 +48,12 @@ export default function TeachAdminPanel() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <Presentation className="w-4 h-4 text-teal-600" />
+            <Presentation className="w-4 h-4 text-[var(--org-primary)]" />
             TEACH — Instructor Content
           </h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Manage presentations and media for LMS Instructors and EducatorAssist™ educators.
-            Files are stored in the media repository under <code className="text-teal-600">Teach/user-&#123;id&#125;</code> folders.
+            Files are stored in the media repository under <code className="text-[var(--org-primary)]">Teach/user-&#123;id&#125;</code> folders.
           </p>
         </div>
         <Link href="/teach" target="_blank">
@@ -76,7 +76,7 @@ export default function TeachAdminPanel() {
               {(instructors ?? []).filter((i: { linkedUser?: unknown }) => i.linkedUser).length} with linked accounts
             </p>
             <Link href="/admin/lms?tab=instructors">
-              <Button variant="link" size="sm" className="px-0 h-auto text-teal-600 text-xs mt-2">
+              <Button variant="link" size="sm" className="px-0 h-auto text-[var(--org-primary)] text-xs mt-2">
                 Manage instructor profiles →
               </Button>
             </Link>
@@ -149,7 +149,7 @@ export default function TeachAdminPanel() {
             {(masters ?? []).map((m) => (
               <div key={m.id} className="flex items-center justify-between text-sm py-1">
                 <span>{m.name}{m.isGlobal ? " (global)" : ""}{m.isDefaultForced ? " · default" : ""}</span>
-                <a href={`/teach/master/${m.id}/design`} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">
+                <a href={`/teach/master/${m.id}/design`} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--org-primary)] hover:underline">
                   Design
                 </a>
               </div>
@@ -175,7 +175,7 @@ export default function TeachAdminPanel() {
             ) : (
               filtered.map((m) => (
                 <div key={m.id} className="px-4 py-3 flex items-center gap-3 text-sm">
-                  <Presentation className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                  <Presentation className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{m.title}</p>
                     <p className="text-xs text-gray-400">
@@ -191,7 +191,7 @@ export default function TeachAdminPanel() {
                         href={`/teach/presentation/${m.id}/edit`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-teal-600 hover:underline"
+                        className="text-xs text-[var(--org-primary)] hover:underline"
                       >
                         Edit
                       </a>

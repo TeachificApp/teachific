@@ -5712,6 +5712,8 @@
 - [x] Apply the active organization theme to organization form analytics controls
 - [x] Apply the active organization theme to organization LMS sales controls
 - [x] Apply the active organization theme to organization Thinkific import controls
+- [x] Review member administration detail styling; retain intentional platform-level role and operational colors
+- [x] Apply the active organization theme to Teach Games administration controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
