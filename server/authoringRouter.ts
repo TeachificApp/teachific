@@ -425,10 +425,11 @@ export const authoringRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [row] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       return row;
     }),
@@ -488,10 +489,11 @@ export const authoringRouter = router({
       const { id, ...updates } = input;
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       await db
         .update(authoringProjects)
         .set(updates)
-        .where(and(eq(authoringProjects.id, id), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, id), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       return { success: true };
     }),
 
@@ -500,12 +502,18 @@ export const authoringRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
+      const [project] = await db
+        .select({ id: authoringProjects.id })
+        .from(authoringProjects)
+        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
+      if (!project) throw new TRPCError({ code: "NOT_FOUND" });
       await db
         .delete(authoringSlides)
         .where(eq(authoringSlides.projectId, input.id));
       await db
         .delete(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       return { success: true };
     }),
 
@@ -514,10 +522,11 @@ export const authoringRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [original] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.id), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!original) throw new TRPCError({ code: "NOT_FOUND" });
 
       const [result] = await db.insert(authoringProjects).values({
@@ -559,10 +568,11 @@ export const authoringRouter = router({
       // Verify ownership
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [proj] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!proj) throw new TRPCError({ code: "NOT_FOUND" });
 
       return db
@@ -584,10 +594,11 @@ export const authoringRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [proj] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!proj) throw new TRPCError({ code: "NOT_FOUND" });
 
       const existing = await db
@@ -636,13 +647,14 @@ export const authoringRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...updates } = input;
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       // Verify ownership via project
       const [slide] = await db.select().from(authoringSlides).where(eq(authoringSlides.id, id));
       if (!slide) throw new TRPCError({ code: "NOT_FOUND" });
       const [proj] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, slide.projectId), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, slide.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!proj) throw new TRPCError({ code: "FORBIDDEN" });
 
       await db.update(authoringSlides).set(updates).where(eq(authoringSlides.id, id));
@@ -654,12 +666,13 @@ export const authoringRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [slide] = await db.select().from(authoringSlides).where(eq(authoringSlides.id, input.id));
       if (!slide) throw new TRPCError({ code: "NOT_FOUND" });
       const [proj] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, slide.projectId), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, slide.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!proj) throw new TRPCError({ code: "FORBIDDEN" });
 
       await db.delete(authoringSlides).where(eq(authoringSlides.id, input.id));
@@ -691,10 +704,11 @@ export const authoringRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [proj] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!proj) throw new TRPCError({ code: "NOT_FOUND" });
 
       for (let i = 0; i < input.orderedIds.length; i++) {
@@ -723,10 +737,11 @@ export const authoringRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
       const [project] = await db
         .select()
         .from(authoringProjects)
-        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id)));
+        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
       if (!project) throw new TRPCError({ code: "NOT_FOUND" });
 
       const slides = await db
@@ -782,7 +797,7 @@ export const authoringRouter = router({
           lastPublishedFormat: input.format,
           status: "published",
         })
-        .where(eq(authoringProjects.id, input.projectId));
+        .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
 
       return { url, format: input.format };
     }),

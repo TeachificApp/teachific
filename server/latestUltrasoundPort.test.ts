@@ -1531,6 +1531,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(authoringRouterSource).toContain("const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role)");
     expect(authoringRouterSource).toContain("eq(authoringProjects.orgId, orgId)");
     expect(authoringRouterSource).not.toContain("orgId: z.number().default(0)");
+    expect((authoringRouterSource.match(/requireActiveAuthoringOrg\(ctx\.user\.id, ctx\.user\.role\)/g) ?? []).length).toBeGreaterThanOrEqual(12);
+    expect(authoringRouterSource).toContain("const [project] = await db\n        .select({ id: authoringProjects.id })");
+    expect(authoringRouterSource).toContain("delete(authoringSlides)");
+    expect(authoringRouterSource).toContain("exportPackage: protectedProcedure");
+    expect(authoringRouterSource).toMatch(/exportPackage:[\s\S]*eq\(authoringProjects\.orgId, orgId\)/);
   });
 
   it("offers and persists optional organization-authorized AI course assessments", () => {
