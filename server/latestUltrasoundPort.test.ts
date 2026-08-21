@@ -1690,6 +1690,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membershipBuilderSource).not.toContain("hover:border-teal-400");
   });
 
+  it("uses active organization theming across Lesson Quiz Block Editor authoring controls", () => {
+    const lessonQuizSource = readFileSync(new URL("../client/src/components/LessonQuizBlockEditor.tsx", import.meta.url), "utf8");
+    expect(lessonQuizSource).toContain("bg-[var(--org-primary)] border-[var(--org-primary)] text-white");
+    expect(lessonQuizSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white text-xs");
+    expect(lessonQuizSource).toContain("hover:border-[var(--org-primary)]");
+    expect(lessonQuizSource).toContain("text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]");
+    expect(lessonQuizSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] font-medium");
+    expect(lessonQuizSource).not.toContain("bg-teal-600 hover:bg-teal-700 text-white");
+    expect(lessonQuizSource).not.toContain("border-teal-500 bg-teal-500 text-white");
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

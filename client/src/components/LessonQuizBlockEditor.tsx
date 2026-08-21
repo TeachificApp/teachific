@@ -204,7 +204,7 @@ export function HotspotEditor({
               <div
                 key={m.id}
                 className={`absolute w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold transform -translate-x-1/2 -translate-y-1/2 shadow-md ${
-                  m.isCorrect ? "bg-teal-500 border-teal-700 text-white" : "bg-red-400 border-red-600 text-white"
+                  m.isCorrect ? "bg-[var(--org-primary)] border-[var(--org-primary)] text-white" : "bg-red-400 border-red-600 text-white"
                 }`}
                 style={{ left: `${m.x}%`, top: `${m.y}%` }}
                 title={m.label}
@@ -214,7 +214,7 @@ export function HotspotEditor({
             ))}
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button type="button" size="sm" variant="outline" className={`h-7 text-xs ${placing ? "bg-teal-50 border-teal-400 text-teal-700" : ""}`}
+            <Button type="button" size="sm" variant="outline" className={`h-7 text-xs ${placing ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-[var(--org-primary)] text-[var(--org-primary)]" : ""}`}
               onClick={() => setPlacing(!placing)}>
               <Crosshair size={11} className="mr-1" /> {placing ? "Click image to place…" : "Add Marker"}
             </Button>
@@ -238,7 +238,7 @@ export function HotspotEditor({
                   <button
                     type="button"
                     onClick={() => onMarkersChange(markers.map(mk => mk.id === m.id ? { ...mk, isCorrect: !mk.isCorrect } : mk))}
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${m.isCorrect ? "bg-teal-100 text-teal-700" : "bg-red-100 text-red-600"}`}
+                    className={`px-2 py-0.5 rounded text-xs font-medium ${m.isCorrect ? "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" : "bg-red-100 text-red-600"}`}
                   >
                     {m.isCorrect ? "Correct" : "Wrong"}
                   </button>
@@ -456,7 +456,7 @@ function SaveToBankDialog({
                   className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-all ${
                     selectedTagIds.includes(tag.id)
                       ? "text-white border-transparent"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
                   }`}
                   style={selectedTagIds.includes(tag.id) ? { backgroundColor: tag.color, borderColor: tag.color } : {}}
                 >
@@ -477,7 +477,7 @@ function SaveToBankDialog({
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs flex-1"
+            <Button size="sm" className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs flex-1"
               disabled={saveMutation.isPending} onClick={handleSave}>
               {saveMutation.isPending ? "Saving…" : "Save to Bank"}
             </Button>
@@ -598,12 +598,12 @@ function QuestionEditor({
   };
 
   return (
-    <div className="p-3 bg-white border border-teal-200 rounded-lg space-y-3 mt-2">
+    <div className="p-3 bg-white border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg space-y-3 mt-2">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-700">
           {isNew ? "New Question" : `Edit Question ${(index ?? 0) + 1}`}
         </p>
-        <button type="button" className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
+        <button type="button" className="text-xs text-[var(--org-primary)] hover:brightness-90 flex items-center gap-1"
           onClick={() => setSaveToBankOpen(true)}>
           <Database size={11} /> Save to Bank
         </button>
@@ -620,8 +620,8 @@ function QuestionEditor({
               onClick={() => changeType(t)}
               className={`flex items-center gap-1 px-2 py-1 rounded border text-xs font-medium transition-all ${
                 qType === t
-                  ? "bg-teal-600 text-white border-teal-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-teal-300 hover:text-teal-700"
+                  ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)] hover:text-[var(--org-primary)]"
               }`}
             >
               {QUESTION_TYPE_ICONS[t]} {QUESTION_TYPE_LABELS[t]}
@@ -695,8 +695,8 @@ function QuestionEditor({
                 onClick={() => setQ(prev => ({ ...prev, correctAnswer: j }))}
                 className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-all ${
                   j === q.correctAnswer
-                    ? "border-teal-500 bg-teal-500 text-white"
-                    : "border-gray-200 text-gray-600 hover:border-teal-300"
+                    ? "border-[var(--org-primary)] bg-[var(--org-primary)] text-white"
+                    : "border-gray-200 text-gray-600 hover:border-[var(--org-primary)]"
                 }`}
               >
                 {opt}
@@ -718,8 +718,8 @@ function QuestionEditor({
                   onClick={() => setQ(prev => ({ ...prev, correctAnswer: j }))}
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
                     j === q.correctAnswer
-                      ? "border-teal-500 bg-teal-500 text-white"
-                      : "border-gray-300 text-gray-400 hover:border-teal-400"
+                      ? "border-[var(--org-primary)] bg-[var(--org-primary)] text-white"
+                      : "border-gray-300 text-gray-400 hover:border-[var(--org-primary)]"
                   }`}
                 >
                   {LETTERS[j]}
@@ -746,7 +746,7 @@ function QuestionEditor({
                   {q.answerImages?.[j] && (
                     <img src={q.answerImages[j]} alt="" className="h-8 w-auto rounded border border-gray-200 object-cover" />
                   )}
-                  <button type="button" className="text-xs text-gray-400 hover:text-teal-600 flex items-center gap-1"
+                  <button type="button" className="text-xs text-gray-400 hover:text-[var(--org-primary)] flex items-center gap-1"
                     onClick={() => ansImgRefs.current[j]?.click()}>
                     <ImageIcon size={10} /> {q.answerImages?.[j] ? "Change image" : "Add image"}
                   </button>
@@ -896,7 +896,7 @@ function QuestionEditor({
       </div>
 
       <div className="flex gap-2 pt-1">
-        <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={() => onSave(q)}>
+        <Button size="sm" className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs" onClick={() => onSave(q)}>
           {isNew ? "Add Question" : "Save Changes"}
         </Button>
         <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onCancel}>Cancel</Button>
@@ -1066,14 +1066,14 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
             <div key={i}>
               <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-gray-200 text-xs">
                 <span className="text-gray-400 font-medium shrink-0 mt-0.5">{i + 1}.</span>
-                <span className="shrink-0 mt-0.5 text-teal-600" title={QUESTION_TYPE_LABELS[q.type ?? "mcq"]}>
+                <span className="shrink-0 mt-0.5 text-[var(--org-primary)]" title={QUESTION_TYPE_LABELS[q.type ?? "mcq"]}>
                   {QUESTION_TYPE_ICONS[q.type ?? "mcq"]}
                 </span>
                 {q.imageUrl && <img src={q.imageUrl} alt="" className="h-8 w-auto rounded border border-gray-200 object-cover shrink-0" />}
                 {q.hotspotImageUrl && <img src={q.hotspotImageUrl} alt="" className="h-8 w-auto rounded border border-gray-200 object-cover shrink-0" />}
                 <p className="font-medium text-gray-700 flex-1 min-w-0 break-words">{q.question}</p>
                 <div className="flex gap-1 shrink-0">
-                  <button type="button" className="p-1 rounded hover:bg-teal-50 text-teal-600 transition-colors" title="Edit question"
+                  <button type="button" className="p-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] transition-colors" title="Edit question"
                     onClick={() => { setAddingNew(false); setEditingIndex(editingIndex === i ? null : i); }}>
                     <Pencil size={12} />
                   </button>
@@ -1157,7 +1157,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
 
           {/* Manual */}
           <TabsContent value="manual" className="mt-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs border-teal-300 text-teal-700 hover:bg-teal-50 w-full"
+            <Button size="sm" variant="outline" className="h-8 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] w-full"
               onClick={() => setAddingNew(true)}>
               <Plus size={12} className="mr-1" /> Add Question
             </Button>
@@ -1182,10 +1182,10 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                     onClick={() => setAiSource(opt.value as typeof aiSource)}
                     className={`text-xs px-2 py-1.5 rounded border transition-all ${
                       aiSource === opt.value
-                        ? "bg-teal-600 text-white border-teal-600"
+                        ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
                         : opt.disabled
                         ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-teal-300 hover:text-teal-700"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)] hover:text-[var(--org-primary)]"
                     }`}
                   >
                     {opt.label}
@@ -1226,7 +1226,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                 </div>
                 {courseLessons.length > 0 && (
                   <div className="flex gap-2">
-                    <button type="button" className="text-xs text-teal-600 hover:text-teal-700"
+                    <button type="button" className="text-xs text-[var(--org-primary)] hover:brightness-90"
                       onClick={() => setSelectedLessonIds(courseLessons.map((l: any) => l.id))}>Select all</button>
                     <span className="text-gray-300">|</span>
                     <button type="button" className="text-xs text-gray-500 hover:text-gray-700"
@@ -1243,7 +1243,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                 {(["mcq", "truefalse", "multiselect"] as const).map(t => (
                   <button key={t} type="button" onClick={() => setAiQType(t)}
                     className={`flex items-center gap-1 px-2 py-1 rounded border text-xs font-medium transition-all ${
-                      aiQType === t ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:border-teal-300"
+                      aiQType === t ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
                     }`}>
                     {QUESTION_TYPE_ICONS[t]} {QUESTION_TYPE_LABELS[t]}
                   </button>
@@ -1282,7 +1282,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                   <p className="text-xs text-gray-400 mt-0.5 text-right">{aiCustomPrompt.length}/500</p>
                 </div>
               )}
-              <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs w-full"
+              <Button size="sm" className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs w-full"
                 disabled={!canGenerate || generateMutation.isPending}
                 onClick={handleGenerate}>
                 {generateMutation.isPending ? "Generating…" : "Generate Questions"}
@@ -1297,11 +1297,11 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                 </p>
                 {aiPreview.map((q, i) => (
                   <div key={i}>
-                    <div className="p-2 bg-teal-50 rounded text-xs border border-teal-100">
+                    <div className="p-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] rounded text-xs border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)]">
                       <div className="flex items-start gap-2">
-                        <span className="text-teal-600 shrink-0 mt-0.5">{QUESTION_TYPE_ICONS[q.type ?? "mcq"]}</span>
+                        <span className="text-[var(--org-primary)] shrink-0 mt-0.5">{QUESTION_TYPE_ICONS[q.type ?? "mcq"]}</span>
                         <p className="font-medium flex-1 break-words">{i + 1}. {q.question}</p>
-                        <button type="button" className="p-1 rounded hover:bg-teal-100 text-teal-700 shrink-0"
+                        <button type="button" className="p-1 rounded hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)] shrink-0"
                           onClick={() => setEditingAiIndex(editingAiIndex === i ? null : i)} title="Edit">
                           <Pencil size={11} />
                         </button>
@@ -1311,8 +1311,8 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                           {q.options.map((opt, j) => (
                             <span key={j} className={`px-1.5 py-0.5 rounded ${
                               q.type === "multiselect"
-                                ? (q.correctAnswers ?? []).includes(j) ? "bg-teal-200 text-teal-800 font-medium" : "bg-white border border-gray-200 text-gray-500"
-                                : j === q.correctAnswer ? "bg-teal-200 text-teal-800 font-medium" : "bg-white border border-gray-200 text-gray-500"
+                                ? (q.correctAnswers ?? []).includes(j) ? "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] font-medium" : "bg-white border border-gray-200 text-gray-500"
+                                : j === q.correctAnswer ? "bg-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] text-[var(--org-primary)] font-medium" : "bg-white border border-gray-200 text-gray-500"
                             }`}>
                               {LETTERS[j]}. {opt}
                             </span>
@@ -1330,7 +1330,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={applyAiPreview}>
+                  <Button size="sm" className="h-8 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs" onClick={applyAiPreview}>
                     Add All to Quiz
                   </Button>
                   <Button size="sm" variant="outline" className="h-8 text-xs"
@@ -1346,11 +1346,11 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
       <div className="flex items-center gap-2 pt-1 flex-wrap">
         <Badge variant="secondary" className="text-xs">{questions.length} question{questions.length !== 1 ? "s" : ""}</Badge>
         {requirePass ? (
-          <Badge variant="outline" className="text-xs text-teal-700 border-teal-300">Pass required: {data.passingScore ?? 70}%</Badge>
+          <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]">Pass required: {data.passingScore ?? 70}%</Badge>
         ) : (
           <Badge variant="outline" className="text-xs text-gray-500 border-gray-300">No pass required</Badge>
         )}
-        {data.shuffleQuestions && <Badge variant="outline" className="text-xs text-teal-600 border-teal-300">Shuffled</Badge>}
+        {data.shuffleQuestions && <Badge variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]">Shuffled</Badge>}
         {data.shuffleAnswers && <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Answers shuffled</Badge>}
       </div>
     </div>
@@ -1403,7 +1403,7 @@ function QuestionBankPicker({ onAdd }: { onAdd: (q: any) => void }) {
           <button
             onClick={() => { setSelectedFolderId(null); setPage(1); }}
             className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-all ${
-              selectedFolderId === null ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"
+              selectedFolderId === null ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200"
             }`}
           >
             All
@@ -1413,7 +1413,7 @@ function QuestionBankPicker({ onAdd }: { onAdd: (q: any) => void }) {
               key={f.id}
               onClick={() => { setSelectedFolderId(f.id); setPage(1); }}
               className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1 ${
-                selectedFolderId === f.id ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200"
+                selectedFolderId === f.id ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white text-gray-600 border-gray-200"
               }`}
             >
               <FolderOpen size={10} /> {f.name}
@@ -1445,13 +1445,13 @@ function QuestionBankPicker({ onAdd }: { onAdd: (q: any) => void }) {
       ) : (
         <div className="space-y-1 max-h-60 overflow-y-auto">
           {questions.map((q: any) => (
-            <div key={q.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs hover:border-teal-200 hover:bg-teal-50 transition-colors">
-              <span className="text-teal-500 shrink-0 mt-0.5" title={QUESTION_TYPE_LABELS[(q.questionType as QuestionType) ?? "mcq"]}>
+            <div key={q.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-gray-100 text-xs hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors">
+              <span className="text-[var(--org-primary)] shrink-0 mt-0.5" title={QUESTION_TYPE_LABELS[(q.questionType as QuestionType) ?? "mcq"]}>
                 {QUESTION_TYPE_ICONS[(q.questionType as QuestionType) ?? "mcq"]}
               </span>
               {q.questionImageUrl && <img src={q.questionImageUrl} alt="" className="h-8 w-auto rounded border border-gray-200 object-cover shrink-0" />}
               <p className="flex-1 text-gray-700 font-medium line-clamp-2">{q.question}</p>
-              <button onClick={() => onAdd(q)} className="shrink-0 px-2 py-0.5 bg-teal-600 text-white rounded text-xs hover:bg-teal-700 transition-colors">Add</button>
+              <button onClick={() => onAdd(q)} className="shrink-0 px-2 py-0.5 bg-[var(--org-primary)] text-white rounded text-xs hover:brightness-90 transition-colors">Add</button>
             </div>
           ))}
         </div>
