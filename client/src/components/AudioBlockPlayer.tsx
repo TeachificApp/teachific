@@ -93,7 +93,7 @@ function WaveformCanvas({ peaks, progress, onSeek, accentColor = "#0d9488" }: Wa
       const x = i * barW;
       const amp = Math.max(0.04, peaks[i]);
       const barH = amp * (H * 0.85);
-      // Bars to the left of the scrub head are teal (played), rest are grey
+      // Bars to the left of the scrub head use the active organization color; the rest are grey.
       const isPlayed = x + barW / 2 <= playedX;
       ctx.fillStyle = isPlayed ? accentColor : "#d1d5db";
       // Leave a 1px gap between bars for visual separation
@@ -244,8 +244,11 @@ function AudioPlayerInner({
   loop = false,
   trimStart = 0,
   trimEnd = 0,
-  bgColor = "#f8fffe",
+  bgColor = "#ffffff",
 }: AudioBlockPlayerProps) {
+  const activeOrganizationPrimary = typeof document === "undefined"
+    ? "#000000"
+    : getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000";
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(initMuted || autoplay);
@@ -393,7 +396,7 @@ function AudioPlayerInner({
       >
         {title && (
           <p className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Music size={14} className="text-teal-600 flex-shrink-0" />
+            <Music size={14} className="text-[var(--org-primary)] flex-shrink-0" />
             {title}
           </p>
         )}
@@ -422,7 +425,7 @@ function AudioPlayerInner({
                 trimEnd={trimEnd}
                 duration={duration}
                 onSeek={seekByRatio}
-                accentColor="#0d9488"
+                accentColor={activeOrganizationPrimary}
               />
             )}
           </div>
@@ -433,7 +436,7 @@ function AudioPlayerInner({
           <button
             type="button"
             onClick={togglePlay}
-            className="w-10 h-10 rounded-full bg-teal-600 text-white flex items-center justify-center hover:bg-teal-700 flex-shrink-0 shadow transition-colors"
+            className="w-10 h-10 rounded-full bg-[var(--org-primary)] text-white flex items-center justify-center hover:brightness-90 flex-shrink-0 shadow transition-colors"
             aria-label={playing ? "Pause" : "Play"}
           >
             {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
@@ -454,7 +457,7 @@ function AudioPlayerInner({
                   if (el) el.currentTime = t;
                   setCurrentTime(t);
                 }}
-                className="w-full accent-teal-600 h-1.5"
+                className="w-full accent-[var(--org-primary)] h-1.5"
               />
             )}
             <div className="flex justify-between text-[10px] text-gray-400">
@@ -481,14 +484,14 @@ function AudioPlayerInner({
                 step={0.02}
                 value={muted ? 0 : volume}
                 onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                className="w-[72px] accent-teal-600 h-1.5 cursor-pointer"
+                className="w-[72px] accent-[var(--org-primary)] h-1.5 cursor-pointer"
                 aria-label="Volume"
               />
             </div>
             <button
               type="button"
               onClick={toggleMute}
-              className="text-gray-500 hover:text-teal-600 transition-colors"
+              className="text-gray-500 hover:text-[var(--org-primary)] transition-colors"
               aria-label={muted ? "Unmute" : "Mute"}
             >
               {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
