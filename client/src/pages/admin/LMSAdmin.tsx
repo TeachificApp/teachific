@@ -8269,7 +8269,7 @@ function FreePreviewEnrollmentsTab() {
         <button
           onClick={handleExport}
           disabled={exportLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-[var(--org-primary)] hover:brightness-90 disabled:opacity-50 transition-colors"
         >
           {exportLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           Export CSV
@@ -8282,12 +8282,12 @@ function FreePreviewEnrollmentsTab() {
           placeholder="Search name or email…"
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-teal-300"
+          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]"
         />
         <select
           value={courseFilter ?? ""}
           onChange={(e) => { setCourseFilter(e.target.value ? Number(e.target.value) : undefined); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
+          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]"
         >
           <option value="">All Courses</option>
           {(courses ?? []).map((c: any) => (
@@ -8297,7 +8297,7 @@ function FreePreviewEnrollmentsTab() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-teal-600" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-[var(--org-primary)]" /></div>
       ) : (
         <>
           <div className="text-xs text-gray-500 mb-2">{data?.total ?? 0} enrollment{data?.total !== 1 ? "s" : ""} found</div>
@@ -8320,7 +8320,7 @@ function FreePreviewEnrollmentsTab() {
                     <td className="px-4 py-3 text-gray-600">{row.email}</td>
                     <td className="px-4 py-3 text-gray-600">{row.courseTitle ?? `Course #${row.courseId}`}</td>
                     <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-teal-50 text-teal-700">{row.source ?? "course_landing"}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)]">{row.source ?? "course_landing"}</span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "-"}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{row.accessExpiresAt ? new Date(row.accessExpiresAt).toLocaleDateString() : "-"}</td>
