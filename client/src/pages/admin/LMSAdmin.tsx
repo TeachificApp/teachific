@@ -10725,7 +10725,7 @@ function GlobalUnassignedPanel({ unassignedStudents, cohortGroups, courseId, onA
                 {cohortGroups.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white" disabled={bulkSelected.length === 0 || !bulkGroupId || bulkAssign.isPending}
+            <Button size="sm" className="h-7 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={bulkSelected.length === 0 || !bulkGroupId || bulkAssign.isPending}
               onClick={() => bulkAssign.mutate({ cohortGroupId: parseInt(bulkGroupId), courseId, userIds: bulkSelected })}>
               {bulkAssign.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : `Assign ${bulkSelected.length} selected`}
             </Button>
@@ -10736,7 +10736,7 @@ function GlobalUnassignedPanel({ unassignedStudents, cohortGroups, courseId, onA
               <div key={s.userId} className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-amber-50">
                 <input type="checkbox" checked={bulkSelected.includes(s.userId)}
                   onChange={e => setBulkSelected(prev => e.target.checked ? [...prev, s.userId] : prev.filter(id => id !== s.userId))}
-                  className="w-3.5 h-3.5 accent-teal-600" />
+                  className="w-3.5 h-3.5 accent-[var(--org-primary)]" />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium text-gray-800">{s.userName}</span>
                   <span className="text-xs text-gray-400 ml-2">{s.userEmail}</span>
@@ -10747,7 +10747,7 @@ function GlobalUnassignedPanel({ unassignedStudents, cohortGroups, courseId, onA
                     {cohortGroups.map((g: any) => <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button size="sm" variant="ghost" className="text-xs text-teal-600 hover:text-teal-800 h-7 px-2"
+                <Button size="sm" variant="ghost" className="text-xs text-[var(--org-primary)] hover:brightness-75 h-7 px-2"
                   disabled={!groupSelections[s.userId] || assignStudent.isPending}
                   onClick={() => assignStudent.mutate({ cohortGroupId: parseInt(groupSelections[s.userId]), userId: s.userId, courseId })}>
                   Assign
