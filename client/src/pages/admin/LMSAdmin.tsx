@@ -12303,40 +12303,40 @@ function CohortTab({ courseId }: { courseId: number }) {
                 <div className="p-5 space-y-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-1 block">Group Name *</Label>
-                    <input value={groupForm.name} onChange={e => { setGroupForm(p => ({ ...p, name: e.target.value, slug: p.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") })); }} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="e.g. June 2026 Cohort" />
+                    <input value={groupForm.name} onChange={e => { setGroupForm(p => ({ ...p, name: e.target.value, slug: p.slug || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") })); }} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="e.g. June 2026 Cohort" />
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-1 block">Slug (URL identifier) *</Label>
-                    <input value={groupForm.slug} onChange={e => setGroupForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="june-2026" />
+                    <input value={groupForm.slug} onChange={e => setGroupForm(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="june-2026" />
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-1 block">Description</Label>
-                    <textarea value={groupForm.description} onChange={e => setGroupForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Brief description of this cohort group..." />
+                    <textarea value={groupForm.description} onChange={e => setGroupForm(p => ({ ...p, description: e.target.value }))} rows={2} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Brief description of this cohort group..." />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-1 block">Start Date</Label>
-                      <input type="date" value={groupForm.startDate} onChange={e => setGroupForm(p => ({ ...p, startDate: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <input type="date" value={groupForm.startDate} onChange={e => setGroupForm(p => ({ ...p, startDate: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-1 block">End Date</Label>
-                      <input type="date" value={groupForm.endDate} onChange={e => setGroupForm(p => ({ ...p, endDate: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <input type="date" value={groupForm.endDate} onChange={e => setGroupForm(p => ({ ...p, endDate: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-1 block">Enrollment Closes</Label>
-                      <input type="date" value={groupForm.enrollmentCloseDate} onChange={e => setGroupForm(p => ({ ...p, enrollmentCloseDate: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <input type="date" value={groupForm.enrollmentCloseDate} onChange={e => setGroupForm(p => ({ ...p, enrollmentCloseDate: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-1 block">Max Students</Label>
-                      <input type="number" value={groupForm.maxStudents} onChange={e => setGroupForm(p => ({ ...p, maxStudents: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Unlimited" />
+                      <input type="number" value={groupForm.maxStudents} onChange={e => setGroupForm(p => ({ ...p, maxStudents: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Unlimited" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-1 block">Status</Label>
-                      <select value={groupForm.status} onChange={e => setGroupForm(p => ({ ...p, status: e.target.value as any }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                      <select value={groupForm.status} onChange={e => setGroupForm(p => ({ ...p, status: e.target.value as any }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]">
                         <option value="draft">Draft</option>
                         <option value="open">Open (accepting enrollments)</option>
                         <option value="active">Active (in progress)</option>
@@ -12346,16 +12346,16 @@ function CohortTab({ courseId }: { courseId: number }) {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-1 block">Sort Order</Label>
-                      <input type="number" value={groupForm.sortOrder} onChange={e => setGroupForm(p => ({ ...p, sortOrder: parseInt(e.target.value) || 0 }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      <input type="number" value={groupForm.sortOrder} onChange={e => setGroupForm(p => ({ ...p, sortOrder: parseInt(e.target.value) || 0 }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" />
                     </div>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700 mb-1 block">Access Duration (days from group start)</Label>
-                    <input type="number" min="1" value={groupForm.accessDurationDays} onChange={e => setGroupForm(p => ({ ...p, accessDurationDays: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Leave blank for indefinite access" />
+                    <input type="number" min="1" value={groupForm.accessDurationDays} onChange={e => setGroupForm(p => ({ ...p, accessDurationDays: e.target.value }))} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]" placeholder="Leave blank for indefinite access" />
                     <p className="text-xs text-gray-400 mt-1">Students lose access this many days after the group start date. Leave blank for indefinite access.</p>
                   </div>
                   <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <input type="checkbox" id="group-featured" checked={groupForm.isFeaturedOnLanding} onChange={e => setGroupForm(p => ({ ...p, isFeaturedOnLanding: e.target.checked }))} className="w-4 h-4 accent-teal-600" />
+                    <input type="checkbox" id="group-featured" checked={groupForm.isFeaturedOnLanding} onChange={e => setGroupForm(p => ({ ...p, isFeaturedOnLanding: e.target.checked }))} className="w-4 h-4 accent-[var(--org-primary)]" />
                     <label htmlFor="group-featured" className="text-sm text-amber-800 cursor-pointer">
                       <span className="font-medium">Feature on course landing page</span> — links the landing page CTA to this group's details
                     </label>
@@ -12365,7 +12365,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 </div>
                 <div className="flex justify-end gap-2 px-5 py-4 border-t bg-gray-50 rounded-b-2xl">
                   <Button variant="outline" onClick={() => setGroupDialog({ open: false })}>Cancel</Button>
-                  <Button onClick={handleSaveGroup} disabled={createCohortGroup.isPending || updateCohortGroup.isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
+                  <Button onClick={handleSaveGroup} disabled={createCohortGroup.isPending || updateCohortGroup.isPending} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
                     {createCohortGroup.isPending || updateCohortGroup.isPending ? "Saving..." : groupDialog.group ? "Save Changes" : "Create Group"}
                   </Button>
                 </div>

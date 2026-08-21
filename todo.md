@@ -5755,6 +5755,7 @@
 - [x] Apply the active organization theme to LMS cohort assignment-editor controls
 - [ ] Apply the active organization theme to LMS cohort group-management controls
 - [x] Apply the active organization theme to LMS cohort group-list and student-management controls
+- [x] Apply the active organization theme to LMS cohort group-dialog controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
