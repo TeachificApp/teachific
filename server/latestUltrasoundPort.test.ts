@@ -1605,6 +1605,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(uploadQueueSource).not.toContain("text-teal-600");
   });
 
+  it("uses active organization theming for organization-level member role badges", () => {
+    const userDetailPanelSource = readFileSync(new URL("../client/src/components/UserDetailPanel.tsx", import.meta.url), "utf8");
+    expect(userDetailPanelSource).toContain('org_super_admin: "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]');
+    expect(userDetailPanelSource).toContain('org_admin: "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]');
+    expect(userDetailPanelSource).not.toContain('org_super_admin: "bg-indigo-100');
+    expect(userDetailPanelSource).not.toContain('org_admin: "bg-teal-100');
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
