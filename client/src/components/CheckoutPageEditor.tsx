@@ -355,8 +355,8 @@ function TrustSealsEditor({
               onClick={() => onChange({ ...section, layout: l })}
               className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
                 section.layout === l
-                  ? "bg-teal-600 text-white border-teal-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-teal-400"
+                  ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-[var(--org-primary)]"
               }`}
             >
               {l === "row" ? "Horizontal Row" : "2-Column Grid"}
@@ -378,13 +378,13 @@ function TrustSealsEditor({
                 disabled={already}
                 className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-center text-xs transition-colors ${
                   already
-                    ? "bg-teal-50 border-teal-200 text-teal-700 cursor-default"
-                    : "bg-white border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-gray-600"
+                    ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] cursor-default"
+                    : "bg-white border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-gray-600"
                 }`}
               >
                 {p.icon}
                 <span className="font-medium leading-tight">{p.label}</span>
-                {already && <span className="text-teal-500 text-[10px]">Added</span>}
+                {already && <span className="text-[var(--org-primary)] text-[10px]">Added</span>}
               </button>
             );
           })}
@@ -455,7 +455,7 @@ function GuaranteeEditor({
               key={ic}
               onClick={() => onChange({ ...section, icon: ic })}
               className={`p-2 rounded border text-xs transition-colors ${
-                section.icon === ic ? "bg-teal-600 text-white border-teal-600" : "bg-white border-gray-200 hover:border-teal-400 text-gray-600"
+                section.icon === ic ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "bg-white border-gray-200 hover:border-[var(--org-primary)] text-gray-600"
               }`}
               title={ic}
             >
@@ -523,7 +523,7 @@ function TestimonialsEditor({
               <p className="text-xs font-medium text-gray-800 truncate">{t.name || "Unnamed"}</p>
               <p className="text-xs text-gray-500 truncate">{t.quote || "No quote"}</p>
             </div>
-            <button onClick={() => { setEditing(t); setIsNew(false); }} className="text-gray-400 hover:text-teal-600 transition-colors">
+            <button onClick={() => { setEditing(t); setIsNew(false); }} className="text-gray-400 hover:text-[var(--org-primary)] transition-colors">
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
             <button onClick={() => remove(t.id)} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -564,7 +564,7 @@ function TestimonialsEditor({
               <div>
                 <Label className="text-xs">Rating</Label>
                 <div className="flex gap-1 mt-1">
-                  {[1, 2, 3, 4, 5].map((r) => (
+                 {[1, 2, 3, 4, 5].map((r) => (
                     <button key={r} onClick={() => setEditing({ ...editing, rating: r as 1|2|3|4|5 })} className={`text-lg ${(editing.rating ?? 5) >= r ? "text-yellow-400" : "text-gray-200"}`}>★</button>
                   ))}
                 </div>
@@ -573,7 +573,7 @@ function TestimonialsEditor({
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={save} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Button onClick={save} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
               {isNew ? "Add" : "Save"}
             </Button>
           </DialogFooter>
@@ -626,7 +626,7 @@ function FaqEditor({
               <p className="text-xs font-medium text-gray-800 truncate">{item.question || "No question"}</p>
               <p className="text-xs text-gray-500 truncate">{item.answer || "No answer"}</p>
             </div>
-            <button onClick={() => { setEditing(item); setIsNew(false); }} className="text-gray-400 hover:text-teal-600 transition-colors">
+            <button onClick={() => { setEditing(item); setIsNew(false); }} className="text-gray-400 hover:text-[var(--org-primary)] transition-colors">
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
             <button onClick={() => remove(item.id)} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -658,7 +658,7 @@ function FaqEditor({
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={save} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Button onClick={save} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
               {isNew ? "Add" : "Save"}
             </Button>
           </DialogFooter>
@@ -706,7 +706,7 @@ function CourseIncludesEditor({
           <div className="space-y-1.5">
             {(section.items ?? []).map((item, idx) => (
               <div key={idx} className="flex items-center gap-2 p-2 rounded border border-gray-100 bg-gray-50">
-                <CheckCircle2 className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-[var(--org-primary)] flex-shrink-0" />
                 <span className="flex-1 text-xs text-gray-700">{item.text}</span>
                 <button onClick={() => removeItem(idx)} className="text-gray-400 hover:text-red-500">
                   <X className="h-3.5 w-3.5" />
@@ -1057,7 +1057,7 @@ export default function CheckoutPageEditor({
             href={previewUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-gray-200 text-xs text-gray-600 hover:text-teal-700 hover:border-teal-400 transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-gray-200 text-xs text-gray-600 hover:text-[var(--org-primary)] hover:border-[var(--org-primary)] transition-colors"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Preview
@@ -1067,7 +1067,7 @@ export default function CheckoutPageEditor({
           size="sm"
           onClick={handleSave}
           disabled={!dirty || saveConfig.isPending}
-          className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white gap-1.5"
+          className="h-8 text-xs bg-[var(--org-primary)] hover:brightness-90 text-white gap-1.5"
         >
           <Save className="h-3.5 w-3.5" />
           {saveConfig.isPending ? "Saving…" : dirty ? "Save Changes" : "Saved"}
@@ -1095,7 +1095,7 @@ export default function CheckoutPageEditor({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <LayoutTemplate className="h-5 w-5 text-teal-600" />
+              <LayoutTemplate className="h-5 w-5 text-[var(--org-primary)]" />
               Choose a Template
             </DialogTitle>
           </DialogHeader>
@@ -1108,10 +1108,10 @@ export default function CheckoutPageEditor({
                 <button
                   key={t.id}
                   onClick={() => applyTemplate(t.config)}
-                  className="text-left p-4 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors group"
+                  className="text-left p-4 rounded-xl border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors group"
                 >
                   <div className="text-2xl mb-2">{t.emoji}</div>
-                  <p className="text-sm font-semibold text-gray-800 group-hover:text-teal-700">{t.name}</p>
+                  <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--org-primary)]">{t.name}</p>
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">{t.description}</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {t.config.sections.filter((s) => s.enabled).map((s) => (
@@ -1135,10 +1135,10 @@ export default function CheckoutPageEditor({
                   <div key={t.id} className="relative group">
                     <button
                       onClick={() => applyTemplate(parseCheckoutPageConfig(t.config))}
-                      className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-teal-400 hover:bg-teal-50 transition-colors"
+                      className="w-full text-left p-4 rounded-xl border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] transition-colors"
                     >
                       <div className="text-2xl mb-2">📋</div>
-                      <p className="text-sm font-semibold text-gray-800 group-hover:text-teal-700">{t.name}</p>
+                      <p className="text-sm font-semibold text-gray-800 group-hover:text-[var(--org-primary)]">{t.name}</p>
                       {t.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{t.description}</p>}
                       <p className="text-[10px] text-gray-400 mt-2">
                         Saved {new Date(t.createdAt).toLocaleDateString()}
@@ -1169,7 +1169,7 @@ export default function CheckoutPageEditor({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmApply} className="bg-teal-600 hover:bg-teal-700 text-white">
+            <AlertDialogAction onClick={confirmApply} className="bg-[var(--org-primary)] hover:brightness-90 text-white">
               Apply Template
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1207,7 +1207,7 @@ export default function CheckoutPageEditor({
             <Button
               onClick={handleSaveTemplate}
               disabled={!templateName.trim() || saveTemplate.isPending}
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             >
               {saveTemplate.isPending ? "Saving…" : "Save Template"}
             </Button>
