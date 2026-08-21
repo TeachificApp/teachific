@@ -1910,6 +1910,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(generalFormAnalyticsSource).not.toMatch(/(?:teal|violet|purple)/);
   });
 
+  it("uses the active organization theme for Printify administration controls", () => {
+    const printifySource = readFileSync(new URL("../client/src/pages/admin/PrintifyAdmin.tsx", import.meta.url), "utf8");
+    expect(printifySource).toContain("ring-[var(--org-primary)]");
+    expect(printifySource).toContain("text-[var(--org-primary)]");
+    expect(printifySource).not.toMatch(/(?:teal|violet|purple)/);
+  });
+
   it("scopes Teach game authoring and hosted sessions to the authorized active organization", () => {
     const teachGamesSource = readFileSync(new URL("./routers/teachGamesRouter.ts", import.meta.url), "utf8");
     const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");

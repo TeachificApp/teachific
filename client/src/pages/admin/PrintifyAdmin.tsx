@@ -100,7 +100,7 @@ function ProductsTab({ shopId }: { shopId: number }) {
             return (
               <Card
                 key={p.id}
-                className={`overflow-hidden cursor-pointer transition-colors ${isSelected ? "ring-2 ring-teal-500" : ""}`}
+                className={`overflow-hidden cursor-pointer transition-colors ${isSelected ? "ring-2 ring-[var(--org-primary)]" : ""}`}
                 onClick={() => toggle(p.id)}
               >
                 {p.imageUrl ? (
@@ -117,7 +117,7 @@ function ProductsTab({ shopId }: { shopId: number }) {
                       <p className="font-medium text-sm line-clamp-2">{p.title}</p>
                       <div className="flex items-center justify-between mt-1 gap-1">
                         {p.priceCents != null && (
-                          <span className="text-sm text-teal-600 font-semibold">{fmtCents(p.priceCents)}</span>
+                          <span className="text-sm text-[var(--org-primary)] font-semibold">{fmtCents(p.priceCents)}</span>
                         )}
                         {isImported && (
                           <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
@@ -242,7 +242,7 @@ export default function PrintifyAdmin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Store className="h-6 w-6 text-teal-600" />
+            <Store className="h-6 w-6 text-[var(--org-primary)]" />
             Printify Integration
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -253,7 +253,7 @@ export default function PrintifyAdmin() {
           href="https://printify.com/app/store/products"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-teal-600 hover:underline flex items-center gap-1"
+          className="text-sm text-[var(--org-primary)] hover:underline flex items-center gap-1"
         >
           Open Printify Dashboard <ExternalLink className="h-3 w-3" />
         </a>
