@@ -5862,7 +5862,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
       <div className="flex rounded-lg border border-gray-200 overflow-hidden">
         <button
           className={`flex-1 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-            mode === "existing" ? "bg-teal-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+            mode === "existing" ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
           }`}
           onClick={() => setMode("existing")}
         >
@@ -5870,7 +5870,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
         </button>
         <button
           className={`flex-1 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-            mode === "invite" ? "bg-teal-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+            mode === "invite" ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-600 hover:bg-gray-50"
           }`}
           onClick={() => setMode("invite")}
         >
@@ -5901,14 +5901,14 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">No enrolled students match "{debouncedSearch}"</p>
           )}
           {selectedStudent && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <User className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg px-3 py-2">
+              <User className="w-3.5 h-3.5 text-[var(--org-primary)] shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-gray-900 truncate">{selectedStudent.displayName || selectedStudent.name}</p>
                 <p className="text-xs text-gray-500 truncate">{selectedStudent.email}</p>
               </div>
               <button onClick={() => { setSelectedStudent(null); setSearchQuery(""); }} className="text-gray-400 hover:text-gray-700"><X className="w-3.5 h-3.5" /></button>
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-7 text-xs" disabled={moveStudent.isPending}
+              <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-7 text-xs" disabled={moveStudent.isPending}
                 onClick={() => moveStudent.mutate({ groupId: group.id, userId: selectedStudent.userId })}>
                 {moveStudent.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Move into Group"}
               </Button>
@@ -5918,7 +5918,7 @@ function GroupSeatAssignPanel({ group, onRefetch }: { group: any; onRefetch: () 
       ) : (
         <div className="flex gap-2">
           <Input placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="h-8 text-sm flex-1" type="email" />
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white h-8" disabled={assignSeat.isPending || !newEmail.trim()}
+          <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white h-8" disabled={assignSeat.isPending || !newEmail.trim()}
             onClick={() => assignSeat.mutate({ groupId: group.id, email: newEmail })}>
             {assignSeat.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Send Invite"}
           </Button>
