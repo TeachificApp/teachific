@@ -11445,29 +11445,29 @@ function CohortTab({ courseId }: { courseId: number }) {
         <div className="space-y-3">
           {/* Group selector banner when multi-cohort mode is on */}
           {multiCohortMode && cohortGroups.length > 0 && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-teal-700">Viewing group:</span>
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg px-3 py-2">
+              <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+              <span className="text-xs font-medium text-[var(--org-primary)]">Viewing group:</span>
               <select
                 value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
                 onChange={e => setContentGroupId(Number(e.target.value))}
-                className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                className="text-xs border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
               >
                 {cohortGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-teal-500 ml-auto">Assignments created here will be assigned to this group</span>
+              <span className="text-xs text-[var(--org-primary)] ml-auto">Assignments created here will be assigned to this group</span>
             </div>
           )}
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-500">Manage assignments, homework, and projects for cohort participants.</p>
             <div className="relative">
               <div className="flex items-center gap-1">
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white rounded-r-none border-r border-teal-500" onClick={() => openAssignDialog()}>
+                <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white rounded-r-none border-r border-[color:color-mix(in_srgb,var(--org-primary)_65%,transparent)]" onClick={() => openAssignDialog()}>
                   <Plus className="w-3.5 h-3.5 mr-1" /> New Assignment
                 </Button>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white rounded-l-none px-2" title="Copy from existing" onClick={() => { setCopySearch(""); setCopyPickerOpen(true); }}>
+                <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white rounded-l-none px-2" title="Copy from existing" onClick={() => { setCopySearch(""); setCopyPickerOpen(true); }}>
                   <Copy className="w-3.5 h-3.5" />
                 </Button>
               </div>
