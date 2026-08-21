@@ -3,7 +3,7 @@
  * Org-scoped: reads orgSlug from URL query param, displays org name dynamically.
  * No hardcoded brand names.
  */
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,10 @@ export default function NewsletterSubscribe() {
   );
 
   const orgName = orgInfo?.name ?? "Our Community";
+  const newsletterPrimaryColor = orgInfo?.studentPrimaryColor ?? orgInfo?.buttonColor ?? orgInfo?.primaryColor ?? "#189aa1";
+  const newsletterThemeStyle = { "--newsletter-primary": newsletterPrimaryColor } as CSSProperties;
+  const pageBackground = "linear-gradient(135deg, color-mix(in srgb, var(--newsletter-primary) 68%, #08151a), color-mix(in srgb, var(--newsletter-primary) 86%, #08151a), var(--newsletter-primary))";
+  const headerBackground = "linear-gradient(90deg, color-mix(in srgb, var(--newsletter-primary) 68%, #08151a), var(--newsletter-primary))";
 
   const [form, setForm] = useState({
     firstName: "",
@@ -91,10 +95,10 @@ export default function NewsletterSubscribe() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0d4f52] via-[#0f6b70] to-[#189aa1] flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ ...newsletterThemeStyle, background: pageBackground }}>
         <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-10 text-center">
-          <div className="w-16 h-16 rounded-full bg-[#189aa1]/10 flex items-center justify-center mx-auto mb-5">
-            <CheckCircle2 className="w-8 h-8 text-[#189aa1]" />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ backgroundColor: "color-mix(in srgb, var(--newsletter-primary) 10%, transparent)" }}>
+            <CheckCircle2 className="w-8 h-8 text-[var(--newsletter-primary)]" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">You're subscribed!</h2>
           <p className="text-gray-500 text-sm leading-relaxed">
@@ -110,10 +114,10 @@ export default function NewsletterSubscribe() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d4f52] via-[#0f6b70] to-[#189aa1] flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ ...newsletterThemeStyle, background: pageBackground }}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#0d4f52] to-[#189aa1] px-8 py-8 text-white">
+        <div className="px-8 py-8 text-white" style={{ background: headerBackground }}>
           <div className="flex items-center gap-3 mb-5">
             {orgInfo?.logoUrl ? (
               <img src={orgInfo.logoUrl} alt={orgName} className="h-10 w-auto object-contain" />
@@ -127,7 +131,7 @@ export default function NewsletterSubscribe() {
             </div>
           </div>
           <h1 className="text-2xl font-bold mb-1">Stay Connected</h1>
-          <p className="text-teal-100 text-sm leading-relaxed">
+          <p className="text-sm leading-relaxed" style={{ color: "color-mix(in srgb, var(--newsletter-primary) 22%, white)" }}>
             Get the latest courses, CME opportunities, clinical tools, and education delivered directly to your inbox.
           </p>
         </div>
@@ -143,7 +147,7 @@ export default function NewsletterSubscribe() {
                 placeholder="Jane"
                 value={form.firstName}
                 onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
-                className="border-gray-300 focus:border-[#189aa1] focus:ring-[#189aa1]"
+                className="border-gray-300 focus:border-[var(--newsletter-primary)] focus:ring-[var(--newsletter-primary)]"
               />
             </div>
             <div className="space-y-1.5">
@@ -153,7 +157,7 @@ export default function NewsletterSubscribe() {
                 placeholder="Smith"
                 value={form.lastName}
                 onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
-                className="border-gray-300 focus:border-[#189aa1] focus:ring-[#189aa1]"
+                className="border-gray-300 focus:border-[var(--newsletter-primary)] focus:ring-[var(--newsletter-primary)]"
               />
             </div>
           </div>
@@ -170,7 +174,7 @@ export default function NewsletterSubscribe() {
               placeholder="jane@example.com"
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              className="border-gray-300 focus:border-[#189aa1] focus:ring-[#189aa1]"
+              className="border-gray-300 focus:border-[var(--newsletter-primary)] focus:ring-[var(--newsletter-primary)]"
             />
           </div>
 
@@ -181,7 +185,7 @@ export default function NewsletterSubscribe() {
               id="profession"
               value={form.profession}
               onChange={(e) => setForm((f) => ({ ...f, profession: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[#189aa1] focus:outline-none focus:ring-1 focus:ring-[#189aa1]"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-[var(--newsletter-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--newsletter-primary)]"
             >
               <option value="">Select your profession…</option>
               {PROFESSION_OPTIONS.map((p) => (
@@ -197,12 +201,12 @@ export default function NewsletterSubscribe() {
               {INTEREST_OPTIONS.map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg border border-gray-200 hover:border-[#189aa1] hover:bg-[#189aa1]/5 transition-colors"
+                  className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg border border-gray-200 hover:border-[var(--newsletter-primary)] hover:bg-[color:color-mix(in_srgb,var(--newsletter-primary)_5%,transparent)] transition-colors"
                 >
                   <Checkbox
                     checked={form.interests.includes(opt.value)}
                     onCheckedChange={() => toggleInterest(opt.value)}
-                    className="data-[state=checked]:bg-[#189aa1] data-[state=checked]:border-[#189aa1]"
+                    className="data-[state=checked]:bg-[var(--newsletter-primary)] data-[state=checked]:border-[var(--newsletter-primary)]"
                   />
                   <span className="text-sm text-gray-700">{opt.label}</span>
                 </label>
@@ -214,8 +218,8 @@ export default function NewsletterSubscribe() {
           <Button
             type="submit"
             disabled={subscribeMutation.isPending}
-            className="w-full h-11 text-sm font-semibold text-white"
-            style={{ background: "#189aa1" }}
+            className="w-full h-11 text-sm font-semibold text-white hover:opacity-90"
+            style={{ background: "var(--newsletter-primary)" }}
           >
             {subscribeMutation.isPending ? (
               <span className="flex items-center gap-2">

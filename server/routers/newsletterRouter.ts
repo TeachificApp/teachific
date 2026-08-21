@@ -10,7 +10,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { getDb, requireOrgAdmin } from "../db";
-import { newsletterSubscribers, organizations } from "../../drizzle/schema";
+import { newsletterSubscribers, organizations, orgThemes } from "../../drizzle/schema";
 import { notifyOwner } from "../_core/notification";
 import {
   upsertSendGridContacts,
@@ -327,8 +327,12 @@ export const newsletterRouter = router({
           slug: organizations.slug,
           logoUrl: organizations.logoUrl,
           description: organizations.description,
+          primaryColor: orgThemes.primaryColor,
+          buttonColor: orgThemes.buttonColor,
+          studentPrimaryColor: orgThemes.studentPrimaryColor,
         })
         .from(organizations)
+        .leftJoin(orgThemes, eq(orgThemes.orgId, organizations.id))
         .where(eq(organizations.id, resolvedOrgId))
         .limit(1);
       return rows[0] ?? null;
