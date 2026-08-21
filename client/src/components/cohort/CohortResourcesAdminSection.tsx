@@ -133,7 +133,7 @@ function MediaPickerInline({
               <button
                 key={a.id}
                 type="button"
-                className="w-full text-left px-3 py-2 rounded border border-gray-200 hover:border-teal-400 hover:bg-teal-50 text-sm truncate"
+                className="w-full text-left px-3 py-2 rounded border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-sm truncate"
                 onClick={() => {
                   onSelect({ id: a.id, title: a.title, s3Url: a.s3Url });
                   onClose();
@@ -301,13 +301,13 @@ export function CohortResourcesAdminSection({
   return (
     <div className="space-y-3">
       {multiCohortMode && cohortGroups.length > 0 && (
-        <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-          <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-          <span className="text-xs font-medium text-teal-700">Filter by group:</span>
+        <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg px-3 py-2">
+          <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+          <span className="text-xs font-medium text-[var(--org-primary)]">Filter by group:</span>
           <select
             value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
             onChange={(e) => onContentGroupChange(Number(e.target.value))}
-            className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800"
+            className="text-xs border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)]"
           >
             {cohortGroups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -315,7 +315,7 @@ export function CohortResourcesAdminSection({
               </option>
             ))}
           </select>
-          <span className="text-xs text-teal-500 ml-auto">
+          <span className="text-xs text-[var(--org-primary)] opacity-70 ml-auto">
             Shows course-wide + this group&apos;s resources
           </span>
         </div>
@@ -328,7 +328,7 @@ export function CohortResourcesAdminSection({
         </p>
         <Button
           size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white"
+          className="bg-[var(--org-primary)] hover:brightness-90 text-white"
           onClick={() => openDialog()}
         >
           <Plus className="w-3.5 h-3.5 mr-1" /> Add Resource
@@ -356,11 +356,11 @@ export function CohortResourcesAdminSection({
               {r.cardImageUrl ? (
                 <img src={r.cardImageUrl} alt="" className="h-28 w-full object-cover" />
               ) : (
-                <div className="h-28 bg-teal-50 flex items-center justify-center">
+                <div className="h-28 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] flex items-center justify-center">
                   {r.actionType === "download" ? (
-                    <Download className="w-8 h-8 text-teal-300" />
+                    <Download className="w-8 h-8 text-[var(--org-primary)] opacity-50" />
                   ) : (
-                    <Link2 className="w-8 h-8 text-teal-300" />
+                    <Link2 className="w-8 h-8 text-[var(--org-primary)] opacity-50" />
                   )}
                 </div>
               )}
@@ -411,7 +411,7 @@ export function CohortResourcesAdminSection({
                       href={r.actionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-auto text-xs text-teal-600 hover:underline flex items-center gap-1"
+                      className="ml-auto text-xs text-[var(--org-primary)] hover:underline flex items-center gap-1"
                     >
                       <ExternalLink className="w-3 h-3" /> Preview
                     </a>
@@ -454,7 +454,7 @@ export function CohortResourcesAdminSection({
                 placeholder="https://... or upload below"
                 className="mb-2"
               />
-              <label className="inline-flex items-center gap-2 text-xs text-teal-700 cursor-pointer border border-teal-200 rounded px-2 py-1.5 hover:bg-teal-50">
+              <label className="inline-flex items-center gap-2 text-xs text-[var(--org-primary)] cursor-pointer border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded px-2 py-1.5 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
                 <Upload className="w-3.5 h-3.5" />
                 {cardImageUploading ? "Uploading…" : "Upload image"}
                 <input
@@ -557,7 +557,7 @@ export function CohortResourcesAdminSection({
                       onChange={(e) => setForm((p) => ({ ...p, fileUrl: e.target.value }))}
                       placeholder="File URL (optional if uploading)"
                     />
-                    <label className="inline-flex items-center gap-2 text-xs text-teal-700 cursor-pointer border border-teal-200 rounded px-2 py-1.5 hover:bg-teal-50">
+                    <label className="inline-flex items-center gap-2 text-xs text-[var(--org-primary)] cursor-pointer border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded px-2 py-1.5 hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
                       <Upload className="w-3.5 h-3.5" />
                       {uploading ? "Uploading…" : form.fileName || "Upload file"}
                       <input
@@ -655,7 +655,7 @@ export function CohortResourcesAdminSection({
                 Cancel
               </Button>
               <Button
-                className="bg-teal-600 hover:bg-teal-700 text-white"
+                className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                 onClick={handleSave}
                 disabled={createResource.isPending || updateResource.isPending}
               >
