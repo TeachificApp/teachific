@@ -1794,6 +1794,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(productAnalyticsSource).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout the email campaign block editor and inline email renderer", () => {
+    const emailBlockEditorSource = readFileSync(new URL("../client/src/components/EmailBlockEditor.tsx", import.meta.url), "utf8");
+    expect(emailBlockEditorSource).toContain("getActiveEmailPrimary");
+    expect(emailBlockEditorSource).toContain("getActiveEmailTint");
+    expect(emailBlockEditorSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(emailBlockEditorSource).toContain("accent-[var(--org-primary)]");
+    expect(emailBlockEditorSource).not.toMatch(/teal|violet|purple/i);
+    expect(emailBlockEditorSource).not.toMatch(/#(179ca3|189aa1|14b8a6|0d9488|2dd4bf|5eead4|f0fafa)/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

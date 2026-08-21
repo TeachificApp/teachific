@@ -45,6 +45,18 @@ import {
   useBlockTemplateLibrary,
 } from "@/components/BlockTemplateLibrary";
 
+function getActiveEmailPrimary(): string {
+  if (typeof window === "undefined") return "#000000";
+  return getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#000000";
+}
+
+function getActiveEmailTint(primary = getActiveEmailPrimary()): string {
+  const normalized = primary.replace("#", "");
+  if (!/^[\da-f]{6}$/i.test(normalized)) return primary;
+  const channels = [0, 2, 4].map(offset => Number.parseInt(normalized.slice(offset, offset + 2), 16));
+  return `#${channels.map(channel => Math.round(channel + ((255 - channel) * 0.9)).toString(16).padStart(2, "0")).join("")}`;
+}
+
 // ─── Email-specific auto-content block types ─────────────────────────────────
 // These are email-only blocks not in the main BLOCK_CATALOG
 const EMAIL_AUTO_BLOCKS: { type: BlockType; label: string; icon: React.ReactNode; category: string; defaultData: Record<string, any> }[] = [
@@ -62,8 +74,6 @@ const EMAIL_AUTO_BLOCKS: { type: BlockType; label: string; icon: React.ReactNode
         { icon: "📄", title: "Clinical Resources", text: "Downloadable references and guides" },
         { icon: "🏆", title: "CME Credits", text: "Earn continuing education credits" },
       ],
-      bgColor: "#f0fafa",
-      accentColor: "#179ca3",
     },
   },
   {
@@ -79,7 +89,6 @@ const EMAIL_AUTO_BLOCKS: { type: BlockType; label: string; icon: React.ReactNode
       ctaText: "View All Sessions",
       ctaLink: "https://",
       bgColor: "#f9fafb",
-      accentColor: "#179ca3",
     },
   },
   {
@@ -95,7 +104,6 @@ const EMAIL_AUTO_BLOCKS: { type: BlockType; label: string; icon: React.ReactNode
       ],
       ctaText: "Learn More",
       bgColor: "#f9fafb",
-      accentColor: "#179ca3",
     },
   },
 ];
@@ -200,7 +208,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-800 font-medium px-2.5 py-1.5 rounded-md border border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors whitespace-nowrap"
+        className="flex items-center gap-1.5 text-xs text-[var(--org-primary)] hover:brightness-90 font-medium px-2.5 py-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] transition-colors whitespace-nowrap"
       >
         <Sparkles className="w-3.5 h-3.5" />
         AI Generate Email
@@ -209,7 +217,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setOpen(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-teal-600" />
+              <Sparkles className="w-5 h-5 text-[var(--org-primary)]" />
               <h3 className="text-base font-semibold text-gray-900">AI Generate Email</h3>
               <button onClick={() => setOpen(false)} className="ml-auto text-gray-400 hover:text-gray-700">✕</button>
             </div>
@@ -231,15 +239,15 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
               </div>
 
               {emailType === "promo" && (
-                <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
-                  <label className="text-xs font-semibold text-teal-700 block">Select Course / Product to Promote</label>
+                <div className="rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] p-3 space-y-2">
+                  <label className="text-xs font-semibold text-[var(--org-primary)] block">Select Course / Product to Promote</label>
                   {allProducts.length === 0 ? (
                     <p className="text-xs text-gray-400">Loading your courses and products…</p>
                   ) : (
                     <select
                       value={selectedProductId}
                       onChange={e => setSelectedProductId(e.target.value)}
-                      className="w-full h-8 rounded-md border border-teal-200 bg-white px-2 text-xs"
+                      className="w-full h-8 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-white px-2 text-xs"
                     >
                       <option value="">— Select a product —</option>
                       {allProducts.map(p => (
@@ -250,9 +258,9 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
                     </select>
                   )}
                   {selectedProduct && (
-                    <div className="text-xs text-teal-700 space-y-0.5">
+                    <div className="text-xs text-[var(--org-primary)] space-y-0.5">
                       {selectedProduct.description && <p className="line-clamp-2 text-gray-600">{selectedProduct.description}</p>}
-                      <p className="font-mono text-[10px] text-teal-600 truncate">{selectedProduct.url}</p>
+                      <p className="font-mono text-[10px] text-[var(--org-primary)] truncate">{selectedProduct.url}</p>
                     </div>
                   )}
                 </div>
@@ -293,7 +301,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
                   type="checkbox"
                   checked={includeEmoji}
                   onChange={e => setIncludeEmoji(e.target.checked)}
-                  className="w-4 h-4 rounded accent-teal-600"
+                  className="w-4 h-4 rounded accent-[var(--org-primary)]"
                 />
                 <span className="text-sm text-gray-700">😊 Include emojis in generated text</span>
               </label>
@@ -303,7 +311,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
             )}
             <div className="flex gap-2 mt-4">
               <Button
-                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                className="flex-1 bg-[var(--org-primary)] hover:brightness-90 text-white"
                 disabled={(emailType === "promo" ? !selectedProductId : !prompt.trim()) || generateMutation.isPending}
                 onClick={handleGenerate}
               >
@@ -323,6 +331,8 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
 export function emailBlockToHtml(block: Block): string {
   const d = block.data ?? {};
   const align = (d.align as string) ?? "left";
+  const orgPrimary = getActiveEmailPrimary();
+  const orgTint = getActiveEmailTint(orgPrimary);
 
   switch (block.type) {
     case "text": {
@@ -350,7 +360,7 @@ export function emailBlockToHtml(block: Block): string {
     case "hero": {
       const headline = (d.headline as string) ?? "";
       const subheadline = (d.subheadline as string) ?? "";
-      const bgColor = (d.bgColor as string) ?? "#179ca3";
+      const bgColor = (d.bgColor as string) ?? orgPrimary;
       const textColor = (d.textColor as string) ?? "#ffffff";
       // Only render buttons when hideButtons is false AND the button has non-default text
       const hideButtons = d.hideButtons as boolean;
@@ -359,7 +369,7 @@ export function emailBlockToHtml(block: Block): string {
         const btnText = (btn.text as string) ?? "";
         // Skip empty or default placeholder text that should not appear in email
         if (!btnText || btnText === "Enroll Now" || btnText === "Get Started") return "";
-        return `<a href="${btn.link || "#"}" style="display:inline-block;background:${btn.color || "#ffffff"};color:${btn.textColor || "#179ca3"};text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;margin:4px;">${btnText}</a>`;
+        return `<a href="${btn.link || "#"}" style="display:inline-block;background:${btn.color || "#ffffff"};color:${btn.textColor || orgPrimary};text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;margin:4px;">${btnText}</a>`;
       }).join("");
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bgColor};border-radius:8px;margin:0 0 16px;"><tr><td style="padding:32px;text-align:${align};"><h1 style="color:${textColor};font-size:28px;font-weight:900;margin:0 0 12px;line-height:1.2;">${headline}</h1>${subheadline ? `<p style="color:${textColor};font-size:16px;margin:0 0 20px;opacity:0.9;">${subheadline}</p>` : ""}${btnHtml ? `<div style="margin-top:16px;">${btnHtml}</div>` : ""}</td></tr></table>`;
     }
@@ -376,7 +386,7 @@ export function emailBlockToHtml(block: Block): string {
     case "bullets": {
       const headline = (d.headline as string) ?? "";
       const items = (d.items as string[]) ?? [];
-      const iconColor = (d.iconColor as string) ?? "#179ca3";
+      const iconColor = (d.iconColor as string) ?? orgPrimary;
       const bg = (d.bgColor as string) ?? "#f8fffe";
       const itemsHtml = items.map((item) =>
         `<tr><td style="padding:4px 0;"><table cellpadding="0" cellspacing="0"><tr><td style="width:20px;vertical-align:top;color:${iconColor};font-size:16px;font-weight:bold;">✓</td><td style="padding-left:8px;color:#1a2e3b;font-size:15px;line-height:1.6;">${item}</td></tr></table></td></tr>`
@@ -386,7 +396,7 @@ export function emailBlockToHtml(block: Block): string {
     case "numbered_list": {
       const headline = (d.headline as string) ?? "";
       const items = (d.items as string[]) ?? [];
-      const accentColor = (d.accentColor as string) ?? "#179ca3";
+      const accentColor = (d.accentColor as string) ?? orgPrimary;
       const bg = (d.bgColor as string) ?? "#ffffff";
       const itemsHtml = items.map((item, i) =>
         `<tr><td style="padding:6px 0;"><table cellpadding="0" cellspacing="0"><tr><td style="width:28px;vertical-align:top;"><span style="display:inline-block;width:24px;height:24px;background:${accentColor};color:#fff;border-radius:50%;text-align:center;line-height:24px;font-size:12px;font-weight:700;">${i + 1}</span></td><td style="padding-left:10px;color:#1a2e3b;font-size:15px;line-height:1.6;vertical-align:middle;">${item}</td></tr></table></td></tr>`
@@ -396,7 +406,7 @@ export function emailBlockToHtml(block: Block): string {
     case "checklist": {
       const headline = (d.headline as string) ?? "";
       const items = (d.items as string[]) ?? [];
-      const accentColor = (d.accentColor as string) ?? "#179ca3";
+      const accentColor = (d.accentColor as string) ?? orgPrimary;
       const bg = (d.bgColor as string) ?? "#ffffff";
       const itemsHtml = items.map((item) =>
         `<tr><td style="padding:4px 0;"><table cellpadding="0" cellspacing="0"><tr><td style="width:20px;vertical-align:top;color:${accentColor};font-size:16px;">☑</td><td style="padding-left:8px;color:#1a2e3b;font-size:15px;line-height:1.6;">${item}</td></tr></table></td></tr>`
@@ -406,20 +416,20 @@ export function emailBlockToHtml(block: Block): string {
     case "testimonial": {
       const quote = (d.quote as string) ?? "";
       const author = (d.author as string) ?? "";
-      const bg = (d.bgColor as string) ?? "#f0fafa";
-      const accent = (d.accentColor as string) ?? "#179ca3";
+      const bg = (d.bgColor as string) ?? orgTint;
+      const accent = (d.accentColor as string) ?? orgPrimary;
       const rating = (d.rating as number) ?? 0;
       const stars = rating > 0 ? `<div style="color:#f59e0b;font-size:18px;margin-bottom:8px;">${"★".repeat(rating)}</div>` : "";
-      return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-left:4px solid ${accent};border-radius:0 8px 8px 0;margin:16px 0;"><tr><td style="padding:20px 24px;">${stars}<p style="color:#0e4a50;font-size:16px;font-style:italic;margin:0 0 12px;line-height:1.7;">"${quote}"</p>${author ? `<p style="color:#189aa1;font-size:13px;font-weight:600;margin:0;">— ${author}</p>` : ""}</td></tr></table>`;
+      return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-left:4px solid ${accent};border-radius:0 8px 8px 0;margin:16px 0;"><tr><td style="padding:20px 24px;">${stars}<p style="color:#0e4a50;font-size:16px;font-style:italic;margin:0 0 12px;line-height:1.7;">"${quote}"</p>${author ? `<p style="color:${orgPrimary};font-size:13px;font-weight:600;margin:0;">— ${author}</p>` : ""}</td></tr></table>`;
     }
     case "cta_standalone": {
       const headline = (d.headline as string) ?? "";
       const subtext = (d.subtext as string) ?? "";
       const ctaText = (d.ctaText as string) ?? "Get Started";
       const ctaLink = (d.ctaLink as string) ?? "#";
-      const ctaColor = (d.ctaColor as string) ?? "#179ca3";
+      const ctaColor = (d.ctaColor as string) ?? orgPrimary;
       const ctaTextColor = (d.ctaTextColor as string) ?? "#ffffff";
-      const bg = (d.bgColor as string) ?? "#f0fafa";
+      const bg = (d.bgColor as string) ?? orgTint;
       const textAlign = (d.align as string) ?? "center";
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;margin:16px 0;"><tr><td style="padding:32px;text-align:${textAlign};">${headline ? `<h2 style="color:#0e1e2e;font-size:22px;font-weight:700;margin:0 0 8px;">${headline}</h2>` : ""}${subtext ? `<p style="color:#4a6070;font-size:15px;margin:0 0 20px;">${subtext}</p>` : ""}<a href="${ctaLink}" style="display:inline-block;background:${ctaColor};color:${ctaTextColor};text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:700;font-size:16px;">${ctaText}</a></td></tr></table>`;
     }
@@ -427,10 +437,10 @@ export function emailBlockToHtml(block: Block): string {
       const headline = (d.headline as string) ?? "Stay in the loop";
       const subtext = (d.subtext as string) ?? "";
       const ctaText = (d.ctaText as string) ?? "Subscribe";
-      const bg = (d.bgColor as string) ?? "#179ca3";
+      const bg = (d.bgColor as string) ?? orgPrimary;
       const textColor = (d.textColor as string) ?? "#ffffff";
       const btnBg = (d.btnBg as string) ?? "#ffffff";
-      const btnTextColor = (d.btnTextColor as string) ?? "#179ca3";
+      const btnTextColor = (d.btnTextColor as string) ?? orgPrimary;
       const showName = d.showNameField as boolean;
       const nameField = showName ? `<tr><td style="padding-bottom:8px;"><input type="text" name="name" placeholder="${(d.namePlaceholder as string) ?? "Your name"}" style="width:100%;box-sizing:border-box;padding:10px 14px;border:1px solid rgba(255,255,255,0.4);border-radius:8px;font-size:14px;background:rgba(255,255,255,0.15);color:${textColor};" /></td></tr>` : "";
       return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;"><tr><td align="center"><table cellpadding="0" cellspacing="0" style="background:${bg};border-radius:12px;padding:32px;max-width:480px;width:100%;margin:0 auto;"><tr><td style="padding-bottom:8px;text-align:center;"><strong style="font-size:20px;color:${textColor};">${headline}</strong></td></tr>${subtext ? `<tr><td style="padding-bottom:16px;text-align:center;"><p style="color:${textColor};font-size:14px;margin:0;opacity:0.85;">${subtext}</p></td></tr>` : ""}${nameField}<tr><td style="padding-bottom:12px;"><input type="email" name="email" placeholder="${(d.emailPlaceholder as string) ?? "Your email address"}" style="width:100%;box-sizing:border-box;padding:10px 14px;border:1px solid rgba(255,255,255,0.4);border-radius:8px;font-size:14px;background:rgba(255,255,255,0.15);color:${textColor};" /></td></tr><tr><td style="text-align:center;"><a href="#" style="display:inline-block;background:${btnBg};color:${btnTextColor};text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:700;font-size:15px;">${ctaText}</a></td></tr></table></td></tr></table>`;
@@ -440,7 +450,7 @@ export function emailBlockToHtml(block: Block): string {
       const alertType = (d.alertType as string) ?? "info";
       const icon = (d.icon as string) ?? "💡";
       const colors: Record<string, { bg: string; border: string; text: string }> = {
-        info: { bg: "#f0fbfc", border: "#189aa1", text: "#0e4a50" },
+        info: { bg: orgTint, border: orgPrimary, text: orgPrimary },
         warning: { bg: "#fffbeb", border: "#f59e0b", text: "#92400e" },
         success: { bg: "#f0fdf4", border: "#22c55e", text: "#166534" },
         error: { bg: "#fef2f2", border: "#ef4444", text: "#991b1b" },
@@ -465,7 +475,7 @@ export function emailBlockToHtml(block: Block): string {
       const links = ((d.links ?? d.footerLinks) as { text: string; url: string }[] | undefined) ?? [];
       const linksHtml = links
         .filter((l) => l && l.text && l.url)
-        .map((l) => `<a href="${l.url}" style="color:#189aa1;text-decoration:none;margin:0 8px;">${l.text}</a>`)
+        .map((l) => `<a href="${l.url}" style="color:${orgPrimary};text-decoration:none;margin:0 8px;">${l.text}</a>`)
         .join(" &middot; ");
       const accountNotice = `<p style="color:${textColor};font-size:11px;margin:8px 0 0;opacity:0.7;">You are receiving this email because you have an account on Teachific\u2122</p>`;
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:0 0 8px 8px;"><tr><td style="padding:20px 32px;text-align:center;"><p style="color:${textColor};font-size:12px;margin:0 0 8px;">${copyright}</p>${linksHtml ? `<p style="margin:4px 0;font-size:12px;">${linksHtml}</p>` : ""}${accountNotice}</td></tr></table>`;
@@ -475,7 +485,7 @@ export function emailBlockToHtml(block: Block): string {
       const hasHeader = d.hasHeader as boolean;
       const bordered = d.bordered as boolean;
       const striped = d.striped as boolean;
-      const headerBg = (d.headerBg as string) ?? "#f0fafa";
+      const headerBg = (d.headerBg as string) ?? orgTint;
       const headerTextColor = (d.headerTextColor as string) ?? "#0e4a50";
       const borderColor = (d.borderColor as string) ?? "#d1fae5";
       const fontSize = (d.fontSize as number) ?? 14;
@@ -517,13 +527,13 @@ export function emailBlockToHtml(block: Block): string {
       const avatarUrl = (d.avatarUrl as string) ?? "";
       const bg = (d.bgColor as string) ?? "#ffffff";
       const avatar = avatarUrl ? `<img src="${avatarUrl}" alt="${name}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;" />` : "";
-      return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;padding:24px;margin:12px 0;"><tr><td>${avatar ? `<table cellpadding="0" cellspacing="0"><tr><td style="padding-right:16px;vertical-align:top;">${avatar}</td><td style="vertical-align:top;"><strong style="color:#0e1e2e;font-size:18px;">${name}</strong><br/><span style="color:#179ca3;font-size:13px;">${title}</span>${bio ? `<p style="color:#4a6070;font-size:14px;margin:8px 0 0;line-height:1.6;">${bio}</p>` : ""}</td></tr></table>` : `<strong style="color:#0e1e2e;font-size:18px;">${name}</strong><br/><span style="color:#179ca3;font-size:13px;">${title}</span>${bio ? `<p style="color:#4a6070;font-size:14px;margin:8px 0 0;line-height:1.6;">${bio}</p>` : ""}`}</td></tr></table>`;
+      return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;padding:24px;margin:12px 0;"><tr><td>${avatar ? `<table cellpadding="0" cellspacing="0"><tr><td style="padding-right:16px;vertical-align:top;">${avatar}</td><td style="vertical-align:top;"><strong style="color:#0e1e2e;font-size:18px;">${name}</strong><br/><span style="color:${orgPrimary};font-size:13px;">${title}</span>${bio ? `<p style="color:#4a6070;font-size:14px;margin:8px 0 0;line-height:1.6;">${bio}</p>` : ""}</td></tr></table>` : `<strong style="color:#0e1e2e;font-size:18px;">${name}</strong><br/><span style="color:${orgPrimary};font-size:13px;">${title}</span>${bio ? `<p style="color:#4a6070;font-size:14px;margin:8px 0 0;line-height:1.6;">${bio}</p>` : ""}`}</td></tr></table>`;
     }
     case "faq": {
       const headline = (d.headline as string) ?? "";
       const items = (d.items as { q: string; a: string }[]) ?? [];
       const bg = (d.bgColor as string) ?? "#ffffff";
-      const accent = (d.accentColor as string) ?? "#179ca3";
+      const accent = (d.accentColor as string) ?? orgPrimary;
       const itemsHtml = items.map((item) =>
         `<tr><td style="padding:12px 0;border-bottom:1px solid #e5eaec;"><strong style="color:#0e1e2e;font-size:15px;">${item.q}</strong><p style="color:#4a6070;font-size:14px;margin:6px 0 0;line-height:1.6;">${item.a}</p></td></tr>`
       ).join("");
@@ -534,7 +544,7 @@ export function emailBlockToHtml(block: Block): string {
       const reviews = (d.reviews as { name: string; rating: number; text: string }[]) ?? [];
       const bg = (d.bgColor as string) ?? "#ffffff";
       const reviewsHtml = reviews.map((r) =>
-        `<tr><td style="padding:12px 0;border-bottom:1px solid #e5eaec;"><div style="color:#f59e0b;font-size:14px;margin-bottom:4px;">${"★".repeat(r.rating || 5)}</div><p style="color:#1a2e3b;font-size:14px;margin:0 0 4px;line-height:1.6;">${r.text}</p><span style="color:#189aa1;font-size:12px;font-weight:600;">— ${r.name}</span></td></tr>`
+        `<tr><td style="padding:12px 0;border-bottom:1px solid #e5eaec;"><div style="color:#f59e0b;font-size:14px;margin-bottom:4px;">${"★".repeat(r.rating || 5)}</div><p style="color:#1a2e3b;font-size:14px;margin:0 0 4px;line-height:1.6;">${r.text}</p><span style="color:${orgPrimary};font-size:12px;font-weight:600;">— ${r.name}</span></td></tr>`
       ).join("");
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;padding:24px;margin:12px 0;"><tr><td>${headline ? `<h3 style="color:#0e1e2e;font-size:20px;font-weight:700;margin:0 0 16px;">${headline}</h3>` : ""}<table width="100%" cellpadding="0" cellspacing="0">${reviewsHtml}</table></td></tr></table>`;
     }
@@ -559,8 +569,8 @@ export function emailBlockToHtml(block: Block): string {
     case "included_items_auto": {
       const headline = (d.headline as string) ?? "What's Included";
       const subtext = (d.subtext as string) ?? "";
-      const bg = (d.bgColor as string) ?? "#f0fafa";
-      const accent = (d.accentColor as string) ?? "#179ca3";
+      const bg = (d.bgColor as string) ?? orgTint;
+      const accent = (d.accentColor as string) ?? orgPrimary;
       const sourceMode = (d.sourceMode as string) ?? "manual";
       const viewMode = (d.viewMode as string) ?? "list";
       // Database mode: use resolvedItems (populated server-side at send time)
@@ -596,7 +606,7 @@ export function emailBlockToHtml(block: Block): string {
       const ctaText = (d.ctaText as string) ?? "View All Sessions";
       const ctaLink = (d.ctaLink as string) ?? "#";
       const bg = (d.bgColor as string) ?? "#f9fafb";
-      const accent = (d.accentColor as string) ?? "#179ca3";
+      const accent = (d.accentColor as string) ?? orgPrimary;
       const sourceMode = (d.sourceMode as string) ?? "manual";
       const viewMode = (d.viewMode as string) ?? "list";
       const resolvedSessions = (d.resolvedItems as { title: string; date: string; time?: string; description?: string; location?: string; type?: string; link?: string }[]) ?? [];
@@ -620,7 +630,7 @@ export function emailBlockToHtml(block: Block): string {
       const subtext = (d.subtext as string) ?? "";
       const ctaText = (d.ctaText as string) ?? "Learn More";
       const bg = (d.bgColor as string) ?? "#f9fafb";
-      const accent = (d.accentColor as string) ?? "#179ca3";
+      const accent = (d.accentColor as string) ?? orgPrimary;
       const sourceMode = (d.sourceMode as string) ?? "manual";
       const viewMode = (d.viewMode as string) ?? "list";
       const resolvedBundles = (d.resolvedItems as { title: string; description?: string; price: number; imageUrl?: string; link?: string }[]) ?? [];
@@ -648,7 +658,7 @@ export function emailBlockToHtml(block: Block): string {
       const headline = (d.headline as string) ?? "";
       const cards = (d.cards as { front: string; back: string }[]) ?? [];
       const bg = (d.bgColor as string) ?? "#f8fffe";
-      const accent = (d.accentColor as string) ?? "#179ca3";
+      const accent = (d.accentColor as string) ?? orgPrimary;
       const cardsHtml = cards.map((card) =>
         `<tr><td style="padding:8px 0;"><table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${accent};border-radius:8px;overflow:hidden;"><tr><td style="background:${accent};padding:12px 16px;color:#ffffff;font-weight:600;font-size:14px;">${card.front}</td></tr><tr><td style="padding:12px 16px;color:#1a2e3b;font-size:14px;line-height:1.6;">${card.back}</td></tr></table></td></tr>`
       ).join("");
@@ -686,7 +696,7 @@ export function emailBlockToHtml(block: Block): string {
       const caption = (d.caption as string) ?? "";
       const thumbnail = (d.thumbnailUrl as string) ?? "";
       const bg = (d.bgColor as string) ?? "#f8fafc";
-      const accent = "#189aa1";
+      const accent = orgPrimary;
       if (!url) return "";
       const thumbHtml = thumbnail
         ? `<a href="${url}" style="display:block;text-decoration:none;"><img src="${thumbnail}" alt="${caption || "Watch video"}" style="max-width:100%;width:100%;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
@@ -699,7 +709,7 @@ export function emailBlockToHtml(block: Block): string {
       const title = (d.title as string) ?? "Audio";
       const caption = (d.caption as string) ?? "";
       const bg = (d.bgColor as string) ?? "#f8fafc";
-      const accent = "#189aa1";
+      const accent = orgPrimary;
       if (!url) return "";
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;padding:20px;margin:12px 0;"><tr><td><p style="color:#0e1e2e;font-size:16px;font-weight:600;margin:0 0 6px;">🎧 ${title}</p>${caption ? `<p style="color:#4a6070;font-size:13px;margin:0 0 12px;">${caption}</p>` : ""}<a href="${url}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">🎧 Listen Now</a></td></tr></table>`;
     }
@@ -724,7 +734,7 @@ export function emailBlockToHtml(block: Block): string {
       const url = (d.url as string) ?? (d.embedUrl as string) ?? "";
       const caption = (d.caption as string) ?? "";
       const bg = (d.bgColor as string) ?? "#f8fafc";
-      const accent = "#189aa1";
+      const accent = orgPrimary;
       if (!url) return "";
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;padding:20px;margin:12px 0;"><tr><td>${caption ? `<p style="color:#0e1e2e;font-size:15px;font-weight:600;margin:0 0 10px;">${caption}</p>` : ""}<a href="${url}" style="display:inline-block;background:${accent};color:#ffffff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;">🔗 View Content</a><p style="color:#9ca3af;font-size:11px;margin:8px 0 0;">Interactive content — click to view in browser</p></td></tr></table>`;
     }
@@ -803,6 +813,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
   const viewMode = (d.viewMode as string) ?? "list";
   // Selected IDs (for database mode)
   const selectedIds = (d.selectedIds as number[]) ?? [];
+  const orgPrimary = getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim();
 
   const toggleId = (id: number) => {
     const next = selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id];
@@ -814,11 +825,11 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
     <div className="flex gap-2 pt-1">
       <div className="flex-1">
         <label className="text-xs font-medium text-gray-600 block mb-1">Background</label>
-        <input type="color" className="w-full h-8 border rounded" value={(d.bgColor as string) ?? "#f0fafa"} onChange={e => set("bgColor", e.target.value)} />
+        <input type="color" className="w-full h-8 border rounded" value={(d.bgColor as string) ?? orgPrimary} onChange={e => set("bgColor", e.target.value)} />
       </div>
       <div className="flex-1">
         <label className="text-xs font-medium text-gray-600 block mb-1">Accent</label>
-        <input type="color" className="w-full h-8 border rounded" value={(d.accentColor as string) ?? "#179ca3"} onChange={e => set("accentColor", e.target.value)} />
+        <input type="color" className="w-full h-8 border rounded" value={(d.accentColor as string) ?? orgPrimary} onChange={e => set("accentColor", e.target.value)} />
       </div>
     </div>
   );
@@ -830,7 +841,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
         <button
           key={mode}
           className={`flex-1 text-xs py-1.5 font-medium transition-colors ${
-            sourceMode === mode ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+            sourceMode === mode ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-500 hover:bg-gray-50"
           }`}
           onClick={() => set("sourceMode", mode)}
         >
@@ -849,7 +860,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
           <button
             key={mode}
             className={`flex-1 text-xs py-1.5 font-medium transition-colors ${
-              viewMode === mode ? "bg-teal-600 text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+              viewMode === mode ? "bg-[var(--org-primary)] text-white" : "bg-white text-gray-500 hover:bg-gray-50"
             }`}
             onClick={() => set("viewMode", mode)}
           >
@@ -878,7 +889,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-gray-600">Select Plans</label>
-              <button onClick={() => refetch()} className="text-gray-400 hover:text-teal-600" title="Refresh"><RefreshCw size={11} /></button>
+              <button onClick={() => refetch()} className="text-gray-400 hover:text-[var(--org-primary)]" title="Refresh"><RefreshCw size={11} /></button>
             </div>
             {optionsLoading ? (
               <p className="text-xs text-gray-400">Loading plans…</p>
@@ -912,7 +923,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
                 <input className="w-full h-7 text-xs border rounded px-2" value={item.text} placeholder="Description" onChange={e => { const next = [...items]; next[i] = { ...next[i], text: e.target.value }; set("items", next); }} />
               </div>
             ))}
-            <button className="text-xs text-teal-600 hover:text-teal-800 font-medium" onClick={() => set("items", [...items, { icon: "✅", title: "", text: "" }])}>+ Add Item</button>
+            <button className="text-xs text-[var(--org-primary)] hover:brightness-90 font-medium" onClick={() => set("items", [...items, { icon: "✅", title: "", text: "" }])}>+ Add Item</button>
           </div>
         )}
         <ColorPickers />
@@ -935,7 +946,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-medium text-gray-600">Cohort Groups</label>
-                <button onClick={() => refetch()} className="text-gray-400 hover:text-teal-600" title="Refresh"><RefreshCw size={11} /></button>
+                <button onClick={() => refetch()} className="text-gray-400 hover:text-[var(--org-primary)]" title="Refresh"><RefreshCw size={11} /></button>
               </div>
               {optionsLoading ? (
                 <p className="text-xs text-gray-400">Loading…</p>
@@ -995,7 +1006,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
                 <input className="w-full h-7 text-xs border rounded px-2" value={s.description} placeholder="Description (optional)" onChange={e => { const next = [...sessions]; next[i] = { ...next[i], description: e.target.value }; set("sessions", next); }} />
               </div>
             ))}
-            <button className="text-xs text-teal-600 hover:text-teal-800 font-medium" onClick={() => set("sessions", [...sessions, { title: "", date: "", time: "", description: "" }])}>+ Add Session</button>
+            <button className="text-xs text-[var(--org-primary)] hover:brightness-90 font-medium" onClick={() => set("sessions", [...sessions, { title: "", date: "", time: "", description: "" }])}>+ Add Session</button>
           </div>
         )}
         <div>
@@ -1029,7 +1040,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-gray-600">Select Bundles</label>
-              <button onClick={() => refetch()} className="text-gray-400 hover:text-teal-600" title="Refresh"><RefreshCw size={11} /></button>
+              <button onClick={() => refetch()} className="text-gray-400 hover:text-[var(--org-primary)]" title="Refresh"><RefreshCw size={11} /></button>
             </div>
             {optionsLoading ? (
               <p className="text-xs text-gray-400">Loading bundles…</p>
@@ -1070,7 +1081,7 @@ function EmailAutoBlockSettings({ block, onChange }: { block: Block; onChange: (
                 <input className="w-full h-7 text-xs border rounded px-2" value={p.imageUrl} placeholder="Image URL (optional)" onChange={e => { const next = [...products]; next[i] = { ...next[i], imageUrl: e.target.value }; set("products", next); }} />
               </div>
             ))}
-            <button className="text-xs text-teal-600 hover:text-teal-800 font-medium" onClick={() => set("products", [...products, { title: "", description: "", price: "", imageUrl: "", link: "https://" }])}>+ Add Product</button>
+            <button className="text-xs text-[var(--org-primary)] hover:brightness-90 font-medium" onClick={() => set("products", [...products, { title: "", description: "", price: "", imageUrl: "", link: "https://" }])}>+ Add Product</button>
           </div>
         )}
         <ColorPickers />
@@ -1145,7 +1156,7 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-800 font-medium mb-3 px-2 py-1.5 rounded-md border border-teal-200 bg-teal-50 hover:bg-teal-100 w-full transition-colors"
+        className="flex items-center gap-1.5 text-xs text-[var(--org-primary)] hover:brightness-90 font-medium mb-3 px-2 py-1.5 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] w-full transition-colors"
       >
         <Sparkles className="w-3.5 h-3.5" />
         AI Generate Content
@@ -1153,8 +1164,8 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
     );
   }
   return (
-    <div className="mb-3 p-2.5 rounded-md border border-teal-200 bg-teal-50 space-y-2">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-700">
+    <div className="mb-3 p-2.5 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] space-y-2">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--org-primary)]">
         <Sparkles className="w-3.5 h-3.5" />
         AI Generate Email Content
       </div>
@@ -1194,7 +1205,7 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
       <div className="flex gap-2">
         <Button
           size="sm"
-          className="flex-1 bg-teal-600 hover:bg-teal-700 text-white text-xs h-7"
+          className="flex-1 bg-[var(--org-primary)] hover:brightness-90 text-white text-xs h-7"
           disabled={!prompt.trim() || generateMutation.isPending}
           onClick={() => generateMutation.mutate({
             blockType: block.type,
@@ -1222,9 +1233,9 @@ function AiBlockGenerator({ block, onApply }: { block: Block; onApply: (data: Re
             type="checkbox"
             checked={includeEmoji}
             onChange={e => setIncludeEmoji(e.target.checked)}
-            className="w-3.5 h-3.5 rounded accent-teal-600"
+            className="w-3.5 h-3.5 rounded accent-[var(--org-primary)]"
           />
-          <span className="text-xs text-teal-700">😊 Include emojis</span>
+          <span className="text-xs text-[var(--org-primary)]">😊 Include emojis</span>
         </label>
     </div>
   );
@@ -1379,7 +1390,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
         <div className="flex items-center gap-2 mb-3">
           <Button
             size="sm"
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             onClick={() => setAddMenuOpen(true)}
           >
             <Plus className="w-4 h-4 mr-1" /> Add Block
@@ -1398,7 +1409,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
 
         {blocks.length === 0 ? (
           <div
-            className="email-canvas-bg flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 cursor-pointer hover:border-teal-400 hover:text-teal-500 transition-colors"
+            className="email-canvas-bg flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg text-gray-400 cursor-pointer hover:border-[var(--org-primary)] hover:text-[var(--org-primary)] transition-colors"
             onClick={() => setAddMenuOpen(true)}
           >
             <Plus className="w-8 h-8 mb-2" />
@@ -1438,7 +1449,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
             <Button
               size="sm"
               variant="outline"
-              className="border-dashed border-teal-400 text-teal-600 hover:bg-teal-50 hover:border-teal-500"
+              className="border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] hover:border-[var(--org-primary)]"
               onClick={() => setAddMenuOpen(true)}
             >
               <Plus className="w-4 h-4 mr-1" /> Add Block
@@ -1451,7 +1462,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
       {selectedBlock && (
         <>
           <div
-            className="w-1 cursor-col-resize bg-gray-200 hover:bg-teal-400 transition-colors shrink-0"
+            className="w-1 cursor-col-resize bg-gray-200 hover:bg-[var(--org-primary)] transition-colors shrink-0"
             onMouseDown={handleRightPanelMouseDown}
           />
           <div
@@ -1499,7 +1510,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
       <Dialog open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); if (!open) setCatalogSearch(""); }}>
         <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden p-4 sm:p-6">
           <DialogHeader className="shrink-0">
-            <DialogTitle className="text-teal-700 flex items-center gap-2">
+            <DialogTitle className="text-[var(--org-primary)] flex items-center gap-2">
               <Plus className="w-5 h-5" /> Add Email Block
             </DialogTitle>
           </DialogHeader>
@@ -1523,7 +1534,7 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
                   onClick={() => setActiveCategory(cat)}
                   className={`px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
                     activeCategory === cat
-                      ? "text-teal-700 border-b-2 border-teal-500 bg-white"
+                      ? "text-[var(--org-primary)] border-b-2 border-[var(--org-primary)] bg-white"
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
@@ -1544,9 +1555,9 @@ function EmailBlockEditorInner({ initialBlocks, onChange, _registerInsert }: Ema
               <button
                 key={b.type}
                 onClick={() => addBlock(b.type)}
-                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 text-gray-600 hover:text-teal-700 transition-all text-center"
+                className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-transparent hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-gray-600 hover:text-[var(--org-primary)] transition-all text-center"
               >
-                <span className="text-teal-600 text-2xl">{b.icon}</span>
+                <span className="text-[var(--org-primary)] text-2xl">{b.icon}</span>
                 <span className="text-xs leading-tight font-medium">{b.label}</span>
               </button>
             ))}
