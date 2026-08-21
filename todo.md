@@ -5679,6 +5679,7 @@
 - [x] Apply the active organization theme to Lesson Quiz Block Editor authoring controls
 - [x] Apply the active organization theme to digital download administration controls
 - [x] Apply the active organization theme to bundle administration controls
+- [x] Apply the active organization theme to membership administration controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

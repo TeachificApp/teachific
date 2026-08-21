@@ -1722,6 +1722,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundlesAdminSource).not.toContain("#14b8a6");
   });
 
+  it("uses active organization theming throughout membership administration controls", () => {
+    const membershipsAdminSource = readFileSync(new URL("../client/src/pages/admin/MembershipsAdmin.tsx", import.meta.url), "utf8");
+    expect(membershipsAdminSource).toContain("focus:ring-[var(--org-primary)]");
+    expect(membershipsAdminSource).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(membershipsAdminSource).toContain("hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)]");
+    expect(membershipsAdminSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]");
+    expect(membershipsAdminSource).toContain('getPropertyValue("--org-primary").trim()');
+    expect(membershipsAdminSource).not.toMatch(/teal|violet|purple/i);
+    expect(membershipsAdminSource).not.toContain("#14b8a6");
+    expect(membershipsAdminSource).not.toContain("#189aa1");
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");

@@ -190,7 +190,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <Award className="w-5 h-5 text-teal-600" /> Memberships
+            <Award className="w-5 h-5 text-[var(--org-primary)]" /> Memberships
           </h2>
           <p className="text-sm text-gray-500 mt-0.5">
             Create membership tiers with bundled access to courses, downloads, communities, and more.
@@ -199,7 +199,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
         <div className="flex gap-2">
           <Button
             variant="outline"
-            className="text-teal-700 border-teal-300 hover:bg-teal-50"
+            className="text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
             onClick={() => bulkSyncMutation.mutate()}
             disabled={bulkSyncMutation.isPending}
           >
@@ -207,7 +207,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
             Sync Plans from Courses
           </Button>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             onClick={() => setCreatingNew(true)}
           >
             <Plus className="w-4 h-4 mr-1" /> New Membership
@@ -217,12 +217,12 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
 
       {/* Sync results panel */}
       {showSyncResults && syncResults && (
-        <div className="mb-6 border border-teal-200 rounded-lg bg-teal-50 p-4">
+        <div className="mb-6 border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-teal-800 flex items-center gap-2">
+            <h3 className="font-semibold text-[var(--org-primary)] flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4" /> Plan Sync Results
             </h3>
-            <button onClick={() => setShowSyncResults(false)} className="text-teal-600 hover:text-teal-800 text-sm">Dismiss</button>
+            <button onClick={() => setShowSyncResults(false)} className="text-[var(--org-primary)] hover:brightness-90 text-sm">Dismiss</button>
           </div>
           <div className="flex gap-4 mb-3 text-sm">
             <span className="text-gray-600">Total: <strong>{syncResults.total}</strong></span>
@@ -232,7 +232,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
           </div>
           <div className="max-h-48 overflow-y-auto space-y-1">
             {syncResults.results.map((r, i) => (
-              <div key={i} className={`text-xs flex items-start gap-2 py-1 border-b border-teal-100 last:border-0 ${
+              <div key={i} className={`text-xs flex items-start gap-2 py-1 border-b border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] last:border-0 ${
                 r.action === "created" ? "text-green-700" : r.action === "error" ? "text-red-600" : "text-gray-500"
               }`}>
                 <span className="font-mono shrink-0">{r.action === "created" ? "✓" : r.action === "error" ? "✗" : "–"}</span>
@@ -271,7 +271,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
               <p className="text-xs text-gray-400 mt-1">Find in Stripe Dashboard → Products → Prices. Required for auto-matching subscriptions.</p>
             </div>
             <Button
-              className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+              className="w-full bg-[var(--org-primary)] hover:brightness-90 text-white"
               disabled={!newTitle.trim() || createMutation.isPending}
               onClick={() => createMutation.mutate({ title: newTitle.trim(), stripePriceId: newStripePriceId.trim() || null })}
             >
@@ -290,7 +290,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
             placeholder="Search memberships..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)] focus:border-transparent bg-white"
           />
         </div>
       )}
@@ -312,11 +312,11 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
           {filteredPlans.map((plan) => (
             <div
               key={plan.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-4 hover:border-teal-300 transition-colors"
+              className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-4 hover:border-[color:color-mix(in_srgb,var(--org-primary)_50%,transparent)] transition-colors"
             >
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: plan.accentColor ?? "#189aa1" }}
+                style={{ backgroundColor: plan.accentColor ?? "var(--org-primary)" }}
               >
                 <Award className="w-5 h-5 text-white" />
               </div>
@@ -334,7 +334,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
                   </Badge>
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <span className="text-sm font-medium text-teal-700">
+                  <span className="text-sm font-medium text-[var(--org-primary)]">
                     {formatPrice(plan.price, plan.currency)}
                     {plan.billingInterval === "monthly" && "/mo"}
                     {plan.billingInterval === "annual" && "/yr"}
@@ -353,7 +353,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-gray-500 hover:text-teal-700"
+                  className="text-gray-500 hover:text-[var(--org-primary)]"
                   onClick={() => updateMutation.mutate({ id: plan.id, status: plan.status === "published" ? "draft" : "published" })}
                   title={plan.status === "published" ? "Unpublish" : "Publish"}
                 >
@@ -362,7 +362,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-gray-500 hover:text-teal-700"
+                  className="text-gray-500 hover:text-[var(--org-primary)]"
                   onClick={() => setEditingId(plan.id)}
                 >
                   <Edit2 className="w-4 h-4" />
@@ -381,7 +381,7 @@ export default function MembershipsAdmin({ initialEditId }: { initialEditId?: nu
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                  className="bg-[var(--org-primary)] hover:brightness-90 text-white"
                   onClick={() => setEditingId(plan.id)}
                 >
                   Edit <ChevronRight className="w-3.5 h-3.5 ml-1" />
@@ -429,7 +429,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div
             className="w-7 h-7 rounded flex items-center justify-center shrink-0"
-            style={{ backgroundColor: plan.accentColor ?? "#189aa1" }}
+            style={{ backgroundColor: plan.accentColor ?? "var(--org-primary)" }}
           >
             <Award className="w-4 h-4 text-white" />
           </div>
@@ -444,7 +444,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 border border-gray-200 text-xs font-mono font-semibold text-gray-600 select-all cursor-text" title="Plan ID">ID: {plan.id}</span>
         {plan.slug && (
           <a href={`/memberships/${plan.slug}`} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-teal-600">
+            <Button size="sm" variant="ghost" className="text-xs text-gray-500 hover:text-[var(--org-primary)]">
               <Eye className="w-3.5 h-3.5 mr-1" /> View Sales Page
             </Button>
           </a>
@@ -521,7 +521,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
           <TabsContent value="sales-page" className="m-0 h-full">
             <div className="flex items-center justify-end gap-2 px-4 pt-3 pb-1">
               <a href={`/admin/memberships/${planId}/sales-builder`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors">
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 Open Full Editor
               </a>
@@ -537,7 +537,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
           <TabsContent value="member-page" className="m-0 h-full">
             <div className="flex items-center justify-end gap-2 px-4 pt-3 pb-1">
               <a href={`/admin/memberships/${planId}/member-builder`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors">
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 Open Full Editor
               </a>
@@ -562,7 +562,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
                     <h3 className="text-base font-semibold text-gray-900">Checkout Page Editor</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       Customise the sections shown on the hosted checkout page at{" "}
-                      <a href={`/checkout/${plan.slug}?type=membership`} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
+                      <a href={`/checkout/${plan.slug}?type=membership`} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline font-medium">
                         /checkout/{plan.slug}
                       </a>.
                       Use the full-screen editor to add trust seals, testimonials, FAQs, guarantees, and more.
@@ -575,7 +575,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
                       Preview
                     </a>
                     <a href={`/admin/checkout-editor/membership/${planId}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                      className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm bg-[var(--org-primary)] text-white rounded-lg hover:brightness-90 font-medium">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       Open Page Editor
                     </a>
@@ -584,7 +584,7 @@ function MembershipEditor({ planId, onBack }: { planId: number; onBack: () => vo
                 <div className="mt-5 grid grid-cols-3 gap-3">
                   {["Trust Seals & Badges","Membership Includes","Money-Back Guarantee","Testimonials","FAQ","Custom HTML"].map(s => (
                     <div key={s} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                      <div className="w-2 h-2 rounded-full bg-teal-400" />
+                      <div className="w-2 h-2 rounded-full bg-[var(--org-primary)]" />
                       <span className="text-xs text-gray-600">{s}</span>
                     </div>
                   ))}
@@ -626,11 +626,11 @@ function MembershipAfterPurchaseTab({ planId }: { planId: number }) {
   if (isLoading) return <div className="text-center py-8 text-muted-foreground">Loading...</div>;
   return (
     <div className="space-y-4">
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-        <Workflow className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+        <Workflow className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-teal-800">After Purchase Workflow</p>
-          <p className="text-xs text-teal-600 mt-0.5">Configure what happens immediately after a member completes their purchase. Actions run in order.</p>
+          <p className="text-sm font-medium text-[var(--org-primary)]">After Purchase Workflow</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">Configure what happens immediately after a member completes their purchase. Actions run in order.</p>
         </div>
       </div>
       <HidePricingOptionsToggle
@@ -743,7 +743,7 @@ function StripeReconcileTab({ planId, stripePriceId }: { planId: number; stripeP
               dryRun,
             })}
             disabled={reconcileMutation.isPending || !stripePriceId}
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
           >
             {reconcileMutation.isPending
               ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Reconciling...</>
@@ -836,7 +836,7 @@ function MembershipSettingsTab({
     price: String(plan.price),
     compareAtPrice: plan.compareAtPrice ? String(plan.compareAtPrice) : "",
     trialDays: String(plan.trialDays ?? 0),
-    accentColor: plan.accentColor ?? "#189aa1",
+    accentColor: plan.accentColor ?? getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim(),
     coverImage: plan.coverImage ?? "",
     slug: plan.slug ?? "",
     metaTitle: plan.metaTitle ?? "",
@@ -1044,7 +1044,7 @@ function MembershipSettingsTab({
         <CardHeader><CardTitle className="text-sm">Stripe Integration</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <CheckCircle2 className="w-4 h-4 text-teal-500 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--org-primary)] shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-700">Auto-sync enabled</p>
               <p className="text-xs text-gray-500 mt-0.5">Stripe product &amp; price are automatically created and updated when you save pricing changes.</p>
@@ -1072,7 +1072,7 @@ function MembershipSettingsTab({
         </CardContent>
       </Card>
 
-      <Button className="bg-teal-600 hover:bg-teal-700 text-white" onClick={handleSave}>
+      <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={handleSave}>
         Save Settings
       </Button>
     </div>
@@ -1121,7 +1121,7 @@ function SortableAccessItem({
       >
         <GripVertical className="w-4 h-4" />
       </button>
-      <div className="text-teal-600 shrink-0">{icon}</div>
+      <div className="text-[var(--org-primary)] shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
         <span className="text-sm font-medium text-gray-800">{label}</span>
         <span className="ml-2 text-xs text-gray-400">{typeLabel}</span>
@@ -1274,9 +1274,9 @@ function MembershipItemsTab({
                 <div className="mt-1 space-y-1">
                   {/* Selected badge */}
                   {addItemId ? (
-                    <div className="flex items-center gap-1 bg-teal-50 border border-teal-200 rounded px-2 py-1">
-                      <span className="text-xs text-teal-700 flex-1 truncate">{addItemTitle}</span>
-                      <button onClick={() => { setAddItemId(""); setAddItemTitle(""); setSearch(""); }} className="text-teal-400 hover:text-teal-600"><X className="w-3 h-3" /></button>
+                    <div className="flex items-center gap-1 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded px-2 py-1">
+                      <span className="text-xs text-[var(--org-primary)] flex-1 truncate">{addItemTitle}</span>
+                      <button onClick={() => { setAddItemId(""); setAddItemTitle(""); setSearch(""); }} className="text-[var(--org-primary)] hover:brightness-90"><X className="w-3 h-3" /></button>
                     </div>
                   ) : (
                     <>
@@ -1297,7 +1297,7 @@ function MembershipItemsTab({
                             <button
                               key={item.id}
                               type="button"
-                              className="w-full text-left px-3 py-1.5 text-sm hover:bg-teal-50 border-b last:border-0 truncate"
+                              className="w-full text-left px-3 py-1.5 text-sm hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-b last:border-0 truncate"
                               onClick={() => { setAddItemId(String(item.id)); setAddItemTitle(item.title); setSearch(""); }}
                             >
                               <span className="font-medium">{item.title}</span>
@@ -1312,7 +1312,7 @@ function MembershipItemsTab({
                             <button
                               key={item.id}
                               type="button"
-                              className="w-full text-left px-3 py-1.5 text-sm hover:bg-teal-50 border-b last:border-0 truncate"
+                              className="w-full text-left px-3 py-1.5 text-sm hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-b last:border-0 truncate"
                               onClick={() => { setAddItemId(String(item.id)); setAddItemTitle(item.title); }}
                             >
                               <span className="font-medium">{item.title}</span>
@@ -1337,7 +1337,7 @@ function MembershipItemsTab({
             />
           </div>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={addMutation.isPending || (needsItemId && !addItemId)}
             onClick={() =>
               addMutation.mutate({
@@ -1515,7 +1515,7 @@ function MembershipDiscountCodesTab({
             <Label htmlFor="all-plans" className="cursor-pointer">Apply to all membership plans</Label>
           </div>
           <Button
-            className="bg-teal-600 hover:bg-teal-700 text-white"
+            className="bg-[var(--org-primary)] hover:brightness-90 text-white"
             disabled={!form.code.trim() || !form.discountValue || createMutation.isPending}
             onClick={() =>
               createMutation.mutate({
@@ -1691,8 +1691,8 @@ function MembershipMembersTab({
         <div className="space-y-2">
           {subscribers.map(({ subscription, user }) => (
             <div key={subscription.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-teal-700">
+              <div className="w-8 h-8 rounded-full bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-[var(--org-primary)]">
                   {(user.name ?? user.email ?? "?")[0].toUpperCase()}
                 </span>
               </div>
@@ -1740,7 +1740,7 @@ function IncludedItemsWidgetCodePanel({ source, id, title }: { source: "membersh
   const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [columns, setColumns] = useState("3");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [accent, setAccent] = useState("#14b8a6");
+  const [accent, setAccent] = useState(() => getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim());
   const [headline, setHeadline] = useState("");
   const [subtext, setSubtext] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
@@ -1789,11 +1789,11 @@ function IncludedItemsWidgetCodePanel({ source, id, title }: { source: "membersh
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 flex items-start gap-3">
-        <Code className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-xl p-4 flex items-start gap-3">
+        <Code className="w-5 h-5 text-[var(--org-primary)] flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-teal-800">Embeddable Widget</p>
-          <p className="text-xs text-teal-600 mt-0.5">
+          <p className="text-sm font-medium text-[var(--org-primary)]">Embeddable Widget</p>
+          <p className="text-xs text-[var(--org-primary)] mt-0.5">
             Embed the included items for <strong>{title}</strong> on any external website using the snippet below.
             Paste the script tag anywhere in your page's HTML — it auto-sizes to fit its content.
           </p>
