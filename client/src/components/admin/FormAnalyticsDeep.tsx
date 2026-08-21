@@ -53,10 +53,15 @@ import {
 import { buildReportPublicUrl } from "@shared/formAnalyticsUtils";
 import { exportAnalyticsPdf } from "@/lib/exportAnalyticsPdf";
 
-const BRAND = "#0e7490";
+const BRAND = "var(--org-primary)";
 const COLORS = [
-  "#0e7490", "#0891b2", "#06b6d4", "#22d3ee", "#67e8f9",
-  "#14b8a6", "#10b981", "#84cc16", "#f59e0b", "#ef4444",
+  "var(--org-primary)",
+  "color-mix(in srgb, var(--org-primary) 88%, white)",
+  "color-mix(in srgb, var(--org-primary) 76%, white)",
+  "color-mix(in srgb, var(--org-primary) 64%, white)",
+  "color-mix(in srgb, var(--org-primary) 52%, white)",
+  "color-mix(in srgb, var(--org-primary) 40%, white)",
+  "#10b981", "#84cc16", "#f59e0b", "#ef4444",
 ];
 
 type Props = {
@@ -87,12 +92,12 @@ function MultiFieldSelect({
           return (
             <span
               key={id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-teal-50 border border-teal-200 text-teal-800"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)]"
             >
               {item?.label ?? id}
               <button
                 type="button"
-                className="ml-0.5 text-teal-500 hover:text-teal-800"
+                className="ml-0.5 text-[var(--org-primary)] hover:brightness-90"
                 onClick={() => onChange(selected.filter(s => s !== id))}
               >
                 ×
@@ -194,7 +199,7 @@ function CrossTabChartPanel({ ct }: { ct: CrossTabResult }) {
                 type="button"
                 onClick={() => setMode(m)}
                 className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                  mode === m ? "bg-teal-600 text-white border-teal-600" : "border-gray-200 hover:bg-gray-50"
+                  mode === m ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200 hover:bg-gray-50"
                 }`}
               >
                 {m === "stacked" ? "Stacked" : m === "heatmap" ? "Heatmap" : m.charAt(0).toUpperCase() + m.slice(1)}
@@ -204,7 +209,7 @@ function CrossTabChartPanel({ ct }: { ct: CrossTabResult }) {
               type="button"
               title="Export as CSV"
               onClick={() => exportCrossTabCsv(ct)}
-              className="ml-1 p-1 rounded border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-teal-700 transition-colors"
+              className="ml-1 p-1 rounded border border-gray-200 hover:bg-gray-50 text-gray-500 hover:text-[var(--org-primary)] transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
@@ -399,7 +404,7 @@ function DropOffPanel({ formId, items }: { formId: number; items: Array<{ id: nu
                     dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    <Cell fill="#0e7490" />
+                    <Cell fill="var(--org-primary)" />
                     <Cell fill="#f87171" />
                   </Pie>
                   <Tooltip />
@@ -460,7 +465,7 @@ function DropOffPanel({ formId, items }: { formId: number; items: Array<{ id: nu
                     {fieldDropOffData.map((entry, i) => (
                       <Cell
                         key={i}
-                        fill={entry.dropOff > 50 ? "#ef4444" : entry.dropOff > 25 ? "#f59e0b" : "#0e7490"}
+                        fill={entry.dropOff > 50 ? "#ef4444" : entry.dropOff > 25 ? "#f59e0b" : "var(--org-primary)"}
                       />
                     ))}
                     <LabelList dataKey="dropOff" position="right" style={{ fontSize: 10 }} formatter={(v: number) => `${v}%`} />
@@ -484,7 +489,7 @@ function DropOffPanel({ formId, items }: { formId: number; items: Array<{ id: nu
                       <td className="py-1 pr-3">{row.name}</td>
                       <td className="text-right py-1 pr-3">{row.views}</td>
                       <td className="text-right py-1 pr-3">{row.answers}</td>
-                      <td className={`text-right py-1 font-medium ${row.dropOff > 50 ? "text-red-600" : row.dropOff > 25 ? "text-amber-600" : "text-teal-700"}`}>
+                      <td className={`text-right py-1 font-medium ${row.dropOff > 50 ? "text-red-600" : row.dropOff > 25 ? "text-amber-600" : "text-[var(--org-primary)]"}`}>
                         {row.dropOff}%
                       </td>
                     </tr>
@@ -735,7 +740,7 @@ export default function FormAnalyticsDeep({ formId, template }: Props) {
           size="sm"
           onClick={handleExportPdf}
           disabled={isPdfExporting}
-          className="gap-1 border-teal-300 text-teal-700 hover:bg-teal-50"
+          className="gap-1 border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
         >
           {isPdfExporting ? (
             <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Exporting…</>
@@ -772,7 +777,7 @@ export default function FormAnalyticsDeep({ formId, template }: Props) {
                     onClick={() => setSelectedFieldId(String(field.id))}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm border transition-colors ${
                       selectedFieldId === String(field.id)
-                        ? "border-teal-300 bg-teal-50"
+                        ? "border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                         : "border-transparent hover:bg-gray-50"
                     }`}
                   >
@@ -863,14 +868,14 @@ export default function FormAnalyticsDeep({ formId, template }: Props) {
             <button
               type="button"
               onClick={() => setCrossTabMode("single")}
-              className={`px-3 py-1 rounded text-xs border ${crossTabMode === "single" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200"}`}
+              className={`px-3 py-1 rounded text-xs border ${crossTabMode === "single" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200"}`}
             >
               1 × 1 (single column)
             </button>
             <button
               type="button"
               onClick={() => setCrossTabMode("multi")}
-              className={`px-3 py-1 rounded text-xs border ${crossTabMode === "multi" ? "bg-teal-600 text-white border-teal-600" : "border-gray-200"}`}
+              className={`px-3 py-1 rounded text-xs border ${crossTabMode === "multi" ? "bg-[var(--org-primary)] text-white border-[var(--org-primary)]" : "border-gray-200"}`}
             >
               1 × N (multiple columns)
             </button>
@@ -977,7 +982,7 @@ export default function FormAnalyticsDeep({ formId, template }: Props) {
                       )
                     }
                     className={`px-3 py-1.5 rounded-full text-xs border ${
-                      checked ? "bg-teal-50 border-teal-300 text-teal-800" : "border-gray-200"
+                      checked ? "bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)]" : "border-gray-200"
                     }`}
                   >
                     {f.name}
@@ -986,7 +991,7 @@ export default function FormAnalyticsDeep({ formId, template }: Props) {
               })}
             <button
               type="button"
-              className="px-3 py-1.5 rounded-full text-xs border border-teal-300 bg-teal-50"
+              className="px-3 py-1.5 rounded-full text-xs border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
               onClick={() => setCompareFormIds(prev => (prev.includes(formId) ? prev : [...prev, formId]))}
             >
               + This form
