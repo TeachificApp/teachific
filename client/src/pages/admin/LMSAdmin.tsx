@@ -12578,7 +12578,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 {staffSearchResults.length > 0 && (
                   <div className="border border-gray-200 rounded-lg overflow-hidden mt-1">
                     {staffSearchResults.map((u: any) => (
-                      <button key={u.id} type="button" onClick={() => { setStaffForm(p => ({ ...p, userEmail: u.email ?? '' })); setStaffEmailSearch(u.name ?? u.email ?? ''); }} className="w-full text-left px-3 py-2 text-sm hover:bg-teal-50 border-b border-gray-100 last:border-0">
+                      <button key={u.id} type="button" onClick={() => { setStaffForm(p => ({ ...p, userEmail: u.email ?? '' })); setStaffEmailSearch(u.name ?? u.email ?? ''); }} className="w-full text-left px-3 py-2 text-sm hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border-b border-gray-100 last:border-0">
                         <span className="font-medium">{u.name}</span> <span className="text-gray-400 text-xs">{u.email}</span>
                       </button>
                     ))}
@@ -12597,7 +12597,7 @@ function CohortTab({ courseId }: { courseId: number }) {
               <label className="text-sm font-medium text-gray-700">Permissions</label>
               {([['canManageDiscussions', 'Manage Discussions'], ['canAddSessions', 'Add Live Sessions'], ['canAddAssignments', 'Add Assignments'], ['canAddRecordings', 'Add Recordings']] as [keyof typeof staffForm, string][]).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={!!staffForm[key]} onChange={e => setStaffForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-teal-600" />
+                  <input type="checkbox" checked={!!staffForm[key]} onChange={e => setStaffForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-[var(--org-primary)]" />
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
               ))}
@@ -12612,7 +12612,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   if (!user) { toast.error('User not found with that email'); return; }
                   upsertStaff.mutate({ cohortGroupId: staffGroupId!, courseId, userId: user.id, ...staffForm });
                 }
-              }} className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              }} className="flex-1 px-4 py-2 bg-[var(--org-primary)] hover:brightness-90 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {upsertStaff.isPending ? 'Saving...' : 'Save'}
               </button>
             </div>
