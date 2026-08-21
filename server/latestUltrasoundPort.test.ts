@@ -1690,6 +1690,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(membershipBuilderSource).not.toContain("hover:border-teal-400");
   });
 
+  it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
+    const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
+    expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
+    expect(wysiwygBuilderSource).toContain('getPropertyValue("--org-primary").trim() || "#179ca3"');
+    expect(wysiwygBuilderSource).toContain("function resolveBlockDefaults(type: BlockType)");
+    expect(wysiwygBuilderSource).toContain("data: resolveBlockDefaults(type)");
+    expect(wysiwygBuilderSource).toContain("testimonials: [],");
+    expect(wysiwygBuilderSource).not.toContain("This course changed my career!");
+    expect(wysiwygBuilderSource).not.toContain("Jane D.");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

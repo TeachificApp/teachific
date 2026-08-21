@@ -5672,6 +5672,7 @@
 - [x] Resolve content embed accent defaults and cohort override styling from the active organization theme
 - [x] Apply the active organization theme to checkout page authoring controls
 - [x] Apply the active organization theme to membership page authoring controls
+- [x] Remove fabricated WYSIWYG testimonial defaults and resolve page accent defaults from the active organization
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

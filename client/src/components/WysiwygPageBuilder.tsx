@@ -221,10 +221,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   },
   testimonials: {
     headline: "What Our Students Say",
-    testimonials: [
-      { id: nanoid(4), quote: "This course changed my career!", author: "Jane D.", role: "Software Engineer", avatarUrl: "" },
-      { id: nanoid(4), quote: "Incredibly well structured and practical.", author: "Mark T.", role: "Product Manager", avatarUrl: "" },
-    ],
+    testimonials: [],
     backgroundColor: "#f8fafc",
     textColor: "#1e293b",
     layout: "grid",
@@ -354,6 +351,20 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     paddingY: 40,
   },
 };
+
+function getActiveOrganizationPrimary() {
+  if (typeof window === "undefined") return "#179ca3";
+  return window.getComputedStyle(document.documentElement).getPropertyValue("--org-primary").trim() || "#179ca3";
+}
+
+function resolveBlockDefaults(type: BlockType): Record<string, any> {
+  const primary = getActiveOrganizationPrimary();
+  const defaults = { ...BLOCK_DEFAULTS[type] };
+  for (const key of ["ctaBgColor", "gradientTo", "accentColor", "iconColor", "numberColor"]) {
+    if (defaults[key] === "#189aa1") defaults[key] = primary;
+  }
+  return defaults;
+}
 
 // ─── Element Library (left sidebar tiles) ────────────────────────────────────
 const ELEMENT_LIBRARY = [
@@ -1616,7 +1627,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
   }, [undo, redo]);
 
   const addBlock = (type: BlockType) => {
-    const newBlock: Block = { id: nanoid(8), type, visible: true, data: { ...BLOCK_DEFAULTS[type] } };
+    const newBlock: Block = { id: nanoid(8), type, visible: true, data: resolveBlockDefaults(type) };
     const newBlocks = [...blocks, newBlock];
     updateBlocks(newBlocks);
     setSelectedId(newBlock.id);
@@ -1661,7 +1672,7 @@ export function WysiwygPageBuilder({ initialBlocks = [], onChange, onSave, isSav
       const blockType = active.data.current.blockType as BlockType;
       if (over) {
         const targetIdx = blocks.findIndex(b => b.id === over.id);
-        const defaults = BLOCK_DEFAULTS[blockType] ?? {};
+        const defaults = resolveBlockDefaults(blockType);
         const newBlock: Block = { id: nanoid(8), type: blockType, data: defaults, visible: true };
         if (targetIdx !== -1) {
           const updated = [...blocks];
