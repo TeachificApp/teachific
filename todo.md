@@ -5609,6 +5609,8 @@
 - [x] Replace platform branding and fixed fullscreen accents in public embedded learner surfaces
 - [x] Apply the active organization theme to public newsletter subscription surfaces
 - [x] Apply the active organization theme to form results administration controls
+- [x] Review media file administration controls and retain semantic file-type badge colors
+- [x] Apply the active organization theme to organization coupon administration controls
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain
 - [x] Require active-organization course ownership when creating cohort groups

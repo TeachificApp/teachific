@@ -67,10 +67,10 @@ export default function CouponsPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Tag className="w-6 h-6 text-teal-600" /> Coupons</h1>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Tag className="w-6 h-6 text-[var(--org-primary)]" /> Coupons</h1>
           <p className="text-muted-foreground mt-1">Create and manage discount codes for your products</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className=" hover:"><Plus className="w-4 h-4 mr-2" /> Create Coupon</Button>
+        <Button onClick={() => setShowAdd(true)} className="org-primary-button"><Plus className="w-4 h-4 mr-2" /> Create Coupon</Button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{coupons.filter(c => c.isActive).length}</p><p className="text-sm text-muted-foreground">Active Coupons</p></CardContent></Card>
@@ -99,7 +99,7 @@ export default function CouponsPage() {
                 <tr key={c.id} className="border-b hover:bg-muted/20">
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <code className="font-mono font-bold text-teal-700">{c.code}</code>
+                      <code className="font-mono font-bold text-[var(--org-primary)]">{c.code}</code>
                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { navigator.clipboard.writeText(c.code); toast.success("Copied!"); }}>
                         <Copy className="w-3 h-3" />
                       </Button>
@@ -148,7 +148,7 @@ export default function CouponsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={handleCreate} className=" hover:" disabled={createCoupon.isPending}>{createCoupon.isPending ? "Creating..." : "Create Coupon"}</Button>
+            <Button onClick={handleCreate} className="org-primary-button" disabled={createCoupon.isPending}>{createCoupon.isPending ? "Creating..." : "Create Coupon"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
