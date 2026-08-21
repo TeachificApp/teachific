@@ -5703,6 +5703,7 @@
 - [x] Apply the active organization theme to embedded quiz player controls
 - [x] Apply the active organization theme to shared media upload controls
 - [x] Apply the active organization theme to organization admin notification controls
+- [x] Apply the active organization theme to email personalization tag helper controls
 - [x] Verify full-enrollment lesson access blocks free-preview users from protected lessons
 - [x] Resolve Blueprint organization-administration procedures from the authorized active organization
 - [x] Resolve LMS Administration learner URLs and course-preview links from the active organization domain

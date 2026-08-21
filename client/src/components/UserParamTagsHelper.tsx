@@ -35,7 +35,7 @@ export default function UserParamTagsHelper({ className = "", compact = false }:
             type="button"
             title={`Copy ${tag} — ${label}`}
             onClick={() => handleCopy(tag)}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono border border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] transition-colors"
           >
             {copiedTag === tag ? (
               <Check className="w-3 h-3 text-green-600" />
@@ -50,11 +50,11 @@ export default function UserParamTagsHelper({ className = "", compact = false }:
   }
 
   return (
-    <div className={`mt-2 rounded-lg border border-teal-200 bg-teal-50/60 p-3 ${className}`}>
+    <div className={`mt-2 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] p-3 ${className}`}>
       <div className="flex items-center gap-1.5 mb-2">
-        <Info className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-        <span className="text-xs font-semibold text-teal-700">User Profile Tags</span>
-        <span className="text-xs text-teal-600 ml-1">— click to copy, then paste into your URL</span>
+        <Info className="w-3.5 h-3.5 text-[var(--org-primary)] shrink-0" />
+        <span className="text-xs font-semibold text-[var(--org-primary)]">User Profile Tags</span>
+        <span className="text-xs text-[var(--org-primary)] ml-1">— click to copy, then paste into your URL</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
         {USER_PARAM_TAGS.map(({ tag, label, description }) => (
@@ -62,13 +62,13 @@ export default function UserParamTagsHelper({ className = "", compact = false }:
             key={tag}
             type="button"
             onClick={() => handleCopy(tag)}
-            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded border border-teal-200 bg-white hover:bg-teal-50 text-left transition-colors group"
+            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-white hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] text-left transition-colors group"
           >
             <div className="min-w-0">
-              <span className="font-mono text-xs text-teal-800 font-semibold">{tag}</span>
+              <span className="font-mono text-xs text-[var(--org-primary)] font-semibold">{tag}</span>
               <span className="text-xs text-gray-500 ml-2">{description}</span>
             </div>
-            <span className="shrink-0 text-xs text-teal-500 group-hover:text-teal-700">
+            <span className="shrink-0 text-xs text-[var(--org-primary)] group-hover:brightness-90">
               {copiedTag === tag ? (
                 <Check className="w-3.5 h-3.5 text-green-600" />
               ) : (
