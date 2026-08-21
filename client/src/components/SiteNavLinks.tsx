@@ -27,16 +27,16 @@ function NavAnchor({
     variant === "header"
       ? cn(
           "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-          isActive ? "bg-[#189aa1]/10 text-[#189aa1]" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+          isActive ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
         )
       : variant === "sidebar"
         ? cn(
             "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full",
-            isActive ? "bg-[#189aa1]/15 text-[#189aa1] font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white",
+          isActive ? "bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] text-[var(--org-primary)] font-medium" : "text-gray-300 hover:bg-white/10 hover:text-white",
           )
         : cn(
             "px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 w-full text-left",
-            isActive ? "text-teal-700 font-medium" : "text-gray-700",
+            isActive ? "text-[var(--org-primary)] font-medium" : "text-gray-700",
           );
 
   if (external) {
@@ -80,7 +80,7 @@ function HeaderDropdown({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-          childActive ? "bg-[#189aa1]/10 text-[#189aa1]" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+          childActive ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
         )}
       >
         {item.label}

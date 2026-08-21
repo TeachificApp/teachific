@@ -1398,6 +1398,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(catalogSource).toContain("var(--org-primary)");
   });
 
+  it("uses the active organization theme for site navigation active states", () => {
+    const siteNavSource = readFileSync(new URL("../client/src/components/SiteNavLinks.tsx", import.meta.url), "utf8");
+    expect(siteNavSource).toContain("text-[var(--org-primary)]");
+    expect(siteNavSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]");
+    expect(siteNavSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)]");
+    expect(siteNavSource).not.toContain("bg-[#189aa1]/10");
+    expect(siteNavSource).not.toContain("text-teal-700");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
