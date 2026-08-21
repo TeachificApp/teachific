@@ -3714,7 +3714,7 @@ function SectionDripDialog({ section, onClose, onSave }: { section: any; onClose
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Clock className="w-4 h-4 text-teal-600" /> Drip Schedule</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Clock className="w-4 h-4 text-[var(--org-primary)]" /> Drip Schedule</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <p className="text-sm text-gray-600">Set how many days after enrollment this section becomes available. Leave blank to make it available immediately.</p>
@@ -3735,7 +3735,7 @@ function SectionDripDialog({ section, onClose, onSave }: { section: any; onClose
               <span className="text-sm text-gray-500">days after enrollment</span>
             </div>
             {dripDays && parseInt(dripDays) > 0 && (
-              <p className="text-xs text-teal-600 mt-1">Students enrolled today will unlock this on day {dripDays}.</p>
+              <p className="text-xs text-[var(--org-primary)] mt-1">Students enrolled today will unlock this on day {dripDays}.</p>
             )}
           </div>
           {section.dripDays > 0 && (
@@ -3749,7 +3749,7 @@ function SectionDripDialog({ section, onClose, onSave }: { section: any; onClose
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={saving} onClick={handleSave}>
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={saving} onClick={handleSave}>
             Save Drip
           </Button>
         </DialogFooter>
@@ -3782,7 +3782,7 @@ function SaveSectionTemplateDialog({ section, onClose }: { section: { id: number
         </div>
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className="bg-teal-600 hover:bg-teal-700 text-white" disabled={!name.trim() || save.isPending}
+          <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={!name.trim() || save.isPending}
             onClick={() => save.mutate({ sectionId: section.id, name: name.trim(), description: description.trim() || undefined })}>
             {save.isPending ? "Saving…" : "Save Template"}
           </Button>

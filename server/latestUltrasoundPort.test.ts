@@ -2085,6 +2085,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(blockPickerSection).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming throughout LMS drip-schedule and save-template dialogs", () => {
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const dialogSection = lmsAdminSource.slice(
+      lmsAdminSource.indexOf("// ─── Section Drip Dialog"),
+      lmsAdminSource.indexOf("// ─── Add Section Dialog", lmsAdminSource.indexOf("// ─── Section Drip Dialog") + 1)
+    );
+    expect(dialogSection).toContain('Clock className="w-4 h-4 text-[var(--org-primary)]"');
+    expect(dialogSection).toContain("text-xs text-[var(--org-primary)] mt-1");
+    expect(dialogSection).toContain("bg-[var(--org-primary)] hover:brightness-90 text-white");
+    expect(dialogSection).not.toMatch(/teal|violet|purple/i);
+  });
+
   it("keeps WYSIWYG defaults organization-safe and free of fabricated testimonials", () => {
     const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
     expect(wysiwygBuilderSource).toContain("function getActiveOrganizationPrimary()");
