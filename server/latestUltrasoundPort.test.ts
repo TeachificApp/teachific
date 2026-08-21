@@ -1447,6 +1447,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionBankSource).not.toContain('import { useAuth } from "@/hooks/useAuth"');
   });
 
+  it("resolves Cloud Quiz Browser content and active states from the active organization", () => {
+    const cloudQuizSource = readFileSync(new URL("../client/src/quiz-creator/components/CloudQuizBrowser.tsx", import.meta.url), "utf8");
+    expect(cloudQuizSource).toContain('import { useOrgScope } from "@/hooks/useOrgScope"');
+    expect(cloudQuizSource).toContain("const { orgId } = useOrgScope()");
+    expect(cloudQuizSource).toContain("teachificOrgId: orgId ?? null");
+    expect(cloudQuizSource).toContain("text-[var(--org-primary)]");
+    expect(cloudQuizSource).not.toContain("(user as any)?.orgId ?? 0");
+    expect(cloudQuizSource).not.toContain("bg-teal-50 text-teal-700");
+  });
+
   it("offers and persists optional organization-authorized AI course assessments", () => {
     const aiRouterSource = readFileSync(new URL("../server/routers/lmsEnrollmentAdminRouter.ts", import.meta.url), "utf8");
     const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");

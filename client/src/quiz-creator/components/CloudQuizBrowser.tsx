@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Cloud, Trash2, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { useLocation } from "wouter";
 import { useQuizStore } from "../store/quizStore";
 
@@ -10,9 +10,8 @@ interface Props {
 }
 
 export function CloudQuizBrowser({ onClose }: Props) {
-  const { user } = useAuth();
+  const { orgId } = useOrgScope();
   const [, navigate] = useLocation();
-  const orgId = (user as any)?.orgId ?? 0;
   const [activeTab, setActiveTab] = useState<"creator" | "lesson" | "results">("creator");
   const [resultQuizId, setResultQuizId] = useState("all");
   const [resultQuizType, setResultQuizType] = useState("all");
@@ -48,7 +47,7 @@ export function CloudQuizBrowser({ onClose }: Props) {
           updatedAt: quiz.updatedAt?.toISOString?.() || new Date().toISOString(),
           version: 1,
           licenseKey: null,
-          teachificOrgId: null,
+          teachificOrgId: orgId ?? null,
           tags: [],
           passingScore: quiz.passingScore || 70,
           timeLimit: quiz.timeLimit || null,
@@ -87,8 +86,8 @@ export function CloudQuizBrowser({ onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#e0f7f9" }}>
-              <Cloud className="w-5 h-5" style={{ color: "#189aa1" }} />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]">
+              <Cloud className="w-5 h-5 text-[var(--org-primary)]" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900">My Cloud Quizzes</h2>
@@ -101,9 +100,9 @@ export function CloudQuizBrowser({ onClose }: Props) {
         </div>
 
         <div className="flex gap-1 border-b border-gray-100 px-4 pt-3">
-          <button onClick={() => setActiveTab("creator")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "creator" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Quiz Creator</button>
-          <button onClick={() => setActiveTab("lesson")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "lesson" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Course Lesson Quizzes</button>
-          <button onClick={() => setActiveTab("results")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "results" ? "bg-teal-50 text-teal-700" : "text-gray-500 hover:bg-gray-50"}`}>Results</button>
+          <button onClick={() => setActiveTab("creator")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "creator" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-500 hover:bg-gray-50"}`}>Quiz Creator</button>
+          <button onClick={() => setActiveTab("lesson")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "lesson" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-500 hover:bg-gray-50"}`}>Course Lesson Quizzes</button>
+          <button onClick={() => setActiveTab("results")} className={`rounded-t-lg px-3 py-2 text-xs font-medium transition-colors ${activeTab === "results" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "text-gray-500 hover:bg-gray-50"}`}>Results</button>
         </div>
 
         {/* Body */}
@@ -123,10 +122,10 @@ export function CloudQuizBrowser({ onClose }: Props) {
                   key={q.id}
                   onClick={() => handleOpen(q)}
                   disabled={opening === q.id}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all text-left group disabled:opacity-50"
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] transition-all text-left group disabled:opacity-50"
                 >
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#e0f7f9" }}>
-                    <span className="text-sm font-bold" style={{ color: "#189aa1" }}>Q</span>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]">
+                    <span className="text-sm font-bold text-[var(--org-primary)]">Q</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 text-sm truncate">{q.title}</h3>
@@ -164,10 +163,10 @@ export function CloudQuizBrowser({ onClose }: Props) {
                 <button
                   key={quiz.id}
                   onClick={() => { onClose(); navigate(`/lms/courses/${quiz.courseId}/curriculum`); }}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/30 transition-all text-left"
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#e0f7f9" }}>
-                    <span className="text-sm font-bold" style={{ color: "#189aa1" }}>L</span>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]">
+                    <span className="text-sm font-bold text-[var(--org-primary)]">L</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 text-sm truncate">{quiz.title}</h3>
@@ -201,7 +200,7 @@ export function CloudQuizBrowser({ onClose }: Props) {
                 <div className="space-y-2">
                   {resultData.results.map((result: any) => (
                     <div key={result.id} className="flex items-center gap-3 rounded-xl border border-gray-100 p-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${result.passed ? "bg-teal-50 text-teal-700" : "bg-amber-50 text-amber-700"}`}>{Math.round(result.scorePercent)}%</div>
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${result.passed ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "bg-amber-50 text-amber-700"}`}>{Math.round(result.scorePercent)}%</div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-gray-900">{result.quizTitle}</p>
                         <p className="truncate text-xs text-gray-400">{result.learnerEmail || "Guest learner"} · {result.passed ? "Passed" : "Not passed"}</p>
