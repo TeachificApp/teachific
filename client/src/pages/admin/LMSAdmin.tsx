@@ -11246,7 +11246,7 @@ function CohortTab({ courseId }: { courseId: number }) {
         {(["settings", "groups", "sessions", "assignments", "recordings", "resources", "discussions"] as const).map(t => (
           <button key={t} onClick={() => setActiveTab(t)}
             className={cn("px-4 py-2 text-sm font-medium border-b-2 transition-colors capitalize",
-              activeTab === t ? "border-teal-600 text-teal-700" : "border-transparent text-gray-500 hover:text-gray-700")}>
+              activeTab === t ? "border-[var(--org-primary)] text-[var(--org-primary)]" : "border-transparent text-gray-500 hover:text-gray-700")}>
             {t === "sessions" ? "Live Sessions" : t === "assignments" ? "Assignments" : t === "recordings" ? "Recordings" : t === "resources" ? "Resources" : t === "groups" ? "Cohort Groups" : t === "discussions" ? "Discussions" : "Settings"}
           </button>
         ))}
@@ -11257,19 +11257,19 @@ function CohortTab({ courseId }: { courseId: number }) {
         <div className="space-y-3">
           {/* Group selector banner when multi-cohort mode is on */}
           {multiCohortMode && cohortGroups.length > 0 && (
-            <div className="flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
-              <Users className="w-4 h-4 text-teal-600 flex-shrink-0" />
-              <span className="text-xs font-medium text-teal-700">Viewing group:</span>
+            <div className="flex items-center gap-2 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] rounded-lg px-3 py-2">
+              <Users className="w-4 h-4 text-[var(--org-primary)] flex-shrink-0" />
+              <span className="text-xs font-medium text-[var(--org-primary)]">Viewing group:</span>
               <select
                 value={contentGroupId ?? cohortGroups[0]?.id ?? ""}
                 onChange={e => setContentGroupId(Number(e.target.value))}
-                className="text-xs border border-teal-300 rounded px-2 py-0.5 bg-white text-teal-800 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                className="text-xs border border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] rounded px-2 py-0.5 bg-white text-[var(--org-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--org-primary)]"
               >
                 {cohortGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-teal-500 ml-auto">Sessions created here will be assigned to this group</span>
+              <span className="text-xs text-[var(--org-primary)] ml-auto">Sessions created here will be assigned to this group</span>
             </div>
           )}
           {/* Toolbar */}
@@ -11293,7 +11293,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                 <Download className="w-3.5 h-3.5 mr-1" /> ICS
               </Button>
               {(sessions as CohortSession[]).some(s => s.recurrenceRule && !s.parentSessionId) && (
-                <Button size="sm" variant="outline" className="text-xs text-teal-600 border-teal-200 hover:bg-teal-50"
+                <Button size="sm" variant="outline" className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                   disabled={expandRecurring.isPending}
                   onClick={async () => {
                     const parents = (sessions as CohortSession[]).filter(s => s.recurrenceRule && !s.parentSessionId);
@@ -11306,7 +11306,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   <Repeat className="w-3.5 h-3.5 mr-1" /> Expand All Recurring
                 </Button>
               )}
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white" onClick={() => openSessionDialog()}>
+              <Button size="sm" className="bg-[var(--org-primary)] hover:brightness-90 text-white" onClick={() => openSessionDialog()}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add Session
               </Button>
             </div>
@@ -11323,8 +11323,8 @@ function CohortTab({ courseId }: { courseId: number }) {
             <div className="space-y-2">
               {(sessions as CohortSession[]).map(s => (
                 <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center flex-shrink-0">
-                    <Radio className="w-5 h-5 text-teal-600" />
+                  <div className="w-10 h-10 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] flex items-center justify-center flex-shrink-0">
+                    <Radio className="w-5 h-5 text-[var(--org-primary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -11335,10 +11335,10 @@ function CohortTab({ courseId }: { courseId: number }) {
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{fmtDate(s.sessionDate)}</span>
                       <span>{s.durationMinutes} min</span>
                       {s.timezone && <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{s.timezone}</span>}
-                      {s.recurrenceRule && <span className="flex items-center gap-1 text-teal-600"><Repeat className="w-3 h-3" />{s.recurrenceRule}{s.recurrenceDaysOfWeek ? ` (${s.recurrenceDaysOfWeek.split(",").map(d => ["Su","Mo","Tu","We","Th","Fr","Sa"][+d]).join(",")})` : ""}</span>}
-                      {s.parentSessionId && <span className="text-teal-400 text-xs">Recurring instance</span>}
-                      {s.meetingUrl && <a href={s.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><LinkIcon className="w-3 h-3" />Meeting Link</a>}
-                      {s.recordingUrl && <a href={s.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline flex items-center gap-1"><PlayCircle className="w-3 h-3" />Recording</a>}
+                      {s.recurrenceRule && <span className="flex items-center gap-1 text-[var(--org-primary)]"><Repeat className="w-3 h-3" />{s.recurrenceRule}{s.recurrenceDaysOfWeek ? ` (${s.recurrenceDaysOfWeek.split(",").map(d => ["Su","Mo","Tu","We","Th","Fr","Sa"][+d]).join(",")})` : ""}</span>}
+                      {s.parentSessionId && <span className="text-[var(--org-primary)] text-xs">Recurring instance</span>}
+                      {s.meetingUrl && <a href={s.meetingUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline flex items-center gap-1"><LinkIcon className="w-3 h-3" />Meeting Link</a>}
+                      {s.recordingUrl && <a href={s.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--org-primary)] hover:underline flex items-center gap-1"><PlayCircle className="w-3 h-3" />Recording</a>}
                     </div>
                     {s.description && <RichTextDisplay content={s.description} className="text-xs text-gray-500 mt-1 line-clamp-2" />}
                   </div>
@@ -11356,7 +11356,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                     </Button>
                     {/* Expand recurring */}
                     {s.recurrenceRule && !s.parentSessionId && (
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-teal-400 hover:text-teal-600" title="Expand recurring sessions"
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[var(--org-primary)] hover:brightness-75" title="Expand recurring sessions"
                         onClick={() => expandRecurring.mutate({ parentSessionId: s.id })} disabled={expandRecurring.isPending}>
                         <Repeat className="w-3.5 h-3.5" />
                       </Button>
@@ -11416,13 +11416,13 @@ function CohortTab({ courseId }: { courseId: number }) {
                   });
                   const isToday = new Date().toDateString() === cellDate.toDateString();
                   cells.push(
-                    <div key={day} className={cn("min-h-[64px] border-r border-b border-gray-50 p-1", isToday && "bg-teal-50/40")}>
+                    <div key={day} className={cn("min-h-[64px] border-r border-b border-gray-50 p-1", isToday && "bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)]")}>
                       <span className={cn("text-xs font-medium block mb-1 w-6 h-6 flex items-center justify-center rounded-full",
-                        isToday ? "bg-teal-600 text-white" : "text-gray-500")}>{day}</span>
+                        isToday ? "bg-[var(--org-primary)] text-white" : "text-gray-500")}>{day}</span>
                       {daySessions.map(s => (
                         <div key={s.id}
                           className={cn("text-[10px] leading-tight rounded px-1 py-0.5 mb-0.5 cursor-pointer truncate",
-                            s.status === "published" ? "bg-teal-100 text-teal-800" :
+                            s.status === "published" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] text-[var(--org-primary)]" :
                             s.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600")}
                           title={s.title}
                           onClick={() => openSessionDialog(s)}
