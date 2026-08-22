@@ -11,7 +11,10 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "transfer:db": "node scripts/migrate-to-railway.mjs",
+    "transfer:files": "node scripts/sync-r2-bucket.mjs",
+    "transfer:rewrite-urls": "node scripts/rewrite-storage-urls.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.907.0",

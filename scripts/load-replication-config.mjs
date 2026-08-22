@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Load Manus → Railway replication settings from environment variables,
+ * Load source → Railway replication settings from environment variables,
  * falling back to replication-config.json when present (local only; that
  * file is gitignored).
  */
@@ -31,25 +31,29 @@ function mysqlFromEnv(prefix, fallback = {}) {
 
 export function loadReplicationConfig() {
   const file = fromFile();
-  const manus = mysqlFromEnv("MANUS_DB", file.manus?.mysql ?? {});
+  const source = mysqlFromEnv("SOURCE_DB", file.source?.mysql ?? {});
   const railway = mysqlFromEnv("RAILWAY_DB", file.railway?.mysql ?? {});
   const r2Fallback = file.cloudflare?.r2 ?? {};
   const r2 = {
-    accountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? r2Fallback.accountId ?? "",
-    bucketName: process.env.CLOUDFLARE_R2_BUCKET ?? r2Fallback.bucketName ?? "",
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY ?? r2Fallback.accessKeyId ?? "",
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_KEY ?? r2Fallback.secretAccessKey ?? "",
-    endpoint: process.env.CLOUDFLARE_R2_ENDPOINT ?? r2Fallback.endpoint ?? "",
+    accountId: process.env.CF_R2_ACCOUNT_ID ?? process.env.CLOUDFLARE_ACCOUNT_ID ?? r2Fallback.accountId ?? "",
+    bucketName: process.env.CF_R2_BUCKET_NAME ?? process.env.CLOUDFLARE_R2_BUCKET ?? r2Fallback.bucketName ?? "",
+    accessKeyId: process.env.CF_R2_ACCESS_KEY_ID ?? process.env.CLOUDFLARE_R2_ACCESS_KEY ?? r2Fallback.accessKeyId ?? "",
+    secretAccessKey: process.env.CF_R2_SECRET_ACCESS_KEY ?? process.env.CLOUDFLARE_R2_SECRET_KEY ?? r2Fallback.secretAccessKey ?? "",
+    endpoint: process.env.CF_R2_ENDPOINT ?? process.env.CLOUDFLARE_R2_ENDPOINT ?? r2Fallback.endpoint ?? "",
   };
 
-  return { manus, railway, r2, configPath };
+  if (!r2.endpoint && r2.accountId) {
+    r2.endpoint = `https://${r2.accountId}.r2.cloudflarestorage.com`;
+  }
+
+  return { source, railway, r2, configPath };
 }
 
 export function requireMysqlTargets() {
-  const { manus, railway } = loadReplicationConfig();
-  if (!manus) {
+  const { source, railway } = loadReplicationConfig();
+  if (!source) {
     throw new Error(
-      "Manus DB settings missing. Set MANUS_DB_HOST/PORT/USER/PASS/NAME or provide replication-config.json (see replication-config.example.json)."
+      "Source DB settings missing. Set SOURCE_DB_HOST/PORT/USER/PASS/NAME or provide replication-config.json (see replication-config.example.json)."
     );
   }
   if (!railway) {
@@ -57,5 +61,5 @@ export function requireMysqlTargets() {
       "Railway DB settings missing. Set RAILWAY_DB_HOST/PORT/USER/PASS/NAME or provide replication-config.json (see replication-config.example.json)."
     );
   }
-  return { manus, railway };
+  return { source, railway };
 }

@@ -142,12 +142,12 @@ Keep Manus live. Copy **to** Railway.
 
 ```bash
 # Example: this repo's script, driven by env vars (no secrets in git)
-export MANUS_DB_HOST=... MANUS_DB_PORT=4000 MANUS_DB_USER=... MANUS_DB_PASS=... MANUS_DB_NAME=...
+export SOURCE_DB_HOST=... SOURCE_DB_PORT=4000 SOURCE_DB_USER=... SOURCE_DB_PASS=... SOURCE_DB_NAME=...
 export RAILWAY_DB_HOST=... RAILWAY_DB_PORT=... RAILWAY_DB_USER=... RAILWAY_DB_PASS=... RAILWAY_DB_NAME=railway
-node scripts/migrate-to-railway.mjs
+pnpm transfer:db
 ```
 
-`scripts/migrate-to-railway.mjs` **drops Railway tables** before copy. Only run it against the new Railway database, never against Manus.
+`scripts/migrate-to-railway.mjs` **drops Railway tables** before copy. Only run it against the new Railway database.
 
 **Files**
 
@@ -155,7 +155,32 @@ node scripts/migrate-to-railway.mjs
 - Upload into that app’s R2/S3 bucket with the **same keys** the database already stores.
 - If rows contain `files.manuscdn.com` or `api.manus.im/v1/storage` URLs, rewrite them to the R2/S3 public URL after copy.
 
-This repo’s `scripts/sync-r2-bucket.mjs` is the Teachific file-copy starting point. Other apps need the same idea pointed at their bucket.
+```bash
+export SOURCE_S3_BUCKET=teachific
+export SOURCE_AWS_ACCESS_KEY_ID=...
+export SOURCE_AWS_SECRET_ACCESS_KEY=...
+export SOURCE_AWS_REGION=us-east-1
+
+export CF_R2_ACCOUNT_ID=...
+export CF_R2_BUCKET_NAME=teachific
+export CF_R2_ACCESS_KEY_ID=...
+export CF_R2_SECRET_ACCESS_KEY=...
+export CF_R2_PUBLIC_URL=https://files.example.com
+
+pnpm transfer:files
+```
+
+Then rewrite old URL bases in the Railway database:
+
+```bash
+export DATABASE_URL='mysql://...railway...'
+export OLD_STORAGE_BASE_URL='https://old-file-domain.example'
+export NEW_STORAGE_BASE_URL="$CF_R2_PUBLIC_URL"
+DRY_RUN=1 pnpm transfer:rewrite-urls
+pnpm transfer:rewrite-urls
+```
+
+Other apps need the same idea pointed at their source and destination buckets.
 
 ### 4. Smoke-test on the Railway URL
 

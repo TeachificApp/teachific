@@ -1,11 +1,11 @@
 {
-  "manus": {
+  "source": {
     "mysql": {
-      "host": "YOUR_TIDB_HOST.tidbcloud.com",
+      "host": "YOUR_SOURCE_DB_HOST.tidbcloud.com",
       "port": 4000,
-      "username": "YOUR_TIDB_USER",
-      "password": "YOUR_TIDB_PASSWORD",
-      "database": "YOUR_TIDB_DATABASE",
+      "username": "YOUR_SOURCE_DB_USER",
+      "password": "YOUR_SOURCE_DB_PASSWORD",
+      "database": "YOUR_SOURCE_DB_DATABASE",
       "ssl": true
     }
   },
