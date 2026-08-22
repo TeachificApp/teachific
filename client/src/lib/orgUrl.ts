@@ -9,7 +9,6 @@
  * their own domain, all their content URLs automatically resolve to that domain.
  */
 
-const MANUS_PREVIEW_PATTERN = /\.manus\.(space|computer)$/;
 const RAILWAY_PREVIEW_PATTERN = /\.up\.railway\.app$/;
 
 /**
@@ -27,7 +26,7 @@ export interface OrgUrlInfo {
  *
  * - On teachific.app (production): returns `https://{slug}.teachific.app`
  *   or `https://{customDomain}` if the org has a verified custom domain.
- * - On localhost / Manus preview / Railway preview: returns a path-based
+ * - On localhost / Railway preview: returns a path-based
  *   fallback `/school/{slug}` so development still works.
  *
  * @param slug                   The org's subdomain slug (e.g. "myorg")
@@ -47,7 +46,6 @@ export function getOrgBaseUrl(
   if (
     hostname === "localhost" ||
     hostname === "127.0.0.1" ||
-    MANUS_PREVIEW_PATTERN.test(hostname) ||
     RAILWAY_PREVIEW_PATTERN.test(hostname)
   ) {
     const portSuffix = port ? `:${port}` : "";

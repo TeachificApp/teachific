@@ -23,7 +23,7 @@ The system is delivered in four phases. Phase 1 (this document) covers the found
 | Frontend | React 19, Tailwind 4, shadcn/ui, tRPC client |
 | Backend | Express 4, tRPC 11, Drizzle ORM |
 | Database | MySQL / TiDB |
-| Auth | Manus OAuth + JWT session cookies |
+| Auth | Teachific email/password + signed JWT session cookies |
 | Storage | S3 (via `storagePut` / `storageGet` helpers) |
 | Payments | Stripe (checkout sessions + webhooks) |
 | Email | SendGrid |

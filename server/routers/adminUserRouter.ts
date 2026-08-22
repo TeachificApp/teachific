@@ -476,7 +476,7 @@ export const adminUserRouter = router({
       const resetToken = randomBytes(32).toString("hex");
       const resetExpiry = new Date(Date.now() + 3600_000); // 1 hour
       await db.update(users).set({ resetToken, resetTokenExpiry: resetExpiry }).where(eq(users.id, user.id));
-      const SITE_URL = process.env.VITE_OAUTH_PORTAL_URL?.replace("portal", "app") || "https://teachific.app";
+      const SITE_URL = process.env.VITE_APP_URL || process.env.APP_URL || "https://teachific.app";
       const resetUrl = `${SITE_URL}/reset-password?token=${resetToken}`;
       const { subject, htmlBody } = buildPasswordResetEmail({
         firstName: user.firstName || user.name || "there",

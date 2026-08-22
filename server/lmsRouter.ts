@@ -1199,8 +1199,8 @@ export const lmsRouter = router({
             user_name: user.name ?? user.email,
             org_name: orgConfig?.name ?? String(c.orgId),
             course_title: "",
-            unsubscribe_url: `${process.env.VITE_OAUTH_PORTAL_URL ?? ""}/unsubscribe?token=${unsubToken}`,
-            site_url: process.env.VITE_OAUTH_PORTAL_URL ?? "",
+            unsubscribe_url: `${process.env.VITE_APP_URL || process.env.APP_URL || "https://teachific.app"}/unsubscribe?token=${unsubToken}`,
+            site_url: process.env.VITE_APP_URL || process.env.APP_URL || "https://teachific.app",
             year: String(new Date().getFullYear()),
           });
           const ok = await sendOrgEmail(

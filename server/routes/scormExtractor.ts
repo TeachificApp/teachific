@@ -37,12 +37,11 @@ const STALL_THRESHOLD_MS = 60 * 60 * 1000; // 60 min — large ZIPs (200MB+) wit
 // ─── Download helper ──────────────────────────────────────────────────────────
 
 /**
- * Detect whether a stored URL is a Manus storage-proxy URL that needs a fresh
- * presigned download URL, vs a direct CDN/CloudFront URL that can be fetched as-is.
+ * Detect whether a stored URL is a storage-proxy URL that contains the original
+ * object key, vs a direct CDN/CloudFront/R2 URL that can be fetched as-is.
  *
- * Storage-proxy URLs look like:
- *   https://api.manus.im/v1/storage/...?path=<key>   (explicit ?path= param)
- *   https://<forge-host>/v1/storage/...              (Forge API host)
+ * Storage-proxy URLs include either a ?path=<key> query param or /v1/storage/
+ * in the path. After Railway cutover, those keys resolve through S3/R2.
  *
  * Direct CDN URLs look like:
  *   https://d2xsxph8kpxj0f.cloudfront.net/...        (CloudFront)
@@ -57,7 +56,7 @@ function isStorageProxyUrl(url: string): boolean {
     const u = new URL(url);
     // Explicit storage-proxy URLs always have a ?path= query param
     if (u.searchParams.has("path")) return true;
-    // Forge API host pattern (contains /v1/storage/ in path)
+    // Storage API host pattern (contains /v1/storage/ in path)
     if (u.pathname.includes("/v1/storage/")) return true;
     return false;
   } catch {
@@ -66,7 +65,7 @@ function isStorageProxyUrl(url: string): boolean {
 }
 
 async function downloadToFile(storedUrl: string, destPath: string): Promise<void> {
-  // Only call storageGet() for Manus storage-proxy URLs that need a fresh presigned URL.
+  // Only call storageGet() for storage-proxy URLs that need a fresh presigned URL.
   // Direct CDN/CloudFront URLs must be used as-is — calling storageGet() on them
   // would double the path prefix and produce HTTP 403.
   let downloadUrl = storedUrl;

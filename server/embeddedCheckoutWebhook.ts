@@ -319,7 +319,7 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
       console.warn(`[Embedded Checkout Webhook] Confirmation email skipped for purchase ${purchase.id}: organization domain unavailable`);
     }
 
-    // Notify org admins via Teachific email (not Manus)
+    // Notify org admins via Teachific email.
     if (purchase.orgId) {
       try {
         const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];

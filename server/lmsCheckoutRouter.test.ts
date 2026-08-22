@@ -21,7 +21,7 @@ function createAdminCtx(): TrpcContext {
     openId: "test-admin",
     email: "admin@example.com",
     name: "Admin User",
-    loginMethod: "manus",
+    loginMethod: "email",
     role: "admin",
     createdAt: new Date(),
     updatedAt: new Date(),

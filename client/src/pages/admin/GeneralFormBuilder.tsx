@@ -237,8 +237,6 @@ const CUSTOM_DOMAINS = [
   "teachific.app",
   "teachific.app/learn",
   "accreditation.iheartecho.com",
-  "ultrasound-urcfdrve.manus.space",
-  "ultrasoundassist.manus.space",
 ];
 const DEFAULT_HOST_DOMAIN = "teachific.app";
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * R2 Bucket Sync: Manus S3 → Cloudflare R2
+ * R2 Bucket Sync: source S3-compatible bucket → Cloudflare R2
  * 
- * This script continuously syncs files from Manus S3 to Cloudflare R2.
+ * This script syncs files from a source S3-compatible bucket to Cloudflare R2.
  * It can be run as a cron job or daemon process.
  * 
  * Usage: node scripts/sync-r2-bucket.mjs [--watch]
@@ -21,12 +21,24 @@ if (!R2_CONFIG.endpoint || !R2_CONFIG.accessKeyId || !R2_CONFIG.bucketName) {
   );
 }
 
-// Initialize S3 client for Manus (using environment variables)
+const sourceBucket = process.env.SOURCE_S3_BUCKET;
+if (!sourceBucket) {
+  throw new Error("SOURCE_S3_BUCKET is required.");
+}
+const sourceAccessKeyId = process.env.SOURCE_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+const sourceSecretAccessKey = process.env.SOURCE_AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+if (!sourceAccessKeyId || !sourceSecretAccessKey) {
+  throw new Error("Source storage credentials missing. Set SOURCE_AWS_ACCESS_KEY_ID and SOURCE_AWS_SECRET_ACCESS_KEY.");
+}
+
+// Initialize source S3 client.
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.SOURCE_AWS_REGION || process.env.AWS_REGION || 'us-east-1',
+  endpoint: process.env.SOURCE_S3_ENDPOINT || undefined,
+  forcePathStyle: Boolean(process.env.SOURCE_S3_ENDPOINT),
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    accessKeyId: sourceAccessKeyId,
+    secretAccessKey: sourceSecretAccessKey,
   },
 });
 
@@ -41,18 +53,24 @@ const r2Client = new S3Client({
 });
 
 async function listS3Objects(bucket, prefix = '') {
-  const command = new ListObjectsV2Command({
-    Bucket: bucket,
-    Prefix: prefix,
-  });
+  const objects = [];
+  let ContinuationToken;
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: bucket,
+      Prefix: prefix,
+      ContinuationToken,
+    });
 
-  const response = await s3Client.send(command);
-  return response.Contents || [];
+    const response = await s3Client.send(command);
+    objects.push(...(response.Contents || []));
+    ContinuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (ContinuationToken);
+  return objects;
 }
 
 async function copyObjectToR2(bucket, key) {
   try {
-    // Get object from Manus S3
     const getCommand = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
@@ -80,11 +98,11 @@ async function copyObjectToR2(bucket, key) {
 }
 
 async function syncBucket(bucket) {
-  console.log(`🔄 Starting R2 bucket sync from Manus S3 to Cloudflare R2...\n`);
+  console.log(`🔄 Starting R2 bucket sync from source bucket to Cloudflare R2...\n`);
 
   try {
     const objects = await listS3Objects(bucket);
-    console.log(`📊 Found ${objects.length} objects in Manus S3\n`);
+    console.log(`📊 Found ${objects.length} objects in source bucket\n`);
 
     let synced = 0;
     let failed = 0;
@@ -117,14 +135,12 @@ async function watchBucket(bucket, intervalMinutes = 5) {
   await syncBucket(bucket);
 }
 
-// Main execution
-const bucket = process.env.MANUS_S3_BUCKET || 'teachific';
 const watchMode = process.argv.includes('--watch');
 
 if (watchMode) {
-  watchBucket(bucket);
+  watchBucket(sourceBucket);
 } else {
-  syncBucket(bucket).then(success => {
+  syncBucket(sourceBucket).then(success => {
     process.exit(success ? 0 : 1);
   });
 }

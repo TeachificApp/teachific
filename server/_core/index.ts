@@ -4,7 +4,6 @@ import { createServer } from "http";
 import net from "net";
 import helmet from "helmet";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./staticServer";
@@ -81,7 +80,7 @@ async function startServer() {
         fontSrc:      ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "data:"],
         imgSrc:       ["'self'", "data:", "blob:", "https:"],
         mediaSrc:     ["'self'", "blob:", "https:"],
-        connectSrc:   ["'self'", "https://api.manus.im", "https://api.stripe.com", "wss:", "https:"],
+        connectSrc:   ["'self'", "https://api.stripe.com", "wss:", "https:"],
         frameSrc:     ["'self'", "https://js.stripe.com", "https:"],
         // Allow embedding from any HTTPS origin (required for LMS integration)
         frameAncestors: ["'self'", "https:"],
@@ -155,9 +154,6 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "3gb" }));
   app.use(express.urlencoded({ limit: "3gb", extended: true }));
-
-  // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
 
   // Quiz Excel import/export
   app.use("/api/quiz", quizImportRouter);

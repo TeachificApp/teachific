@@ -88,7 +88,7 @@ function makeAdminCtx(): TrpcContext {
       openId: "admin-user",
       email: "admin@teachific.com",
       name: "Admin User",
-      loginMethod: "manus",
+      loginMethod: "email",
       role: "admin",
       createdAt: new Date(),
       updatedAt: new Date(),

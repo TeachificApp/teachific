@@ -32,8 +32,8 @@ export function getSessionCookieOptions(
   //   hostname !== "127.0.0.1" &&
   //   hostname !== "::1";
 
-  // In production, set Domain=.teachific.app so the Manus OAuth session cookie
-  // is also shared across all subdomains (myorg.teachific.app, etc.)
+  // In production, set Domain=.teachific.app so Teachific's session cookie is
+  // shared across all subdomains (myorg.teachific.app, learn.teachific.app, etc.)
   const hostname = req.hostname ?? "";
   const isTeachificProd =
     hostname === "teachific.app" ||

@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Initial Data Migration: Manus (TiDB) → Railway (MySQL)
+ * Initial Data Migration: source MySQL/TiDB → Railway MySQL
  * 
- * This script performs a one-time dump of all data from Manus TiDB
- * and imports it into Railway MySQL. Run this once before enabling
- * continuous replication.
+ * This script performs a one-time copy of all source tables and data
+ * into Railway MySQL.
  * 
  * Usage: node scripts/migrate-to-railway.mjs
  */
@@ -13,21 +12,21 @@
 import mysql from 'mysql2/promise';
 import { requireMysqlTargets } from './load-replication-config.mjs';
 
-const { manus: MANUS, railway: RAILWAY } = requireMysqlTargets();
+const { source: SOURCE, railway: RAILWAY } = requireMysqlTargets();
 
-async function getManusTables() {
+async function getSourceTables() {
   const conn = await mysql.createConnection({
-    host: MANUS.host,
-    port: MANUS.port,
-    user: MANUS.username,
-    password: MANUS.password,
-    database: MANUS.database,
-    ssl: MANUS.ssl ? 'Amazon RDS' : undefined,
+    host: SOURCE.host,
+    port: SOURCE.port,
+    user: SOURCE.username,
+    password: SOURCE.password,
+    database: SOURCE.database,
+    ssl: SOURCE.ssl ? 'Amazon RDS' : undefined,
   });
 
   const [tables] = await conn.query(
     `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?`,
-    [MANUS.database]
+    [SOURCE.database]
   );
 
   await conn.end();
@@ -35,16 +34,15 @@ async function getManusTables() {
 }
 
 async function dumpAndRestore() {
-  console.log('🔄 Starting data migration from Manus to Railway...\n');
+  console.log('🔄 Starting data migration from source DB to Railway...\n');
 
-  // Connect to Manus (source)
-  const manusConn = await mysql.createConnection({
-    host: MANUS.host,
-    port: MANUS.port,
-    user: MANUS.username,
-    password: MANUS.password,
-    database: MANUS.database,
-    ssl: MANUS.ssl ? 'Amazon RDS' : undefined,
+  const sourceConn = await mysql.createConnection({
+    host: SOURCE.host,
+    port: SOURCE.port,
+    user: SOURCE.username,
+    password: SOURCE.password,
+    database: SOURCE.database,
+    ssl: SOURCE.ssl ? 'Amazon RDS' : undefined,
   });
 
   // Connect to Railway (destination)
@@ -57,9 +55,8 @@ async function dumpAndRestore() {
   });
 
   try {
-    // Get list of tables from Manus
-    const tables = await getManusTables();
-    console.log(`📊 Found ${tables.length} tables in Manus\n`);
+    const tables = await getSourceTables();
+    console.log(`📊 Found ${tables.length} tables in source DB\n`);
 
     // Drop existing tables in Railway (optional - comment out for safety)
     console.log('🧹 Clearing Railway database...');
@@ -78,7 +75,7 @@ async function dumpAndRestore() {
       console.log(`📦 Migrating table: ${table}`);
 
       // Get CREATE TABLE statement
-      const [createResult] = await manusConn.query(
+      const [createResult] = await sourceConn.query(
         `SHOW CREATE TABLE \`${table}\``
       );
       const createStatement = createResult[0]['Create Table'];
@@ -91,7 +88,7 @@ async function dumpAndRestore() {
       }
 
       // Copy data
-      const [rows] = await manusConn.query(`SELECT * FROM \`${table}\``);
+      const [rows] = await sourceConn.query(`SELECT * FROM \`${table}\``);
       if (rows.length > 0) {
         const columns = Object.keys(rows[0]);
         const placeholders = columns.map(() => '?').join(',');
@@ -114,13 +111,13 @@ async function dumpAndRestore() {
     }
 
     console.log('\n✅ Migration complete!');
-    console.log('📌 Next step: Enable continuous replication with: node scripts/enable-replication.mjs');
+    console.log('📌 Next step: copy files, rewrite old file URLs, then smoke-test Railway.');
 
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
     process.exit(1);
   } finally {
-    await manusConn.end();
+    await sourceConn.end();
     await railwayConn.end();
   }
 }
