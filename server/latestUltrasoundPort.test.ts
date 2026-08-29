@@ -29,6 +29,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     const lockfile = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
     const workspaceConfig = readFileSync(new URL("../pnpm-workspace.yaml", import.meta.url), "utf8");
+    const dockerfile = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
     expect(packageJson.devDependencies?.pnpm).toBeUndefined();
     expect(packageJson.packageManager).toBeUndefined();
     expect(packageJson.pnpm).toBeUndefined();
@@ -41,6 +42,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workspaceConfig).toContain("core-js: true");
     expect(workspaceConfig).toContain("'@tailwindcss/oxide': true");
     expect(workspaceConfig).toContain("esbuild: true");
+    expect(dockerfile).toContain("COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./");
+    expect(dockerfile).toContain("corepack prepare pnpm@11.24.0 --activate");
+    expect(dockerfile).toContain("corepack pnpm install --frozen-lockfile");
   });
 
   it("limits Quiz Creator find-and-replace to the active organization’s saved quiz content", () => {

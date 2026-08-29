@@ -1,12 +1,12 @@
 FROM node:22-alpine AS base
-RUN npm install -g pnpm
+RUN npm install -g corepack@latest && corepack prepare pnpm@11.24.0 --activate
 
 # Install dependencies
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
-RUN pnpm install --frozen-lockfile
+RUN corepack pnpm install --frozen-lockfile
 
 # Build both client (vite) and server (esbuild)
 # vite builds React into dist/public, esbuild compiles Express into dist/index.js
@@ -29,16 +29,16 @@ ENV VITE_APP_ID=$VITE_APP_ID \
     VITE_FRONTEND_FORGE_API_KEY=$VITE_FRONTEND_FORGE_API_KEY \
     VITE_FRONTEND_FORGE_API_URL=$VITE_FRONTEND_FORGE_API_URL \
     VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
-RUN NODE_ENV=production pnpm build
+RUN NODE_ENV=production corepack pnpm build
 
 # Production runtime
 FROM node:22-alpine AS runner
-RUN npm install -g pnpm
+RUN npm install -g corepack@latest && corepack prepare pnpm@11.24.0 --activate
 WORKDIR /app
 ENV NODE_ENV=production
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
-RUN pnpm install --frozen-lockfile --prod
+RUN corepack pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 CMD ["node", "dist/index.js"]
