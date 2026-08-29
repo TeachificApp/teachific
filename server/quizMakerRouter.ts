@@ -128,6 +128,45 @@ function quizMakerChoicesForBank(question: SerializedQuizQuestion) {
   return [];
 }
 
+const QUIZ_TEXT_EXCLUDED_KEYS = new Set([
+  "id",
+  "url",
+  "imageUrl",
+  "videoUrl",
+  "audioUrl",
+  "backgroundImageUrl",
+  "targetId",
+  "type",
+]);
+
+function replaceQuizTextValue(value: unknown, find: string, replace: string): { value: unknown; count: number } {
+  if (typeof value === "string") {
+    const count = value.split(find).length - 1;
+    return { value: count > 0 ? value.split(find).join(replace) : value, count };
+  }
+  if (Array.isArray(value)) {
+    return value.reduce<{ value: unknown[]; count: number }>((result, item) => {
+      const next = replaceQuizTextValue(item, find, replace);
+      result.value.push(next.value);
+      result.count += next.count;
+      return result;
+    }, { value: [], count: 0 });
+  }
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).reduce<{ value: Record<string, unknown>; count: number }>((result, [key, item]) => {
+      if (QUIZ_TEXT_EXCLUDED_KEYS.has(key)) {
+        result.value[key] = item;
+        return result;
+      }
+      const next = replaceQuizTextValue(item, find, replace);
+      result.value[key] = next.value;
+      result.count += next.count;
+      return result;
+    }, { value: {}, count: 0 });
+  }
+  return { value, count: 0 };
+}
+
 // ─── QuizMaker Web Editor Router ─────────────────────────────────────────────
 // Full CRUD for standalone quizzes owned by a user (userId-based, not org-based)
 
@@ -520,6 +559,38 @@ export const quizMakerRouter = router({
         });
         return { id: result.insertId };
       }
+    }),
+
+  /** Replace exact text in a saved quiz that the active organization may administer. */
+  findAndReplaceText: protectedProcedure
+    .input(z.object({
+      quizId: z.number().int().positive(),
+      find: z.string().min(1).max(500),
+      replace: z.string().max(5_000),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = (await getDb())!;
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      let questions: unknown;
+      try {
+        questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quiz has invalid saved question data." });
+      }
+      if (!Array.isArray(questions)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This quiz has invalid saved question data." });
+      }
+      const result = replaceQuizTextValue(questions, input.find, input.replace);
+      const updatedQuestions = result.value as unknown[];
+      if (result.count > 0) {
+        await db.update(quizzes)
+          .set({ instructions: JSON.stringify(updatedQuestions) })
+          .where(eq(quizzes.id, quiz.id));
+      }
+      return {
+        replacementCount: result.count,
+        questions: updatedQuestions,
+      };
     }),
 
   // ── Publish / Export ───────────────────────────────────────────────────────

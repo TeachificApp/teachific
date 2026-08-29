@@ -21,6 +21,10 @@
 - [x] Enforce authenticated user and organization ownership for chunked package version upload session initiation, chunks, and finalization
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
 - [x] Require organization-admin ownership before native SCORM package creation from the Question Bank import workflow
+- [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
+- [x] Repair the production dependency lockfile mismatch preventing deployment
+- [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
+- [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
 - [x] Prevent package settings from presenting unsupported standalone quiz playback as an available display mode

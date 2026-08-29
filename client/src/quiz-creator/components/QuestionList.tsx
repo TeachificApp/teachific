@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuizStore } from "../store/quizStore";
 import {
   DndContext,
@@ -18,7 +18,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { QuizQuestion, QuestionType } from "../types/quiz";
-import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, Hash, BarChart3, FileText } from "lucide-react";
+import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, Hash, BarChart3, FileText, Replace, Search, X } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   mcq: <CheckSquare className="w-3.5 h-3.5" />,
@@ -110,8 +111,24 @@ function SortableQuestionItem({ question, isActive, onClick, groupColor }: { que
 }
 
 export function QuestionList() {
-  const { quiz, activeQuestionId, setActiveQuestion, addQuestion, reorderQuestions } = useQuizStore();
+  const { quiz, activeQuestionId, setActiveQuestion, addQuestion, reorderQuestions, loadQuiz } = useQuizStore();
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showReplace, setShowReplace] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const findAndReplace = trpc.quizMaker.findAndReplaceText.useMutation({
+    onSuccess: (result) => {
+      loadQuiz({ ...quiz, questions: result.questions as QuizQuestion[] }, quiz.meta.title);
+      setFindText("");
+      setReplaceText("");
+      setSearch("");
+      window.alert(result.replacementCount > 0
+        ? `${result.replacementCount} replacement${result.replacementCount === 1 ? "" : "s"} applied to this quiz.`
+        : "No exact matches were found in this quiz.");
+    },
+    onError: (error) => window.alert(error.message),
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -127,6 +144,31 @@ export function QuestionList() {
   };
 
   const totalPoints = quiz.questions.reduce((sum, q) => sum + q.points, 0);
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredQuestions = useMemo(() => normalizedSearch
+    ? quiz.questions.filter((question) => JSON.stringify({
+      stem: question.stem,
+      stemHtml: question.stemHtml,
+      explanation: question.explanation,
+      explanationHtml: question.explanationHtml,
+      feedback: question.feedback,
+      data: question.data,
+    }).toLowerCase().includes(normalizedSearch))
+    : quiz.questions, [quiz.questions, normalizedSearch]);
+
+  const handleFindAndReplace = () => {
+    const quizId = Number((quiz.meta as { cloudId?: number }).cloudId);
+    if (!quizId) {
+      window.alert("Save this quiz to Teachific before using find and replace.");
+      return;
+    }
+    if (!findText.trim()) {
+      window.alert("Enter the exact word or phrase to find.");
+      return;
+    }
+    if (!window.confirm(`Replace every exact occurrence of “${findText}” with “${replaceText}” in this saved quiz? This cannot be undone automatically.`)) return;
+    findAndReplace.mutate({ quizId, find: findText, replace: replaceText });
+  };
 
   return (
     <div className="w-72 shrink-0 border-r border-gray-100 flex flex-col h-full bg-white">
@@ -138,6 +180,35 @@ export function QuestionList() {
           </span>
           <span className="text-xs text-gray-400">{totalPoints} pts total</span>
         </div>
+        <div className="mt-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search question text"
+              className="h-8 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-8 text-xs text-gray-800 outline-none focus:border-[var(--org-primary)] focus:ring-1 focus:ring-[var(--org-primary)]"
+            />
+            {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear question search" className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"><X className="h-3.5 w-3.5" /></button>}
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="text-[11px] text-gray-500">{normalizedSearch ? `${filteredQuestions.length} matching` : "Search saved question content"}</span>
+            <button type="button" onClick={() => setShowReplace((current) => !current)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--org-primary)] hover:brightness-75">
+              <Replace className="h-3.5 w-3.5" /> Find &amp; replace
+            </button>
+          </div>
+          {showReplace && (
+            <div className="mt-2 space-y-2 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_9%,transparent)] p-2.5">
+              <input value={findText} onChange={(event) => setFindText(event.target.value)} placeholder="Find exact word or phrase" className="h-8 w-full rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-[var(--org-primary)]" />
+              <input value={replaceText} onChange={(event) => setReplaceText(event.target.value)} placeholder="Replace with" className="h-8 w-full rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-[var(--org-primary)]" />
+              <p className="text-[11px] leading-relaxed text-gray-600">Changes are applied only to this saved quiz. Question Bank records remain unchanged.</p>
+              <button type="button" disabled={!findText.trim() || findAndReplace.isPending} onClick={handleFindAndReplace} className="org-primary-button w-full rounded px-2 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+                {findAndReplace.isPending ? "Replacing…" : "Replace in this quiz"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Question list */}
@@ -147,6 +218,15 @@ export function QuestionList() {
             <div className="text-3xl mb-2">📋</div>
             <p className="text-sm">No questions yet</p>
             <p className="text-xs mt-1">Click "Add Question" to start</p>
+          </div>
+        ) : normalizedSearch && filteredQuestions.length === 0 ? (
+          <div className="px-4 py-12 text-center text-xs text-gray-500">No saved question content matches this search.</div>
+        ) : normalizedSearch ? (
+          <div className="space-y-1">
+            {filteredQuestions.map((q) => {
+              const group = q.groupId ? (quiz.meta.groups || []).find((item) => item.id === q.groupId) : undefined;
+              return <SortableQuestionItem key={q.id} question={q} isActive={q.id === activeQuestionId} onClick={() => setActiveQuestion(q.id)} groupColor={group?.color} />;
+            })}
           </div>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

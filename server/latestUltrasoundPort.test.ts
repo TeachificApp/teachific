@@ -25,6 +25,26 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(parseBlocks(null)).toEqual([]);
   });
 
+  it("keeps pnpm as the build tool rather than a project dependency", () => {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    const lockfile = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
+    expect(packageJson.devDependencies?.pnpm).toBeUndefined();
+    expect(lockfile).not.toContain("\n      pnpm:\n");
+    expect(lockfile).not.toContain("\n  pnpm@");
+  });
+
+  it("limits Quiz Creator find-and-replace to the active organization’s saved quiz content", () => {
+    const routerSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const questionListSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionList.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("findAndReplaceText: protectedProcedure");
+    expect(routerSource).toContain("const quiz = await requireQuizMakerAccess(ctx, input.quizId);");
+    expect(routerSource).toContain("const QUIZ_TEXT_EXCLUDED_KEYS");
+    expect(routerSource).toContain("result.value as unknown[]");
+    expect(questionListSource).toContain("trpc.quizMaker.findAndReplaceText.useMutation");
+    expect(questionListSource).toContain("Changes are applied only to this saved quiz. Question Bank records remain unchanged.");
+    expect(questionListSource).toContain("Save this quiz to Teachific before using find and replace.");
+  });
+
   it("enforces org-owned waitlist and enrollment-closed states before creating a course enrollment", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain('eq(contentAvailability.productType, "course")');
