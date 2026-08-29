@@ -532,15 +532,25 @@ function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function PublicQuizPlayerPage() {
-  const { shareToken } = useParams<{ shareToken: string }>();
-  const { data: quiz, isLoading, error } = trpc.quizMaker.getPublishedQuiz.useQuery(
+  const { shareToken, quizId } = useParams<{ shareToken?: string; quizId?: string }>();
+  const staffPreviewQuizId = Number(quizId);
+  const isStaffPreview = Number.isInteger(staffPreviewQuizId) && staffPreviewQuizId > 0;
+  const { data: publicQuiz, isLoading: isPublicLoading, error: publicError } = trpc.quizMaker.getPublishedQuiz.useQuery(
     { shareToken: shareToken || "" },
-    { enabled: !!shareToken, retry: false }
+    { enabled: !!shareToken && !isStaffPreview, retry: false }
   );
-  const { data: branding } = trpc.quizMaker.getQuizBranding.useQuery(
+  const { data: publicBranding } = trpc.quizMaker.getQuizBranding.useQuery(
     { shareToken: shareToken || "" },
-    { enabled: !!shareToken }
+    { enabled: !!shareToken && !isStaffPreview }
   );
+  const { data: staffQuiz, isLoading: isStaffLoading, error: staffError } = trpc.quizMaker.getStaffPreviewQuiz.useQuery(
+    { quizId: staffPreviewQuizId || 0 },
+    { enabled: isStaffPreview, retry: false }
+  );
+  const quiz = isStaffPreview ? staffQuiz : publicQuiz;
+  const branding = isStaffPreview ? staffQuiz?.branding : publicBranding;
+  const isLoading = isStaffPreview ? isStaffLoading : isPublicLoading;
+  const error = isStaffPreview ? staffError : publicError;
 
   const submitAttemptMutation = trpc.quizMaker.submitAttempt.useMutation();
 
@@ -779,14 +789,16 @@ export default function PublicQuizPlayerPage() {
     const timeTaken = Math.round((Date.now() - startTimeRef.current) / 1000);
 
     // Submit attempt to backend (fire and forget)
-    submitAttemptMutation.mutate({
-      shareToken: shareToken || "",
-      score,
-      totalPoints,
-      passed,
-      timeTakenSeconds: timeTaken,
-      answersJson: JSON.stringify(answers),
-    });
+    if (!isStaffPreview) {
+      submitAttemptMutation.mutate({
+        shareToken: shareToken || "",
+        score,
+        totalPoints,
+        passed,
+        timeTakenSeconds: timeTaken,
+        answersJson: JSON.stringify(answers),
+      });
+    }
 
     setSubmitted(true);
   };
@@ -798,6 +810,11 @@ export default function PublicQuizPlayerPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: bgGradient }}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        {isStaffPreview && (
+          <div className="rounded-t-2xl border-b border-amber-200 bg-amber-50 px-6 py-2 text-center text-xs font-semibold text-amber-900">
+            Staff preview — this draft view is available only to authorized organization staff and does not record quiz attempts.
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">

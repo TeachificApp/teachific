@@ -87,9 +87,21 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
             <Globe className="w-5 h-5 text-teal-500" />
             <h2 className="text-lg font-bold text-gray-800">Publish & Share</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {quizId && (
+              <a
+                href={`/quiz-creator/${quizId}/preview`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Staff Preview
+              </a>
+            )}
+            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-5">

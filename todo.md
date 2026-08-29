@@ -27,6 +27,8 @@
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
+- [x] Complete active-organization Quiz Creator publish, unpublish, and protected draft-preview safeguards
+- [x] Implement and validate an active-organization staff-only Quiz Creator draft-preview flow
 - [x] Complete active-organization source-based AI quiz generation with public-URL safeguards
 - [x] Wire safe public-source generation into the Teachific Quiz Creator generation contract
 - [ ] Audit and port active-organization learner course-playback reliability updates

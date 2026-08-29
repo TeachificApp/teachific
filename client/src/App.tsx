@@ -270,6 +270,7 @@ function BareRouter() {
         {/* Standalone Quiz Creator — gated by role */}
         <Route path="/quiz-creator" component={QuizCreatorGate} />
         <Route path="/quiz-creator/:quizId/builder" component={QuizVisualBuilderPage} />
+        <Route path="/quiz-creator/:quizId/preview" component={PublicQuizPlayerPage} />
         {/* QuizMaker standalone app for users without LMS access */}
         <Route path="/quiz-creator-app/download">{() => <DesktopDownloadPage app="quizCreator" />}</Route>
         <Route path="/quiz-creator-app" component={QuizCreatorDashboard} />

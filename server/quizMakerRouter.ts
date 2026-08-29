@@ -814,6 +814,40 @@ export const quizMakerRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Load an unpublished or published quiz for an authorized staff preview.
+   * This procedure is deliberately protected and resolves access through the
+   * active organization; it must never be used by the public learner player.
+   */
+  getStaffPreviewQuiz: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+
+      return {
+        id: quiz.id,
+        title: quiz.title,
+        description: quiz.description,
+        passingScore: quiz.passingScore,
+        timeLimit: quiz.timeLimit,
+        maxAttempts: quiz.maxAttempts,
+        shuffleQuestions: quiz.shuffleQuestions,
+        shuffleAnswers: quiz.shuffleAnswers,
+        showFeedbackImmediately: quiz.showFeedbackImmediately,
+        showCorrectAnswers: quiz.showCorrectAnswers,
+        questions,
+        previewMode: "staff" as const,
+        branding: {
+          brandPrimaryColor: quiz.brandPrimaryColor,
+          brandBgColor: quiz.brandBgColor,
+          brandLogoUrl: quiz.brandLogoUrl,
+          brandFontFamily: quiz.brandFontFamily,
+          completionMessage: quiz.completionMessage,
+        },
+      };
+    }),
+
   /** Get a published quiz by share token (public, no auth required) */
   getPublishedQuiz: publicProcedure
     .input(z.object({ shareToken: z.string().min(1) }))

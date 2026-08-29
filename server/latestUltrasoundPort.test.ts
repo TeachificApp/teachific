@@ -935,6 +935,34 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("const orgId = await resolveQuizMakerOrg(ctx)");
   });
 
+  it("keeps Quiz Creator drafts restricted to authorized staff while public reads require publication", () => {
+    const routerSource = readFileSync(new URL("../server/quizMakerRouter.ts", import.meta.url), "utf8");
+    const shareDialogSource = readFileSync(new URL("../client/src/quiz-creator/components/ShareDialog.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("unpublish: protectedProcedure");
+    expect(routerSource).toContain("await requireQuizMakerAccess(ctx, input.quizId)");
+    expect(routerSource).toContain("getPublishedQuiz: publicProcedure");
+    expect(routerSource).toContain("eq(quizzes.isPublished, true)");
+    expect(routerSource).toContain('quizVis === "archived" || quizVis === "draft"');
+    expect(routerSource).toContain("getStaffPreviewQuiz: protectedProcedure");
+    expect(routerSource).toContain("previewMode: \"staff\" as const");
+    expect(shareDialogSource).toContain("unpublishMutation");
+    expect(shareDialogSource).toContain("Publish Quiz");
+    expect(shareDialogSource).toContain("Draft — Unpublish");
+  });
+
+  it("wires the Quiz Creator staff preview through a protected route without recording learner attempts", () => {
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const playerSource = readFileSync(new URL("../client/src/pages/PublicQuizPlayerPage.tsx", import.meta.url), "utf8");
+    const shareDialogSource = readFileSync(new URL("../client/src/quiz-creator/components/ShareDialog.tsx", import.meta.url), "utf8");
+    expect(appSource).toContain('path="/quiz-creator/:quizId/preview"');
+    expect(playerSource).toContain("trpc.quizMaker.getStaffPreviewQuiz.useQuery");
+    expect(playerSource).toContain("const isStaffPreview = Number.isInteger(staffPreviewQuizId) && staffPreviewQuizId > 0");
+    expect(playerSource).toContain("if (!isStaffPreview)");
+    expect(playerSource).toContain("Staff preview — this draft view is available only to authorized organization staff");
+    expect(shareDialogSource).toContain("Staff Preview");
+    expect(shareDialogSource).toContain("/quiz-creator/${quizId}/preview");
+  });
+
   it("protects Quiz Creator authoring with organization ownership helpers", () => {
     const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function requireQuizAdmin");
