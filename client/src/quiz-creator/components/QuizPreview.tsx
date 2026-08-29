@@ -634,11 +634,7 @@ export function QuizPreview({ onClose }: Props) {
           </button>
 
           {(() => {
-            const handleNext = () => {
-              if (quiz.meta.feedbackMode === "immediate" && feedbackQuestionId !== q.id) {
-                setFeedbackQuestionId(q.id);
-                return;
-              }
+            const advanceQuestion = () => {
               setFeedbackQuestionId(null);
               if (branchingEnabled && q.branchRules && q.branchRules.length > 0) {
                 setQuestionPath((p) => [...p, q.id]);
@@ -694,11 +690,22 @@ export function QuizPreview({ onClose }: Props) {
                 else setSubmitted(true);
               } else {
                 if (branchingEnabled) setQuestionPath((p) => [...p, q.id]);
-                setCurrentIdx((i) => i + 1);
+                if (currentIdx < questions.length - 1) setCurrentIdx((i) => i + 1);
+                else setSubmitted(true);
               }
             };
 
+            const handleNext = () => {
+              if (quiz.meta.feedbackMode === "immediate" && feedbackQuestionId !== q.id) {
+                setFeedbackQuestionId(q.id);
+                return;
+              }
+              advanceQuestion();
+            };
+
             const isLast = currentIdx >= questions.length - 1;
+            const feedbackVisible = quiz.meta.feedbackMode === "immediate" && feedbackQuestionId === q.id;
+            const advanceLabel = feedbackVisible ? (isLast ? "Finish Quiz" : "Next") : (isLast ? "Check Answer" : "Check Answer");
             if (branchingEnabled) {
               return (
                 <button
@@ -706,17 +713,17 @@ export function QuizPreview({ onClose }: Props) {
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                   style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
                 >
-                  Next <ChevronRight className="w-4 h-4" />
+                  {feedbackVisible && isLast ? "Finish Quiz" : feedbackVisible ? "Next" : "Check Answer"} <ChevronRight className="w-4 h-4" />
                 </button>
               );
             }
             return isLast ? (
               <button
-                onClick={() => setSubmitted(true)}
+                onClick={handleNext}
                 className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                 style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
               >
-                Submit Quiz
+                {advanceLabel}
               </button>
             ) : (
               <button
@@ -724,7 +731,7 @@ export function QuizPreview({ onClose }: Props) {
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                 style={{ background: "linear-gradient(135deg, #24abbc, #0d8a9a)" }}
               >
-                Next <ChevronRight className="w-4 h-4" />
+                {advanceLabel} <ChevronRight className="w-4 h-4" />
               </button>
             );
           })()}

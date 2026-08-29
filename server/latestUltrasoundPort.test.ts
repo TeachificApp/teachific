@@ -1471,6 +1471,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(simpleEditorsSource).toContain("event.stopPropagation()");
     expect(previewSource).toContain("feedbackQuestionId");
     expect(previewSource).toContain('quiz.meta.feedbackMode === "immediate"');
+    expect(previewSource).toContain("const advanceQuestion = () =>");
+    expect(previewSource).toContain("const feedbackVisible = quiz.meta.feedbackMode === \"immediate\" && feedbackQuestionId === q.id");
+    expect(previewSource).toContain('feedbackVisible ? (isLast ? "Finish Quiz" : "Next")');
+    expect(previewSource).toContain('isLast ? "Check Answer" : "Check Answer"');
+    expect(previewSource).toContain("onClick={handleNext}");
     expect(previewSource).toContain("RichTextDisplay");
     expect(previewSource).toContain("q.feedbackImage");
     expect(previewSource).toContain("q.feedbackVideo");
