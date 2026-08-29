@@ -455,6 +455,8 @@ function LessonContent({
             {lesson.quizId ? (
               <EmbeddedQuizPlayer
                 quizId={lesson.quizId}
+                sourceLessonId={lesson.id}
+                courseSlug={course.slug}
                 showHeader={true}
                 onComplete={(_score, passed) => {
                   if (passed) onComplete?.();

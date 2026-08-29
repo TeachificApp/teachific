@@ -6,7 +6,7 @@
  * Supports both quiz mode (instant per-question feedback) and mock_exam mode (submit all at end).
  * Renders compactly to fit inside a lesson page without taking over the full viewport.
  */
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,10 @@ interface EmbeddedQuizPlayerProps {
   quizId: number;
   /** Source lesson when the quiz is embedded in a Course Player lesson. */
   sourceLessonId?: number;
+  /** Owning course path used to validate the learner's enrollment and lesson assignment. */
+  courseSlug?: string;
+  /** Enables a protected author-side block preview; the server verifies organization administration. */
+  authorPreview?: boolean;
   /** When true, shows a compact header. Default: true */
   showHeader?: boolean;
   /** Called when the attempt is completed */
@@ -72,23 +76,31 @@ interface EmbeddedQuizPlayerProps {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader = true, onComplete }: EmbeddedQuizPlayerProps) {
+export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug, authorPreview = false, showHeader = true, onComplete }: EmbeddedQuizPlayerProps) {
   const { user, isLoading: authLoading } = useAuth();
+  const hasCourseContext = Boolean(courseSlug && sourceLessonId);
+  const accessInput = useMemo(() => ({
+    quizId,
+    courseSlug,
+    sourceLessonId,
+    authorPreview,
+  }), [quizId, courseSlug, sourceLessonId, authorPreview]);
 
-  const { data: quizInfo, isLoading: infoLoading } = trpc.standaloneQuizLearner.getQuizInfo.useQuery(
-    { quizId },
-    { enabled: !!user && !isNaN(quizId) }
+  const { data: quizInfo, isLoading: infoLoading } = trpc.quiz.getLearnerQuizInfo.useQuery(
+    accessInput,
+    { enabled: !!user && !isNaN(quizId) && (hasCourseContext || authorPreview) }
   );
 
-  const startMutation = trpc.standaloneQuizLearner.startAttempt.useMutation();
-  const submitMutation = trpc.standaloneQuizLearner.submitAttempt.useMutation();
+  const startMutation = trpc.quiz.startLearnerAttempt.useMutation();
+  const checkMutation = trpc.quiz.checkLearnerResponse.useMutation();
+  const submitMutation = trpc.quiz.completeLearnerAttempt.useMutation();
 
   const [phase, setPhase] = useState<"idle" | "started" | "submitted">("idle");
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [revealed, setRevealed] = useState<Record<number, { isCorrect: boolean; correctChoiceIds: number[]; explanation: string | null }>>({});
   const [questionTimes, setQuestionTimes] = useState<Record<number, number>>({});
   const [qStartTime, setQStartTime] = useState(Date.now());
   const [quizData, setQuizData] = useState<any>(null);
@@ -96,25 +108,30 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
 
   const limitSeconds = quizInfo?.timeLimitMinutes ? quizInfo.timeLimitMinutes * 60 : null;
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!attemptId) return;
-    const answerPayload = Object.entries(answers).map(([qBankId, answer]) => ({
-      questionBankId: parseInt(qBankId),
-      answer,
-      timeSpentSeconds: questionTimes[parseInt(qBankId)] ?? 0,
-    }));
-    submitMutation.mutate(
-      { attemptId, answers: answerPayload },
-      {
-        onSuccess: (res) => {
-          setResult(res);
-          setPhase("submitted");
-          onComplete?.(res.score, res.passed);
-        },
-        onError: (e) => toast.error(e.message),
-      }
-    );
-  }, [attemptId, answers, questionTimes, submitMutation, onComplete]);
+    if (Object.keys(answers).length < questions.length) {
+      toast.error("Please answer every question before submitting.");
+      return;
+    }
+    try {
+      await Promise.all(Object.entries(answers).map(([questionId, choiceId]) =>
+        checkMutation.mutateAsync({
+          ...accessInput,
+          attemptId,
+          questionId: Number(questionId),
+          selectedChoiceIds: [choiceId],
+          timeSpentSeconds: questionTimes[Number(questionId)] ?? 0,
+        })
+      ));
+      const res = await submitMutation.mutateAsync({ ...accessInput, attemptId });
+      setResult(res);
+      setPhase("submitted");
+      onComplete?.(res.score, res.passed);
+    } catch (error: any) {
+      toast.error(error?.message ?? "Unable to submit this quiz.");
+    }
+  }, [accessInput, answers, attemptId, checkMutation, onComplete, questionTimes, questions.length, submitMutation]);
 
   const handleExpire = useCallback(() => {
     if (phase === "started") handleSubmit();
@@ -124,7 +141,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
 
   function handleStart() {
     startMutation.mutate(
-      { quizId, sourceType: sourceLessonId ? "lesson" : "standalone", sourceLessonId },
+      accessInput,
       {
         onSuccess: (res) => {
           setAttemptId(res.attemptId);
@@ -139,15 +156,27 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
     );
   }
 
-  function recordAnswer(qBankId: number, answer: string) {
+  function recordAnswer(qBankId: number, answer: number) {
     const now = Date.now();
     const spent = Math.round((now - qStartTime) / 1000);
     setQuestionTimes((t) => ({ ...t, [qBankId]: spent }));
     setAnswers((a) => ({ ...a, [qBankId]: answer }));
   }
 
-  function handleReveal(qBankId: number) {
-    setRevealed((r) => ({ ...r, [qBankId]: true }));
+  function handleReveal(questionId: number) {
+    if (!attemptId || answers[questionId] === undefined) return;
+    checkMutation.mutate({
+      ...accessInput,
+      attemptId,
+      questionId,
+      selectedChoiceIds: [answers[questionId]],
+      timeSpentSeconds: questionTimes[questionId] ?? 0,
+    }, {
+      onSuccess: (feedback) => {
+        setRevealed((previous) => ({ ...previous, [questionId]: feedback }));
+      },
+      onError: (error) => toast.error(error.message),
+    });
   }
 
   function handleRetake() {
@@ -187,7 +216,9 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
   if (!quizInfo) {
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center text-sm text-gray-500">
-        Quiz not available.
+        {hasCourseContext || authorPreview
+          ? "Quiz not available. Make sure it is linked to this course lesson."
+          : "Quiz preview is available from its assigned course lesson."}
       </div>
     );
   }
@@ -328,14 +359,12 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
   if (!q) return null;
 
   const isMockExam = quizData?.type === "mock_exam";
-  const isRevealed = revealed[q.questionBankId];
-  const selectedAnswer = answers[q.questionBankId];
+  const feedback = revealed[q.id];
+  const isRevealed = Boolean(feedback);
+  const selectedAnswer = answers[q.id];
   const progress = ((currentIdx + 1) / questions.length) * 100;
 
-  let options: string[] = [];
-  try { options = JSON.parse(q.options ?? "[]"); } catch { /* ignore */ }
-
-  const correctIdx = typeof q.correctAnswer === "number" ? q.correctAnswer : null;
+  const options = q.choices ?? [];
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -369,22 +398,22 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
 
         {/* Options */}
         <div className="space-y-2 mb-4">
-          {options.map((opt: string, i: number) => {
+          {options.map((option: any, i: number) => {
             const letter = ["A", "B", "C", "D", "E", "F"][i];
-            const isSelected = selectedAnswer === String(i);
-            const isCorrect = !isMockExam && isRevealed && i === correctIdx;
-            const isIncorrect = !isMockExam && isRevealed && isSelected && i !== correctIdx;
+            const isSelected = selectedAnswer === option.id;
+            const isCorrect = !isMockExam && isRevealed && feedback.correctChoiceIds.includes(option.id);
+            const isIncorrect = !isMockExam && isRevealed && isSelected && !feedback.isCorrect;
             return (
               <OptionButton
-                key={i}
-                label={`${letter}. ${opt}`}
+                key={option.id}
+                label={`${letter}. ${option.text}`}
                 selected={isSelected}
                 correct={isCorrect}
                 incorrect={isIncorrect}
                 disabled={!isMockExam && isRevealed}
                 onClick={() => {
                   if (isMockExam || !isRevealed) {
-                    recordAnswer(q.questionBankId, String(i));
+                    recordAnswer(q.id, option.id);
                   }
                 }}
               />
@@ -393,10 +422,10 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
         </div>
 
         {/* Feedback (quiz mode) */}
-        {!isMockExam && isRevealed && q.explanation && (
+        {!isMockExam && isRevealed && feedback.explanation && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-sm text-blue-800">
             <p className="font-medium mb-0.5">Explanation</p>
-            <p>{q.explanation}</p>
+            <p>{feedback.explanation}</p>
           </div>
         )}
 
@@ -418,7 +447,8 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
             {!isMockExam && !isRevealed && selectedAnswer !== undefined && (
               <Button
                 size="sm"
-                onClick={() => handleReveal(q.questionBankId)}
+                onClick={() => handleReveal(q.id)}
+                disabled={checkMutation.isPending}
                 className="bg-[var(--org-primary)] hover:brightness-90 text-white"
               >
                 Check Answer
@@ -430,7 +460,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
               <Button
                 size="sm"
                 onClick={() => { setCurrentIdx((i) => i + 1); setQStartTime(Date.now()); }}
-                disabled={!isMockExam && !isRevealed && selectedAnswer === undefined}
+                disabled={!isMockExam && !isRevealed}
                 className="gap-1"
               >
                 Next
@@ -440,11 +470,11 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, showHeader 
               <Button
                 size="sm"
                 onClick={handleSubmit}
-                disabled={submitMutation.isPending || (isMockExam && Object.keys(answers).length < questions.length)}
+                disabled={submitMutation.isPending || checkMutation.isPending || (!isMockExam && !isRevealed) || (isMockExam && Object.keys(answers).length < questions.length)}
                 className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-1"
               >
                 {submitMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Submit Quiz
+                {!isMockExam && isRevealed ? "Finish Quiz" : "Submit Quiz"}
               </Button>
             )}
           </div>

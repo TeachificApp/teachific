@@ -31,7 +31,10 @@
 - [x] Implement and validate an active-organization staff-only Quiz Creator draft-preview flow
 - [x] Complete active-organization source-based AI quiz generation with public-URL safeguards
 - [x] Wire safe public-source generation into the Teachific Quiz Creator generation contract
-- [ ] Audit and port active-organization learner course-playback reliability updates
+- [x] Audit and port active-organization learner course-playback reliability updates
+- [x] Restore registered learner quiz procedures and course-context authorization for embedded Quiz Creator lesson playback
+- [x] Allow embedded Quiz Creator playback for every supported linked lesson type, including exam lessons, with course and organization validation
+- [x] Add behavioral coverage for embedded learner quiz enrollment, preview, staff, cross-course/cross-organization isolation, and exam compatibility
 - [x] Port active-organization-safe Question Bank bulk folder and tag updates
 - [x] Enforce active-organization ownership and generic AI generation in legacy Question Bank procedures
 - [x] Fix the Question Bank schema syntax error and revalidate tenant-safe bulk workflows

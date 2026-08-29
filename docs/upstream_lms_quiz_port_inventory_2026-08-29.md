@@ -16,6 +16,12 @@ Port applicable LMS and Quiz Creator improvements into Teachific while retaining
 | Learner experience reliability | Course/overview lesson alignment, stale bundle handling, enrollment links, dashboard routes | Teachific has distinct LMS page and router layout | Port route and access logic only after verifying Teachific route names and active-organization domain behavior. |
 | Availability, schedules, prices, and checkout | Eastern-time enrollment deadlines, waitlist/closed states, dollar-to-Stripe conversion boundaries | Existing Teachific code already stores prices in dollars and has organization-scoped checkout | Validate existing controls against source changes; do not reintroduce cents storage or source-specific branding. |
 
+## Learner Playback Audit — August 29, 2026
+
+The upstream history for `CoursePlayer.tsx` and `EmbeddedQuizPlayer.tsx` from August 25 onward contains one applicable reliability change: passing the parent course slug through embedded quiz metadata and attempt requests so the server can confirm that the learner opened the quiz through its assigned course. Teachific now implements the same learner-course alignment through its registered `quiz` router, with an additional source lesson identifier. The server verifies the quiz-to-lesson link, lesson-to-course link, course slug, and course/quiz organization match before allowing access.
+
+Teachific's implementation also retains its existing multi-tenant policy. Organization staff may preview a linked quiz only after authorization against the quiz's owning organization; regular learners require a published quiz and either a published preview lesson or active, unexpired full enrollment. Free-preview enrollment does not grant access to a protected quiz lesson. Linked quiz and exam lesson types are both supported where present. No read-aloud capability, source-project terms, source URLs, or source branding were ported.
+
 ## Build Repair Finding
 
 The failed managed deployment was caused by frozen-install verification of a project-level `pnpm` development dependency, which expected an `@pnpm/exe` platform binary that was absent from the lockfile. The unnecessary dependency has been removed and `pnpm install --frozen-lockfile --prod` now succeeds. The production server bundle succeeds. Full Vite production build continues to exceed the sandbox memory limit, which is separate from the frozen-lockfile error.

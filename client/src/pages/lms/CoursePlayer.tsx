@@ -1852,11 +1852,12 @@ export default function CoursePlayer() {
                   <LessonEffectPlayer key={`complete-${lessonData.id}`} effect={lessonData} trigger="lesson_complete" userName={user?.name ?? undefined} />
 
                   {/* ── Quiz ── */}
-                  {lessonData.type === "quiz" && (
+                  {["quiz", "exam"].includes(lessonData.type) && (
                     lessonData.standaloneQuizId ? (
                       <EmbeddedQuizPlayer
                         quizId={lessonData.standaloneQuizId}
                         sourceLessonId={lessonData.id}
+                        courseSlug={slug!}
                         onComplete={(_score, passed) => {
                           if (!passed) return;
                           setOptimisticCompleted(prev => new Set([...prev, lessonData.id]));

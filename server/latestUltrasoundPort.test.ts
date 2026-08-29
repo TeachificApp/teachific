@@ -611,13 +611,26 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandingSource).not.toContain("orgs?.[0]?.id");
   });
 
-  it("persists the source lesson on standalone quiz attempts completed in Course Player", () => {
+  it("uses registered learner procedures and verified course context for embedded Quiz Creator lessons", () => {
     const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
     const quizSource = readFileSync(new URL("../client/src/components/EmbeddedQuizPlayer.tsx", import.meta.url), "utf8");
+    const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
     expect(playerSource).toContain("sourceLessonId={lessonData.id}");
+    expect(playerSource).toContain("courseSlug={slug!}");
     expect(quizSource).toContain("sourceLessonId?: number");
-    expect(quizSource).toContain('sourceType: sourceLessonId ? "lesson" : "standalone"');
-    expect(quizSource).toContain("sourceLessonId }");
+    expect(quizSource).toContain("courseSlug?: string");
+    expect(quizSource).toContain("trpc.quiz.getLearnerQuizInfo.useQuery");
+    expect(quizSource).toContain("trpc.quiz.startLearnerAttempt.useMutation");
+    expect(quizSource).toContain("trpc.quiz.completeLearnerAttempt.useMutation");
+    expect(quizSource).not.toContain("standaloneQuizLearner");
+    expect(routerSource).toContain("resolveEmbeddedLearnerQuizAccess");
+    expect(routerSource).toContain("eq(lmsLessons.standaloneQuizId, input.quizId)");
+    expect(routerSource).toContain("eq(lmsCourses.slug, input.courseSlug)");
+    expect(routerSource).toContain("course.orgId !== quiz.orgId");
+    expect(routerSource).toContain('!["quiz", "exam"].includes(lesson.type)');
+    expect(routerSource).toContain("canOpenEmbeddedLearnerQuiz");
+    expect(routerSource).toContain("Course enrollment is required to access this quiz.");
+    expect(routerSource).toContain("Quiz attempt does not belong to this course lesson.");
   });
 
   it("resolves product-level checkout terms before organization defaults across supported paid content", () => {
@@ -832,6 +845,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).toContain("lesson.quizId ? (");
     expect(playerSource).toContain("<EmbeddedQuizPlayer");
     expect(playerSource).toContain("quizId={lesson.quizId}");
+    expect(playerSource).toContain("sourceLessonId={lesson.id}");
+    expect(playerSource).toContain("courseSlug={course.slug}");
   });
 
   it("creates and plays organization-owned standalone QuizMaker links in active LMS lessons", () => {
@@ -847,6 +862,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).toContain('import EmbeddedQuizPlayer from "@/components/EmbeddedQuizPlayer"');
     expect(playerSource).toContain("lessonData.standaloneQuizId ? (");
     expect(playerSource).toContain("quizId={lessonData.standaloneQuizId}");
+    expect(playerSource).toContain('["quiz", "exam"].includes(lessonData.type)');
   });
 
   it("exposes answer-level feedback and media controls in the org-scoped Question Bank editor", () => {
