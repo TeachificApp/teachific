@@ -1166,12 +1166,16 @@ export const quizMakerRouter = router({
       }
 
       let exportedCount = 0;
+      let updatedCount = 0;
       for (const question of selectedQuestions) {
         const data = question.data ?? {};
-        const [insertedQuestion] = await db.insert(quizBankQuestions).values({
+        const values = {
           orgId: quiz.orgId,
           bankId: bank.id,
           folderId: input.folderId ?? null,
+          sourceQuizId: quiz.id,
+          sourceQuestionId: question.id || undefined,
+          sourceQuizPayload: question,
           questionType: mapQuestionBankType(question),
           questionText: question.stem?.trim() || "Untitled question",
           questionHtml: question.stemHtml || undefined,
@@ -1187,9 +1191,31 @@ export const quizMakerRouter = router({
           lockAnswerOrder: Boolean(question.lockAnswerOrder),
           explanationText: question.explanation || undefined,
           explanationHtml: question.explanationHtml || undefined,
-          importSource: "quiz_maker",
-        });
-        const questionId = insertedQuestion.insertId;
+          importSource: "quiz_creator",
+        };
+
+        const [existingQuestion] = question.id
+          ? await db.select({ id: quizBankQuestions.id })
+            .from(quizBankQuestions)
+            .where(and(
+              eq(quizBankQuestions.orgId, quiz.orgId),
+              eq(quizBankQuestions.bankId, bank.id),
+              eq(quizBankQuestions.sourceQuizId, quiz.id),
+              eq(quizBankQuestions.sourceQuestionId, question.id),
+            ))
+            .limit(1)
+          : [];
+        const questionId = existingQuestion?.id ?? (await db.insert(quizBankQuestions).values(values)).insertId;
+
+        if (existingQuestion) {
+          await db.update(quizBankQuestions).set(values).where(eq(quizBankQuestions.id, questionId));
+          await db.delete(quizAnswerChoices).where(eq(quizAnswerChoices.questionId, questionId));
+          await db.delete(quizQuestionTags).where(eq(quizQuestionTags.questionId, questionId));
+          updatedCount++;
+        } else {
+          exportedCount++;
+        }
+
         const choices = quizMakerChoicesForBank(question);
         if (choices.length > 0) {
           await db.insert(quizAnswerChoices).values(choices.map((choice) => ({ ...choice, questionId })));
@@ -1197,14 +1223,15 @@ export const quizMakerRouter = router({
         if (input.tagIds.length > 0) {
           await db.insert(quizQuestionTags).values(input.tagIds.map((tagId) => ({ questionId, tagId })));
         }
-        exportedCount++;
       }
 
-      await db.update(quizBanks)
-        .set({ questionCount: sql`${quizBanks.questionCount} + ${exportedCount}` })
-        .where(eq(quizBanks.id, bank.id));
+      if (exportedCount > 0) {
+        await db.update(quizBanks)
+          .set({ questionCount: sql`${quizBanks.questionCount} + ${exportedCount}` })
+          .where(eq(quizBanks.id, bank.id));
+      }
 
-      return { exportedCount, bankId: bank.id };
+      return { exportedCount, updatedCount, bankId: bank.id };
     }),
 
   /** Get question-level analytics for an authorized organization quiz */

@@ -31,7 +31,9 @@
 - [x] Port active-organization-safe Question Bank bulk folder and tag updates
 - [x] Enforce active-organization ownership and generic AI generation in legacy Question Bank procedures
 - [x] Fix the Question Bank schema syntax error and revalidate tenant-safe bulk workflows
-- [ ] Port active-organization-safe canonical Question Bank synchronization for Quiz Creator
+- [ ] Complete active-organization-safe canonical Question Bank synchronization for Quiz Creator
+- [x] Surface Quiz Creator canonical sync created-versus-updated results in the export workflow
+- [ ] Add behavioral coverage for idempotent canonical sync, media retention, and cross-organization isolation
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
 - [x] Prevent package settings from presenting unsupported standalone quiz playback as an available display mode

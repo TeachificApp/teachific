@@ -4052,6 +4052,10 @@ export const quizBankQuestions = mysqlTable("quiz_bank_questions", {
   orgId: int("org_id").notNull(),
   bankId: int("bank_id").notNull(),
   folderId: int("folder_id"),
+  // Generic native Quiz Creator source fields support idempotent in-organization synchronization.
+  sourceQuizId: int("source_quiz_id"),
+  sourceQuestionId: varchar("source_question_id", { length: 64 }),
+  sourceQuizPayload: json("source_quiz_payload"),
   questionType: mysqlEnum("question_type", [
     "mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"
   ]).notNull().default("mc"),
@@ -4079,7 +4083,9 @@ export const quizBankQuestions = mysqlTable("quiz_bank_questions", {
   isArchived: boolean("is_archived").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  canonicalQuizSource: uniqueIndex("quiz_bank_questions_source_unique").on(table.orgId, table.bankId, table.sourceQuizId, table.sourceQuestionId),
+}));
 export type QuizBankQuestion = typeof quizBankQuestions.$inferSelect;
 export type InsertQuizBankQuestion = typeof quizBankQuestions.$inferInsert;
 

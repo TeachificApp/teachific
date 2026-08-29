@@ -899,6 +899,8 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("resolves an active organization and verifies ownership in the active QuizMaker router", () => {
     const routerSource = readFileSync(new URL("../server/quizMakerRouter.ts", import.meta.url), "utf8");
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const toolbarSource = readFileSync(new URL("../client/src/quiz-creator/components/EditorToolbar.tsx", import.meta.url), "utf8");
     expect(routerSource).toContain("resolveQuizMakerOrg");
     expect(routerSource).toContain("requireQuizMakerAccess");
     expect(routerSource).toContain("requireQuizMakerQuestionAccess");
@@ -911,7 +913,25 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("exportToQuestionBank");
     expect(routerSource).toContain("targetBankId");
     expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
-    expect(routerSource).toContain('importSource: "quiz_maker"');
+    expect(routerSource).toContain('importSource: "quiz_creator"');
+    expect(routerSource).toContain("sourceQuizId: quiz.id");
+    expect(routerSource).toContain("sourceQuestionId: question.id || undefined");
+    expect(routerSource).toContain("sourceQuizPayload: question");
+    expect(routerSource).toContain("updatedCount");
+    expect(routerSource).toContain("eq(quizBankQuestions.orgId, quiz.orgId)");
+    expect(routerSource).toContain("eq(quizBankQuestions.bankId, bank.id)");
+    expect(routerSource).toContain("eq(quizBankQuestions.sourceQuizId, quiz.id)");
+    expect(routerSource).toContain("eq(quizBankQuestions.sourceQuestionId, question.id)");
+    expect(routerSource).toContain("await db.update(quizBankQuestions).set(values)");
+    expect(routerSource).toContain("await db.delete(quizAnswerChoices)");
+    expect(routerSource).toContain("await db.delete(quizQuestionTags)");
+    expect(routerSource).toContain('mediaUrl: question.image?.url || question.video?.url || undefined');
+    expect(schemaSource).toContain('sourceQuizId: int("source_quiz_id")');
+    expect(schemaSource).toContain('sourceQuestionId: varchar("source_question_id", { length: 64 })');
+    expect(schemaSource).toContain("canonicalQuizSource");
+    expect(toolbarSource).toContain("existing question");
+    expect(toolbarSource).toContain("Sync selected questions");
+    expect(toolbarSource).toContain("updatedCount");
     expect(routerSource).toContain("const orgId = await resolveQuizMakerOrg(ctx)");
   });
 

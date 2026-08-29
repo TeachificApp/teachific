@@ -134,7 +134,11 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
         questionIds: selectedQuestionIds,
         tagIds: selectedTagIds,
       });
-      alert(`${result.exportedCount} question${result.exportedCount === 1 ? "" : "s"} exported to the Question Bank.`);
+      const summary = [
+        result.exportedCount > 0 ? `${result.exportedCount} new question${result.exportedCount === 1 ? "" : "s"} added` : "",
+        result.updatedCount > 0 ? `${result.updatedCount} existing question${result.updatedCount === 1 ? "" : "s"} synchronized` : "",
+      ].filter(Boolean).join(" and ");
+      alert(`${summary || "No questions changed"}. Question media and supported native settings are retained.`);
       setQuestionBankDialogOpen(false);
     } catch (err) {
       alert("Question Bank export failed: " + (err as Error).message);
@@ -236,7 +240,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                       onClick={openQuestionBankExport}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
                     >
-                      <Database className="w-4 h-4 text-teal-500" /> Export questions to Bank
+                      <Database className="w-4 h-4 text-[var(--org-primary)]" /> Sync questions to Bank
                     </button>
                   </>
                 )}
@@ -315,7 +319,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
             <DialogTitle>Export Quiz Questions to Question Bank</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Choose a Question Bank in the active organization and the questions to copy. Question media, choices, ordering, and matching data are retained when supported.</p>
+            <p className="text-sm text-muted-foreground">Choose a Question Bank in the active organization and the questions to synchronize. Existing questions from this saved quiz are updated rather than duplicated; question media, choices, ordering, and matching data are retained when supported.</p>
             <label className="grid gap-1.5 text-sm font-medium">
               Target Question Bank
               <select
@@ -344,7 +348,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                     type="checkbox"
                     checked={checked}
                     onChange={(event) => setSelectedQuestionIds((current) => event.target.checked ? [...current, question.id] : current.filter((id) => id !== question.id))}
-                    className="mt-0.5 accent-teal-600"
+                    className="mt-0.5 accent-[var(--org-primary)]"
                   />
                   <span><strong>Q{index + 1}.</strong> {question.stem || "Untitled question"}</span>
                 </label>;
@@ -360,7 +364,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
                       key={tag.id}
                       type="button"
                       onClick={() => setSelectedTagIds((current) => selected ? current.filter((id) => id !== tag.id) : [...current, tag.id])}
-                      className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${selected ? "border-teal-600 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-600 hover:border-teal-300"}`}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${selected ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : "border-gray-200 bg-white text-gray-600 hover:border-[var(--org-primary)]"}`}
                     >
                       {tag.name}
                     </button>;
@@ -375,9 +379,9 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
               type="button"
               onClick={handleQuestionBankExport}
               disabled={!targetBankId || selectedQuestionIds.length === 0 || exportToQuestionBank.isPending}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="org-primary-button rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
-              {exportToQuestionBank.isPending ? "Exporting..." : "Export selected questions"}
+              {exportToQuestionBank.isPending ? "Synchronizing..." : "Sync selected questions"}
             </button>
           </DialogFooter>
         </DialogContent>
