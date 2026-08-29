@@ -7,6 +7,7 @@ const mockDb = {
   select: vi.fn(),
   insert: vi.fn(),
   update: vi.fn(),
+  delete: vi.fn(),
 };
 
 const chainable = (result: any) => {
@@ -251,6 +252,10 @@ describe("SCORM Export", () => {
 describe("Question Bank Export", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDb.select.mockReset();
+    mockDb.insert.mockReset();
+    mockDb.update.mockReset();
+    mockDb.delete.mockReset();
   });
 
   it("rejects a target Question Bank owned by another organization", async () => {
@@ -297,7 +302,8 @@ describe("Question Bank Export", () => {
           },
         }]),
       }]))
-      .mockReturnValueOnce(chainable([{ id: 10, orgId: 5, name: "Owned bank" }]));
+      .mockReturnValueOnce(chainable([{ id: 10, orgId: 5, name: "Owned bank" }]))
+      .mockReturnValueOnce(chainable([]));
     mockDb.insert.mockReturnValue(chainable([{ insertId: 88 }]));
     mockDb.update.mockReturnValue(chainable(undefined));
 
@@ -308,11 +314,67 @@ describe("Question Bank Export", () => {
       targetBankId: 10,
       questionIds: ["q1"],
       tagIds: [],
-    })).resolves.toEqual({ exportedCount: 1, bankId: 10 });
+    })).resolves.toEqual({ exportedCount: 1, updatedCount: 0, bankId: 10 });
 
     expect(mockDb.insert).toHaveBeenCalledWith(expect.anything());
     const questionInsert = mockDb.insert.mock.results[0]?.value;
     expect(questionInsert).toBeDefined();
+  });
+
+  it("updates the canonical question in place on a repeated export without increasing bank count", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chainable([{
+        id: 1,
+        userId: 10,
+        orgId: 5,
+        title: "Scoped Quiz",
+        instructions: JSON.stringify([{
+          id: "q1",
+          type: "mcq",
+          stem: "Updated question",
+          image: { url: "https://cdn.example.com/updated-stem.png", alt: "Updated stem image" },
+          data: { choices: [{ id: "a", text: "Updated answer", correct: true, imageUrl: "https://cdn.example.com/updated-answer.png" }] },
+        }]),
+      }]))
+      .mockReturnValueOnce(chainable([{ id: 10, orgId: 5, name: "Owned bank" }]))
+      .mockReturnValueOnce(chainable([{ id: 88 }]));
+    mockDb.update.mockReturnValue(chainable(undefined));
+    mockDb.delete.mockReturnValue(chainable(undefined));
+    mockDb.insert.mockReturnValue(chainable([{ insertId: 99 }]));
+
+    const ctx = { user: { id: 10, role: "org_admin" } } as unknown as TrpcContext;
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.quizMaker.exportToQuestionBank({
+      quizId: 1,
+      targetBankId: 10,
+      questionIds: ["q1"],
+      tagIds: [],
+    })).resolves.toEqual({ exportedCount: 0, updatedCount: 1, bankId: 10 });
+
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+    expect(mockDb.delete).toHaveBeenCalledTimes(2);
+    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects unsaved question data before creating a non-idempotent Question Bank record", async () => {
+    mockDb.select
+      .mockReturnValueOnce(chainable([{
+        id: 1,
+        userId: 10,
+        orgId: 5,
+        title: "Scoped Quiz",
+        instructions: JSON.stringify([{ type: "mcq", stem: "Unsaved", data: { choices: [] } }]),
+      }]))
+      .mockReturnValueOnce(chainable([{ id: 10, orgId: 5, name: "Owned bank" }]));
+
+    const ctx = { user: { id: 10, role: "org_admin" } } as unknown as TrpcContext;
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.quizMaker.exportToQuestionBank({
+      quizId: 1,
+      targetBankId: 10,
+      tagIds: [],
+    })).rejects.toThrow("Every quiz question must be saved before it can synchronize to the Question Bank.");
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 });
 

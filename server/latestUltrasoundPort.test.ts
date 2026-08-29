@@ -931,7 +931,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
     expect(routerSource).toContain('importSource: "quiz_creator"');
     expect(routerSource).toContain("sourceQuizId: quiz.id");
-    expect(routerSource).toContain("sourceQuestionId: question.id || undefined");
+    expect(routerSource).toContain("sourceQuestionId: question.id");
     expect(routerSource).toContain("sourceQuizPayload: question");
     expect(routerSource).toContain("updatedCount");
     expect(routerSource).toContain("eq(quizBankQuestions.orgId, quiz.orgId)");
@@ -942,6 +942,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("await db.delete(quizAnswerChoices)");
     expect(routerSource).toContain("await db.delete(quizQuestionTags)");
     expect(routerSource).toContain('mediaUrl: question.image?.url || question.video?.url || undefined');
+    expect(routerSource).toContain("Every quiz question must be saved before it can synchronize to the Question Bank.");
     expect(schemaSource).toContain('sourceQuizId: int("source_quiz_id")');
     expect(schemaSource).toContain('sourceQuestionId: varchar("source_question_id", { length: 64 })');
     expect(schemaSource).toContain("canonicalQuizSource");

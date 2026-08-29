@@ -1124,14 +1124,21 @@ export const quizMakerRouter = router({
       const db = (await getDb())!;
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
-      const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
-      if (questions.length === 0) throw new Error("Quiz has no questions. Save to cloud first.");
+      let serializedQuestions: SerializedQuizQuestion[];
+      try {
+        serializedQuestions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz questions could not be read. Save the quiz and try again." });
+      }
+      if (!Array.isArray(serializedQuestions) || serializedQuestions.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz has no questions. Save the quiz and try again." });
+      }
 
       const { generateScormPackage } = await import("./scormGenerator");
       const zipBuffer = await generateScormPackage({
         title: quiz.title,
         description: quiz.description || "",
-        questions,
+        questions: serializedQuestions,
         passingScore: quiz.passingScore || 70,
         timeLimit: quiz.timeLimit,
         shuffleQuestions: quiz.shuffleQuestions,
@@ -1158,6 +1165,15 @@ export const quizMakerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      let serializedQuestions: SerializedQuizQuestion[];
+      try {
+        serializedQuestions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz questions could not be read. Save the quiz and try again." });
+      }
+      if (!Array.isArray(serializedQuestions) || serializedQuestions.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz has no questions. Save the quiz and try again." });
+      }
       const [bank] = await db.select().from(quizBanks).where(eq(quizBanks.id, input.targetBankId)).limit(1);
       if (!bank) throw new TRPCError({ code: "NOT_FOUND", message: "Question Bank not found." });
       if (bank.orgId !== quiz.orgId) {
@@ -1182,21 +1198,14 @@ export const quizMakerRouter = router({
         }
       }
 
-      let serializedQuestions: SerializedQuizQuestion[];
-      try {
-        serializedQuestions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
-      } catch {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz questions could not be read. Save the quiz and try again." });
-      }
-      if (!Array.isArray(serializedQuestions)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz questions could not be read. Save the quiz and try again." });
-      }
-
       const selectedQuestions = input.questionIds?.length
         ? serializedQuestions.filter((question) => question.id && input.questionIds!.includes(question.id))
         : serializedQuestions;
       if (selectedQuestions.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Select at least one quiz question to export." });
+      }
+      if (selectedQuestions.some((question) => !question.id)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Every quiz question must be saved before it can synchronize to the Question Bank." });
       }
 
       let exportedCount = 0;
@@ -1208,7 +1217,7 @@ export const quizMakerRouter = router({
           bankId: bank.id,
           folderId: input.folderId ?? null,
           sourceQuizId: quiz.id,
-          sourceQuestionId: question.id || undefined,
+          sourceQuestionId: question.id,
           sourceQuizPayload: question,
           questionType: mapQuestionBankType(question),
           questionText: question.stem?.trim() || "Untitled question",
