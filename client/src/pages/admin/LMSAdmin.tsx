@@ -10061,6 +10061,7 @@ function QuestionBankAdmin() {
   const [showTagManager, setShowTagManager] = useState(false);
   const [showFolderManager, setShowFolderManager] = useState(false);
   const [aiTopic, setAITopic] = useState("");
+  const [aiSourceUrl, setAiSourceUrl] = useState("");
   const [aiCount, setAICount] = useState(10);
   const [aiDifficulty, setAIDifficulty] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
   const [aiType, setAIType] = useState<"mcq" | "truefalse" | "mixed">("mcq");
@@ -10107,7 +10108,7 @@ function QuestionBankAdmin() {
     },
     onError: (error) => toast.error(error.message),
   });
-  const aiGenerate = trpc.questionBank.aiGenerateToBank.useMutation({ onSuccess: () => { refetch(); setShowAIPanel(false); setAITopic(""); } });
+  const aiGenerate = trpc.questionBank.aiGenerateToBank.useMutation({ onSuccess: () => { refetch(); setShowAIPanel(false); setAITopic(""); setAiSourceUrl(""); } });
   const createTag = trpc.questionBank.createTag.useMutation({ onSuccess: () => refetch() });
   const deleteTag = trpc.questionBank.deleteTag.useMutation({ onSuccess: () => refetch() });
   const { data: foldersData, refetch: refetchFolders } = trpc.questionBank.listFolders.useQuery();
@@ -10206,6 +10207,11 @@ function QuestionBankAdmin() {
               <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Topic *</Label>
               <Input value={aiTopic} onChange={e => setAITopic(e.target.value)} placeholder="e.g. Doppler physics, DVT diagnosis, Normal fetal echo anatomy" className="bg-white border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]" />
             </div>
+            <div className="md:col-span-2">
+              <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Public source URL <span className="text-gray-400 font-normal">(optional)</span></Label>
+              <Input type="url" value={aiSourceUrl} onChange={e => setAiSourceUrl(e.target.value)} placeholder="https://example.org/reference" className="bg-white border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)]" />
+              <p className="text-xs text-gray-500 mt-1">Use a public reference page for authoring context. Its link and publisher will not appear in generated learner questions or feedback.</p>
+            </div>
             <div>
               <Label className="text-xs font-medium text-[var(--org-primary)] mb-1 block">Number of Questions</Label>
               <select value={aiCount} onChange={e => setAICount(Number(e.target.value))} className="w-full h-9 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_25%,transparent)] bg-white px-3 text-sm">
@@ -10243,7 +10249,7 @@ function QuestionBankAdmin() {
           </div>
           <div className="flex justify-end">
             <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-1.5" disabled={!aiTopic.trim() || aiGenerate.isPending}
-              onClick={() => aiGenerate.mutate({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, questionType: aiType, tagIds: aiTagIds.length > 0 ? aiTagIds : undefined })}>
+              onClick={() => aiGenerate.mutate({ topic: aiTopic, count: aiCount, difficulty: aiDifficulty, questionType: aiType, tagIds: aiTagIds.length > 0 ? aiTagIds : undefined, sourceUrl: aiSourceUrl.trim() || undefined })}>
               {aiGenerate.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...</> : <><Sparkles className="w-3.5 h-3.5" /> Generate & Add to Bank</>}
             </Button>
           </div>

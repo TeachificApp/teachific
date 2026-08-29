@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { QuizQuestion, QuestionType } from "../types/quiz";
-import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, ChevronRight, Hash, BarChart3, FileText, Replace, Search, X } from "lucide-react";
+import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, ChevronRight, Hash, BarChart3, FileText, Replace, Search, X, Sparkles } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
@@ -111,12 +111,17 @@ function SortableQuestionItem({ question, isActive, onClick, groupColor }: { que
 }
 
 export function QuestionList() {
-  const { quiz, activeQuestionId, setActiveQuestion, addQuestion, reorderQuestions, loadQuiz } = useQuizStore();
+  const { quiz, activeQuestionId, setActiveQuestion, addQuestion, appendQuestions, reorderQuestions, loadQuiz } = useQuizStore();
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [search, setSearch] = useState("");
   const [showReplace, setShowReplace] = useState(false);
+  const [showSourceGenerate, setShowSourceGenerate] = useState(false);
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
+  const [sourceTopic, setSourceTopic] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [sourceCount, setSourceCount] = useState(5);
+  const [sourceDifficulty, setSourceDifficulty] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const findAndReplace = trpc.quizMaker.findAndReplaceText.useMutation({
     onSuccess: (result) => {
@@ -127,6 +132,36 @@ export function QuestionList() {
       window.alert(result.replacementCount > 0
         ? `${result.replacementCount} replacement${result.replacementCount === 1 ? "" : "s"} applied to this quiz.`
         : "No exact matches were found in this quiz.");
+    },
+    onError: (error) => window.alert(error.message),
+  });
+  const generateFromSource = trpc.quizMaker.generateQuestionsFromSource.useMutation({
+    onSuccess: (result) => {
+      const generated = result.questions.map((item: any) => {
+        const type = item.type === "truefalse" ? "tf" : "mcq";
+        const options = Array.isArray(item.options) && item.options.length > 0 ? item.options.map(String) : ["Option A", "Option B"];
+        const expectedAnswer = String(item.correctAnswer ?? "").trim().toLocaleLowerCase();
+        const correctIndex = Math.max(0, options.findIndex((option: string) => option.trim().toLocaleLowerCase() === expectedAnswer));
+        return {
+          id: crypto.randomUUID(),
+          type,
+          order: 0,
+          points: 1,
+          required: true,
+          stem: String(item.question ?? ""),
+          image: null,
+          explanation: String(item.explanation ?? ""),
+          feedback: { correct: String(item.correctFeedback ?? ""), incorrect: String(item.incorrectFeedback ?? "") },
+          feedbackMode: "answer" as const,
+          data: type === "tf"
+            ? { correct: expectedAnswer === "true" }
+            : { multiSelect: false, choices: options.map((text: string, index: number) => ({ id: crypto.randomUUID(), text, correct: index === correctIndex })) },
+        } as QuizQuestion;
+      });
+      appendQuestions(generated);
+      setShowSourceGenerate(false);
+      setSourceUrl("");
+      window.alert(`${generated.length} generated question${generated.length === 1 ? "" : "s"} added for your review. Save the quiz to keep them.`);
     },
     onError: (error) => window.alert(error.message),
   });
@@ -174,6 +209,19 @@ export function QuestionList() {
     findAndReplace.mutate({ quizId, find: findText, replace: replaceText });
   };
 
+  const handleSourceGeneration = () => {
+    const quizId = Number((quiz.meta as { cloudId?: number }).cloudId);
+    if (!quizId) {
+      window.alert("Save this quiz to Teachific before generating questions from a public source.");
+      return;
+    }
+    if (!sourceTopic.trim() || !sourceUrl.trim()) {
+      window.alert("Enter a topic and a public source URL.");
+      return;
+    }
+    generateFromSource.mutate({ quizId, topic: sourceTopic.trim(), sourceUrl: sourceUrl.trim(), count: sourceCount, difficulty: sourceDifficulty });
+  };
+
   return (
     <div className="w-72 shrink-0 border-r border-gray-100 flex flex-col h-full bg-white">
       {/* Header */}
@@ -198,10 +246,35 @@ export function QuestionList() {
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className="text-[11px] text-gray-500">{normalizedSearch ? `${filteredQuestions.length} matching` : "Search saved question content"}</span>
-            <button type="button" onClick={() => setShowReplace((current) => !current)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--org-primary)] hover:brightness-75">
-              <Replace className="h-3.5 w-3.5" /> Find &amp; replace
-            </button>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setShowSourceGenerate((current) => !current)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--org-primary)] hover:brightness-75">
+                <Sparkles className="h-3.5 w-3.5" /> Generate from source
+              </button>
+              <button type="button" onClick={() => setShowReplace((current) => !current)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--org-primary)] hover:brightness-75">
+                <Replace className="h-3.5 w-3.5" /> Find &amp; replace
+              </button>
+            </div>
           </div>
+          {showSourceGenerate && (
+            <div className="mt-2 space-y-2 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_9%,transparent)] p-2.5">
+              <input value={sourceTopic} onChange={(event) => setSourceTopic(event.target.value)} placeholder="Topic or learning objective" className="h-8 w-full rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-[var(--org-primary)]" />
+              <input type="url" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://public-reference.example" className="h-8 w-full rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-[var(--org-primary)]" />
+              <div className="grid grid-cols-2 gap-2">
+                <select value={sourceCount} onChange={(event) => setSourceCount(Number(event.target.value))} className="h-8 rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900">
+                  {[3, 5, 10, 15, 20].map((count) => <option key={count} value={count}>{count} questions</option>)}
+                </select>
+                <select value={sourceDifficulty} onChange={(event) => setSourceDifficulty(event.target.value as "beginner" | "intermediate" | "advanced")} className="h-8 rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+              <p className="text-[11px] leading-relaxed text-gray-600">Public pages only. The source address, publisher, and branding are kept out of learner questions and feedback.</p>
+              <button type="button" disabled={!sourceTopic.trim() || !sourceUrl.trim() || generateFromSource.isPending} onClick={handleSourceGeneration} className="org-primary-button w-full rounded px-2 py-1.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+                {generateFromSource.isPending ? "Generating…" : "Generate questions for review"}
+              </button>
+            </div>
+          )}
           {showReplace && (
             <div className="mt-2 space-y-2 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_9%,transparent)] p-2.5">
               <input value={findText} onChange={(event) => setFindText(event.target.value)} placeholder="Find exact word or phrase" className="h-8 w-full rounded border border-[color:color-mix(in_srgb,var(--org-primary)_32%,transparent)] bg-white px-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-[var(--org-primary)]" />

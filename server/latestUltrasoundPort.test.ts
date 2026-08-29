@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isStaleAssetError } from "../client/src/components/ErrorBoundary";
 import { mapQuestionType, parseBlocks } from "./lib/lessonQuizQuestionBankSync";
+import { isPublicIpAddress, validatePublicSourceUrl } from "./lib/publicSourceUrl";
 
 describe("latest Ultrasound-App learning feature port", () => {
   it("recognizes HTML returned in place of a Quiz Creator JavaScript module", () => {
@@ -23,6 +24,42 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(parseBlocks('{"type":"lesson_quiz"}')).toEqual([]);
     expect(parseBlocks("not JSON")).toEqual([]);
     expect(parseBlocks(null)).toEqual([]);
+  });
+
+  it("accepts only public credential-free source URLs for source-based Question Bank generation", () => {
+    expect(validatePublicSourceUrl("https://example.org/reference").hostname).toBe("example.org");
+    expect(() => validatePublicSourceUrl("ftp://example.org/source")).toThrow("public http(s) URL");
+    expect(() => validatePublicSourceUrl("https://user:pass@example.org/source")).toThrow("embedded credentials");
+    expect(() => validatePublicSourceUrl("http://localhost:3000/source")).toThrow("Local network URLs");
+    expect(() => validatePublicSourceUrl("http://192.168.1.1/source")).toThrow("Private or reserved");
+    expect(isPublicIpAddress("8.8.8.8")).toBe(true);
+    expect(isPublicIpAddress("127.0.0.1")).toBe(false);
+    expect(isPublicIpAddress("10.0.0.8")).toBe(false);
+    expect(isPublicIpAddress("::1")).toBe(false);
+  });
+
+  it("keeps optional AI source text private to active-organization Question Bank authoring", () => {
+    const routerSource = readFileSync(new URL("./routers/questionBankRouter.ts", import.meta.url), "utf8");
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const quizMakerSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const questionListSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionList.tsx", import.meta.url), "utf8");
+    expect(routerSource).toContain("const orgId = await assertAdmin(ctx);");
+    expect(routerSource).toContain("sourceUrl: z.string().url().max(2048).optional()");
+    expect(routerSource).toContain("fetchPublicSourceText(input.sourceUrl)");
+    expect(routerSource).toContain("Do not mention, cite, link to, or identify the source URL");
+    expect(lmsAdminSource).toContain("Public source URL");
+    expect(lmsAdminSource).toContain("sourceUrl: aiSourceUrl.trim() || undefined");
+    expect(lmsAdminSource).not.toContain("All About Ultrasound");
+    expect(lmsAdminSource).not.toContain("iHeartEcho");
+    expect(quizMakerSource).toContain("generateQuestionsFromSource: protectedProcedure");
+    expect(quizMakerSource).toContain("await requireQuizMakerAccess(ctx, input.quizId);");
+    expect(quizMakerSource).toContain("fetchPublicSourceText(input.sourceUrl)");
+    expect(quizMakerSource).toContain("Do not mention, cite, link to, or identify the source URL");
+    expect(questionListSource).toContain("trpc.quizMaker.generateQuestionsFromSource.useMutation");
+    expect(questionListSource).toContain("Generate from source");
+    expect(questionListSource).toContain("appendQuestions(generated)");
+    expect(questionListSource).not.toContain("All About Ultrasound");
+    expect(questionListSource).not.toContain("iHeartEcho");
   });
 
   it("keeps pnpm as the build tool rather than a project dependency", () => {

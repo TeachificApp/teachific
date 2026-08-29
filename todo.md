@@ -26,10 +26,12 @@
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
-- [ ] Port active-organization source-based AI quiz generation with public-URL safeguards
+- [x] Complete active-organization source-based AI quiz generation with public-URL safeguards
+- [x] Wire safe public-source generation into the Teachific Quiz Creator generation contract
 - [x] Port active-organization-safe Question Bank bulk folder and tag updates
 - [x] Enforce active-organization ownership and generic AI generation in legacy Question Bank procedures
 - [x] Fix the Question Bank schema syntax error and revalidate tenant-safe bulk workflows
+- [ ] Port active-organization-safe canonical Question Bank synchronization for Quiz Creator
 - [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
 - [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
 - [x] Prevent package settings from presenting unsupported standalone quiz playback as an available display mode

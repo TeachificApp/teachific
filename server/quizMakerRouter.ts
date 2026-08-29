@@ -4,6 +4,8 @@ import { getDb, requireOrgAdmin } from "./db";
 import { TRPCError } from "@trpc/server";
 import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
 import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
+import { invokeLLM } from "./_core/llm";
+import { fetchPublicSourceText } from "./lib/publicSourceUrl";
 
 type QuizMakerContext = { user: { id: number; role: string } };
 
@@ -591,6 +593,79 @@ export const quizMakerRouter = router({
         replacementCount: result.count,
         questions: updatedQuestions,
       };
+    }),
+
+  /** Generate reviewable Quiz Creator questions from a safe public reference URL. */
+  generateQuestionsFromSource: protectedProcedure
+    .input(z.object({
+      quizId: z.number().int().positive(),
+      topic: z.string().min(1).max(500),
+      sourceUrl: z.string().url().max(2048),
+      count: z.number().int().min(1).max(20).default(5),
+      difficulty: z.enum(["beginner", "intermediate", "advanced"]).default("intermediate"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireQuizMakerAccess(ctx, input.quizId);
+      let sourceText: string;
+      try {
+        sourceText = await fetchPublicSourceText(input.sourceUrl);
+      } catch (error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "The source URL could not be used." });
+      }
+
+      const response = await invokeLLM({
+        model: "gpt-5-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Create accurate ${input.difficulty} educational assessment questions for an author. Return only the requested JSON. Use the supplied reference text only as private authoring context. Do not mention, cite, link to, or identify the source URL, publisher, organization, platform, or any branding in generated questions, explanations, or feedback. Generate only multiple-choice and true/false questions.`,
+          },
+          { role: "user", content: `Topic: ${input.topic}\n\nReference text:\n${sourceText}` },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "teachific_source_questions",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                questions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      question: { type: "string" },
+                      type: { type: "string", enum: ["mcq", "truefalse"] },
+                      options: { type: "array", items: { type: "string" } },
+                      correctAnswer: { type: "string" },
+                      explanation: { type: "string" },
+                      correctFeedback: { type: "string" },
+                      incorrectFeedback: { type: "string" },
+                    },
+                    required: ["question", "type", "options", "correctAnswer", "explanation", "correctFeedback", "incorrectFeedback"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["questions"],
+              additionalProperties: false,
+            },
+          },
+        } as any,
+      });
+      const raw = response.choices?.[0]?.message?.content ?? "{}";
+      let parsed: { questions?: unknown };
+      try {
+        parsed = typeof raw === "string" ? JSON.parse(raw) : raw as { questions?: unknown };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Question generation returned invalid data. Please try again." });
+      }
+      const questions = Array.isArray(parsed.questions) ? parsed.questions.slice(0, input.count) : [];
+      if (questions.length === 0) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Question generation did not return any usable questions. Please try again." });
+      }
+      return { questions };
     }),
 
   // ── Publish / Export ───────────────────────────────────────────────────────

@@ -171,6 +171,7 @@ interface QuizStore {
   loadQuiz: (quiz: QuizFile, filename?: string) => void;
   updateMeta: (meta: Partial<QuizMeta>) => void;
   addQuestion: (type: QuestionType) => void;
+  appendQuestions: (questions: QuizQuestion[]) => void;
   duplicateQuestion: (id: string) => void;
   deleteQuestion: (id: string) => void;
   setActiveQuestion: (id: string | null) => void;
@@ -251,6 +252,22 @@ export const useQuizStore = create<QuizStore>((set, get) => ({
       activeQuestionId: q.id,
       isDirty: true,
     }));
+  },
+
+  appendQuestions: (questions) => {
+    if (questions.length === 0) return;
+    set((s) => {
+      const appended = questions.map((question, index) => ({
+        ...question,
+        id: question.id || uuidv4(),
+        order: s.quiz.questions.length + index + 1,
+      }));
+      return {
+        quiz: { ...s.quiz, questions: [...s.quiz.questions, ...appended] },
+        activeQuestionId: appended[0]?.id ?? s.activeQuestionId,
+        isDirty: true,
+      };
+    });
   },
 
   duplicateQuestion: (id) => {

@@ -354,6 +354,7 @@ export const questionBankRouter = router({
       tagIds: z.array(z.number().int()).optional(),
       folderId: z.number().int().optional(),
       newFolderName: z.string().max(200).optional(),
+      sourceUrl: z.string().url().max(2048).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await assertAdmin(ctx);
@@ -361,6 +362,16 @@ export const questionBankRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (input.folderId) await requireFolderAccess(db, orgId, input.folderId);
       await requireTagAccess(db, orgId, input.tagIds ?? []);
+
+      let sourceContext = "";
+      if (input.sourceUrl) {
+        try {
+          const sourceText = await fetchPublicSourceText(input.sourceUrl);
+          sourceContext = `\nUse the following author-provided source text as private reference material. Do not mention, cite, link to, or identify the source URL, publisher, organization, or platform in the generated questions or feedback.\n\n${sourceText}`;
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "The source URL could not be used." });
+        }
+      }
 
       const typeInstruction = input.questionType === "mixed"
         ? "Mix multiple choice and true/false questions."
@@ -376,7 +387,7 @@ export const questionBankRouter = router({
           },
           {
             role: "user",
-            content: `Generate ${input.count} questions about: ${input.topic}`,
+            content: `Generate ${input.count} questions about: ${input.topic}.${sourceContext}`,
           },
         ],
         response_format: {
