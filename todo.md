@@ -41,8 +41,8 @@
 - [x] Complete active-organization-safe canonical Question Bank synchronization for Quiz Creator
 - [x] Surface Quiz Creator canonical sync created-versus-updated results in the export workflow
 - [x] Add behavioral coverage for idempotent canonical sync, media retention, and cross-organization isolation
-- [ ] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
-- [ ] Apply supported LMS shell visibility and theme settings during SCORM package playback
+- [x] Propagate organization-owned SCORM package displayMode and LMS shell configuration into learner runtime playback
+- [x] Apply supported LMS shell visibility and theme settings during SCORM package playback
 - [x] Prevent package settings from presenting unsupported standalone quiz playback as an available display mode
 - [x] Apply organization-owned LMS shell branding, core visibility, and light/dark theme settings during package playback
 - [x] Add active-organization package controls for display mode, shell branding, visibility, sidebar, and learner notes
@@ -98,9 +98,22 @@
 - [x] Align workshop waitlist admin client mutations to the dollar-denominated priceOverride contract
 - [x] Require active-organization ownership for workshop waitlist settings reads and saves
 - [x] Scope newsletter subscriber administration to the active organization for organization administrators
-- [ ] Require active-organization course ownership and organization-domain learner links for cohort administration
+- [x] Require active-organization course ownership and organization-domain learner links for cohort administration
+- [x] Audit cohort groups, staff, discussions, submissions, recordings, calendar, transfers, and bulk assignment for active-organization ownership enforcement
+- [x] Verify all learner-facing cohort routes and notifications resolve through the owning organization domain
+- [x] Audit every learner-facing cohort page, email, calendar link, and notification for organization-domain resolution
+- [x] Document and regression-test every remaining cohort learner entry point as organization-domain or same-origin scoped
+- [x] Produce a complete cohort learner entry-point matrix covering routes, pages, emails, notifications, and calendar exports
+- [x] Scope cohort media upload folders and responses to the authorized active organization
+- [x] Add static regression coverage for active-organization media upload query filters
+- [x] Add behavioral cross-organization regression coverage for cohort media upload administration
+- [x] Prove cohort media upload list queries exclude records owned by a different active organization
+- [x] Prove an administrator cannot retrieve another organization's media response by folder identifier
+- [x] Implement the linked cohort recording learner route referenced by same-origin replay navigation
+- [x] Add ownership guards for cohort recordings, recurrence, calendar exports, submissions, groups, staff, messages, transfers, and bulk assignments
 - [x] Require active-organization course ownership for core cohort session and assignment list, creation, update, and deletion actions
 - [x] Resolve core cohort session and assignment notification links from the owning organization domain
+- [x] Replace platform-branded cohort notification footers with the owning organization identity
 - [ ] Route content availability notifications through the owning organization sender and validated learner URL
 - [x] Route content availability enrollment-open notifications through the owning organization sender
 - [ ] Migrate email campaigns, templates, audience previews, and sender profiles to active-organization authorization and routing

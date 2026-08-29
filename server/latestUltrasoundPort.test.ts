@@ -3888,9 +3888,82 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("uses generic non-legacy metadata in learner cohort calendar exports", () => {
     const cohortScheduleSource = readFileSync(new URL("../client/src/pages/CohortSchedule.tsx", import.meta.url), "utf8");
+    const cohortAdminSource = readFileSync(new URL("./routers/lmsCohortAdminRouter.ts", import.meta.url), "utf8");
     expect(cohortScheduleSource).toContain('"PRODID:-//Learning Calendar//Cohort//EN"');
     expect(cohortScheduleSource).toContain("UID:cohort-session-${s.id}");
     expect(cohortScheduleSource).not.toContain("UltrasoundAssist");
+    expect(cohortAdminSource).toContain('"PRODID:-//Learning Calendar//Cohort//EN"');
+    expect(cohortAdminSource).toContain("UID:cohort-session-${s.id}");
+    expect(cohortAdminSource).not.toMatch(/AllAboutUltrasound|learn\.teachific\.app/);
+  });
+
+  it("requires active organization ownership across cohort recordings, groups, discussions, staff, and submissions", () => {
+    const cohortAdminSource = readFileSync(new URL("./routers/lmsCohortAdminRouter.ts", import.meta.url), "utf8");
+    for (const guard of [
+      "assertCohortRecordingOwnership",
+      "assertCohortGroupOwnership",
+      "assertCohortMessageOwnership",
+      "assertCohortStaffOwnership",
+      "assertCohortSubmissionOwnership",
+    ]) expect(cohortAdminSource).toContain(guard);
+    expect(cohortAdminSource).toContain("Cohort group does not belong to this course");
+    expect(cohortAdminSource).toContain("Session does not belong to this course");
+    expect(cohortAdminSource).toContain("await assertCourseOwnership(ctx, input.courseId);");
+  });
+
+  it("scopes cohort media upload folders and responses to the active organization", () => {
+    const cohortAdminSource = readFileSync(new URL("./routers/lmsCohortAdminRouter.ts", import.meta.url), "utf8");
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    expect(cohortAdminSource).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(cohortAdminSource).toContain("eq(mediaUploadFolders.orgId, orgId)");
+    expect(cohortAdminSource).toContain("eq(mediaUploadResponses.orgId, orgId)");
+    expect(cohortAdminSource).toContain("An active organization is required");
+    expect(schemaSource).toContain('export const mediaUploadFolders = mysqlTable("media_upload_folders"');
+    expect(schemaSource).toContain('export const mediaUploadResponses = mysqlTable("media_upload_responses"');
+  });
+
+  it("uses the owning organization identity, accent color, and learner domain in cohort notifications", () => {
+    const cohortRouterSource = readFileSync(new URL("./routers/lmsCohortAdminRouter.ts", import.meta.url), "utf8");
+    expect(cohortRouterSource).toContain("getCohortEmailBranding");
+    expect(cohortRouterSource).toContain("orgThemes.buttonColor");
+    expect(cohortRouterSource).toContain("getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)");
+    expect(cohortRouterSource).toContain('${org?.name ?? "Your learning organization"}');
+    expect(cohortRouterSource).not.toContain('<p style="color:#94a3b8;font-size:12px;">Teachific™</p>');
+    expect(cohortRouterSource).not.toContain("learn.teachific.app");
+  });
+
+  it("keeps learner cohort navigation on the current organization domain", () => {
+    const cohortScheduleSource = readFileSync(new URL("../client/src/pages/CohortSchedule.tsx", import.meta.url), "utf8");
+    const courseOverviewSource = readFileSync(new URL("../client/src/pages/lms/CourseOverview.tsx", import.meta.url), "utf8");
+    const coursePlayerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    const assignmentDetailSource = readFileSync(new URL("../client/src/pages/AssignmentDetail.tsx", import.meta.url), "utf8");
+    const cohortCalendarSource = readFileSync(new URL("../client/src/components/CohortSessionsCalendar.tsx", import.meta.url), "utf8");
+    const cohortResourceSource = readFileSync(new URL("../client/src/components/cohort/CohortResourceCard.tsx", import.meta.url), "utf8");
+    const cohortDocs = readFileSync(new URL("../docs/cohort_learner_entrypoint_matrix_2026-08-29.md", import.meta.url), "utf8");
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const replaySource = readFileSync(new URL("../client/src/pages/CohortReplay.tsx", import.meta.url), "utf8");
+    for (const source of [cohortScheduleSource, courseOverviewSource, coursePlayerSource, assignmentDetailSource, cohortCalendarSource, cohortResourceSource, replaySource]) {
+      expect(source).not.toContain("learn.teachific.app");
+      expect(source).not.toMatch(/https:\/\/[^\s"']*teachific\.app/);
+    }
+    expect(cohortScheduleSource).toContain("`/cohort/${id}/assignment/${a.id}`");
+    expect(courseOverviewSource).toContain("`/cohort/${courseId}/assignment/${a.id}`");
+    expect(coursePlayerSource).toContain("`/cohort/${(course as any).id}");
+    expect(appSource).toContain('path="/cohort/:courseId/replay/:recordingId" component={CohortReplay}');
+    expect(replaySource).toContain('useRoute("/cohort/:courseId/replay/:recordingId")');
+    expect(replaySource).toContain("trpc.lmsLearner.getCohortSchedule.useQuery");
+    expect(cohortDocs).toContain("Cohort learner entry-point matrix");
+    expect(cohortDocs).toContain("Intentional external link");
+  });
+
+  it("requires staff cohort schedule and replay access to match the active organization", () => {
+    const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    const cohortScheduleProcedure = lmsRouterSource.slice(
+      lmsRouterSource.indexOf("getCohortSchedule: protectedProcedure"),
+      lmsRouterSource.indexOf("getMyCohortGroup: protectedProcedure"),
+    );
+    expect(cohortScheduleProcedure).toContain("await assertCourseOwnership(ctx, input.courseId);");
+    expect(cohortScheduleProcedure).toContain('message: "You are not enrolled in this cohort"');
   });
 
   it("routes public workshop waitlist notifications through the owning organization sender", () => {

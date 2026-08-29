@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgById, getOrgIdForUser } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgById, getOrgIdForUser, getOrgIdForUserWithFallback } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -76,6 +76,7 @@ import {
   lmsCohortGroupEnrollments,
   lmsCohortMessages,
   lmsCohortStaff,
+  orgThemes,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 import { getOrgBaseUrl } from "../lib/orgUrl";
@@ -97,6 +98,69 @@ async function assertCohortAssignmentOwnership(ctx: { user: { id: number; role: 
   const [assignment] = await db.select({ courseId: lmsCohortAssignments.courseId }).from(lmsCohortAssignments).where(eq(lmsCohortAssignments.id, assignmentId)).limit(1);
   if (!assignment) throw new TRPCError({ code: "NOT_FOUND" });
   await assertCourseOwnership(ctx, assignment.courseId);
+  return assignment;
+}
+
+async function assertCohortRecordingOwnership(ctx: { user: { id: number; role: string } }, recordingId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [recording] = await db.select({ courseId: lmsCohortRecordings.courseId }).from(lmsCohortRecordings).where(eq(lmsCohortRecordings.id, recordingId)).limit(1);
+  if (!recording) throw new TRPCError({ code: "NOT_FOUND" });
+  await assertCourseOwnership(ctx, recording.courseId);
+  return recording;
+}
+
+async function assertCohortGroupOwnership(ctx: { user: { id: number; role: string } }, cohortGroupId: number, expectedCourseId?: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [group] = await db.select({ courseId: lmsCohortGroups.courseId }).from(lmsCohortGroups).where(eq(lmsCohortGroups.id, cohortGroupId)).limit(1);
+  if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Cohort group not found" });
+  if (expectedCourseId !== undefined && group.courseId !== expectedCourseId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Cohort group does not belong to this course" });
+  }
+  await assertCourseOwnership(ctx, group.courseId);
+  return group;
+}
+
+async function assertCohortMessageOwnership(ctx: { user: { id: number; role: string } }, messageId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [message] = await db.select({ courseId: lmsCohortMessages.courseId }).from(lmsCohortMessages).where(eq(lmsCohortMessages.id, messageId)).limit(1);
+  if (!message) throw new TRPCError({ code: "NOT_FOUND", message: "Cohort message not found" });
+  await assertCourseOwnership(ctx, message.courseId);
+  return message;
+}
+
+async function assertCohortStaffOwnership(ctx: { user: { id: number; role: string } }, staffId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [staff] = await db.select({ courseId: lmsCohortStaff.courseId }).from(lmsCohortStaff).where(eq(lmsCohortStaff.id, staffId)).limit(1);
+  if (!staff) throw new TRPCError({ code: "NOT_FOUND", message: "Cohort staff record not found" });
+  await assertCourseOwnership(ctx, staff.courseId);
+  return staff;
+}
+
+async function assertCohortSubmissionOwnership(ctx: { user: { id: number; role: string } }, submissionId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [submission] = await db.select({ assignmentId: lmsCohortSubmissions.assignmentId }).from(lmsCohortSubmissions).where(eq(lmsCohortSubmissions.id, submissionId)).limit(1);
+  if (!submission) throw new TRPCError({ code: "NOT_FOUND", message: "Cohort submission not found" });
+  await assertCohortAssignmentOwnership(ctx, submission.assignmentId);
+  return submission;
+}
+
+async function getCohortEmailBranding(orgId: number) {
+  const db = await getDb();
+  const org = await getOrgById(orgId);
+  if (!db || !org) return null;
+  const [theme] = await db
+    .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
+    .from(orgThemes)
+    .where(eq(orgThemes.orgId, orgId))
+    .limit(1);
+  const candidate = theme?.buttonColor ?? theme?.primaryColor ?? "";
+  const accentColor = /^#[0-9a-f]{6}$/i.test(candidate) ? candidate : "#0d9488";
+  return { org, accentColor };
 }
 
 export const lmsCohortAdminRouter = router({
@@ -163,7 +227,8 @@ export const lmsCohortAdminRouter = router({
       if (input.notifyStudents && input.status === "published") {
         try {
           const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
-          const org = course?.orgId ? await getOrgById(course.orgId) : null;
+          const emailBranding = course?.orgId ? await getCohortEmailBranding(course.orgId) : null;
+          const org = emailBranding?.org ?? null;
           const learnerUrl = org ? `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/cohort/${input.courseId}` : null;
           const enrolledUsers = await db
             .select({ email: users.email, name: users.name })
@@ -184,11 +249,11 @@ export const lmsCohortAdminRouter = router({
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Session</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${input.title}</td></tr>
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Date &amp; Time</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${sessionDateStr} ET</td></tr>
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Duration</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${input.durationMinutes} minutes</td></tr>
-                  ${input.meetingUrl ? `<tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Join Link</td><td style="padding:8px 12px;border:1px solid #d1fae5;"><a href="${input.meetingUrl}" style="color:#0d9488;">Click to join</a></td></tr>` : ""}
+                  ${input.meetingUrl ? `<tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Join Link</td><td style="padding:8px 12px;border:1px solid #d1fae5;"><a href="${input.meetingUrl}" style="color:${emailBranding?.accentColor ?? "#0d9488"};">Click to join</a></td></tr>` : ""}
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>` : ""}
-                <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
+                ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:${emailBranding?.accentColor ?? "#0d9488"};color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>` : ""}
+                <p style="color:#94a3b8;font-size:12px;">${org?.name ?? "Your learning organization"}</p>
               </div>`,
             });
           }
@@ -296,7 +361,8 @@ export const lmsCohortAdminRouter = router({
       if (input.notifyStudents && input.status === "published") {
         try {
           const [course] = await db.select({ title: lmsCourses.title, orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
-          const org = course?.orgId ? await getOrgById(course.orgId) : null;
+          const emailBranding = course?.orgId ? await getCohortEmailBranding(course.orgId) : null;
+          const org = emailBranding?.org ?? null;
           const learnerUrl = org ? `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/cohort/${input.courseId}` : null;
           const enrolledUsers = await db
             .select({ email: users.email, name: users.name })
@@ -320,8 +386,8 @@ export const lmsCohortAdminRouter = router({
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Submission</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${input.submissionType}</td></tr>
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>` : ""}
-                <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
+                ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:${emailBranding?.accentColor ?? "#0d9488"};color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>` : ""}
+                <p style="color:#94a3b8;font-size:12px;">${org?.name ?? "Your learning organization"}</p>
               </div>`,
             });
           }
@@ -374,6 +440,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ courseId: z.number(), cohortGroupId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const whereClause = input.cohortGroupId
@@ -398,6 +466,12 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
+      if (input.sessionId) {
+        const session = await assertCohortSessionOwnership(ctx, input.sessionId);
+        if (session.courseId !== input.courseId) throw new TRPCError({ code: "FORBIDDEN", message: "Session does not belong to this course" });
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [{ maxPos }] = await db.select({ maxPos: sql<number>`COALESCE(MAX(position),0)` })
@@ -431,6 +505,7 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortRecordingOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...rest } = input;
@@ -445,6 +520,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortRecordingOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortRecordings).where(eq(lmsCohortRecordings.id, input.id));
@@ -457,6 +533,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ parentSessionId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortSessionOwnership(ctx, input.parentSessionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [parent] = await db.select().from(lmsCohortSessions)
@@ -600,6 +677,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortSessionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [src] = await db.select().from(lmsCohortSessions)
@@ -622,6 +700,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select({ title: lmsCourses.title })
@@ -638,7 +717,7 @@ export const lmsCohortAdminRouter = router({
       const lines: string[] = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//AllAboutUltrasound//CohortSchedule//EN",
+        "PRODID:-//Learning Calendar//Cohort//EN",
         `X-WR-CALNAME:${escIcs(course?.title ?? "Cohort Schedule")}`,
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
@@ -649,7 +728,7 @@ export const lmsCohortAdminRouter = router({
         const end = new Date(start.getTime() + (s.durationMinutes ?? 60) * 60 * 1000);
         lines.push(
           "BEGIN:VEVENT",
-          `UID:cohort-session-${s.id}@teachific.com`,
+          `UID:cohort-session-${s.id}`,
           `DTSTAMP:${formatIcsDate(new Date())}`,
           `DTSTART:${formatIcsDate(start)}`,
           `DTEND:${formatIcsDate(end)}`,
@@ -670,6 +749,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ assignmentId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortAssignmentOwnership(ctx, input.assignmentId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const subs = await db
@@ -688,6 +768,7 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortSubmissionOwnership(ctx, input.submissionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsCohortSubmissions).set({
@@ -710,7 +791,9 @@ export const lmsCohortAdminRouter = router({
         .where(eq(lmsCohortAssignments.id, input.assignmentId)).limit(1);
       if (!assignment) throw new TRPCError({ code: "NOT_FOUND" });
       // Verify access: admin/org-admin or enrolled
-      if (!["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) {
+      if (["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) {
+        await assertCourseOwnership(ctx, assignment.courseId);
+      } else {
         const [enrollment] = await db.select({ id: lmsEnrollments.id })
           .from(lmsEnrollments)
           .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, assignment.courseId)))
@@ -741,15 +824,18 @@ export const lmsCohortAdminRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
       let folderId: number | null = null;
       if (input.folderName) {
         // Find or create folder
         const [existing] = await db.select({ id: mediaUploadFolders.id })
-          .from(mediaUploadFolders).where(eq(mediaUploadFolders.name, input.folderName)).limit(1);
+          .from(mediaUploadFolders).where(and(eq(mediaUploadFolders.name, input.folderName), eq(mediaUploadFolders.orgId, orgId))).limit(1);
         if (existing) {
           folderId = existing.id;
         } else {
           const [res] = await db.insert(mediaUploadFolders).values({
+            orgId,
             name: input.folderName,
             createdBy: ctx.user.id,
             createdAt: Date.now(),
@@ -758,6 +844,7 @@ export const lmsCohortAdminRouter = router({
         }
       }
       const [res] = await db.insert(mediaUploadResponses).values({
+        orgId,
         userId: ctx.user.id,
         blockId: input.blockId ?? null,
         pageId: input.pageId ?? null,
@@ -784,7 +871,9 @@ export const lmsCohortAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const conditions = [];
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+      const conditions = [eq(mediaUploadResponses.orgId, orgId)];
       if (input.folderId) conditions.push(eq(mediaUploadResponses.folderId, input.folderId));
       if (input.pageId) conditions.push(eq(mediaUploadResponses.pageId, input.pageId));
       if (input.pageType) conditions.push(eq(mediaUploadResponses.pageType, input.pageType));
@@ -802,7 +891,9 @@ export const lmsCohortAdminRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      return db.select().from(mediaUploadFolders);
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+      return db.select().from(mediaUploadFolders).where(eq(mediaUploadFolders.orgId, orgId));
     }),
 
   // ── Cohort Groups ──────────────────────────────────────────────────────────
@@ -812,6 +903,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const groups = await db
@@ -879,6 +971,7 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortGroupOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, startDate, endDate, enrollmentCloseDate, ...rest } = input;
@@ -899,6 +992,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortGroupOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortGroupEnrollments).where(eq(lmsCohortGroupEnrollments.cohortGroupId, input.id));
@@ -911,6 +1005,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), search: z.string().optional() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db
@@ -939,6 +1034,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const enrolled = await db
@@ -959,6 +1055,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), userId: z.number(), courseId: z.number(), sendWelcomeEmail: z.boolean().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [enrollment] = await db.select({ id: lmsEnrollments.id })
@@ -1007,6 +1105,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), userId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortGroupEnrollments)
@@ -1024,6 +1123,9 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.fromGroupId, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.toGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [enrollment] = await db.select({ id: lmsEnrollments.id })
@@ -1049,6 +1151,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), userId: z.number(), courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const assignments = await db
@@ -1096,6 +1200,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), courseId: z.number(), limit: z.number().int().min(1).max(100).default(50), offset: z.number().int().min(0).default(0) }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db
@@ -1139,6 +1245,8 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (!input.body && (!input.mediaUrls || input.mediaUrls.length === 0)) {
@@ -1159,6 +1267,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortMessageOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortMessages).where(eq(lmsCohortMessages.id, input.id));
@@ -1172,6 +1281,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const staff = await db.select({
@@ -1210,6 +1321,8 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.insert(lmsCohortStaff).values({
@@ -1238,6 +1351,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortStaffOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCohortStaff).where(eq(lmsCohortStaff.id, input.id));
@@ -1251,6 +1365,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ courseId: z.number(), cohortGroupId: z.number().optional(), limit: z.number().default(100) }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const conditions = [
@@ -1284,6 +1400,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number(), isPinned: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortMessageOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsCohortMessages)
@@ -1297,6 +1414,7 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCohortMessageOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsCohortMessages)
@@ -1315,6 +1433,8 @@ export const lmsCohortAdminRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(lmsCohortMessages).values({
@@ -1334,6 +1454,8 @@ export const lmsCohortAdminRouter = router({
     .input(z.object({ cohortGroupId: z.number(), courseId: z.number(), userIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       let assigned = 0;

@@ -111,6 +111,7 @@ import FunnelsPage from "./pages/marketing/FunnelsPage";
 import FunnelBuilderPage from "./pages/marketing/FunnelBuilderPage";
 import FunnelBuilder from "./pages/marketing/FunnelBuilder";
 import CohortSchedule from "./pages/CohortSchedule";
+import CohortReplay from "./pages/CohortReplay";
 import AssignmentDetail from "./pages/AssignmentDetail";
 import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
@@ -245,6 +246,7 @@ function BareRouter() {
         <Route path="/community/:hubId" component={CommunityLearnerPage} />
         {/* Cohort learner routes */}
         <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
+        <Route path="/cohort/:courseId/replay/:recordingId" component={CohortReplay} />
         <Route path="/cohort/:courseId" component={CohortSchedule} />
         {/* Platform-level legal policies — independent of any org */}
         <Route path="/help" component={HelpPage} />
@@ -426,6 +428,7 @@ function AdminRouter() {
 
           {/* ── Cohort learner routes (accessible from admin shell too) ── */}
           <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
+          <Route path="/cohort/:courseId/replay/:recordingId" component={CohortReplay} />
           <Route path="/cohort/:courseId" component={CohortSchedule} />
 
           {/* ── Misc / Legacy ── */}
@@ -694,6 +697,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/question-bank/import" component={QuestionBankImportPage} />
         <Route path="/question-bank" component={QuestionBankPage} />
         <Route path="/cohort/:courseId/assignment/:assignmentId" component={AssignmentDetail} />
+        <Route path="/cohort/:courseId/replay/:recordingId" component={CohortReplay} />
         <Route path="/cohort/:courseId" component={CohortSchedule} />
         <Route path="/settings">{() => { window.location.replace("/lms/settings"); return null; }}</Route>
         <Route path="/products">{() => { window.location.replace("/lms/manage"); return null; }}</Route>

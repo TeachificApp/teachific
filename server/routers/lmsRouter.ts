@@ -95,7 +95,7 @@ import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripeP
 import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsQuizLandingRouter } from "./lmsQuizLandingRouter";
@@ -1763,7 +1763,9 @@ export const lmsLearnerRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Verify the user is enrolled (or is admin)
       const isAdmin = ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role);
-      if (!isAdmin) {
+      if (isAdmin) {
+        await assertCourseOwnership(ctx, input.courseId);
+      } else {
         const [enrollment] = await db.select({ id: lmsEnrollments.id })
           .from(lmsEnrollments)
           .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, input.courseId)))

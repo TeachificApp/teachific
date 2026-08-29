@@ -4574,6 +4574,8 @@ export type PayoutRequest = typeof payoutRequests.$inferSelect;
 // ─── Media upload tables ──────────────────────────────────────────────────
 export const mediaUploadFolders = mysqlTable("media_upload_folders", {
   id: int("id").autoincrement().primaryKey(),
+  // Nullable only to preserve unassigned legacy rows; all new rows are organization-owned.
+  orgId: int("org_id"),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   createdBy: int("created_by"),
@@ -4583,6 +4585,8 @@ export type MediaUploadFolder = typeof mediaUploadFolders.$inferSelect;
 
 export const mediaUploadResponses = mysqlTable("media_upload_responses", {
   id: int("id").autoincrement().primaryKey(),
+  // Nullable only to preserve unassigned legacy rows; all new rows are organization-owned.
+  orgId: int("org_id"),
   userId: int("user_id").notNull(),
   blockId: varchar("block_id", { length: 128 }),
   pageId: varchar("page_id", { length: 128 }),
