@@ -24,6 +24,7 @@ import {
 import { storagePut } from "../storage";
 import { sendEmail } from "../_core/email";
 import { generateDisclosurePdf } from "../lib/disclosurePdf";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import { randomBytes } from "crypto";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -63,6 +64,66 @@ async function assertCmeEnabled(orgId: number, platformRole: string): Promise<vo
   }
 }
 
+async function requireCmeCourseForOrg(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  courseId: number,
+  orgId: number,
+) {
+  const [course] = await db
+    .select({ id: lmsCourses.id, title: lmsCourses.title, orgId: lmsCourses.orgId })
+    .from(lmsCourses)
+    .where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, orgId)))
+    .limit(1);
+  if (!course) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in this organization." });
+  }
+  return course;
+}
+
+async function requireDisclosureForOrg(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  disclosureId: number,
+  orgId: number,
+) {
+  const [disclosure] = await db
+    .select()
+    .from(cmeFinancialDisclosures)
+    .where(and(eq(cmeFinancialDisclosures.id, disclosureId), eq(cmeFinancialDisclosures.orgId, orgId)))
+    .limit(1);
+  if (!disclosure) throw new TRPCError({ code: "NOT_FOUND" });
+  await requireCmeCourseForOrg(db, (disclosure as any).courseId, orgId);
+  return disclosure;
+}
+
+async function getDisclosureOrgContext(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  orgId: number,
+) {
+  const [org] = await db
+    .select({
+      name: organizations.name,
+      slug: organizations.slug,
+      customDomain: organizations.customDomain,
+      domainVerificationStatus: organizations.domainVerificationStatus,
+    })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  if (!org) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found." });
+  return {
+    name: (org as any).name ?? "Your Organization",
+    baseUrl: getOrgBaseUrl(
+      (org as any).slug ?? "",
+      (org as any).customDomain ?? null,
+      (org as any).domainVerificationStatus ?? "unverified",
+    ),
+  };
+}
+
+function buildDisclosureUrl(baseUrl: string, token: string): string {
+  return `${baseUrl.replace(/\/$/, "")}/cme-disclosure/${token}`;
+}
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 export const cmeDisclosureRouter = router({
@@ -79,14 +140,8 @@ export const cmeDisclosureRouter = router({
       await assertCmeEnabled(orgId, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db
-        .select({ orgId: lmsCourses.orgId })
-        .from(lmsCourses)
-        .where(eq(lmsCourses.id, input.courseId))
-        .limit(1);
-      if (!course || course.orgId !== orgId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in this organization." });
-      }
+      await requireCmeCourseForOrg(db, input.courseId, orgId);
+      const orgContext = await getDisclosureOrgContext(db, orgId);
       const token = generateToken();
       const [result] = await db.insert(cmeFinancialDisclosures).values({
         orgId,
@@ -97,7 +152,7 @@ export const cmeDisclosureRouter = router({
         status: "pending",
       } as any);
       const insertId = (result as any).insertId;
-      return { id: insertId, token };
+      return { id: insertId, token, disclosureUrl: buildDisclosureUrl(orgContext.baseUrl, token) };
     }),
 
   // ── Send disclosure email to faculty ─────────────────────────────────────
@@ -113,35 +168,12 @@ export const cmeDisclosureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const [disclosure] = await db
-        .select()
-        .from(cmeFinancialDisclosures)
-        .where(and(eq(cmeFinancialDisclosures.id, input.disclosureId), eq(cmeFinancialDisclosures.orgId, orgId)))
-        .limit(1);
-      if (!disclosure) throw new TRPCError({ code: "NOT_FOUND" });
+      const disclosure = await requireDisclosureForOrg(db, input.disclosureId, orgId);
+      const orgContext = await getDisclosureOrgContext(db, orgId);
+      const course = await requireCmeCourseForOrg(db, (disclosure as any).courseId, orgId);
+      const disclosureUrl = buildDisclosureUrl(orgContext.baseUrl, (disclosure as any).token);
 
-      const [org] = await db
-        .select({ name: organizations.name, slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
-        .from(organizations)
-        .where(eq(organizations.id, orgId))
-        .limit(1);
-
-      const [course] = await db
-        .select({ title: lmsCourses.title })
-        .from(lmsCourses)
-        .where(eq(lmsCourses.id, (disclosure as any).courseId))
-        .limit(1);
-
-      // Build the disclosure URL using the org's verified domain.
-      const { getOrgBaseUrl } = await import("../lib/orgUrl");
-      const baseUrl = getOrgBaseUrl(
-        (org as any)?.slug ?? "",
-        (org as any)?.customDomain ?? null,
-        (org as any)?.domainVerificationStatus ?? "unverified"
-      );
-      const disclosureUrl = `${baseUrl}/cme-disclosure/${(disclosure as any).token}`;
-
-      const orgName = (org as any)?.name ?? "Your Organization";
+      const orgName = orgContext.name;
       const courseTitle = (course as any)?.title ?? "CME Activity";
 
       const htmlBody = `
@@ -194,7 +226,10 @@ export const cmeDisclosureRouter = router({
       const [course] = await db
         .select({ title: lmsCourses.title })
         .from(lmsCourses)
-        .where(eq(lmsCourses.id, (disclosure as any).courseId))
+        .where(and(
+          eq(lmsCourses.id, (disclosure as any).courseId),
+          eq(lmsCourses.orgId, (disclosure as any).orgId),
+        ))
         .limit(1);
       const [org] = await db
         .select({ name: organizations.name })
@@ -254,7 +289,10 @@ export const cmeDisclosureRouter = router({
       const [course] = await db
         .select({ title: lmsCourses.title })
         .from(lmsCourses)
-        .where(eq(lmsCourses.id, (disclosure as any).courseId))
+        .where(and(
+          eq(lmsCourses.id, (disclosure as any).courseId),
+          eq(lmsCourses.orgId, (disclosure as any).orgId),
+        ))
         .limit(1);
       const [org] = await db
         .select({ name: organizations.name })
@@ -311,6 +349,8 @@ export const cmeDisclosureRouter = router({
       await assertCmeEnabled(orgId, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireCmeCourseForOrg(db, input.courseId, orgId);
+      const orgContext = await getDisclosureOrgContext(db, orgId);
       const rows = await db
         .select()
         .from(cmeFinancialDisclosures)
@@ -318,7 +358,10 @@ export const cmeDisclosureRouter = router({
           eq(cmeFinancialDisclosures.orgId, orgId),
           eq(cmeFinancialDisclosures.courseId, input.courseId)
         ));
-      return rows;
+      return rows.map((row: any) => ({
+        ...row,
+        disclosureUrl: buildDisclosureUrl(orgContext.baseUrl, row.token),
+      }));
     }),
 
   // ── Delete a disclosure record ────────────────────────────────────────────
@@ -332,6 +375,7 @@ export const cmeDisclosureRouter = router({
       await assertCmeEnabled(orgId, ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireDisclosureForOrg(db, input.disclosureId, orgId);
       await db
         .delete(cmeFinancialDisclosures)
         .where(and(
@@ -353,12 +397,7 @@ export const cmeDisclosureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const [disclosure] = await db
-        .select()
-        .from(cmeFinancialDisclosures)
-        .where(and(eq(cmeFinancialDisclosures.id, input.disclosureId), eq(cmeFinancialDisclosures.orgId, orgId)))
-        .limit(1);
-      if (!disclosure) throw new TRPCError({ code: "NOT_FOUND" });
+      const disclosure = await requireDisclosureForOrg(db, input.disclosureId, orgId);
       if ((disclosure as any).status !== "submitted") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Disclosure has not been submitted yet." });
       }
@@ -367,7 +406,7 @@ export const cmeDisclosureRouter = router({
       if ((disclosure as any).pdfUrl) return { url: (disclosure as any).pdfUrl };
 
       // Regenerate
-      const [course] = await db.select({ title: lmsCourses.title }).from(lmsCourses).where(eq(lmsCourses.id, (disclosure as any).courseId)).limit(1);
+      const course = await requireCmeCourseForOrg(db, (disclosure as any).courseId, orgId);
       const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, orgId)).limit(1);
 
       const pdfBuffer = await generateDisclosurePdf({
@@ -386,7 +425,10 @@ export const cmeDisclosureRouter = router({
       const fileKey = `cme-disclosures/${orgId}/${(disclosure as any).courseId}/${(disclosure as any).id}-regen-${Date.now()}.pdf`;
       const { url } = await storagePut(fileKey, pdfBuffer, "application/pdf");
 
-      await db.update(cmeFinancialDisclosures).set({ pdfUrl: url } as any).where(eq(cmeFinancialDisclosures.id, input.disclosureId));
+      await db
+        .update(cmeFinancialDisclosures)
+        .set({ pdfUrl: url } as any)
+        .where(and(eq(cmeFinancialDisclosures.id, input.disclosureId), eq(cmeFinancialDisclosures.orgId, orgId)));
       return { url };
     }),
 });

@@ -159,7 +159,8 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
     onError: (e) => toast.error(e.message),
   });
 
-  const getDisclosureUrl = (token: string) => `${window.location.origin}/cme-disclosure/${token}`;
+  const getDisclosureUrl = (disclosure: { token: string; disclosureUrl?: string | null }) =>
+    disclosure.disclosureUrl ?? `${window.location.origin}/cme-disclosure/${disclosure.token}`;
 
   const handleBulkSendDisclosures = async () => {
     const pending = (disclosures as any[]).filter((d) => d.status !== "submitted");
@@ -662,7 +663,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
                 {d.status === "submitted" && (
                   <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setViewSubmission(d)}>View</Button>
                 )}
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { navigator.clipboard.writeText(getDisclosureUrl(d.token)); toast.success("Link copied"); }} title="Copy link">
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { navigator.clipboard.writeText(getDisclosureUrl(d)); toast.success("Link copied"); }} title="Copy link">
                   <Link2 className="w-3 h-3" />
                 </Button>
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-sky-600" disabled={sendDisclosureEmail.isPending} onClick={() => sendDisclosureEmail.mutate({ disclosureId: d.id, orgId, origin: window.location.origin })} title="Send email">
