@@ -2392,6 +2392,7 @@ export const questionBankFolders = mysqlTable("question_bank_folders", {
   description: text("description"),
   color: varchar("color", { length: 32 }),
   sortOrder: int("sortOrder").default(0).notNull(),
+  sharedInQuizCreator: boolean("sharedInQuizCreator").default(false).notNull(),
   createdBy: int("createdBy").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -5124,10 +5125,13 @@ export type InsertLmsCheckoutTemplate = typeof lmsCheckoutTemplates.$inferInsert
 // ─── Question Bank Tags ───────────────────────────────────────────────────────
 export const questionBankTags = mysqlTable("question_bank_tags", {
   id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 100 }).notNull().unique(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
   color: varchar("color", { length: 32 }).default("#179ca3").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  orgNameUnique: uniqueIndex("question_bank_tags_org_name_unique").on(table.orgId, table.name),
+}));
 export type QuestionBankTag = typeof questionBankTags.$inferSelect;
 
 export const questionBankTagMap = mysqlTable("question_bank_tag_map", {
@@ -5160,6 +5164,7 @@ export type PrintfulSyncProductRow = typeof printfulSyncProducts.$inferSelect;
 // ─── Question Bank ────────────────────────────────────────────────────────────
 export const questionBank = mysqlTable("question_bank", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
   question: longtext("question").notNull(),
   type: mysqlEnum("type", ["mcq", "truefalse", "multiselect", "hotspot", "matching"]).default("mcq").notNull(),
   options: longtext("options"),

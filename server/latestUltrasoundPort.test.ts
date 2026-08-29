@@ -88,6 +88,23 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("The selected Question Bank belongs to another organisation.");
   });
 
+  it("scopes legacy Question Bank folders, SCORM imports, and bulk organization actions to the active organization", () => {
+    const legacyRouterSource = readFileSync(new URL("./routers/questionBankRouter.ts", import.meta.url), "utf8");
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    expect(legacyRouterSource).toContain("const orgId = await assertAdmin(ctx);");
+    expect(legacyRouterSource).toContain("eq(questionBankFolders.orgId, orgId)");
+    expect(legacyRouterSource).toContain("eq(questionBankTags.orgId, orgId)");
+    expect(legacyRouterSource).toContain("resolveScormZipBuffer(input, orgId)");
+    expect(legacyRouterSource).toContain("eq(mediaAssets.orgId, orgId)");
+    expect(legacyRouterSource).toContain("bulkOrganizeQuestions: protectedProcedure");
+    expect(legacyRouterSource).toContain("await requireQuestionsAccess(db, orgId, questionIds);");
+    expect(legacyRouterSource).toContain("sharedInQuizCreator");
+    expect(legacyRouterSource).not.toContain("SonoQuiz");
+    expect(lmsAdminSource).toContain("Organize {selectedIds.size} selected");
+    expect(lmsAdminSource).toContain("sharedInQuizCreator");
+    expect(lmsAdminSource).not.toContain("Share in SonoQuiz");
+  });
+
   it("locks active Question Bank imports to their saved organization-owned media source", () => {
     const routerSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
     const pageSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");

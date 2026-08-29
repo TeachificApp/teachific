@@ -8,7 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import {
   questionBank,
@@ -16,7 +16,7 @@ import {
   questionBankTags,
   questionBankTagMap,
   lmsQuizQuestions,
-  users,
+  lmsQuizzes,
   mediaAssets,
   mediaVersions,
 } from "../../drizzle/schema";
@@ -31,11 +31,47 @@ import https from "https";
 import http from "http";
 
 async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  if (ctx.user.role !== "admin") {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const [u] = await db.select({ role: users.role }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    if (!u || u.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing the Question Bank." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return orgId;
+}
+
+async function requireQuestionAccess(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, questionId: number) {
+  const [question] = await db.select({ id: questionBank.id })
+    .from(questionBank)
+    .where(and(eq(questionBank.id, questionId), eq(questionBank.orgId, orgId)))
+    .limit(1);
+  if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Question not found in the active organization." });
+}
+
+async function requireQuestionsAccess(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, questionIds: number[]) {
+  const ids = [...new Set(questionIds)];
+  const questions = await db.select({ id: questionBank.id })
+    .from(questionBank)
+    .where(and(eq(questionBank.orgId, orgId), inArray(questionBank.id, ids)));
+  if (questions.length !== ids.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more questions do not belong to the active organization." });
+  }
+}
+
+async function requireFolderAccess(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, folderId: number) {
+  const [folder] = await db.select({ id: questionBankFolders.id })
+    .from(questionBankFolders)
+    .where(and(eq(questionBankFolders.id, folderId), eq(questionBankFolders.orgId, orgId)))
+    .limit(1);
+  if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Folder not found in the active organization." });
+}
+
+async function requireTagAccess(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, tagIds: number[]) {
+  if (tagIds.length === 0) return;
+  const tags = await db.select({ id: questionBankTags.id })
+    .from(questionBankTags)
+    .where(and(eq(questionBankTags.orgId, orgId), inArray(questionBankTags.id, tagIds)));
+  if (tags.length !== new Set(tagIds).size) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more tags do not belong to the active organization." });
   }
 }
 
@@ -65,19 +101,20 @@ export const questionBankRouter = router({
   // ─── Tags ──────────────────────────────────────────────────────────────────
 
   listTags: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx);
+    const orgId = await assertAdmin(ctx);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    return db.select().from(questionBankTags).orderBy(asc(questionBankTags.name));
+    return db.select().from(questionBankTags).where(eq(questionBankTags.orgId, orgId)).orderBy(asc(questionBankTags.name));
   }),
 
   createTag: protectedProcedure
     .input(z.object({ name: z.string().min(1).max(100), color: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(questionBankTags).values({
+        orgId,
         name: input.name.trim(),
         color: input.color ?? "#179ca3",
       }).$returningId();
@@ -87,13 +124,13 @@ export const questionBankRouter = router({
   updateTag: protectedProcedure
     .input(z.object({ id: z.number(), name: z.string().min(1).max(100).optional(), color: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...updates } = input;
       const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
       if (Object.keys(filtered).length > 0) {
-        await db.update(questionBankTags).set(filtered).where(eq(questionBankTags.id, id));
+        await db.update(questionBankTags).set(filtered).where(and(eq(questionBankTags.id, id), eq(questionBankTags.orgId, orgId)));
       }
       return { success: true };
     }),
@@ -101,11 +138,12 @@ export const questionBankRouter = router({
   deleteTag: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireTagAccess(db, orgId, [input.id]);
       await db.delete(questionBankTagMap).where(eq(questionBankTagMap.tagId, input.id));
-      await db.delete(questionBankTags).where(eq(questionBankTags.id, input.id));
+      await db.delete(questionBankTags).where(and(eq(questionBankTags.id, input.id), eq(questionBankTags.orgId, orgId)));
       return { success: true };
     }),
 
@@ -121,11 +159,11 @@ export const questionBankRouter = router({
       pageSize: z.number().int().min(1).max(100).default(25),
     }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const conditions: any[] = [];
+      const conditions: any[] = [eq(questionBank.orgId, orgId)];
       if (input.search) conditions.push(like(questionBank.question, `%${input.search}%`));
       if (input.type) conditions.push(eq(questionBank.type, input.type));
       if (input.folderId !== undefined) {
@@ -196,10 +234,10 @@ export const questionBankRouter = router({
   getQuestion: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [q] = await db.select().from(questionBank).where(eq(questionBank.id, input.id)).limit(1);
+      const [q] = await db.select().from(questionBank).where(and(eq(questionBank.id, input.id), eq(questionBank.orgId, orgId))).limit(1);
       if (!q) throw new TRPCError({ code: "NOT_FOUND" });
       const tagRows = await db
         .select({ tag: questionBankTags })
@@ -219,18 +257,20 @@ export const questionBankRouter = router({
   createQuestion: protectedProcedure
     .input(questionInput)
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { tagIds, options, correctAnswers, hotspotMarkers, matchingPairs, ...rest } = input;
+      if (rest.folderId) await requireFolderAccess(db, orgId, rest.folderId);
+      await requireTagAccess(db, orgId, tagIds ?? []);
       const [result] = await db.insert(questionBank).values({
+        orgId,
         ...rest,
         correctAnswer: rest.correctAnswer ?? "",
         options: options ? JSON.stringify(options) : null,
         correctAnswers: correctAnswers ? JSON.stringify(correctAnswers) : null,
         hotspotMarkers: hotspotMarkers ?? null,
         matchingPairs: matchingPairs ?? null,
-        createdByAdminId: ctx.user.id,
       } as any).$returningId();
       if (tagIds && tagIds.length > 0) {
         await db.insert(questionBankTagMap).values(tagIds.map(tagId => ({ questionId: result.id, tagId })));
@@ -257,15 +297,18 @@ export const questionBankRouter = router({
       tagIds: z.array(z.number().int()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, tagIds, options, correctAnswers, ...rest } = input;
+      await requireQuestionAccess(db, orgId, id);
+      if (rest.folderId) await requireFolderAccess(db, orgId, rest.folderId);
+      await requireTagAccess(db, orgId, tagIds ?? []);
       const updates: Record<string, unknown> = Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
       if (options !== undefined) updates.options = JSON.stringify(options);
       if (correctAnswers !== undefined) updates.correctAnswers = correctAnswers ? JSON.stringify(correctAnswers) : null;
       if (Object.keys(updates).length > 0) {
-        await db.update(questionBank).set(updates).where(eq(questionBank.id, id));
+        await db.update(questionBank).set(updates).where(and(eq(questionBank.id, id), eq(questionBank.orgId, orgId)));
       }
       if (tagIds !== undefined) {
         await db.delete(questionBankTagMap).where(eq(questionBankTagMap.questionId, id));
@@ -279,22 +322,24 @@ export const questionBankRouter = router({
   deleteQuestion: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireQuestionAccess(db, orgId, input.id);
       await db.delete(questionBankTagMap).where(eq(questionBankTagMap.questionId, input.id));
-      await db.delete(questionBank).where(eq(questionBank.id, input.id));
+      await db.delete(questionBank).where(and(eq(questionBank.id, input.id), eq(questionBank.orgId, orgId)));
       return { success: true };
     }),
 
   bulkDeleteQuestions: protectedProcedure
     .input(z.object({ ids: z.array(z.number().int()).min(1) }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireQuestionsAccess(db, orgId, input.ids);
       await db.delete(questionBankTagMap).where(inArray(questionBankTagMap.questionId, input.ids));
-      await db.delete(questionBank).where(inArray(questionBank.id, input.ids));
+      await db.delete(questionBank).where(and(eq(questionBank.orgId, orgId), inArray(questionBank.id, input.ids)));
       return { deleted: input.ids.length };
     }),
 
@@ -311,9 +356,11 @@ export const questionBankRouter = router({
       newFolderName: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.folderId) await requireFolderAccess(db, orgId, input.folderId);
+      await requireTagAccess(db, orgId, input.tagIds ?? []);
 
       const typeInstruction = input.questionType === "mixed"
         ? "Mix multiple choice and true/false questions."
@@ -325,7 +372,7 @@ export const questionBankRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are a medical education question writer specializing in ultrasound and echocardiography. Generate clinically accurate ${input.difficulty} questions. ${typeInstruction} Return JSON only.`,
+            content: `You create accurate educational assessment questions from the author-provided topic. Generate ${input.difficulty} questions. ${typeInstruction} Do not add organization or platform branding unless the author explicitly provides it. Return JSON only.`,
           },
           {
             role: "user",
@@ -371,9 +418,10 @@ export const questionBankRouter = router({
       let resolvedFolderId: number | null = null;
       if (input.newFolderName?.trim()) {
         const [newFolder] = await db.insert(questionBankFolders).values({
+          orgId,
           name: input.newFolderName.trim(),
           color: "#179ca3",
-          createdByAdminId: ctx.user.id,
+          createdBy: ctx.user.id,
         }).$returningId();
         resolvedFolderId = newFolder.id;
       } else if (input.folderId) {
@@ -384,13 +432,13 @@ export const questionBankRouter = router({
       for (const q of questions) {
         const opts = Array.isArray(q.options) ? q.options.map((o: string) => ({ text: o })) : [];
         const [result] = await db.insert(questionBank).values({
+          orgId,
           question: q.question,
           type: q.type === "truefalse" ? "truefalse" : "mcq",
           options: opts.length > 0 ? JSON.stringify(opts) : null,
           correctAnswer: q.correctAnswer,
           explanation: q.explanation ?? null,
           folderId: resolvedFolderId,
-          createdByAdminId: ctx.user.id,
         }).$returningId();
         inserted.push(result.id);
         if (input.tagIds && input.tagIds.length > 0) {
@@ -417,17 +465,20 @@ export const questionBankRouter = router({
       newFolderName: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.folderId) await requireFolderAccess(db, orgId, input.folderId);
+      await requireTagAccess(db, orgId, input.tagIds ?? []);
 
       // Resolve or create folder
       let resolvedFolderId: number | null = null;
       if (input.newFolderName?.trim()) {
         const [newFolder] = await db.insert(questionBankFolders).values({
+          orgId,
           name: input.newFolderName.trim(),
           color: "#179ca3",
-          createdByAdminId: ctx.user.id,
+          createdBy: ctx.user.id,
         }).$returningId();
         resolvedFolderId = newFolder.id;
       } else if (input.folderId) {
@@ -476,13 +527,13 @@ export const questionBankRouter = router({
         const explanation = row["explanation"] || row["rationale"] || row["feedback"] || "";
 
         const [result] = await db.insert(questionBank).values({
+          orgId,
           question: questionText,
           type: qType,
           options: opts.length > 0 ? JSON.stringify(opts) : null,
           correctAnswer,
           explanation: explanation || null,
           folderId: resolvedFolderId,
-          createdByAdminId: ctx.user.id,
         }).$returningId();
         inserted.push(result.id);
 
@@ -502,12 +553,18 @@ export const questionBankRouter = router({
       questionIds: z.array(z.number().int()).min(1),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireQuestionsAccess(db, orgId, input.questionIds);
+      const [quiz] = await db.select({ id: lmsQuizzes.id })
+        .from(lmsQuizzes)
+        .where(and(eq(lmsQuizzes.id, input.quizId), eq(lmsQuizzes.orgId, orgId)))
+        .limit(1);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found in the active organization." });
 
       const questions = await db.select().from(questionBank)
-        .where(inArray(questionBank.id, input.questionIds));
+        .where(and(eq(questionBank.orgId, orgId), inArray(questionBank.id, input.questionIds)));
 
       // Get current max position in quiz
       const [maxPos] = await db.select({ maxPos: sql<number>`COALESCE(MAX(position), -1)` })
@@ -525,6 +582,7 @@ export const questionBankRouter = router({
           } catch { opts = null; }
         }
         await db.insert(lmsQuizQuestions).values({
+          orgId,
           quizId: input.quizId,
           question: q.question,
           type: q.type,
@@ -553,17 +611,20 @@ export const questionBankRouter = router({
       tagIds: z.array(z.number().int()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireTagAccess(db, orgId, input.tagIds ?? []);
 
-      const [qq] = await db.select().from(lmsQuizQuestions).where(eq(lmsQuizQuestions.id, input.quizQuestionId)).limit(1);
+      const [qq] = await db.select().from(lmsQuizQuestions)
+        .where(and(eq(lmsQuizQuestions.id, input.quizQuestionId), eq(lmsQuizQuestions.orgId, orgId)))
+        .limit(1);
       if (!qq) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Check if already synced
       const [existing] = await db.select({ id: questionBank.id })
         .from(questionBank)
-        .where(eq(questionBank.sourceQuizQuestionId, qq.id))
+        .where(and(eq(questionBank.sourceQuizQuestionId, qq.id), eq(questionBank.orgId, orgId)))
         .limit(1);
       if (existing) return { id: existing.id, alreadyExisted: true };
 
@@ -577,6 +638,7 @@ export const questionBankRouter = router({
       }
 
       const [result] = await db.insert(questionBank).values({
+        orgId,
         question: qq.question,
         type: qq.type,
         options: opts,
@@ -591,7 +653,6 @@ export const questionBankRouter = router({
         feedbackVideoUrl: (qq as any).feedbackVideoUrl ?? null,
         sourceQuizId: qq.quizId,
         sourceQuizQuestionId: qq.id,
-        createdByAdminId: ctx.user.id,
       } as any).$returningId();
 
       if (input.tagIds && input.tagIds.length > 0) {
@@ -611,7 +672,7 @@ export const questionBankRouter = router({
   previewScormImport: protectedProcedure
     .input(z.object({ mediaAssetId: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -619,7 +680,7 @@ export const questionBankRouter = router({
       const [asset] = await db
         .select({ id: mediaAssets.id, title: mediaAssets.title, slug: mediaAssets.slug, mediaType: mediaAssets.mediaType })
         .from(mediaAssets)
-        .where(eq(mediaAssets.id, input.mediaAssetId))
+        .where(and(eq(mediaAssets.id, input.mediaAssetId), eq(mediaAssets.orgId, orgId)))
         .limit(1);
       if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found" });
 
@@ -686,11 +747,13 @@ export const questionBankRouter = router({
       { message: "Provide mediaAssetId or bufferBase64 for SCORM import" }
     ))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.folderId) await requireFolderAccess(db, orgId, input.folderId);
+      await requireTagAccess(db, orgId, input.extraTagIds ?? []);
 
-      const zipBuffer = await resolveScormZipBuffer(input);
+      const zipBuffer = await resolveScormZipBuffer(input, orgId);
       let parsed;
       try {
         parsed = await parseISpringQuizFromBuffer(zipBuffer);
@@ -705,9 +768,10 @@ export const questionBankRouter = router({
       let resolvedFolderId: number | null = null;
       if (input.newFolderName?.trim()) {
         const [newFolder] = await db.insert(questionBankFolders).values({
+          orgId,
           name: input.newFolderName.trim(),
           color: "#179ca3",
-          createdByAdminId: ctx.user.id,
+          createdBy: ctx.user.id,
         }).$returningId();
         resolvedFolderId = newFolder.id;
       } else if (input.folderId) {
@@ -728,12 +792,13 @@ export const questionBankRouter = router({
         const [existingTag] = await db
           .select({ id: questionBankTags.id })
           .from(questionBankTags)
-          .where(eq(questionBankTags.name, tagName))
+          .where(and(eq(questionBankTags.name, tagName), eq(questionBankTags.orgId, orgId)))
           .limit(1);
         if (existingTag) {
           tagId = existingTag.id;
         } else {
           const [newTag] = await db.insert(questionBankTags).values({
+            orgId,
             name: tagName,
             color: "#179ca3",
           }).$returningId();
@@ -752,13 +817,13 @@ export const questionBankRouter = router({
           const explanation = rewriteStorageRefs(q.explanationHtml || q.explanationText || "", imageMap) || null;
 
           const [result] = await db.insert(questionBank).values({
+            orgId,
             question: questionText,
             type: q.type,
             options: JSON.stringify(options),
             correctAnswer: q.correctAnswer,
             explanation,
             folderId: resolvedFolderId,
-            createdByAdminId: ctx.user.id,
           }).$returningId();
 
           await db.insert(questionBankTagMap).values(
@@ -780,15 +845,17 @@ export const questionBankRouter = router({
 
   listFolders: protectedProcedure
     .query(async ({ ctx }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const folders = await db.select().from(questionBankFolders).orderBy(asc(questionBankFolders.name));
+      const folders = await db.select().from(questionBankFolders)
+        .where(eq(questionBankFolders.orgId, orgId))
+        .orderBy(asc(questionBankFolders.name));
       // Get question count per folder
       const counts = await db
         .select({ folderId: questionBank.folderId, count: sql<number>`COUNT(*)` })
         .from(questionBank)
-        .where(sql`${questionBank.folderId} IS NOT NULL`)
+        .where(and(eq(questionBank.orgId, orgId), sql`${questionBank.folderId} IS NOT NULL`))
         .groupBy(questionBank.folderId);
       const countMap = Object.fromEntries(counts.map(c => [c.folderId, Number(c.count)]));
       return folders.map(f => ({ ...f, questionCount: countMap[f.id] ?? 0 }));
@@ -802,15 +869,17 @@ export const questionBankRouter = router({
       color: z.string().max(32).default("#179ca3"),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.parentId) await requireFolderAccess(db, orgId, input.parentId);
       const [result] = await db.insert(questionBankFolders).values({
+        orgId,
         name: input.name,
         description: input.description ?? null,
         parentId: input.parentId ?? null,
         color: input.color,
-        createdByAdminId: ctx.user.id,
+        createdBy: ctx.user.id,
       }).$returningId();
       return { id: result.id };
     }),
@@ -822,46 +891,49 @@ export const questionBankRouter = router({
       description: z.string().max(500).optional(),
       color: z.string().max(32).optional(),
       parentId: z.number().int().nullable().optional(),
-      sharedInSonoQuiz: z.boolean().optional(),
+      sharedInQuizCreator: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...rest } = input;
-      await db.update(questionBankFolders).set(rest).where(eq(questionBankFolders.id, id));
+      await requireFolderAccess(db, orgId, id);
+      if (rest.parentId) await requireFolderAccess(db, orgId, rest.parentId);
+      await db.update(questionBankFolders).set(rest).where(and(eq(questionBankFolders.id, id), eq(questionBankFolders.orgId, orgId)));
       return { ok: true };
     }),
 
   deleteFolder: protectedProcedure
     .input(z.object({ id: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireFolderAccess(db, orgId, input.id);
       // Unset folder_id on questions in this folder
-      await db.update(questionBank).set({ folderId: null }).where(eq(questionBank.folderId, input.id));
-      await db.delete(questionBankFolders).where(eq(questionBankFolders.id, input.id));
+      await db.update(questionBank).set({ folderId: null }).where(and(eq(questionBank.folderId, input.id), eq(questionBank.orgId, orgId)));
+      await db.delete(questionBankFolders).where(and(eq(questionBankFolders.id, input.id), eq(questionBankFolders.orgId, orgId)));
       return { ok: true };
     }),
 
-  /** List folders shared into SonoQuiz (for SonoQuizCreator to use as quiz sources) */
-  listSonoQuizSharedFolders: protectedProcedure
+  /** List organization-owned folders available as Quiz Creator sources. */
+  listQuizCreatorSharedFolders: protectedProcedure
     .query(async ({ ctx }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const folders = await db
         .select()
         .from(questionBankFolders)
-        .where(eq(questionBankFolders.sharedInSonoQuiz, true))
+        .where(and(eq(questionBankFolders.sharedInQuizCreator, true), eq(questionBankFolders.orgId, orgId)))
         .orderBy(asc(questionBankFolders.name));
       // For each folder, count questions
       const counts = await Promise.all(folders.map(async (f) => {
         const [{ cnt }] = await db
           .select({ cnt: sql<number>`COUNT(*)` })
           .from(questionBank)
-          .where(eq(questionBank.folderId, f.id));
+          .where(and(eq(questionBank.folderId, f.id), eq(questionBank.orgId, orgId)));
         return { ...f, questionCount: Number(cnt) };
       }));
       return counts;
@@ -872,13 +944,66 @@ export const questionBankRouter = router({
       folderId: z.number().int().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireQuestionsAccess(db, orgId, input.questionIds);
+      if (input.folderId) await requireFolderAccess(db, orgId, input.folderId);
       await db.update(questionBank)
         .set({ folderId: input.folderId })
-        .where(inArray(questionBank.id, input.questionIds));
+        .where(and(eq(questionBank.orgId, orgId), inArray(questionBank.id, input.questionIds)));
       return { moved: input.questionIds.length };
+    }),
+
+  bulkOrganizeQuestions: protectedProcedure
+    .input(z.object({
+      questionIds: z.array(z.number().int()).min(1),
+      folderId: z.number().int().nullable().optional(),
+      addTagIds: z.array(z.number().int()).optional(),
+      removeTagIds: z.array(z.number().int()).optional(),
+    }).refine((input) => input.folderId !== undefined || (input.addTagIds?.length ?? 0) > 0 || (input.removeTagIds?.length ?? 0) > 0, {
+      message: "Choose a folder or at least one tag change.",
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const questionIds = [...new Set(input.questionIds)];
+      const addTagIds = [...new Set(input.addTagIds ?? [])];
+      const removeTagIds = [...new Set(input.removeTagIds ?? [])];
+      await requireQuestionsAccess(db, orgId, questionIds);
+      if (input.folderId) await requireFolderAccess(db, orgId, input.folderId);
+      await requireTagAccess(db, orgId, [...new Set([...addTagIds, ...removeTagIds])]);
+
+      if (input.folderId !== undefined) {
+        await db.update(questionBank)
+          .set({ folderId: input.folderId })
+          .where(and(eq(questionBank.orgId, orgId), inArray(questionBank.id, questionIds)));
+      }
+
+      if (removeTagIds.length > 0) {
+        await db.delete(questionBankTagMap)
+          .where(and(inArray(questionBankTagMap.questionId, questionIds), inArray(questionBankTagMap.tagId, removeTagIds)));
+      }
+
+      if (addTagIds.length > 0) {
+        const existing = await db.select({ questionId: questionBankTagMap.questionId, tagId: questionBankTagMap.tagId })
+          .from(questionBankTagMap)
+          .where(and(inArray(questionBankTagMap.questionId, questionIds), inArray(questionBankTagMap.tagId, addTagIds)));
+        const existingKeys = new Set(existing.map((item) => `${item.questionId}:${item.tagId}`));
+        const additions = questionIds.flatMap((questionId) => addTagIds
+          .filter((tagId) => !existingKeys.has(`${questionId}:${tagId}`))
+          .map((tagId) => ({ questionId, tagId })));
+        if (additions.length > 0) await db.insert(questionBankTagMap).values(additions);
+      }
+
+      return {
+        updated: questionIds.length,
+        folderUpdated: input.folderId !== undefined,
+        tagsAdded: addTagIds.length,
+        tagsRemoved: removeTagIds.length,
+      };
     }),
 
   /**
@@ -892,7 +1017,7 @@ export const questionBankRouter = router({
       offset: z.number().int().min(0).default(0),
     }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const searchFilter = input.search?.trim()
@@ -907,8 +1032,8 @@ export const questionBankRouter = router({
         eq(mediaAssets.mediaType, "lms"),
       );
       const whereClause = searchFilter
-        ? and(typeFilter, searchFilter, sql`${mediaAssets.deletedAt} IS NULL`)
-        : and(typeFilter, sql`${mediaAssets.deletedAt} IS NULL`);
+        ? and(eq(mediaAssets.orgId, orgId), typeFilter, searchFilter, sql`${mediaAssets.deletedAt} IS NULL`)
+        : and(eq(mediaAssets.orgId, orgId), typeFilter, sql`${mediaAssets.deletedAt} IS NULL`);
       const assets = await db
         .select({
           id: mediaAssets.id,
@@ -958,7 +1083,7 @@ export const questionBankRouter = router({
 async function resolveScormZipBuffer(input: {
   mediaAssetId?: number;
   bufferBase64?: string;
-}): Promise<Buffer> {
+}, orgId: number): Promise<Buffer> {
   if (input.bufferBase64) {
     const buf = Buffer.from(input.bufferBase64, "base64");
     if (!buf.length) {
@@ -974,10 +1099,16 @@ async function resolveScormZipBuffer(input: {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+  const [asset] = await db.select({ id: mediaAssets.id })
+    .from(mediaAssets)
+    .where(and(eq(mediaAssets.id, input.mediaAssetId), eq(mediaAssets.orgId, orgId)))
+    .limit(1);
+  if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found in the active organization." });
+
   const [version] = await db
     .select({ s3Url: mediaVersions.s3Url })
     .from(mediaVersions)
-    .where(eq(mediaVersions.assetId, input.mediaAssetId))
+    .where(and(eq(mediaVersions.assetId, input.mediaAssetId), eq(mediaVersions.orgId, orgId)))
     .orderBy(sql`${mediaVersions.versionNumber} DESC`)
     .limit(1);
   if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "No version found for this asset" });

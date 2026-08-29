@@ -5134,8 +5134,8 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium" style={{ color: "var(--org-primary)" }}>Teachific Quiz Creator</span>
                   <Switch
-                    checked={!!f.sharedInSonoQuiz}
-                    onCheckedChange={(v) => updateFolder.mutate({ id: f.id, sharedInSonoQuiz: v })}
+                    checked={!!f.sharedInQuizCreator}
+                    onCheckedChange={(v) => updateFolder.mutate({ id: f.id, sharedInQuizCreator: v })}
                   />
                 </div>
                 <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
@@ -10053,6 +10053,10 @@ function QuestionBankAdmin() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showBulkOrganize, setShowBulkOrganize] = useState(false);
+  const [bulkFolderId, setBulkFolderId] = useState<string>("unchanged");
+  const [bulkAddTagIds, setBulkAddTagIds] = useState<number[]>([]);
+  const [bulkRemoveTagIds, setBulkRemoveTagIds] = useState<number[]>([]);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showTagManager, setShowTagManager] = useState(false);
   const [showFolderManager, setShowFolderManager] = useState(false);
@@ -10091,6 +10095,18 @@ function QuestionBankAdmin() {
 
   const deleteQ = trpc.questionBank.deleteQuestion.useMutation({ onSuccess: () => { refetch(); setSelectedIds(new Set()); } });
   const bulkDelete = trpc.questionBank.bulkDeleteQuestions.useMutation({ onSuccess: () => { refetch(); setSelectedIds(new Set()); } });
+  const bulkOrganize = trpc.questionBank.bulkOrganizeQuestions.useMutation({
+    onSuccess: () => {
+      refetch();
+      setSelectedIds(new Set());
+      setShowBulkOrganize(false);
+      setBulkFolderId("unchanged");
+      setBulkAddTagIds([]);
+      setBulkRemoveTagIds([]);
+      toast.success("Selected questions updated");
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const aiGenerate = trpc.questionBank.aiGenerateToBank.useMutation({ onSuccess: () => { refetch(); setShowAIPanel(false); setAITopic(""); } });
   const createTag = trpc.questionBank.createTag.useMutation({ onSuccess: () => refetch() });
   const deleteTag = trpc.questionBank.deleteTag.useMutation({ onSuccess: () => refetch() });
@@ -10392,12 +10408,65 @@ function QuestionBankAdmin() {
           ))}
         </div>
         {selectedIds.size > 0 && (
-          <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5 ml-auto"
-            onClick={() => { if (confirm(`Delete ${selectedIds.size} question(s)?`)) bulkDelete.mutate({ ids: [...selectedIds] }); }}>
-            <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size} selected
-          </Button>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button size="sm" variant="outline" className="gap-1.5"
+              style={{ borderColor: "color-mix(in_srgb, var(--org-primary) 45%, transparent)", color: "var(--org-primary)", backgroundColor: "color-mix(in_srgb, var(--org-primary) 6%, transparent)" }}
+              onClick={() => setShowBulkOrganize(true)}>
+              <FolderOpen className="w-3.5 h-3.5" /> Organize {selectedIds.size} selected
+            </Button>
+            <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5"
+              onClick={() => { if (confirm(`Delete ${selectedIds.size} question(s)?`)) bulkDelete.mutate({ ids: [...selectedIds] }); }}>
+              <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size} selected
+            </Button>
+          </div>
         )}
       </div>
+
+      <Dialog open={showBulkOrganize} onOpenChange={setShowBulkOrganize}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Organize selected questions</DialogTitle>
+            <DialogDescription>Update the folder and tags for {selectedIds.size} selected question{selectedIds.size === 1 ? "" : "s"} in this organization.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-question-folder">Folder</Label>
+              <select id="bulk-question-folder" value={bulkFolderId} onChange={(event) => setBulkFolderId(event.target.value)} className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm focus:outline-none" style={{ borderColor: bulkFolderId !== "unchanged" ? "var(--org-primary)" : undefined }}>
+                <option value="unchanged">Do not change folder</option>
+                <option value="root">Move to no folder</option>
+                {folders.map((folder: any) => <option key={folder.id} value={String(folder.id)}>{folder.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Add tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag: any) => {
+                  const selected = bulkAddTagIds.includes(tag.id);
+                  return <button key={`add-${tag.id}`} type="button" onClick={() => setBulkAddTagIds((ids) => selected ? ids.filter((id) => id !== tag.id) : [...ids, tag.id])} className="px-2.5 py-1 rounded-full text-xs font-medium border" style={selected ? { backgroundColor: tag.color, borderColor: tag.color, color: "white" } : { borderColor: tag.color, color: tag.color }}>{tag.name}</button>;
+                })}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Remove tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag: any) => {
+                  const selected = bulkRemoveTagIds.includes(tag.id);
+                  return <button key={`remove-${tag.id}`} type="button" onClick={() => setBulkRemoveTagIds((ids) => selected ? ids.filter((id) => id !== tag.id) : [...ids, tag.id])} className="px-2.5 py-1 rounded-full text-xs font-medium border" style={selected ? { backgroundColor: "color-mix(in_srgb, var(--org-primary) 12%, white)", borderColor: "var(--org-primary)", color: "var(--org-primary)" } : { borderColor: tag.color, color: tag.color }}>{tag.name}</button>;
+                })}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkOrganize(false)}>Cancel</Button>
+            <Button className="bg-[var(--org-primary)] hover:brightness-90 text-white" disabled={bulkOrganize.isPending || (bulkFolderId === "unchanged" && bulkAddTagIds.length === 0 && bulkRemoveTagIds.length === 0)} onClick={() => bulkOrganize.mutate({
+              questionIds: [...selectedIds],
+              folderId: bulkFolderId === "unchanged" ? undefined : bulkFolderId === "root" ? null : Number(bulkFolderId),
+              addTagIds: bulkAddTagIds.length > 0 ? bulkAddTagIds : undefined,
+              removeTagIds: bulkRemoveTagIds.length > 0 ? bulkRemoveTagIds : undefined,
+            })}>{bulkOrganize.isPending ? "Updating…" : "Apply changes"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Table */}
       <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">

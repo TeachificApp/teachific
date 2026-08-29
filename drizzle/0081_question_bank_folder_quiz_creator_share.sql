@@ -1,0 +1,1 @@
+ALTER TABLE `question_bank_folders` ADD `sharedInQuizCreator` boolean DEFAULT false NOT NULL;
