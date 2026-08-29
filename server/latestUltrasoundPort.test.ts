@@ -4063,6 +4063,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     const contentAvailabilitySource = readFileSync(new URL("./routers/contentAvailabilityRouter.ts", import.meta.url), "utf8");
     expect(contentAvailabilitySource).toContain("sendEmailViaOrg({");
     expect(contentAvailabilitySource).toContain("}, target.orgId);");
+    expect(contentAvailabilitySource).toContain("validateOwningOrgLearnerUrl");
+    expect(contentAvailabilitySource).toContain("Enrollment links must use the owning organization domain");
+    expect(contentAvailabilitySource).toContain("getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)");
+    expect(contentAvailabilitySource).toContain("inArray(contentWaitlistEntries.id, selected.map((entry) => entry.id))");
     const bundleRouterSource = readFileSync(new URL("./routers/bundleRouter.ts", import.meta.url), "utf8");
     expect(bundleRouterSource).toContain("const price = selectedOption.price ?? 0;");
     expect(bundleRouterSource).not.toContain("selectedOption.price / 100");

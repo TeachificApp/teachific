@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   bundles,
@@ -14,9 +14,10 @@ import {
   workshopInstances,
   workshops,
 } from "../../drizzle/schema";
-import { getDb, requireOrgAdmin } from "../db";
+import { getDb, getOrgById, requireOrgAdmin } from "../db";
 import { sendEmailViaOrg } from "../_core/email";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 const productTypeSchema = z.enum([
   "course",
@@ -95,6 +96,22 @@ async function getTarget(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, pro
 
 function requireTarget(target: AvailabilityTarget | null): asserts target is AvailabilityTarget {
   if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "The selected content is not available." });
+}
+
+export async function validateOwningOrgLearnerUrl(orgId: number, value: string): Promise<string> {
+  const org = await getOrgById(orgId);
+  if (!org) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+  const baseUrl = getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus);
+  let candidate: URL;
+  try {
+    candidate = new URL(value);
+  } catch {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A valid learner URL is required" });
+  }
+  if (candidate.origin !== new URL(baseUrl).origin) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment links must use the owning organization domain" });
+  }
+  return candidate.toString();
 }
 
 export const contentAvailabilityRouter = router({
@@ -236,6 +253,7 @@ export const contentAvailabilityRouter = router({
       const target = await getTarget(db, input.productType, input.productId);
       requireTarget(target);
       await requireOrgAdmin(ctx.user.id, ctx.user.role, target.orgId);
+      const enrollmentUrl = await validateOwningOrgLearnerUrl(target.orgId, input.enrollmentUrl);
       const entries = await db.select().from(contentWaitlistEntries).where(and(
         eq(contentWaitlistEntries.orgId, target.orgId),
         eq(contentWaitlistEntries.productType, input.productType),
@@ -248,7 +266,7 @@ export const contentAvailabilityRouter = router({
         const ok = await sendEmailViaOrg({
           to: { name: entry.name, email: entry.email },
           subject: input.subject,
-          htmlBody: `${input.messageHtml}<p style="margin-top:24px"><a href="${input.enrollmentUrl}" style="display:inline-block;padding:12px 18px;background:${color};color:#ffffff;border-radius:6px;text-decoration:none;font-weight:600">Enroll now</a></p>`,
+          htmlBody: `${input.messageHtml}<p style="margin-top:24px"><a href="${enrollmentUrl}" style="display:inline-block;padding:12px 18px;background:${color};color:#ffffff;border-radius:6px;text-decoration:none;font-weight:600">Enroll now</a></p>`,
         }, target.orgId);
         if (ok) sent++;
       }
@@ -257,6 +275,7 @@ export const contentAvailabilityRouter = router({
           eq(contentWaitlistEntries.orgId, target.orgId),
           eq(contentWaitlistEntries.productType, input.productType),
           eq(contentWaitlistEntries.productId, input.productId),
+          inArray(contentWaitlistEntries.id, selected.map((entry) => entry.id)),
         ));
       }
       return { success: true, sent, selected: selected.length };

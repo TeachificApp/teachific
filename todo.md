@@ -114,7 +114,11 @@
 - [x] Require active-organization course ownership for core cohort session and assignment list, creation, update, and deletion actions
 - [x] Resolve core cohort session and assignment notification links from the owning organization domain
 - [x] Replace platform-branded cohort notification footers with the owning organization identity
-- [ ] Route content availability notifications through the owning organization sender and validated learner URL
+- [x] Route content availability notifications through the owning organization sender and validated learner URL
+- [x] Update content availability notification bookkeeping only for the selected waitlist entries
+- [x] Add behavioral sender-routing and cross-domain enrollment URL rejection coverage
+- [x] Behaviorally verify notifyEnrollmentOpen uses the owning organization sender and updates only selected entries
+- [x] Inspect the notification bookkeeping update filter to prove unselected waitlist entries remain untouched
 - [x] Route content availability enrollment-open notifications through the owning organization sender
 - [ ] Migrate email campaigns, templates, audience previews, and sender profiles to active-organization authorization and routing
 - [ ] Require active-organization course ownership and organization-domain routing for CME disclosure administration
