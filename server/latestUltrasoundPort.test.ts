@@ -28,9 +28,19 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("keeps pnpm as the build tool rather than a project dependency", () => {
     const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     const lockfile = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
+    const workspaceConfig = readFileSync(new URL("../pnpm-workspace.yaml", import.meta.url), "utf8");
     expect(packageJson.devDependencies?.pnpm).toBeUndefined();
+    expect(packageJson.packageManager).toBeUndefined();
+    expect(packageJson.pnpm).toBeUndefined();
     expect(lockfile).not.toContain("\n      pnpm:\n");
     expect(lockfile).not.toContain("\n  pnpm@");
+    expect(workspaceConfig).toContain("patchedDependencies:");
+    expect(workspaceConfig).toContain("wouter@3.7.1: patches/wouter@3.7.1.patch");
+    expect(workspaceConfig).toContain("tailwindcss>nanoid: 3.3.7");
+    expect(workspaceConfig).toContain("allowBuilds:");
+    expect(workspaceConfig).toContain("core-js: true");
+    expect(workspaceConfig).toContain("'@tailwindcss/oxide': true");
+    expect(workspaceConfig).toContain("esbuild: true");
   });
 
   it("limits Quiz Creator find-and-replace to the active organization’s saved quiz content", () => {
@@ -43,6 +53,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionListSource).toContain("trpc.quizMaker.findAndReplaceText.useMutation");
     expect(questionListSource).toContain("Changes are applied only to this saved quiz. Question Bank records remain unchanged.");
     expect(questionListSource).toContain("Save this quiz to Teachific before using find and replace.");
+  });
+
+  it("renders Quiz Creator question groups as collapsible navigation without source-project branding", () => {
+    const questionListSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionList.tsx", import.meta.url), "utf8");
+    expect(questionListSource).toContain("const [collapsedGroups, setCollapsedGroups]");
+    expect(questionListSource).toContain("const groups = quiz.meta.groups ?? [];");
+    expect(questionListSource).toContain("const ungroupedQuestions = quiz.questions.filter");
+    expect(questionListSource).toContain("No questions in this group.");
+    expect(questionListSource).toContain("Ungrouped");
+    expect(questionListSource).toContain("var(--org-primary)");
+    expect(questionListSource).not.toMatch(/All About Ultrasound|iHeartEcho|allaboutultrasound|iheartecho/i);
   });
 
   it("enforces org-owned waitlist and enrollment-closed states before creating a course enrollment", () => {

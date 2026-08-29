@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { QuizQuestion, QuestionType } from "../types/quiz";
-import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, Hash, BarChart3, FileText, Replace, Search, X } from "lucide-react";
+import { GripVertical, Plus, CheckSquare, ToggleLeft, Shuffle, MapPin, AlignLeft, MessageSquare, Image, ArrowDownUp, Move, Type, ChevronDown, ChevronRight, Hash, BarChart3, FileText, Replace, Search, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
@@ -117,6 +117,7 @@ export function QuestionList() {
   const [showReplace, setShowReplace] = useState(false);
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const findAndReplace = trpc.quizMaker.findAndReplaceText.useMutation({
     onSuccess: (result) => {
       loadQuiz({ ...quiz, questions: result.questions as QuizQuestion[] }, quiz.meta.title);
@@ -155,6 +156,9 @@ export function QuestionList() {
       data: question.data,
     }).toLowerCase().includes(normalizedSearch))
     : quiz.questions, [quiz.questions, normalizedSearch]);
+  const groups = quiz.meta.groups ?? [];
+  const ungroupedQuestions = quiz.questions.filter((question) => !question.groupId);
+  const toggleGroup = (groupId: string) => setCollapsedGroups((current) => ({ ...current, [groupId]: !current[groupId] }));
 
   const handleFindAndReplace = () => {
     const quizId = Number((quiz.meta as { cloudId?: number }).cloudId);
@@ -231,18 +235,36 @@ export function QuestionList() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={quiz.questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-              {quiz.questions.map((q) => {
-                const group = q.groupId ? (quiz.meta.groups || []).find((g) => g.id === q.groupId) : undefined;
+              {groups.map((group) => {
+                const groupQuestions = quiz.questions.filter((question) => question.groupId === group.id);
+                const isCollapsed = Boolean(collapsedGroups[group.id]);
                 return (
-                  <SortableQuestionItem
-                    key={q.id}
-                    question={q}
-                    isActive={q.id === activeQuestionId}
-                    onClick={() => setActiveQuestion(q.id)}
-                    groupColor={group?.color}
-                  />
+                  <section key={group.id} className="mb-2 overflow-hidden rounded-xl border border-gray-100 bg-white">
+                    <button type="button" onClick={() => toggleGroup(group.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[color:color-mix(in_srgb,var(--org-primary)_7%,transparent)]">
+                      {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: group.color }} />
+                      <span className="min-w-0 flex-1 truncate text-xs font-semibold text-gray-700">{group.name}</span>
+                      <span className="text-[11px] text-gray-400">{groupQuestions.length}</span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="space-y-1 border-t border-gray-100 p-1.5">
+                        {groupQuestions.length === 0 ? <p className="px-2 py-1.5 text-xs text-gray-400">No questions in this group.</p> : groupQuestions.map((question) => (
+                          <SortableQuestionItem key={question.id} question={question} isActive={question.id === activeQuestionId} onClick={() => setActiveQuestion(question.id)} groupColor={group.color} />
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 );
               })}
+              {groups.length > 0 && ungroupedQuestions.length > 0 && <p className="px-2 pt-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Ungrouped</p>}
+              {(groups.length > 0 ? ungroupedQuestions : quiz.questions).map((question) => (
+                <SortableQuestionItem
+                  key={question.id}
+                  question={question}
+                  isActive={question.id === activeQuestionId}
+                  onClick={() => setActiveQuestion(question.id)}
+                />
+              ))}
             </SortableContext>
           </DndContext>
         )}
