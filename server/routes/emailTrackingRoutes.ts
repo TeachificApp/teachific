@@ -18,12 +18,13 @@
  * HMAC uses JWT_SECRET — tokens cannot be forged and expire after 30 days.
  */
 
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { getDb } from "../db";
 import { users, emailCampaignRecipients, emailUnsubscribes } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { addToSendGridGlobalUnsubscribes } from "../lib/sendgridSuppressions";
+import { processCampaignUnsubscribe } from "../lib/campaignUnsubscribe";
 import { decryptOrgKey } from "../sendgrid";
 import { organizations, orgMembers } from "../../drizzle/schema";
 
@@ -154,6 +155,36 @@ export function registerEmailTrackingRoutes(app: Express): void {
 
     return res.redirect(302, targetUrl);
   });
+
+  const handleCampaignUnsubscribe = async (req: Request, res: Response) => {
+    const token = req.query.token as string | undefined;
+    const rawCampaignId = req.query.campaignId as string | undefined;
+    const campaignId = rawCampaignId ? Number.parseInt(rawCampaignId, 10) : undefined;
+    const redirectTo = (status: "success" | "invalid" | "error", email?: string) => {
+      const params = new URLSearchParams({ status });
+      if (email) params.set("email", email);
+      return `/unsubscribe?${params.toString()}`;
+    };
+
+    if (!token) return res.redirect(302, redirectTo("invalid"));
+    try {
+      const db = await getDb();
+      if (!db) return res.redirect(302, redirectTo("error"));
+      const result = await processCampaignUnsubscribe(
+        db,
+        token,
+        campaignId && !Number.isNaN(campaignId) ? campaignId : undefined,
+      );
+      if (!result.ok) return res.redirect(302, redirectTo("invalid"));
+      return res.redirect(302, redirectTo("success", result.email));
+    } catch (err) {
+      console.error("[CampaignUnsubscribe] Error:", err);
+      return res.redirect(302, redirectTo("error"));
+    }
+  };
+
+  app.get("/api/email/campaign-unsubscribe", handleCampaignUnsubscribe);
+  app.post("/api/email/campaign-unsubscribe", handleCampaignUnsubscribe);
 
   // ── One-click unsubscribe (RFC 8058 + email client GET) ─────────────────────
   app.get("/api/unsubscribe", async (req, res) => {

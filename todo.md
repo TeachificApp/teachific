@@ -120,7 +120,19 @@
 - [x] Behaviorally verify notifyEnrollmentOpen uses the owning organization sender and updates only selected entries
 - [x] Inspect the notification bookkeeping update filter to prove unselected waitlist entries remain untouched
 - [x] Route content availability enrollment-open notifications through the owning organization sender
-- [ ] Migrate email campaigns, templates, audience previews, and sender profiles to active-organization authorization and routing
+- [x] Migrate email campaigns, templates, audience previews, and sender profiles to active-organization authorization and routing
+- [x] Add reviewed additive email marketing columns for campaign editor fields, sender-profile ownership, and lead-capture widget ownership
+- [x] Scope email campaign records, templates, sender profiles, lists, widgets, audience previews, analytics, and campaign sends to the authorized active organization
+- [x] Replace legacy in-process scheduled campaign polling with deployment-safe scheduled-send tracking before enabling recurring campaign sends
+- [x] Add focused regressions for cross-organization email campaign isolation, list/widget ownership, org-scoped audience resolution, and organization-domain tracking/unsubscribe links
+- [x] Route unsubscribe handling for non-user and list-only campaign recipients through the owning organization domain instead of the platform support fallback
+- [x] Add behavioral tests proving two-organization email audience isolation across members, lists, widgets, and resource-based filters
+- [x] Add behavioral tests proving unsubscribe and tracking links for lead-capture/list-only campaign recipients use the correct organization domain
+- [x] Not applicable to Teachific after user clarification: screenshot sender/bounce-envelope concern belonged to a different project
+- [x] Add behavioral test covering two organizations where a lead-capture widget/list from org A cannot be used to resolve or subscribe recipients under org B
+- [x] Add behavioral test that a lead-capture/list-only campaign recipient receives unsubscribe and tracking links built from the owning organization domain, not a platform/default domain
+- [x] Add explicit behavioral test proving a lead-capture widget/list from org A cannot be used to resolve audience recipients while operating under org B
+- [x] Add explicit behavioral test proving a lead-capture/widget-origin campaign recipient receives unsubscribe and tracking links from the owning organization domain, not a platform/default domain
 - [ ] Require active-organization course ownership and organization-domain routing for CME disclosure administration
 - [x] Scope membership all-course and all-download access grants to the owning organization
 

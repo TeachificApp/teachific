@@ -17,10 +17,15 @@
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq, and, desc, lte, sql } from "drizzle-orm";
+import type { Request, Response } from "express";
+import { parse as parseCookie } from "cookie";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
+import { COOKIE_NAME } from "../../shared/const";
+import { createHeartbeatJob, deleteHeartbeatJob } from "../_core/heartbeat";
+import { sdk } from "../_core/sdk";
 import {
   users,
   emailTemplates,
@@ -39,9 +44,9 @@ import {
   bundles,
   orgThemes,
   organizations,
+  orgMembers,
 } from "../../drizzle/schema";
 import { addToEmailList, ensureAllContactsList } from "../lib/emailListHelper";
-import { getOrgIdForUserWithFallback } from "../db";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { resolveRecipients } from "../lib/emailCampaignAudienceResolver";
 import {
@@ -60,9 +65,11 @@ import {
   recordEmailCampaignEvent,
 } from "../lib/emailCampaignTracking";
 import {
+  buildCampaignRecipientUnsubscribeToken,
   buildListUnsubscribeApiUrl,
   buildUnsubscribePageUrl,
   ensureEmailCampaignEventsTable,
+  processCampaignUnsubscribe,
 } from "../lib/campaignUnsubscribe";
 
 // ─── Campaign metrics helper ──────────────────────────────────────────────────
@@ -154,17 +161,27 @@ async function ensureUnsubscribeToken(userId: number): Promise<string> {
 }
 
 /** Build the unsubscribe URL for a given token (footer link in email body). */
-function buildUnsubscribeUrl(token: string, campaignId?: number): string {
-  return buildUnsubscribePageUrl(token, campaignId);
+function buildUnsubscribeUrl(token: string, campaignId?: number, baseUrl?: string): string {
+  return buildUnsubscribePageUrl(token, campaignId, baseUrl);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /** Inject an unsubscribe footer block into HTML email body */
-function injectUnsubscribeFooter(htmlBody: string, unsubscribeUrl: string): string {
+function injectUnsubscribeFooter(htmlBody: string, unsubscribeUrl: string, senderLabel = "this organization"): string {
+  const safeSenderLabel = escapeHtml(senderLabel.trim() || "this organization");
   const footerBlock = `
     <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;">
       <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.6;">
-        You are receiving this email because you have an account on Teachific™.<br/>
-        <a href="${unsubscribeUrl}" style="color:#94a3b8;text-decoration:underline;" target="_blank" rel="noopener noreferrer">Unsubscribe from platform emails</a>
+        You are receiving this email because you have an account or subscription relationship with ${safeSenderLabel}.<br/>
+        <a href="${unsubscribeUrl}" style="color:#94a3b8;text-decoration:underline;" target="_blank" rel="noopener noreferrer">Unsubscribe from these emails</a>
       </p>
     </div>`;
   // Insert before closing </body> tag if present, otherwise append
@@ -196,6 +213,129 @@ async function assertAdmin(userId: number) {
   }
 }
 
+type EmailMarketingActor = { id: number; role: string };
+type EmailMarketingDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+async function requireActiveEmailMarketingOrg(user: EmailMarketingActor): Promise<number> {
+  const orgId = await getOrgIdForUserWithFallback(user.id, user.role);
+  if (!orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "No active organization is available for email campaigns." });
+  }
+  return requireOrgAdmin(user.id, user.role, orgId);
+}
+
+async function requireCampaignForOrg(db: EmailMarketingDb, campaignId: number, orgId: number) {
+  const [campaign] = await db
+    .select()
+    .from(emailCampaigns)
+    .where(and(eq(emailCampaigns.id, campaignId), eq(emailCampaigns.orgId, orgId)))
+    .limit(1);
+  if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found for this organization." });
+  return campaign;
+}
+
+async function requireTemplateForOrg(db: EmailMarketingDb, templateId: number, orgId: number) {
+  const [template] = await db
+    .select()
+    .from(emailTemplates)
+    .where(and(eq(emailTemplates.id, templateId), eq(emailTemplates.orgId, orgId)))
+    .limit(1);
+  if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Email template not found for this organization." });
+  return template;
+}
+
+async function requireSenderProfileForOrg(db: EmailMarketingDb, senderProfileId: number, orgId: number) {
+  const [profile] = await db
+    .select()
+    .from(emailSenderProfiles)
+    .where(and(eq(emailSenderProfiles.id, senderProfileId), eq(emailSenderProfiles.orgId, orgId)))
+    .limit(1);
+  if (!profile) throw new TRPCError({ code: "NOT_FOUND", message: "Sender profile not found for this organization." });
+  return profile;
+}
+
+async function requireEmailListForOrg(db: EmailMarketingDb, listId: number, orgId: number) {
+  const [list] = await db
+    .select()
+    .from(emailLists)
+    .where(and(eq(emailLists.id, listId), eq(emailLists.orgId, orgId)))
+    .limit(1);
+  if (!list) throw new TRPCError({ code: "NOT_FOUND", message: "Email list not found for this organization." });
+  return list;
+}
+
+async function requireLeadCaptureWidgetForOrg(db: EmailMarketingDb, widgetId: number, orgId: number) {
+  const [widget] = await db
+    .select()
+    .from(leadCaptureWidgets)
+    .where(and(eq(leadCaptureWidgets.id, widgetId), eq(leadCaptureWidgets.orgId, orgId)))
+    .limit(1);
+  if (!widget) throw new TRPCError({ code: "NOT_FOUND", message: "Lead capture widget not found for this organization." });
+  return widget;
+}
+
+async function validateSenderProfileForOrg(db: EmailMarketingDb, senderProfileId: number | null | undefined, orgId: number) {
+  if (senderProfileId == null) return null;
+  return requireSenderProfileForOrg(db, senderProfileId, orgId);
+}
+
+async function validateAudienceListsForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  const listIds = [...new Set(filter.listIds ?? [])];
+  if (listIds.length === 0) return;
+  const rows = await db
+    .select({ id: emailLists.id })
+    .from(emailLists)
+    .where(and(inArray(emailLists.id, listIds), eq(emailLists.orgId, orgId), eq(emailLists.isActive, true)));
+  if (rows.length !== listIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected email lists do not belong to the active organization." });
+  }
+}
+
+function campaignNameForSubject(subject: string): string {
+  return subject.trim() || "Untitled campaign";
+}
+
+function cronExpressionForDate(date: Date): string {
+  return `0 ${date.getUTCMinutes()} ${date.getUTCHours()} ${date.getUTCDate()} ${date.getUTCMonth() + 1} *`;
+}
+
+function getSessionTokenFromCookieHeader(cookieHeader: string | string[] | undefined): string {
+  const rawCookie = Array.isArray(cookieHeader) ? cookieHeader.join("; ") : cookieHeader ?? "";
+  return parseCookie(rawCookie)[COOKIE_NAME] ?? "";
+}
+
+function errorMessageForLog(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function getEmailCampaignOrgContext(db: EmailMarketingDb, orgId: number) {
+  const [theme, org] = await Promise.all([
+    db
+      .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
+      .from(orgThemes)
+      .where(eq(orgThemes.orgId, orgId))
+      .limit(1),
+    db
+      .select({
+        name: organizations.name,
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      })
+      .from(organizations)
+      .where(eq(organizations.id, orgId))
+      .limit(1),
+  ]);
+  const organization = org[0];
+  return {
+    accentColor: theme?.buttonColor ?? theme?.primaryColor ?? null,
+    displayName: organization?.name ?? "this organization",
+    baseUrl: organization
+      ? getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)
+      : undefined,
+  };
+}
+
 // ─── Core send function (shared by immediate and scheduled sends) ─────────────
 
 export async function executeCampaignSend(campaignId: number): Promise<void> {
@@ -208,28 +348,14 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
     .where(eq(emailCampaigns.id, campaignId))
     .limit(1);
   if (!campaign) return;
-  // Fetch org accent color for link styling
-  let orgAccentColor: string | null = null;
-  let orgTrackingBaseUrl: string | undefined;
-  if (campaign.orgId) {
-    const [theme, org] = await Promise.all([
-      db
-        .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
-        .from(orgThemes)
-        .where(eq(orgThemes.orgId, campaign.orgId))
-        .limit(1),
-      db
-        .select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
-        .from(organizations)
-        .where(eq(organizations.id, campaign.orgId))
-        .limit(1),
-    ]);
-    orgAccentColor = theme?.buttonColor ?? theme?.primaryColor ?? null;
-    const organization = org[0];
-    orgTrackingBaseUrl = organization
-      ? getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)
-      : undefined;
+  if (!campaign.orgId) {
+    await db
+      .update(emailCampaigns)
+      .set({ status: "failed", errorMessage: "Campaign is not assigned to an organization." })
+      .where(eq(emailCampaigns.id, campaignId));
+    return;
   }
+  const orgContext = await getEmailCampaignOrgContext(db, campaign.orgId);
 
   let filter: AudienceFilter;
   try {
@@ -246,12 +372,9 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
   let senderName: string | undefined;
   let senderEmail: string | undefined;
   if (campaign.senderProfileId) {
-    const [sp] = await db
-      .select()
-      .from(emailSenderProfiles)
-      .where(eq(emailSenderProfiles.id, campaign.senderProfileId))
-      .limit(1);
-    if (sp) { senderName = sp.name; senderEmail = sp.email; }
+    const sp = await requireSenderProfileForOrg(db, campaign.senderProfileId, campaign.orgId);
+    senderName = sp.name;
+    senderEmail = sp.email;
   } else if (campaign.fromName || campaign.fromEmail) {
     senderName = campaign.fromName ?? undefined;
     senderEmail = campaign.fromEmail ?? undefined;
@@ -262,37 +385,45 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
     .set({ status: "sending" })
     .where(eq(emailCampaigns.id, campaignId));
 
-  const recipients = await resolveRecipients(filter, campaignId);
+  const recipients = await resolveRecipients(filter, campaignId, campaign.orgId);
   let sent = 0;
   let failed = 0;
 
   for (const recipient of recipients) {
     const variant = pickAbVariant(recipient.email, filter.abTest, campaignId);
     const subject = variant?.subject?.trim() || campaign.subject;
-    let html = normalizeCampaignEmailHtml(variant?.htmlBody?.trim() || campaign.htmlBody, orgAccentColor);
+    let html = normalizeCampaignEmailHtml(variant?.htmlBody?.trim() || campaign.htmlBody, orgContext.accentColor);
+    const recipientKey = buildRecipientTrackingKey(recipient);
 
     let unsubscribePageUrl: string | undefined;
     let listUnsubscribeApiUrl: string | undefined;
     if (recipient.userId) {
       const token = await ensureUnsubscribeToken(recipient.userId);
-      unsubscribePageUrl = buildUnsubscribeUrl(token, campaignId);
-      listUnsubscribeApiUrl = buildListUnsubscribeApiUrl(token, campaignId);
+      unsubscribePageUrl = buildUnsubscribeUrl(token, campaignId, orgContext.baseUrl);
+      listUnsubscribeApiUrl = buildListUnsubscribeApiUrl(token, campaignId, orgContext.baseUrl);
+    } else {
+      const token = buildCampaignRecipientUnsubscribeToken({
+        campaignId,
+        orgId: campaign.orgId,
+        email: recipient.email,
+        recipientKey,
+        listSubscriberId: recipient.listSubscriberId ?? null,
+      });
+      unsubscribePageUrl = buildUnsubscribeUrl(token, campaignId, orgContext.baseUrl);
+      listUnsubscribeApiUrl = buildListUnsubscribeApiUrl(token, campaignId, orgContext.baseUrl);
+    }
+    if (unsubscribePageUrl) {
       if (html.includes("{{UNSUBSCRIBE_URL}}")) {
         html = html.replaceAll("{{UNSUBSCRIBE_URL}}", unsubscribePageUrl);
       } else {
-        html = injectUnsubscribeFooter(html, unsubscribePageUrl);
+        html = injectUnsubscribeFooter(html, unsubscribePageUrl, orgContext.displayName);
       }
-    } else if (html.includes("{{UNSUBSCRIBE_URL}}")) {
-      html = html.replaceAll(
-        "{{UNSUBSCRIBE_URL}}",
-        "mailto:support@teachific.app?subject=Unsubscribe",
-      );
     }
 
-    const recipientKey = buildRecipientTrackingKey(recipient);
     const variantKey = recipient.abVariant ?? variant?.key;
-    html = injectTrackingPixel(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl);
-    html = wrapLinksForTracking(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl);
+    html = normalizeCampaignEmailHtml(html, orgContext.accentColor);
+    html = injectTrackingPixel(html, campaignId, recipientKey, variantKey, orgContext.baseUrl);
+    html = wrapLinksForTracking(html, campaignId, recipientKey, variantKey, orgContext.baseUrl);
 
     const displayName = recipient.displayName || recipient.name || recipient.email;
     const ok = await sendEmail({
@@ -331,44 +462,37 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
 
 // ─── Scheduled campaign cron ──────────────────────────────────────────────────
 
-let schedulerStarted = false;
-
 export function startEmailCampaignScheduler() {
-  if (schedulerStarted) return;
-  schedulerStarted = true;
+  console.warn("[EmailScheduler] In-process campaign polling is disabled. Scheduled campaigns run through /api/scheduled/send-email-campaign.");
+}
 
-  const CHECK_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes
-
-  const check = async () => {
-    try {
-      const db = await getDb();
-      if (!db) return;
-
-      const now = new Date();
-      // Find campaigns that are scheduled and due
-      const due = await db
-        .select({ id: emailCampaigns.id })
-        .from(emailCampaigns)
-        .where(
-          and(
-            eq(emailCampaigns.status, "scheduled"),
-            lte(emailCampaigns.scheduledAt, now),
-          ),
-        );
-
-      for (const c of due) {
-        console.log(`[EmailScheduler] Sending scheduled campaign #${c.id}`);
-        await executeCampaignSend(c.id);
-      }
-    } catch (err) {
-      console.error("[EmailScheduler] Error:", err);
+export async function handleScheduledEmailCampaignSend(req: Request, res: Response) {
+  try {
+    const cronUser = await sdk.authenticateRequest(req);
+    if (!cronUser.isCron || !cronUser.taskUid) {
+      return res.status(403).json({ error: "cron-only" });
     }
-  };
 
-  // Run immediately on start, then every 5 minutes
-  check();
-  setInterval(check, CHECK_INTERVAL_MS);
-  console.log("[EmailScheduler] Started — checking every 5 minutes for scheduled campaigns.");
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "DB unavailable" });
+
+    const [campaign] = await db
+      .select({ id: emailCampaigns.id, status: emailCampaigns.status })
+      .from(emailCampaigns)
+      .where(eq(emailCampaigns.scheduleCronTaskUid, cronUser.taskUid))
+      .limit(1);
+
+    if (!campaign) return res.json({ ok: true, skipped: "orphaned scheduled campaign task" });
+    if (campaign.status !== "scheduled") {
+      return res.json({ ok: true, campaignId: campaign.id, skipped: `campaign status is ${campaign.status}` });
+    }
+
+    await executeCampaignSend(campaign.id);
+    return res.json({ ok: true, campaignId: campaign.id });
+  } catch (error) {
+    const context = { url: req.originalUrl };
+    return res.status(500).json({ error: errorMessageForLog(error), context, timestamp: new Date().toISOString() });
+  }
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -416,46 +540,28 @@ export const emailCampaignRouter = router({
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [u] = await db
-        .select({ id: users.id, email: users.email, unsubscribedAt: users.unsubscribedAt })
-        .from(users)
-        .where(eq(users.unsubscribeToken, input.token))
-        .limit(1);
-      if (!u) {
+      const result = await processCampaignUnsubscribe(db, input.token, input.campaignId);
+      if (!result.ok) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invalid or expired unsubscribe link." });
       }
-      if (!u.unsubscribedAt) {
-        await db
-          .update(users)
-          .set({ unsubscribedAt: new Date() })
-          .where(eq(users.id, u.id));
-        if (u.email) {
-          await addToSendGridGlobalUnsubscribes([u.email]);
-        }
-      }
-      if (input.campaignId) {
-        try {
-          await recordEmailCampaignEvent(db, {
-            campaignId: input.campaignId,
-            recipientKey: `u${u.id}`,
-            eventType: "unsubscribe",
-          });
-        } catch (err) {
-          console.error("[EmailCampaign] Failed to record unsubscribe event:", err);
-        }
-      }
-      return { success: true, alreadyUnsubscribed: !!u.unsubscribedAt };
+      return {
+        success: true,
+        email: result.email,
+        alreadyUnsubscribed: result.alreadyUnsubscribed,
+        canResubscribe: result.userId !== null && !result.listSubscriberId,
+      };
     }),
 
   // ── Admin: email templates ────────────────────────────────────────────────
 
   listTemplates: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     return db
       .select()
       .from(emailTemplates)
+      .where(eq(emailTemplates.orgId, orgId))
       .orderBy(desc(emailTemplates.updatedAt));
   }),
 
@@ -471,10 +577,11 @@ export const emailCampaignRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       if (input.id) {
+        await requireTemplateForOrg(db, input.id, orgId);
         await db
           .update(emailTemplates)
           .set({
@@ -484,10 +591,11 @@ export const emailCampaignRouter = router({
             blocksJson: input.blocksJson ?? null,
             previewText: input.previewText ?? null,
           })
-          .where(eq(emailTemplates.id, input.id));
+          .where(and(eq(emailTemplates.id, input.id), eq(emailTemplates.orgId, orgId)));
         return { id: input.id };
       } else {
         const [result] = await db.insert(emailTemplates).values({
+          orgId,
           createdByUserId: ctx.user.id,
           name: input.name,
           subject: input.subject,
@@ -502,10 +610,11 @@ export const emailCampaignRouter = router({
   deleteTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await db.delete(emailTemplates).where(eq(emailTemplates.id, input.id));
+      await requireTemplateForOrg(db, input.id, orgId);
+      await db.delete(emailTemplates).where(and(eq(emailTemplates.id, input.id), eq(emailTemplates.orgId, orgId)));
       return { success: true };
     }),
 
@@ -514,8 +623,11 @@ export const emailCampaignRouter = router({
   previewAudience: protectedProcedure
     .input(AudienceFilterSchema)
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
-      const recipients = await resolveRecipients(input);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await validateAudienceListsForOrg(db, input, orgId);
+      const recipients = await resolveRecipients(input, undefined, orgId);
       return {
         count: recipients.length,
         sampleEmails: recipients.slice(0, 5).map((r) => r.email),
@@ -539,12 +651,14 @@ export const emailCampaignRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
+      await validateAudienceListsForOrg(db, input.audienceFilter, orgId);
+
       // Resolve recipients to validate audience
-      const recipients = await resolveRecipients(input.audienceFilter);
+      const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
       if (recipients.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -553,8 +667,12 @@ export const emailCampaignRouter = router({
       }
 
       // Create campaign record in "sending" state
-      const htmlBody = normalizeCampaignEmailHtml(input.htmlBody);
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
+      const htmlBody = normalizeCampaignEmailHtml(input.htmlBody, orgContext.accentColor);
       const [result] = await db.insert(emailCampaigns).values({
+        orgId,
+        name: campaignNameForSubject(input.subject),
+        createdBy: ctx.user.id,
         sentByUserId: ctx.user.id,
         subject: input.subject,
         htmlBody,
@@ -596,7 +714,7 @@ export const emailCampaignRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
@@ -608,10 +726,15 @@ export const emailCampaignRouter = router({
       }
 
       // Estimate recipient count (dry-run)
-      const recipients = await resolveRecipients(input.audienceFilter);
+      await validateAudienceListsForOrg(db, input.audienceFilter, orgId);
+      const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
 
-      const htmlBodyScheduled = normalizeCampaignEmailHtml(input.htmlBody);
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
+      const htmlBodyScheduled = normalizeCampaignEmailHtml(input.htmlBody, orgContext.accentColor);
       const [result] = await db.insert(emailCampaigns).values({
+        orgId,
+        name: campaignNameForSubject(input.subject),
+        createdBy: ctx.user.id,
         sentByUserId: ctx.user.id,
         subject: input.subject,
         htmlBody: htmlBodyScheduled,
@@ -626,7 +749,30 @@ export const emailCampaignRouter = router({
         headerColor: input.headerColor ?? null,
         headerEnabled: input.headerEnabled ?? true,
       });
-      return { campaignId: (result as any).insertId as number, recipientCount: recipients.length, scheduledAt: input.scheduledAt };
+      const campaignId = (result as any).insertId as number;
+      const sessionToken = getSessionTokenFromCookieHeader(ctx.req.headers.cookie);
+      try {
+        const job = await createHeartbeatJob({
+          name: `email-campaign-${campaignId}`,
+          cron: cronExpressionForDate(input.scheduledAt),
+          path: "/api/scheduled/send-email-campaign",
+          payload: { campaignId },
+          description: `Send scheduled email campaign #${campaignId}`,
+        }, sessionToken);
+        await db
+          .update(emailCampaigns)
+          .set({ scheduleCronTaskUid: job.taskUid })
+          .where(and(eq(emailCampaigns.id, campaignId), eq(emailCampaigns.orgId, orgId)));
+      } catch (error) {
+        await db
+          .update(emailCampaigns)
+          .set({ status: "failed", errorMessage: `Failed to create scheduled send task: ${errorMessageForLog(error)}` })
+          .where(and(eq(emailCampaigns.id, campaignId), eq(emailCampaigns.orgId, orgId)));
+        throw error instanceof TRPCError
+          ? error
+          : new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to create scheduled send task: ${errorMessageForLog(error)}` });
+      }
+      return { campaignId, recipientCount: recipients.length, scheduledAt: input.scheduledAt };
     }),
 
   // ── Admin: cancel a scheduled campaign ───────────────────────────────────
@@ -634,23 +780,32 @@ export const emailCampaignRouter = router({
   cancelScheduled: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const campaign = await requireCampaignForOrg(db, input.id, orgId);
+      if (campaign.scheduleCronTaskUid) {
+        const sessionToken = getSessionTokenFromCookieHeader(ctx.req.headers.cookie);
+        try {
+          await deleteHeartbeatJob(campaign.scheduleCronTaskUid, sessionToken);
+        } catch (error) {
+          if (!(error instanceof TRPCError && error.code === "NOT_FOUND")) throw error;
+        }
+      }
       await db
         .update(emailCampaigns)
-        .set({ status: "draft" })
-        .where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.status, "scheduled")));
+        .set({ status: "draft", scheduleCronTaskUid: null })
+        .where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.orgId, orgId), eq(emailCampaigns.status, "scheduled")));
       return { success: true };
     }),
 
   // ── Admin: sender profiles ───────────────────────────────────────────────
 
   listSenderProfiles: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    return db.select().from(emailSenderProfiles).orderBy(desc(emailSenderProfiles.createdAt));
+    return db.select().from(emailSenderProfiles).where(eq(emailSenderProfiles.orgId, orgId)).orderBy(desc(emailSenderProfiles.createdAt));
   }),
 
   saveSenderProfile: protectedProcedure
@@ -662,21 +817,23 @@ export const emailCampaignRouter = router({
       isDefault: z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       if (input.isDefault) {
         // Unset other defaults
-        await db.update(emailSenderProfiles).set({ isDefault: false });
+        await db.update(emailSenderProfiles).set({ isDefault: false }).where(eq(emailSenderProfiles.orgId, orgId));
       }
       if (input.id) {
+        await requireSenderProfileForOrg(db, input.id, orgId);
         await db.update(emailSenderProfiles).set({
           name: input.name, email: input.email,
           replyTo: input.replyTo ?? null, isDefault: input.isDefault,
-        }).where(eq(emailSenderProfiles.id, input.id));
+        }).where(and(eq(emailSenderProfiles.id, input.id), eq(emailSenderProfiles.orgId, orgId)));
         return { id: input.id };
       } else {
         const [r] = await db.insert(emailSenderProfiles).values({
+          orgId,
           name: input.name, email: input.email,
           replyTo: input.replyTo ?? null, isDefault: input.isDefault,
         });
@@ -687,10 +844,11 @@ export const emailCampaignRouter = router({
   deleteSenderProfile: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await db.delete(emailSenderProfiles).where(eq(emailSenderProfiles.id, input.id));
+      await requireSenderProfileForOrg(db, input.id, orgId);
+      await db.delete(emailSenderProfiles).where(and(eq(emailSenderProfiles.id, input.id), eq(emailSenderProfiles.orgId, orgId)));
       return { success: true };
     }),
 
@@ -699,21 +857,21 @@ export const emailCampaignRouter = router({
   deleteCampaign: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       // Only allow deleting drafts and scheduled campaigns, not sent ones
-      const [campaign] = await db.select({ status: emailCampaigns.status }).from(emailCampaigns).where(eq(emailCampaigns.id, input.id)).limit(1);
+      const campaign = await requireCampaignForOrg(db, input.id, orgId);
       if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
       if (campaign.status === "sending") throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete a campaign that is currently sending" });
-      await db.delete(emailCampaigns).where(eq(emailCampaigns.id, input.id));
+      await db.delete(emailCampaigns).where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.orgId, orgId)));
       return { success: true };
     }),
 
   // ── Admin: option lists for audience builder ──────────────────────────────
 
   getAudienceOptions: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
@@ -737,22 +895,22 @@ export const emailCampaignRouter = router({
       sentCampaigns,
     ] = await Promise.all([
       safeAudienceSqlRows<{ id: number; title: string }>("courses", () =>
-        db.execute(sql`SELECT id, title FROM lms_courses WHERE status != 'archived' AND type IN ('course', 'cohort') ORDER BY title LIMIT 500`),
+        db.execute(sql`SELECT id, title FROM lms_courses WHERE orgId = ${orgId} AND status != 'archived' AND type IN ('course', 'cohort') ORDER BY title LIMIT 500`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("quizzes", () =>
-        db.execute(sql`SELECT id, title FROM lms_courses WHERE status != 'archived' AND type = 'quiz' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, title FROM lms_courses WHERE orgId = ${orgId} AND status != 'archived' AND type = 'quiz' ORDER BY title LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("products", () =>
-        db.execute(sql`SELECT id, title FROM digital_products WHERE status != 'archived' ORDER BY title LIMIT 500`),
+        db.execute(sql`SELECT id, title FROM digital_products WHERE orgId = ${orgId} AND visibility != 'archived' ORDER BY title LIMIT 500`),
       ),
       safeAudienceSqlRows<{ id: number; name: string }>("groups", () =>
-        db.execute(sql`SELECT id, name FROM lms_groups ORDER BY name LIMIT 200`),
+        db.execute(sql`SELECT id, name FROM lms_groups WHERE orgId = ${orgId} ORDER BY name LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; name: string }>("cohortGroups", () =>
-        db.execute(sql`SELECT id, name FROM lms_cohort_groups ORDER BY name LIMIT 200`),
+        db.execute(sql`SELECT id, name FROM lms_cohort_groups WHERE orgId = ${orgId} ORDER BY name LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("forms", () =>
-        db.execute(sql`SELECT id, title FROM generalFormTemplates WHERE status != 'archived' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, name AS title FROM general_form_templates WHERE orgId = ${orgId} ORDER BY name LIMIT 200`),
       ),
       (async () => {
         try {
@@ -772,7 +930,7 @@ export const emailCampaignRouter = router({
           return await db
             .select({ id: emailLists.id, name: emailLists.name, subscriberCount: emailLists.subscriberCount })
             .from(emailLists)
-            .where(eq(emailLists.isActive, true))
+            .where(and(eq(emailLists.orgId, orgId), eq(emailLists.isActive, true)))
             .orderBy(desc(emailLists.createdAt))
             .limit(200);
         } catch (err) {
@@ -781,22 +939,22 @@ export const emailCampaignRouter = router({
         }
       })(),
       safeAudienceSqlRows<{ id: number; title: string }>("membershipPlans", () =>
-        db.execute(sql`SELECT id, title FROM membership_plans WHERE status != 'archived' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, name AS title FROM membership_plans WHERE orgId = ${orgId} ORDER BY name LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("bundles", () =>
-        db.execute(sql`SELECT id, title FROM bundles ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, name AS title FROM bundles WHERE orgId = ${orgId} AND isActive = 1 ORDER BY name LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("digitalBundles", () =>
-        db.execute(sql`SELECT id, title FROM digital_bundles WHERE status != 'archived' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, title FROM digital_bundles WHERE org_id = ${orgId} AND status != 'archived' ORDER BY title LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("webinars", () =>
-        db.execute(sql`SELECT id, title FROM webinars ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, title FROM webinars WHERE orgId = ${orgId} AND isPublished = 1 ORDER BY title LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("workshops", () =>
-        db.execute(sql`SELECT id, title FROM workshops WHERE status != 'archived' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, title FROM workshops WHERE org_id = ${orgId} AND status != 'archived' ORDER BY title LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("communities", () =>
-        db.execute(sql`SELECT id, title FROM communities WHERE status != 'archived' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, title FROM communities WHERE 1 = 0 ORDER BY title LIMIT 0`),
       ),
       safeAudienceSqlRows<{ id: number; label: string }>("workshopInstances", () =>
         db.execute(sql`
@@ -804,22 +962,27 @@ export const emailCampaignRouter = router({
             CONCAT(w.title, ' — ', COALESCE(NULLIF(wi.title, ''), DATE_FORMAT(wi.start_date, '%b %d, %Y'))) as label
           FROM workshop_instances wi
           INNER JOIN workshops w ON w.id = wi.workshop_id
-          WHERE wi.status != 'archived'
+          WHERE w.org_id = ${orgId} AND wi.status != 'archived'
           ORDER BY wi.start_date DESC
           LIMIT 300
         `),
       ),
       safeAudienceSqlRows<{ id: number; title: string }>("physicalProducts", () =>
-        db.execute(sql`SELECT id, title FROM physical_products WHERE status != 'archived' ORDER BY title LIMIT 200`),
+        db.execute(sql`SELECT id, title FROM physical_products WHERE org_id = ${orgId} AND status != 'archived' ORDER BY title LIMIT 200`),
       ),
       safeAudienceSqlRows<{ id: number; subject: string; sentAt: Date | null }>("sentCampaigns", () =>
-        db.execute(sql`SELECT id, subject, sent_at as sentAt FROM email_campaigns WHERE status = 'sent' ORDER BY sent_at DESC LIMIT 200`),
+        db.execute(sql`SELECT id, subject, sentAt FROM email_campaigns WHERE orgId = ${orgId} AND status = 'sent' ORDER BY sentAt DESC LIMIT 200`),
       ),
     ]);
 
     let roleRows: { role: string }[] = [];
     try {
-      roleRows = await db.selectDistinct({ role: userRoles.role }).from(userRoles).limit(50);
+      roleRows = await db
+        .selectDistinct({ role: userRoles.role })
+        .from(userRoles)
+        .innerJoin(orgMembers, eq(orgMembers.userId, userRoles.userId))
+        .where(eq(orgMembers.orgId, orgId))
+        .limit(50);
     } catch (err) {
       console.error("[EmailCampaign] getAudienceOptions roles:", err);
     }
@@ -856,7 +1019,7 @@ export const emailCampaignRouter = router({
    * - bundles: published bundles
    */
   getEmailBlockOptions: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
@@ -866,20 +1029,14 @@ export const emailCampaignRouter = router({
       db
         .select({
           id: membershipPlans.id,
-          title: membershipPlans.title,
-          subtitle: membershipPlans.subtitle,
+          title: membershipPlans.name,
+          subtitle: membershipPlans.description,
           price: membershipPlans.price,
-          compareAtPrice: membershipPlans.compareAtPrice,
           billingInterval: membershipPlans.billingInterval,
-          coverImage: membershipPlans.coverImage,
-          accentColor: membershipPlans.accentColor,
-          featureBullets: membershipPlans.featureBullets,
-          brand: membershipPlans.brand,
-          slug: membershipPlans.slug,
         })
         .from(membershipPlans)
-        .where(eq(membershipPlans.status, "published"))
-        .orderBy(membershipPlans.sortOrder)
+        .where(eq(membershipPlans.orgId, orgId))
+        .orderBy(membershipPlans.name)
         .limit(50),
 
       db
@@ -895,13 +1052,16 @@ export const emailCampaignRouter = router({
           courseTitle: lmsCourses.title,
           courseCoverImageUrl: lmsCourses.coverImageUrl,
           courseSlug: lmsCourses.slug,
-          courseBrand: lmsCourses.brand,
           coursePrice: lmsCourses.price,
         })
         .from(lmsCohortGroups)
         .innerJoin(lmsCourses, eq(lmsCohortGroups.courseId, lmsCourses.id))
         .where(
-          sql`${lmsCohortGroups.status} IN ('open','active') AND (${lmsCohortGroups.startDate} IS NULL OR ${lmsCohortGroups.startDate} >= ${now})`
+          and(
+            eq(lmsCohortGroups.orgId, orgId),
+            eq(lmsCourses.orgId, orgId),
+            sql`${lmsCohortGroups.status} IN ('open','active') AND (${lmsCohortGroups.startDate} IS NULL OR ${lmsCohortGroups.startDate} >= ${now})`,
+          )
         )
         .orderBy(lmsCohortGroups.startDate)
         .limit(50),
@@ -922,13 +1082,15 @@ export const emailCampaignRouter = router({
           workshopTitle: workshops.title,
           workshopCoverImageUrl: workshops.coverImageUrl,
           workshopSlug: workshops.slug,
-          workshopBrand: workshops.brand,
           workshopPrice: workshops.price,
         })
         .from(workshopInstances)
         .innerJoin(workshops, eq(workshopInstances.workshopId, workshops.id))
         .where(
-          sql`${workshopInstances.status} = 'published' AND ${workshopInstances.availableForPurchase} = 1 AND ${workshopInstances.startDate} >= ${now}`
+          and(
+            eq(workshops.orgId, orgId),
+            sql`${workshopInstances.status} = 'published' AND ${workshopInstances.availableForPurchase} = 1 AND ${workshopInstances.startDate} >= ${now}`,
+          )
         )
         .orderBy(workshopInstances.startDate)
         .limit(50),
@@ -936,27 +1098,30 @@ export const emailCampaignRouter = router({
       db
         .select({
           id: bundles.id,
-          title: bundles.title,
-          subtitle: bundles.subtitle,
+          title: bundles.name,
+          subtitle: bundles.description,
           price: bundles.price,
-          coverImage: bundles.coverImage,
-          brand: bundles.brand,
-          slug: bundles.slug,
+          coverImage: bundles.thumbnailUrl,
         })
         .from(bundles)
-        .where(eq(bundles.status, "published"))
-        .orderBy(bundles.title)
+        .where(and(eq(bundles.orgId, orgId), eq(bundles.isActive, true)))
+        .orderBy(bundles.name)
         .limit(50),
     ]);
 
     return {
       membershipPlans: plans.map((p) => ({
         ...p,
-        featureBullets: p.featureBullets ? (() => { try { return JSON.parse(p.featureBullets as string); } catch { return []; } })() : [],
+        compareAtPrice: null,
+        coverImage: null,
+        accentColor: null,
+        featureBullets: [],
+        brand: null,
+        slug: `membership-${p.id}`,
       })),
-      cohortGroups: cohortGroupRows,
-      workshopInstances: instanceRows,
-      bundles: bundleRows,
+      cohortGroups: cohortGroupRows.map((row) => ({ ...row, courseBrand: null })),
+      workshopInstances: instanceRows.map((row) => ({ ...row, workshopBrand: null })),
+      bundles: bundleRows.map((row) => ({ ...row, brand: null, slug: `bundle-${row.id}` })),
     };
   }),
 
@@ -965,21 +1130,20 @@ export const emailCampaignRouter = router({
   getCampaign: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [campaign] = await db.select().from(emailCampaigns).where(eq(emailCampaigns.id, input.id)).limit(1);
-      if (!campaign) throw new TRPCError({ code: "NOT_FOUND" });
-      return campaign;
+      return requireCampaignForOrg(db, input.id, orgId);
     }),
 
   listCampaigns: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
     const campaigns = await db
       .select()
       .from(emailCampaigns)
+      .where(eq(emailCampaigns.orgId, orgId))
       .orderBy(desc(emailCampaigns.createdAt))
       .limit(100);
     if (campaigns.length === 0) return [];
@@ -1012,15 +1176,10 @@ export const emailCampaignRouter = router({
   getCampaignAnalytics: protectedProcedure
     .input(z.object({ campaignId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [campaign] = await db
-        .select()
-        .from(emailCampaigns)
-        .where(eq(emailCampaigns.id, input.campaignId))
-        .limit(1);
-      if (!campaign) throw new TRPCError({ code: "NOT_FOUND" });
+      const campaign = await requireCampaignForOrg(db, input.campaignId, orgId);
 
       const [eventsRaw] = (await db.execute(sql`
         SELECT eventType, COUNT(*) as cnt
@@ -1149,9 +1308,10 @@ export const emailCampaignRouter = router({
       offset: z.number().min(0).default(0),
     }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireCampaignForOrg(db, input.campaignId, orgId);
 
       const eventFilter = input.eventType
         ? sql`AND e.eventType = ${input.eventType}`
@@ -1207,9 +1367,10 @@ export const emailCampaignRouter = router({
   getCampaignGeo: protectedProcedure
     .input(z.object({ campaignId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireCampaignForOrg(db, input.campaignId, orgId);
 
       const [byCountry] = (await db.execute(sql`
         SELECT country, COUNT(DISTINCT recipientKey) as uniqueRecipients, COUNT(*) as totalEvents
@@ -1253,12 +1414,14 @@ export const emailCampaignRouter = router({
       listName: z.string().min(1).max(200),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireCampaignForOrg(db, input.campaignId, orgId);
 
       // Create the new email list
       const [listResult] = await db.insert(emailLists).values({
+        orgId,
         name: input.listName,
         description: `Auto-created from campaign #${input.campaignId} ${input.eventType}s`,
         isActive: true,
@@ -1310,15 +1473,20 @@ export const emailCampaignRouter = router({
   duplicateCampaign: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [orig] = await db.select().from(emailCampaigns).where(eq(emailCampaigns.id, input.id)).limit(1);
-      if (!orig) throw new TRPCError({ code: "NOT_FOUND" });
+      const orig = await requireCampaignForOrg(db, input.id, orgId);
+      if (orig.senderProfileId) await requireSenderProfileForOrg(db, orig.senderProfileId, orgId);
       const [r] = await db.insert(emailCampaigns).values({
+        orgId,
+        name: `Copy of ${orig.name || orig.subject}`,
+        createdBy: ctx.user.id,
         sentByUserId: ctx.user.id,
         subject: `Copy of ${orig.subject}`,
         htmlBody: orig.htmlBody,
+        textBody: orig.textBody,
+        blocksJson: orig.blocksJson,
         previewText: orig.previewText,
         audienceFilter: orig.audienceFilter,
         status: "draft",
@@ -1332,10 +1500,14 @@ export const emailCampaignRouter = router({
   // ── Admin: email lists CRUD ───────────────────────────────────────────────
 
   listEmailLists: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    return db.select().from(emailLists).orderBy(desc(emailLists.createdAt));
+    return db
+      .select()
+      .from(emailLists)
+      .where(eq(emailLists.orgId, orgId))
+      .orderBy(desc(emailLists.createdAt));
   }),
 
   createEmailList: protectedProcedure
@@ -1344,10 +1516,11 @@ export const emailCampaignRouter = router({
       description: z.string().max(1000).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const [r] = await db.insert(emailLists).values({
+        orgId,
         name: input.name,
         description: input.description ?? null,
         isActive: true,
@@ -1364,15 +1537,19 @@ export const emailCampaignRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireEmailListForOrg(db, input.id, orgId);
       const updates: Record<string, unknown> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.description !== undefined) updates.description = input.description;
       if (input.isActive !== undefined) updates.isActive = input.isActive;
       if (Object.keys(updates).length > 0) {
-        await db.update(emailLists).set(updates as any).where(eq(emailLists.id, input.id));
+        await db
+          .update(emailLists)
+          .set(updates as any)
+          .where(and(eq(emailLists.id, input.id), eq(emailLists.orgId, orgId)));
       }
       return { success: true };
     }),
@@ -1380,16 +1557,16 @@ export const emailCampaignRouter = router({
   deleteEmailList: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       // Prevent deleting the master All Contacts list
-      const [list] = await db.select({ name: emailLists.name }).from(emailLists).where(eq(emailLists.id, input.id)).limit(1);
+      const list = await requireEmailListForOrg(db, input.id, orgId);
       if (list?.name === "All Contacts") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "The \"All Contacts\" list cannot be deleted." });
       }
       await db.delete(emailListSubscribers).where(eq(emailListSubscribers.listId, input.id));
-      await db.delete(emailLists).where(eq(emailLists.id, input.id));
+      await db.delete(emailLists).where(and(eq(emailLists.id, input.id), eq(emailLists.orgId, orgId)));
       return { success: true };
     }),
 
@@ -1401,9 +1578,10 @@ export const emailCampaignRouter = router({
       search: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireEmailListForOrg(db, input.listId, orgId);
       const offset = (input.page - 1) * input.pageSize;
       let rows;
       if (input.search) {
@@ -1431,21 +1609,24 @@ export const emailCampaignRouter = router({
   removeSubscriber: protectedProcedure
     .input(z.object({ subscriberId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [sub] = await db
+        .select({ listId: emailListSubscribers.listId })
+        .from(emailListSubscribers)
+        .innerJoin(emailLists, eq(emailListSubscribers.listId, emailLists.id))
+        .where(and(eq(emailListSubscribers.id, input.subscriberId), eq(emailLists.orgId, orgId)))
+        .limit(1);
+      if (!sub) throw new TRPCError({ code: "NOT_FOUND", message: "Subscriber not found for this organization." });
       // Mark as unsubscribed (soft delete)
       await db.update(emailListSubscribers)
         .set({ status: "unsubscribed", unsubscribedAt: new Date() })
-        .where(eq(emailListSubscribers.id, input.subscriberId));
+        .where(and(eq(emailListSubscribers.id, input.subscriberId), eq(emailListSubscribers.listId, sub.listId)));
       // Decrement subscriber count
-      const [sub] = await db.select({ listId: emailListSubscribers.listId })
-        .from(emailListSubscribers).where(eq(emailListSubscribers.id, input.subscriberId)).limit(1);
-      if (sub) {
-        await db.update(emailLists)
-          .set({ subscriberCount: sql`GREATEST(0, subscriberCount - 1)` })
-          .where(eq(emailLists.id, sub.listId));
-      }
+      await db.update(emailLists)
+        .set({ subscriberCount: sql`GREATEST(0, subscriberCount - 1)` })
+        .where(and(eq(emailLists.id, sub.listId), eq(emailLists.orgId, orgId)));
       return { success: true };
     }),
 
@@ -1456,8 +1637,11 @@ export const emailCampaignRouter = router({
       name: z.string().max(300).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
-      await addToEmailList(input.listId, input.email, input.name ?? null, { source: "manual" });
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireEmailListForOrg(db, input.listId, orgId);
+      await addToEmailList(input.listId, input.email, input.name ?? null, { orgId, source: "manual" });
       return { success: true };
     }),
 
@@ -1480,15 +1664,20 @@ export const emailCampaignRouter = router({
       headerEnabled: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const audienceFilter = AudienceFilterSchema.parse(input.audienceFilter ?? {});
+      await validateAudienceListsForOrg(db, audienceFilter, orgId);
+      await validateSenderProfileForOrg(db, input.senderProfileId, orgId);
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
       const vals = {
+        name: campaignNameForSubject(input.subject),
         subject: input.subject,
-        htmlBody: input.htmlBody ? normalizeCampaignEmailHtml(input.htmlBody) : input.htmlBody,
+        htmlBody: input.htmlBody ? normalizeCampaignEmailHtml(input.htmlBody, orgContext.accentColor) : input.htmlBody,
         blocksJson: input.blocksJson ?? null,
         previewText: input.previewText ?? null,
-        audienceFilter: JSON.stringify(input.audienceFilter ?? {}),
+        audienceFilter: JSON.stringify(audienceFilter),
         status: "draft" as const,
         senderProfileId: input.senderProfileId ?? null,
         fromName: input.fromName ?? null,
@@ -1499,10 +1688,11 @@ export const emailCampaignRouter = router({
         headerEnabled: input.headerEnabled ?? true,
       };
       if (input.id) {
-        await db.update(emailCampaigns).set(vals).where(eq(emailCampaigns.id, input.id));
+        await requireCampaignForOrg(db, input.id, orgId);
+        await db.update(emailCampaigns).set(vals).where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.orgId, orgId)));
         return { id: input.id };
       } else {
-        const [r] = await db.insert(emailCampaigns).values({ ...vals, sentByUserId: ctx.user.id });
+        const [r] = await db.insert(emailCampaigns).values({ ...vals, orgId, createdBy: ctx.user.id, sentByUserId: ctx.user.id });
         return { id: (r as any).insertId as number };
       }
     }),
@@ -1510,10 +1700,14 @@ export const emailCampaignRouter = router({
   // ─── Lead Capture Widgets ────────────────────────────────────────────────────
 
   listLeadCaptureWidgets: protectedProcedure.query(async ({ ctx }) => {
-    await assertAdmin(ctx.user.id);
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    return db.select().from(leadCaptureWidgets).orderBy(desc(leadCaptureWidgets.createdAt));
+    return db
+      .select()
+      .from(leadCaptureWidgets)
+      .where(eq(leadCaptureWidgets.orgId, orgId))
+      .orderBy(desc(leadCaptureWidgets.createdAt));
   }),
 
   saveLeadCaptureWidget: protectedProcedure
@@ -1534,10 +1728,12 @@ export const emailCampaignRouter = router({
       listId: z.number().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      if (input.listId != null) await requireEmailListForOrg(db, input.listId, orgId);
       const vals = {
+        orgId,
         name: input.name,
         headline: input.headline ?? "Stay in the loop",
         subtext: input.subtext ?? null,
@@ -1553,7 +1749,8 @@ export const emailCampaignRouter = router({
         listId: input.listId ?? null,
       };
       if (input.id) {
-        await db.update(leadCaptureWidgets).set(vals as any).where(eq(leadCaptureWidgets.id, input.id));
+        await requireLeadCaptureWidgetForOrg(db, input.id, orgId);
+        await db.update(leadCaptureWidgets).set(vals as any).where(and(eq(leadCaptureWidgets.id, input.id), eq(leadCaptureWidgets.orgId, orgId)));
         return { id: input.id };
       } else {
         const [r] = await db.insert(leadCaptureWidgets).values(vals as any);
@@ -1564,10 +1761,11 @@ export const emailCampaignRouter = router({
   deleteLeadCaptureWidget: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await db.delete(leadCaptureWidgets).where(eq(leadCaptureWidgets.id, input.id));
+      await requireLeadCaptureWidgetForOrg(db, input.id, orgId);
+      await db.delete(leadCaptureWidgets).where(and(eq(leadCaptureWidgets.id, input.id), eq(leadCaptureWidgets.orgId, orgId)));
       return { ok: true };
     }),
 
@@ -1581,16 +1779,15 @@ export const emailCampaignRouter = router({
       })).min(1).max(10000),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [list] = await db.select({ id: emailLists.id }).from(emailLists).where(eq(emailLists.id, input.listId)).limit(1);
-      if (!list) throw new TRPCError({ code: "NOT_FOUND", message: "List not found" });
+      await requireEmailListForOrg(db, input.listId, orgId);
       let imported = 0;
       let skipped = 0;
       for (const row of input.rows) {
         try {
-          await addToEmailList(input.listId, row.email.trim().toLowerCase(), row.name?.trim(), { source: "csv_import" });
+          await addToEmailList(input.listId, row.email.trim().toLowerCase(), row.name?.trim(), { orgId, source: "csv_import" });
           imported++;
         } catch { skipped++; }
       }
@@ -1601,11 +1798,12 @@ export const emailCampaignRouter = router({
   generateWebhookToken: protectedProcedure
     .input(z.object({ listId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireEmailListForOrg(db, input.listId, orgId);
       const token = randomBytes(32).toString("hex");
-      await db.update(emailLists).set({ webhookToken: token } as any).where(eq(emailLists.id, input.listId));
+      await db.update(emailLists).set({ webhookToken: token } as any).where(and(eq(emailLists.id, input.listId), eq(emailLists.orgId, orgId)));
       return { token };
     }),
 
@@ -1613,11 +1811,12 @@ export const emailCampaignRouter = router({
   getListConnectedSources: protectedProcedure
     .input(z.object({ listId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireEmailListForOrg(db, input.listId, orgId);
       const widgets = await db.select({ id: leadCaptureWidgets.id, name: leadCaptureWidgets.name })
-        .from(leadCaptureWidgets).where(eq(leadCaptureWidgets.listId, input.listId));
+        .from(leadCaptureWidgets).where(and(eq(leadCaptureWidgets.listId, input.listId), eq(leadCaptureWidgets.orgId, orgId)));
       return { widgets, forms: [] as { id: number; name: string }[] };
     }),
 
@@ -1628,9 +1827,10 @@ export const emailCampaignRouter = router({
       subscriberIds: z.array(z.number()).min(1).max(500),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireEmailListForOrg(db, input.listId, orgId);
       await db.update(emailListSubscribers)
         .set({ status: "unsubscribed", unsubscribedAt: new Date() })
         .where(and(
@@ -1639,7 +1839,7 @@ export const emailCampaignRouter = router({
         ));
       await db.update(emailLists)
         .set({ subscriberCount: sql`GREATEST(subscriberCount - ${input.subscriberIds.length}, 0)` })
-        .where(eq(emailLists.id, input.listId));
+        .where(and(eq(emailLists.id, input.listId), eq(emailLists.orgId, orgId)));
       return { removed: input.subscriberIds.length };
     }),
 
@@ -1647,9 +1847,10 @@ export const emailCampaignRouter = router({
   getClickLinkBreakdown: protectedProcedure
     .input(z.object({ campaignId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireCampaignForOrg(db, input.campaignId, orgId);
       // Per-link aggregate: URL, total clicks, unique clickers
       const [linksRaw] = (await db.execute(sql`
         SELECT
@@ -1716,9 +1917,10 @@ export const emailCampaignRouter = router({
   exportClickEvents: protectedProcedure
     .input(z.object({ campaignId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx.user.id);
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await requireCampaignForOrg(db, input.campaignId, orgId);
       const [rows] = (await db.execute(sql`
         SELECT
           COALESCE(u.name, u.email, JSON_UNQUOTE(JSON_EXTRACT(e.metadata, '$.recipient')), e.recipientKey) as displayName,
@@ -1767,15 +1969,22 @@ export const emailCampaignRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const [widget] = await db.select().from(leadCaptureWidgets).where(eq(leadCaptureWidgets.id, input.widgetId)).limit(1);
       if (!widget) throw new TRPCError({ code: "NOT_FOUND", message: "Widget not found" });
+      if (!widget.orgId) throw new TRPCError({ code: "NOT_FOUND", message: "Widget not found" });
       // Add to All Contacts
-      await ensureAllContactsList();
-      const allContactsList = await db.select({ id: emailLists.id }).from(emailLists).where(eq(emailLists.name, "All Contacts")).limit(1);
-      if (allContactsList.length > 0) {
-        await addToEmailList(allContactsList[0].id, input.email, input.name, { source: "lead_capture_widget", sourceId: String(input.widgetId) });
-      }
+      const allContactsListId = await ensureAllContactsList(widget.orgId);
+      await addToEmailList(allContactsListId, input.email, input.name, {
+        orgId: widget.orgId,
+        source: "lead_capture_widget",
+        sourceId: String(input.widgetId),
+      });
       // Add to specific list if configured
       if (widget.listId) {
-        await addToEmailList(widget.listId, input.email, input.name, { source: "lead_capture_widget", sourceId: String(input.widgetId) });
+        await requireEmailListForOrg(db, widget.listId, widget.orgId);
+        await addToEmailList(widget.listId, input.email, input.name, {
+          orgId: widget.orgId,
+          source: "lead_capture_widget",
+          sourceId: String(input.widgetId),
+        });
       }
       return { ok: true };
     }),
@@ -1793,13 +2002,18 @@ export const emailCampaignRouter = router({
       orgName: z.string().optional(),
       includeEmoji: z.boolean().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
       const emojiInstruction = input.includeEmoji
         ? "\nInclude 1–3 relevant emojis naturally within the generated text (inline, not at the start of every line)."
         : "\nDo NOT include any emojis.";
-      const systemPrompt = `You are an expert email copywriter for ${input.orgName ?? "an organization"}.
+      const systemPrompt = `You are an expert email copywriter for ${orgContext.displayName}.
 Generate concise, engaging email block content based on the user's prompt.
 Return ONLY a JSON object with the appropriate fields for the block type.${emojiInstruction}
+Use this organization's identity only. Do not introduce other school, clinic, publisher, or source-project names unless they are explicitly provided in the user's prompt.
 
 Block type: "${input.blockType}"
 
@@ -1860,7 +2074,11 @@ Existing content for context: ${JSON.stringify(input.existingContent ?? {})}`;
       orgName: z.string().optional(),
       emailType: z.string().optional(), // "general" | "promo" | "welcome" | "newsletter" | "event" | "followup"
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
       const emojiInstruction = input.includeEmoji
         ? "Include 1–3 relevant emojis naturally within the text (inline, not at the start of every line)."
         : "Do NOT include any emojis.";
@@ -1875,12 +2093,13 @@ Existing content for context: ${JSON.stringify(input.existingContent ?? {})}`;
       };
       const emailTypeHint = emailTypeInstructions[input.emailType ?? "general"] ?? emailTypeInstructions.general;
 
-      const systemPrompt = `You are an expert email copywriter for ${input.orgName ?? "an organization"}.
+      const systemPrompt = `You are an expert email copywriter for ${orgContext.displayName}.
 Generate a complete email as a JSON array of blocks. Each block has a "type" and "data" object.
 
 Tone: ${input.tone ?? "professional"}
 Email type guidance: ${emailTypeHint}
 ${emojiInstruction}
+Use this organization's identity only. Do not introduce other school, clinic, publisher, or source-project names unless they are explicitly provided in the user's prompt.
 
 Available block types and their data shapes:
 - { "type": "text", "data": { "content": "<p>HTML text</p>" } }
@@ -1924,11 +2143,9 @@ For promotional emails: use the product URL from the prompt in the cta_standalon
   getProductsForEmailPromo: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-    if (!orgId) return { courses: [], workshops: [], cohorts: [], webinars: [], downloads: [], orgBaseUrl: "" };
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
 
     // Get org info for URL building
-    const { organizations } = await import("../../drizzle/schema");
     const [org] = await db
       .select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
       .from(organizations)
@@ -1954,7 +2171,7 @@ For promotional emails: use the product URL from the prompt in the cta_standalon
         .limit(100),
     ]);
 
-    const webinarRows = await db.execute(sql`SELECT id, title, slug, description FROM webinars WHERE orgId = ${orgId} AND status != 'archived' ORDER BY title LIMIT 100`);
+    const webinarRows = await db.execute(sql`SELECT id, title, slug, description FROM webinars WHERE orgId = ${orgId} AND isPublished = 1 ORDER BY title LIMIT 100`);
     const downloadRows = await db.execute(sql`SELECT id, title, slug, description FROM digital_products WHERE orgId = ${orgId} AND visibility != 'archived' ORDER BY title LIMIT 100`);
     const webinarList: any[] = (webinarRows as any)?.rows ?? (Array.isArray(webinarRows) ? webinarRows : []);
     const downloadList: any[] = (downloadRows as any)?.rows ?? (Array.isArray(downloadRows) ? downloadRows : []);

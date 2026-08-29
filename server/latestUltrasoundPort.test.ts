@@ -3104,20 +3104,60 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("resolves AI email promotion products from the active organization", () => {
     const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
-    expect(emailCampaignRouterSource).toContain('getOrgIdForUserWithFallback');
-    expect(emailCampaignRouterSource).toContain('await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)');
+    expect(emailCampaignRouterSource).toMatch(/getProductsForEmailPromo[\s\S]*await requireActiveEmailMarketingOrg\(ctx\.user\)/);
     expect(emailCampaignRouterSource).not.toContain('await getOrgIdForUser(ctx.user.id)');
   });
 
   it("routes email campaign tracking links through the owning organization domain", () => {
     const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
     const trackingSource = readFileSync(new URL("./lib/emailCampaignTracking.ts", import.meta.url), "utf8");
-    expect(emailCampaignRouterSource).toContain("let orgTrackingBaseUrl: string | undefined;");
+    expect(emailCampaignRouterSource).toContain("baseUrl: organization");
     expect(emailCampaignRouterSource).toContain("getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)");
-    expect(emailCampaignRouterSource).toContain("injectTrackingPixel(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl)");
-    expect(emailCampaignRouterSource).toContain("wrapLinksForTracking(html, campaignId, recipientKey, variantKey, orgTrackingBaseUrl)");
+    expect(emailCampaignRouterSource).toContain("injectTrackingPixel(html, campaignId, recipientKey, variantKey, orgContext.baseUrl)");
+    expect(emailCampaignRouterSource).toContain("wrapLinksForTracking(html, campaignId, recipientKey, variantKey, orgContext.baseUrl)");
     expect(trackingSource).toContain("getEmailCampaignAppUrl(orgBaseUrl)");
     expect(trackingSource).toContain("const fromOrganization = orgBaseUrl?.trim();");
+  });
+
+  it("keeps public lead-capture widget subscriptions inside the widget owning organization", () => {
+    const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
+    const widgetSource = emailCampaignRouterSource.slice(
+      emailCampaignRouterSource.indexOf('submitLeadCaptureWidget'),
+      emailCampaignRouterSource.indexOf('/**\n   * generateEmailBlockContent', emailCampaignRouterSource.indexOf('submitLeadCaptureWidget')),
+    );
+    expect(widgetSource).toContain('if (!widget.orgId) throw new TRPCError({ code: "NOT_FOUND", message: "Widget not found" });');
+    expect(widgetSource).toContain('const allContactsListId = await ensureAllContactsList(widget.orgId);');
+    expect(widgetSource).toContain('await requireEmailListForOrg(db, widget.listId, widget.orgId);');
+    expect(widgetSource).toContain('orgId: widget.orgId');
+    expect(widgetSource).not.toContain('await ensureAllContactsList();');
+    expect(widgetSource).not.toContain('where(eq(emailLists.name, "All Contacts"))');
+  });
+
+  it("uses owning organization context for AI email generation instead of trusting client-supplied organization names", () => {
+    const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
+    const aiSource = emailCampaignRouterSource.slice(
+      emailCampaignRouterSource.indexOf('generateEmailBlockContent'),
+      emailCampaignRouterSource.indexOf('/**\n   * getProductsForEmailPromo', emailCampaignRouterSource.indexOf('generateFullEmailContent')),
+    );
+    expect(aiSource).toContain('const orgId = await requireActiveEmailMarketingOrg(ctx.user);');
+    expect(aiSource).toContain('const orgContext = await getEmailCampaignOrgContext(db, orgId);');
+    expect(aiSource).toContain('for ${orgContext.displayName}');
+    expect(aiSource).toContain('Use this organization\'s identity only. Do not introduce other school, clinic, publisher, or source-project names unless they are explicitly provided in the user\'s prompt.');
+    expect(aiSource).not.toContain('for ${input.orgName ?? "an organization"}');
+  });
+
+  it("uses deploy-safe scheduled email campaign tasks instead of in-process polling", () => {
+    const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
+    const coreIndexSource = readFileSync(new URL("./_core/index.ts", import.meta.url), "utf8");
+    expect(emailCampaignRouterSource).toContain('createHeartbeatJob({');
+    expect(emailCampaignRouterSource).toContain('path: "/api/scheduled/send-email-campaign"');
+    expect(emailCampaignRouterSource).toContain('scheduleCronTaskUid: job.taskUid');
+    expect(emailCampaignRouterSource).toContain('deleteHeartbeatJob(campaign.scheduleCronTaskUid, sessionToken)');
+    expect(emailCampaignRouterSource).toContain('export async function handleScheduledEmailCampaignSend');
+    expect(emailCampaignRouterSource).toContain('eq(emailCampaigns.scheduleCronTaskUid, cronUser.taskUid)');
+    expect(emailCampaignRouterSource).toContain('In-process campaign polling is disabled');
+    expect(emailCampaignRouterSource).not.toContain('setInterval(');
+    expect(coreIndexSource).toContain('app.post("/api/scheduled/send-email-campaign", handleScheduledEmailCampaignSend);');
   });
 
   it("uses the active organization theme for Bundles administration download badges", () => {

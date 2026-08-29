@@ -7,15 +7,32 @@ import { CheckCircle, XCircle, Loader2, Mail } from "lucide-react";
 export default function UnsubscribePage() {
   const [, navigate] = useLocation();
   const [token, setToken] = useState<string | null>(null);
+  const [campaignId, setCampaignId] = useState<number | undefined>(undefined);
+  const [canResubscribe, setCanResubscribe] = useState(false);
   const [step, setStep] = useState<"loading" | "confirm" | "done" | "resubscribed" | "error">("loading");
   const [email, setEmail] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const status = params.get("status");
+    if (status) {
+      if (status === "success") {
+        setEmail(params.get("email") || "this email address");
+        setCanResubscribe(false);
+        setStep("done");
+      } else {
+        setStep("error");
+        setErrorMsg(status === "error" ? "We could not process this unsubscribe request. Please try again." : "This unsubscribe link is invalid or has already been used.");
+      }
+      return;
+    }
     const t = params.get("token");
+    const c = params.get("campaignId");
     if (t) {
       setToken(t);
+      const parsedCampaignId = c ? Number.parseInt(c, 10) : undefined;
+      setCampaignId(parsedCampaignId && !Number.isNaN(parsedCampaignId) ? parsedCampaignId : undefined);
       setStep("confirm");
     } else {
       setStep("error");
@@ -23,9 +40,10 @@ export default function UnsubscribePage() {
     }
   }, []);
 
-  const confirmMutation = trpc.emailCampaigns.unsubscribe.confirm.useMutation({
+  const confirmMutation = trpc.emailCampaign.unsubscribe.useMutation({
     onSuccess: (data) => {
-      setEmail(data.email);
+      setEmail(data.email || "this email address");
+      setCanResubscribe(Boolean(data.canResubscribe));
       setStep("done");
     },
     onError: (err) => {
@@ -44,7 +62,7 @@ export default function UnsubscribePage() {
   });
 
   const handleUnsubscribe = () => {
-    if (token) confirmMutation.mutate({ token });
+    if (token) confirmMutation.mutate({ token, ...(campaignId ? { campaignId } : {}) });
   };
 
   const handleResubscribe = () => {
@@ -120,7 +138,7 @@ export default function UnsubscribePage() {
                 You'll no longer receive campaign emails.
               </p>
             </div>
-            <p className="text-xs text-muted-foreground">
+            {canResubscribe && <p className="text-xs text-muted-foreground">
               Changed your mind?{" "}
               <button
                 onClick={handleResubscribe}
@@ -129,7 +147,7 @@ export default function UnsubscribePage() {
               >
                 {resubscribeMutation.isPending ? "Re-subscribing…" : "Re-subscribe"}
               </button>
-            </p>
+            </p>}
           </>
         )}
 

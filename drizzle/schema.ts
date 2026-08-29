@@ -859,10 +859,13 @@ export type PlatformSettings = typeof platformSettings.$inferSelect;
 export const emailTemplates = mysqlTable("email_templates", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId"), // null = site-wide template (for site owner)
+  createdByUserId: int("createdByUserId"),
   name: varchar("name", { length: 255 }).notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
   htmlBody: text("htmlBody").notNull(),
   textBody: text("textBody"),
+  blocksJson: longtext("blocksJson"),
+  previewText: varchar("previewText", { length: 300 }),
   isDefault: boolean("isDefault").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -880,6 +883,19 @@ export const emailCampaigns = mysqlTable("email_campaigns", {
   subject: varchar("subject", { length: 255 }).notNull(),
   htmlBody: text("htmlBody").notNull(),
   textBody: text("textBody"),
+  blocksJson: longtext("blocksJson"),
+  previewText: varchar("previewText", { length: 300 }),
+  audienceFilter: longtext("audienceFilter"),
+  senderProfileId: int("senderProfileId"),
+  fromName: varchar("fromName", { length: 200 }),
+  fromEmail: varchar("fromEmail", { length: 300 }),
+  headerTitle: varchar("headerTitle", { length: 300 }),
+  headerSubtext: varchar("headerSubtext", { length: 500 }),
+  headerColor: varchar("headerColor", { length: 20 }),
+  headerEnabled: boolean("headerEnabled").default(true).notNull(),
+  errorMessage: text("errorMessage"),
+  sentByUserId: int("sentByUserId"),
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
   status: mysqlEnum("status", ["draft", "scheduled", "sending", "sent", "failed"]).default("draft").notNull(),
   scheduledAt: timestamp("scheduledAt"),
   sentAt: timestamp("sentAt"),
@@ -5588,6 +5604,7 @@ export type InsertEmailCampaignEvent = typeof emailCampaignEvents.$inferInsert;
 // ─── Email Sender Profiles ────────────────────────────────────────────────────
 export const emailSenderProfiles = mysqlTable("emailSenderProfiles", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId"),
   name: varchar("name", { length: 200 }).notNull(),
   email: varchar("email", { length: 300 }).notNull(),
   replyTo: varchar("replyTo", { length: 300 }),
@@ -5646,6 +5663,7 @@ export type InsertCommunityWorkflowRule = typeof communityWorkflowRules.$inferIn
 // ─── Lead Capture Widgets ─────────────────────────────────────────────────────
 export const leadCaptureWidgets = mysqlTable("leadCaptureWidgets", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId"),
   name: varchar("name", { length: 255 }).notNull(),
   headline: varchar("headline", { length: 500 }).default("Stay in the loop").notNull(),
   subtext: varchar("subtext", { length: 1000 }),

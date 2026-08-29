@@ -24,6 +24,7 @@ import processRichTextHtmlRouter from "../processRichTextHtmlRoute";
 import reconstructMathRouter from "../reconstructMathRoute";
 import uploadCourseImageRouter from "../uploadCourseImageRoute";
 import uploadAiGenerationSourceRouter from "../routes/uploadAiGenerationSource";
+import { handleScheduledEmailCampaignSend } from "../routers/emailCampaignRouter";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -184,6 +185,9 @@ async function startServer() {
 
   // Email open/click tracking + one-click unsubscribe (GET /api/email/open, /api/email/click, /api/unsubscribe)
   registerEmailTrackingRoutes(app);
+
+  // Scheduled email campaign delivery. The platform scheduler posts here; do not use in-process timers.
+  app.post("/api/scheduled/send-email-campaign", handleScheduledEmailCampaignSend);
 
   // Rich-text HTML processing — uploads embedded base64 images to S3
   app.use("/api/process-rich-text-html", processRichTextHtmlRouter);

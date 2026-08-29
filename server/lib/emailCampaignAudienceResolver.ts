@@ -3,21 +3,35 @@ import { and, eq, gte, lte, isNull, isNotNull, inArray, sql } from "drizzle-orm"
 import { getDb } from "../db";
 import {
   users,
+  orgMembers,
   userRoles,
+  lmsCourses,
   lmsEnrollments,
+  digitalProducts,
   digitalPurchases,
   digitalDownloadEvents,
+  lmsGroups,
   lmsGroupSeats,
+  lmsCohortGroups,
   lmsCohortGroupEnrollments,
+  generalFormTemplates,
   generalFormSubmissions,
+  emailLists,
   emailListSubscribers,
   userInterests,
   lmsOrders,
   brandMemberships,
+  membershipPlans,
   membershipSubscriptions,
+  digitalBundles,
   bundleEnrollments,
+  workshops,
+  workshopInstances,
   workshopEnrollments,
+  communitySpaces,
   communityMembers,
+  emailCampaigns,
+  emailCampaignEvents,
 } from "../../drizzle/schema";
 import {
   type AudienceFilter,
@@ -57,6 +71,7 @@ function toRecipient(u: UserRow): CampaignRecipient {
 
 async function loadListSubscribers(
   listIds: number[],
+  orgId: number,
 ): Promise<Map<string, CampaignRecipient>> {
   const db = await getDb();
   const map = new Map<string, CampaignRecipient>();
@@ -71,9 +86,11 @@ async function loadListSubscribers(
       status: emailListSubscribers.status,
     })
     .from(emailListSubscribers)
+    .innerJoin(emailLists, eq(emailListSubscribers.listId, emailLists.id))
     .where(
       and(
         inArray(emailListSubscribers.listId, listIds),
+        eq(emailLists.orgId, orgId),
         eq(emailListSubscribers.status, "subscribed"),
       ),
     );
@@ -92,7 +109,7 @@ async function loadListSubscribers(
   return map;
 }
 
-async function loadAllUsers(): Promise<UserRow[]> {
+async function loadOrgUsers(orgId: number): Promise<UserRow[]> {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
   return db
@@ -106,7 +123,9 @@ async function loadAllUsers(): Promise<UserRow[]> {
       isPending: users.isPending,
       unsubscribedAt: users.unsubscribedAt,
     })
-    .from(users);
+    .from(users)
+    .innerJoin(orgMembers, eq(orgMembers.userId, users.id))
+    .where(eq(orgMembers.orgId, orgId));
 }
 
 function applyBaseUserFilters(allUsers: UserRow[], filter: AudienceFilter): UserRow[] {
@@ -172,10 +191,12 @@ async function emailsMatchingDimension(
   dimension: string,
   candidateUserIds: Set<number>,
   candidateEmails: Set<string>,
+  orgId: number,
 ): Promise<Set<string>> {
   const db = await getDb();
   const matches = new Set<string>();
   if (!db) return matches;
+  const loadAllUsers = () => loadOrgUsers(orgId);
 
   const enrolledAfter = parseDate(filter.enrolledAfter);
   const enrolledBefore = parseDate(filter.enrolledBefore);
@@ -232,12 +253,17 @@ async function emailsMatchingDimension(
 
   if (dimension === "enrolled" && filter.enrolledInCourseIds.length > 0) {
     for (const courseId of filter.enrolledInCourseIds) {
-      const conditions = [eq(lmsEnrollments.courseId, courseId)];
+      const conditions = [
+        eq(lmsEnrollments.courseId, courseId),
+        eq(lmsEnrollments.orgId, orgId),
+        eq(lmsCourses.orgId, orgId),
+      ];
       if (enrolledAfter) conditions.push(gte(lmsEnrollments.enrolledAt, enrolledAfter));
       if (enrolledBefore) conditions.push(lte(lmsEnrollments.enrolledAt, enrolledBefore));
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
         .where(and(...conditions));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));
@@ -253,7 +279,13 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.courseId, courseId), isNotNull(lmsEnrollments.completedAt)));
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
+        .where(and(
+          eq(lmsEnrollments.courseId, courseId),
+          eq(lmsEnrollments.orgId, orgId),
+          eq(lmsCourses.orgId, orgId),
+          isNotNull(lmsEnrollments.completedAt),
+        ));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));
       for (const u of allUsers) {
@@ -268,9 +300,12 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
         .where(
           and(
             eq(lmsEnrollments.courseId, courseId),
+            eq(lmsEnrollments.orgId, orgId),
+            eq(lmsCourses.orgId, orgId),
             eq(lmsEnrollments.enrollmentType, "free_preview"),
           ),
         );
@@ -288,9 +323,12 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
         .where(
           and(
             eq(lmsEnrollments.courseId, courseId),
+            eq(lmsEnrollments.orgId, orgId),
+            eq(lmsCourses.orgId, orgId),
             eq(lmsEnrollments.enrollmentType, "full"),
             isNull(lmsEnrollments.completedAt),
           ),
@@ -306,12 +344,16 @@ async function emailsMatchingDimension(
 
   if (dimension === "purchasedProducts" && filter.purchasedProductIds.length > 0) {
     for (const productId of filter.purchasedProductIds) {
-      const conditions = [eq(digitalPurchases.productId, productId)];
+      const conditions = [
+        eq(digitalPurchases.productId, productId),
+        eq(digitalProducts.orgId, orgId),
+      ];
       if (purchasedAfter) conditions.push(gte(digitalPurchases.purchasedAt, purchasedAfter));
       if (purchasedBefore) conditions.push(lte(digitalPurchases.purchasedAt, purchasedBefore));
       const rows = await db
         .select({ userId: digitalPurchases.userId })
         .from(digitalPurchases)
+        .innerJoin(digitalProducts, eq(digitalProducts.id, digitalPurchases.productId))
         .where(and(...conditions));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));
@@ -324,12 +366,16 @@ async function emailsMatchingDimension(
 
   if (dimension === "downloaded" && filter.downloadedProductIds.length > 0) {
     for (const productId of filter.downloadedProductIds) {
-      const conditions = [eq(digitalDownloadEvents.productId, productId)];
+      const conditions = [
+        eq(digitalDownloadEvents.productId, productId),
+        eq(digitalProducts.orgId, orgId),
+      ];
       if (purchasedAfter) conditions.push(gte(digitalDownloadEvents.downloadedAt, purchasedAfter));
       if (purchasedBefore) conditions.push(lte(digitalDownloadEvents.downloadedAt, purchasedBefore));
       const rows = await db
         .select({ userId: digitalDownloadEvents.userId })
         .from(digitalDownloadEvents)
+        .innerJoin(digitalProducts, eq(digitalProducts.id, digitalDownloadEvents.productId))
         .where(and(...conditions));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));
@@ -344,13 +390,16 @@ async function emailsMatchingDimension(
     for (const courseId of filter.purchasedCourseIds) {
       const conditions = [
         eq(lmsOrders.courseId, courseId),
-        eq(lmsOrders.status, "paid"),
+        eq(lmsOrders.orgId, orgId),
+        eq(lmsCourses.orgId, orgId),
+        eq(lmsOrders.status, "completed"),
       ];
       if (purchasedAfter) conditions.push(gte(lmsOrders.createdAt, purchasedAfter));
       if (purchasedBefore) conditions.push(lte(lmsOrders.createdAt, purchasedBefore));
       const rows = await db
         .select({ userId: lmsOrders.userId })
         .from(lmsOrders)
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsOrders.courseId))
         .where(and(...conditions));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));
@@ -366,7 +415,12 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ email: lmsGroupSeats.email })
         .from(lmsGroupSeats)
-        .where(and(eq(lmsGroupSeats.groupId, groupId), eq(lmsGroupSeats.status, "active")));
+        .innerJoin(lmsGroups, eq(lmsGroups.id, lmsGroupSeats.groupId))
+        .where(and(
+          eq(lmsGroupSeats.groupId, groupId),
+          eq(lmsGroups.orgId, orgId),
+          eq(lmsGroupSeats.status, "active"),
+        ));
       rows.forEach((r) => {
         if (r.email) matches.add(normalizeEmail(r.email));
       });
@@ -379,7 +433,12 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsCohortGroupEnrollments.userId })
         .from(lmsCohortGroupEnrollments)
-        .where(eq(lmsCohortGroupEnrollments.cohortGroupId, cohortGroupId));
+        .innerJoin(lmsCohortGroups, eq(lmsCohortGroups.id, lmsCohortGroupEnrollments.cohortGroupId))
+        .where(and(
+          eq(lmsCohortGroupEnrollments.cohortGroupId, cohortGroupId),
+          eq(lmsCohortGroupEnrollments.orgId, orgId),
+          eq(lmsCohortGroups.orgId, orgId),
+        ));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));
       for (const u of allUsers) {
@@ -394,9 +453,11 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userEmail: generalFormSubmissions.userEmail })
         .from(generalFormSubmissions)
+        .innerJoin(generalFormTemplates, eq(generalFormTemplates.id, generalFormSubmissions.formId))
         .where(
           and(
             eq(generalFormSubmissions.formId, formId),
+            eq(generalFormTemplates.orgId, orgId),
             isNotNull(generalFormSubmissions.userEmail),
           ),
         );
@@ -428,14 +489,16 @@ async function emailsMatchingDimension(
   }
 
   if (dimension === "membershipPlans" && filter.membershipPlanIds.length > 0) {
-    const rows = await db
-      .select({ userId: membershipSubscriptions.userId })
-      .from(membershipSubscriptions)
-      .where(
-        and(
-          inArray(membershipSubscriptions.planId, filter.membershipPlanIds),
-          inArray(membershipSubscriptions.status, ["active", "trialing"]),
-        ),
+      const rows = await db
+        .select({ userId: membershipSubscriptions.userId })
+        .from(membershipSubscriptions)
+        .innerJoin(membershipPlans, eq(membershipPlans.id, membershipSubscriptions.planId))
+        .where(
+          and(
+            inArray(membershipSubscriptions.planId, filter.membershipPlanIds),
+            eq(membershipPlans.orgId, orgId),
+            inArray(membershipSubscriptions.status, ["active", "trialing"]),
+          ),
       );
     const idSet = new Set(rows.map((r) => r.userId));
     const allUsers = await loadAllUsers();
@@ -449,7 +512,11 @@ async function emailsMatchingDimension(
     const rows = await db
       .select({ userId: bundleEnrollments.userId })
       .from(bundleEnrollments)
-      .where(inArray(bundleEnrollments.bundleId, filter.bundleIds));
+      .innerJoin(digitalBundles, eq(digitalBundles.id, bundleEnrollments.bundleId))
+      .where(and(
+        inArray(bundleEnrollments.bundleId, filter.bundleIds),
+        eq(digitalBundles.orgId, orgId),
+      ));
     const idSet = new Set(rows.map((r) => r.userId));
     const allUsers = await loadAllUsers();
     for (const u of allUsers) {
@@ -462,7 +529,11 @@ async function emailsMatchingDimension(
     const rows = await db
       .select({ userId: workshopEnrollments.userId })
       .from(workshopEnrollments)
-      .where(inArray(workshopEnrollments.workshopId, filter.workshopIds));
+      .innerJoin(workshops, eq(workshops.id, workshopEnrollments.workshopId))
+      .where(and(
+        inArray(workshopEnrollments.workshopId, filter.workshopIds),
+        eq(workshops.orgId, orgId),
+      ));
     const idSet = new Set(rows.map((r) => r.userId));
     const allUsers = await loadAllUsers();
     for (const u of allUsers) {
@@ -475,10 +546,12 @@ async function emailsMatchingDimension(
     const rows = await db
       .select({ userId: communityMembers.userId })
       .from(communityMembers)
+      .innerJoin(communitySpaces, eq(communitySpaces.id, communityMembers.spaceId))
       .where(
         and(
-          inArray(communityMembers.communityId, filter.communityIds),
-          eq(communityMembers.memberStatus, "approved"),
+          inArray(communityMembers.spaceId, filter.communityIds),
+          eq(communitySpaces.orgId, orgId),
+          eq(communityMembers.status, "approved"),
         ),
       );
     const idSet = new Set(rows.map((r) => r.userId));
@@ -496,7 +569,14 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.courseId, quizId), eq(lmsEnrollments.status, "enrolled")));
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
+        .where(and(
+          eq(lmsEnrollments.courseId, quizId),
+          eq(lmsEnrollments.orgId, orgId),
+          eq(lmsCourses.orgId, orgId),
+          eq(lmsCourses.type, "quiz"),
+          eq(lmsEnrollments.status, "active"),
+        ));
       const idSet = new Set(rows.map((r) => r.userId));
       const allUsers = await loadAllUsers();
       for (const u of allUsers) {
@@ -511,7 +591,14 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.courseId, quizId), eq(lmsEnrollments.status, "completed")));
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
+        .where(and(
+          eq(lmsEnrollments.courseId, quizId),
+          eq(lmsEnrollments.orgId, orgId),
+          eq(lmsCourses.orgId, orgId),
+          eq(lmsCourses.type, "quiz"),
+          eq(lmsEnrollments.status, "completed"),
+        ));
       const idSet = new Set(rows.map((r) => r.userId));
       const allUsers = await loadAllUsers();
       for (const u of allUsers) {
@@ -526,7 +613,14 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.courseId, quizId), eq(lmsEnrollments.status, "free_preview")));
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
+        .where(and(
+          eq(lmsEnrollments.courseId, quizId),
+          eq(lmsEnrollments.orgId, orgId),
+          eq(lmsCourses.orgId, orgId),
+          eq(lmsCourses.type, "quiz"),
+          eq(lmsEnrollments.enrollmentType, "free_preview"),
+        ));
       const idSet = new Set(rows.map((r) => r.userId));
       const allUsers = await loadAllUsers();
       for (const u of allUsers) {
@@ -541,7 +635,14 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsEnrollments.userId })
         .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.courseId, quizId), eq(lmsEnrollments.status, "active")));
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsEnrollments.courseId))
+        .where(and(
+          eq(lmsEnrollments.courseId, quizId),
+          eq(lmsEnrollments.orgId, orgId),
+          eq(lmsCourses.orgId, orgId),
+          eq(lmsCourses.type, "quiz"),
+          eq(lmsEnrollments.status, "active"),
+        ));
       const idSet = new Set(rows.map((r) => r.userId));
       const allUsers = await loadAllUsers();
       for (const u of allUsers) {
@@ -556,7 +657,14 @@ async function emailsMatchingDimension(
       const rows = await db
         .select({ userId: lmsOrders.userId })
         .from(lmsOrders)
-        .where(and(eq(lmsOrders.courseId, quizId), eq(lmsOrders.status, "paid")));
+        .innerJoin(lmsCourses, eq(lmsCourses.id, lmsOrders.courseId))
+        .where(and(
+          eq(lmsOrders.courseId, quizId),
+          eq(lmsOrders.orgId, orgId),
+          eq(lmsCourses.orgId, orgId),
+          eq(lmsCourses.type, "quiz"),
+          eq(lmsOrders.status, "completed"),
+        ));
       const idSet = new Set(rows.map((r) => r.userId));
       const allUsers = await loadAllUsers();
       for (const u of allUsers) {
@@ -571,7 +679,9 @@ async function emailsMatchingDimension(
   if (dimension === "webinars" && (filter.webinarIds ?? []).length > 0) {
     const [rows] = (await db.execute(sql`
       SELECT user_id as userId FROM webinar_registrations
-      WHERE webinar_id IN (${sql.join(filter.webinarIds!.map((id) => sql`${id}`), sql`, `)})
+      INNER JOIN webinars ON webinars.id = webinar_registrations.webinar_id
+      WHERE webinar_registrations.webinar_id IN (${sql.join(filter.webinarIds!.map((id) => sql`${id}`), sql`, `)})
+        AND webinars.orgId = ${orgId}
     `)) as [{ userId: number }[], unknown];
     const idSet = new Set((Array.isArray(rows) ? rows : []).map((r) => r.userId));
     const allUsers = await loadAllUsers();
@@ -586,7 +696,9 @@ async function emailsMatchingDimension(
   if (dimension === "digitalBundles" && (filter.purchasedDigitalBundleIds ?? []).length > 0) {
     const [rows] = (await db.execute(sql`
       SELECT user_id as userId FROM digital_bundle_purchases
-      WHERE bundle_id IN (${sql.join(filter.purchasedDigitalBundleIds!.map((id) => sql`${id}`), sql`, `)})
+      INNER JOIN digital_bundles ON digital_bundles.id = digital_bundle_purchases.bundle_id
+      WHERE digital_bundle_purchases.bundle_id IN (${sql.join(filter.purchasedDigitalBundleIds!.map((id) => sql`${id}`), sql`, `)})
+        AND digital_bundles.org_id = ${orgId}
     `)) as [{ userId: number }[], unknown];
     const idSet = new Set((Array.isArray(rows) ? rows : []).map((r) => r.userId));
     const allUsers = await loadAllUsers();
@@ -602,7 +714,12 @@ async function emailsMatchingDimension(
     const rows = await db
       .select({ userId: workshopEnrollments.userId })
       .from(workshopEnrollments)
-      .where(inArray(workshopEnrollments.workshopInstanceId, filter.workshopInstanceIds!));
+      .innerJoin(workshopInstances, eq(workshopInstances.id, workshopEnrollments.instanceId))
+      .innerJoin(workshops, eq(workshops.id, workshopInstances.workshopId))
+      .where(and(
+        inArray(workshopEnrollments.instanceId, filter.workshopInstanceIds!),
+        eq(workshops.orgId, orgId),
+      ));
     const idSet = new Set(rows.map((r) => r.userId));
     const allUsers = await loadAllUsers();
     for (const u of allUsers) {
@@ -616,7 +733,9 @@ async function emailsMatchingDimension(
   if (dimension === "physicalProducts" && (filter.purchasedPhysicalProductIds ?? []).length > 0) {
     const [rows] = (await db.execute(sql`
       SELECT user_id as userId FROM physical_product_orders
-      WHERE product_id IN (${sql.join(filter.purchasedPhysicalProductIds!.map((id) => sql`${id}`), sql`, `)})
+      INNER JOIN physical_products ON physical_products.id = physical_product_orders.product_id
+      WHERE physical_product_orders.product_id IN (${sql.join(filter.purchasedPhysicalProductIds!.map((id) => sql`${id}`), sql`, `)})
+        AND physical_products.org_id = ${orgId}
         AND status IN ('paid', 'fulfilled', 'shipped')
     `)) as [{ userId: number }[], unknown];
     const idSet = new Set((Array.isArray(rows) ? rows : []).map((r) => r.userId));
@@ -633,8 +752,10 @@ async function emailsMatchingDimension(
     try {
       const [rows] = (await db.execute(sql`
         SELECT DISTINCT userId FROM emailCampaignEvents
-        WHERE campaignId IN (${sql.join(filter.openedCampaignIds!.map((id) => sql`${id}`), sql`, `)})
-          AND eventType = 'open'
+        INNER JOIN email_campaigns ON email_campaigns.id = emailCampaignEvents.campaignId
+        WHERE emailCampaignEvents.campaignId IN (${sql.join(filter.openedCampaignIds!.map((id) => sql`${id}`), sql`, `)})
+          AND email_campaigns.orgId = ${orgId}
+          AND emailCampaignEvents.eventType = 'open'
       `)) as [{ userId: number }[], unknown];
       const idSet = new Set((Array.isArray(rows) ? rows : []).map((r) => r.userId).filter(Boolean));
       const allUsers = await loadAllUsers();
@@ -651,8 +772,10 @@ async function emailsMatchingDimension(
     try {
       const [rows] = (await db.execute(sql`
         SELECT DISTINCT userId FROM emailCampaignEvents
-        WHERE campaignId IN (${sql.join(filter.clickedCampaignIds!.map((id) => sql`${id}`), sql`, `)})
-          AND eventType = 'click'
+        INNER JOIN email_campaigns ON email_campaigns.id = emailCampaignEvents.campaignId
+        WHERE emailCampaignEvents.campaignId IN (${sql.join(filter.clickedCampaignIds!.map((id) => sql`${id}`), sql`, `)})
+          AND email_campaigns.orgId = ${orgId}
+          AND emailCampaignEvents.eventType = 'click'
       `)) as [{ userId: number }[], unknown];
       const idSet = new Set((Array.isArray(rows) ? rows : []).map((r) => r.userId).filter(Boolean));
       const allUsers = await loadAllUsers();
@@ -738,28 +861,25 @@ function applyDimensionLogic(
 export async function resolveRecipients(
   filter: AudienceFilter,
   campaignId?: number,
+  orgId?: number,
 ): Promise<CampaignRecipient[]> {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+  if (!orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required to resolve campaign recipients." });
+  }
 
   if (filter.specificEmails.length > 0) {
     const results: CampaignRecipient[] = [];
     const seen = new Set<string>();
+    const orgUsersByEmail = new Map(
+      (await loadOrgUsers(orgId)).map((u) => [normalizeEmail(u.email), u]),
+    );
     for (const raw of filter.specificEmails) {
       const email = normalizeEmail(raw);
       if (seen.has(email)) continue;
       seen.add(email);
-      const [found] = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          displayName: users.displayName,
-          name: users.name,
-          unsubscribedAt: users.unsubscribedAt,
-        })
-        .from(users)
-        .where(eq(users.email, raw.trim()))
-        .limit(1);
+      const found = orgUsersByEmail.get(email);
       if (found?.email && !found.unsubscribedAt) {
         results.push({
           userId: found.id,
@@ -779,8 +899,8 @@ export async function resolveRecipients(
     return assignAbVariants(results, filter, campaignId);
   }
 
-  const listSubs = await loadListSubscribers(filter.listIds);
-  const allUsers = await loadAllUsers();
+  const listSubs = await loadListSubscribers(filter.listIds, orgId);
+  const allUsers = await loadOrgUsers(orgId);
   const filteredUsers = applyBaseUserFilters(allUsers, filter);
 
   const userMap = new Map<string, CampaignRecipient>();
@@ -821,6 +941,7 @@ export async function resolveRecipients(
           dim,
           new Set(filteredUsers.map((u) => u.id)),
           new Set(base.keys()),
+          orgId,
         ),
       );
     }
