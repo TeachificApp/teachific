@@ -4463,6 +4463,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((mediaRouterSource.match(/db\.insert\(mediaVersions\)\.values\(\{\n\s*orgId:/g) ?? []).length).toBe(3);
     expect(mediaRouterSource).toContain("folderId: z.number().int().positive().nullable().optional()");
     expect(mediaRouterSource).toContain("if (input.folderId === null) conditions.push(isNull(mediaAssets.folderId));");
+    expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);");
+    expect((mediaRouterSource.match(/eq\(mediaViewEvents\.orgId, orgId\)/g) ?? []).length).toBe(6);
+    expect(mediaRouterSource).toContain("date: sql<string>`DATE(viewedAt)`");
     expect(mediaRouterSource).toContain("gte(mediaViewEvents.viewedAt, thirtyDaysAgo)");
   });
 

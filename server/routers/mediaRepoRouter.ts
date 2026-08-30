@@ -772,39 +772,40 @@ export const mediaRepoRouter = router({
   getAnalytics: protectedProcedure
     .input(z.object({ assetId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      const { db } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
 
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000);
 
       const [{ totalViews }] = await db
         .select({ totalViews: sql<number>`count(*)` })
         .from(mediaViewEvents)
-        .where(eq(mediaViewEvents.assetId, input.assetId));
+        .where(and(eq(mediaViewEvents.assetId, input.assetId), eq(mediaViewEvents.orgId, orgId)));
 
       const [{ uniqueViewers }] = await db
         .select({ uniqueViewers: sql<number>`count(distinct ipHash)` })
         .from(mediaViewEvents)
-        .where(eq(mediaViewEvents.assetId, input.assetId));
+        .where(and(eq(mediaViewEvents.assetId, input.assetId), eq(mediaViewEvents.orgId, orgId)));
 
       const [{ embedViews }] = await db
         .select({ embedViews: sql<number>`count(*)` })
         .from(mediaViewEvents)
-        .where(and(eq(mediaViewEvents.assetId, input.assetId), eq(mediaViewEvents.viewType, "embed")));
+        .where(and(eq(mediaViewEvents.assetId, input.assetId), eq(mediaViewEvents.orgId, orgId), eq(mediaViewEvents.viewType, "embed")));
 
       const [{ directViews }] = await db
         .select({ directViews: sql<number>`count(*)` })
         .from(mediaViewEvents)
-        .where(and(eq(mediaViewEvents.assetId, input.assetId), eq(mediaViewEvents.viewType, "direct")));
+        .where(and(eq(mediaViewEvents.assetId, input.assetId), eq(mediaViewEvents.orgId, orgId), eq(mediaViewEvents.viewType, "direct")));
 
       // Daily breakdown for last 30 days
       const daily = await db
         .select({
-          date: sql<string>`DATE(createdAt)`,
+          date: sql<string>`DATE(viewedAt)`,
           views: sql<number>`count(*)`,
         })
         .from(mediaViewEvents)
         .where(and(
           eq(mediaViewEvents.assetId, input.assetId),
+          eq(mediaViewEvents.orgId, orgId),
           gte(mediaViewEvents.viewedAt, thirtyDaysAgo)
         ))
         .groupBy(sql`DATE(viewedAt)`)
@@ -819,6 +820,7 @@ export const mediaRepoRouter = router({
         .from(mediaViewEvents)
         .where(and(
           eq(mediaViewEvents.assetId, input.assetId),
+          eq(mediaViewEvents.orgId, orgId),
           sql`referer IS NOT NULL`
         ))
         .groupBy(mediaViewEvents.referer)
