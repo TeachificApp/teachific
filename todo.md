@@ -48,6 +48,7 @@
 - [x] Enforce active-organization ownership for physical-product update, delete, and duplicate operations
 - [ ] Audit and harden remaining physical-product landing, media, pricing, order, and fulfillment administration endpoints to the active organization
 - [x] Enforce active-organization ownership for physical-product after-purchase workflow, pricing-visibility, and checkout-page configuration settings
+- [x] Enforce active-organization ownership for product-scoped BookVault and Printful settings and fulfillment retry actions
 - [x] Enforce active-organization ownership for physical-product landing content, thumbnail upload, pricing options, orders, manual access, analytics, and landing-page generation
 - [x] Remove fabricated customer-review generation from the physical-product landing-page AI workflow
 - [x] Audit all AI prompts and seed content for fabricated customer reviews, ratings, or testimonials and remove any remaining instances

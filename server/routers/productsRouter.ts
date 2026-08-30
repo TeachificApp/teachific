@@ -895,12 +895,7 @@ Make ALL content specific and compelling based on the product title and descript
   getBookvaultSettings: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [p] = await db.select({ id: physicalProducts.id, bookvaultEnabled: physicalProducts.bookvaultEnabled, bookvaultIsbn: physicalProducts.bookvaultIsbn })
-        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
-      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+      const { product: p } = await requireActivePhysicalProduct(ctx, input.productId);
 
       let connection: { connected: boolean; accountName?: string | null; error?: string | null } = {
         connected: false,
@@ -996,11 +991,7 @@ Make ALL content specific and compelling based on the product title and descript
   retryBookvaultFulfillment: protectedProcedure
     .input(z.object({ orderId: z.number(), force: z.boolean().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin" && (ctx.user as { role?: string }).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProductOrder(ctx, input.orderId);
       const result = await fulfillBookvaultOrder(db, input.orderId, { force: input.force ?? false });
       if (result.error) {
         throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
@@ -1020,9 +1011,7 @@ Make ALL content specific and compelling based on the product title and descript
   updateBookvaultSettings: protectedProcedure
     .input(z.object({ productId: z.number(), bookvaultEnabled: z.boolean(), bookvaultIsbn: z.string().max(32).nullable() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       await db.update(physicalProducts)
         .set({ bookvaultEnabled: input.bookvaultEnabled, bookvaultIsbn: input.bookvaultIsbn })
         .where(eq(physicalProducts.id, input.productId));
@@ -1032,18 +1021,7 @@ Make ALL content specific and compelling based on the product title and descript
   getPrintfulSettings: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [p] = await db.select({
-        id: physicalProducts.id,
-        printfulEnabled: physicalProducts.printfulEnabled,
-        printfulStoreId: physicalProducts.printfulStoreId,
-        printfulSyncProductId: physicalProducts.printfulSyncProductId,
-        printfulSyncVariantId: physicalProducts.printfulSyncVariantId,
-      })
-        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
-      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
+      const { product: p } = await requireActivePhysicalProduct(ctx, input.productId);
 
       let connection: {
         configured: boolean;
@@ -1121,11 +1099,7 @@ Make ALL content specific and compelling based on the product title and descript
   retryPrintfulFulfillment: protectedProcedure
     .input(z.object({ orderId: z.number(), force: z.boolean().optional() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin" && (ctx.user as { role?: string }).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProductOrder(ctx, input.orderId);
       const result = await fulfillPrintfulOrder(db, input.orderId, { force: input.force ?? false });
       if (result.error) {
         throw new TRPCError({ code: "BAD_REQUEST", message: result.error });
@@ -1151,9 +1125,7 @@ Make ALL content specific and compelling based on the product title and descript
       printfulSyncVariantId: z.number().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       await db.update(physicalProducts)
         .set({
           printfulEnabled: input.printfulEnabled,

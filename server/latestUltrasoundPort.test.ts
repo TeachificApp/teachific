@@ -4312,6 +4312,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(productsRouterSource).toContain("saveCheckoutPageConfig: protectedProcedure\n    .input(z.object({ productId: z.number(), config: z.string() }))\n    .mutation(async ({ ctx, input }) => {\n      const { db } = await requireActivePhysicalProduct(ctx, input.productId);");
   });
 
+  it("requires active-organization ownership for product-scoped fulfillment settings and retry actions", () => {
+    const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
+    const fulfillmentSettingsSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("getBookvaultSettings: protectedProcedure"),
+      productsRouterSource.indexOf("// ─── Checkout Page Config"),
+    );
+    expect((fulfillmentSettingsSource.match(/await requireActivePhysicalProduct\(ctx, input\.productId\);/g) ?? []).length).toBe(4);
+    expect((fulfillmentSettingsSource.match(/await requireActivePhysicalProductOrder\(ctx, input\.orderId\);/g) ?? []).length).toBe(2);
+    expect(fulfillmentSettingsSource).toContain("const { product: p } = await requireActivePhysicalProduct(ctx, input.productId);");
+    expect(fulfillmentSettingsSource).toContain("const { db } = await requireActivePhysicalProductOrder(ctx, input.orderId);");
+  });
+
   it("does not fabricate customer reviews in physical-product landing generation and scopes generation to the active organization", () => {
     const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
     const landingGeneratorSource = productsRouterSource.slice(
