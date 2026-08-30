@@ -5794,16 +5794,16 @@
 - [x] Apply the active organization theme to LMS question-bank administration controls
 - [x] Apply the active organization theme to LMS question-bank edit-dialog controls
 - [x] Apply the active organization theme to LMS cohort unassigned-student controls
-- [ ] Apply the active organization theme to LMS cohort session and group management controls
+- [x] Apply the active organization theme to LMS cohort session and group management controls
 - [x] Apply the active organization theme to LMS cohort session-management controls
 - [x] Apply the active organization theme to LMS cohort assignment-management controls
-- [ ] Apply the active organization theme to LMS cohort recording-management controls
+- [x] Apply the active organization theme to LMS cohort recording-management controls
 - [x] Apply the active organization theme to LMS cohort recording-list controls
 - [x] Apply the active organization theme to LMS cohort recording-dialog controls
 - [x] Apply the active organization theme to LMS cohort session-dialog controls
 - [x] Apply the active organization theme to LMS cohort assignment-copy picker controls
 - [x] Apply the active organization theme to LMS cohort assignment-editor controls
-- [ ] Apply the active organization theme to LMS cohort group-management controls
+- [x] Apply the active organization theme to LMS cohort group-management controls
 - [x] Apply the active organization theme to LMS cohort group-list and student-management controls
 - [x] Apply the active organization theme to LMS cohort group-dialog controls
 - [x] Apply the active organization theme to LMS cohort settings controls

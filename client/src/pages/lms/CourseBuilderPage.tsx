@@ -10278,7 +10278,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {/* Google Calendar */}
                     <a href={buildGoogleCalUrl(s)} target="_blank" rel="noopener noreferrer" title="Add to Google Calendar">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-400 hover:text-blue-600">
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] hover:opacity-85">
                         <CalendarRange className="w-3.5 h-3.5" />
                       </Button>
                     </a>
@@ -10853,7 +10853,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-gray-900">{group.name}</span>
                         {group.isFeaturedOnLanding && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Featured on Landing</span>}
-                        <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", group.status === "active" ? "bg-green-100 text-green-700" : group.status === "open" ? "bg-blue-100 text-blue-700" : group.status === "completed" ? "bg-gray-100 text-gray-600" : "bg-yellow-100 text-yellow-700")}>{group.status}</span>
+                        <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", group.status === "active" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)] text-[var(--org-primary)]" : group.status === "open" ? "bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] text-[var(--org-primary)]" : group.status === "completed" ? "bg-gray-100 text-gray-600" : "bg-yellow-100 text-yellow-700")}>{group.status}</span>
                         <span className="text-xs text-gray-400">{group.studentCount} student{group.studentCount !== 1 ? "s" : ""}</span>
                       </div>
                       <div className="flex items-center gap-4 mt-1 text-xs text-gray-500 flex-wrap">
@@ -10893,7 +10893,7 @@ function CohortTab({ courseId }: { courseId: number }) {
                                 <span className="text-xs text-gray-400 ml-2">{s.userEmail}</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => setActivityDialog({ userId: s.userId, userName: s.userName ?? s.userEmail ?? "Student" })} className="text-xs text-blue-600 hover:text-blue-800 h-6 px-2">Activity</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setActivityDialog({ userId: s.userId, userName: s.userName ?? s.userEmail ?? "Student" })} className="text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] h-6 px-2">Activity</Button>
                                 {cohortGroups.filter((g: any) => g.id !== group.id).length > 0 && (
                                   <Button size="sm" variant="ghost" onClick={() => setTransferDialog({ userId: s.userId, userName: s.userName ?? s.userEmail ?? "Student", fromGroupId: group.id })} className="text-xs text-[var(--org-primary)] hover:opacity-80 h-6 px-2">Transfer</Button>
                                 )}

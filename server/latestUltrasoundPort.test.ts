@@ -2675,6 +2675,45 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cohortWaitlist).not.toMatch(/teal|violet|purple/i);
   });
 
+  it("uses active organization theming for cohort learner session, discussion, and tab controls", () => {
+    const courseOverviewSource = readFileSync(new URL("../client/src/pages/lms/CourseOverview.tsx", import.meta.url), "utf8");
+    const cohortDashboard = courseOverviewSource.slice(
+      courseOverviewSource.indexOf("function CohortDashboardTab"),
+      courseOverviewSource.indexOf("function CohortAssignmentCard")
+    );
+    expect(cohortDashboard).toContain("text-[var(--org-primary)]");
+    expect(cohortDashboard).toContain("bg-[var(--org-primary)] text-white");
+    expect(cohortDashboard).toContain("color-mix(in_srgb,var(--org-primary)_14%,transparent)");
+    expect(cohortDashboard).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]");
+    expect(cohortDashboard).not.toMatch(/teal|violet|purple/i);
+  });
+
+  it("uses active organization theming for cohort learner recording and calendar controls", () => {
+    const courseOverviewSource = readFileSync(new URL("../client/src/pages/lms/CourseOverview.tsx", import.meta.url), "utf8");
+    const recordingAndCalendar = courseOverviewSource.slice(
+      courseOverviewSource.indexOf("function CohortRecordingCard"),
+      courseOverviewSource.indexOf("function CalendarEventPill") + 500
+    );
+    expect(recordingAndCalendar).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_14%,transparent)]");
+    expect(recordingAndCalendar).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)]");
+    expect(recordingAndCalendar).toContain("border-[var(--org-primary)] border-t-transparent");
+    expect(recordingAndCalendar).toContain("text-[var(--org-primary)]");
+    expect(recordingAndCalendar).not.toMatch(/teal|violet|purple|blue-/i);
+  });
+
+  it("uses active organization theming for Course Builder cohort session, recording, and group-management controls", () => {
+    const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
+    const cohortBuilderManagement = courseBuilderSource.slice(
+      courseBuilderSource.indexOf("{/* Sessions */}"),
+      courseBuilderSource.indexOf("{/* Discussion thread panel */}")
+    );
+    expect(cohortBuilderManagement).toContain("text-[var(--org-primary)]");
+    expect(cohortBuilderManagement).toContain("bg-[var(--org-primary)] text-white border-[var(--org-primary)]");
+    expect(cohortBuilderManagement).toContain("hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]");
+    expect(cohortBuilderManagement).toContain("ring-[var(--org-primary)]");
+    expect(cohortBuilderManagement).not.toMatch(/teal|violet|purple|blue-/i);
+  });
+
   it("uses active organization theming throughout LMS lesson instructor override and effect controls", () => {
     const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
     const lessonInstructorAndEffects = lmsAdminSource.slice(
