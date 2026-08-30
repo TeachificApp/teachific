@@ -133,6 +133,48 @@ async function serveCurrentVersion(req: Request, res: Response) {
   }
 }
 
+async function serveHistoricalVersion(req: Request, res: Response) {
+  try {
+    const slug = String(req.params.slug ?? "");
+    const versionNumber = Number.parseInt(String(req.params.versionNumber ?? ""), 10);
+    if (!/^[a-z0-9-]{1,128}$/.test(slug) || !Number.isInteger(versionNumber) || versionNumber < 1) {
+      return res.status(400).json({ error: "Invalid media version request" });
+    }
+
+    const db = await getDb();
+    if (!db) return res.status(503).json({ error: "Database unavailable" });
+    const [asset] = await db.select().from(mediaAssets)
+      .where(and(eq(mediaAssets.slug, slug), isNull(mediaAssets.deletedAt)))
+      .limit(1);
+    if (!asset) return res.status(404).json({ error: "Media asset not found" });
+
+    // Historical copies are an administration capability even if the current
+    // asset is public. Learners and signed course access always receive only
+    // the current version through serveCurrentVersion.
+    if (!(await requirePrivateAssetAdmin(req, res, asset.orgId))) return;
+
+    const [version] = await db.select({ s3Key: mediaVersions.s3Key })
+      .from(mediaVersions)
+      .where(and(
+        eq(mediaVersions.assetId, asset.id),
+        eq(mediaVersions.orgId, asset.orgId),
+        eq(mediaVersions.versionNumber, versionNumber),
+      ))
+      .limit(1);
+    if (!version?.s3Key) return res.status(404).json({ error: "Media version not found" });
+
+    const { url } = await storageGet(version.s3Key);
+    res.setHeader("Cache-Control", "private, no-store");
+    res.redirect(302, url);
+  } catch (error) {
+    console.error("[Media Delivery] Historical version request failed:", error);
+    if (!res.headersSent) res.status(500).json({ error: "Unable to deliver media version" });
+  }
+}
+
+/** Historical previews are restricted to active-organization administrators. */
+router.get("/:slug/versions/:versionNumber/download", serveHistoricalVersion);
+
 /** Current-version file download. */
 router.get("/:slug/download", serveCurrentVersion);
 

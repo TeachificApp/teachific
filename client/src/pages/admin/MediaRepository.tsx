@@ -1295,13 +1295,15 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                         Re-extract
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled
-                      title="Version preview is unavailable until a version-specific authorized delivery route is implemented."
-                    >
-                      <Eye className="w-3 h-3" />
+                    <Button size="sm" variant="ghost" asChild>
+                      <a
+                        href={`/api/media/${asset.slug}/versions/${v.versionNumber}/download`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Preview this version"
+                      >
+                        <Eye className="w-3 h-3" />
+                      </a>
                     </Button>
                   </div>
                   );

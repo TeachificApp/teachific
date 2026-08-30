@@ -4562,6 +4562,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaDeliverySource).toContain("eq(mediaAccessRules.assetId, asset.id)");
     expect(mediaDeliverySource).toContain("eq(mediaAccessGrants.userId, user.id)");
     expect(mediaDeliverySource).toContain('router.get("/:slug/scorm-zip", serveCurrentVersion);');
+    expect(mediaDeliverySource).toContain('router.get("/:slug/versions/:versionNumber/download", serveHistoricalVersion);');
+    expect(mediaDeliverySource).toContain("eq(mediaVersions.versionNumber, versionNumber)");
+    expect(mediaDeliverySource).toContain("Historical copies are an administration capability");
     expect(mediaRouterSource).toContain("eq(lmsCourses.orgId, asset.orgId)");
     expect(mediaRouterSource).toContain("eq(lmsEnrollments.orgId, asset.orgId)");
     expect(mediaRouterSource).toContain("grantUserAccess: protectedProcedure");
@@ -4577,7 +4580,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaAdminSource).toContain("/api/media/${asset.slug}/download");
     expect(mediaAdminSource).toContain("Inline display and external iframe links are not available yet.");
     expect(mediaAdminSource).not.toContain("/media/${asset.slug}/embed");
-    expect(mediaAdminSource).toContain("Version preview is unavailable until a version-specific authorized delivery route is implemented.");
+    expect(mediaAdminSource).toContain("/api/media/${asset.slug}/versions/${v.versionNumber}/download");
     expect(mediaAdminSource).not.toContain("href={v.s3Url}");
   });
 
