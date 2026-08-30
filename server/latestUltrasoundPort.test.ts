@@ -4298,6 +4298,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(highImpactSource).toContain("const conditions: any[] = [eq(physicalProducts.orgId, orgId)]");
   });
 
+  it("requires active-organization ownership for physical-product workflow and checkout settings", () => {
+    const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
+    const localSettingsSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("// ─── After Purchase Workflow"),
+      productsRouterSource.indexOf("getBookvaultSettings: protectedProcedure"),
+    );
+    expect((localSettingsSource.match(/await requireActivePhysicalProduct\(ctx, input\.productId\);/g) ?? []).length).toBe(4);
+    expect(localSettingsSource).not.toContain('ctx.user.role !== "admin"');
+    expect(localSettingsSource).toContain("return { afterPurchaseWorkflow: product.afterPurchaseWorkflow ?? null }");
+    expect(localSettingsSource).toContain("return { hidePricingOptions: product.hidePricingOptions ?? false }");
+    expect(productsRouterSource).toContain("getCheckoutPageConfig: protectedProcedure\n    .input(z.object({ productId: z.number() }))\n    .query(async ({ ctx, input }) => {\n      const { product } = await requireActivePhysicalProduct(ctx, input.productId);");
+    expect(productsRouterSource).toContain("saveCheckoutPageConfig: protectedProcedure\n    .input(z.object({ productId: z.number(), config: z.string() }))\n    .mutation(async ({ ctx, input }) => {\n      const { db } = await requireActivePhysicalProduct(ctx, input.productId);");
+  });
+
   it("does not fabricate customer reviews in physical-product landing generation and scopes generation to the active organization", () => {
     const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
     const landingGeneratorSource = productsRouterSource.slice(

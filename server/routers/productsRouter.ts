@@ -861,24 +861,14 @@ Make ALL content specific and compelling based on the product title and descript
   getAfterPurchaseWorkflow: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db
-        .select({ id: physicalProducts.id, afterPurchaseWorkflow: physicalProducts.afterPurchaseWorkflow })
-        .from(physicalProducts)
-        .where(eq(physicalProducts.id, input.productId))
-        .limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { product } = await requireActivePhysicalProduct(ctx, input.productId);
       return { afterPurchaseWorkflow: product.afterPurchaseWorkflow ?? null };
     }),
 
   updateAfterPurchaseWorkflow: protectedProcedure
     .input(z.object({ productId: z.number(), workflow: z.string().nullable() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       await db.update(physicalProducts)
         .set({ afterPurchaseWorkflow: input.workflow })
         .where(eq(physicalProducts.id, input.productId));
@@ -888,21 +878,14 @@ Make ALL content specific and compelling based on the product title and descript
   getHidePricingOptions: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [p] = await db.select({ id: physicalProducts.id, hidePricingOptions: physicalProducts.hidePricingOptions })
-        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
-      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
-      return { hidePricingOptions: p.hidePricingOptions ?? false };
+      const { product } = await requireActivePhysicalProduct(ctx, input.productId);
+      return { hidePricingOptions: product.hidePricingOptions ?? false };
     }),
 
   updateHidePricingOptions: protectedProcedure
     .input(z.object({ productId: z.number(), hidePricingOptions: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       await db.update(physicalProducts)
         .set({ hidePricingOptions: input.hidePricingOptions })
         .where(eq(physicalProducts.id, input.productId));
@@ -1186,21 +1169,14 @@ Make ALL content specific and compelling based on the product title and descript
   getCheckoutPageConfig: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [p] = await db.select({ checkoutPageConfig: physicalProducts.checkoutPageConfig })
-        .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
-      if (!p) throw new TRPCError({ code: "NOT_FOUND" });
-      return { config: p.checkoutPageConfig ?? null };
+      const { product } = await requireActivePhysicalProduct(ctx, input.productId);
+      return { config: product.checkoutPageConfig ?? null };
     }),
 
   saveCheckoutPageConfig: protectedProcedure
     .input(z.object({ productId: z.number(), config: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       try { JSON.parse(input.config); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON config" }); }
       await db.update(physicalProducts).set({ checkoutPageConfig: input.config }).where(eq(physicalProducts.id, input.productId));
       return { success: true };
