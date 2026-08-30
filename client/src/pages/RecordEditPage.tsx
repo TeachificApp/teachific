@@ -1916,16 +1916,7 @@ function EditTab({ orgId, initialItem }: { orgId: number; initialItem?: MediaIte
 
 // ─── AudioTab Sub-component ─────────────────────────────────────────────────
 
-const VOICE_OPTIONS = [
-  { value: "alloy", label: "Alloy", description: "Neutral, balanced" },
-  { value: "echo", label: "Echo", description: "Warm, resonant" },
-  { value: "fable", label: "Fable", description: "Expressive, narrative" },
-  { value: "onyx", label: "Onyx", description: "Deep, authoritative" },
-  { value: "nova", label: "Nova", description: "Bright, energetic" },
-  { value: "shimmer", label: "Shimmer", description: "Clear, professional" },
-] as const;
-
-type AudioSubTab = "record" | "upload" | "tts";
+type AudioSubTab = "record" | "upload";
 
 function AudioTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaItem) => void }) {
   const [subTab, setSubTab] = useState<AudioSubTab>("record");
@@ -1934,7 +1925,7 @@ function AudioTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaIte
     <div className="flex flex-col h-full">
       {/* Sub-tab bar */}
       <div className="flex items-center gap-0 px-6 border-b border-border bg-muted/20 shrink-0">
-        {(["record", "upload", "tts"] as AudioSubTab[]).map((t) => (
+        {(["record", "upload"] as AudioSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSubTab(t)}
@@ -1947,14 +1938,12 @@ function AudioTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaIte
           >
             {t === "record" && <><Mic className="h-3 w-3" /> Record Audio</>}
             {t === "upload" && <><Upload className="h-3 w-3" /> Upload Audio</>}
-            {t === "tts" && <><Sparkles className="h-3 w-3" /> Text-to-Speech</>}
           </button>
         ))}
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
         {subTab === "record" && <RecordAudioSubTab orgId={orgId} onSaved={onSaved} />}
         {subTab === "upload" && <UploadAudioSubTab orgId={orgId} onSaved={onSaved} />}
-        {subTab === "tts" && <TTSSubTab orgId={orgId} onSaved={onSaved} />}
       </div>
     </div>
   );
@@ -2446,166 +2435,6 @@ function UploadAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
     </div>
   );
 }
-// ── Text-to-Speech ────────────────────────────────────────────────────────────
-
-function TTSSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaItem) => void }) {
-  const [text, setText] = useState("");
-  const [voice, setVoice] = useState<"alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer">("nova");
-  const [speed, setSpeed] = useState(1.0);
-  const [fileName, setFileName] = useState("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [savedItem, setSavedItem] = useState<MediaItem | null>(null);
-  const generateSpeech = trpc.lms.media.generateSpeech.useMutation();
-
-  const handleGenerate = async () => {
-    if (!text.trim()) { toast.error("Please enter some text"); return; }
-    try {
-      const result = await generateSpeech.mutateAsync({
-        orgId,
-        text: text.trim(),
-        voice,
-        speed,
-        fileName: fileName.trim() || undefined,
-      });
-      setPreviewUrl(result.url);
-      const item: MediaItem = { id: result.id, url: result.url, filename: result.filename, mimeType: "audio/mpeg", fileSize: result.fileSize };
-      setSavedItem(item);
-      onSaved?.(item);
-      toast.success("Speech generated and saved to Media Library");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Speech generation failed");
-    }
-  };
-
-  const charCount = text.length;
-  const maxChars = 4096;
-
-  return (
-    <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto w-full">
-      <div>
-        <h2 className="text-lg font-semibold">Text-to-Speech</h2>
-        <p className="text-sm text-muted-foreground mt-1">Convert text to natural-sounding speech and save it to your Media Library</p>
-      </div>
-
-      {/* Text input */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Text</Label>
-          <span className={cn("text-xs", charCount > maxChars * 0.9 ? "text-destructive" : "text-muted-foreground")}>
-            {charCount.toLocaleString()} / {maxChars.toLocaleString()}
-          </span>
-        </div>
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, maxChars))}
-          placeholder="Enter the text you want to convert to speech..."
-          className="min-h-[160px] resize-y text-sm"
-        />
-      </div>
-
-      {/* Voice & Speed controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-sm font-medium">Voice</Label>
-          <Select value={voice} onValueChange={(v) => setVoice(v as typeof voice)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {VOICE_OPTIONS.map((v) => (
-                <SelectItem key={v.value} value={v.value}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{v.label}</span>
-                    <span className="text-xs text-muted-foreground">{v.description}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium flex items-center gap-1.5">
-              <SlidersHorizontal className="h-3.5 w-3.5" /> Speed
-            </Label>
-            <span className="text-sm font-mono text-muted-foreground">{speed.toFixed(2)}×</span>
-          </div>
-          <Slider
-            value={[speed]}
-            onValueChange={([v]) => setSpeed(Math.round(v * 100) / 100)}
-            min={0.25}
-            max={4.0}
-            step={0.05}
-            className="mt-1"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0.25× (slow)</span>
-            <span>1.0× (normal)</span>
-            <span>4.0× (fast)</span>
-          </div>
-        </div>
-      </div>
-
-      {/* File name */}
-      <div className="flex flex-col gap-1.5">
-        <Label className="text-sm font-medium">File Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
-        <div className="flex items-center gap-2">
-          <Input
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-            placeholder={`tts-${voice}-...`}
-            className="flex-1"
-          />
-          <span className="text-sm text-muted-foreground shrink-0">.mp3</span>
-        </div>
-      </div>
-
-      {/* Generate button */}
-      <Button
-        size="lg"
-        className="w-full gap-2"
-        onClick={handleGenerate}
-        disabled={generateSpeech.isPending || !text.trim()}
-      >
-        {generateSpeech.isPending ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Generating speech...</>
-        ) : (
-          <><Sparkles className="h-4 w-4" /> Generate Speech</>  
-        )}
-      </Button>
-
-      {/* Preview */}
-      {previewUrl && savedItem && (
-        <div className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-muted/20">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Volume2 className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{savedItem.filename}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(savedItem.fileSize)} · MP3 · {voice} voice · {speed}×</p>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <CheckCircle className="h-4 w-4 text-teal-500" />
-              <span className="text-xs text-teal-600">Saved</span>
-            </div>
-          </div>
-          <audio src={previewUrl} controls className="w-full h-8" />
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => { const a = document.createElement("a"); a.href = previewUrl; a.download = savedItem.filename; a.click(); }}>
-              <Download className="h-3.5 w-3.5" /> Download MP3
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={() => { setPreviewUrl(null); setSavedItem(null); setText(""); setFileName(""); }}>
-              <Plus className="h-3.5 w-3.5" /> Generate Another
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Main RecordEditPage ──────────────────────────────────────────────────────
 
 export default function RecordEditPage() {

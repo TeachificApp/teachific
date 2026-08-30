@@ -2629,46 +2629,6 @@ export const lmsRouter = router({
         const text = transcript.map((s) => s.text).join(" ");
         return { ok: true, transcript, text };
       }),
-    generateSpeech: protectedProcedure
-      .input(z.object({
-        orgId: z.number().optional(),
-        text: z.string().min(1).max(4096),
-        voice: z.enum(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]).optional(),
-        speed: z.number().min(0.25).max(4.0).optional(),
-        fileName: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        const { generateSpeech: tts } = await import("./_core/textToSpeech");
-        const { buffer, mimeType } = await tts({
-          text: input.text,
-          voice: input.voice ?? "nova",
-          speed: input.speed ?? 1.0,
-        });
-        // Upload to S3
-        const baseName = (input.fileName ?? `tts-${input.voice ?? "nova"}-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, "-");
-        const fileName = baseName.endsWith(".mp3") ? baseName : `${baseName}.mp3`;
-        const fileKey = `org-${orgId}/tts/${nanoid(12)}-${fileName}`;
-        const { url } = await storagePut(fileKey, buffer, mimeType);
-        // Save to media library
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { orgMediaLibrary } = await import("../drizzle/schema");
-        const [result] = await db.insert(orgMediaLibrary).values({
-          orgId,
-          uploadedBy: ctx.user.id,
-          filename: fileName,
-          mimeType,
-          fileSize: buffer.byteLength,
-          fileKey,
-          url,
-          source: "direct",
-          tags: JSON.stringify(["tts", "audio"]),
-        }).$returningId();
-        return { ok: true, url, id: result.id, filename: fileName, fileSize: buffer.byteLength };
-      }),
     saveRecording: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional(), fileKey: z.string().optional(), durationSeconds: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {

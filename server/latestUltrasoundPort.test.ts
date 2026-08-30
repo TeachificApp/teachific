@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isStaleAssetError } from "../client/src/components/ErrorBoundary";
 import { mapQuestionType, parseBlocks } from "./lib/lessonQuizQuestionBankSync";
@@ -48,6 +48,18 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lessonEditorSource).toContain("Full Lesson (1,500+ words)");
     expect(lessonEditorSource).toContain("Full lessons are generated with a minimum of 1,500 words.");
     expect(lessonEditorSource).toContain("minimum met");
+  });
+
+  it("excludes dedicated text-to-speech controls while preserving supported audio recording, uploads, and transcription", () => {
+    const recordEditSource = readFileSync(new URL("../client/src/pages/RecordEditPage.tsx", import.meta.url), "utf8");
+    const lmsRouterSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    expect(recordEditSource).toContain('type AudioSubTab = "record" | "upload";');
+    expect(recordEditSource).toContain("<UploadAudioSubTab orgId={orgId} onSaved={onSaved} />");
+    expect(recordEditSource).not.toMatch(/Text-to-Speech|TTSSubTab|generateSpeech/i);
+    expect(lmsRouterSource).toContain("transcribe: protectedProcedure");
+    expect(lmsRouterSource).toContain("saveRecording: protectedProcedure");
+    expect(lmsRouterSource).not.toContain("generateSpeech: protectedProcedure");
+    expect(existsSync(new URL("./_core/textToSpeech.ts", import.meta.url))).toBe(false);
   });
 
   it("accepts only serialized block arrays for page-builder lesson quiz synchronization", () => {
