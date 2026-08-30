@@ -100,6 +100,8 @@ const MEDIA_TYPE_ICONS: Record<MediaType, React.ReactNode> = {
   other: <File className="w-4 h-4" />,
 };
 
+const MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE = "Media repository uploads are temporarily unavailable while the secure organization-scoped upload service is restored.";
+
 // ─── Thumbnail Preview ───────────────────────────────────────────────────────
 
 function AssetThumbnail({ asset }: { asset: any }) {
@@ -1122,7 +1124,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
               >
                 {isPublic ? <><Lock className="w-3 h-3 mr-1" />Make Private</> : <><Globe className="w-3 h-3 mr-1" />Make Public</>}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setReuploadOpen(true)}>
+              <Button size="sm" variant="outline" onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)}>
                 <Upload className="w-3 h-3 mr-1" />Upload New Version
               </Button>
               <Button
@@ -1260,7 +1262,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                       Re-extract to CDN
                     </Button>
                   )}
-                  <Button size="sm" onClick={() => setReuploadOpen(true)}>
+                  <Button size="sm" onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)}>
                     <Upload className="w-3 h-3 mr-1.5" />Upload New Version
                   </Button>
                 </div>
@@ -1803,7 +1805,7 @@ export default function MediaRepository() {
               <span className="hidden sm:inline">{reExtractAllMutation.isPending ? "Queuing…" : "Re-extract All SCORM"}</span>
               <span className="sm:hidden">Re-extract</span>
             </Button>
-            <Button onClick={() => setUploadOpen(true)} size="sm">
+            <Button onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)} size="sm" title="Secure media upload service is being restored">
               <Upload className="w-4 h-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">Upload File</span><span className="sm:hidden">Upload</span>
             </Button>
           </div>
@@ -1867,8 +1869,8 @@ export default function MediaRepository() {
                 <File className="w-8 h-8 opacity-40" />
               </div>
               <p className="font-semibold text-base">No files found</p>
-              <p className="text-sm mt-1">Upload your first file to get started.</p>
-              <Button className="mt-4" onClick={() => setUploadOpen(true)}>
+              <p className="text-sm mt-1">Secure media repository uploads are temporarily unavailable while the organization-scoped upload service is restored.</p>
+              <Button className="mt-4" onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)} title="Secure media upload service is being restored">
                 <Upload className="w-4 h-4 mr-2" />Upload File
               </Button>
             </div>

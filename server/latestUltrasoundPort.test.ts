@@ -4489,6 +4489,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaFolderAuditSource).toContain("The live `media_folders` table uses an organization-owned hierarchy");
     expect(mediaFolderAuditSource).toContain("Asset filtering must use `folderId` plus the active `orgId`");
     expect(mediaFolderAuditSource).toContain("never slugs");
+    expect(mediaAdminSource).toContain("MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE");
+    expect(mediaAdminSource).toContain("Secure media repository uploads are temporarily unavailable");
+    expect(mediaAdminSource).not.toContain("onClick={() => setUploadOpen(true)}");
+    expect(mediaAdminSource).not.toContain("onClick={() => setReuploadOpen(true)}");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

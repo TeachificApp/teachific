@@ -73,6 +73,8 @@
 - [x] Quarantine global legacy media folder CRUD and present the structured-folder capability as unavailable in the repository UI
 - [x] Scope media asset folder-label move and bulk-move mutations under active-organization ownership
 - [ ] Rebuild structured media folders as an additive organization-owned model before restoring folder creation, rename, and deletion controls
+- [ ] Rebuild the missing active-organization media repository upload endpoint and folderId payload contract before restoring upload folder selection
+- [x] Quarantine stale media repository upload controls that target an unregistered HTTP endpoint
 - [x] Audit the live media folder and asset schema contract before attempting structured-folder restoration
 - [ ] Reconcile the broader media asset, version, view-event, and access-rule Drizzle contracts with live database columns before restoring advanced media features
 - [x] Reconcile verified live `media_versions.orgId` writes and declarations before creating or re-uploading organization-owned media versions
