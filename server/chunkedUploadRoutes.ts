@@ -416,6 +416,7 @@ function cleanupSession(session: UploadSession) {
 // Separate session registry for media uploads (avoids collision with SCORM sessions)
 interface MediaUploadSession {
   uploadId: string;
+  createdAt: number;
   authUserId: number;
   totalChunks: number;
   receivedChunks: Set<number>;
@@ -435,6 +436,27 @@ interface MediaUploadSession {
   access: "public" | "private";
 }
 const mediaSessions = new Map<string, MediaUploadSession>();
+const MEDIA_SESSION_TTL_MS = 60 * 60 * 1000;
+
+function getLiveMediaSession(uploadId: string): MediaUploadSession | undefined {
+  const session = mediaSessions.get(uploadId);
+  if (!session) return undefined;
+  if (Date.now() - session.createdAt > MEDIA_SESSION_TTL_MS) {
+    cleanupMediaSession(session);
+    return undefined;
+  }
+  return session;
+}
+
+function cleanupExpiredMediaSessions() {
+  const now = Date.now();
+  for (const session of mediaSessions.values()) {
+    if (now - session.createdAt > MEDIA_SESSION_TTL_MS) cleanupMediaSession(session);
+  }
+}
+
+const mediaSessionCleanupTimer = setInterval(cleanupExpiredMediaSessions, 5 * 60 * 1000);
+mediaSessionCleanupTimer.unref();
 
 function classifyMediaType(contentType: string, filename: string) {
   const lowerFilename = filename.toLowerCase();
@@ -455,6 +477,7 @@ function asOptionalText(value: unknown, maxLength: number) {
 
 // POST /api/chunked/media/initiate
 router.post("/media/initiate", express.json(), async (req: Request, res: Response) => {
+  cleanupExpiredMediaSessions();
   const { totalChunks, filename, orgId, folder, contentType, repositoryUpload, replaceAssetId, folderId, title, description, tags, notes, access } = req.body;
   if (!totalChunks || !filename) {
     return res.status(400).json({ error: "totalChunks and filename are required" });
@@ -515,6 +538,7 @@ router.post("/media/initiate", express.json(), async (req: Request, res: Respons
   const uploadId = nanoid(16);
   mediaSessions.set(uploadId, {
     uploadId,
+    createdAt: Date.now(),
     authUserId: user.id,
     totalChunks: parsedTotalChunks,
     receivedChunks: new Set(),
@@ -544,7 +568,7 @@ router.post(
     const { uploadId } = req.params;
     const chunkIndex = parseInt(String(req.body.chunkIndex ?? "-1"), 10);
     const tmpPath = (req.file as (Express.Multer.File & { path: string }) | undefined)?.path;
-    const session = mediaSessions.get(uploadId);
+    const session = getLiveMediaSession(uploadId);
     const user = await authenticateRequest(req);
     if (!session) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
@@ -584,7 +608,7 @@ router.post(
   express.json(),
   async (req: Request, res: Response) => {
     const { uploadId } = req.params;
-    const session = mediaSessions.get(uploadId);
+    const session = getLiveMediaSession(uploadId);
     if (!session) return res.status(404).json({ error: "Upload session not found" });
     if (session.receivedChunks.size !== session.totalChunks) {
       return res.status(400).json({

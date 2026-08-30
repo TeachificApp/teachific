@@ -94,6 +94,7 @@
 - [x] Route Media Repository SCORM playback through the verified signed ZIP fallback until extracted-path serving is safely rebuilt
 - [x] Replace unresolved Media Repository inline-display and external-embed link controls with explicit availability guidance
 - [x] Route learner Media Repository non-SCORM embeds through the verified signed current-version delivery endpoint
+- [x] Expire and clean abandoned Media Repository chunked upload sessions and temporary chunks automatically
 - [x] Point copied Media Repository download links to the restored organization-safe delivery route
 - [x] Remove raw storage URL exposure from Media Repository version-history controls until a version-specific authorized route is implemented
 - [x] Scope every supported Media Repository analytics query to the asset’s active organization and live viewedAt column

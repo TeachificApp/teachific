@@ -4511,6 +4511,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(chunkedUploadSource).toContain("getOrgIdForUserWithFallback(user.id, user.role)");
     expect(chunkedUploadSource).toContain("requestedOrgId !== activeOrgId");
     expect(chunkedUploadSource).toContain("authUserId: user.id,");
+    expect(chunkedUploadSource).toContain("createdAt: Date.now(),");
+    expect(chunkedUploadSource).toContain("const MEDIA_SESSION_TTL_MS = 60 * 60 * 1000;");
+    expect(chunkedUploadSource).toContain("function getLiveMediaSession(uploadId: string)");
+    expect(chunkedUploadSource).toContain("const mediaSessionCleanupTimer = setInterval(cleanupExpiredMediaSessions, 5 * 60 * 1000);");
+    expect(chunkedUploadSource).toContain("const session = getLiveMediaSession(uploadId);");
     expect(chunkedUploadSource).toContain("user.id !== session.authUserId");
     expect((chunkedUploadSource.match(/activeOrgId !== session\.orgId/g) ?? []).length).toBe(2);
     expect((chunkedUploadSource.match(/Upload session no longer matches the active organization/g) ?? []).length).toBe(2);
