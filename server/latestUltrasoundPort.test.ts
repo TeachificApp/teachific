@@ -4318,10 +4318,28 @@ describe("latest Ultrasound-App learning feature port", () => {
       productsRouterSource.indexOf("getBookvaultSettings: protectedProcedure"),
       productsRouterSource.indexOf("// ─── Checkout Page Config"),
     );
+    const printifySettingsSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("getPrintifySettings: protectedProcedure"),
+      productsRouterSource.indexOf("export const productsCheckoutPublicRouter"),
+    );
     expect((fulfillmentSettingsSource.match(/await requireActivePhysicalProduct\(ctx, input\.productId\);/g) ?? []).length).toBe(4);
     expect((fulfillmentSettingsSource.match(/await requireActivePhysicalProductOrder\(ctx, input\.orderId\);/g) ?? []).length).toBe(2);
+    expect((printifySettingsSource.match(/await requireActivePhysicalProduct\(ctx, input\.productId\);/g) ?? []).length).toBe(2);
+    expect((printifySettingsSource.match(/await requireActivePhysicalProductOrder\(ctx, input\.orderId\);/g) ?? []).length).toBe(1);
     expect(fulfillmentSettingsSource).toContain("const { product: p } = await requireActivePhysicalProduct(ctx, input.productId);");
     expect(fulfillmentSettingsSource).toContain("const { db } = await requireActivePhysicalProductOrder(ctx, input.orderId);");
+  });
+
+  it("quarantines unscoped embedded physical-product checkout until an organization-domain storefront is implemented", () => {
+    const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
+    const checkoutSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("createEmbeddedCheckoutSession: protectedProcedure"),
+      productsRouterSource.indexOf("// ─── Printify Settings"),
+    );
+    expect(checkoutSource).toContain("Physical-product checkout is unavailable until an organization-domain storefront is configured.");
+    expect(checkoutSource).not.toContain("stripe.checkout.sessions.create");
+    expect(checkoutSource).not.toContain("return_url:");
+    expect(checkoutSource).not.toContain('where(eq(physicalProducts.slug, input.productSlug))');
   });
 
   it("does not fabricate customer reviews in physical-product landing generation and scopes generation to the active organization", () => {

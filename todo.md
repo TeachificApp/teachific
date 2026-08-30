@@ -56,6 +56,8 @@
 - [x] Audit public physical-product discovery, product lookup, and checkout routes and quarantine unscoped legacy APIs pending an organization-domain storefront
 - [x] Quarantine unreferenced global physical-product public and learner APIs until an organization-domain storefront contract is implemented
 - [ ] Build an organization-domain-scoped public physical-product storefront and checkout contract before restoring learner-facing product APIs
+- [x] Quarantine unscoped embedded physical-product checkout procedures until an organization-domain storefront verifies product ownership and return URLs
+- [x] Require active-organization ownership for product-scoped Printify settings and fulfillment retry actions
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
