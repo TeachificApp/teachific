@@ -178,16 +178,13 @@ interface UploadDialogProps {
   onSuccess: () => void;
   existingAssetId?: number;
   existingTitle?: string;
-  /** Pre-select this folder slug when the dialog opens (e.g. currently browsed folder) */
-  initialFolder?: string | null;
 }
 
-function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle, initialFolder }: UploadDialogProps) {
+function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle }: UploadDialogProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   // Bulk mode: list of queued files
   const [files, setFiles] = useState<File[]>([]);
   const [access, setAccess] = useState<"public" | "private">("private");
-  const [folderSlug, setFolderSlug] = useState<string>(initialFolder ?? "none");
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadState, setUploadState] = useState<{ current: number; total: number; fileProgress: number }>({
@@ -195,13 +192,7 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
   });
   const [errors, setErrors] = useState<string[]>([]);
 
-  const { data: foldersData } = trpc.mediaRepo.listFoldersFull.useQuery();
   const isReupload = !!existingAssetId;
-
-  // Sync folder when dialog opens with a new initialFolder
-  useEffect(() => {
-    if (!isReupload) setFolderSlug(initialFolder ?? "none");
-  }, [initialFolder, isReupload, open]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -233,19 +224,18 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
   const uploadOneFile = async (file: File, fileIndex: number, totalFiles: number): Promise<void> => {
     const title = file.name.replace(/\.[^.]+$/, "");
     const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
-    const initRes = await fetch("/api/upload-media-repo/init", {
+    const initRes = await fetch("/api/chunked/media/initiate", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        assetId: isReupload ? existingAssetId : undefined,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
+        repositoryUpload: true,
         totalChunks,
-        fileSize: file.size,
-        title: isReupload ? undefined : title,
-        access: isReupload ? undefined : access,
-        folder: (!isReupload && folderSlug && folderSlug !== "none") ? folderSlug : undefined,
+        totalBytes: file.size,
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        title,
+        access,
         notes,
       }),
     });
@@ -260,50 +250,21 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
       const chunk = file.slice(start, end);
       const fd = new FormData();
       fd.append("chunk", chunk, file.name);
-      fd.append("uploadId", uploadId);
       fd.append("chunkIndex", String(i));
-      fd.append("totalChunks", String(totalChunks));
-      fd.append("fileName", file.name);
-      fd.append("mimeType", file.type || "application/octet-stream");
-      fd.append("fileSize", String(file.size));
-      fd.append("notes", notes);
-      if (isReupload && existingAssetId) fd.append("assetId", String(existingAssetId));
-      if (!isReupload) {
-        fd.append("title", title);
-        fd.append("access", access);
-        if (folderSlug && folderSlug !== "none") fd.append("folder", folderSlug);
-      }
       // Retry up to 3 times for transient failures
       let lastErr: Error | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          await new Promise<void>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.timeout = 120000; // 2 min timeout per chunk
-            xhr.upload.onprogress = (ev) => {
-              if (ev.lengthComputable) {
-                const chunkPct = ev.loaded / ev.total;
-                const filePct = Math.round(((i + chunkPct) / totalChunks) * 100);
-                setUploadState({ current: fileIndex + 1, total: totalFiles, fileProgress: filePct });
-              }
-            };
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) resolve();
-              else {
-                try {
-                  const errBody = JSON.parse(xhr.responseText);
-                  reject(new Error(errBody?.error ?? `Chunk upload failed (HTTP ${xhr.status})`));
-                } catch {
-                  reject(new Error(`Chunk upload failed (HTTP ${xhr.status}): ${xhr.responseText?.slice(0, 200) || "no response"}`));
-                }
-              }
-            };
-            xhr.onerror = () => reject(new Error("Network error on chunk " + i));
-            xhr.ontimeout = () => reject(new Error(`Chunk ${i} timed out after 120s`));
-            xhr.open("POST", "/api/upload-media-repo/chunk");
-            xhr.withCredentials = true;
-            xhr.send(fd);
+          const chunkRes = await fetch(`/api/chunked/media/chunk/${uploadId}`, {
+            method: "POST",
+            credentials: "include",
+            body: fd,
           });
+          if (!chunkRes.ok) {
+            const error = await chunkRes.json().catch(() => ({})) as { error?: string };
+            throw new Error(error.error ?? `Chunk upload failed (HTTP ${chunkRes.status})`);
+          }
+          setUploadState({ current: fileIndex + 1, total: totalFiles, fileProgress: Math.round(((i + 1) / totalChunks) * 100) });
           lastErr = null;
           break; // success
         } catch (err: any) {
@@ -312,6 +273,16 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
         }
       }
       if (lastErr) throw lastErr;
+    }
+    const finalizeRes = await fetch(`/api/chunked/media/finalize/${uploadId}`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    if (!finalizeRes.ok) {
+      const error = await finalizeRes.json().catch(() => ({})) as { error?: string };
+      throw new Error(error.error ?? `Finalize failed (HTTP ${finalizeRes.status})`);
     }
   };
 
@@ -399,7 +370,7 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
         )}
 
         {!isReupload && (
-          <div className="grid grid-cols-2 gap-3">
+          <div>
             <div>
               <Label>Access</Label>
               <Select value={access} onValueChange={(v) => setAccess(v as any)}>
@@ -407,18 +378,6 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
                 <SelectContent>
                   <SelectItem value="private">Private (invite only)</SelectItem>
                   <SelectItem value="public">Public (anyone with link)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Folder</Label>
-              <Select value={folderSlug} onValueChange={setFolderSlug}>
-                <SelectTrigger><SelectValue placeholder="No folder" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No folder (uncategorized)</SelectItem>
-                  {(foldersData ?? []).map((f: any) => (
-                    <SelectItem key={f.id} value={f.slug}>{f.name}</SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -962,7 +921,6 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
       setSlugInitialized(false);
     }
   }, [assetId, slugInitialized]);
-  const { data: foldersData } = trpc.mediaRepo.listFoldersFull.useQuery();
   const { data: questionBanks = [] } = trpc.quizBank.listBanks.useQuery(
     { orgId: data?.asset.orgId ?? 0 },
     { enabled: !!data?.asset.orgId }
@@ -1002,11 +960,6 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
     onSuccess: () => { toast.success("Media type updated"); refetch(); onRefresh(); },
     onError: (e) => toast.error(e.message),
   });
-  const moveToFolderMutation = trpc.mediaRepo.moveAssetToFolder.useMutation({
-    onSuccess: () => { toast.success("Folder updated"); refetch(); onRefresh(); },
-    onError: (e) => toast.error(e.message),
-  });
-
   const setAccessMutation = trpc.mediaRepo.setAccess.useMutation({
     onSuccess: () => { toast.success("Access updated"); refetch(); onRefresh(); },
   });
@@ -1151,20 +1104,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                 <div className="flex items-center gap-2 flex-wrap">
                   <Folder className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs text-muted-foreground">Folder:</span>
-                  <Select
-                    value={asset.folder ?? "none"}
-                    onValueChange={(v) => moveToFolderMutation.mutate({ assetId: asset.id, folderSlug: v === "none" ? null : v })}
-                  >
-                    <SelectTrigger className="h-7 text-xs w-44">
-                      <SelectValue placeholder="No folder" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No folder</SelectItem>
-                      {(foldersData ?? []).map((f: any) => (
-                        <SelectItem key={f.id} value={f.slug}>{f.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <span className="text-xs text-muted-foreground">Structured folders are temporarily unavailable.</span>
                 </div>
                 {asset.description && (
                   <p className="text-sm text-muted-foreground">{asset.description}</p>
@@ -1805,7 +1745,7 @@ export default function MediaRepository() {
               <span className="hidden sm:inline">{reExtractAllMutation.isPending ? "Queuing…" : "Re-extract All SCORM"}</span>
               <span className="sm:hidden">Re-extract</span>
             </Button>
-            <Button onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)} size="sm" title="Secure media upload service is being restored">
+            <Button onClick={() => setUploadOpen(true)} size="sm">
               <Upload className="w-4 h-4 mr-1 sm:mr-2" /><span className="hidden sm:inline">Upload File</span><span className="sm:hidden">Upload</span>
             </Button>
           </div>
@@ -1869,8 +1809,8 @@ export default function MediaRepository() {
                 <File className="w-8 h-8 opacity-40" />
               </div>
               <p className="font-semibold text-base">No files found</p>
-              <p className="text-sm mt-1">Secure media repository uploads are temporarily unavailable while the organization-scoped upload service is restored.</p>
-              <Button className="mt-4" onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)} title="Secure media upload service is being restored">
+              <p className="text-sm mt-1">Upload files to this organization’s media repository.</p>
+              <Button className="mt-4" onClick={() => setUploadOpen(true)}>
                 <Upload className="w-4 h-4 mr-2" />Upload File
               </Button>
             </div>
@@ -2035,7 +1975,6 @@ export default function MediaRepository() {
           open={uploadOpen}
           onClose={() => setUploadOpen(false)}
           onSuccess={handleRefresh}
-          initialFolder={selectedFolder}
         />
       )}
 

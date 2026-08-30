@@ -16,12 +16,15 @@ import { existsSync, unlinkSync, createWriteStream, createReadStream, statSync }
 import { tmpdir } from "os";
 import { join } from "path";
 import { nanoid } from "nanoid";
+import { and, eq } from "drizzle-orm";
 import { processZipVersion, processZip, emitProgress } from "./scormUploadRoutes";
-import { storagePutStream } from "./storage";
-import { getPackageById, updatePackage, createPackage, requireOrgAdmin } from "./db";
+import { storageDelete, storagePutStream } from "./storage";
+import { getDb, getPackageById, updatePackage, createPackage, requireOrgAdmin, getOrgIdForUserWithFallback } from "./db";
 import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
 import { ENV } from "./_core/env";
+import { mediaAssets, mediaFolders, mediaVersions } from "../drizzle/schema";
+import { initialScormExtractionStatus, queueScormExtractionIfNeeded } from "./lib/scormPackage";
 
 const LARGE_FILE_LIMIT = 3 * 1024 * 1024 * 1024; // 3 GB
 
@@ -413,6 +416,7 @@ function cleanupSession(session: UploadSession) {
 // Separate session registry for media uploads (avoids collision with SCORM sessions)
 interface MediaUploadSession {
   uploadId: string;
+  authUserId: number;
   totalChunks: number;
   receivedChunks: Set<number>;
   chunkPaths: Map<number, string>;
@@ -420,28 +424,93 @@ interface MediaUploadSession {
   orgId: number;
   folder: string;
   contentType: string;
+  repositoryUpload: boolean;
+  folderId: number | null;
+  title: string;
+  description: string | null;
+  tags: string | null;
+  notes: string | null;
+  access: "public" | "private";
 }
 const mediaSessions = new Map<string, MediaUploadSession>();
 
+function classifyMediaType(contentType: string, filename: string) {
+  const lowerFilename = filename.toLowerCase();
+  if (contentType.startsWith("image/")) return "image";
+  if (contentType.startsWith("video/")) return "video";
+  if (contentType.startsWith("audio/")) return "audio";
+  if (contentType === "text/html" || lowerFilename.endsWith(".html") || lowerFilename.endsWith(".htm")) return "html";
+  if (contentType === "application/pdf" || contentType.includes("word") || contentType.includes("presentation")) return "document";
+  if (contentType === "application/zip" || contentType === "application/x-zip-compressed" || lowerFilename.endsWith(".zip")) return "zip";
+  return "other";
+}
+
+function asOptionalText(value: unknown, maxLength: number) {
+  if (typeof value !== "string") return null;
+  const text = value.trim().slice(0, maxLength);
+  return text || null;
+}
+
 // POST /api/chunked/media/initiate
 router.post("/media/initiate", express.json(), async (req: Request, res: Response) => {
-  const { totalChunks, filename, orgId, folder, contentType } = req.body;
-  if (!totalChunks || !filename || !orgId) {
-    return res.status(400).json({ error: "totalChunks, filename, and orgId are required" });
+  const { totalChunks, filename, orgId, folder, contentType, repositoryUpload, folderId, title, description, tags, notes, access } = req.body;
+  if (!totalChunks || !filename) {
+    return res.status(400).json({ error: "totalChunks and filename are required" });
+  }
+  const parsedTotalChunks = parseInt(String(totalChunks), 10);
+  const safeFilename = String(filename).trim().replace(/[\\/]/g, "_").slice(0, 255);
+  if (!Number.isInteger(parsedTotalChunks) || parsedTotalChunks < 1 || !safeFilename) {
+    return res.status(400).json({ error: "A valid positive totalChunks value and filename are required" });
   }
   const user = await authenticateRequest(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
+  const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
+  const requestedOrgId = orgId ? parseInt(String(orgId), 10) : activeOrgId;
+  if (!activeOrgId || !requestedOrgId || requestedOrgId !== activeOrgId) {
+    return res.status(403).json({ error: "Switch to the requested organization before uploading media" });
+  }
+  try {
+    await requireOrgAdmin(user.id, user.role, activeOrgId);
+  } catch {
+    return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
+  }
+  const isRepositoryUpload = repositoryUpload === true;
+  const parsedFolderId = folderId === undefined || folderId === null || folderId === ""
+    ? null
+    : parseInt(String(folderId), 10);
+  if (parsedFolderId !== null && (!Number.isInteger(parsedFolderId) || parsedFolderId <= 0)) {
+    return res.status(400).json({ error: "folderId must be a positive integer when provided" });
+  }
+  if (isRepositoryUpload && parsedFolderId !== null) {
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "Database unavailable" });
+    const [ownedFolder] = await db.select({ id: mediaFolders.id })
+      .from(mediaFolders)
+      .where(and(eq(mediaFolders.id, parsedFolderId), eq(mediaFolders.orgId, activeOrgId)))
+      .limit(1);
+    if (!ownedFolder) return res.status(404).json({ error: "Media folder not found in the active organization" });
+  }
+  const safeFolder = String(folder ?? "lms-media").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "lms-media";
+  const safeContentType = String(contentType ?? "application/octet-stream").slice(0, 100);
 
   const uploadId = nanoid(16);
   mediaSessions.set(uploadId, {
     uploadId,
-    totalChunks: parseInt(String(totalChunks), 10),
+    authUserId: user.id,
+    totalChunks: parsedTotalChunks,
     receivedChunks: new Set(),
     chunkPaths: new Map(),
-    filename: String(filename),
-    orgId: parseInt(String(orgId), 10),
-    folder: String(folder ?? "lms-media"),
-    contentType: String(contentType ?? "application/octet-stream"),
+    filename: safeFilename,
+    orgId: activeOrgId,
+    folder: isRepositoryUpload ? "media-repo" : safeFolder,
+    contentType: safeContentType,
+    repositoryUpload: isRepositoryUpload,
+    folderId: isRepositoryUpload ? parsedFolderId : null,
+    title: asOptionalText(title, 255) ?? safeFilename.replace(/\.[^.]+$/, ""),
+    description: asOptionalText(description, 2_000),
+    tags: asOptionalText(tags, 500),
+    notes: asOptionalText(notes, 500),
+    access: access === "public" ? "public" : "private",
   });
   return res.json({ uploadId });
 });
@@ -450,14 +519,30 @@ router.post("/media/initiate", express.json(), async (req: Request, res: Respons
 router.post(
   "/media/chunk/:uploadId",
   chunkUpload.single("chunk"),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const { uploadId } = req.params;
     const chunkIndex = parseInt(String(req.body.chunkIndex ?? "-1"), 10);
     const tmpPath = (req.file as (Express.Multer.File & { path: string }) | undefined)?.path;
     const session = mediaSessions.get(uploadId);
+    const user = await authenticateRequest(req);
     if (!session) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(404).json({ error: "Upload session not found" });
+    }
+    if (!user || user.id !== session.authUserId) {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
+    }
+    const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
+    if (activeOrgId !== session.orgId) {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "Upload session no longer matches the active organization" });
+    }
+    try {
+      await requireOrgAdmin(user.id, user.role, session.orgId);
+    } catch {
+      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
+      return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
     }
     if (chunkIndex < 0 || chunkIndex >= session.totalChunks) {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
@@ -487,9 +572,18 @@ router.post(
     }
     const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
+    if (user.id !== session.authUserId) return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
+    const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
+    if (activeOrgId !== session.orgId) return res.status(403).json({ error: "Upload session no longer matches the active organization" });
+    try {
+      await requireOrgAdmin(user.id, user.role, session.orgId);
+    } catch {
+      return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
+    }
 
     const safeName = session.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100);
     const assembledPath = join(tmpdir(), `media-assembled-${uploadId}-${safeName}`);
+    let storedKey: string | null = null;
     try {
       // Re-use the same assembleChunks helper (works on any session shape with same fields)
       await assembleChunks(session as unknown as UploadSession, assembledPath);
@@ -497,11 +591,61 @@ router.post(
       const fileSize = statSync(assembledPath).size;
       const key = `${session.folder}/${session.orgId}/${Date.now()}-${nanoid(8)}-${safeName}`;
       const { url } = await storagePutStream(key, assembledPath, session.contentType);
+      storedKey = key;
       try { unlinkSync(assembledPath); } catch { /* ignore */ }
-      return res.json({ key, url, fileName: session.filename, fileSize, fileType: session.contentType });
+      if (!session.repositoryUpload) {
+        return res.json({ key, url, fileName: session.filename, fileSize, fileType: session.contentType });
+      }
+
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const mediaType = classifyMediaType(session.contentType, session.filename);
+      const slug = `media-${nanoid(12)}`;
+      let assetId = 0;
+      let versionId = 0;
+      await db.transaction(async (tx) => {
+        const [assetResult] = await tx.insert(mediaAssets).values({
+          orgId: session.orgId,
+          folderId: session.folderId,
+          filename: session.filename,
+          mimeType: session.contentType,
+          size: fileSize,
+          s3Key: key,
+          s3Url: url,
+          uploadedBy: session.authUserId,
+          slug,
+          title: session.title,
+          description: session.description,
+          mediaType,
+          access: session.access,
+          tags: session.tags,
+          createdByUserId: session.authUserId,
+        });
+        assetId = Number((assetResult as { insertId?: number }).insertId);
+        const [versionResult] = await tx.insert(mediaVersions).values({
+          orgId: session.orgId,
+          assetId,
+          versionNumber: 1,
+          s3Key: key,
+          s3Url: url,
+          fileName: session.filename,
+          fileSize,
+          mimeType: session.contentType,
+          notes: session.notes,
+          uploadedByUserId: session.authUserId,
+          scormExtractionStatus: initialScormExtractionStatus({ mediaType, mimeType: session.contentType, fileName: session.filename }),
+        });
+        versionId = Number((versionResult as { insertId?: number }).insertId);
+      });
+      queueScormExtractionIfNeeded(versionId, url, slug, { mediaType, mimeType: session.contentType, fileName: session.filename })
+        .catch((error) => console.error("[Chunked Media Finalize] SCORM extraction queue failed:", error));
+      return res.json({ assetId, versionId, slug, key, url, fileName: session.filename, fileSize, fileType: session.contentType });
     } catch (err: unknown) {
       cleanupMediaSession(session);
       try { if (existsSync(assembledPath)) unlinkSync(assembledPath); } catch { /* ignore */ }
+      if (storedKey) {
+        try { await storageDelete(storedKey); } catch (cleanupError) { console.error("[Chunked Media Finalize] Stored-object cleanup failed:", cleanupError); }
+      }
       console.error("[Chunked Media Finalize] Error:", err);
       return res.status(500).json({ error: "Finalize failed", detail: String(err) });
     }

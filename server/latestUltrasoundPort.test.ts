@@ -4469,6 +4469,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("requires the active organization for supported media asset administration and quarantines the global folder model", () => {
     const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    const chunkedUploadSource = readFileSync(new URL("./chunkedUploadRoutes.ts", import.meta.url), "utf8");
     const mediaFolderAuditSource = readFileSync(new URL("../docs/media-folder-schema-audit.md", import.meta.url), "utf8");
     expect(mediaRouterSource).toContain("async function requireActiveMediaOrg");
     expect(mediaRouterSource).toContain("async function requireActiveMediaAsset");
@@ -4489,9 +4490,25 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaFolderAuditSource).toContain("The live `media_folders` table uses an organization-owned hierarchy");
     expect(mediaFolderAuditSource).toContain("Asset filtering must use `folderId` plus the active `orgId`");
     expect(mediaFolderAuditSource).toContain("never slugs");
-    expect(mediaAdminSource).toContain("MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE");
-    expect(mediaAdminSource).toContain("Secure media repository uploads are temporarily unavailable");
-    expect(mediaAdminSource).not.toContain("onClick={() => setUploadOpen(true)}");
+    expect(chunkedUploadSource).toContain("getOrgIdForUserWithFallback(user.id, user.role)");
+    expect(chunkedUploadSource).toContain("requestedOrgId !== activeOrgId");
+    expect(chunkedUploadSource).toContain("authUserId: user.id,");
+    expect(chunkedUploadSource).toContain("user.id !== session.authUserId");
+    expect((chunkedUploadSource.match(/activeOrgId !== session\.orgId/g) ?? []).length).toBe(2);
+    expect((chunkedUploadSource.match(/Upload session no longer matches the active organization/g) ?? []).length).toBe(2);
+    expect(chunkedUploadSource).toContain("await requireOrgAdmin(user.id, user.role, session.orgId)");
+    expect(chunkedUploadSource).toContain("repositoryUpload: isRepositoryUpload,");
+    expect(chunkedUploadSource).toContain("folderId: isRepositoryUpload ? parsedFolderId : null,");
+    expect(chunkedUploadSource).toContain("await db.transaction(async (tx) => {");
+    expect(chunkedUploadSource).toContain("orgId: session.orgId,");
+    expect(chunkedUploadSource).toContain("await tx.insert(mediaAssets).values({");
+    expect(chunkedUploadSource).toContain("await tx.insert(mediaVersions).values({");
+    expect(chunkedUploadSource).toContain("await storageDelete(storedKey)");
+    expect(mediaAdminSource).toContain('fetch("/api/chunked/media/initiate"');
+    expect(mediaAdminSource).toContain("repositoryUpload: true,");
+    expect(mediaAdminSource).not.toContain("/api/upload-media-repo/");
+    expect(mediaAdminSource).not.toContain("folderSlug");
+    expect(mediaAdminSource).toContain("onClick={() => setUploadOpen(true)}");
     expect(mediaAdminSource).not.toContain("onClick={() => setReuploadOpen(true)}");
   });
 
