@@ -59,6 +59,7 @@ import {
 } from "../../drizzle/schema";
 import { sendEmail, buildPasswordResetEmail } from "../_core/email";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -469,15 +470,28 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
       if (!user) throw new TRPCError({ code: "NOT_FOUND" });
       if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "User has no email address" });
       const resetToken = randomBytes(32).toString("hex");
       const resetExpiry = new Date(Date.now() + 3600_000); // 1 hour
       await db.update(users).set({ resetToken, resetTokenExpiry: resetExpiry }).where(eq(users.id, user.id));
-      const SITE_URL = process.env.VITE_OAUTH_PORTAL_URL?.replace("portal", "app") || "https://teachific.app";
-      const resetUrl = `${SITE_URL}/reset-password?token=${resetToken}`;
+      const [organization] = await db
+        .select({
+          slug: organizations.slug,
+          customDomain: organizations.customDomain,
+          domainVerificationStatus: organizations.domainVerificationStatus,
+        })
+        .from(organizations)
+        .where(eq(organizations.id, orgId))
+        .limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Active organization not found" });
+      const resetUrl = `${getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      )}/reset-password?token=${resetToken}`;
       const { subject, htmlBody } = buildPasswordResetEmail({
         firstName: user.firstName || user.name || "there",
         resetUrl,

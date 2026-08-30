@@ -62,6 +62,9 @@
 - [x] Require active-organization ownership for product-scoped Printify settings and fulfillment retry actions
 - [ ] Audit registered legacy router namespaces and active client callers for source-derived schema or organization-scope conflicts
 - [ ] Audit hard-coded Teachific learner and checkout URLs and replace organization-owned links with owning-domain resolution
+- [x] Scope administrator-created password-reset emails to the owning organization domain when active organization context is available
+- [x] Validate public magic-link and password-reset origins against recipient organization memberships when a user account exists
+- [x] Audit administrator-created magic-link flows; no separate administrator magic-link sender is currently registered
 - [ ] Scope media access grants to the owning organization and send access links through its verified organization domain
 - [x] Reconcile media access grant router/schema contract with the live database before altering media grant ownership or link behavior
 - [x] Quarantine incompatible legacy media email-token grant, revoke, and public token access flows pending an additive organization-scoped permission migration

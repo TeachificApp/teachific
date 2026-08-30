@@ -4452,6 +4452,30 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((enrollmentEmailSource.match(/if \(!orgBase\) return false;/g) ?? []).length).toBe(4);
   });
 
+  it("uses a recipient-authorized organization domain for password reset and magic-link emails", () => {
+    const adminUserSource = readFileSync(new URL("./routers/adminUserRouter.ts", import.meta.url), "utf8");
+    const customAuthSource = readFileSync(new URL("./customAuthRouter.ts", import.meta.url), "utf8");
+    const forgotPasswordSource = readFileSync(new URL("../client/src/pages/auth/ForgotPasswordPage.tsx", import.meta.url), "utf8");
+    const adminResetSource = adminUserSource.slice(
+      adminUserSource.indexOf("sendPasswordReset: protectedProcedure"),
+      adminUserSource.indexOf("setPassword: protectedProcedure"),
+    );
+    const magicLinkSource = customAuthSource.slice(
+      customAuthSource.indexOf("requestMagicLink: publicProcedure"),
+      customAuthSource.indexOf("verifyMagicLink: publicProcedure"),
+    );
+    expect(adminUserSource).toContain('import { getOrgBaseUrl } from "../lib/orgUrl";');
+    expect(adminResetSource).toContain("const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);");
+    expect(adminResetSource).toContain("getOrgBaseUrl(");
+    expect(adminResetSource).not.toContain("https://teachific.app");
+    expect(customAuthSource).toContain("async function resolveAccountAccessBaseUrl");
+    expect(customAuthSource).toContain("recipient belongs to");
+    expect(customAuthSource).toContain("input.origin ?? ctx.req.headers.origin ?? null");
+    expect(magicLinkSource).toContain("await resolveAccountAccessBaseUrl(db, user.id");
+    expect(magicLinkSource).not.toContain("const baseUrl = input.origin ?? reqOrigin ?? SITE_URL;");
+    expect(forgotPasswordSource).toContain("forgot.mutate({ email, origin: window.location.origin });");
+  });
+
   it("requires organization-admin ownership for certificate template administration", () => {
     const certificateRouterSource = readFileSync(new URL("./routers/lmsAdminRouter.ts", import.meta.url), "utf8");
     const certificateSource = certificateRouterSource.slice(certificateRouterSource.indexOf("const _lmsCertificateTemplatesRouter"));

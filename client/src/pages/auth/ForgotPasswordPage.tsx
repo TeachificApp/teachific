@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    forgot.mutate({ email });
+    forgot.mutate({ email, origin: window.location.origin });
   };
 
   if (sent) {

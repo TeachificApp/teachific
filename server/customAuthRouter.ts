@@ -16,6 +16,7 @@ import { sendEmail } from "./sendgrid";
 import * as dbHelpers from "./db";
 import { verifyEmailHtml, resetPasswordHtml, magicLinkEmailHtml } from "./emailTemplates";
 import { signSessionToken } from "./_core/context";
+import { getOrgBaseUrl } from "./lib/orgUrl";
 
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -42,6 +43,57 @@ function serializeCookie(name: string, value: string, maxAge: number): string {
     str += "; SameSite=Lax";
   }
   return str;
+}
+
+function normalizeAccountAccessOrigin(origin?: string | null): string | null {
+  if (!origin) return null;
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.origin.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A client-provided origin must correspond to an organization that the
+ * recipient belongs to. This avoids sending account links to arbitrary URLs
+ * while keeping organization subdomains and verified custom domains intact.
+ */
+async function resolveAccountAccessBaseUrl(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId: number,
+  requestedOrigin?: string | null,
+): Promise<string> {
+  const normalizedOrigin = normalizeAccountAccessOrigin(requestedOrigin);
+  if (!normalizedOrigin) return SITE_URL.replace(/\/$/, "");
+
+  const memberships = await db
+    .select({
+      slug: organizations.slug,
+      customDomain: organizations.customDomain,
+      domainVerificationStatus: organizations.domainVerificationStatus,
+    })
+    .from(orgMembers)
+    .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+    .where(eq(orgMembers.userId, userId));
+
+  const matchingOrganization = memberships.find((organization) =>
+    getOrgBaseUrl(
+      organization.slug,
+      organization.customDomain,
+      organization.domainVerificationStatus,
+    ).toLowerCase() === normalizedOrigin.toLowerCase(),
+  );
+
+  return matchingOrganization
+    ? getOrgBaseUrl(
+        matchingOrganization.slug,
+        matchingOrganization.customDomain,
+        matchingOrganization.domainVerificationStatus,
+      )
+    : SITE_URL.replace(/\/$/, "");
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -260,8 +312,8 @@ export const customAuthRouter = router({
 
   /** Request password reset */
   forgotPassword: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input }) => {
+    .input(z.object({ email: z.string().email(), origin: z.string().url().optional() }))
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return { success: true };
 
@@ -275,7 +327,12 @@ export const customAuthRouter = router({
 
       await db.update(users).set({ resetToken, resetTokenExpiry: resetExpiry }).where(eq(users.id, user.id));
 
-      const resetUrl = `${SITE_URL}/reset-password?token=${resetToken}`;
+      const baseUrl = await resolveAccountAccessBaseUrl(
+        db,
+        user.id,
+        input.origin ?? ctx.req.headers.origin ?? null,
+      );
+      const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
       await sendEmail({ to: input.email, subject: "Reset your Teachific password", html: resetPasswordHtml(user.name || "", resetUrl) });
       return { success: true };
     }),
@@ -317,9 +374,11 @@ export const customAuthRouter = router({
         redirectTo: input.redirectTo ?? null,
         expiresAt,
       });
-      // Prefer explicit origin from frontend, then request Origin header, then fallback to env/default
-      const reqOrigin = ctx.req.headers.origin ?? null;
-      const baseUrl = input.origin ?? reqOrigin ?? SITE_URL;
+      // Only preserve a requested origin when it belongs to an organization
+      // the recipient belongs to; otherwise use the canonical platform URL.
+      const baseUrl = user
+        ? await resolveAccountAccessBaseUrl(db, user.id, input.origin ?? ctx.req.headers.origin ?? null)
+        : SITE_URL.replace(/\/$/, "");
       const magicUrl = `${baseUrl}/magic-link/verify?token=${token}`;
       await sendEmail({
         to: input.email,
