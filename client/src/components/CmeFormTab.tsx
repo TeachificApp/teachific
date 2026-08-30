@@ -180,10 +180,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
   // Build default email list when send dialog opens
   const openSendDialog = () => {
     if (!showSendDialog) {
-      const defaults: string[] = ["don@cardioserv.net", "j.buckland@cardioserv.net"];
-      if (cmeStatus?.cmeContactEmail && !defaults.includes(cmeStatus.cmeContactEmail)) {
-        defaults.push(cmeStatus.cmeContactEmail);
-      }
+      const defaults = cmeStatus?.cmeContactEmail ? [cmeStatus.cmeContactEmail] : [];
       setSendEmailList(defaults);
       setSendEmailInput("");
     }
@@ -642,7 +639,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
           {(disclosures as any[]).some((d) => d.status !== "submitted") && (
             <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-800">
               <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-              <span>Some faculty have not yet submitted their financial disclosures. Disclosures must be completed before sending the CME form to CardioServ.</span>
+              <span>Some faculty have not yet submitted their financial disclosures. Complete all disclosures before sending the CME activity form.</span>
             </div>
           )}
           {(disclosures as any[]).length === 0 && (

@@ -1523,11 +1523,16 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("uses generic Teachific labels in the reusable navigation configuration", () => {
     const brandNavSource = readFileSync(new URL("../client/src/config/brandNav.ts", import.meta.url), "utf8");
+    const lmsLayoutSource = readFileSync(new URL("../client/src/components/LMSLayout.tsx", import.meta.url), "utf8");
     expect(brandNavSource).toContain("const PLATFORM_NAV_GROUPS");
     expect(brandNavSource).toContain("const PLATFORM_HIDDEN_NAV");
-    expect(brandNavSource).toContain('label: "Guided Tools"');
-    expect(brandNavSource).toContain('label: "Audio Learning Library"');
+    expect(brandNavSource).toContain('label: "Courses"');
+    expect(brandNavSource).toContain('label: "Products"');
+    expect(brandNavSource).toContain('path: "/products/community"');
     expect(brandNavSource).toContain("navGroups: PLATFORM_NAV_GROUPS");
+    expect(brandNavSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
+    expect(lmsLayoutSource).toContain("const PLATFORM_LOGO_URL: string | null = null;");
+    expect(lmsLayoutSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
     expect(brandNavSource).not.toContain("UltrasoundAssist");
     expect(brandNavSource).not.toContain("EchoAssist");
     expect(brandNavSource).not.toContain("PediatricAssist");
@@ -1580,6 +1585,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(includedItemsSource).not.toContain("ihe-hero");
     expect(includedItemsSource).not.toContain("AAUS_HERO");
     expect(includedItemsSource).not.toContain("IHE_HERO");
+  });
+
+  it("documents remaining source-brand compatibility keys as migration-only values", () => {
+    const compatibilityAudit = readFileSync(new URL("../docs/source-branding-compatibility-audit.md", import.meta.url), "utf8");
+    expect(compatibilityAudit).toContain("**not** approved for new Teachific UI, variables, data defaults, routes, or public URLs");
+    expect(compatibilityAudit).toContain("additive data migration");
+    expect(compatibilityAudit).toContain("Approved service addresses");
+    expect(compatibilityAudit).toContain("server-side fallback");
   });
 
   it("supports per-question feedback modes in Teachific Quiz Creator authoring and preview", () => {
@@ -4271,7 +4284,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cmeDisclosureFormSource).toContain("\"--org-primary\": data?.orgPrimaryColor ?? \"#189aa1\"");
     expect(cmeDisclosureFormSource).toContain("bg-[var(--org-primary)]");
     expect(cmeDisclosureFormSource).toContain("org-primary-button px-8 gap-2");
-    expect(cmeDisclosureFormSource).toContain("CME Joint Provider with CardioServ, LLC");
+    expect(cmeDisclosureFormSource).toContain("Continuing Education Activity");
+    expect(cmeDisclosureFormSource).not.toMatch(/cardioserv|cardioserve/i);
     expect(cmeDisclosureFormSource).not.toMatch(/(?:bg|text|border|hover:bg|hover:text|focus:ring|data-\[state=checked\]:bg|data-\[state=checked\]:border)-teal-\d+/);
     expect(cmeDisclosureFormSource).not.toMatch(/(?:bg|text|border|hover:bg|hover:text|focus:ring|data-\[state=checked\]:bg|data-\[state=checked\]:border)-sky-\d+/);
     const cmeFormTabSource = readFileSync(new URL("../client/src/components/CmeFormTab.tsx", import.meta.url), "utf8");
@@ -4280,6 +4294,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cmeFormTabSource).toContain("org-primary-button gap-1.5");
     expect(cmeFormTabSource).toContain("text-[var(--org-primary)]");
     expect(cmeFormTabSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)]");
+    expect(cmeFormTabSource).not.toMatch(/cardioserv|cardioserve/i);
     expect(cmeFormTabSource).not.toMatch(/(?:bg|text|border|hover:bg|hover:text|focus:ring)-sky-\d+/);
     expect(cmeFormTabSource).not.toMatch(/(?:bg|text|border|hover:bg|hover:text|focus:ring)-teal-\d+/);
     const cmeManagementSource = readFileSync(new URL("../client/src/pages/lms/CmeManagementPage.tsx", import.meta.url), "utf8");
@@ -4292,8 +4307,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(cmeActivityDialogSource).toContain("org-primary-button gap-1.5");
     expect(cmeActivityDialogSource).toContain("bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)]");
     expect(cmeActivityDialogSource).toContain("text-[var(--org-primary)]");
+    expect(cmeActivityDialogSource).not.toMatch(/cardioserv|cardioserve/i);
     expect(cmeActivityDialogSource).not.toMatch(/(?:bg|text|border|hover:bg|hover:text|focus:ring)-sky-\d+/);
     expect(cmeActivityDialogSource).not.toMatch(/(?:bg|text|border|hover:bg|hover:text|focus:ring)-teal-\d+/);
+    const cmeActivityRouterSource = readFileSync(new URL("./routers/cmeActivityFormRouter.ts", import.meta.url), "utf8");
+    expect(cmeActivityRouterSource).toContain("don@cardioserv.net");
+    expect(cmeActivityRouterSource).toContain("j.buckland@cardioserv.net");
     const newsletterSource = readFileSync(new URL("./routers/newsletterRouter.ts", import.meta.url), "utf8");
     expect(newsletterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input?.orgId)");
     expect(newsletterSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, subscriber.orgId)");

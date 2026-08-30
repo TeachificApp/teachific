@@ -2,7 +2,7 @@
  * CmeDisclosureForm.tsx
  * Public electronic Financial Disclosure Form for CME faculty.
  * Accessible at /cme-disclosure/:token (no login required).
- * Matches CardioServ ACCME format with joint provider statement.
+ * Uses organization-provided identity and activity details.
  * Org-generic: uses orgName from the disclosure record.
  */
 import { useState, type CSSProperties } from "react";
@@ -147,7 +147,7 @@ export default function CmeDisclosureForm() {
             <FileText className="w-6 h-6 text-white" />
             <div>
               <h1 className="text-xl font-bold text-white">Financial Disclosure Form</h1>
-              <p className="text-white/80 text-sm">{data.orgName} · CME Joint Provider with CardioServ, LLC</p>
+              <p className="text-white/80 text-sm">{data.orgName} · Continuing Education Activity</p>
             </div>
           </div>
         </div>

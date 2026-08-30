@@ -10,7 +10,7 @@ import { Link, useLocation } from "wouter";
 import {
   LogIn, LogOut, Settings, ChevronDown,
   GraduationCap, FolderOpen, ExternalLink, LayoutDashboard,
-  BookOpen, Menu, X, ShieldCheck, MessageSquare, Users, DollarSign, Briefcase
+  BookOpen, Menu, X, ShieldCheck, MessageSquare, DollarSign, Briefcase
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -18,7 +18,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import NameCollectionModal from "@/components/NameCollectionModal";
 
-const PLATFORM_LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp";
+const PLATFORM_LOGO_URL: string | null = null;
 const MEMBERS_URL = "/";
 import { getAdminUrl, APP_URL, getSubdomain } from "@/hooks/useSubdomain";
 import { useSiteNavMenu } from "@/hooks/useSiteNavMenu";
@@ -37,7 +37,6 @@ const PLATFORM_SITE_URL = "https://teachific.app";
 const NAV_ITEMS: NavItem[] = [
   { label: "Education Library", href: "/education-library", icon: <BookOpen className="w-4 h-4" /> },
   { label: "Workshops", href: "/workshops", icon: <Briefcase className="w-4 h-4" /> },
-  { label: "Community", href: "/community/all-about-ultrasound", icon: <Users className="w-4 h-4" /> },
 ];
 
 export default function LMSLayout({ children }: { children: React.ReactNode }) {
@@ -52,9 +51,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
   const isOrganizationShell = !!subdomain;
   const shellBrandName = organization?.name ?? "Teachific™";
   const shellBrandLogo = organization?.logoUrl ?? PLATFORM_LOGO_URL;
-  const defaultNavItems = isOrganizationShell
-    ? NAV_ITEMS.map((item) => item.label === "Community" ? { ...item, href: "/community" } : item)
-    : NAV_ITEMS;
+  const defaultNavItems = NAV_ITEMS;
   const { items: headerNavItems } = useSiteNavMenu("header", defaultNavItems.map((item) => ({
     label: item.label,
     href: item.href,

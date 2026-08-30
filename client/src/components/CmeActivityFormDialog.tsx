@@ -116,10 +116,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
   // Build default email list when send dialog opens
   const openSendDialog = () => {
     if (!showSendDialog) {
-      const defaults: string[] = ["don@cardioserv.net", "j.buckland@cardioserv.net"];
-      if (cmeStatus?.cmeContactEmail && !defaults.includes(cmeStatus.cmeContactEmail)) {
-        defaults.push(cmeStatus.cmeContactEmail);
-      }
+      const defaults = cmeStatus?.cmeContactEmail ? [cmeStatus.cmeContactEmail] : [];
       setSendEmailList(defaults);
       setSendEmailInput("");
     }

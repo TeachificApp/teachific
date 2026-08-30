@@ -33,6 +33,9 @@
 - [x] Require AI-generated full lesson content to contain at least 1,500 words and surface a clear authoring status when the minimum is not met
 - [x] Remove dedicated text-to-speech/read-aloud generation and playback controls while preserving normal author-uploaded lesson audio
 - [x] Verify the logged-in maintenance banner automatically disappears after the configured expiration timestamp
+- [x] Remove source-specific legacy navigation routes and source-branded platform logo fallbacks from active Teachific layouts
+- [x] Remove provider/source names and hard-coded provider addresses from active CME client copy while retaining the allowed server-side service-address fallback
+- [x] Document remaining source-branding compatibility identifiers and their safe migration guardrails
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
