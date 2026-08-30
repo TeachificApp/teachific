@@ -4411,6 +4411,16 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsRouterSource).toContain("requireActiveBundleOrg");
   });
 
+  it("does not mount stale workshop public or learner namespaces while retaining supported active-organization workshops", () => {
+    const rootRouterSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    const lmsRouterSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    expect(rootRouterSource).not.toContain("workshopPublic: workshopPublicRouter");
+    expect(rootRouterSource).not.toContain("workshopLearner: workshopLearnerRouter");
+    expect(rootRouterSource).not.toContain('from "./routers/workshopRouter"');
+    expect(lmsRouterSource).toContain("workshops: router({");
+    expect(lmsRouterSource).toContain("requireActiveWorkshopOrg");
+  });
+
   it("uses only organization-resolved library links in bundle confirmation emails", () => {
     const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     expect(webhookSource).toContain("if (bundleOrg?.slug)");

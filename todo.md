@@ -42,6 +42,7 @@
 - [x] Enforce active-organization matching for supported LMS workshop list, create, read, update, delete, and registration operations
 - [x] Replace the remaining LMS content-picker workshop query and unregister the stale workshop administration API namespace
 - [ ] Rebuild advanced workshop pricing, resources, curricula, landing, waitlist, and workflow administration from an additive organization-scoped contract before re-exposing those controls
+- [x] Audit and quarantine stale workshop public and learner router namespaces if no organization-domain-safe caller depends on them
 - [x] Replace the LMS collection content picker’s stale bundle query with the supported active-organization bundle endpoint
 - [x] Audit and enforce active-organization scope for the membership and physical-product sources used by the LMS collection content picker
 - [x] Route the LMS collection picker’s membership source through the supported active-organization membership list
