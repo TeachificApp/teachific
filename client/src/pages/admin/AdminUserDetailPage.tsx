@@ -37,12 +37,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Layout from "@/components/Layout";
 import { SdmsCmeUserTab } from "@/components/admin/SdmsCmeUserTab";
 
-// ─── Org-scoped badge ─────────────────────────────────────────────────────────────
+// ─── Org-scoped access badge ───────────────────────────────────────────────────────
 function BrandBadge({ brand }: { brand?: string | null }) {
   if (!brand) return null;
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-teal-50 border-teal-200 text-teal-700">
-      {brand}
+      {brand === "both" ? "All membership access" : "Teachific membership access"}
     </span>
   );
 }
@@ -341,9 +341,9 @@ function ProfileTab({ userId, data, refetch }: { userId: number; data: any; refe
       {/* Platform Roles panel */}
       <AppRolesPanel userId={userId} refetch={refetch} />
 
-      {/* Brand memberships */}
+      {/* Membership access */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
-        <SectionHeader title="Brand Memberships" action={
+        <SectionHeader title="Membership Access" action={
           <Button size="sm" onClick={() => setGrantOpen(true)} className="bg-[#189aa1] hover:bg-[#157f85] text-white">
             <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> Grant Access
           </Button>
@@ -357,7 +357,7 @@ function ProfileTab({ userId, data, refetch }: { userId: number; data: any; refe
               </div>
             ))}
           </div>
-        ) : <p className="text-sm text-gray-500">No brand memberships yet.</p>}
+        ) : <p className="text-sm text-gray-500">No membership access records yet.</p>}
       </div>
 
       {/* Set Password Dialog */}
@@ -451,7 +451,7 @@ function ProfileTab({ userId, data, refetch }: { userId: number; data: any; refe
       {/* Grant dialog */}
       <Dialog open={grantOpen} onOpenChange={setGrantOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Grant Brand Membership</DialogTitle><DialogDescription>Manually grant access to a brand app for this user.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Grant Membership Access</DialogTitle><DialogDescription>Manually grant membership access for this user.</DialogDescription></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5"><Label>Access Type</Label><Select value={grantBrand} onValueChange={(v) => setGrantBrand(v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="premium">Premium Access</SelectItem><SelectItem value="standard">Standard Access</SelectItem></SelectContent></Select></div>
             <div className="space-y-1.5"><Label>Tier</Label><Select value={grantTier} onValueChange={(v) => setGrantTier(v as any)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="premium">Premium</SelectItem><SelectItem value="free">Free</SelectItem></SelectContent></Select></div>
@@ -1230,11 +1230,11 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
             )}
           </div>
 
-          {/* Brand memberships */}
+          {/* Membership access */}
           <div className="space-y-3">
-            <SectionHeader title={`Brand Memberships (${brandMemberships.length})`} />
+            <SectionHeader title={`Membership Access (${brandMemberships.length})`} />
             {brandMemberships.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No brand memberships found.</p>
+              <p className="text-sm text-gray-400 text-center py-6">No membership access records found.</p>
             ) : (
               brandMemberships.map((m: any) => (
                 <div key={m.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">

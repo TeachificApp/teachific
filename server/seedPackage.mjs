@@ -1,6 +1,6 @@
 /**
- * Seed script: uploads AdvancedCardiacSonographer.zip to S3 and registers
- * it in the database under org 1, user 1.
+ * Seed script: uploads a local SCORM package to S3 and registers it in the
+ * database under org 1, user 1.
  *
  * Usage: node server/seedPackage.mjs
  */
@@ -15,7 +15,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ZIP_PATH = "/home/ubuntu/upload/AdvancedCardiacSonographer.zip";
+const ZIP_PATH = process.env.SCORM_SEED_PACKAGE_PATH || "/home/ubuntu/upload/package.zip";
 
 // ── Storage helpers (mirrors server/storage.ts) ──────────────────────────────
 const FORGE_API_URL = process.env.BUILT_IN_FORGE_API_URL;
@@ -136,8 +136,8 @@ function findEntryPoint(files) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 const ORG_ID = 1;
 const USER_ID = 1;
-const TITLE = "Advanced Cardiac Sonographer";
-const DESCRIPTION = "Advanced training content";
+const TITLE = process.env.SCORM_SEED_PACKAGE_TITLE || "Imported SCORM Package";
+const DESCRIPTION = process.env.SCORM_SEED_PACKAGE_DESCRIPTION || "Imported training content";
 const DISPLAY_MODE = "native";
 const BATCH = 8; // parallel S3 uploads
 

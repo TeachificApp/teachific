@@ -24,6 +24,8 @@
 - [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
+- [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers
+- [ ] Separately audit legacy source-branded compatibility contracts and bundle-router schema drift before changing persisted values or APIs
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding

@@ -11,7 +11,6 @@
 const ROOT_DOMAINS = new Set([
   "teachific.app",
   "www.teachific.app",
-  "learn.teachific.app",
   "app.teachific.app",
   "api.teachific.app",
   "admin.teachific.app",
@@ -114,6 +113,5 @@ export function getAdminUrl(path: string): string {
 export function isLearnDomain(): boolean { return false; }
 export function isMembersDomain(): boolean { return false; }
 export function isAccreditationDomain(): boolean { return false; }
-export function isIHeartEchoDomain(): boolean { return false; }
 export function isCombinedBrandingDomain(): boolean { return false; }
 export function isMarketingStagingDomain(): boolean { return false; }

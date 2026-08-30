@@ -4,7 +4,7 @@
  * Supports:
  *  - "download"    → downloadsAdmin.getSalesData / revokeAccess / refundPurchase
  *  - "bundle"      → bundleAdmin.getSalesData / revokeAccess / refundPurchase
- *  - "membership"  → brandMembership.adminList / adminRevoke / adminGrant
+ *  - "membership"  → membership access administration
  */
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -320,7 +320,7 @@ function BundleSalesTab({ bundleId }: { bundleId: number }) {
   );
 }
 
-// ─── Membership Sales Tab ──────────────────────────────────────────────────────
+// ─── Membership Access Tab ─────────────────────────────────────────────────────
 function MembershipSalesTab({ brand }: { brand: "aaus" | "iheartecho" }) {
   const [revokeTarget, setRevokeTarget] = useState<{ userId: number; email: string } | null>(null);
   const { data, isLoading, refetch } = trpc.brandMembership.adminList.useQuery({ brand });

@@ -179,7 +179,7 @@ export default function FulfillmentAdmin() {
                       <SelectItem value="course">Course (LMS Enrollment)</SelectItem>
                       <SelectItem value="download">Digital Download</SelectItem>
                       <SelectItem value="bundle">Bundle</SelectItem>
-                      <SelectItem value="membership">Brand Membership</SelectItem>
+                      <SelectItem value="membership">Membership Access</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -208,16 +208,16 @@ export default function FulfillmentAdmin() {
                 )}
                 {manualForm.productType === "membership" && (
                   <div>
-                    <Label>Brand</Label>
+                    <Label>Access Scope</Label>
                     <Select
                       value={manualForm.fulfillmentBrand}
                       onValueChange={v => setManualForm(f => ({ ...f, fulfillmentBrand: v as any }))}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select brand..." /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Select access scope..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="aaus">Teachific™</SelectItem>
-                        <SelectItem value="iheartecho">Teachific™</SelectItem>
-                        <SelectItem value="both">Both</SelectItem>
+                        <SelectItem value="aaus">Teachific™ Membership</SelectItem>
+                        <SelectItem value="iheartecho">Teachific™ Membership Access</SelectItem>
+                        <SelectItem value="both">All Teachific™ Membership Access</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -356,7 +356,7 @@ export default function FulfillmentAdmin() {
                         <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{r.productType}</span>
                         {r.courseId && <div className="text-xs text-gray-500">Course #{r.courseId}</div>}
                         {r.productId && <div className="text-xs text-gray-500">Product #{r.productId}</div>}
-                        {r.fulfillmentBrand && <div className="text-xs text-blue-600">{r.fulfillmentBrand}</div>}
+                        {r.fulfillmentBrand && <div className="text-xs text-blue-600">Membership access: {r.fulfillmentBrand === "both" ? "all" : "standard"}</div>}
                       </td>
                       <td className="px-4 py-2 font-medium">
                         ${Number(r.amountPaid).toFixed(2)}

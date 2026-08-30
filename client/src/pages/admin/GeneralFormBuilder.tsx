@@ -234,11 +234,8 @@ function statusBadge(status: string) {
 // All custom domains hosted on this platform
 const CUSTOM_DOMAINS = [
   "teachific.app",
-  "teachific.app",
-  "teachific.app/learn",
-  "accreditation.iheartecho.com",
-  "ultrasound-urcfdrve.manus.space",
-  "ultrasoundassist.manus.space",
+  "www.teachific.app",
+  "app.teachific.app",
 ];
 const DEFAULT_HOST_DOMAIN = "teachific.app";
 

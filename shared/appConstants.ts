@@ -1,14 +1,16 @@
 export const AAUS_LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_8a52a6c6.webp";
 
+export const TEACHIFIC_LOGO_URL = "";
+
 export const THINKIFIC_LINKS = {
-  freeMembership: "https://member.allaboutultrasound.com/bundles/ultrasoundassist-app-free-member-access",
-  freeRegister: "https://member.allaboutultrasound.com/enroll/3714918?price_id=4664963",
+  freeMembership: "/membership/free",
+  freeRegister: "/register",
   premiumMembership: "/premium",
   premiumMonthly: "/premium",
   premiumAnnual: "/premium",
-  community: "https://member.allaboutultrasound.com/communities",
-  learnFetalEcho: "https://member.allaboutultrasound.com/courses/fetal-echo",
-  cmeHub: "https://member.allaboutultrasound.com/collections",
+  community: "/communities",
+  learnFetalEcho: "/courses",
+  cmeHub: "/collections",
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {
@@ -28,7 +30,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   scrotum: "Scrotum",
   breast: "Breast",
   msk: "MSK",
-  // IHE echo categories
+  // Echocardiography categories
   adult_echo: "Adult Echo",
   pediatric_echo: "Pediatric Echo",
   acs: "ACS",
@@ -53,7 +55,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   pocus: "bg-sky-100 text-sky-800",
   physics: "bg-gray-100 text-gray-800",
   fetal_echo: "bg-fuchsia-100 text-fuchsia-800",
-  // IHE echo categories
+  // Echocardiography categories
   adult_echo: "bg-teal-100 text-teal-800",
   pediatric_echo: "bg-purple-100 text-purple-800",
   acs: "bg-red-100 text-red-800",

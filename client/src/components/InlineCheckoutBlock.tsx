@@ -60,7 +60,7 @@ export interface AdditionalAccessItem {
   type: "course" | "download" | "physical" | "membership";
   /** DB product/course ID (for course/download/physical) */
   productId?: number;
-  /** Brand slug for membership grants: "aaus" | "iheartecho" | "both" */
+  /** Legacy membership-access slug retained for imported checkout blocks */
   brand?: "aaus" | "iheartecho" | "both";
 }
 

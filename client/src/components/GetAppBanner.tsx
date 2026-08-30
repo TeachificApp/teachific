@@ -8,10 +8,9 @@
  * - Dismissed with ✕ for that session only (no persistent storage — reappears on next load)
  * - Never shown if app is already running in standalone mode (already installed)
  */
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { X, Download, Share } from "lucide-react";
-import { isIHeartEchoDomain } from "@/hooks/useSubdomain";
 
 function isStandalone() {
   return (
@@ -28,17 +27,15 @@ function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream;
 }
 
-const AAUS_ICON = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_icon_192_2af50158.png";
-const IHE_ICON = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/icon-192_df958e9b.png";
+const TEACHIFIC_ICON = "/logo192.png";
 
 export default function GetAppBanner() {
   const [visible, setVisible] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [location] = useLocation();
-  const isIHE = useMemo(() => isIHeartEchoDomain(), []);
   const appName = "Teachific™";
-  const appIcon = isIHE ? IHE_ICON : AAUS_ICON;
+  const appIcon = TEACHIFIC_ICON;
 
   useEffect(() => {
     // Only show on dashboard route

@@ -18,8 +18,8 @@ export function stripMergePrefix(value: string): string {
  */
 export const COMMUNITY_LEADERBOARD_EXCLUDED_EMAILS = [
   "larawilliams0501@gmail.com",
-  "admin@allaboutultrasound.com",
-  "support@allaboutultrasound.com",
+  "admin@teachific.app",
+  "support@teachific.app",
 ] as const;
 
 export function isLeaderboardExcludedEmail(email: string | null | undefined): boolean {

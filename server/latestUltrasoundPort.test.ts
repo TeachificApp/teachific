@@ -1489,6 +1489,54 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).not.toContain("iHeartEcho");
   });
 
+  it("removes visible source-project branding from active Teachific app, domain, form, and membership surfaces", () => {
+    const cleanedFiles = [
+      "../client/src/components/GetAppBanner.tsx",
+      "../client/src/hooks/useSubdomain.ts",
+      "../client/src/lib/sitePageDomain.ts",
+      "../client/src/components/MetaPixel.tsx",
+      "../client/src/pages/admin/GeneralFormBuilder.tsx",
+      "../client/src/pages/admin/FulfillmentAdmin.tsx",
+      "../client/src/pages/admin/AdminUserDetailPage.tsx",
+      "../client/src/components/ProductSalesTab.tsx",
+      "../client/src/components/IncludedItemsBlock.tsx",
+      "../shared/appConstants.ts",
+      "../shared/sitePagesConstants.ts",
+      "../shared/communityMember.ts",
+      "./lib/membershipFulfillment.ts",
+      "./lib/fulfillmentEngine.ts",
+      "./routers/adminUserRouter.ts",
+      "./routers/embeddedCheckoutRouter.ts",
+      "./seedPackage.mjs",
+    ];
+
+    const forbiddenVisibleBranding = /All About Ultrasound|iHeartEcho|iHeart Echo|allaboutultrasound\.com|app\.iheartecho\.net|learn\.teachific\.app|AdvancedCardiacSonographer|Brand Membership|brand selector/i;
+
+    for (const relativePath of cleanedFiles) {
+      const source = readFileSync(new URL(relativePath, import.meta.url), "utf8");
+      const compatibilityStripped = source
+        .replaceAll('"aaus"', '"legacy_membership_access"')
+        .replaceAll('"iheartecho"', '"legacy_membership_access"')
+        .replaceAll("'aaus'", "'legacy_membership_access'")
+        .replaceAll("'iheartecho'", "'legacy_membership_access'")
+        .replaceAll("ultrasoundassist_free", "legacy_membership_access_free")
+        .replaceAll("ultrasoundassist_premium", "legacy_membership_access_premium")
+        .replaceAll("echoassist_free", "legacy_membership_access_free")
+        .replaceAll("echoassist_premium", "legacy_membership_access_premium");
+      expect(compatibilityStripped, relativePath).not.toMatch(forbiddenVisibleBranding);
+    }
+  });
+
+  it("keeps imported membership-access compatibility values generic in learner-facing included-item cards", () => {
+    const includedItemsSource = readFileSync(new URL("../client/src/components/IncludedItemsBlock.tsx", import.meta.url), "utf8");
+    expect(includedItemsSource).toContain('label: "Membership access"');
+    expect(includedItemsSource).toContain("Do not fall back to source-project hero images");
+    expect(includedItemsSource).not.toContain("ultrasound-hero-probe");
+    expect(includedItemsSource).not.toContain("ihe-hero");
+    expect(includedItemsSource).not.toContain("AAUS_HERO");
+    expect(includedItemsSource).not.toContain("IHE_HERO");
+  });
+
   it("supports per-question feedback modes in Teachific Quiz Creator authoring and preview", () => {
     const questionTypesSource = readFileSync(new URL("../client/src/quiz-creator/types/quiz.ts", import.meta.url), "utf8");
     const quizStoreSource = readFileSync(new URL("../client/src/quiz-creator/store/quizStore.ts", import.meta.url), "utf8");

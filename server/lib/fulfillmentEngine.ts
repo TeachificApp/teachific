@@ -1,5 +1,5 @@
 /**
- * Fulfillment Engine — UltrasoundAssist™
+ * Fulfillment Engine — Teachific™
  *
  * This is the single source of truth for granting access after a paid order.
  * It is called by:
@@ -13,7 +13,7 @@
  * stays "pending" / "failed" so it can be retried without data loss.
  *
  * Fulfillment is IDEMPOTENT — running it twice for the same user+product is
- * safe and will not create duplicate enrollments or memberships.
+ * safe and will not create duplicate enrollments or membership access records.
  */
 
 import { and, eq, sql } from "drizzle-orm";
@@ -45,7 +45,7 @@ export type FulfillmentInput = {
   courseId?: number | null;
   /** Digital download / physical / bundle product ID */
   productId?: number | null;
-  /** Brand membership to grant */
+  /** Legacy membership-access scope to grant */
   fulfillmentBrand?: "aaus" | "iheartecho" | "both" | null;
   /** Additional bonus access items */
   additionalAccess?: Array<{
@@ -262,8 +262,8 @@ export async function executeFulfillment(
     }
   }
 
-  // ── 4. Brand Membership ───────────────────────────────────────────────────
-  // SECURITY GUARD: Brand membership can ONLY be granted when productType is
+  // ── 4. Membership Access ──────────────────────────────────────────────────
+  // SECURITY GUARD: membership access can ONLY be granted when productType is
   // "membership". Courses, downloads, bundles, and all other product types
   // must never trigger brand access — even if fulfillmentBrand is accidentally
   // set on the checkout block.
@@ -281,7 +281,7 @@ export async function executeFulfillment(
           await db.update(brandMemberships)
             .set({ tier: "premium", status: "active", source: "stripe", grantedAt: new Date() })
             .where(eq(brandMemberships.id, existing.id));
-          notes.push(`Upgraded ${brand} membership to premium`);
+        notes.push("Updated membership access to premium");
         } else {
           await db.insert(brandMemberships).values({
             userId,
@@ -292,11 +292,11 @@ export async function executeFulfillment(
             stripeSubscriptionId: null,
             stripeCustomerId: null,
           });
-          notes.push(`Granted ${brand} premium membership`);
+          notes.push("Granted premium membership access");
         }
-        console.log(`[FulfillmentEngine] Granted ${brand} premium to user ${userId}`);
+        console.log(`[FulfillmentEngine] Granted premium membership access to user ${userId}`);
       } catch (err: any) {
-        const msg = `Failed to grant ${brand} membership to user ${userId}: ${err?.message ?? err}`;
+        const msg = `Failed to grant membership access to user ${userId}: ${err?.message ?? err}`;
         console.error(`[FulfillmentEngine] ${msg}`);
         errors.push(msg);
       }

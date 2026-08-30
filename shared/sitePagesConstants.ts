@@ -4,15 +4,9 @@
 import type { Brand } from "./brands";
 
 export const SITE_PAGE_DOMAINS = [
-  // ── All About Ultrasound ──────────────────────────────────────────────────
-  { value: "learn.allaboutultrasound.com",   label: "Learn — allaboutultrasound.com",          brand: "aaus" as Brand },
-  { value: "app.allaboutultrasound.com",     label: "App — allaboutultrasound.com",            brand: "aaus" as Brand },
-  { value: "members.allaboutultrasound.com", label: "Members — allaboutultrasound.com",        brand: "aaus" as Brand },
-  { value: "allaboutultrasound.com",         label: "Marketing root — allaboutultrasound.com", brand: "aaus" as Brand },
-  // ── iHeartEcho ───────────────────────────────────────────────────────────
-  { value: "app.iheartecho.com",             label: "App — iheartecho.com",                   brand: "iheartecho" as Brand },
-  { value: "app.iheartecho.net",             label: "App — iheartecho.net (legacy)",           brand: "iheartecho" as Brand },
-  { value: "accreditation.iheartecho.com",   label: "Accreditation — iheartecho.com",         brand: "iheartecho" as Brand },
+  { value: "teachific.app", label: "Teachific — platform root", brand: "teachific" as Brand },
+  { value: "www.teachific.app", label: "Teachific — marketing root", brand: "teachific" as Brand },
+  { value: "app.teachific.app", label: "Teachific — app", brand: "teachific" as Brand },
 ] as const;
 
 export type SitePageDomain = (typeof SITE_PAGE_DOMAINS)[number]["value"];

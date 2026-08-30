@@ -8,18 +8,14 @@
  *  - Description: max 2 lines (line-clamp-2), flex-1
  *  - Footer: "Included" badge + optional CTA button pinned to bottom (same row as price+button in RelatedProductsBlock)
  *
- * App-type items receive a gradient overlay with the app name AND the correct hero image,
- * matching the treatment in RelatedProductsBlock exactly.
+ * Membership-access items receive a generic gradient overlay when no explicit cover image is configured.
  */
 import React from "react";
 import { BookOpen, FileDown, HelpCircle, Package, Radio, Users, Globe, Check, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 
-// ─── App hero images (same URLs as funnelRouter) ──────────────────────────────
-// Wide hero banner images
-const AAUS_HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/ultrasound-hero-probe-3bWMAQMJw9YFHoPXwbt8bZ.webp";
-const IHE_HERO  = "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/etVPnUidWNWG8W4GHnRqzv/ihe-hero-MNscA4NaWNyxrdkewtLGLG.webp";
+// ─── Membership access defaults ──────────────────────────────────────────────
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,7 +27,7 @@ export interface IncludedItem {
   itemSlug?: string | null;
   itemCoverImage?: string | null;
   label?: string | null;
-  /** For app-type items: short name shown in the gradient overlay */
+  /** For membership-access items: short name shown in the gradient overlay */
   appLabel?: string | null;
   /** Short description shown under the title */
   itemDescription?: string | null;
@@ -95,7 +91,7 @@ function itemHref(item: IncludedItem): string | null {
   }
 }
 
-/** Derive a short app name for the gradient overlay on app-type items */
+/** Derive a short label for the gradient overlay on membership-access items */
 function appOverlayLabel(item: IncludedItem): string | null {
   if (item.appLabel) return item.appLabel;
   if (item.itemType === "ultrasoundassist_free")    return "Membership access";
@@ -105,10 +101,9 @@ function appOverlayLabel(item: IncludedItem): string | null {
   return null;
 }
 
-/** Return the hero image URL for app-type items when no explicit cover is set */
+/** Do not fall back to source-project hero images for membership-access items. */
 function appHeroImage(itemType: string): string | null {
-  if (itemType === "ultrasoundassist_free" || itemType === "ultrasoundassist_premium") return AAUS_HERO;
-  if (itemType === "echoassist_free"       || itemType === "echoassist_premium")       return IHE_HERO;
+  if (IS_APP_TYPE.has(itemType)) return null;
   return null;
 }
 
@@ -130,7 +125,7 @@ function GridCard({ item, d }: { item: IncludedItem; d: IncludedItemsBlockData }
   const displayTitle = item.itemTitle ?? item.label ?? `${label} #${item.itemId}`;
   const isApp    = IS_APP_TYPE.has(item.itemType);
   const overlayLabel = isApp ? appOverlayLabel(item) : null;
-  // Use explicit cover image, fall back to app hero, then nothing
+  // Use explicit cover image when configured; otherwise show the themed fallback.
   const coverImage = item.itemCoverImage || (isApp ? appHeroImage(item.itemType) : null);
 
   const inner = (
@@ -148,7 +143,7 @@ function GridCard({ item, d }: { item: IncludedItem; d: IncludedItemsBlockData }
               <Icon size={36} style={{ color: accent, opacity: 0.6 }} />
             </div>
           )}
-          {/* App name overlay — same gradient treatment as RelatedProductsBlock */}
+          {/* Membership-access overlay for compatibility item types */}
           {overlayLabel && (
             <div className="absolute inset-0 flex items-end justify-start p-3 bg-gradient-to-t from-black/70 via-black/20 to-transparent">
               <span className="text-white font-bold text-sm leading-tight drop-shadow-md">{overlayLabel}</span>

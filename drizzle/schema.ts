@@ -5806,7 +5806,7 @@ export const accreditationFormTemplates = mysqlTable("accreditationFormTemplates
   formType: varchar("formType", { length: 100 }).notNull(), // e.g. "image_quality", "peer_review", "physician_peer_review"
   version: int("version").default(1).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
-  hostDomain: varchar("hostDomain", { length: 255 }).default("app.allaboutultrasound.com"),
+  hostDomain: varchar("hostDomain", { length: 255 }).default("teachific.app"),
   themeSettings: longtext("themeSettings"),
   importedFromUrl: varchar("importedFromUrl", { length: 1000 }),
   successMessage: longtext("successMessage"),

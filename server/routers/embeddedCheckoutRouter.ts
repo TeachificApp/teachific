@@ -89,9 +89,9 @@ export const embeddedCheckoutRouter = router({
         sourceFunnelPageId: z.number().optional(),
         sourceLandingPageId: z.number().optional(),
         sourceLmsLessonId: z.number().optional(),
-        // Fulfillment: auto-enroll in LMS course or grant brand membership on payment success
+        // Fulfillment: auto-enroll in LMS course or grant membership access on payment success
         lmsCourseId: z.number().optional(),       // If set, enroll user in this course after payment
-        fulfillmentBrand: z.enum(["aaus", "iheartecho", "both"]).optional(), // If set, grant brand membership after payment
+        fulfillmentBrand: z.enum(["aaus", "iheartecho", "both"]).optional(),
         // Direct product ID for download/bundle/quiz fulfillment (overrides productType-based lookup)
         productId: z.number().optional(),
         // Redirect after success
@@ -312,7 +312,7 @@ export const embeddedCheckoutRouter = router({
   /**
    * Process a free order (total = $0) without Stripe.
    * Performs the same fulfillment as the Stripe webhook: course enrollment,
-   * download access, brand membership, and additional access items.
+   * download access, membership access, and additional access items.
    */
   processFreeOrder: publicProcedure
     .input(z.object({
@@ -451,7 +451,7 @@ export const embeddedCheckoutRouter = router({
         fulfillmentNotes.push(`Download access: #${input.productId}`);
       }
 
-      // ── Brand Membership ──
+      // ── Membership Access ──
       if (input.fulfillmentBrand && userId) {
         const brandsToGrant: ("aaus" | "iheartecho")[] =
           input.fulfillmentBrand === "both" ? ["aaus", "iheartecho"] : [input.fulfillmentBrand];
@@ -469,7 +469,7 @@ export const embeddedCheckoutRouter = router({
             });
           }
         }
-        fulfillmentNotes.push(`Brand access: ${input.fulfillmentBrand}`);
+        fulfillmentNotes.push(`Membership access: ${input.fulfillmentBrand === "both" ? "all" : "standard"}`);
       }
 
       // ── Additional Access Items ──

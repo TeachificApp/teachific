@@ -3,13 +3,12 @@
  *
  * Pixel IDs are stored in the DB (site_settings table) and fetched via tRPC.
  * The correct pixel is chosen based on the current hostname:
- *   - teachific.app  → aaus pixel
- *   - app.iheartecho.com          → ihe pixel
- *   - teachific.app/learn → learn pixel
+ *   - Teachific learner surfaces use the learner pixel when configured
+ *   - All other Teachific platform and organization surfaces use the platform pixel
  */
 import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { isLearnDomain, isIHeartEchoDomain } from "@/hooks/useSubdomain";
+import { isLearnDomain } from "@/hooks/useSubdomain";
 
 declare global {
   interface Window {
@@ -63,10 +62,8 @@ export function MetaPixel() {
 
     if (isLearnDomain()) {
       pixelId = pixelIds.learn;
-    } else if (isIHeartEchoDomain()) {
-      pixelId = pixelIds.ihe;
     } else {
-      // Default: AAUS (teachific.app and any other domain)
+      // Default: Teachific platform and organization surfaces.
       pixelId = pixelIds.aaus;
     }
 

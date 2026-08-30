@@ -5,7 +5,7 @@
  * Provides all procedures consumed by AdminUserDetailPage.tsx:
  * - getUserDetail, getUserAppRoles, grantAppRole, revokeAppRole
  * - updateUserRole, updateUserProfile, sendPasswordReset, setPassword
- * - grantBrandMembership, revokeBrandMembership
+ * - grantMembershipAccess, revokeMembershipAccess
  * - listAllCourses, enrollInCourse, unenrollFromCourse
  * - updateEnrollmentExpiry, resendEnrollmentEmail, resendMembershipConfirmation
  * - cancelLmsEnrollmentSubscription, cancelLmsOrderSubscription
@@ -343,7 +343,7 @@ export const adminUserRouter = router({
         nativeMemberships: nativeMembershipRows,
         memberships: membershipSubRows.map(m => ({
           ...m,
-          brand: null, // brand memberships are org-specific
+          brand: null, // membership access records are org-specific
         })),
         communityMemberships: [],
         webinarRegistrations: [],
@@ -498,7 +498,7 @@ export const adminUserRouter = router({
       return { success: true, email: user.email };
     }),
 
-  // ─── Brand Memberships ────────────────────────────────────────────────────
+  // ─── Membership Access ────────────────────────────────────────────────────
 
   grantBrandMembership: protectedProcedure
     .input(z.object({

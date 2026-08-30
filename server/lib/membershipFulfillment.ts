@@ -58,7 +58,9 @@ export type MembershipFulfillmentResult = {
   error?: string;
 };
 
-function brandFromItemType(itemType: string): "aaus" | "iheartecho" | null {
+type LegacyMembershipAccessKey = "aaus" | "iheartecho";
+
+function membershipAccessKeyFromItemType(itemType: string): LegacyMembershipAccessKey | null {
   if (itemType.startsWith("ultrasoundassist")) return "aaus";
   if (itemType.startsWith("echoassist")) return "iheartecho";
   return null;
@@ -121,13 +123,13 @@ async function grantBrandAccess(
   stripeCustomerId: string | null,
   notes: string[],
 ): Promise<void> {
-  const brandKey = brandFromItemType(itemType);
-  if (!brandKey) return;
+  const accessKey = membershipAccessKeyFromItemType(itemType);
+  if (!accessKey) return;
   const tier = itemType.endsWith("_premium") ? "premium" : "free";
   const [existingBM] = await db
     .select()
     .from(brandMemberships)
-    .where(and(eq(brandMemberships.userId, userId), eq(brandMemberships.brand, brandKey)))
+    .where(and(eq(brandMemberships.userId, userId), eq(brandMemberships.brand, accessKey)))
     .limit(1);
   if (existingBM) {
     const shouldUpgrade = tier === "premium" && existingBM.tier !== "premium";
@@ -147,7 +149,7 @@ async function grantBrandAccess(
   } else {
     await db.insert(brandMemberships).values({
       userId,
-      brand: brandKey,
+      brand: accessKey,
       tier: tier as "free" | "premium",
       status: "active",
       source: "membership",
@@ -155,7 +157,7 @@ async function grantBrandAccess(
       stripeCustomerId,
     });
   }
-  notes.push(`Brand: ${brandKey} ${tier}`);
+  notes.push(`Membership access: ${tier}`);
 }
 
 type EnrollOpts = {

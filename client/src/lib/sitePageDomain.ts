@@ -5,7 +5,6 @@ import { SITE_PAGE_DOMAINS, type SitePageDomain } from "@shared/sitePagesConstan
 import {
   isLearnDomain,
   isMembersDomain,
-  isIHeartEchoDomain,
   isAccreditationDomain,
   isMarketingStagingDomain,
 } from "@/hooks/useSubdomain";
@@ -23,7 +22,6 @@ export function getSitePageDomain(): SitePageDomain | string {
   if (isMembersDomain()) return window.location.hostname;
   if (isAccreditationDomain()) return window.location.hostname;
   if (host === "app.teachific.net") return "app.teachific.net";
-  if (isIHeartEchoDomain()) return "teachific.app";
   if (isMarketingStagingDomain()) return "teachific.app";
 
   if (host === "teachific.app" || host.startsWith("app.")) {
