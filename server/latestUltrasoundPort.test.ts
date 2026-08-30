@@ -4558,6 +4558,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaRouterSource).not.toContain("/api/media/${asset.slug}/scorm${authQuery}");
     expect(authHelperSource).toContain('"teachific_session_lax", "teachific_session_host"');
     expect(mediaAdminSource).toContain("/api/media/${asset.slug}/download");
+    expect(mediaAdminSource).toContain("Inline display and external iframe links are not available yet.");
+    expect(mediaAdminSource).not.toContain("/media/${asset.slug}/embed");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

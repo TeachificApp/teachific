@@ -90,6 +90,7 @@
 - [x] Restore the Media Repository current-version download route for public assets and active-organization administrators
 - [x] Restore signed private Media Repository download and SCORM-ZIP delivery for active enrolled learners in the owning organization
 - [x] Route Media Repository SCORM playback through the verified signed ZIP fallback until extracted-path serving is safely rebuilt
+- [x] Replace unresolved Media Repository inline-display and external-embed link controls with explicit availability guidance
 - [x] Point copied Media Repository download links to the restored organization-safe delivery route
 - [x] Scope every supported Media Repository analytics query to the asset’s active organization and live viewedAt column
 - [x] Scope core Media Repository version history, restoration, re-upload, and targeted SCORM queries to the active organization

@@ -568,11 +568,7 @@ function AssetListRow({ asset, onClick }: AssetListRowProps) {
 
 function EmbedPanel({ asset, token }: { asset: any; token?: string }) {
   const origin = getOrigin();
-  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
-  const displayUrl = `${origin}/media/${asset.slug}${tokenParam}`;
   const downloadUrl = `${origin}/api/media/${asset.slug}/download`;
-  const embedUrl = `${origin}/media/${asset.slug}/embed${tokenParam}`;
-  const iframeCode = `<iframe src="${embedUrl}" width="100%" height="480" frameborder="0" allowfullscreen loading="lazy" title="${asset.title.replace(/"/g, "&quot;")}"></iframe>`;
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => toast.success(`${label} copied`));
@@ -581,22 +577,8 @@ function EmbedPanel({ asset, token }: { asset: any; token?: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Display Link</Label>
-        <p className="text-xs text-muted-foreground mb-1">Opens and renders the file inline in the browser.</p>
-        <div className="flex gap-2">
-          <Input value={displayUrl} readOnly className="text-xs font-mono" />
-          <Button size="icon" variant="outline" onClick={() => copy(displayUrl, "Display link")}>
-            <Copy className="w-4 h-4" />
-          </Button>
-          <Button size="icon" variant="outline" asChild>
-            <a href={displayUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" /></a>
-          </Button>
-        </div>
-      </div>
-
-      <div>
         <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Download Link</Label>
-        <p className="text-xs text-muted-foreground mb-1">Forces the file to download to the user's device.</p>
+        <p className="text-xs text-muted-foreground mb-1">Delivers the current file version through the organization-safe media route.</p>
         <div className="flex gap-2">
           <Input value={downloadUrl} readOnly className="text-xs font-mono" />
           <Button size="icon" variant="outline" onClick={() => copy(downloadUrl, "Download link")}>
@@ -608,27 +590,10 @@ function EmbedPanel({ asset, token }: { asset: any; token?: string }) {
         </div>
       </div>
 
-      <div>
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Embed URL</Label>
-        <p className="text-xs text-muted-foreground mb-1">Use in an iframe — renders inline, no cookies required.</p>
-        <div className="flex gap-2">
-          <Input value={embedUrl} readOnly className="text-xs font-mono" />
-          <Button size="icon" variant="outline" onClick={() => copy(embedUrl, "Embed URL")}>
-            <Copy className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Embed Code (iframe)</Label>
-        <div className="flex gap-2 mt-1">
-          <Textarea value={iframeCode} readOnly className="text-xs font-mono resize-none" rows={3} />
-          <Button size="icon" variant="outline" className="self-start" onClick={() => copy(iframeCode, "Embed code")}>
-            <Copy className="w-4 h-4" />
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Works cross-origin without third-party cookies. Token is embedded in the URL — no session required.
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+        <p className="font-medium">Inline display and external iframe links are not available yet.</p>
+        <p className="mt-1 text-xs leading-5 text-amber-800">
+          They will return only after their organization-aware delivery contracts are implemented and tested. Use the download link or add the asset to an authorized lesson instead.
         </p>
       </div>
     </div>
