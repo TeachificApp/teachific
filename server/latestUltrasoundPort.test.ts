@@ -4553,6 +4553,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaDeliverySource).toContain('router.get("/:slug/scorm-zip", serveCurrentVersion);');
     expect(mediaRouterSource).toContain("eq(lmsCourses.orgId, asset.orgId)");
     expect(mediaRouterSource).toContain("eq(lmsEnrollments.orgId, asset.orgId)");
+    expect(mediaRouterSource).toContain('mode: "clientZip" as const');
+    expect(mediaRouterSource).toContain("/api/media/${asset.slug}/scorm-zip${authQuery}");
+    expect(mediaRouterSource).not.toContain("/api/media/${asset.slug}/scorm${authQuery}");
     expect(authHelperSource).toContain('"teachific_session_lax", "teachific_session_host"');
     expect(mediaAdminSource).toContain("/api/media/${asset.slug}/download");
   });

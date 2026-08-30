@@ -1008,15 +1008,7 @@ export const mediaRepoRouter = router({
       const authQuery = buildMediaAuthQuery({ access });
       const strategy = pickScormPlaybackMode(current, versions);
 
-      if (strategy.mode === "server") {
-        return {
-          mode: "server" as const,
-          embedUrl: `/api/media/${asset.slug}/scorm${authQuery}`,
-          title: asset.title,
-        };
-      }
-
-      if (!strategy.zipS3Url) {
+      if (!strategy.zipS3Url && !current.s3Key) {
         throw new TRPCError({ code: "NOT_FOUND", message: "No playable SCORM ZIP found for this asset" });
       }
 
