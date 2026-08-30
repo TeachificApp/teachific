@@ -4647,6 +4647,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundleRouterSource).toContain("getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)");
     const mediaUploadSource = readFileSync(new URL("./mediaUploadRoutes.ts", import.meta.url), "utf8");
     expect(mediaUploadSource).toContain("await requireOrgAdmin(user.id, (user as any).role ?? \"user\", orgId);");
+    expect(mediaUploadSource).toContain("Media item is not associated with an organization");
+    expect(mediaUploadSource).toContain("await requireOrgAdmin(user.id, (user as any).role ?? \"user\", item.orgId);");
     const aiSourceFileSource = readFileSync(new URL("./lib/aiSourceFile.ts", import.meta.url), "utf8");
     expect(aiSourceFileSource).toContain("AI_SOURCE_FILE_MAX_BYTES = 50 * 1024 * 1024");
     expect(aiSourceFileSource).toContain("application/pdf");

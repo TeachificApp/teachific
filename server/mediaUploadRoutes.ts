@@ -122,6 +122,12 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
       return;
     }
 
+    if (!item.orgId) {
+      res.status(403).json({ error: "Media item is not associated with an organization" });
+      return;
+    }
+    await requireOrgAdmin(user.id, (user as any).role ?? "user", item.orgId);
+
     // Overwrite the same S3 key — the CDN URL will remain identical
     const { url } = await storagePutStream(
       item.fileKey,
