@@ -560,8 +560,12 @@ function TextEditor({ form, set, lessonTitle, courseTitle }: { form: any; set: (
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiType, setAiType] = useState<"text" | "outline" | "summary" | "quiz_questions">("text");
   const [aiPreview, setAiPreview] = useState("");
+  const [aiWordCount, setAiWordCount] = useState<number | null>(null);
   const generateContent = trpc.lms.ai.generateLessonContent.useMutation({
-    onSuccess: (data) => { setAiPreview(data.content); },
+    onSuccess: (data) => {
+      setAiPreview(data.content);
+      setAiWordCount(data.wordCount ?? null);
+    },
     onError: (e) => { toast.error(e.message); },
   });
   return (
@@ -602,10 +606,13 @@ function TextEditor({ form, set, lessonTitle, courseTitle }: { form: any; set: (
                     aiType === t ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
                   }`}
                 >
-                  {t === "quiz_questions" ? "Quiz Questions" : t.charAt(0).toUpperCase() + t.slice(1)}
+                  {t === "text" ? "Full Lesson (1,500+ words)" : t === "quiz_questions" ? "Quiz Questions" : t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
             </div>
+            {aiType === "text" && (
+              <p className="text-xs text-muted-foreground">Full lessons are generated with a minimum of 1,500 words. If an initial draft is short, the generator expands it before showing the preview.</p>
+            )}
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Additional context (optional)</Label>
               <Textarea
@@ -617,7 +624,10 @@ function TextEditor({ form, set, lessonTitle, courseTitle }: { form: any; set: (
             </div>
             {aiPreview && (
               <div className="border border-border rounded-lg p-4 bg-muted/30 max-h-64 overflow-y-auto">
-                <p className="text-xs text-muted-foreground mb-2 font-medium">Preview</p>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="text-xs text-muted-foreground font-medium">Preview</p>
+                  {aiWordCount !== null && <span className="text-xs text-muted-foreground">{aiWordCount.toLocaleString()} words{aiType === "text" ? " · minimum met" : ""}</span>}
+                </div>
                 <div className="text-sm prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: aiPreview }} />
               </div>
             )}
@@ -630,6 +640,7 @@ function TextEditor({ form, set, lessonTitle, courseTitle }: { form: any; set: (
                   set("contentJson", aiPreview);
                   setAiOpen(false);
                   setAiPreview("");
+                  setAiWordCount(null);
                   toast.success("Content inserted!");
                 }}
               >

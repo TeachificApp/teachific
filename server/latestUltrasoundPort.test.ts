@@ -3,6 +3,12 @@ import { describe, expect, it } from "vitest";
 import { isStaleAssetError } from "../client/src/components/ErrorBoundary";
 import { mapQuestionType, parseBlocks } from "./lib/lessonQuizQuestionBankSync";
 import { isPublicIpAddress, validatePublicSourceUrl } from "./lib/publicSourceUrl";
+import {
+  FULL_LESSON_MINIMUM_WORDS,
+  cleanGeneratedLessonContent,
+  countGeneratedContentWords,
+  requiresFullLessonMinimum,
+} from "./lib/aiLessonContent";
 
 describe("latest Ultrasound-App learning feature port", () => {
   it("recognizes HTML returned in place of a Quiz Creator JavaScript module", () => {
@@ -17,6 +23,31 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mapQuestionType("multiselect")).toBe("multiple_select");
     expect(mapQuestionType("drag_sort")).toBe("ordering");
     expect(mapQuestionType("fill_blank")).toBe("fill_blank");
+  });
+
+  it("counts learner-facing words in generated HTML and identifies full-lesson formats", () => {
+    const fullLesson = Array.from({ length: FULL_LESSON_MINIMUM_WORDS }, (_, index) => `word${index + 1}`).join(" ");
+    expect(cleanGeneratedLessonContent("```html\n<p>Lesson body</p>\n```")).toBe("<p>Lesson body</p>");
+    expect(countGeneratedContentWords("<h2>Lesson</h2><p>One &amp; two.</p>")).toBe(3);
+    expect(countGeneratedContentWords(`<p>${fullLesson}</p>`)).toBe(FULL_LESSON_MINIMUM_WORDS);
+    expect(requiresFullLessonMinimum("lesson")).toBe(true);
+    expect(requiresFullLessonMinimum("text")).toBe(true);
+    expect(requiresFullLessonMinimum("outline")).toBe(false);
+  });
+
+  it("requires a 1,500-word minimum for full AI lessons before exposing generated content to authors", () => {
+    const detailedGeneratorSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    const editorGeneratorSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const lessonEditorSource = readFileSync(new URL("../client/src/components/lms/LessonEditorSheet.tsx", import.meta.url), "utf8");
+    expect(detailedGeneratorSource).toContain("fullLessonLengthRequirement()");
+    expect(detailedGeneratorSource).toContain("buildFullLessonExpansionPrompt({ content: cleaned, wordCount })");
+    expect(detailedGeneratorSource).toContain("AI could not complete the required 1,500-word full lesson");
+    expect(editorGeneratorSource).toContain("format: z.enum([\"text\", \"outline\", \"summary\", \"quiz_questions\"]).default(\"text\")");
+    expect(editorGeneratorSource).toContain("buildFullLessonExpansionPrompt({ content, wordCount })");
+    expect(editorGeneratorSource).toContain("AI could not complete the required 1,500-word full lesson");
+    expect(lessonEditorSource).toContain("Full Lesson (1,500+ words)");
+    expect(lessonEditorSource).toContain("Full lessons are generated with a minimum of 1,500 words.");
+    expect(lessonEditorSource).toContain("minimum met");
   });
 
   it("accepts only serialized block arrays for page-builder lesson quiz synchronization", () => {

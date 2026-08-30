@@ -10,6 +10,13 @@ import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
 import { scrapeVideoFromUrl, cleanupScrapedVideo } from "./videoScraper";
+import {
+  buildFullLessonExpansionPrompt,
+  cleanGeneratedLessonContent,
+  countGeneratedContentWords,
+  fullLessonLengthRequirement,
+  requiresFullLessonMinimum,
+} from "./lib/aiLessonContent";
 import { nanoid } from "nanoid";
 import {
   getCoursesByOrg,
@@ -2697,17 +2704,41 @@ export const lmsRouter = router({
         catch { return { sections: [] }; }
       }),
     generateLessonContent: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), lessonTitle: z.string(), courseTitle: z.string().optional(), format: z.string().optional() }))
+      .input(z.object({ orgId: z.number().optional(), lessonTitle: z.string(), courseTitle: z.string().optional(), format: z.enum(["text", "outline", "summary", "quiz_questions"]).default("text") }))
       .mutation(async ({ input, ctx }) => {
         const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
         await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const response = await invokeLLM({
           messages: [
-            { role: "system", content: "You are an expert educator. Generate lesson content in markdown format." },
-            { role: "user", content: `Write lesson content for: "${input.lessonTitle}" in course "${input.courseTitle ?? ""}". Format: ${input.format ?? "text"}` },
+            { role: "system", content: "You are an expert educator. Generate clear, engaging lesson content in United States English. Return well-formatted HTML using headings, paragraphs, lists, and emphasis as appropriate. Return only inner HTML, without markdown code fences or outer HTML tags." },
+            { role: "user", content: `Write lesson content for: "${input.lessonTitle}" in course "${input.courseTitle ?? ""}". Format: ${input.format}.${requiresFullLessonMinimum(input.format) ? ` ${fullLessonLengthRequirement()}` : ""}` },
           ],
         });
-        return { content: (response.choices[0]?.message?.content ?? "") as string };
+        const initialContent = response.choices[0]?.message?.content;
+        let content = cleanGeneratedLessonContent(typeof initialContent === "string" ? initialContent : "");
+        let wordCount = countGeneratedContentWords(content);
+        const isFullLesson = requiresFullLessonMinimum(input.format);
+
+        if (isFullLesson && wordCount < 1500) {
+          const expanded = await invokeLLM({
+            messages: [
+              { role: "system", content: "You are an expert educator. Return well-formatted inner HTML only, with no markdown code fences or outer HTML tags." },
+              { role: "user", content: buildFullLessonExpansionPrompt({ content, wordCount }) },
+            ],
+          });
+          const expandedContent = expanded.choices[0]?.message?.content;
+          content = cleanGeneratedLessonContent(typeof expandedContent === "string" ? expandedContent : "");
+          wordCount = countGeneratedContentWords(content);
+        }
+
+        if (isFullLesson && wordCount < 1500) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `AI could not complete the required 1,500-word full lesson. It returned ${wordCount} words; please try again.`,
+          });
+        }
+
+        return { content, wordCount, minimumWordCount: isFullLesson ? 1500 : null };
       }),
   }),
 

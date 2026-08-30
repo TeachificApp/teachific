@@ -26,9 +26,10 @@
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers
 - [x] Audit legacy source-branded compatibility contracts and bundle-router/schema drift before changing persisted values or APIs
-- [ ] Replace stale bundle administration callers with an authorized active-organization contract before exposing advanced bundle features
+- [ ] Route legacy bundle administration entry points to the supported active-organization bundle experience while the advanced contract is migrated
 - [ ] Define and migrate one additive organization-scoped bundle data model before enabling itemized bundle pricing, sales, refunds, workflows, or public checkout
 - [x] Enforce active-organization matching for the supported LMS bundle list, create, read, update, delete, and bundle-editor course selection flows
+- [x] Require AI-generated full lesson content to contain at least 1,500 words and surface a clear authoring status when the minimum is not met
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding

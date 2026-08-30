@@ -32,6 +32,13 @@ import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { buildAiSourceMessage } from "../lib/aiSourceFile";
 import {
+  buildFullLessonExpansionPrompt,
+  cleanGeneratedLessonContent,
+  countGeneratedContentWords,
+  fullLessonLengthRequirement,
+  requiresFullLessonMinimum,
+} from "../lib/aiLessonContent";
+import {
   lmsCourses,
   lmsSections,
   lmsLessons,
@@ -1609,7 +1616,7 @@ Return JSON with this exact shape:
         : "";
 
       const typeInstructions: Record<string, string> = {
-        lesson: "Write a complete lesson with an introduction, main content sections, key takeaways, and a summary.",
+        lesson: `Write a complete lesson with an introduction, main content sections, key takeaways, and a summary. ${fullLessonLengthRequirement()}`,
         section: "Write a module overview that introduces the topic and outlines what learners will cover.",
         outline: "Write a structured outline with headings and brief descriptions for each point.",
         summary: "Write a concise summary of the key concepts.",
@@ -1626,10 +1633,33 @@ Return JSON with this exact shape:
             { role: "user", content: userPrompt },
           ],
         });
-        const content = response.choices?.[0]?.message?.content ?? "";
-        const cleaned = content.replace(/^```html?\n?/i, "").replace(/\n?```$/i, "").trim();
-        return { success: true, content: cleaned };
+        const initialContent = response.choices?.[0]?.message?.content;
+        let cleaned = cleanGeneratedLessonContent(typeof initialContent === "string" ? initialContent : "");
+        let wordCount = countGeneratedContentWords(cleaned);
+        const isFullLesson = requiresFullLessonMinimum(input.contentType);
+
+        if (isFullLesson && wordCount < 1500) {
+          const expanded = await invokeLLM({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: buildFullLessonExpansionPrompt({ content: cleaned, wordCount }) },
+            ],
+          });
+          const expandedContent = expanded.choices?.[0]?.message?.content;
+          cleaned = cleanGeneratedLessonContent(typeof expandedContent === "string" ? expandedContent : "");
+          wordCount = countGeneratedContentWords(cleaned);
+        }
+
+        if (isFullLesson && wordCount < 1500) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `AI could not complete the required 1,500-word full lesson. It returned ${wordCount} words; please try again.`,
+          });
+        }
+
+        return { success: true, content: cleaned, wordCount, minimumWordCount: isFullLesson ? 1500 : null };
       } catch (e: any) {
+        if (e instanceof TRPCError) throw e;
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI generation failed: ${e?.message ?? "unknown error"}` });
       }
     }),

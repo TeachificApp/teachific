@@ -2,7 +2,9 @@
  * BundlesAdmin.tsx — Admin CRUD for multi-type bundles (courses, downloads, products, webinars, quizzes)
  */
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import BundlesPage from "@/pages/products/BundlesPage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -745,12 +747,23 @@ function AddItemDialog({
   );
 }
 
+/**
+ * Compatibility entry point for older LMS and downloads tabs.
+ *
+ * The source-derived multi-item administration implementation below depends on
+ * a retired bundle schema. Keep it out of the active render path until its
+ * explicit organization-scoped migration is complete. The supported bundle
+ * screen is backed by `lms.bundles`, which validates the active organization.
+ */
 export default function BundlesAdmin({ initialEditId }: { initialEditId?: number } = {}) {
-  const [editingId, setEditingId] = useState<number | null>(initialEditId ?? null);
-  if (editingId) {
-    return <BundleEditor bundleId={editingId} onBack={() => setEditingId(null)} />;
-  }
-  return <BundleList onEdit={setEditingId} />;
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (initialEditId) navigate(`/products/bundles/${initialEditId}/edit`);
+  }, [initialEditId, navigate]);
+
+  if (initialEditId) return null;
+  return <BundlesPage />;
 }
 
 // ─── Included Items Widget Code Panel (shared with MembershipsAdmin) ──────────
