@@ -4561,6 +4561,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaAdminSource).toContain("/api/media/${asset.slug}/download");
     expect(mediaAdminSource).toContain("Inline display and external iframe links are not available yet.");
     expect(mediaAdminSource).not.toContain("/media/${asset.slug}/embed");
+    expect(mediaAdminSource).toContain("Version preview is unavailable until a version-specific authorized delivery route is implemented.");
+    expect(mediaAdminSource).not.toContain("href={v.s3Url}");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

@@ -86,6 +86,7 @@
 - [x] Reconcile verified live `media_versions.orgId` writes and declarations before creating or re-uploading organization-owned media versions
 - [x] Reconcile verified media asset metadata and version-write contracts with live schema fields using an additive migration
 - [ ] Complete remaining media view-event and access-rule contract reconciliation before restoring advanced media reporting or permission features
+- [ ] Restore organization-scoped Media Repository user grants from the verified rule-to-user model without reviving email-token invitations
 - [ ] Rebuild a server-side Media Repository delivery route with verified public and signed private access before enabling generated media URLs
 - [x] Restore the Media Repository current-version download route for public assets and active-organization administrators
 - [x] Restore signed private Media Repository download and SCORM-ZIP delivery for active enrolled learners in the owning organization
@@ -93,6 +94,7 @@
 - [x] Replace unresolved Media Repository inline-display and external-embed link controls with explicit availability guidance
 - [x] Route learner Media Repository non-SCORM embeds through the verified signed current-version delivery endpoint
 - [x] Point copied Media Repository download links to the restored organization-safe delivery route
+- [x] Remove raw storage URL exposure from Media Repository version-history controls until a version-specific authorized route is implemented
 - [x] Scope every supported Media Repository analytics query to the asset’s active organization and live viewedAt column
 - [x] Scope core Media Repository version history, restoration, re-upload, and targeted SCORM queries to the active organization
 - [x] Verify the fresh root preview renders normally; the earlier blank checkpoint thumbnail was not an application-shell failure
