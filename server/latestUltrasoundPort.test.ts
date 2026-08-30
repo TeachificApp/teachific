@@ -4283,6 +4283,34 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).toContain("physical: (physicalData ?? [])");
   });
 
+  it("requires active-organization ownership for high-impact physical-product administration", () => {
+    const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
+    const highImpactSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("// ── Landing Page Builder"),
+      productsRouterSource.indexOf("// ─── After Purchase Workflow"),
+    );
+    expect(productsRouterSource).toContain("async function requireActivePhysicalProductPricingOption");
+    expect(productsRouterSource).toContain("async function requireActivePhysicalProductOrder");
+    expect(highImpactSource).toContain("await requireActivePhysicalProduct(ctx, input.productId)");
+    expect((highImpactSource.match(/await requireActivePhysicalProduct\(ctx, input\.productId\);/g) ?? []).length).toBeGreaterThanOrEqual(6);
+    expect((highImpactSource.match(/await requireActivePhysicalProductPricingOption\(ctx, input\.id\);/g) ?? []).length).toBe(2);
+    expect(highImpactSource).toContain("await requireActivePhysicalProductOrder(ctx, input.id)");
+    expect(highImpactSource).toContain("const conditions: any[] = [eq(physicalProducts.orgId, orgId)]");
+  });
+
+  it("does not fabricate customer reviews in physical-product landing generation and scopes generation to the active organization", () => {
+    const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
+    const landingGeneratorSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("aiGenerateLandingPage: protectedProcedure"),
+      productsRouterSource.indexOf("// ─── After Purchase Workflow"),
+    );
+    expect(landingGeneratorSource).toContain("await requireActivePhysicalProduct(ctx, input.productId)");
+    expect(landingGeneratorSource).not.toContain("reviews: array of");
+    expect(landingGeneratorSource).not.toContain("What Customers Are Saying");
+    expect(landingGeneratorSource).not.toContain("hero, text (features/what you get), text (about/description), reviews");
+    expect(landingGeneratorSource).toContain("hero, text (features/what you get), text (about/description), faq, cta_standalone");
+  });
+
   it("does not mount unscoped physical-product public or learner APIs without an organization-domain storefront", () => {
     const rootRouterSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");

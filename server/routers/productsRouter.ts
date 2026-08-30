@@ -77,6 +77,36 @@ async function requireActivePhysicalProduct(ctx: { user: { id: number; role: str
   return { db, orgId, product };
 }
 
+async function requireActivePhysicalProductPricingOption(ctx: { user: { id: number; role: string } }, pricingOptionId: number) {
+  const { db, orgId } = await requireActivePhysicalProductOrg(ctx);
+  const [pricingOption] = await db.select({
+    id: physicalProductPricingOptions.id,
+    productId: physicalProductPricingOptions.productId,
+  }).from(physicalProductPricingOptions)
+    .innerJoin(physicalProducts, eq(physicalProductPricingOptions.productId, physicalProducts.id))
+    .where(and(
+      eq(physicalProductPricingOptions.id, pricingOptionId),
+      eq(physicalProducts.orgId, orgId),
+    )).limit(1);
+  if (!pricingOption) throw new TRPCError({ code: "NOT_FOUND", message: "Pricing option not found" });
+  return { db, pricingOption };
+}
+
+async function requireActivePhysicalProductOrder(ctx: { user: { id: number; role: string } }, orderId: number) {
+  const { db, orgId } = await requireActivePhysicalProductOrg(ctx);
+  const [order] = await db.select({
+    id: physicalProductOrders.id,
+    productId: physicalProductOrders.productId,
+  }).from(physicalProductOrders)
+    .innerJoin(physicalProducts, eq(physicalProductOrders.productId, physicalProducts.id))
+    .where(and(
+      eq(physicalProductOrders.id, orderId),
+      eq(physicalProducts.orgId, orgId),
+    )).limit(1);
+  if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Product order not found" });
+  return { db, order };
+}
+
 // ─── Public Router ────────────────────────────────────────────────────────────
 export const productsPublicRouter = router({
   /** List published physical products */
@@ -507,24 +537,7 @@ export const productsAdminRouter = router({
   getLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db.select({
-        id: physicalProducts.id,
-        title: physicalProducts.title,
-        slug: physicalProducts.slug,
-        subtitle: physicalProducts.subtitle,
-        thumbnailUrl: physicalProducts.thumbnailUrl,
-        landingBlocks: physicalProducts.landingBlocks,
-        landingHeadline: physicalProducts.landingHeadline,
-        seoTitle: physicalProducts.seoTitle,
-        seoDescription: physicalProducts.seoDescription,
-        seoImage: physicalProducts.seoImage,
-      }).from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { product } = await requireActivePhysicalProduct(ctx, input.productId);
       return {
         blocks: product.landingBlocks ? JSON.parse(product.landingBlocks) : null,
         productTitle: product.title,
@@ -547,11 +560,7 @@ export const productsAdminRouter = router({
       seoImage: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       await db.update(physicalProducts)
         .set({
           seoTitle: input.seoTitle ?? null,
@@ -566,11 +575,7 @@ export const productsAdminRouter = router({
   saveLandingBlocks: protectedProcedure
     .input(z.object({ productId: z.number(), blocks: z.array(z.any()) }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       const blocksJson = JSON.stringify(input.blocks);
       await db.update(physicalProducts)
         .set({ landingBlocks: blocksJson })
@@ -589,11 +594,7 @@ export const productsAdminRouter = router({
       mimeType: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       const buffer = Buffer.from(input.fileBase64, "base64");
       const ext = input.fileName.split(".").pop() ?? "jpg";
       const key = `physical-products/${input.productId}/thumbnail-${Date.now()}.${ext}`;
@@ -618,11 +619,7 @@ export const productsAdminRouter = router({
       ctaLabel: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       // Get current max sortOrder
       const [maxRow] = await db.select({ max: sql<number>`MAX(sort_order)` })
         .from(physicalProductPricingOptions)
@@ -654,11 +651,7 @@ export const productsAdminRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProductPricingOption(ctx, input.id);
       const { id, ...fields } = input;
       await db.update(physicalProductPricingOptions).set(fields as any)
         .where(eq(physicalProductPricingOptions.id, id));
@@ -669,11 +662,7 @@ export const productsAdminRouter = router({
   deletePricingOption: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProductPricingOption(ctx, input.id);
       await db.delete(physicalProductPricingOptions)
         .where(eq(physicalProductPricingOptions.id, input.id));
       return { success: true };
@@ -690,15 +679,12 @@ export const productsAdminRouter = router({
       limit: z.number().min(1).max(100).default(25),
     }).optional())
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) return { orders: [], total: 0 };
+      const { db, orgId } = await requireActivePhysicalProductOrg(ctx);
+      if (input?.productId) await requireActivePhysicalProduct(ctx, input.productId);
       const page = input?.page ?? 1;
       const limit = input?.limit ?? 25;
       const offset = (page - 1) * limit;
-      const conditions: any[] = [];
+      const conditions: any[] = [eq(physicalProducts.orgId, orgId)];
       if (input?.productId) conditions.push(eq(physicalProductOrders.productId, input.productId));
       if (input?.status) conditions.push(eq(physicalProductOrders.fulfillmentStatus, input.status as any));
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -714,7 +700,9 @@ export const productsAdminRouter = router({
           .where(whereClause)
           .orderBy(desc(physicalProductOrders.orderedAt))
           .limit(limit).offset(offset),
-        db.select({ count: sql<number>`count(*)` }).from(physicalProductOrders).where(whereClause),
+        db.select({ count: sql<number>`count(*)` }).from(physicalProductOrders)
+          .innerJoin(physicalProducts, eq(physicalProductOrders.productId, physicalProducts.id))
+          .where(whereClause),
       ]);
       return { orders, total: countResult[0]?.count ?? 0 };
     }),
@@ -729,11 +717,7 @@ export const productsAdminRouter = router({
       notes: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProductOrder(ctx, input.id);
       const { id, ...fields } = input;
       await db.update(physicalProductOrders).set(fields as any)
         .where(eq(physicalProductOrders.id, id));
@@ -748,11 +732,7 @@ export const productsAdminRouter = router({
       notes: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       await db.insert(physicalProductOrders).values({
         userId: input.userId,
         productId: input.productId,
@@ -768,11 +748,7 @@ export const productsAdminRouter = router({
   getAnalytics: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) return { totalOrders: 0, totalRevenue: 0, byStatus: [] };
+      const { db } = await requireActivePhysicalProduct(ctx, input.productId);
       const [totals] = await db.select({
         totalOrders: sql<number>`count(*)`,
         totalRevenue: sql<number>`COALESCE(SUM(amount_paid), 0)`,
@@ -795,21 +771,7 @@ export const productsAdminRouter = router({
   aiGenerateLandingPage: protectedProcedure
     .input(z.object({ productId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const [product] = await db.select({
-        id: physicalProducts.id,
-        title: physicalProducts.title,
-        subtitle: physicalProducts.subtitle,
-        description: physicalProducts.description,
-        thumbnailUrl: physicalProducts.thumbnailUrl,
-        slug: physicalProducts.slug,
-      }).from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+      const { db, product } = await requireActivePhysicalProduct(ctx, input.productId);
 
       // Get pricing options
       const pricingOptions = await db.select({
@@ -831,9 +793,9 @@ Description: ${product.description ?? ""}
 Pricing: ${priceText}
 Cover Image: ${product.thumbnailUrl ?? ""}
 
-Generate a JSON array of 5-7 content blocks. Each block MUST have:
+Generate a JSON array of 4-6 content blocks. Each block MUST have:
 - id: unique string like "block_1", "block_2", etc.
-- type: MUST be one of these exact strings: hero, text, reviews, faq, cta_standalone
+- type: MUST be one of these exact strings: hero, text, faq, cta_standalone
 - data: object with the fields described below
 
 Block data schemas:
@@ -855,17 +817,12 @@ Block data schemas:
    html: string (HTML with h2, p, ul/li tags — write compelling content about features, benefits, who it's for)
    bgColor: "#ffffff"
 
-3. reviews block — data fields:
-   headline: "What Customers Are Saying"
-   bgColor: "#ffffff"
-   reviews: array of 3 objects each with: name (string), text (string — realistic review), rating (number 4 or 5)
-
-4. faq block — data fields:
+3. faq block — data fields:
    headline: "Frequently Asked Questions"
    bgColor: "#f9fafb"
    items: array of 5 objects each with: q (string — question), a (string — answer)
 
-5. cta_standalone block — data fields:
+4. cta_standalone block — data fields:
    headline: string (urgent call to action)
    subtext: string (reassurance text)
    ctaText: "Order Now"
@@ -874,7 +831,7 @@ Block data schemas:
    bgColor: "#f0fafa"
    align: "center"
 
-Create blocks in this order: hero, text (features/what you get), text (about/description), reviews, faq, cta_standalone.
+Create blocks in this order: hero, text (features/what you get), text (about/description), faq, cta_standalone.
 Make ALL content specific and compelling based on the product title and description above. Do NOT use generic placeholder text.`;
 
       const response = await invokeLLM({
