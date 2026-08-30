@@ -289,7 +289,7 @@ export const mediaRepoRouter = router({
           const [currentVersion] = await db
             .select({ s3Url: mediaVersions.s3Url, versionNumber: mediaVersions.versionNumber, fileName: mediaVersions.fileName, fileSize: mediaVersions.fileSize })
             .from(mediaVersions)
-            .where(eq(mediaVersions.assetId, asset.id))
+            .where(and(eq(mediaVersions.assetId, asset.id), eq(mediaVersions.orgId, orgId)))
             .orderBy(desc(mediaVersions.versionNumber))
             .limit(1);
           return { ...asset, currentVersion: currentVersion ?? null };
@@ -310,12 +310,12 @@ export const mediaRepoRouter = router({
   getAsset: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      const { db, asset } = await requireActiveMediaAsset(ctx, input.id);
+      const { db, orgId, asset } = await requireActiveMediaAsset(ctx, input.id);
 
       const versions = await db
         .select()
         .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.id))
+        .where(and(eq(mediaVersions.assetId, input.id), eq(mediaVersions.orgId, orgId)))
         .orderBy(desc(mediaVersions.versionNumber));
 
       // The live media_access_grants table is rule/user based and cannot
@@ -448,7 +448,7 @@ export const mediaRepoRouter = router({
       versionId: z.number().int().positive(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId, asset } = await requireActiveMediaAsset(ctx, input.assetId);
 
       // Fetch the target version
       const [target] = await db
@@ -456,7 +456,8 @@ export const mediaRepoRouter = router({
         .from(mediaVersions)
         .where(and(
           eq(mediaVersions.id, input.versionId),
-          eq(mediaVersions.assetId, input.assetId)
+          eq(mediaVersions.assetId, input.assetId),
+          eq(mediaVersions.orgId, orgId)
         ))
         .limit(1);
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
@@ -465,7 +466,7 @@ export const mediaRepoRouter = router({
       const [maxRow] = await db
         .select({ max: sql<number>`MAX(${mediaVersions.versionNumber})` })
         .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.assetId));
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)));
       const nextVersion = (maxRow?.max ?? 0) + 1;
 
       // Insert a new version row copying the target's S3 key/url/size/mime.
@@ -491,7 +492,7 @@ export const mediaRepoRouter = router({
       const [insertedVersion] = await db
         .select({ id: mediaVersions.id })
         .from(mediaVersions)
-        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.versionNumber, nextVersion)))
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId), eq(mediaVersions.versionNumber, nextVersion)))
         .limit(1);
       if (insertedVersion) {
         await queueScormExtractionIfNeeded(insertedVersion.id, target.s3Url, asset.slug, {
@@ -523,13 +524,13 @@ export const mediaRepoRouter = router({
       notes: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId, asset } = await requireActiveMediaAsset(ctx, input.assetId);
 
       // Determine next version number
       const [{ maxVer }] = await db
         .select({ maxVer: sql<number>`MAX(versionNumber)` })
         .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.assetId));
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)));
       const nextVersion = (maxVer ?? 0) + 1;
 
       // Upload to S3
@@ -569,12 +570,12 @@ export const mediaRepoRouter = router({
       await db
         .update(mediaAssets)
         .set({ mimeType: input.mimeType, mediaType: detectedType as any })
-        .where(eq(mediaAssets.id, input.assetId));
+        .where(and(eq(mediaAssets.id, input.assetId), eq(mediaAssets.orgId, orgId)));
 
       const [insertedVersion] = await db
         .select({ id: mediaVersions.id })
         .from(mediaVersions)
-        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.versionNumber, nextVersion)))
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId), eq(mediaVersions.versionNumber, nextVersion)))
         .limit(1);
       if (insertedVersion) {
         await queueScormExtractionIfNeeded(insertedVersion.id, s3Url, asset.slug, {
@@ -613,12 +614,12 @@ export const mediaRepoRouter = router({
   listVersions: protectedProcedure
     .input(z.object({ assetId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      const { db } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
 
       return db
         .select()
         .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.assetId))
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)))
         .orderBy(desc(mediaVersions.versionNumber));
     }),
 
@@ -631,19 +632,19 @@ export const mediaRepoRouter = router({
       versionId: z.number().int().positive(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId, asset } = await requireActiveMediaAsset(ctx, input.assetId);
 
       const [version] = await db
         .select()
         .from(mediaVersions)
-        .where(and(eq(mediaVersions.id, input.versionId), eq(mediaVersions.assetId, input.assetId)))
+        .where(and(eq(mediaVersions.id, input.versionId), eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)))
         .limit(1);
       if (!version) throw new TRPCError({ code: "NOT_FOUND" });
 
       const [{ maxVer }] = await db
         .select({ maxVer: sql<number>`MAX(versionNumber)` })
         .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.assetId));
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)));
       const nextVersion = (maxVer ?? 0) + 1;
 
       await db.insert(mediaVersions).values({
@@ -667,7 +668,7 @@ export const mediaRepoRouter = router({
       const [insertedVersion] = await db
         .select({ id: mediaVersions.id })
         .from(mediaVersions)
-        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.versionNumber, nextVersion)))
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId), eq(mediaVersions.versionNumber, nextVersion)))
         .limit(1);
       if (insertedVersion) {
         await queueScormExtractionIfNeeded(insertedVersion.id, version.s3Url, asset.slug, {
@@ -737,13 +738,15 @@ export const mediaRepoRouter = router({
   setFolder: protectedProcedure
     .input(z.object({
       id: z.number().int().positive(),
-      folder: z.string().max(255).nullable(),
+      folderId: z.number().int().positive().nullable(),
     }))
-    .mutation(() => {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
-      });
+    .mutation(async ({ ctx, input }) => {
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
+      await assertFolderBelongsToActiveMediaOrg(db, orgId, input.folderId);
+      await db.update(mediaAssets)
+        .set({ folderId: input.folderId })
+        .where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
+      return { updated: true };
     }),
 
   /**
@@ -764,7 +767,13 @@ export const mediaRepoRouter = router({
    * Get distinct folder list.
    */
   listFolders: protectedProcedure
-    .query(() => []),
+    .query(async ({ ctx }) => {
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
+      return db.select({ id: mediaFolders.id, name: mediaFolders.name })
+        .from(mediaFolders)
+        .where(eq(mediaFolders.orgId, orgId))
+        .orderBy(mediaFolders.name);
+    }),
 
   /**
    * Get analytics for an asset: total views, unique viewer IPs, daily breakdown (last 30 days).
@@ -1128,17 +1137,17 @@ export const mediaRepoRouter = router({
   reExtractScorm: protectedProcedure
     .input(z.object({ assetId: z.number().int(), versionId: z.number().int().optional() }))
     .mutation(async ({ ctx, input }) => {
-      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId, asset } = await requireActiveMediaAsset(ctx, input.assetId);
       // If a specific versionId is provided, use that version; otherwise use the latest
       let version;
       if (input.versionId) {
         const [v] = await db.select().from(mediaVersions)
-          .where(and(eq(mediaVersions.id, input.versionId), eq(mediaVersions.assetId, input.assetId)))
+          .where(and(eq(mediaVersions.id, input.versionId), eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)))
           .limit(1);
         version = v;
       } else {
         const [v] = await db.select().from(mediaVersions)
-          .where(eq(mediaVersions.assetId, input.assetId))
+          .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)))
           .orderBy(desc(mediaVersions.versionNumber))
           .limit(1);
         version = v;
@@ -1156,7 +1165,7 @@ export const mediaRepoRouter = router({
           scormExtractedPrefix: null,
           scormLaunchFile: null,
         })
-        .where(eq(mediaVersions.id, version.id));
+        .where(and(eq(mediaVersions.id, version.id), eq(mediaVersions.orgId, orgId)));
       console.log(`[ReExtractScorm] Priority extraction started for asset ${input.assetId} (version ${version.id})`);
       // Fire-and-forget background extraction (bypasses the heartbeat queue)
       extractAndUploadScormVersion(version.id, version.s3Url!, asset.slug).catch((err: any) => {
@@ -1219,7 +1228,7 @@ export const mediaRepoRouter = router({
   getScormStatus: protectedProcedure
     .input(z.object({ assetId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      const { db } = await requireActiveMediaAsset(ctx, input.assetId);
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
       const [version] = await db.select({
         id: mediaVersions.id,
         scormExtractionStatus: (mediaVersions as any).scormExtractionStatus,
@@ -1228,7 +1237,7 @@ export const mediaRepoRouter = router({
         scormExtractedPrefix: mediaVersions.scormExtractedPrefix,
       })
         .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, input.assetId))
+        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)))
         .orderBy(desc(mediaVersions.versionNumber))
         .limit(1);
       if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "No version found" });

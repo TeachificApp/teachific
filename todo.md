@@ -87,6 +87,7 @@
 - [x] Reconcile verified media asset metadata and version-write contracts with live schema fields using an additive migration
 - [ ] Complete remaining media view-event and access-rule contract reconciliation before restoring advanced media reporting or permission features
 - [x] Scope every supported Media Repository analytics query to the asset’s active organization and live viewedAt column
+- [x] Scope core Media Repository version history, restoration, re-upload, and targeted SCORM queries to the active organization
 - [x] Verify the fresh root preview renders normally; the earlier blank checkpoint thumbnail was not an application-shell failure
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
