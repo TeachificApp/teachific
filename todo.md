@@ -88,6 +88,7 @@
 - [ ] Complete remaining media view-event and access-rule contract reconciliation before restoring advanced media reporting or permission features
 - [ ] Rebuild a server-side Media Repository delivery route with verified public and signed private access before enabling generated media URLs
 - [x] Restore the Media Repository current-version download route for public assets and active-organization administrators
+- [x] Restore signed private Media Repository download and SCORM-ZIP delivery for active enrolled learners in the owning organization
 - [x] Point copied Media Repository download links to the restored organization-safe delivery route
 - [x] Scope every supported Media Repository analytics query to the asset’s active organization and live viewedAt column
 - [x] Scope core Media Repository version history, restoration, re-upload, and targeted SCORM queries to the active organization

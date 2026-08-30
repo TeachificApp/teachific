@@ -4539,6 +4539,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const serverEntrySource = readFileSync(new URL("./_core/index.ts", import.meta.url), "utf8");
     const authHelperSource = readFileSync(new URL("./authHelper.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     expect(serverEntrySource).toContain('app.use("/api/media", mediaDeliveryRouter);');
     expect(mediaDeliverySource).toContain('router.get("/:slug/download"');
     expect(mediaDeliverySource).toContain("isNull(mediaAssets.deletedAt)");
@@ -4546,7 +4547,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaDeliverySource).toContain("requireOrgAdmin(user.id, user.role, assetOrgId)");
     expect(mediaDeliverySource).toContain("eq(mediaVersions.orgId, asset.orgId)");
     expect(mediaDeliverySource).toContain("storageGet(version.s3Key)");
-    expect(mediaDeliverySource).not.toContain("verifyMediaViewerToken");
+    expect(mediaDeliverySource).toContain("verifyMediaViewerToken(access, asset.slug)");
+    expect(mediaDeliverySource).toContain("eq(lmsCourses.orgId, orgId)");
+    expect(mediaDeliverySource).toContain("inArray(lmsEnrollments.status, [\"active\", \"completed\"])");
+    expect(mediaDeliverySource).toContain('router.get("/:slug/scorm-zip", serveCurrentVersion);');
+    expect(mediaRouterSource).toContain("eq(lmsCourses.orgId, asset.orgId)");
+    expect(mediaRouterSource).toContain("eq(lmsEnrollments.orgId, asset.orgId)");
     expect(authHelperSource).toContain('"teachific_session_lax", "teachific_session_host"');
     expect(mediaAdminSource).toContain("/api/media/${asset.slug}/download");
   });

@@ -33,6 +33,7 @@ import {
   mediaAccessGrants,
   mediaViewEvents,
   mediaFolders,
+  lmsCourses,
   lmsEnrollments,
 } from "../../drizzle/schema";
 import { initialScormExtractionStatus, needsScormExtraction, queueScormExtractionIfNeeded, pickScormPlaybackMode } from "../lib/scormPackage";
@@ -910,9 +911,17 @@ export const mediaRepoRouter = router({
           const [enrollment] = await db
             .select({ id: lmsEnrollments.id })
             .from(lmsEnrollments)
+            .innerJoin(lmsCourses, and(
+              eq(lmsCourses.id, lmsEnrollments.courseId),
+              eq(lmsCourses.orgId, asset.orgId),
+            ))
             .where(and(
               eq(lmsEnrollments.userId, ctx.user.id),
-              eq(lmsEnrollments.courseId, input.courseId)
+              eq(lmsEnrollments.courseId, input.courseId),
+              eq(lmsEnrollments.orgId, asset.orgId),
+              inArray(lmsEnrollments.status, ["active", "completed"]),
+              or(isNull(lmsEnrollments.expiresAt), gte(lmsEnrollments.expiresAt, new Date())),
+              or(isNull(lmsEnrollments.accessExpiresAt), gte(lmsEnrollments.accessExpiresAt, new Date())),
             ))
             .limit(1);
           allowed = !!enrollment;
@@ -959,9 +968,17 @@ export const mediaRepoRouter = router({
           const [enrollment] = await db
             .select({ id: lmsEnrollments.id })
             .from(lmsEnrollments)
+            .innerJoin(lmsCourses, and(
+              eq(lmsCourses.id, lmsEnrollments.courseId),
+              eq(lmsCourses.orgId, asset.orgId),
+            ))
             .where(and(
               eq(lmsEnrollments.userId, ctx.user.id),
-              eq(lmsEnrollments.courseId, input.courseId)
+              eq(lmsEnrollments.courseId, input.courseId),
+              eq(lmsEnrollments.orgId, asset.orgId),
+              inArray(lmsEnrollments.status, ["active", "completed"]),
+              or(isNull(lmsEnrollments.expiresAt), gte(lmsEnrollments.expiresAt, new Date())),
+              or(isNull(lmsEnrollments.accessExpiresAt), gte(lmsEnrollments.accessExpiresAt, new Date())),
             ))
             .limit(1);
           allowed = !!enrollment;

@@ -10,8 +10,8 @@ The active Media Repository router creates display, download, embed, SCORM, and 
 |---|---|---|
 | Asset identity | `media_assets` is organization-owned and stores an `orgId` | Resolve the asset server-side by slug and preserve its owning organization for every authorization decision. |
 | Public assets | The supported asset access field can be `public` | A public route may serve only the current version of a non-deleted public asset. |
-| Private assets | Existing tRPC issues a 4-hour HMAC viewer token after administrator or enrollment checks | Verify the signed token, asset slug, current user/enrollment binding, and owning organization before serving. |
+| Private assets | Existing tRPC issues a 4-hour HMAC viewer token after administrator or enrollment checks | Signed download and SCORM-ZIP access now verifies the token, asset slug, active enrollment, course ownership, and owning organization before issuing a storage redirect. |
 | Email tokens | `media_access_grants` is a user/rule model, not an email/token model | Do not restore legacy token invitations, validation, or bearer links. |
 | SCORM paths | Cached extraction helpers reject traversal outside their cache root | Reuse this validation only after the request is authorized for the owning asset. |
 
-> **Conclusion:** No delivery endpoint has been restored in this slice. The next implementation must introduce an explicit server-side route with active organization or verified viewer-token access checks, start with a minimal current-version response, and include cross-organization and private-asset tests before SCORM asset-path handling.
+> **Conclusion:** Current-version download and SCORM-ZIP redirects are restored. Public assets are available by route; private assets require either an authenticated active-organization administrator or a signed viewer token bound to an active/completed, unexpired enrollment in a course owned by the same organization. Embedded HTML and extracted SCORM asset paths remain unavailable until their separate path-serving contract is implemented and tested.
