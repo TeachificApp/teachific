@@ -299,8 +299,8 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-sky-600" />
+          <div className="w-9 h-9 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] flex items-center justify-center">
+            <FileText className="w-5 h-5 text-[var(--org-primary)]" />
           </div>
           <div>
             <h3 className="font-semibold text-slate-800">CME Activity Form</h3>
@@ -657,7 +657,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <Button variant="outline" onClick={handleDownloadPdf} disabled={downloadPdf.isPending} className="gap-1.5">
           <Download className="w-3.5 h-3.5" /> Download PDF
         </Button>
-        <Button onClick={handleSave} disabled={saveForm.isPending} className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
+        <Button onClick={handleSave} disabled={saveForm.isPending} className="org-primary-button gap-1.5">
           {saveForm.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
           Save CME Form
         </Button>

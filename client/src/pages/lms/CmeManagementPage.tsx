@@ -151,7 +151,7 @@ function CmeFormsList({ onSelect }: { onSelect: (courseId: number, courseTitle: 
                     size="sm"
                     variant="outline"
                     onClick={() => onSelect(item.course.id, item.course.title)}
-                    className="gap-1.5 text-xs h-7 border-sky-200 text-sky-700 hover:bg-sky-50"
+                    className="gap-1.5 text-xs h-7 border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                   >
                     <Pencil className="w-3 h-3" />
                     {item.form ? "Edit Form" : "Create Form"}
@@ -351,14 +351,14 @@ function CmeFormEditor({
             variant="outline"
             onClick={handleSave}
             disabled={saveForm.isPending}
-            className="gap-1.5 text-xs border-sky-200 text-sky-700 hover:bg-sky-50"
+            className="gap-1.5 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
           >
             {saveForm.isPending ? "Saving…" : "Save Draft"}
           </Button>
           <Button
             size="sm"
             onClick={() => setSendDialogOpen(true)}
-            className="gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white"
+            className="org-primary-button gap-1.5 text-xs"
           >
             <Send className="w-3.5 h-3.5" />
             Send CME Form
@@ -490,9 +490,9 @@ function CmeFormEditor({
 
         {/* Needs Assessment */}
         <TabsContent value="needs" className="space-y-4 mt-4">
-          <div className="p-3 rounded-lg bg-sky-50 border border-sky-200 flex items-start gap-2">
-            <Info className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-sky-700">Use the AI generator above to auto-fill these fields based on the course title and credit hours.</p>
+          <div className="p-3 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] flex items-start gap-2">
+            <Info className="w-4 h-4 text-[var(--org-primary)] mt-0.5 shrink-0" />
+            <p className="text-xs text-[var(--org-primary)]">Use the AI generator above to auto-fill these fields based on the course title and credit hours.</p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-slate-700 text-xs font-semibold">Practice Gap Description *</Label>
@@ -664,14 +664,14 @@ function CmeFormEditor({
           variant="outline"
           onClick={handleSave}
           disabled={saveForm.isPending}
-          className="gap-1.5 text-xs border-sky-200 text-sky-700 hover:bg-sky-50"
+          className="gap-1.5 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
         >
           {saveForm.isPending ? "Saving…" : "Save Draft"}
         </Button>
         <Button
           size="sm"
           onClick={() => setSendDialogOpen(true)}
-          className="gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white"
+          className="org-primary-button gap-1.5 text-xs"
         >
           <Send className="w-3.5 h-3.5" />
           Send CME Form
@@ -683,7 +683,7 @@ function CmeFormEditor({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Send className="w-4 h-4 text-sky-600" />
+              <Send className="w-4 h-4 text-[var(--org-primary)]" />
               Send CME Form
             </DialogTitle>
             <DialogDescription>
@@ -709,7 +709,7 @@ function CmeFormEditor({
                 sendToCme.mutate({ courseId, subject: emailSubject, body: emailBody });
               }}
               disabled={sendToCme.isPending || !emailSubject.trim()}
-              className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5"
+              className="org-primary-button gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               {sendToCme.isPending ? "Sending…" : "Send CME Form"}
@@ -744,7 +744,7 @@ function CmeFormEditor({
             <Button
               onClick={() => updateStatus.mutate({ courseId, status: newStatus })}
               disabled={updateStatus.isPending}
-              className="bg-sky-600 hover:bg-sky-700 text-white"
+              className="org-primary-button"
             >
               {updateStatus.isPending ? "Updating…" : "Update Status"}
             </Button>
@@ -825,7 +825,7 @@ export default function CmeManagementPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <GraduationCap className="w-5 h-5 text-sky-600" />
+              <GraduationCap className="w-5 h-5 text-[var(--org-primary)]" />
               <h1 className="text-xl font-bold text-slate-900">CME Management</h1>
             </div>
             <p className="text-sm text-slate-500">
@@ -856,7 +856,7 @@ export default function CmeManagementPage() {
           <Card className="border-slate-200">
             <CardHeader className="pb-4">
               <CardTitle className="text-base text-slate-800 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-sky-600" />
+                <FileText className="w-4 h-4 text-[var(--org-primary)]" />
                 {selectedCourse ? "CME Activity Planning Form" : "CME-Eligible Courses"}
               </CardTitle>
               {!selectedCourse && (

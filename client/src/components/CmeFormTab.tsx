@@ -363,8 +363,8 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-sky-600" />
+          <div className="w-9 h-9 rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] flex items-center justify-center">
+            <FileText className="w-5 h-5 text-[var(--org-primary)]" />
           </div>
           <div>
             <h3 className="font-semibold text-slate-800">CME Activity Form</h3>
@@ -619,11 +619,11 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
       </Card>
 
       {/* Section 6b: Financial Disclosures */}
-      <Card className="border-sky-200">
+      <Card className="border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)]">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Users className="w-4 h-4 text-sky-600" /> Financial Disclosures
+              <Users className="w-4 h-4 text-[var(--org-primary)]" /> Financial Disclosures
             </CardTitle>
             <div className="flex gap-2">
               {(disclosures as any[]).length > 0 && (
@@ -666,7 +666,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { navigator.clipboard.writeText(getDisclosureUrl(d)); toast.success("Link copied"); }} title="Copy link">
                   <Link2 className="w-3 h-3" />
                 </Button>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-sky-600" disabled={sendDisclosureEmail.isPending} onClick={() => sendDisclosureEmail.mutate({ disclosureId: d.id, orgId, origin: window.location.origin })} title="Send email">
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]" disabled={sendDisclosureEmail.isPending} onClick={() => sendDisclosureEmail.mutate({ disclosureId: d.id, orgId, origin: window.location.origin })} title="Send email">
                   <Mail className="w-3 h-3" />
                 </Button>
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-red-500" onClick={() => { if (confirm("Remove this disclosure record?")) deleteDisclosure.mutate({ disclosureId: d.id, orgId }); }}>×</Button>
@@ -690,7 +690,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
               <Input type="email" value={newFacultyEmail} onChange={e => setNewFacultyEmail(e.target.value)} placeholder="faculty@example.com" className="text-sm" />
             </div>
             <div className="flex gap-2 pt-1">
-              <Button size="sm" onClick={() => { if (!newFacultyName.trim() || !newFacultyEmail.trim()) { toast.error("Name and email are required"); return; } createDisclosure.mutate({ courseId, orgId, facultyName: newFacultyName.trim(), facultyEmail: newFacultyEmail.trim() }); }} disabled={createDisclosure.isPending} className="bg-sky-600 hover:bg-sky-700 text-white">
+              <Button size="sm" onClick={() => { if (!newFacultyName.trim() || !newFacultyEmail.trim()) { toast.error("Name and email are required"); return; } createDisclosure.mutate({ courseId, orgId, facultyName: newFacultyName.trim(), facultyEmail: newFacultyEmail.trim() }); }} disabled={createDisclosure.isPending} className="org-primary-button">
                 {createDisclosure.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Create & Send"}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setAddDisclosureOpen(false)}>Cancel</Button>
@@ -839,7 +839,7 @@ export default function CmeFormTab({ courseId, productType = "course", orgId, pr
         <Button variant="outline" onClick={handleDownloadPdf} disabled={downloadPdf.isPending} className="gap-1.5">
           <Download className="w-3.5 h-3.5" /> Download PDF
         </Button>
-        <Button onClick={handleSave} disabled={saveForm.isPending} className="gap-1.5 bg-sky-600 hover:bg-sky-700 text-white">
+        <Button onClick={handleSave} disabled={saveForm.isPending} className="org-primary-button gap-1.5">
           {saveForm.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
           Save CME Form
         </Button>

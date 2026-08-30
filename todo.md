@@ -5470,7 +5470,7 @@
 - [x] Connect organization-authorized source file uploads to Course Builder AI generation controls
 - [x] Connect organization-authorized source file uploads to Question Bank AI generation controls
 - [x] Apply active organization colors to Course Builder AI generation sliders
-- [ ] Apply active organization theme colors to CME management controls and informational surfaces
+- [x] Apply active organization theme colors to CME management controls and informational surfaces
 - [x] Apply active organization theme colors to CME management AI-assistance controls
 - [x] Apply active organization theme colors to LMS dashboard violet accents
 - [x] Apply active organization theme colors to LMS analytics report links
