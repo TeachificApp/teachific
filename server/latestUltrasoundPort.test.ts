@@ -4429,7 +4429,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsRouterSource).toContain("requireActiveWorkshopOrg");
   });
 
-  it("quarantines the media email-token grant contract while preserving valid asset management", () => {
+  it("restores organization-scoped user grants while keeping email-token invitations quarantined", () => {
     const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
     const mediaAuditSource = readFileSync(new URL("../docs/media-access-grant-schema-audit.md", import.meta.url), "utf8");
@@ -4439,7 +4439,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaRouterSource).not.toContain("mediaAccessGrants.revokedAt");
     expect(mediaRouterSource).toContain("Email media invitations are unavailable until organization-scoped media permissions are configured.");
     expect(mediaRouterSource).toContain("return { allowed: false, asset, version: null };");
-    expect(mediaAdminSource).toContain("Email invitation links are temporarily unavailable while organization-scoped media permissions are completed.");
+    expect(mediaRouterSource).toContain("grantUserAccess: protectedProcedure");
+    expect(mediaRouterSource).toContain("listGrantEligibleUsers: protectedProcedure");
+    expect(mediaRouterSource).toContain("eq(mediaAccessGrants.ruleId, rule.id)");
+    expect(mediaAdminSource).toContain("Grant access only to members of this organization.");
     expect(mediaAdminSource).not.toContain("Send Invite");
     expect(mediaAuditSource).toContain("This is a data-model conflict, not a URL-only issue.");
     expect(mediaAuditSource).toContain("new, additive invitation table keyed by organization and asset");
@@ -4550,9 +4553,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaDeliverySource).toContain("verifyMediaViewerToken(access, asset.slug)");
     expect(mediaDeliverySource).toContain("eq(lmsCourses.orgId, orgId)");
     expect(mediaDeliverySource).toContain("inArray(lmsEnrollments.status, [\"active\", \"completed\"])");
+    expect(mediaDeliverySource).toContain("mediaAccessGrants");
+    expect(mediaDeliverySource).toContain("eq(mediaAccessRules.assetId, asset.id)");
+    expect(mediaDeliverySource).toContain("eq(mediaAccessGrants.userId, user.id)");
     expect(mediaDeliverySource).toContain('router.get("/:slug/scorm-zip", serveCurrentVersion);');
     expect(mediaRouterSource).toContain("eq(lmsCourses.orgId, asset.orgId)");
     expect(mediaRouterSource).toContain("eq(lmsEnrollments.orgId, asset.orgId)");
+    expect(mediaRouterSource).toContain("grantUserAccess: protectedProcedure");
+    expect(mediaRouterSource).toContain("listGrantEligibleUsers: protectedProcedure");
+    expect(mediaRouterSource).toContain("eq(mediaAccessGrants.orgId, orgId)");
     expect(mediaRouterSource).toContain("const basePath = `/api/media/${asset.slug}/download`;");
     expect(mediaRouterSource).toContain('mode: "clientZip" as const');
     expect(mediaRouterSource).toContain("/api/media/${asset.slug}/scorm-zip${authQuery}");

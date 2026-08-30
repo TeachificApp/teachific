@@ -31,10 +31,13 @@ import {
   mediaAssets,
   mediaVersions,
   mediaAccessGrants,
+  mediaAccessRules,
   mediaViewEvents,
   mediaFolders,
   lmsCourses,
   lmsEnrollments,
+  orgMembers,
+  users,
 } from "../../drizzle/schema";
 import { initialScormExtractionStatus, needsScormExtraction, queueScormExtractionIfNeeded, pickScormPlaybackMode } from "../lib/scormPackage";
 import { extractAndUploadScormVersion } from "../routes/scormExtractor";
@@ -714,23 +717,119 @@ export const mediaRepoRouter = router({
       });
     }),
 
+  /** List active members eligible for an explicit same-organization access grant. */
+  listGrantEligibleUsers: protectedProcedure
+    .input(z.object({ assetId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
+      return db.select({
+        userId: users.id,
+        name: users.name,
+        email: users.email,
+        role: orgMembers.role,
+      })
+        .from(orgMembers)
+        .innerJoin(users, eq(users.id, orgMembers.userId))
+        .where(eq(orgMembers.orgId, orgId))
+        .orderBy(users.name, users.email);
+    }),
+
+  /**
+   * Grant a current member access through the verified rule-to-user model.
+   * This deliberately does not send an invitation or create a bearer token.
+   */
+  grantUserAccess: protectedProcedure
+    .input(z.object({ assetId: z.number().int().positive(), userId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
+      const [member] = await db.select({ userId: orgMembers.userId })
+        .from(orgMembers)
+        .where(and(eq(orgMembers.orgId, orgId), eq(orgMembers.userId, input.userId)))
+        .limit(1);
+      if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Member not found in the active organization" });
+
+      let [rule] = await db.select({ id: mediaAccessRules.id })
+        .from(mediaAccessRules)
+        .where(and(
+          eq(mediaAccessRules.orgId, orgId),
+          eq(mediaAccessRules.assetId, input.assetId),
+          eq(mediaAccessRules.accessType, "restricted"),
+        ))
+        .orderBy(desc(mediaAccessRules.id))
+        .limit(1);
+      if (!rule) {
+        const result = await db.insert(mediaAccessRules).values({
+          orgId,
+          assetId: input.assetId,
+          accessType: "restricted",
+        });
+        const ruleId = Number(result[0].insertId);
+        rule = { id: ruleId };
+      }
+
+      const [existing] = await db.select({ id: mediaAccessGrants.id })
+        .from(mediaAccessGrants)
+        .where(and(
+          eq(mediaAccessGrants.orgId, orgId),
+          eq(mediaAccessGrants.ruleId, rule.id),
+          eq(mediaAccessGrants.userId, input.userId),
+        ))
+        .limit(1);
+      if (existing) return { granted: true, grantId: existing.id, alreadyGranted: true };
+
+      const result = await db.insert(mediaAccessGrants).values({ orgId, ruleId: rule.id, userId: input.userId });
+      return { granted: true, grantId: Number(result[0].insertId), alreadyGranted: false };
+    }),
+
   /**
    * List all access grants for an asset.
    */
   listGrants: protectedProcedure
     .input(z.object({ assetId: z.number().int().positive() }))
-    .query(() => []),
+    .query(async ({ ctx, input }) => {
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
+      return db.select({
+        id: mediaAccessGrants.id,
+        userId: mediaAccessGrants.userId,
+        grantedAt: mediaAccessGrants.grantedAt,
+        ruleId: mediaAccessRules.id,
+        expiresAt: mediaAccessRules.expiresAt,
+        name: users.name,
+        email: users.email,
+      })
+        .from(mediaAccessGrants)
+        .innerJoin(mediaAccessRules, and(
+          eq(mediaAccessRules.id, mediaAccessGrants.ruleId),
+          eq(mediaAccessRules.orgId, orgId),
+          eq(mediaAccessRules.assetId, input.assetId),
+        ))
+        .innerJoin(users, eq(users.id, mediaAccessGrants.userId))
+        .where(eq(mediaAccessGrants.orgId, orgId))
+        .orderBy(desc(mediaAccessGrants.grantedAt));
+    }),
 
   /**
    * Revoke a specific access grant.
    */
   revokeGrant: protectedProcedure
     .input(z.object({ grantId: z.number().int().positive() }))
-    .mutation(() => {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Email media invitations are unavailable until organization-scoped media permissions are configured.",
-      });
+    .mutation(async ({ ctx, input }) => {
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
+      const [grant] = await db.select({
+        id: mediaAccessGrants.id,
+        ruleId: mediaAccessRules.id,
+      })
+        .from(mediaAccessGrants)
+        .innerJoin(mediaAccessRules, and(
+          eq(mediaAccessRules.id, mediaAccessGrants.ruleId),
+          eq(mediaAccessRules.orgId, orgId),
+        ))
+        .where(and(eq(mediaAccessGrants.id, input.grantId), eq(mediaAccessGrants.orgId, orgId)))
+        .limit(1);
+      if (!grant) throw new TRPCError({ code: "NOT_FOUND", message: "Access grant not found" });
+      await db.delete(mediaAccessGrants)
+        .where(and(eq(mediaAccessGrants.id, grant.id), eq(mediaAccessGrants.orgId, orgId)));
+      return { revoked: true };
     }),
 
   /**

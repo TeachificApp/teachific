@@ -8,7 +8,7 @@
  */
 import express, { type Request, type Response } from "express";
 import { and, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
-import { lmsCourses, lmsEnrollments, mediaAssets, mediaVersions } from "../drizzle/schema";
+import { lmsCourses, lmsEnrollments, mediaAccessGrants, mediaAccessRules, mediaAssets, mediaVersions } from "../drizzle/schema";
 import { authenticateRequest } from "./authHelper";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
 import { verifyMediaViewerToken } from "./lib/mediaEmbedAccess";
@@ -52,6 +52,33 @@ async function hasSignedLearnerAccess(
   return hasActiveCourseEnrollment(db, token.userId, token.courseId, asset.orgId);
 }
 
+async function hasDirectUserGrant(
+  req: Request,
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  asset: typeof mediaAssets.$inferSelect,
+): Promise<boolean> {
+  const user = await authenticateRequest(req);
+  if (!user) return false;
+  const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
+  if (activeOrgId !== asset.orgId) return false;
+  const now = new Date();
+  const [grant] = await db.select({ id: mediaAccessGrants.id })
+    .from(mediaAccessGrants)
+    .innerJoin(mediaAccessRules, and(
+      eq(mediaAccessRules.id, mediaAccessGrants.ruleId),
+      eq(mediaAccessRules.orgId, asset.orgId),
+      eq(mediaAccessRules.assetId, asset.id),
+      eq(mediaAccessRules.accessType, "restricted"),
+      or(isNull(mediaAccessRules.expiresAt), gte(mediaAccessRules.expiresAt, now)),
+    ))
+    .where(and(
+      eq(mediaAccessGrants.orgId, asset.orgId),
+      eq(mediaAccessGrants.userId, user.id),
+    ))
+    .limit(1);
+  return !!grant;
+}
+
 async function requirePrivateAssetAdmin(req: Request, res: Response, assetOrgId: number): Promise<boolean> {
   const user = await authenticateRequest(req);
   if (!user) {
@@ -86,7 +113,8 @@ async function serveCurrentVersion(req: Request, res: Response) {
 
     if (asset.access !== "public") {
       const signedLearnerAccess = await hasSignedLearnerAccess(req, db, asset);
-      if (!signedLearnerAccess && !(await requirePrivateAssetAdmin(req, res, asset.orgId))) return;
+      const directGrantAccess = signedLearnerAccess ? false : await hasDirectUserGrant(req, db, asset);
+      if (!signedLearnerAccess && !directGrantAccess && !(await requirePrivateAssetAdmin(req, res, asset.orgId))) return;
     }
 
     const [version] = await db.select({ s3Key: mediaVersions.s3Key })

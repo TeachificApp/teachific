@@ -880,10 +880,7 @@ interface AssetDetailDialogProps {
 function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: AssetDetailDialogProps) {
   const [, navigate] = useLocation();
   const [reuploadOpen, setReuploadOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteExpiry, setInviteExpiry] = useState("30");
-  const [inviteMessage, setInviteMessage] = useState("");
-  const [selectedToken, setSelectedToken] = useState<string | undefined>(undefined);
+  const [selectedGrantUserId, setSelectedGrantUserId] = useState("");
   const [editSlug, setEditSlug] = useState("");
   const [slugInitialized, setSlugInitialized] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -895,6 +892,14 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
     { enabled: !!assetId }
   );
   const { data: foldersData } = trpc.mediaRepo.listFoldersFull.useQuery(undefined, { enabled: !!assetId });
+  const { data: eligibleGrantUsers = [] } = trpc.mediaRepo.listGrantEligibleUsers.useQuery(
+    { assetId: assetId! },
+    { enabled: !!assetId },
+  );
+  const { data: grants = [], refetch: refetchGrants } = trpc.mediaRepo.listGrants.useQuery(
+    { assetId: assetId! },
+    { enabled: !!assetId },
+  );
   // Initialize slug state when data loads — must be in useEffect to avoid setState-during-render (React error #185)
   useEffect(() => {
     if (data && !slugInitialized) {
@@ -963,18 +968,18 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
     onSuccess: () => { toast.success("Version restored"); refetch(); },
   });
 
-  const inviteMutation = trpc.mediaRepo.inviteByEmail.useMutation({
-    onSuccess: (res) => {
-      toast.success(`Invite sent — access link sent to ${inviteEmail}`);
-      setSelectedToken(res.token);
-      setInviteEmail("");
-      refetch();
+  const grantMutation = trpc.mediaRepo.grantUserAccess.useMutation({
+    onSuccess: () => {
+      toast.success("Member access granted");
+      setSelectedGrantUserId("");
+      refetchGrants();
     },
-    onError: (e) => toast.error(`Failed to send invite: ${e.message}`),
+    onError: (e) => toast.error(`Unable to grant access: ${e.message}`),
   });
 
   const revokeMutation = trpc.mediaRepo.revokeGrant.useMutation({
-    onSuccess: () => { toast.success("Grant revoked"); refetch(); },
+    onSuccess: () => { toast.success("Grant revoked"); refetchGrants(); },
+    onError: (e) => toast.error(`Unable to revoke access: ${e.message}`),
   });
   const reExtractMutation = trpc.mediaRepo.reExtractScorm.useMutation({
     onSuccess: () => toast.success("Re-extraction started — runs in the background, may take a minute."),
@@ -995,7 +1000,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
   }, [autoReExtract, data, assetId]);
 
   if (!data) return null;
-  const { asset, versions, grants } = data;
+  const { asset, versions } = data;
   const currentVersion = versions[0];
   const isPublic = asset.access === "public";
 
@@ -1312,12 +1317,59 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                   This asset is <strong>public</strong> — anyone with the link can view it. No invite tokens needed.
                 </div>
               ) : (
-                <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground">Private media access</p>
-                  <p className="mt-1">
-                    Email invitation links are temporarily unavailable while organization-scoped media permissions are completed.
-                    Existing access rules remain available for supported organization media workflows.
-                  </p>
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground">Private media access</p>
+                    <p className="mt-1">Grant access only to members of this organization. Email invitation links and bearer links remain unavailable.</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Select value={selectedGrantUserId || undefined} onValueChange={setSelectedGrantUserId}>
+                        <SelectTrigger className="bg-background"><SelectValue placeholder="Select an organization member" /></SelectTrigger>
+                        <SelectContent>
+                          {eligibleGrantUsers.map((member: any) => (
+                            <SelectItem key={member.userId} value={String(member.userId)}>
+                              {member.name || member.email || `Member #${member.userId}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        className="org-primary-button shrink-0"
+                        disabled={!selectedGrantUserId || grantMutation.isPending}
+                        onClick={() => grantMutation.mutate({ assetId: asset.id, userId: Number(selectedGrantUserId) })}
+                      >
+                        {grantMutation.isPending ? "Granting…" : "Grant access"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border">
+                    <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Granted members</div>
+                    {grants.length === 0 ? (
+                      <p className="px-3 py-4 text-sm text-muted-foreground">No individual member grants yet.</p>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {grants.map((grant: any) => (
+                          <div key={grant.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">{grant.name || grant.email || `Member #${grant.userId}`}</p>
+                              {grant.email && <p className="truncate text-xs text-muted-foreground">{grant.email}</p>}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="shrink-0 text-destructive hover:text-destructive"
+                              disabled={revokeMutation.isPending}
+                              onClick={() => revokeMutation.mutate({ grantId: grant.id })}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </TabsContent>

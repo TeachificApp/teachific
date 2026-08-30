@@ -86,7 +86,7 @@
 - [x] Reconcile verified live `media_versions.orgId` writes and declarations before creating or re-uploading organization-owned media versions
 - [x] Reconcile verified media asset metadata and version-write contracts with live schema fields using an additive migration
 - [ ] Complete remaining media view-event and access-rule contract reconciliation before restoring advanced media reporting or permission features
-- [ ] Restore organization-scoped Media Repository user grants from the verified rule-to-user model without reviving email-token invitations
+- [x] Restore organization-scoped Media Repository user grants from the verified rule-to-user model without reviving email-token invitations
 - [ ] Rebuild a server-side Media Repository delivery route with verified public and signed private access before enabling generated media URLs
 - [x] Restore the Media Repository current-version download route for public assets and active-organization administrators
 - [x] Restore signed private Media Repository download and SCORM-ZIP delivery for active enrolled learners in the owning organization
