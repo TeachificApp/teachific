@@ -4283,6 +4283,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).toContain("physical: (physicalData ?? [])");
   });
 
+  it("does not mount unscoped physical-product public or learner APIs without an organization-domain storefront", () => {
+    const rootRouterSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    expect(rootRouterSource).not.toContain("productsPublic: productsPublicRouter");
+    expect(rootRouterSource).not.toContain("productsLearner: productsLearnerRouter");
+    expect(rootRouterSource).toContain("productsAdmin: productsAdminRouter");
+    expect(appSource).not.toMatch(/<Route path=\{?"?\/product\//);
+  });
+
   it("uses only organization-resolved library links in bundle confirmation emails", () => {
     const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     expect(webhookSource).toContain("if (bundleOrg?.slug)");

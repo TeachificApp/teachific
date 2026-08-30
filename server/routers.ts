@@ -140,7 +140,7 @@ import { pageScraperRouter } from "./routers/pageScraperRouter";
 import { generalFormRouter } from "./routers/generalFormRouter";
 import { orderBumpsAdminRouter, orderBumpsPublicRouter } from "./routers/orderBumpsRouter";
 import { downloadsPublicRouter, downloadsLearnerRouter, downloadsAdminRouter } from "./routers/downloadsRouter";
-import { productsPublicRouter, productsLearnerRouter, productsAdminRouter } from "./routers/productsRouter";
+import { productsAdminRouter } from "./routers/productsRouter";
 import { quizBankRouter } from "./routers/quizBankRouter";
 import { quizRouter } from "./routers/quizRouter";
 import { lessonCommentsRouter } from "./routers/lessonCommentsRouter";
@@ -465,8 +465,6 @@ export const appRouter = router({
       }),
   }),
   productsAdmin: productsAdminRouter,
-  productsLearner: productsLearnerRouter,
-  productsPublic: productsPublicRouter,
   invoices: invoiceRouter,
   blueprints: blueprintRouter,
   blueprintReferrals: blueprintReferralRouter,

@@ -47,6 +47,9 @@
 - [x] Enforce active-organization ownership for physical-product listing, creation, and collection picker selection
 - [x] Enforce active-organization ownership for physical-product update, delete, and duplicate operations
 - [ ] Audit and harden remaining physical-product landing, media, pricing, order, and fulfillment administration endpoints to the active organization
+- [x] Audit public physical-product discovery, product lookup, and checkout routes and quarantine unscoped legacy APIs pending an organization-domain storefront
+- [x] Quarantine unreferenced global physical-product public and learner APIs until an organization-domain storefront contract is implemented
+- [ ] Build an organization-domain-scoped public physical-product storefront and checkout contract before restoring learner-facing product APIs
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
