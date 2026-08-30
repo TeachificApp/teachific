@@ -7,8 +7,9 @@
  * asset's owning organization before a private object is released.
  */
 import express, { type Request, type Response } from "express";
+import { createHmac } from "crypto";
 import { and, desc, eq, gte, inArray, isNull, or } from "drizzle-orm";
-import { lmsCourses, lmsEnrollments, mediaAccessGrants, mediaAccessRules, mediaAssets, mediaVersions } from "../drizzle/schema";
+import { lmsCourses, lmsEnrollments, mediaAccessGrants, mediaAccessRules, mediaAssets, mediaVersions, mediaViewEvents } from "../drizzle/schema";
 import { authenticateRequest } from "./authHelper";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
 import { verifyMediaViewerToken } from "./lib/mediaEmbedAccess";
@@ -99,6 +100,35 @@ async function requirePrivateAssetAdmin(req: Request, res: Response, assetOrgId:
   }
 }
 
+async function recordCurrentVersionView(
+  req: Request,
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  asset: typeof mediaAssets.$inferSelect,
+) {
+  try {
+    const access = typeof req.query.access === "string" ? req.query.access : "";
+    const token = access ? verifyMediaViewerToken(access, asset.slug) : null;
+    const sessionUser = token ? null : await authenticateRequest(req);
+    const viewedBy = token?.userId ?? sessionUser?.id ?? null;
+    const secret = process.env.JWT_SECRET;
+    const ipHash = req.ip && secret
+      ? createHmac("sha256", secret).update(req.ip).digest("hex")
+      : null;
+    await db.insert(mediaViewEvents).values({
+      orgId: asset.orgId,
+      assetId: asset.id,
+      viewedBy,
+      ipHash,
+      viewType: "direct",
+      // Referrer URLs may contain personally identifying or tokenized data.
+      referer: null,
+    });
+  } catch (error) {
+    // Analytics must never prevent authorized course media from loading.
+    console.error("[Media Delivery] View-event recording failed:", error);
+  }
+}
+
 async function serveCurrentVersion(req: Request, res: Response) {
   try {
     const slug = String(req.params.slug ?? "");
@@ -124,6 +154,7 @@ async function serveCurrentVersion(req: Request, res: Response) {
       .limit(1);
     if (!version?.s3Key) return res.status(404).json({ error: "No current media version found" });
 
+    void recordCurrentVersionView(req, db, asset);
     const { url } = await storageGet(version.s3Key);
     res.setHeader("Cache-Control", "private, no-store");
     res.redirect(302, url);

@@ -99,6 +99,7 @@
 - [x] Remove raw storage URL exposure from Media Repository version-history controls until a version-specific authorized route is implemented
 - [x] Restore Media Repository version-history previews through a separate active-organization administrator delivery route
 - [x] Scope every supported Media Repository analytics query to the asset’s active organization and live viewedAt column
+- [x] Record minimal organization-scoped Media Repository current-version delivery events with hashed IPs only
 - [x] Scope core Media Repository version history, restoration, re-upload, and targeted SCORM queries to the active organization
 - [x] Verify the fresh root preview renders normally; the earlier blank checkpoint thumbnail was not an application-shell failure
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace

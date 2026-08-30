@@ -4561,6 +4561,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaDeliverySource).toContain("mediaAccessGrants");
     expect(mediaDeliverySource).toContain("eq(mediaAccessRules.assetId, asset.id)");
     expect(mediaDeliverySource).toContain("eq(mediaAccessGrants.userId, user.id)");
+    expect(mediaDeliverySource).toContain("void recordCurrentVersionView(req, db, asset);");
+    expect(mediaDeliverySource).toContain("orgId: asset.orgId,");
+    expect(mediaDeliverySource).toContain("createHmac(\"sha256\", secret).update(req.ip).digest(\"hex\")");
+    expect(mediaDeliverySource).toContain("referer: null,");
+    expect(mediaDeliverySource).toContain("Analytics must never prevent authorized course media from loading.");
     expect(mediaDeliverySource).toContain('router.get("/:slug/scorm-zip", serveCurrentVersion);');
     expect(mediaDeliverySource).toContain('router.get("/:slug/versions/:versionNumber/download", serveHistoricalVersion);');
     expect(mediaDeliverySource).toContain("eq(mediaVersions.versionNumber, versionNumber)");
