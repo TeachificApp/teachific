@@ -29,7 +29,26 @@ import {
   ArrowLeft, Save, Eye, Plus, X, Layers, Copy, Search, BookmarkPlus, Bookmark, FolderOpen, Trash2,
 } from "lucide-react";
 
+/**
+ * The legacy landing-page builder depends on retired bundle fields and an
+ * unscoped router contract. Send old links to the supported bundle editor,
+ * whose reads and writes are authorized against the active organization.
+ */
 export default function BundleLandingPageBuilder() {
+  const { bundleId } = useParams<{ bundleId: string }>();
+  const [, navigate] = useLocation();
+  const numericId = Number(bundleId);
+
+  useEffect(() => {
+    navigate(Number.isInteger(numericId) && numericId > 0
+      ? `/products/bundles/${numericId}/edit`
+      : "/products/bundles");
+  }, [navigate, numericId]);
+
+  return null;
+}
+
+function LegacyBundleLandingPageBuilder() {
   const { bundleId } = useParams<{ bundleId: string }>();
   const [, navigate] = useLocation();
   const { orgId } = useOrgScope();

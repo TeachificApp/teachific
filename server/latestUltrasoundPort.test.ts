@@ -3498,6 +3498,30 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(bundleEditorSource).toContain("{ enabled: !!orgId },");
   });
 
+  it("routes legacy bundle entry points away from the retired unscoped bundle router", () => {
+    const legacyBundlesAdminSource = readFileSync(new URL("../client/src/pages/admin/BundlesAdmin.tsx", import.meta.url), "utf8");
+    const legacyLandingBuilderSource = readFileSync(new URL("../client/src/pages/admin/BundleLandingPageBuilder.tsx", import.meta.url), "utf8");
+    const productSalesTabSource = readFileSync(new URL("../client/src/components/ProductSalesTab.tsx", import.meta.url), "utf8");
+    const bundlesAdminEntry = legacyBundlesAdminSource.slice(
+      legacyBundlesAdminSource.indexOf("export default function BundlesAdmin"),
+      legacyBundlesAdminSource.indexOf("// ─── Included Items Widget Code Panel")
+    );
+    const landingBuilderEntry = legacyLandingBuilderSource.slice(
+      legacyLandingBuilderSource.indexOf("export default function BundleLandingPageBuilder"),
+      legacyLandingBuilderSource.indexOf("function LegacyBundleLandingPageBuilder")
+    );
+    expect(bundlesAdminEntry).toContain("return <BundlesPage />;");
+    expect(bundlesAdminEntry).toContain("navigate(`/products/bundles/${initialEditId}/edit`)");
+    expect(bundlesAdminEntry).not.toContain("trpc.bundlesAdmin");
+    expect(landingBuilderEntry).toContain("/products/bundles/${numericId}/edit");
+    expect(landingBuilderEntry).toContain(': "/products/bundles"');
+    expect(landingBuilderEntry).not.toContain("trpc.bundlesAdmin");
+    expect(legacyLandingBuilderSource).toContain("function LegacyBundleLandingPageBuilder()");
+    expect(productSalesTabSource).toContain("Bundle sales and access controls are being upgraded.");
+    expect(productSalesTabSource).toContain("organization-scoped bundle data model");
+    expect(productSalesTabSource).not.toContain("trpc.bundleAdmin.");
+  });
+
   it("builds embedded checkout success and account setup links from the owning organization domain", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource.match(/const orgBaseUrl = getOrgBaseUrl\(organization\.slug, organization\.customDomain, organization\.domainVerificationStatus\);/g)).toHaveLength(2);
