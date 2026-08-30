@@ -354,19 +354,18 @@ async function uploadVideoToMediaRepo(
 ): Promise<string> {
   const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
 
-  // 1. Init upload session with all required fields
-  const initRes = await fetch("/api/upload-media-repo/init", {
+  // 1. Create an active-organization repository upload session.
+  const initRes = await fetch("/api/chunked/media/initiate", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      fileName: file.name,
-      mimeType: file.type || "video/mp4",
+      filename: file.name,
+      contentType: file.type || "video/mp4",
       totalChunks,
-      fileSize: file.size,
+      repositoryUpload: true,
       title: file.name.replace(/\.[^.]+$/, ""),
       access: "public",
-      mediaType: "video",
       notes: "Uploaded via rich text editor",
     }),
   });
@@ -377,8 +376,6 @@ async function uploadVideoToMediaRepo(
   const { uploadId } = await initRes.json();
 
   // 2. Send chunks
-  let lastResult: any = null;
-
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -386,18 +383,9 @@ async function uploadVideoToMediaRepo(
 
     const fd = new FormData();
     fd.append("chunk", chunk, file.name);
-    fd.append("uploadId", uploadId);
     fd.append("chunkIndex", String(i));
-    fd.append("totalChunks", String(totalChunks));
-    fd.append("fileName", file.name);
-    fd.append("mimeType", file.type || "video/mp4");
-    fd.append("fileSize", String(file.size));
-    fd.append("title", file.name.replace(/\.[^.]+$/, ""));
-    fd.append("access", "public");
-    fd.append("mediaType", "video");
-    fd.append("notes", "Uploaded via rich text editor");
 
-    lastResult = await new Promise<any>((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -407,22 +395,32 @@ async function uploadVideoToMediaRepo(
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          try { resolve(JSON.parse(xhr.responseText)); }
-          catch { resolve({}); }
+          resolve();
         } else {
           try { reject(new Error(JSON.parse(xhr.responseText)?.error ?? "Chunk upload failed")); }
           catch { reject(new Error("Chunk upload failed")); }
         }
       };
       xhr.onerror = () => reject(new Error("Network error on chunk " + i));
-      xhr.open("POST", "/api/upload-media-repo/chunk");
+      xhr.open("POST", `/api/chunked/media/chunk/${uploadId}`);
       xhr.withCredentials = true;
       xhr.send(fd);
     });
   }
 
-  if (!lastResult?.s3Url) throw new Error("Upload completed but no URL returned");
-  return lastResult.s3Url as string;
+  const finalizeRes = await fetch(`/api/chunked/media/finalize/${uploadId}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!finalizeRes.ok) {
+    const e = await finalizeRes.json().catch(() => ({}));
+    throw new Error(e.error ?? "Failed to finalize upload");
+  }
+  const result = await finalizeRes.json() as { slug?: string };
+  if (!result.slug) throw new Error("Upload completed but no Media Repository asset was created");
+  return `/api/media/${encodeURIComponent(result.slug)}/download`;
 }
 
 // ─── Media Style Panel ───────────────────────────────────────────────────────

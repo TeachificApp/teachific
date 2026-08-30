@@ -4479,6 +4479,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("requires the active organization for supported media asset administration and flat folder operations", () => {
     const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    const richTextEditorSource = readFileSync(new URL("../client/src/components/RichTextEditor.tsx", import.meta.url), "utf8");
     const chunkedUploadSource = readFileSync(new URL("./chunkedUploadRoutes.ts", import.meta.url), "utf8");
     const mediaFolderAuditSource = readFileSync(new URL("../docs/media-folder-schema-audit.md", import.meta.url), "utf8");
     expect(mediaRouterSource).toContain("async function requireActiveMediaOrg");
@@ -4540,6 +4541,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaAdminSource).not.toContain("folderSlug");
     expect(mediaAdminSource).toContain("onClick={() => setUploadOpen(true)}");
     expect(mediaAdminSource).toContain("onClick={() => setReuploadOpen(true)}");
+    expect(richTextEditorSource).toContain('fetch("/api/chunked/media/initiate"');
+    expect(richTextEditorSource).toContain("repositoryUpload: true,");
+    expect(richTextEditorSource).toContain("`/api/chunked/media/chunk/${uploadId}`");
+    expect(richTextEditorSource).toContain("`/api/chunked/media/finalize/${uploadId}`");
+    expect(richTextEditorSource).toContain("`/api/media/${encodeURIComponent(result.slug)}/download`");
+    expect(richTextEditorSource).not.toContain("/api/upload-media-repo/");
   });
 
   it("delivers only the current media version through a verified public or active-organization admin boundary", () => {
