@@ -4461,12 +4461,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaRouterSource).toContain("uploadedBy: ctx.user.id,");
     expect(mediaRouterSource).toContain("// Insert version 1\n      await db.insert(mediaVersions).values({\n        orgId,");
     expect((mediaRouterSource.match(/db\.insert\(mediaVersions\)\.values\(\{\n\s*orgId:/g) ?? []).length).toBe(3);
-    expect(mediaRouterSource).toContain("folders: []");
-    expect(mediaRouterSource).toContain("Structured media folders are unavailable until organization-owned folders are migrated.");
+    expect(mediaRouterSource).toContain("folderId: z.number().int().positive().nullable().optional()");
+    expect(mediaRouterSource).toContain("if (input.folderId === null) conditions.push(isNull(mediaAssets.folderId));");
     expect(mediaRouterSource).toContain("gte(mediaViewEvents.viewedAt, thirtyDaysAgo)");
   });
 
-  it("requires the active organization for supported media asset administration and quarantines the global folder model", () => {
+  it("requires the active organization for supported media asset administration and flat folder operations", () => {
     const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
     const chunkedUploadSource = readFileSync(new URL("./chunkedUploadRoutes.ts", import.meta.url), "utf8");
@@ -4477,17 +4477,25 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaRouterSource).toContain("eq(mediaAssets.orgId, orgId)");
     expect((mediaRouterSource.match(/await requireActiveMediaAsset\(ctx, input\.assetId\)/g) ?? []).length).toBeGreaterThanOrEqual(5);
     expect((mediaRouterSource.match(/await requireActiveMediaAsset\(ctx, input\.id\)/g) ?? []).length).toBeGreaterThanOrEqual(5);
-    expect(mediaRouterSource).toContain('listFoldersFull: protectedProcedure.query(() => []),');
-    expect((mediaRouterSource.match(/Structured media folders are unavailable until organization-owned folders are migrated\./g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(mediaRouterSource).toContain("async function requireActiveMediaFolder");
+    expect(mediaRouterSource).toContain("async function assertFolderBelongsToActiveMediaOrg");
+    expect(mediaRouterSource).toContain("listFoldersFull: protectedProcedure.query(async ({ ctx }) => {");
+    expect(mediaRouterSource).toContain("eq(mediaFolders.orgId, orgId)");
+    expect(mediaRouterSource).toContain("folderId: z.number().int().positive().nullable()");
+    expect(mediaRouterSource).toContain(".set({ folderId: input.folderId })");
+    expect(mediaRouterSource).not.toContain("folderSlug");
     expect(mediaRouterSource).not.toContain("mediaAccessGrants.assetId");
-    expect(mediaAdminSource).toContain("const structuredFoldersUnavailable = true;");
-    expect(mediaAdminSource).toContain("Structured folders are temporarily unavailable while organization-owned folders are completed.");
-    expect(mediaAdminSource).toContain("!structuredFoldersUnavailable && folders.map");
+    expect(mediaAdminSource).toContain("const [selectedFolderId, setSelectedFolderId]");
+    expect(mediaAdminSource).toContain("folderId: selectedFolderId,");
+    expect(mediaAdminSource).toContain("onClick={() => { setSelectedFolderId(f.id); setPage(1); }}");
+    expect(mediaAdminSource).toContain("initialFolderId={typeof selectedFolderId === \"number\" ? selectedFolderId : null}");
+    expect(mediaAdminSource).toContain("folderId: folderId === \"none\" ? null : Number(folderId),");
+    expect(mediaAdminSource).not.toContain("structuredFoldersUnavailable");
     expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);");
     expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaOrg(ctx);");
     expect(mediaRouterSource).toContain("One or more media assets belong to another organization.");
     expect(mediaRouterSource).toContain("eq(mediaAssets.orgId, orgId))");
-    expect(mediaFolderAuditSource).toContain("The live `media_folders` table uses an organization-owned hierarchy");
+    expect(mediaFolderAuditSource).toContain("organization-owned **flat** model");
     expect(mediaFolderAuditSource).toContain("Asset filtering must use `folderId` plus the active `orgId`");
     expect(mediaFolderAuditSource).toContain("never slugs");
     expect(chunkedUploadSource).toContain("getOrgIdForUserWithFallback(user.id, user.role)");

@@ -77,6 +77,30 @@ async function requireActiveMediaAsset(
   return { db, orgId, asset };
 }
 
+async function requireActiveMediaFolder(
+  ctx: { user: { id: number; role: string } },
+  folderId: number,
+) {
+  const { db, orgId } = await requireActiveMediaOrg(ctx);
+  const [folder] = await db.select().from(mediaFolders)
+    .where(and(eq(mediaFolders.id, folderId), eq(mediaFolders.orgId, orgId)))
+    .limit(1);
+  if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found" });
+  return { db, orgId, folder };
+}
+
+async function assertFolderBelongsToActiveMediaOrg(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  orgId: number,
+  folderId: number | null,
+) {
+  if (folderId === null) return;
+  const [folder] = await db.select({ id: mediaFolders.id }).from(mediaFolders)
+    .where(and(eq(mediaFolders.id, folderId), eq(mediaFolders.orgId, orgId)))
+    .limit(1);
+  if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found in the active organization" });
+}
+
 function generateSlug(title: string): string {
   const base = title
     .toLowerCase()
@@ -224,7 +248,7 @@ export const mediaRepoRouter = router({
       search: z.string().optional(),
       mediaType: z.enum(MEDIA_TYPES).optional(),
       access: z.enum(["public", "private"]).optional(),
-      folder: z.string().nullable().optional(), // null = uncategorized, string = specific folder, undefined = all
+      folderId: z.number().int().positive().nullable().optional(), // null = uncategorized, number = owned folder, undefined = all
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(24),
     }))
@@ -236,6 +260,11 @@ export const mediaRepoRouter = router({
       const conditions = [isNull(mediaAssets.deletedAt), eq(mediaAssets.orgId, orgId)];
       if (input.mediaType) conditions.push(eq(mediaAssets.mediaType, input.mediaType));
       if (input.access) conditions.push(eq(mediaAssets.access, input.access));
+      if (input.folderId === null) conditions.push(isNull(mediaAssets.folderId));
+      if (input.folderId !== undefined && input.folderId !== null) {
+        await assertFolderBelongsToActiveMediaOrg(db, orgId, input.folderId);
+        conditions.push(eq(mediaAssets.folderId, input.folderId));
+      }
       if (input.search) {
         conditions.push(
           or(
@@ -272,7 +301,7 @@ export const mediaRepoRouter = router({
         .from(mediaAssets)
         .where(where);
 
-      return { assets: enriched, total: count, page: input.page, pageSize: input.pageSize, folders: [] };
+      return { assets: enriched, total: count, page: input.page, pageSize: input.pageSize };
     }),
 
   /**
@@ -973,9 +1002,25 @@ export const mediaRepoRouter = router({
   // ─── Folder CRUD ──────────────────────────────────────────────────────────────
 
   /**
-   * List all folders with asset counts.
+   * List active-organization folders with their active asset counts.
+   * The verified production table is flat; nesting is intentionally deferred.
    */
-  listFoldersFull: protectedProcedure.query(() => []),
+  listFoldersFull: protectedProcedure.query(async ({ ctx }) => {
+    const { db, orgId } = await requireActiveMediaOrg(ctx);
+    const folders = await db.select().from(mediaFolders)
+      .where(eq(mediaFolders.orgId, orgId))
+      .orderBy(mediaFolders.name);
+    return Promise.all(folders.map(async (folder) => {
+      const [{ count }] = await db.select({ count: sql<number>`count(*)` })
+        .from(mediaAssets)
+        .where(and(
+          eq(mediaAssets.orgId, orgId),
+          eq(mediaAssets.folderId, folder.id),
+          isNull(mediaAssets.deletedAt),
+        ));
+      return { ...folder, assetCount: count };
+    }));
+  }),
 
   /**
    * Create a new folder.
@@ -983,14 +1028,16 @@ export const mediaRepoRouter = router({
   createFolder: protectedProcedure
     .input(z.object({
       name: z.string().min(1).max(255),
-      description: z.string().max(1000).optional(),
-      parentId: z.number().int().optional(),
     }))
-    .mutation(() => {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
-      });
+    .mutation(async ({ ctx, input }) => {
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
+      const name = input.name.trim();
+      const [existing] = await db.select({ id: mediaFolders.id }).from(mediaFolders)
+        .where(and(eq(mediaFolders.orgId, orgId), eq(mediaFolders.name, name)))
+        .limit(1);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A folder with this name already exists" });
+      const [result] = await db.insert(mediaFolders).values({ orgId, name });
+      return { id: Number((result as { insertId?: number }).insertId), orgId, name, assetCount: 0 };
     }),
 
   /**
@@ -1000,13 +1047,16 @@ export const mediaRepoRouter = router({
     .input(z.object({
       id: z.number().int(),
       name: z.string().min(1).max(255),
-      description: z.string().max(1000).nullable().optional(),
     }))
-    .mutation(() => {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
-      });
+    .mutation(async ({ ctx, input }) => {
+      const { db, orgId, folder } = await requireActiveMediaFolder(ctx, input.id);
+      const name = input.name.trim();
+      const [existing] = await db.select({ id: mediaFolders.id }).from(mediaFolders)
+        .where(and(eq(mediaFolders.orgId, orgId), eq(mediaFolders.name, name), sql`${mediaFolders.id} != ${folder.id}`))
+        .limit(1);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "A folder with this name already exists" });
+      await db.update(mediaFolders).set({ name }).where(and(eq(mediaFolders.id, folder.id), eq(mediaFolders.orgId, orgId)));
+      return { ...folder, name };
     }),
 
   /**
@@ -1014,25 +1064,31 @@ export const mediaRepoRouter = router({
    */
   deleteFolder: protectedProcedure
     .input(z.object({ id: z.number().int() }))
-    .mutation(() => {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
+    .mutation(async ({ ctx, input }) => {
+      const { db, orgId, folder } = await requireActiveMediaFolder(ctx, input.id);
+      await db.transaction(async (tx) => {
+        await tx.update(mediaAssets)
+          .set({ folderId: null })
+          .where(and(eq(mediaAssets.orgId, orgId), eq(mediaAssets.folderId, folder.id)));
+        await tx.delete(mediaFolders)
+          .where(and(eq(mediaFolders.id, folder.id), eq(mediaFolders.orgId, orgId)));
       });
+      return { ok: true, movedAssetCount: 0 };
     }),
 
   /**
-   * Move an asset to a folder by slug (or null for uncategorized).
+   * Move an asset to a verified active-organization folder (or null for uncategorized).
    */
   moveAssetToFolder: protectedProcedure
     .input(z.object({
       assetId: z.number().int(),
-      folderSlug: z.string().nullable(),
+      folderId: z.number().int().positive().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
+      await assertFolderBelongsToActiveMediaOrg(db, orgId, input.folderId);
       await db.update(mediaAssets)
-        .set({ folder: input.folderSlug })
+        .set({ folderId: input.folderId })
         .where(and(eq(mediaAssets.id, input.assetId), eq(mediaAssets.orgId, orgId)));
       return { ok: true };
     }),
@@ -1043,11 +1099,12 @@ export const mediaRepoRouter = router({
   bulkMoveToFolder: protectedProcedure
     .input(z.object({
       assetIds: z.array(z.number().int()),
-      folderSlug: z.string().nullable(),
+      folderId: z.number().int().positive().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { db, orgId } = await requireActiveMediaOrg(ctx);
       if (input.assetIds.length === 0) return { ok: true };
+      await assertFolderBelongsToActiveMediaOrg(db, orgId, input.folderId);
       const ownedAssets = await db
         .select({ id: mediaAssets.id })
         .from(mediaAssets)
@@ -1056,7 +1113,7 @@ export const mediaRepoRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "One or more media assets belong to another organization." });
       }
       await db.update(mediaAssets)
-        .set({ folder: input.folderSlug })
+        .set({ folderId: input.folderId })
         .where(and(inArray(mediaAssets.id, input.assetIds), eq(mediaAssets.orgId, orgId)));
       return { ok: true };
     }),

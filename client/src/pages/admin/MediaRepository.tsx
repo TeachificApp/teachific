@@ -176,23 +176,30 @@ interface UploadDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialFolderId?: number | null;
   existingAssetId?: number;
   existingTitle?: string;
 }
 
-function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle }: UploadDialogProps) {
+function UploadDialog({ open, onClose, onSuccess, initialFolderId = null, existingAssetId, existingTitle }: UploadDialogProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   // Bulk mode: list of queued files
   const [files, setFiles] = useState<File[]>([]);
   const [access, setAccess] = useState<"public" | "private">("private");
+  const [folderId, setFolderId] = useState<string>(initialFolderId ? String(initialFolderId) : "none");
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadState, setUploadState] = useState<{ current: number; total: number; fileProgress: number }>({
     current: 0, total: 0, fileProgress: 0,
   });
   const [errors, setErrors] = useState<string[]>([]);
+  const { data: foldersData } = trpc.mediaRepo.listFoldersFull.useQuery(undefined, { enabled: open && !existingAssetId });
 
   const isReupload = !!existingAssetId;
+
+  useEffect(() => {
+    if (open && !isReupload) setFolderId(initialFolderId ? String(initialFolderId) : "none");
+  }, [open, initialFolderId, isReupload]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -236,6 +243,7 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
         contentType: file.type || "application/octet-stream",
         title,
         access,
+        folderId: folderId === "none" ? null : Number(folderId),
         notes,
       }),
     });
@@ -370,7 +378,7 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
         )}
 
         {!isReupload && (
-          <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label>Access</Label>
               <Select value={access} onValueChange={(v) => setAccess(v as any)}>
@@ -378,6 +386,18 @@ function UploadDialog({ open, onClose, onSuccess, existingAssetId, existingTitle
                 <SelectContent>
                   <SelectItem value="private">Private (invite only)</SelectItem>
                   <SelectItem value="public">Public (anyone with link)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Folder</Label>
+              <Select value={folderId} onValueChange={setFolderId}>
+                <SelectTrigger><SelectValue placeholder="No folder" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No folder (uncategorized)</SelectItem>
+                  {(foldersData ?? []).map((folder) => (
+                    <SelectItem key={folder.id} value={String(folder.id)}>{folder.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -476,10 +496,10 @@ function AssetCard({ asset, onClick }: AssetCardProps) {
       <div className="p-3">
         <p className="font-semibold text-sm leading-snug line-clamp-2 mb-1.5 group-hover:text-primary transition-colors">{asset.title}</p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {asset.folder ? (
+          {asset.folderName ? (
             <span className="flex items-center gap-1 truncate">
               <Folder className="w-3 h-3 shrink-0" />
-              <span className="truncate">{asset.folder.split("/").pop()}</span>
+              <span className="truncate">{asset.folderName}</span>
             </span>
           ) : (
             <span className="text-muted-foreground/50">No folder</span>
@@ -525,8 +545,8 @@ function AssetListRow({ asset, onClick }: AssetListRowProps) {
       <span className="hidden sm:block text-xs text-muted-foreground w-20 shrink-0">{label}</span>
       {/* Folder */}
       <span className="hidden md:flex items-center gap-1 text-xs text-muted-foreground w-28 shrink-0 truncate">
-        {asset.folder ? (
-          <><Folder className="w-3 h-3 shrink-0" />{asset.folder.split("/").pop()}</>
+        {asset.folderName ? (
+          <><Folder className="w-3 h-3 shrink-0" />{asset.folderName}</>
         ) : (
           <span className="text-muted-foreground/40">—</span>
         )}
@@ -908,6 +928,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
     { id: assetId! },
     { enabled: !!assetId }
   );
+  const { data: foldersData } = trpc.mediaRepo.listFoldersFull.useQuery(undefined, { enabled: !!assetId });
   // Initialize slug state when data loads — must be in useEffect to avoid setState-during-render (React error #185)
   useEffect(() => {
     if (data && !slugInitialized) {
@@ -958,6 +979,10 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
   });
   const updateMediaTypeMutation = trpc.mediaRepo.updateAsset.useMutation({
     onSuccess: () => { toast.success("Media type updated"); refetch(); onRefresh(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const moveToFolderMutation = trpc.mediaRepo.moveAssetToFolder.useMutation({
+    onSuccess: () => { toast.success("Folder updated"); refetch(); onRefresh(); },
     onError: (e) => toast.error(e.message),
   });
   const setAccessMutation = trpc.mediaRepo.setAccess.useMutation({
@@ -1104,7 +1129,21 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                 <div className="flex items-center gap-2 flex-wrap">
                   <Folder className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <span className="text-xs text-muted-foreground">Folder:</span>
-                  <span className="text-xs text-muted-foreground">Structured folders are temporarily unavailable.</span>
+                  <Select
+                    value={asset.folderId ? String(asset.folderId) : "none"}
+                    onValueChange={(value) => moveToFolderMutation.mutate({ assetId: asset.id, folderId: value === "none" ? null : Number(value) })}
+                    disabled={moveToFolderMutation.isPending}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-44">
+                      <SelectValue placeholder="No folder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No folder</SelectItem>
+                      {(foldersData ?? []).map((folder) => (
+                        <SelectItem key={folder.id} value={String(folder.id)}>{folder.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {asset.description && (
                   <p className="text-sm text-muted-foreground">{asset.description}</p>
@@ -1344,7 +1383,7 @@ export default function MediaRepository() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [accessFilter, setAccessFilter] = useState<string>("all");
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
@@ -1411,15 +1450,14 @@ export default function MediaRepository() {
     search: debouncedSearch || undefined,
     mediaType: typeFilter !== "all" ? (typeFilter as MediaType) : undefined,
     access: accessFilter !== "all" ? (accessFilter as "public" | "private") : undefined,
-    // selectedFolder: null = show all; string = filter to that folder slug
-    folder: selectedFolder as string | null | undefined,
+    // undefined = all assets; null = uncategorized; number = active-organization folder
+    folderId: selectedFolderId,
     page,
     pageSize: 24,
-  }), [debouncedSearch, typeFilter, accessFilter, selectedFolder, page]);
+  }), [debouncedSearch, typeFilter, accessFilter, selectedFolderId, page]);
 
   const { data, isLoading, refetch } = trpc.mediaRepo.listAssets.useQuery(queryInput);
   const { data: foldersData, refetch: refetchFolders } = trpc.mediaRepo.listFoldersFull.useQuery();
-  const structuredFoldersUnavailable = true;
 
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -1435,7 +1473,7 @@ export default function MediaRepository() {
     onError: (e) => toast.error(e.message),
   });
   const deleteFolderMutation = trpc.mediaRepo.deleteFolder.useMutation({
-    onSuccess: () => { refetchFolders(); refetch(); if (selectedFolder) setSelectedFolder(null); toast.success("Folder deleted — assets moved to uncategorized"); },
+    onSuccess: () => { refetchFolders(); refetch(); if (selectedFolderId !== undefined) setSelectedFolderId(undefined); toast.success("Folder deleted — assets moved to uncategorized"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -1446,6 +1484,8 @@ export default function MediaRepository() {
 
   const totalPages = data ? Math.ceil(data.total / 24) : 1;
   const folders = foldersData ?? [];
+  const folderNameById = useMemo(() => new Map(folders.map((folder) => [folder.id, folder.name])), [folders]);
+  const selectedFolderName = selectedFolderId === null ? "Uncategorized" : selectedFolderId ? folderNameById.get(selectedFolderId) : undefined;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
@@ -1463,14 +1503,17 @@ export default function MediaRepository() {
     }
   }
 
-  const sortedAssets = [...(data?.assets ?? [])].sort((a, b) => {
+  const sortedAssets = (data?.assets ?? []).map((asset) => ({
+    ...asset,
+    folderName: asset.folderId ? folderNameById.get(asset.folderId) ?? null : null,
+  })).sort((a, b) => {
     let cmp = 0;
     if (sortKey === "name") {
       cmp = (a.title ?? "").localeCompare(b.title ?? "");
     } else if (sortKey === "type") {
       cmp = (a.mediaType ?? "").localeCompare(b.mediaType ?? "");
     } else if (sortKey === "folder") {
-      cmp = (a.folder ?? "").localeCompare(b.folder ?? "");
+      cmp = (folderNameById.get(a.folderId) ?? "").localeCompare(folderNameById.get(b.folderId) ?? "");
     } else if (sortKey === "size") {
       const sa = a.currentVersion?.fileSize ?? 0;
       const sb = b.currentVersion?.fileSize ?? 0;
@@ -1526,17 +1569,15 @@ export default function MediaRepository() {
             <FolderOpen className="w-4 h-4 text-primary" /> Folders
           </p>
           <div className="flex items-center gap-1">
-            {!structuredFoldersUnavailable && (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="w-6 h-6"
-                title="New folder"
-                onClick={() => setCreatingFolder(true)}
-              >
-                <span className="text-lg leading-none">+</span>
-              </Button>
-            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="w-6 h-6"
+              title="New folder"
+              onClick={() => setCreatingFolder(true)}
+            >
+              <span className="text-lg leading-none">+</span>
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -1549,7 +1590,7 @@ export default function MediaRepository() {
         </div>
 
         {/* New folder input */}
-        {!structuredFoldersUnavailable && creatingFolder && (
+        {creatingFolder && (
           <div className="p-2 border-b border-border flex gap-1">
             <Input
               autoFocus
@@ -1579,9 +1620,9 @@ export default function MediaRepository() {
         <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {/* All Assets */}
           <button
-            onClick={() => { setSelectedFolder(null); setPage(1); }}
+            onClick={() => { setSelectedFolderId(undefined); setPage(1); }}
             className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
-              selectedFolder === null ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
+              selectedFolderId === undefined ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
             }`}
           >
             <Folder className="w-4 h-4" />
@@ -1589,7 +1630,18 @@ export default function MediaRepository() {
           </button>
 
           {/* Folder list */}
-          {!structuredFoldersUnavailable && folders.map((f: any) => (
+          <button
+            onClick={() => { setSelectedFolderId(null); setPage(1); }}
+            className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
+              selectedFolderId === null ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
+            }`}
+          >
+            <Folder className="w-4 h-4" />
+            <span className="flex-1">Uncategorized</span>
+          </button>
+
+          {/* Flat active-organization folder list */}
+          {folders.map((f) => (
             <div key={f.id} className="group relative">
               {editingFolder?.id === f.id ? (
                 <div className="flex gap-1 px-1">
@@ -1612,9 +1664,9 @@ export default function MediaRepository() {
                 </div>
               ) : (
                 <button
-                  onClick={() => { setSelectedFolder(f.slug); setPage(1); }}
+                  onClick={() => { setSelectedFolderId(f.id); setPage(1); }}
                   className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-2 transition-colors ${
-                    selectedFolder === f.slug ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
+                    selectedFolderId === f.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted text-muted-foreground"
                   }`}
                 >
                   <Folder className="w-4 h-4 shrink-0" />
@@ -1649,11 +1701,7 @@ export default function MediaRepository() {
             </div>
           ))}
 
-          {structuredFoldersUnavailable ? (
-            <p className="text-xs text-muted-foreground px-3 py-4 text-center">
-              Structured folders are temporarily unavailable while organization-owned folders are completed.
-            </p>
-          ) : folders.length === 0 && !creatingFolder && (
+          {folders.length === 0 && !creatingFolder && (
             <p className="text-xs text-muted-foreground px-3 py-4 text-center">No folders yet.<br />Click + to create one.</p>
           )}
         </nav>
@@ -1684,7 +1732,7 @@ export default function MediaRepository() {
               </a>
               <h1 className="text-lg sm:text-xl font-bold">Media Repository</h1>
               <p className="text-muted-foreground text-xs mt-0.5">
-                {selectedFolder ? `Folder: ${selectedFolder}` : "All files"}
+                {selectedFolderName ? `Folder: ${selectedFolderName}` : "All files"}
               </p>
             </div>
           </div>
@@ -1785,7 +1833,7 @@ export default function MediaRepository() {
         <div className="flex-1 overflow-y-auto p-4">
           {data && (
             <p className="text-xs text-muted-foreground mb-3">
-              {data.total} file{data.total !== 1 ? "s" : ""} {search || typeFilter !== "all" || accessFilter !== "all" || selectedFolder ? "matching filters" : "total"}
+              {data.total} file{data.total !== 1 ? "s" : ""} {search || typeFilter !== "all" || accessFilter !== "all" || selectedFolderId !== undefined ? "matching filters" : "total"}
             </p>
           )}
 
@@ -1975,6 +2023,7 @@ export default function MediaRepository() {
           open={uploadOpen}
           onClose={() => setUploadOpen(false)}
           onSuccess={handleRefresh}
+          initialFolderId={typeof selectedFolderId === "number" ? selectedFolderId : null}
         />
       )}
 

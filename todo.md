@@ -72,8 +72,10 @@
 - [x] Enforce active-organization ownership for media asset upload, list, detail, metadata, access, version, SCORM status, and analytics operations
 - [x] Quarantine global legacy media folder CRUD and present the structured-folder capability as unavailable in the repository UI
 - [x] Scope media asset folder-label move and bulk-move mutations under active-organization ownership
-- [ ] Rebuild structured media folders as an additive organization-owned model before restoring folder creation, rename, and deletion controls
-- [ ] Complete and verify the end-to-end active-organization folderId upload contract before restoring folder selection
+- [ ] Rebuild nested media folders through an additive organization-owned parent relation before exposing hierarchy controls
+- [x] Restore the verified flat organization-owned Media Repository folder model using folderId, without exposing unverified nesting
+- [ ] Evaluate a future additive organization-owned media-folder hierarchy only after the live parent relation is verified and migrated
+- [x] Complete and verify the end-to-end active-organization folderId upload contract before restoring folder selection
 - [x] Quarantine stale media repository upload controls that target an unregistered HTTP endpoint
 - [x] Require organization-admin ownership before replacing an existing direct-upload media library item
 - [x] Restore the Media Repository upload endpoint with active-organization authorization, S3 storage, and a persisted organization-owned media asset
