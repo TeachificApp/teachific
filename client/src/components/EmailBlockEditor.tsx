@@ -544,7 +544,7 @@ export function emailBlockToHtml(block: Block): string {
       const reviews = (d.reviews as { name: string; rating: number; text: string }[]) ?? [];
       const bg = (d.bgColor as string) ?? "#ffffff";
       const reviewsHtml = reviews.map((r) =>
-        `<tr><td style="padding:12px 0;border-bottom:1px solid #e5eaec;"><div style="color:#f59e0b;font-size:14px;margin-bottom:4px;">${"★".repeat(r.rating || 5)}</div><p style="color:#1a2e3b;font-size:14px;margin:0 0 4px;line-height:1.6;">${r.text}</p><span style="color:${orgPrimary};font-size:12px;font-weight:600;">— ${r.name}</span></td></tr>`
+        `<tr><td style="padding:12px 0;border-bottom:1px solid #e5eaec;"><div style="color:#f59e0b;font-size:14px;margin-bottom:4px;">${"★".repeat(r.rating || 0)}</div><p style="color:#1a2e3b;font-size:14px;margin:0 0 4px;line-height:1.6;">${r.text}</p><span style="color:${orgPrimary};font-size:12px;font-weight:600;">— ${r.name}</span></td></tr>`
       ).join("");
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:8px;padding:24px;margin:12px 0;"><tr><td>${headline ? `<h3 style="color:#0e1e2e;font-size:20px;font-weight:700;margin:0 0 16px;">${headline}</h3>` : ""}<table width="100%" cellpadding="0" cellspacing="0">${reviewsHtml}</table></td></tr></table>`;
     }

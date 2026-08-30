@@ -309,12 +309,12 @@ function RenderBlock({ block, primaryColor, curriculum, pricing, legalDocs, onEn
     case "testimonials":
       return (
         <div>
-          <h2 className="text-2xl font-bold mb-6">{d.heading || "What Students Say"}</h2>
+          {d.heading && <h2 className="text-2xl font-bold mb-6">{d.heading}</h2>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(d.testimonials || []).map((t: any, i: number) => (
               <div key={i} className="border border-border rounded-xl p-5">
                 <div className="flex gap-0.5 mb-3">
-                  {[...Array(t.rating || 5)].map((_, j) => (
+                  {[...Array(t.rating || 0)].map((_, j) => (
                     <Star key={j} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>

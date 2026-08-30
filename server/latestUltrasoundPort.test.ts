@@ -848,7 +848,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsLayoutSource).toContain("const shellBrandName = organization?.name ?? \"Teachific™\"");
     expect(lmsLayoutSource).toContain("!isOrganizationShell && <nav");
     expect(landingBuilderSource).toContain('defaultData: { quote: "", author: "", avatarUrl: ""');
-    expect(landingBuilderSource).toContain('defaultData: { headline: "Student Feedback", reviews: []');
+    expect(landingBuilderSource).toContain('defaultData: { headline: "", reviews: []');
     expect(landingBuilderSource).not.toContain('author: "Jane Smith, RDMS"');
     expect(landingBuilderSource).not.toContain('name: "Jane D."');
     expect(quizRouterSource).toContain('quizType: z.enum(["assessment", "practice", "survey", "exam"]).optional()');
@@ -2852,7 +2852,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const landingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
     expect(pageBuilderSource).toContain("testimonials: [],");
     expect(pageBuilderSource).not.toContain("This course changed my career!");
-    expect(landingBuilderSource).toContain('defaultData: { headline: "What Students Say", reviews: [], bgColor: "#ffffff" }');
+    expect(landingBuilderSource).toContain('defaultData: { headline: "", reviews: [], bgColor: "#ffffff" }');
     expect(landingBuilderSource).not.toContain("Excellent course!");
     expect(landingBuilderSource).not.toContain("Very practical content.");
   });
@@ -4309,6 +4309,42 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingGeneratorSource).not.toContain("What Customers Are Saying");
     expect(landingGeneratorSource).not.toContain("hero, text (features/what you get), text (about/description), reviews");
     expect(landingGeneratorSource).toContain("hero, text (features/what you get), text (about/description), faq, cta_standalone");
+  });
+
+  it("does not seed or infer customer reviews, testimonials, or ratings in authoring and learner-facing surfaces", () => {
+    const landingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const checkoutEditorSource = readFileSync(new URL("../client/src/components/CheckoutPageEditor.tsx", import.meta.url), "utf8");
+    const checkoutEditorPageSource = readFileSync(new URL("../client/src/pages/admin/CheckoutPageEditorPage.tsx", import.meta.url), "utf8");
+    const blockPreviewSource = readFileSync(new URL("../client/src/components/BlockPreview.tsx", import.meta.url), "utf8");
+    const emailBlockEditorSource = readFileSync(new URL("../client/src/components/EmailBlockEditor.tsx", import.meta.url), "utf8");
+    const pageBuilderSource = readFileSync(new URL("../client/src/components/PageBuilder.tsx", import.meta.url), "utf8");
+    const wysiwygBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
+    const courseLandingSource = readFileSync(new URL("../client/src/pages/lms/CourseLanding.tsx", import.meta.url), "utf8");
+    const courseSalesSource = readFileSync(new URL("../client/src/pages/lms/CourseSalesPage.tsx", import.meta.url), "utf8");
+    const lmsLandingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const zapierSource = readFileSync(new URL("./zapierRouter.ts", import.meta.url), "utf8");
+    expect(landingBuilderSource).toContain('{ name: "", rating: 0, text: "" }');
+    expect(landingBuilderSource).not.toContain("Student Name");
+    expect(landingBuilderSource).not.toContain("Great course!");
+    expect(checkoutEditorSource).not.toContain('quote: "", rating: 5');
+    expect(checkoutEditorSource).toContain("(editing.rating ?? 0)");
+    expect(checkoutEditorSource).toContain('placeholder="Section headline (optional)"');
+    expect(checkoutEditorPageSource).toContain("useState<number | null>(null)");
+    expect(checkoutEditorPageSource).toContain("!newName.trim() || !newBody.trim() || !newRating");
+    expect(checkoutEditorPageSource).toContain('headline: "", testimonials: []');
+    expect(checkoutEditorPageSource).not.toContain('headline: "What our students say"');
+    expect(blockPreviewSource).toContain("r.rating ?? 0");
+    expect(emailBlockEditorSource).toContain('"★".repeat(r.rating || 0)');
+    expect(courseLandingSource).toContain("r.rating ?? 0");
+    expect(courseSalesSource).toContain("t.rating || 0");
+    expect(courseSalesSource).not.toContain('d.heading || "What Students Say"');
+    expect(lmsLandingBuilderSource).toContain('defaultData: { headline: "", reviews: [], bgColor: "#ffffff" }');
+    expect(`${landingBuilderSource}\n${lmsLandingBuilderSource}`).not.toMatch(/What Students Say|Student Feedback/);
+    expect(pageBuilderSource).toContain('headline: "",\n    testimonials: []');
+    expect(wysiwygBuilderSource).toContain('headline: "",\n    testimonials: []');
+    expect(`${pageBuilderSource}\n${wysiwygBuilderSource}`).not.toContain("What Our Students Say");
+    expect(zapierSource).toContain("answers: {},");
+    expect(zapierSource).not.toContain('"How would you rate this course?": "5 stars"');
   });
 
   it("does not mount unscoped physical-product public or learner APIs without an organization-domain storefront", () => {

@@ -732,9 +732,9 @@ Cover Image: ${course.coverImageUrl ?? ""}
 Curriculum:
 ${curriculumText}
 
-Generate a JSON array of 6-8 content blocks. Each block MUST have:
+Generate a JSON array of 5-7 content blocks. Each block MUST have:
 - id: unique string like "block_1", "block_2", etc.
-- type: MUST be one of these exact strings: hero, text, curriculum_auto, pricing_options_auto, reviews, faq, cta_standalone
+- type: MUST be one of these exact strings: hero, text, curriculum_auto, pricing_options_auto, faq, cta_standalone
 - data: object with the fields described below
 
 Block data schemas:
@@ -764,17 +764,12 @@ Block data schemas:
    headline: "Enroll Today"
    bgColor: "#f0fafa"
 
-5. reviews block — data fields:
-   headline: "What Students Are Saying"
-   bgColor: "#ffffff"
-   reviews: array of 3 objects each with: name (string), text (string — realistic review), rating (number 4 or 5)
-
-6. faq block — data fields:
+5. faq block — data fields:
    headline: "Frequently Asked Questions"
    bgColor: "#f9fafb"
    items: array of 5-6 objects each with: q (string — question), a (string — answer)
 
-7. cta_standalone block — data fields:
+6. cta_standalone block — data fields:
    headline: string (urgent call to action)
    subtext: string (reassurance text)
    ctaText: "Enroll Now"
@@ -783,7 +778,7 @@ Block data schemas:
    bgColor: "#f0fafa"
    align: "center"
 
-Create blocks in this order: hero, text (what you'll learn + benefits), curriculum_auto, text (about the instructor/course), pricing_options_auto, reviews, faq, cta_standalone.
+Create blocks in this order: hero, text (what you'll learn + benefits), curriculum_auto, text (about the instructor/course), pricing_options_auto, faq, cta_standalone.
 Make ALL content specific and compelling based on the course title, description, and curriculum above. Do NOT use generic placeholder text.`;
 
       const response = await invokeLLM({

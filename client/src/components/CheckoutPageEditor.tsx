@@ -491,7 +491,7 @@ function TestimonialsEditor({
   const [isNew, setIsNew] = useState(false);
 
   const openNew = () => {
-    setEditing({ id: uid(), name: "", role: "", avatarUrl: "", quote: "", rating: 5, enabled: true });
+    setEditing({ id: uid(), name: "", role: "", avatarUrl: "", quote: "", enabled: true });
     setIsNew(true);
   };
 
@@ -513,7 +513,7 @@ function TestimonialsEditor({
     <div className="space-y-3">
       <div>
         <Label className="text-xs text-gray-500 mb-1 block">Section headline</Label>
-        <Input value={section.headline ?? ""} onChange={(e) => onChange({ ...section, headline: e.target.value })} placeholder="What our students say" className="text-sm h-8" />
+        <Input value={section.headline ?? ""} onChange={(e) => onChange({ ...section, headline: e.target.value })} placeholder="Section headline (optional)" className="text-sm h-8" />
       </div>
       <div className="space-y-2">
         {section.testimonials.map((t) => (
@@ -565,7 +565,7 @@ function TestimonialsEditor({
                 <Label className="text-xs">Rating</Label>
                 <div className="flex gap-1 mt-1">
                  {[1, 2, 3, 4, 5].map((r) => (
-                    <button key={r} onClick={() => setEditing({ ...editing, rating: r as 1|2|3|4|5 })} className={`text-lg ${(editing.rating ?? 5) >= r ? "text-yellow-400" : "text-gray-200"}`}>★</button>
+                    <button key={r} onClick={() => setEditing({ ...editing, rating: r as 1|2|3|4|5 })} className={`text-lg ${(editing.rating ?? 0) >= r ? "text-yellow-400" : "text-gray-200"}`}>★</button>
                   ))}
                 </div>
               </div>

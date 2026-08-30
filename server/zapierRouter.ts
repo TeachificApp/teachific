@@ -534,7 +534,7 @@ function getTestPayloadForEvent(eventType: ZapierEventType): Record<string, unkn
         respondent_email: "learner@example.com",
         respondent_name: "Jane Doe",
         submitted_at: new Date().toISOString(),
-        answers: { "How would you rate this course?": "5 stars" },
+        answers: {},
       };
     case "new_order":
       return {

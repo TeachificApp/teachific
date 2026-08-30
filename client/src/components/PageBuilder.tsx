@@ -192,7 +192,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
     maxWidth: "800",
   },
   testimonials: {
-    headline: "What Our Students Say",
+    headline: "",
     testimonials: [],
     backgroundColor: "#f8fafc",
     textColor: "#1e293b",

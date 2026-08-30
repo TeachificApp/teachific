@@ -49,6 +49,8 @@
 - [ ] Audit and harden remaining physical-product landing, media, pricing, order, and fulfillment administration endpoints to the active organization
 - [x] Enforce active-organization ownership for physical-product landing content, thumbnail upload, pricing options, orders, manual access, analytics, and landing-page generation
 - [x] Remove fabricated customer-review generation from the physical-product landing-page AI workflow
+- [x] Audit all AI prompts and seed content for fabricated customer reviews, ratings, or testimonials and remove any remaining instances
+- [x] Remove remaining review/testimonial headings and implicit five-star fallbacks from page, email, checkout, and preview surfaces
 - [x] Audit public physical-product discovery, product lookup, and checkout routes and quarantine unscoped legacy APIs pending an organization-domain storefront
 - [x] Quarantine unreferenced global physical-product public and learner APIs until an organization-domain storefront contract is implemented
 - [ ] Build an organization-domain-scoped public physical-product storefront and checkout contract before restoring learner-facing product APIs

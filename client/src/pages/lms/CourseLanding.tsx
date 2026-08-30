@@ -467,7 +467,7 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {(d.reviews ?? []).map((r: any, i: number) => (
               <div key={i} className="bg-gray-50 rounded-xl p-5 shadow-sm">
-                <div className="flex items-center gap-1 mb-2">{Array.from({ length: r.rating ?? 5 }).map((_, j) => <span key={j} className="text-yellow-400">★</span>)}</div>
+                <div className="flex items-center gap-1 mb-2">{Array.from({ length: r.rating ?? 0 }).map((_, j) => <span key={j} className="text-yellow-400">★</span>)}</div>
                 <p className="text-gray-700 mb-3 italic">"{r.text}"</p>
                 <p className="text-sm font-semibold text-gray-900">— {r.name}</p>
               </div>

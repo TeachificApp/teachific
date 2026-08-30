@@ -599,20 +599,20 @@ function TestimonialsPanel({ section, onChange }: { section: TestimonialsSection
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newBody, setNewBody] = useState("");
-  const [newRating, setNewRating] = useState(5);
+  const [newRating, setNewRating] = useState<number | null>(null);
 
   const addTestimonial = () => {
-    if (!newName.trim() || !newBody.trim()) return;
+    if (!newName.trim() || !newBody.trim() || !newRating) return;
     const t: Testimonial = { id: uid(), name: newName.trim(), role: newRole.trim() || undefined, body: newBody.trim(), rating: newRating, enabled: true };
     onChange({ ...section, testimonials: [...section.testimonials, t] });
-    setNewName(""); setNewRole(""); setNewBody(""); setNewRating(5);
+    setNewName(""); setNewRole(""); setNewBody(""); setNewRating(null);
   };
 
   return (
     <div className="space-y-4">
       <div>
         <Label className="text-xs font-semibold text-gray-600 block mb-1.5">Section headline</Label>
-        <Input value={section.headline} onChange={e => onChange({ ...section, headline: e.target.value })} placeholder="What our students say" className="h-8 text-xs" />
+        <Input value={section.headline} onChange={e => onChange({ ...section, headline: e.target.value })} placeholder="Section headline (optional)" className="h-8 text-xs" />
       </div>
       <Separator />
       <div className="space-y-2">
@@ -937,7 +937,7 @@ export default function CheckoutPageEditorPage() {
     let newSection: CheckoutSection;
     if (type === "trust_seals") newSection = { type, enabled: true, order: config.sections.length, layout: "row", seals: [] };
     else if (type === "guarantee") newSection = { type, enabled: true, order: config.sections.length, icon: "ShieldCheck", headline: "Money-Back Guarantee", body: "", badgeLabel: "" };
-    else if (type === "testimonials") newSection = { type, enabled: true, order: config.sections.length, headline: "What our students say", testimonials: [] };
+    else if (type === "testimonials") newSection = { type, enabled: true, order: config.sections.length, headline: "", testimonials: [] };
     else if (type === "faq") newSection = { type, enabled: true, order: config.sections.length, headline: "Frequently asked questions", items: [] };
     else if (type === "custom_html") newSection = { type, enabled: true, order: config.sections.length, html: "" };
     else newSection = { type: "course_includes", enabled: true, order: config.sections.length, headline: "What's included" };
