@@ -19,12 +19,15 @@ function parseCookie(cookieHeader: string | undefined, name: string): string | n
 /** Resolve a user from the custom Teachific email/password session cookie */
 async function resolveTeachificSession(cookieHeader: string | undefined): Promise<User | null> {
   try {
-    const raw = parseCookie(cookieHeader, "teachific_session");
-    if (!raw) return null;
-    const payload = verifySessionToken(raw);
-    if (!payload) return null;
-    const user = await getUserById(payload.userId);
-    return user ?? null;
+    for (const name of ["teachific_session", "teachific_session_lax", "teachific_session_host"]) {
+      const raw = parseCookie(cookieHeader, name);
+      if (!raw) continue;
+      const payload = verifySessionToken(raw);
+      if (!payload) continue;
+      const user = await getUserById(payload.userId);
+      if (user) return user;
+    }
+    return null;
   } catch {
     return null;
   }

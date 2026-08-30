@@ -4534,6 +4534,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaAdminSource).toContain("onClick={() => setReuploadOpen(true)}");
   });
 
+  it("delivers only the current media version through a verified public or active-organization admin boundary", () => {
+    const mediaDeliverySource = readFileSync(new URL("./mediaDeliveryRoutes.ts", import.meta.url), "utf8");
+    const serverEntrySource = readFileSync(new URL("./_core/index.ts", import.meta.url), "utf8");
+    const authHelperSource = readFileSync(new URL("./authHelper.ts", import.meta.url), "utf8");
+    expect(serverEntrySource).toContain('app.use("/api/media", mediaDeliveryRouter);');
+    expect(mediaDeliverySource).toContain('router.get("/:slug/download"');
+    expect(mediaDeliverySource).toContain("isNull(mediaAssets.deletedAt)");
+    expect(mediaDeliverySource).toContain("getOrgIdForUserWithFallback(user.id, user.role)");
+    expect(mediaDeliverySource).toContain("requireOrgAdmin(user.id, user.role, assetOrgId)");
+    expect(mediaDeliverySource).toContain("eq(mediaVersions.orgId, asset.orgId)");
+    expect(mediaDeliverySource).toContain("storageGet(version.s3Key)");
+    expect(mediaDeliverySource).not.toContain("verifyMediaViewerToken");
+    expect(authHelperSource).toContain('"teachific_session_lax", "teachific_session_host"');
+  });
+
   it("uses only organization-resolved library links in bundle confirmation emails", () => {
     const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     expect(webhookSource).toContain("if (bundleOrg?.slug)");

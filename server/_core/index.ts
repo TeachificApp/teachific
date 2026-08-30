@@ -15,6 +15,7 @@ import chunkedUploadRouter from "../chunkedUploadRoutes";
 import contentRouter from "../contentRoutes";
 import digitalDownloadRouter from "../digitalDownloadRoutes";
 import mediaUploadRouter from "../mediaUploadRoutes";
+import mediaDeliveryRouter from "../mediaDeliveryRoutes";
 import widgetRouter from "../widgetRoutes";
 import stripeWebhookRouter from "../stripeWebhookRoutes";
 import { embeddedCheckoutWebhookRouter } from "../embeddedCheckoutWebhook";
@@ -178,6 +179,8 @@ async function startServer() {
 
   // Media upload — server-side proxy for browser file uploads (digital downloads, forms, media library)
   app.use("/api/media-upload", mediaUploadRouter);
+  // Media Repository current-version delivery. Embed and SCORM routes remain intentionally unavailable.
+  app.use("/api/media", mediaDeliveryRouter);
   app.use("/api/upload-ai-generation-source", uploadAiGenerationSourceRouter);
 
   // Embeddable course widgets (card, curriculum) — served as JS for external sites
