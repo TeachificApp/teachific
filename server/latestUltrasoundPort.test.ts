@@ -4440,6 +4440,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("requires the active organization for supported media asset administration and quarantines the global folder model", () => {
     const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    const mediaFolderAuditSource = readFileSync(new URL("../docs/media-folder-schema-audit.md", import.meta.url), "utf8");
     expect(mediaRouterSource).toContain("async function requireActiveMediaOrg");
     expect(mediaRouterSource).toContain("async function requireActiveMediaAsset");
     expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaOrg(ctx);");
@@ -4456,6 +4457,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaOrg(ctx);");
     expect(mediaRouterSource).toContain("One or more media assets belong to another organization.");
     expect(mediaRouterSource).toContain("eq(mediaAssets.orgId, orgId))");
+    expect(mediaFolderAuditSource).toContain("The live `media_folders` table uses an organization-owned hierarchy");
+    expect(mediaFolderAuditSource).toContain("Asset filtering must use `folderId` plus the active `orgId`");
+    expect(mediaFolderAuditSource).toContain("never slugs");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

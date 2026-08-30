@@ -73,6 +73,7 @@
 - [x] Quarantine global legacy media folder CRUD and present the structured-folder capability as unavailable in the repository UI
 - [x] Scope media asset folder-label move and bulk-move mutations under active-organization ownership
 - [ ] Rebuild structured media folders as an additive organization-owned model before restoring folder creation, rename, and deletion controls
+- [x] Audit the live media folder and asset schema contract before attempting structured-folder restoration
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
