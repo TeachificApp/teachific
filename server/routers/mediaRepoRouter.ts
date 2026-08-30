@@ -293,13 +293,10 @@ export const mediaRepoRouter = router({
         .where(eq(mediaVersions.assetId, input.id))
         .orderBy(desc(mediaVersions.versionNumber));
 
-      const grants = await db
-        .select()
-        .from(mediaAccessGrants)
-        .where(eq(mediaAccessGrants.assetId, input.id))
-        .orderBy(desc(mediaAccessGrants.createdAt));
-
-      return { asset, versions, grants };
+      // The live media_access_grants table is rule/user based and cannot
+      // represent legacy email-token grants. Keep the valid asset detail
+      // available while the incompatible invitation model is rebuilt.
+      return { asset, versions, grants: [] };
     }),
 
   /**
@@ -416,7 +413,6 @@ export const mediaRepoRouter = router({
           .from(mediaVersions)
           .where(eq(mediaVersions.assetId, id));
         await Promise.allSettled(versions.map((v) => storageDelete(v.s3Key)));
-        await db.delete(mediaAccessGrants).where(eq(mediaAccessGrants.assetId, id));
         await db.delete(mediaViewEvents).where(eq(mediaViewEvents.assetId, id));
         await db.delete(mediaVersions).where(eq(mediaVersions.assetId, id));
         await db.delete(mediaAssets).where(eq(mediaAssets.id, id));
@@ -720,54 +716,11 @@ export const mediaRepoRouter = router({
       expiresInDays: z.number().int().min(1).max(365).optional(),
       message: z.string().max(500).optional(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-
-      const [asset] = await db
-        .select({ slug: mediaAssets.slug, title: mediaAssets.title })
-        .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, input.assetId), isNull(mediaAssets.deletedAt)))
-        .limit(1);
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND" });
-
-      const token = generateToken();
-      const expiresAt = input.expiresInDays
-        ? new Date(Date.now() + input.expiresInDays * 86400_000)
-        : null;
-
-      await db.insert(mediaAccessGrants).values({
-        assetId: input.assetId,
-        email: input.email,
-        token,
-        expiresAt,
-        createdByUserId: ctx.user.id,
+    .mutation(() => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Email media invitations are unavailable until organization-scoped media permissions are configured.",
       });
-
-      // Build access URL (uses the app's canonical URL from env)
-      const origin = process.env.VITE_APP_URL || "https://teachific.app";
-      const accessUrl = `${origin}/media/${asset.slug}?token=${token}`;
-
-      await sendEmail({
-        to: { name: input.email.split("@")[0], email: input.email },
-        subject: `You've been granted access to "${asset.title}"`,
-        htmlBody: `
-          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">
-            <h2 style="color:#189aa1;margin-bottom:8px;">Media Access Granted</h2>
-            <p style="color:#374151;">You have been granted access to the following media file:</p>
-            <p style="font-weight:bold;color:#111827;">${asset.title}</p>
-            ${input.message ? `<p style="color:#374151;font-style:italic;">"${input.message}"</p>` : ""}
-            <a href="${accessUrl}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#189aa1;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">
-              View / Embed Media
-            </a>
-            ${expiresAt ? `<p style="color:#6b7280;font-size:13px;margin-top:16px;">This link expires on ${expiresAt.toLocaleDateString()}.</p>` : ""}
-            <p style="color:#9ca3af;font-size:12px;margin-top:24px;">Teachific™ — Clinical Intelligence Platform</p>
-          </div>
-        `,
-      });
-
-      return { token, accessUrl, expiresAt };
     }),
 
   /**
@@ -775,33 +728,18 @@ export const mediaRepoRouter = router({
    */
   listGrants: protectedProcedure
     .input(z.object({ assetId: z.number().int().positive() }))
-    .query(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-
-      return db
-        .select()
-        .from(mediaAccessGrants)
-        .where(eq(mediaAccessGrants.assetId, input.assetId))
-        .orderBy(desc(mediaAccessGrants.createdAt));
-    }),
+    .query(() => []),
 
   /**
    * Revoke a specific access grant.
    */
   revokeGrant: protectedProcedure
     .input(z.object({ grantId: z.number().int().positive() }))
-    .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-
-      await db
-        .update(mediaAccessGrants)
-        .set({ revokedAt: new Date() })
-        .where(eq(mediaAccessGrants.id, input.grantId));
-      return { revoked: true };
+    .mutation(() => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Email media invitations are unavailable until organization-scoped media permissions are configured.",
+      });
     }),
 
   /**
@@ -946,38 +884,9 @@ export const mediaRepoRouter = router({
         return { allowed: true, asset, version: version ?? null };
       }
 
-      // Private: check token
-      if (!input.token) return { allowed: false, asset, version: null };
-
-      const [grant] = await db
-        .select()
-        .from(mediaAccessGrants)
-        .where(and(
-          eq(mediaAccessGrants.assetId, asset.id),
-          eq(mediaAccessGrants.token, input.token),
-          isNull(mediaAccessGrants.revokedAt)
-        ))
-        .limit(1);
-
-      if (!grant) return { allowed: false, asset, version: null };
-      if (grant.expiresAt && grant.expiresAt < new Date()) return { allowed: false, asset, version: null };
-
-      // Mark first use
-      if (!grant.firstUsedAt) {
-        await db
-          .update(mediaAccessGrants)
-          .set({ firstUsedAt: new Date() })
-          .where(eq(mediaAccessGrants.id, grant.id));
-      }
-
-      const [version] = await db
-        .select()
-        .from(mediaVersions)
-        .where(eq(mediaVersions.assetId, asset.id))
-        .orderBy(desc(mediaVersions.versionNumber))
-        .limit(1);
-
-      return { allowed: true, asset, version: version ?? null };
+      // Private email-token grants are intentionally unavailable until an
+      // additive, organization-scoped invitation model is implemented.
+      return { allowed: false, asset, version: null };
     }),
 
   /**

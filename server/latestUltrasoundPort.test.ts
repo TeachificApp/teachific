@@ -4421,6 +4421,22 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsRouterSource).toContain("requireActiveWorkshopOrg");
   });
 
+  it("quarantines the media email-token grant contract while preserving valid asset management", () => {
+    const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
+    const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    const mediaAuditSource = readFileSync(new URL("../docs/media-access-grant-schema-audit.md", import.meta.url), "utf8");
+    expect(mediaRouterSource).toContain("return { asset, versions, grants: [] };");
+    expect(mediaRouterSource).not.toContain("mediaAccessGrants.assetId");
+    expect(mediaRouterSource).not.toContain("mediaAccessGrants.token");
+    expect(mediaRouterSource).not.toContain("mediaAccessGrants.revokedAt");
+    expect(mediaRouterSource).toContain("Email media invitations are unavailable until organization-scoped media permissions are configured.");
+    expect(mediaRouterSource).toContain("return { allowed: false, asset, version: null };");
+    expect(mediaAdminSource).toContain("Email invitation links are temporarily unavailable while organization-scoped media permissions are completed.");
+    expect(mediaAdminSource).not.toContain("Send Invite");
+    expect(mediaAuditSource).toContain("This is a data-model conflict, not a URL-only issue.");
+    expect(mediaAuditSource).toContain("new, additive invitation table keyed by organization and asset");
+  });
+
   it("uses only organization-resolved library links in bundle confirmation emails", () => {
     const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     expect(webhookSource).toContain("if (bundleOrg?.slug)");

@@ -1362,96 +1362,13 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                   This asset is <strong>public</strong> — anyone with the link can view it. No invite tokens needed.
                 </div>
               ) : (
-                <>
-                  {/* Invite form */}
-                  <div className="border border-border rounded-lg p-4 space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2"><Mail className="w-4 h-4" />Invite by Email</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Email address</Label>
-                        <Input
-                          type="email"
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          placeholder="user@example.com"
-                        />
-                      </div>
-                      <div>
-                        <Label>Expires in (days, blank = never)</Label>
-                        <Input
-                          type="number"
-                          value={inviteExpiry}
-                          onChange={(e) => setInviteExpiry(e.target.value)}
-                          placeholder="30"
-                          min="1"
-                          max="365"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label>Personal message (optional)</Label>
-                      <Textarea
-                        value={inviteMessage}
-                        onChange={(e) => setInviteMessage(e.target.value)}
-                        placeholder="Add a personal note to the invite email…"
-                        rows={2}
-                      />
-                    </div>
-                    <Button
-                      onClick={() => inviteMutation.mutate({
-                        assetId: asset.id,
-                        email: inviteEmail,
-                        expiresInDays: inviteExpiry ? parseInt(inviteExpiry) : undefined,
-                        message: inviteMessage || undefined,
-                      })}
-                      disabled={!inviteEmail || inviteMutation.isPending}
-                    >
-                      <Mail className="w-4 h-4 mr-2" />
-                      {inviteMutation.isPending ? "Sending…" : "Send Invite"}
-                    </Button>
-                  </div>
-
-                  {/* Grants list */}
-                  {grants.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2">Access Grants</h4>
-                      <div className="space-y-2">
-                        {grants.map(g => {
-                          const isRevoked = !!g.revokedAt;
-                          const isExpired = g.expiresAt && new Date(g.expiresAt) < new Date();
-                          return (
-                            <div key={g.id} className={`flex items-center gap-3 p-3 rounded-lg border ${isRevoked ? "border-border opacity-50" : "border-border"}`}>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm">{g.email}</span>
-                                  {isRevoked && <Badge variant="destructive" className="text-xs">Revoked</Badge>}
-                                  {!isRevoked && isExpired && <Badge variant="secondary" className="text-xs">Expired</Badge>}
-                                  {!isRevoked && !isExpired && <Badge variant="default" className="text-xs bg-green-600">Active</Badge>}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  Sent {new Date(g.createdAt).toLocaleDateString()}
-                                  {g.expiresAt && ` · Expires ${new Date(g.expiresAt).toLocaleDateString()}`}
-                                  {g.firstUsedAt && ` · First used ${new Date(g.firstUsedAt).toLocaleDateString()}`}
-                                </div>
-                              </div>
-                              {!isRevoked && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => revokeMutation.mutate({ grantId: g.id })}
-                                  disabled={revokeMutation.isPending}
-                                >
-                                  <ShieldOff className="w-3 h-3 mr-1" />Revoke
-                                </Button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </>
+                <div className="rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground">Private media access</p>
+                  <p className="mt-1">
+                    Email invitation links are temporarily unavailable while organization-scoped media permissions are completed.
+                    Existing access rules remain available for supported organization media workflows.
+                  </p>
+                </div>
               )}
             </TabsContent>
             {/* Analytics */}
