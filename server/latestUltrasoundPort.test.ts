@@ -4238,6 +4238,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(rootRouterSource).not.toContain("workshopAdmin: workshopAdminRouter");
     expect(lmsAdminSource).toContain("trpc.lms.workshops.list.useQuery()");
     expect(lmsAdminSource).toContain("workshop: (workshopsData ?? [])");
+    expect(lmsAdminSource).toContain("trpc.lms.bundles.list.useQuery()");
+    expect(lmsAdminSource).toContain("bundle: (bundlesData ?? []).map((b: any) => ({ id: b.id, title: b.name, type: \"bundle\" }))");
+    expect(lmsAdminSource).not.toContain("trpc.bundlesAdmin");
     expect(compatibilityEntry).toContain("<WorkshopsPage initialEditId={initialEditId} />");
     expect(compatibilityEntry).not.toContain("trpc.workshopAdmin");
   });

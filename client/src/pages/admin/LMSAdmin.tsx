@@ -8826,7 +8826,7 @@ function CollectionFormDialog({
   const { data: webinarsData } = trpc.webinarAdmin.list.useQuery({ pageSize: 500 });
   const { data: workshopsData } = trpc.lms.workshops.list.useQuery();
   const { data: downloadsData } = trpc.downloadsAdmin.list.useQuery();
-  const { data: bundlesData } = trpc.bundlesAdmin.list.useQuery({});
+  const { data: bundlesData } = trpc.lms.bundles.list.useQuery();
   const { data: membershipsData } = trpc.membership.listAll.useQuery();
   const { data: physicalData } = trpc.productsAdmin.list.useQuery();
 
@@ -8836,7 +8836,7 @@ function CollectionFormDialog({
     webinar: (webinarsData?.webinars ?? []).map((w: any) => ({ id: w.id, title: w.title, type: "webinar" })),
     workshop: (workshopsData ?? []).map((w: any) => ({ id: w.id, title: w.title, type: "workshop" })),
     download: (downloadsData ?? []).map((d: any) => ({ id: d.id, title: d.title, type: "download" })),
-    bundle: (bundlesData?.bundles ?? bundlesData ?? []).map((b: any) => ({ id: b.id, title: b.title, type: "bundle" })),
+    bundle: (bundlesData ?? []).map((b: any) => ({ id: b.id, title: b.name, type: "bundle" })),
     membership: (membershipsData ?? []).map((m: any) => ({ id: m.id, title: m.title, type: "membership" })),
     physical: (physicalData ?? []).map((p: any) => ({ id: p.id, title: p.title, type: "physical" })),
   };

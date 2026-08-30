@@ -41,6 +41,7 @@
 - [x] Enforce active-organization matching for supported LMS workshop list, create, read, update, delete, and registration operations
 - [x] Replace the remaining LMS content-picker workshop query and unregister the stale workshop administration API namespace
 - [ ] Rebuild advanced workshop pricing, resources, curricula, landing, waitlist, and workflow administration from an additive organization-scoped contract before re-exposing those controls
+- [x] Replace the LMS collection content picker’s stale bundle query with the supported active-organization bundle endpoint
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
