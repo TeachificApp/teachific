@@ -4506,7 +4506,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect((chunkedUploadSource.match(/Upload session no longer matches the active organization/g) ?? []).length).toBe(2);
     expect(chunkedUploadSource).toContain("await requireOrgAdmin(user.id, user.role, session.orgId)");
     expect(chunkedUploadSource).toContain("repositoryUpload: isRepositoryUpload,");
-    expect(chunkedUploadSource).toContain("folderId: isRepositoryUpload ? parsedFolderId : null,");
+    expect(chunkedUploadSource).toContain("replaceAssetId: parsedReplaceAssetId,");
+    expect(chunkedUploadSource).toContain("replaceAssetSlug,");
+    expect(chunkedUploadSource).toContain("eq(mediaAssets.id, parsedReplaceAssetId), eq(mediaAssets.orgId, activeOrgId)");
+    expect(chunkedUploadSource).toContain("eq(mediaAssets.id, session.replaceAssetId), eq(mediaAssets.orgId, session.orgId)");
+    expect(chunkedUploadSource).toContain("versionNumber = (maxVersion ?? 0) + 1;");
+    expect(chunkedUploadSource).toContain("slug: session.replaceAssetSlug,");
+    expect(chunkedUploadSource).toContain("folderId: isRepositoryUpload && parsedReplaceAssetId === null ? parsedFolderId : null,");
     expect(chunkedUploadSource).toContain("await db.transaction(async (tx) => {");
     expect(chunkedUploadSource).toContain("orgId: session.orgId,");
     expect(chunkedUploadSource).toContain("await tx.insert(mediaAssets).values({");
@@ -4514,10 +4520,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(chunkedUploadSource).toContain("await storageDelete(storedKey)");
     expect(mediaAdminSource).toContain('fetch("/api/chunked/media/initiate"');
     expect(mediaAdminSource).toContain("repositoryUpload: true,");
+    expect(mediaAdminSource).toContain("replaceAssetId: isReupload ? existingAssetId : undefined,");
     expect(mediaAdminSource).not.toContain("/api/upload-media-repo/");
     expect(mediaAdminSource).not.toContain("folderSlug");
     expect(mediaAdminSource).toContain("onClick={() => setUploadOpen(true)}");
-    expect(mediaAdminSource).not.toContain("onClick={() => setReuploadOpen(true)}");
+    expect(mediaAdminSource).toContain("onClick={() => setReuploadOpen(true)}");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

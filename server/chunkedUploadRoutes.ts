@@ -16,7 +16,7 @@ import { existsSync, unlinkSync, createWriteStream, createReadStream, statSync }
 import { tmpdir } from "os";
 import { join } from "path";
 import { nanoid } from "nanoid";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { processZipVersion, processZip, emitProgress } from "./scormUploadRoutes";
 import { storageDelete, storagePutStream } from "./storage";
 import { getDb, getPackageById, updatePackage, createPackage, requireOrgAdmin, getOrgIdForUserWithFallback } from "./db";
@@ -425,6 +425,8 @@ interface MediaUploadSession {
   folder: string;
   contentType: string;
   repositoryUpload: boolean;
+  replaceAssetId: number | null;
+  replaceAssetSlug: string | null;
   folderId: number | null;
   title: string;
   description: string | null;
@@ -453,7 +455,7 @@ function asOptionalText(value: unknown, maxLength: number) {
 
 // POST /api/chunked/media/initiate
 router.post("/media/initiate", express.json(), async (req: Request, res: Response) => {
-  const { totalChunks, filename, orgId, folder, contentType, repositoryUpload, folderId, title, description, tags, notes, access } = req.body;
+  const { totalChunks, filename, orgId, folder, contentType, repositoryUpload, replaceAssetId, folderId, title, description, tags, notes, access } = req.body;
   if (!totalChunks || !filename) {
     return res.status(400).json({ error: "totalChunks and filename are required" });
   }
@@ -475,20 +477,37 @@ router.post("/media/initiate", express.json(), async (req: Request, res: Respons
     return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
   }
   const isRepositoryUpload = repositoryUpload === true;
+  const parsedReplaceAssetId = replaceAssetId === undefined || replaceAssetId === null || replaceAssetId === ""
+    ? null
+    : parseInt(String(replaceAssetId), 10);
+  if (parsedReplaceAssetId !== null && (!isRepositoryUpload || !Number.isInteger(parsedReplaceAssetId) || parsedReplaceAssetId <= 0)) {
+    return res.status(400).json({ error: "replaceAssetId must identify an existing Media Repository asset" });
+  }
   const parsedFolderId = folderId === undefined || folderId === null || folderId === ""
     ? null
     : parseInt(String(folderId), 10);
   if (parsedFolderId !== null && (!Number.isInteger(parsedFolderId) || parsedFolderId <= 0)) {
     return res.status(400).json({ error: "folderId must be a positive integer when provided" });
   }
-  if (isRepositoryUpload && parsedFolderId !== null) {
+  let replaceAssetSlug: string | null = null;
+  if (isRepositoryUpload && (parsedFolderId !== null || parsedReplaceAssetId !== null)) {
     const db = await getDb();
     if (!db) return res.status(500).json({ error: "Database unavailable" });
-    const [ownedFolder] = await db.select({ id: mediaFolders.id })
-      .from(mediaFolders)
-      .where(and(eq(mediaFolders.id, parsedFolderId), eq(mediaFolders.orgId, activeOrgId)))
-      .limit(1);
-    if (!ownedFolder) return res.status(404).json({ error: "Media folder not found in the active organization" });
+    if (parsedFolderId !== null) {
+      const [ownedFolder] = await db.select({ id: mediaFolders.id })
+        .from(mediaFolders)
+        .where(and(eq(mediaFolders.id, parsedFolderId), eq(mediaFolders.orgId, activeOrgId)))
+        .limit(1);
+      if (!ownedFolder) return res.status(404).json({ error: "Media folder not found in the active organization" });
+    }
+    if (parsedReplaceAssetId !== null) {
+      const [ownedAsset] = await db.select({ id: mediaAssets.id, slug: mediaAssets.slug })
+        .from(mediaAssets)
+        .where(and(eq(mediaAssets.id, parsedReplaceAssetId), eq(mediaAssets.orgId, activeOrgId), sql`${mediaAssets.deletedAt} IS NULL`))
+        .limit(1);
+      if (!ownedAsset) return res.status(404).json({ error: "Media asset not found in the active organization" });
+      replaceAssetSlug = ownedAsset.slug ?? `media-${ownedAsset.id}-${nanoid(8)}`;
+    }
   }
   const safeFolder = String(folder ?? "lms-media").toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "lms-media";
   const safeContentType = String(contentType ?? "application/octet-stream").slice(0, 100);
@@ -505,7 +524,9 @@ router.post("/media/initiate", express.json(), async (req: Request, res: Respons
     folder: isRepositoryUpload ? "media-repo" : safeFolder,
     contentType: safeContentType,
     repositoryUpload: isRepositoryUpload,
-    folderId: isRepositoryUpload ? parsedFolderId : null,
+    replaceAssetId: parsedReplaceAssetId,
+    replaceAssetSlug,
+    folderId: isRepositoryUpload && parsedReplaceAssetId === null ? parsedFolderId : null,
     title: asOptionalText(title, 255) ?? safeFilename.replace(/\.[^.]+$/, ""),
     description: asOptionalText(description, 2_000),
     tags: asOptionalText(tags, 500),
@@ -589,7 +610,9 @@ router.post(
       await assembleChunks(session as unknown as UploadSession, assembledPath);
       cleanupMediaSession(session);
       const fileSize = statSync(assembledPath).size;
-      const key = `${session.folder}/${session.orgId}/${Date.now()}-${nanoid(8)}-${safeName}`;
+      const key = session.replaceAssetSlug
+        ? `media-repo/${session.replaceAssetSlug}/versions/${Date.now()}-${nanoid(8)}-${safeName}`
+        : `${session.folder}/${session.orgId}/${Date.now()}-${nanoid(8)}-${safeName}`;
       const { url } = await storagePutStream(key, assembledPath, session.contentType);
       storedKey = key;
       try { unlinkSync(assembledPath); } catch { /* ignore */ }
@@ -600,32 +623,56 @@ router.post(
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
       const mediaType = classifyMediaType(session.contentType, session.filename);
-      const slug = `media-${nanoid(12)}`;
-      let assetId = 0;
+      const slug = session.replaceAssetSlug ?? `media-${nanoid(12)}`;
+      let assetId = session.replaceAssetId ?? 0;
       let versionId = 0;
+      let versionNumber = 1;
       await db.transaction(async (tx) => {
-        const [assetResult] = await tx.insert(mediaAssets).values({
-          orgId: session.orgId,
-          folderId: session.folderId,
-          filename: session.filename,
-          mimeType: session.contentType,
-          size: fileSize,
-          s3Key: key,
-          s3Url: url,
-          uploadedBy: session.authUserId,
-          slug,
-          title: session.title,
-          description: session.description,
-          mediaType,
-          access: session.access,
-          tags: session.tags,
-          createdByUserId: session.authUserId,
-        });
-        assetId = Number((assetResult as { insertId?: number }).insertId);
+        if (session.replaceAssetId !== null) {
+          const [asset] = await tx.select({ id: mediaAssets.id, slug: mediaAssets.slug })
+            .from(mediaAssets)
+            .where(and(eq(mediaAssets.id, session.replaceAssetId), eq(mediaAssets.orgId, session.orgId), sql`${mediaAssets.deletedAt} IS NULL`))
+            .limit(1);
+          if (!asset) throw new Error("Media asset no longer belongs to the active organization");
+          const [{ maxVersion }] = await tx.select({ maxVersion: sql<number>`MAX(${mediaVersions.versionNumber})` })
+            .from(mediaVersions)
+            .where(and(eq(mediaVersions.assetId, asset.id), eq(mediaVersions.orgId, session.orgId)));
+          versionNumber = (maxVersion ?? 0) + 1;
+          assetId = asset.id;
+          await tx.update(mediaAssets).set({
+            filename: session.filename,
+            mimeType: session.contentType,
+            size: fileSize,
+            s3Key: key,
+            s3Url: url,
+            uploadedBy: session.authUserId,
+            slug: session.replaceAssetSlug,
+            mediaType,
+          }).where(and(eq(mediaAssets.id, asset.id), eq(mediaAssets.orgId, session.orgId)));
+        } else {
+          const [assetResult] = await tx.insert(mediaAssets).values({
+            orgId: session.orgId,
+            folderId: session.folderId,
+            filename: session.filename,
+            mimeType: session.contentType,
+            size: fileSize,
+            s3Key: key,
+            s3Url: url,
+            uploadedBy: session.authUserId,
+            slug,
+            title: session.title,
+            description: session.description,
+            mediaType,
+            access: session.access,
+            tags: session.tags,
+            createdByUserId: session.authUserId,
+          });
+          assetId = Number((assetResult as { insertId?: number }).insertId);
+        }
         const [versionResult] = await tx.insert(mediaVersions).values({
           orgId: session.orgId,
           assetId,
-          versionNumber: 1,
+          versionNumber,
           s3Key: key,
           s3Url: url,
           fileName: session.filename,
@@ -639,7 +686,7 @@ router.post(
       });
       queueScormExtractionIfNeeded(versionId, url, slug, { mediaType, mimeType: session.contentType, fileName: session.filename })
         .catch((error) => console.error("[Chunked Media Finalize] SCORM extraction queue failed:", error));
-      return res.json({ assetId, versionId, slug, key, url, fileName: session.filename, fileSize, fileType: session.contentType });
+      return res.json({ assetId, versionId, versionNumber, slug, key, url, fileName: session.filename, fileSize, fileType: session.contentType });
     } catch (err: unknown) {
       cleanupMediaSession(session);
       try { if (existsSync(assembledPath)) unlinkSync(assembledPath); } catch { /* ignore */ }

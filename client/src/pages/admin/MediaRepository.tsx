@@ -243,6 +243,7 @@ function UploadDialog({ open, onClose, onSuccess, initialFolderId = null, existi
         contentType: file.type || "application/octet-stream",
         title,
         access,
+        replaceAssetId: isReupload ? existingAssetId : undefined,
         folderId: folderId === "none" ? null : Number(folderId),
         notes,
       }),
@@ -1102,7 +1103,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
               >
                 {isPublic ? <><Lock className="w-3 h-3 mr-1" />Make Private</> : <><Globe className="w-3 h-3 mr-1" />Make Public</>}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)}>
+              <Button size="sm" variant="outline" onClick={() => setReuploadOpen(true)}>
                 <Upload className="w-3 h-3 mr-1" />Upload New Version
               </Button>
               <Button
@@ -1241,7 +1242,7 @@ function AssetDetailDialog({ assetId, onClose, onRefresh, autoReExtract }: Asset
                       Re-extract to CDN
                     </Button>
                   )}
-                  <Button size="sm" onClick={() => toast.info(MEDIA_REPOSITORY_UPLOAD_UNAVAILABLE)}>
+                  <Button size="sm" onClick={() => setReuploadOpen(true)}>
                     <Upload className="w-3 h-3 mr-1.5" />Upload New Version
                   </Button>
                 </div>

@@ -80,7 +80,7 @@
 - [x] Require organization-admin ownership before replacing an existing direct-upload media library item
 - [x] Restore the Media Repository upload endpoint with active-organization authorization, S3 storage, and a persisted organization-owned media asset
 - [x] Harden the existing chunked media upload route with active-organization session ownership and media asset/version persistence
-- [ ] Rebuild a separately authorized organization-scoped Media Repository version replacement contract before enabling re-upload controls
+- [x] Rebuild a separately authorized organization-scoped Media Repository version replacement contract before enabling re-upload controls
 - [x] Audit the live media folder and asset schema contract before attempting structured-folder restoration
 - [ ] Reconcile the broader media asset, version, view-event, and access-rule Drizzle contracts with live database columns before restoring advanced media features
 - [x] Reconcile verified live `media_versions.orgId` writes and declarations before creating or re-uploading organization-owned media versions
