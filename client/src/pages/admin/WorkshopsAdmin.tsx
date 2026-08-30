@@ -7,6 +7,7 @@
  */
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import WorkshopsPage from "@/pages/products/WorkshopsPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -1477,14 +1478,15 @@ function WorkshopAfterPurchaseSection({ workshopId }: { workshopId: number }) {
   );
 }
 
-// ── Main Export ────────────────────────────────────────────────────────────────
-export function WorkshopsAdmin({ initialEditId, onTypeChangedFromWorkshop }: { initialEditId?: number; onTypeChangedFromWorkshop?: (newCourseId: number, newType: string) => void }) {
-  const [editingId, setEditingId] = useState<number | null>(initialEditId ?? null);
-
-  if (editingId !== null) {
-    return <WorkshopEditor workshopId={editingId} onBack={() => setEditingId(null)} onTypeChangedFromWorkshop={onTypeChangedFromWorkshop} />;
-  }
-  return <WorkshopsList onEdit={setEditingId} />;
+// ── Compatibility Entry Point ───────────────────────────────────────────────────
+/**
+ * Older LMS navigation renders this component. The implementation below depends
+ * on a source-derived workshop contract that does not match the live
+ * organization-scoped schema. Keep it out of the active render path until its
+ * authorization and data model migration is complete.
+ */
+export function WorkshopsAdmin({ initialEditId }: { initialEditId?: number; onTypeChangedFromWorkshop?: (newCourseId: number, newType: string) => void }) {
+  return <WorkshopsPage initialEditId={initialEditId} />;
 }
 
 // ── WaitlistSettingsTab ────────────────────────────────────────────────────────

@@ -530,8 +530,8 @@ function WorkshopEditor({ workshopId, onBack }: { workshopId: number; onBack: ()
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export default function WorkshopsPage() {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+export default function WorkshopsPage({ initialEditId }: { initialEditId?: number } = {}) {
+  const [selectedId, setSelectedId] = useState<number | null>(initialEditId ?? null);
 
   if (selectedId !== null) {
     return <WorkshopEditor workshopId={selectedId} onBack={() => setSelectedId(null)} />;

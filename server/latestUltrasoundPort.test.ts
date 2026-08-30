@@ -1137,6 +1137,7 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("scopes workshop waitlist administration to the active organization and keeps waitlist pricing in dollars", () => {
     const routerSource = readFileSync(new URL("./routers/workshopRouter.ts", import.meta.url), "utf8");
     const adminSource = readFileSync(new URL("../client/src/pages/admin/WorkshopsAdmin.tsx", import.meta.url), "utf8");
+    const supportedWorkshopsSource = readFileSync(new URL("../client/src/pages/products/WorkshopsPage.tsx", import.meta.url), "utf8");
     const waitlistGrantSource = routerSource.slice(
       routerSource.indexOf("grantWaitlistAccess: protectedProcedure"),
       routerSource.indexOf("// ── Instance Landing Page Builder")
@@ -1166,6 +1167,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(adminSource).toContain("Price Override (USD, optional)");
     expect(adminSource).toContain("priceOverride: grantType === \"paid\" ? parsedOverride : undefined");
     expect(adminSource).not.toContain("priceOverrideCents");
+    expect(adminSource).toContain("<WorkshopsPage initialEditId={initialEditId} />");
+    expect(supportedWorkshopsSource).toContain("export default function WorkshopsPage({ initialEditId }");
+    expect(supportedWorkshopsSource).toContain("useState<number | null>(initialEditId ?? null)");
   });
 
   it("converts stored workshop dollars to Stripe cents only at checkout and returns to the organization domain", () => {
@@ -4205,6 +4209,37 @@ describe("latest Ultrasound-App learning feature port", () => {
     const pricingSource = workshopRouterSource.slice(workshopRouterSource.indexOf("listPricingOptions: protectedProcedure"));
     expect(pricingSource).toContain("await requireActiveWorkshopAdmin(ctx.user.id, ctx.user.role, input.workshopId);");
     expect(pricingSource).not.toContain('ctx.user.role !== "admin"');
+  });
+
+  it("requires the active organization throughout supported LMS workshop administration", () => {
+    const lmsRouterSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const workshopsSource = lmsRouterSource.slice(
+      lmsRouterSource.indexOf("// ── Workshops"),
+      lmsRouterSource.indexOf("// ── Course Announcements"),
+    );
+    expect(lmsRouterSource).toContain("async function requireActiveWorkshopOrg");
+    expect(lmsRouterSource).toContain("Switch to the workshop's organization before managing its workshops.");
+    expect(lmsRouterSource).toContain("This workshop belongs to another organization.");
+    expect(workshopsSource).toContain("const orgId = await requireActiveWorkshopOrg(ctx, input?.orgId);");
+    expect(workshopsSource).toContain("const orgId = await requireActiveWorkshopOrg(ctx, input.orgId);");
+    expect((workshopsSource.match(/await requireLegacyWorkshopAccess\(ctx, input\.(?:id|workshopId)\);/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(workshopsSource).toContain("return requireLegacyWorkshopAccess(ctx, input.id);");
+    expect(workshopsSource).toContain("await requireLegacyWorkshopAccess(ctx, registration.workshopId);");
+  });
+
+  it("uses the supported active-organization workshop list for LMS content selection and does not mount the retired admin namespace", () => {
+    const rootRouterSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const workshopAdminSource = readFileSync(new URL("../client/src/pages/admin/WorkshopsAdmin.tsx", import.meta.url), "utf8");
+    const compatibilityEntry = workshopAdminSource.slice(
+      workshopAdminSource.indexOf("// ── Compatibility Entry Point"),
+      workshopAdminSource.indexOf("// ── WaitlistSettingsTab"),
+    );
+    expect(rootRouterSource).not.toContain("workshopAdmin: workshopAdminRouter");
+    expect(lmsAdminSource).toContain("trpc.lms.workshops.list.useQuery()");
+    expect(lmsAdminSource).toContain("workshop: (workshopsData ?? [])");
+    expect(compatibilityEntry).toContain("<WorkshopsPage initialEditId={initialEditId} />");
+    expect(compatibilityEntry).not.toContain("trpc.workshopAdmin");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

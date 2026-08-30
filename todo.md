@@ -36,6 +36,11 @@
 - [x] Remove source-specific legacy navigation routes and source-branded platform logo fallbacks from active Teachific layouts
 - [x] Remove provider/source names and hard-coded provider addresses from active CME client copy while retaining the allowed server-side service-address fallback
 - [x] Document remaining source-branding compatibility identifiers and their safe migration guardrails
+- [x] Audit the legacy workshop router’s source-derived defaults and organization-scope gaps before changing workshop contracts or persisted values
+- [x] Route the LMS administration workshop tab away from stale legacy router calls to the supported active-organization workshop management page
+- [x] Enforce active-organization matching for supported LMS workshop list, create, read, update, delete, and registration operations
+- [x] Replace the remaining LMS content-picker workshop query and unregister the stale workshop administration API namespace
+- [ ] Rebuild advanced workshop pricing, resources, curricula, landing, waitlist, and workflow administration from an additive organization-scoped contract before re-exposing those controls
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding

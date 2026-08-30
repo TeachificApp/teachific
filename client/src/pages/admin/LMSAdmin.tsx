@@ -8824,7 +8824,7 @@ function CollectionFormDialog({
   // Fetch all content types
   const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", page: 1, pageSize: 500 });
   const { data: webinarsData } = trpc.webinarAdmin.list.useQuery({ pageSize: 500 });
-  const { data: workshopsData } = trpc.workshopAdmin.list.useQuery({ pageSize: 500 });
+  const { data: workshopsData } = trpc.lms.workshops.list.useQuery();
   const { data: downloadsData } = trpc.downloadsAdmin.list.useQuery();
   const { data: bundlesData } = trpc.bundlesAdmin.list.useQuery({});
   const { data: membershipsData } = trpc.membership.listAll.useQuery();
@@ -8834,7 +8834,7 @@ function CollectionFormDialog({
     course: (coursesData?.courses ?? []).filter((c: any) => c.type !== "quiz").map((c: any) => ({ id: c.id, title: c.title, type: "course" })),
     quiz: (coursesData?.courses ?? []).filter((c: any) => c.type === "quiz").map((c: any) => ({ id: c.id, title: c.title, type: "quiz" })),
     webinar: (webinarsData?.webinars ?? []).map((w: any) => ({ id: w.id, title: w.title, type: "webinar" })),
-    workshop: (workshopsData?.workshops ?? []).map((w: any) => ({ id: w.id, title: w.title, type: "workshop" })),
+    workshop: (workshopsData ?? []).map((w: any) => ({ id: w.id, title: w.title, type: "workshop" })),
     download: (downloadsData ?? []).map((d: any) => ({ id: d.id, title: d.title, type: "download" })),
     bundle: (bundlesData?.bundles ?? bundlesData ?? []).map((b: any) => ({ id: b.id, title: b.title, type: "bundle" })),
     membership: (membershipsData ?? []).map((m: any) => ({ id: m.id, title: m.title, type: "membership" })),

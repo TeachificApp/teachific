@@ -158,7 +158,7 @@ import { emailCampaignRouter } from "./routers/emailCampaignRouter";
 import { formBuilderRouter } from "./routers/formBuilderRouter";
 import { sitePagesAdminRouter, sitePagesPublicRouter } from "./routers/sitePagesRouter";
 import { siteSettingsRouter } from "./routers/siteSettingsRouter";
-import { workshopPublicRouter, workshopLearnerRouter, workshopAdminRouter } from "./routers/workshopRouter";
+import { workshopPublicRouter, workshopLearnerRouter } from "./routers/workshopRouter";
 import { bundlePublicRouter, bundleLearnerRouter, bundleAdminRouter } from "./routers/bundleRouter";
 import { emailAuthRouter } from "./routers/emailAuthRouter";
 import { widgetAdminRouter } from "./routers/widgetAdminRouter";
@@ -486,7 +486,6 @@ export const appRouter = router({
   siteSettings: siteSettingsRouter,
   workshopPublic: workshopPublicRouter,
   workshopLearner: workshopLearnerRouter,
-  workshopAdmin: workshopAdminRouter,
   bundlePublic: bundlePublicRouter,
   bundleLearner: bundleLearnerRouter,
   bundleAdmin: bundleAdminRouter,

@@ -233,6 +233,21 @@ async function requireActiveBundleOrg(
   return activeOrgId;
 }
 
+async function requireActiveWorkshopOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to the workshop's organization before managing its workshops.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
 async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
   const webinar = await getWebinarById(webinarId);
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
@@ -283,7 +298,10 @@ async function requireLegacyCourseLearnerAccess(ctx: { user: { id: number; role:
 async function requireLegacyWorkshopAccess(ctx: { user: { id: number; role: string } }, workshopId: number) {
   const workshop = await getWorkshopById(workshopId);
   if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, workshop.orgId);
+  const activeOrgId = await requireActiveWorkshopOrg(ctx);
+  if (workshop.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This workshop belongs to another organization." });
+  }
   return workshop;
 }
 
@@ -2841,8 +2859,7 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveWorkshopOrg(ctx, input?.orgId);
         return getWorkshopsByOrg(orgId);
       }),
     get: protectedProcedure
@@ -2870,8 +2887,7 @@ export const lmsRouter = router({
         instructorImageUrl: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveWorkshopOrg(ctx, input.orgId);
         const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
         return createWorkshop({
           orgId,
