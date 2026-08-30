@@ -1477,6 +1477,7 @@ export default function MediaRepository() {
 
   const { data, isLoading, refetch } = trpc.mediaRepo.listAssets.useQuery(queryInput);
   const { data: foldersData, refetch: refetchFolders } = trpc.mediaRepo.listFoldersFull.useQuery();
+  const structuredFoldersUnavailable = true;
 
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -1583,15 +1584,17 @@ export default function MediaRepository() {
             <FolderOpen className="w-4 h-4 text-primary" /> Folders
           </p>
           <div className="flex items-center gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="w-6 h-6"
-              title="New folder"
-              onClick={() => setCreatingFolder(true)}
-            >
-              <span className="text-lg leading-none">+</span>
-            </Button>
+            {!structuredFoldersUnavailable && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="w-6 h-6"
+                title="New folder"
+                onClick={() => setCreatingFolder(true)}
+              >
+                <span className="text-lg leading-none">+</span>
+              </Button>
+            )}
             <Button
               size="icon"
               variant="ghost"
@@ -1604,7 +1607,7 @@ export default function MediaRepository() {
         </div>
 
         {/* New folder input */}
-        {creatingFolder && (
+        {!structuredFoldersUnavailable && creatingFolder && (
           <div className="p-2 border-b border-border flex gap-1">
             <Input
               autoFocus
@@ -1644,7 +1647,7 @@ export default function MediaRepository() {
           </button>
 
           {/* Folder list */}
-          {folders.map((f: any) => (
+          {!structuredFoldersUnavailable && folders.map((f: any) => (
             <div key={f.id} className="group relative">
               {editingFolder?.id === f.id ? (
                 <div className="flex gap-1 px-1">
@@ -1704,7 +1707,11 @@ export default function MediaRepository() {
             </div>
           ))}
 
-          {folders.length === 0 && !creatingFolder && (
+          {structuredFoldersUnavailable ? (
+            <p className="text-xs text-muted-foreground px-3 py-4 text-center">
+              Structured folders are temporarily unavailable while organization-owned folders are completed.
+            </p>
+          ) : folders.length === 0 && !creatingFolder && (
             <p className="text-xs text-muted-foreground px-3 py-4 text-center">No folders yet.<br />Click + to create one.</p>
           )}
         </nav>

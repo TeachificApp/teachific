@@ -68,6 +68,11 @@
 - [ ] Scope media access grants to the owning organization and send access links through its verified organization domain
 - [x] Reconcile media access grant router/schema contract with the live database before altering media grant ownership or link behavior
 - [x] Quarantine incompatible legacy media email-token grant, revoke, and public token access flows pending an additive organization-scoped permission migration
+- [ ] Enforce active-organization ownership for supported media repository asset, folder, version, access-rule, and analytics operations
+- [x] Enforce active-organization ownership for media asset upload, list, detail, metadata, access, version, SCORM status, and analytics operations
+- [x] Quarantine global legacy media folder CRUD and present the structured-folder capability as unavailable in the repository UI
+- [x] Scope media asset folder-label move and bulk-move mutations under active-organization ownership
+- [ ] Rebuild structured media folders as an additive organization-owned model before restoring folder creation, rename, and deletion controls
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding

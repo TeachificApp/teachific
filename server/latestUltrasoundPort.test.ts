@@ -4437,6 +4437,27 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaAuditSource).toContain("new, additive invitation table keyed by organization and asset");
   });
 
+  it("requires the active organization for supported media asset administration and quarantines the global folder model", () => {
+    const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
+    const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
+    expect(mediaRouterSource).toContain("async function requireActiveMediaOrg");
+    expect(mediaRouterSource).toContain("async function requireActiveMediaAsset");
+    expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaOrg(ctx);");
+    expect(mediaRouterSource).toContain("eq(mediaAssets.orgId, orgId)");
+    expect((mediaRouterSource.match(/await requireActiveMediaAsset\(ctx, input\.assetId\)/g) ?? []).length).toBeGreaterThanOrEqual(5);
+    expect((mediaRouterSource.match(/await requireActiveMediaAsset\(ctx, input\.id\)/g) ?? []).length).toBeGreaterThanOrEqual(5);
+    expect(mediaRouterSource).toContain('listFoldersFull: protectedProcedure.query(() => []),');
+    expect((mediaRouterSource.match(/Structured media folders are unavailable until organization-owned folders are migrated\./g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(mediaRouterSource).not.toContain("mediaAccessGrants.assetId");
+    expect(mediaAdminSource).toContain("const structuredFoldersUnavailable = true;");
+    expect(mediaAdminSource).toContain("Structured folders are temporarily unavailable while organization-owned folders are completed.");
+    expect(mediaAdminSource).toContain("!structuredFoldersUnavailable && folders.map");
+    expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);");
+    expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaOrg(ctx);");
+    expect(mediaRouterSource).toContain("One or more media assets belong to another organization.");
+    expect(mediaRouterSource).toContain("eq(mediaAssets.orgId, orgId))");
+  });
+
   it("uses only organization-resolved library links in bundle confirmation emails", () => {
     const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
     expect(webhookSource).toContain("if (bundleOrg?.slug)");

@@ -23,7 +23,7 @@ import { z } from "zod";
 import { and, desc, eq, gte, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { storagePut, storageDelete } from "../storage";
 import { sendEmail } from "../_core/email";
 import AdmZip from "adm-zip";
@@ -53,6 +53,28 @@ async function assertPlatformAdmin(ctx: { user: { id: number; role: string } }) 
   if (!user || (user.role !== "admin" && user.openId !== ownerId)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required" });
   }
+}
+
+async function requireActiveMediaOrg(ctx: { user: { id: number; role: string } }) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+  const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return { db, orgId };
+}
+
+async function requireActiveMediaAsset(
+  ctx: { user: { id: number; role: string } },
+  assetId: number,
+  includeDeleted = false,
+) {
+  const { db, orgId } = await requireActiveMediaOrg(ctx);
+  const conditions = [eq(mediaAssets.id, assetId), eq(mediaAssets.orgId, orgId)];
+  if (!includeDeleted) conditions.push(isNull(mediaAssets.deletedAt));
+  const [asset] = await db.select().from(mediaAssets).where(and(...conditions)).limit(1);
+  if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found" });
+  return { db, orgId, asset };
 }
 
 function generateSlug(title: string): string {
@@ -124,9 +146,7 @@ export const mediaRepoRouter = router({
   uploadAsset: protectedProcedure
     .input(uploadFileSchema)
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
 
       const slug = generateSlug(input.title);
       // Upload to S3
@@ -143,6 +163,7 @@ export const mediaRepoRouter = router({
 
       // Insert asset
       const [assetResult] = await db.insert(mediaAssets).values({
+        orgId,
         slug,
         title: input.title,
         description: input.description ?? null,
@@ -196,22 +217,18 @@ export const mediaRepoRouter = router({
       search: z.string().optional(),
       mediaType: z.enum(MEDIA_TYPES).optional(),
       access: z.enum(["public", "private"]).optional(),
-      brand: z.enum(["aaus", "iheartecho"]).optional(),
       folder: z.string().nullable().optional(), // null = uncategorized, string = specific folder, undefined = all
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(24),
     }))
     .query(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
 
       const offset = (input.page - 1) * input.pageSize;
 
-      const conditions = [isNull(mediaAssets.deletedAt)];
+      const conditions = [isNull(mediaAssets.deletedAt), eq(mediaAssets.orgId, orgId)];
       if (input.mediaType) conditions.push(eq(mediaAssets.mediaType, input.mediaType));
       if (input.access) conditions.push(eq(mediaAssets.access, input.access));
-      if (input.brand) conditions.push(eq(mediaAssets.brand, input.brand));
       if (input.search) {
         conditions.push(
           or(
@@ -260,7 +277,7 @@ export const mediaRepoRouter = router({
       const folderRows = await db
         .selectDistinct({ folder: mediaAssets.folder })
         .from(mediaAssets)
-        .where(isNull(mediaAssets.deletedAt))
+        .where(and(isNull(mediaAssets.deletedAt), eq(mediaAssets.orgId, orgId)))
         .orderBy(mediaAssets.folder);
       const folders = folderRows
         .map(r => r.folder)
@@ -276,16 +293,7 @@ export const mediaRepoRouter = router({
   getAsset: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-
-      const [asset] = await db
-        .select()
-        .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, input.id), isNull(mediaAssets.deletedAt)))
-        .limit(1);
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, asset } = await requireActiveMediaAsset(ctx, input.id);
 
       const versions = await db
         .select()
@@ -313,14 +321,12 @@ export const mediaRepoRouter = router({
       mediaType: z.enum(MEDIA_TYPES).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
 
       // Validate slug uniqueness if changing
       if (input.slug) {
         const [existing] = await db.select({ id: mediaAssets.id }).from(mediaAssets)
-          .where(and(eq(mediaAssets.slug, input.slug), sql`${mediaAssets.id} != ${input.id}`))
+          .where(and(eq(mediaAssets.slug, input.slug), eq(mediaAssets.orgId, orgId), sql`${mediaAssets.id} != ${input.id}`))
           .limit(1);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "A media asset with this slug already exists" });
       }
@@ -335,7 +341,7 @@ export const mediaRepoRouter = router({
 
       if (Object.keys(updates).length === 0) return { updated: false };
 
-      await db.update(mediaAssets).set(updates).where(eq(mediaAssets.id, input.id));
+      await db.update(mediaAssets).set(updates).where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
       return { updated: true };
     }),
 
@@ -345,13 +351,11 @@ export const mediaRepoRouter = router({
   deleteAsset: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
       await db
         .update(mediaAssets)
         .set({ deletedAt: new Date() })
-        .where(and(eq(mediaAssets.id, input.id), isNull(mediaAssets.deletedAt)));
+        .where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId), isNull(mediaAssets.deletedAt)));
       return { deleted: true };
     }),
 
@@ -361,13 +365,11 @@ export const mediaRepoRouter = router({
   restoreAsset: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id, true);
       await db
         .update(mediaAssets)
         .set({ deletedAt: null })
-        .where(eq(mediaAssets.id, input.id));
+        .where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
       return { restored: true };
     }),
 
@@ -376,13 +378,11 @@ export const mediaRepoRouter = router({
    */
   listTrashed: protectedProcedure
     .query(async ({ ctx }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
       const rows = await db
         .select()
         .from(mediaAssets)
-        .where(sql`${mediaAssets.deletedAt} IS NOT NULL`)
+        .where(and(sql`${mediaAssets.deletedAt} IS NOT NULL`, eq(mediaAssets.orgId, orgId)))
         .orderBy(desc(mediaAssets.deletedAt));
       return rows;
     }),
@@ -431,9 +431,7 @@ export const mediaRepoRouter = router({
       versionId: z.number().int().positive(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
 
       // Fetch the target version
       const [target] = await db
@@ -453,14 +451,7 @@ export const mediaRepoRouter = router({
         .where(eq(mediaVersions.assetId, input.assetId));
       const nextVersion = (maxRow?.max ?? 0) + 1;
 
-      // Insert a new version row copying the target's S3 key/url/size/mime
-      const [asset] = await db
-        .select({ slug: mediaAssets.slug, mediaType: mediaAssets.mediaType, mimeType: mediaAssets.mimeType })
-        .from(mediaAssets)
-        .where(eq(mediaAssets.id, input.assetId))
-        .limit(1);
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
-
+      // Insert a new version row copying the target's S3 key/url/size/mime.
       await db.insert(mediaVersions).values({
         assetId: input.assetId,
         versionNumber: nextVersion,
@@ -514,16 +505,7 @@ export const mediaRepoRouter = router({
       notes: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-
-      const [asset] = await db
-        .select({ slug: mediaAssets.slug })
-        .from(mediaAssets)
-        .where(and(eq(mediaAssets.id, input.assetId), isNull(mediaAssets.deletedAt)))
-        .limit(1);
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
 
       // Determine next version number
       const [{ maxVer }] = await db
@@ -612,9 +594,7 @@ export const mediaRepoRouter = router({
   listVersions: protectedProcedure
     .input(z.object({ assetId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db } = await requireActiveMediaAsset(ctx, input.assetId);
 
       return db
         .select()
@@ -632,9 +612,7 @@ export const mediaRepoRouter = router({
       versionId: z.number().int().positive(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
 
       const [version] = await db
         .select()
@@ -648,13 +626,6 @@ export const mediaRepoRouter = router({
         .from(mediaVersions)
         .where(eq(mediaVersions.assetId, input.assetId));
       const nextVersion = (maxVer ?? 0) + 1;
-
-      const [asset] = await db
-        .select({ slug: mediaAssets.slug, mediaType: mediaAssets.mediaType })
-        .from(mediaAssets)
-        .where(eq(mediaAssets.id, input.assetId))
-        .limit(1);
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 
       await db.insert(mediaVersions).values({
         assetId: input.assetId,
@@ -698,11 +669,9 @@ export const mediaRepoRouter = router({
       access: z.enum(["public", "private"]),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
 
-      await db.update(mediaAssets).set({ access: input.access }).where(eq(mediaAssets.id, input.id));
+      await db.update(mediaAssets).set({ access: input.access }).where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
       return { access: input.access };
     }),
 
@@ -751,10 +720,8 @@ export const mediaRepoRouter = router({
       folder: z.string().max(255).nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await db.update(mediaAssets).set({ folder: input.folder }).where(eq(mediaAssets.id, input.id));
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
+      await db.update(mediaAssets).set({ folder: input.folder }).where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
       return { updated: true };
     }),
 
@@ -767,10 +734,8 @@ export const mediaRepoRouter = router({
       thumbnailUrl: z.string().url().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await db.update(mediaAssets).set({ thumbnailUrl: input.thumbnailUrl }).where(eq(mediaAssets.id, input.id));
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
+      await db.update(mediaAssets).set({ thumbnailUrl: input.thumbnailUrl }).where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
       return { updated: true };
     }),
 
@@ -779,13 +744,11 @@ export const mediaRepoRouter = router({
    */
   listFolders: protectedProcedure
     .query(async ({ ctx }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
       const rows = await db
         .selectDistinct({ folder: mediaAssets.folder })
         .from(mediaAssets)
-        .where(isNull(mediaAssets.deletedAt))
+        .where(and(isNull(mediaAssets.deletedAt), eq(mediaAssets.orgId, orgId)))
         .orderBy(mediaAssets.folder);
       return rows.map(r => r.folder).filter((f): f is string => !!f).sort();
     }),
@@ -796,9 +759,7 @@ export const mediaRepoRouter = router({
   getAnalytics: protectedProcedure
     .input(z.object({ assetId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db } = await requireActiveMediaAsset(ctx, input.assetId);
 
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000);
 
@@ -1030,22 +991,7 @@ export const mediaRepoRouter = router({
   /**
    * List all folders with asset counts.
    */
-  listFoldersFull: protectedProcedure.query(async ({ ctx }) => {
-    await assertPlatformAdmin(ctx);
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    const folders = await db
-      .select()
-      .from(mediaFolders)
-      .orderBy(mediaFolders.sortOrder, mediaFolders.name);
-    const counts = await db
-      .select({ folder: mediaAssets.folder, count: sql<number>`count(*)` })
-      .from(mediaAssets)
-      .where(isNull(mediaAssets.deletedAt))
-      .groupBy(mediaAssets.folder);
-    const countMap = new Map(counts.map(c => [c.folder ?? "", Number(c.count)]));
-    return folders.map(f => ({ ...f, assetCount: countMap.get(f.slug) ?? 0 }));
-  }),
+  listFoldersFull: protectedProcedure.query(() => []),
 
   /**
    * Create a new folder.
@@ -1056,30 +1002,11 @@ export const mediaRepoRouter = router({
       description: z.string().max(1000).optional(),
       parentId: z.number().int().optional(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const now = Date.now();
-      const baseSlug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      let slug = baseSlug;
-      let attempt = 0;
-      while (true) {
-        const [existing] = await db.select({ id: mediaFolders.id }).from(mediaFolders).where(eq(mediaFolders.slug, slug)).limit(1);
-        if (!existing) break;
-        attempt++;
-        slug = `${baseSlug}-${attempt}`;
-      }
-      const [result] = await db.insert(mediaFolders).values({
-        name: input.name,
-        slug,
-        description: input.description ?? null,
-        parentId: input.parentId ?? null,
-        sortOrder: 0,
-        createdAt: now,
-        updatedAt: now,
+    .mutation(() => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
       });
-      return { id: (result as any).insertId, slug };
     }),
 
   /**
@@ -1091,14 +1018,11 @@ export const mediaRepoRouter = router({
       name: z.string().min(1).max(255),
       description: z.string().max(1000).nullable().optional(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await db.update(mediaFolders)
-        .set({ name: input.name, description: input.description ?? null, updatedAt: Date.now() })
-        .where(eq(mediaFolders.id, input.id));
-      return { ok: true };
+    .mutation(() => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
+      });
     }),
 
   /**
@@ -1106,20 +1030,11 @@ export const mediaRepoRouter = router({
    */
   deleteFolder: protectedProcedure
     .input(z.object({ id: z.number().int() }))
-    .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      const [folder] = await db.select().from(mediaFolders).where(eq(mediaFolders.id, input.id)).limit(1);
-      if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Folder not found" });
-      await db.update(mediaAssets).set({ folder: null }).where(eq(mediaAssets.folder, folder.slug));
-      const children = await db.select().from(mediaFolders).where(eq(mediaFolders.parentId, input.id));
-      for (const child of children) {
-        await db.update(mediaAssets).set({ folder: null }).where(eq(mediaAssets.folder, child.slug));
-        await db.delete(mediaFolders).where(eq(mediaFolders.id, child.id));
-      }
-      await db.delete(mediaFolders).where(eq(mediaFolders.id, input.id));
-      return { ok: true };
+    .mutation(() => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
+      });
     }),
 
   /**
@@ -1131,12 +1046,10 @@ export const mediaRepoRouter = router({
       folderSlug: z.string().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);
       await db.update(mediaAssets)
         .set({ folder: input.folderSlug })
-        .where(eq(mediaAssets.id, input.assetId));
+        .where(and(eq(mediaAssets.id, input.assetId), eq(mediaAssets.orgId, orgId)));
       return { ok: true };
     }),
 
@@ -1149,12 +1062,18 @@ export const mediaRepoRouter = router({
       folderSlug: z.string().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      for (const id of input.assetIds) {
-        await db.update(mediaAssets).set({ folder: input.folderSlug }).where(eq(mediaAssets.id, id));
+      const { db, orgId } = await requireActiveMediaOrg(ctx);
+      if (input.assetIds.length === 0) return { ok: true };
+      const ownedAssets = await db
+        .select({ id: mediaAssets.id })
+        .from(mediaAssets)
+        .where(and(inArray(mediaAssets.id, input.assetIds), eq(mediaAssets.orgId, orgId)));
+      if (ownedAssets.length !== input.assetIds.length) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "One or more media assets belong to another organization." });
       }
+      await db.update(mediaAssets)
+        .set({ folder: input.folderSlug })
+        .where(and(inArray(mediaAssets.id, input.assetIds), eq(mediaAssets.orgId, orgId)));
       return { ok: true };
     }),
 
@@ -1166,9 +1085,7 @@ export const mediaRepoRouter = router({
   reExtractScorm: protectedProcedure
     .input(z.object({ assetId: z.number().int(), versionId: z.number().int().optional() }))
     .mutation(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db, asset } = await requireActiveMediaAsset(ctx, input.assetId);
       // If a specific versionId is provided, use that version; otherwise use the latest
       let version;
       if (input.versionId) {
@@ -1184,9 +1101,6 @@ export const mediaRepoRouter = router({
         version = v;
       }
       if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "No version found for asset" });
-      const [asset] = await db.select().from(mediaAssets)
-        .where(eq(mediaAssets.id, input.assetId)).limit(1);
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
       if (!needsScormExtraction({ mediaType: asset.mediaType, mimeType: version.mimeType, fileName: version.fileName, s3Url: version.s3Url })) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This asset is not a SCORM/LMS/ZIP package" });
       }
@@ -1262,9 +1176,7 @@ export const mediaRepoRouter = router({
   getScormStatus: protectedProcedure
     .input(z.object({ assetId: z.number().int() }))
     .query(async ({ ctx, input }) => {
-      await assertPlatformAdmin(ctx);
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { db } = await requireActiveMediaAsset(ctx, input.assetId);
       const [version] = await db.select({
         id: mediaVersions.id,
         scormExtractionStatus: (mediaVersions as any).scormExtractionStatus,
