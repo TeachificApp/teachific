@@ -191,80 +191,17 @@ const uploadFileSchema = z.object({
 
 export const mediaRepoRouter = router({
   /**
-   * Upload a new asset (creates asset row + version 1).
-   * File data is base64-encoded to avoid multipart complexity.
+   * Legacy base64 upload endpoint. Kept registered only to return a clear
+   * migration error; uploads must use the authenticated chunked route.
    */
   uploadAsset: protectedProcedure
     .input(uploadFileSchema)
-    .mutation(async ({ ctx, input }) => {
-      const { db, orgId } = await requireActiveMediaOrg(ctx);
-
-      const slug = generateSlug(input.title);
-      // Upload to S3
-      const buffer = Buffer.from(input.fileData, "base64");
-      // Auto-detect SCORM: if no explicit mediaType provided and the file is a ZIP,
-      // inspect its contents for imsmanifest.xml
-      let detectedType = input.mediaType ?? detectMediaType(input.mimeType);
-      if (!input.mediaType && detectedType === "zip" && detectIfScorm(buffer)) {
-        detectedType = "scorm";
-      }
-      const mediaType = detectedType as typeof MEDIA_TYPES[number];
-      const s3Key = `media-repo/${slug}/v1-${input.fileName}`;
-      const { url: s3Url } = await storagePut(s3Key, buffer, input.mimeType);
-
-      // Insert asset
-      const [assetResult] = await db.insert(mediaAssets).values({
-        orgId,
-        folderId: null,
-        filename: input.fileName,
-        mimeType: input.mimeType,
-        size: input.fileSize,
-        s3Key,
-        s3Url,
-        uploadedBy: ctx.user.id,
-        slug,
-        title: input.title,
-        description: input.description ?? null,
-        mediaType,
-        access: input.access,
-        tags: input.tags ?? null,
-        createdByUserId: ctx.user.id,
+    .mutation(async ({ ctx }) => {
+      await requireActiveMediaOrg(ctx);
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Use the secured chunked Media Repository upload flow.",
       });
-      const assetId = (assetResult as any).insertId as number;
-
-      // Insert version 1
-      await db.insert(mediaVersions).values({
-        orgId,
-        assetId,
-        versionNumber: 1,
-        s3Key,
-        s3Url,
-        fileName: input.fileName,
-        fileSize: input.fileSize,
-        mimeType: input.mimeType,
-        notes: input.notes ?? null,
-        uploadedByUserId: ctx.user.id,
-        scormExtractionStatus: initialScormExtractionStatus({
-          mediaType,
-          mimeType: input.mimeType,
-          fileName: input.fileName,
-        }),
-      });
-
-      const [insertedVersion] = await db
-        .select({ id: mediaVersions.id })
-        .from(mediaVersions)
-        .where(and(eq(mediaVersions.assetId, assetId), eq(mediaVersions.versionNumber, 1)))
-        .limit(1);
-      if (insertedVersion) {
-        await queueScormExtractionIfNeeded(insertedVersion.id, s3Url, slug, {
-          mediaType,
-          mimeType: input.mimeType,
-          fileName: input.fileName,
-        });
-      }
-
-      return { id: assetId, slug, s3Url };
     }),
 
   /**
@@ -538,8 +475,8 @@ export const mediaRepoRouter = router({
     }),
 
   /**
-   * Re-upload a new version of an existing asset.
-   * The slug and all existing links remain unchanged.
+   * Legacy base64 re-upload endpoint. Kept registered only to return a clear
+   * migration error; replacements must use the authenticated chunked route.
    */
   reuploadVersion: protectedProcedure
     .input(z.object({
@@ -551,88 +488,11 @@ export const mediaRepoRouter = router({
       notes: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { db, orgId, asset } = await requireActiveMediaAsset(ctx, input.assetId);
-
-      // Determine next version number
-      const [{ maxVer }] = await db
-        .select({ maxVer: sql<number>`MAX(versionNumber)` })
-        .from(mediaVersions)
-        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId)));
-      const nextVersion = (maxVer ?? 0) + 1;
-
-      // Upload to S3
-      const buffer = Buffer.from(input.fileData, "base64");
-      const s3Key = `media-repo/${asset.slug}/v${nextVersion}-${input.fileName}`;
-      const { url: s3Url } = await storagePut(s3Key, buffer, input.mimeType);
-
-      // Detect SCORM for ZIP files (inspect manifest)
-      let detectedType = detectMediaType(input.mimeType);
-      if (detectedType === "zip") {
-        try {
-          const admZip = new AdmZip(buffer);
-          const hasManifest = admZip.getEntries().some(e => e.entryName.toLowerCase().endsWith("imsmanifest.xml"));
-          if (hasManifest) detectedType = "scorm";
-        } catch {}
-      }
-
-      await db.insert(mediaVersions).values({
-        orgId: asset.orgId,
-        assetId: input.assetId,
-        versionNumber: nextVersion,
-        s3Key,
-        s3Url,
-        fileName: input.fileName,
-        fileSize: input.fileSize,
-        mimeType: input.mimeType,
-        notes: input.notes ?? null,
-        uploadedByUserId: ctx.user.id,
-        scormExtractionStatus: initialScormExtractionStatus({
-          mediaType: detectedType,
-          mimeType: input.mimeType,
-          fileName: input.fileName,
-        }),
+      await requireActiveMediaAsset(ctx, input.assetId);
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Use the secured chunked Media Repository replacement flow.",
       });
-
-      // Update asset mimeType to reflect new version
-      await db
-        .update(mediaAssets)
-        .set({ mimeType: input.mimeType, mediaType: detectedType as any })
-        .where(and(eq(mediaAssets.id, input.assetId), eq(mediaAssets.orgId, orgId)));
-
-      const [insertedVersion] = await db
-        .select({ id: mediaVersions.id })
-        .from(mediaVersions)
-        .where(and(eq(mediaVersions.assetId, input.assetId), eq(mediaVersions.orgId, orgId), eq(mediaVersions.versionNumber, nextVersion)))
-        .limit(1);
-      if (insertedVersion) {
-        await queueScormExtractionIfNeeded(insertedVersion.id, s3Url, asset.slug, {
-          mediaType: detectedType,
-          mimeType: input.mimeType,
-          fileName: input.fileName,
-        });
-      }
-
-      // Invalidate on-the-fly SCORM cache for this slug
-      if (needsScormExtraction({ mediaType: detectedType, mimeType: input.mimeType, fileName: input.fileName })) {
-        try {
-          const os = await import("os");
-          const pathMod = await import("path");
-          const fsMod = await import("fs");
-          const cacheRoot = pathMod.join(os.tmpdir(), "scorm-cache");
-          if (fsMod.existsSync(cacheRoot)) {
-            for (const entry of fsMod.readdirSync(cacheRoot)) {
-              if (entry.startsWith(`${asset.slug}-`)) {
-                fsMod.rmSync(pathMod.join(cacheRoot, entry), { recursive: true, force: true });
-              }
-            }
-            console.log(`[SCORM] Cache invalidated for slug=${asset.slug}`);
-          }
-        } catch (e) {
-          console.warn(`[SCORM] Failed to invalidate cache for slug=${asset.slug}:`, e);
-        }
-      }
-
-      return { versionNumber: nextVersion, s3Url };
     }),
 
   /**

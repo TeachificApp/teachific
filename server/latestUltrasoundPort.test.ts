@@ -4459,11 +4459,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(migrationSource).toContain('ADD COLUMN IF NOT EXISTS `access`');
     expect(migrationSource).toContain('ADD COLUMN IF NOT EXISTS `scormExtractionStatus`');
     expect(migrationSource).toContain('ADD COLUMN IF NOT EXISTS `viewType`');
-    expect(mediaRouterSource).toContain("folderId: null,");
-    expect(mediaRouterSource).toContain("filename: input.fileName,");
-    expect(mediaRouterSource).toContain("uploadedBy: ctx.user.id,");
-    expect(mediaRouterSource).toContain("// Insert version 1\n      await db.insert(mediaVersions).values({\n        orgId,");
-    expect((mediaRouterSource.match(/db\.insert\(mediaVersions\)\.values\(\{\n\s*orgId:/g) ?? []).length).toBe(3);
+    expect(mediaRouterSource).toContain("Use the secured chunked Media Repository upload flow.");
+    expect(mediaRouterSource).not.toContain('Buffer.from(input.fileData, "base64")');
+    expect(mediaRouterSource).not.toContain("filename: input.fileName,");
     expect(mediaRouterSource).toContain("folderId: z.number().int().positive().nullable().optional()");
     expect(mediaRouterSource).toContain("if (input.folderId === null) conditions.push(isNull(mediaAssets.folderId));");
     expect(mediaRouterSource).toContain("const { db, orgId } = await requireActiveMediaAsset(ctx, input.assetId);");

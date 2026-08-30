@@ -96,6 +96,8 @@
 - [x] Route learner Media Repository non-SCORM embeds through the verified signed current-version delivery endpoint
 - [x] Expire and clean abandoned Media Repository chunked upload sessions and temporary chunks automatically
 - [x] Replace or quarantine Rich Text Editor calls to the unregistered legacy Media Repository upload endpoint
+- [x] Quarantine the unreferenced base64 Media Repository upload procedure in favor of the secured chunked upload flow
+- [x] Quarantine the unreferenced base64 Media Repository re-upload procedure in favor of the secured chunked replacement flow
 - [x] Point copied Media Repository download links to the restored organization-safe delivery route
 - [x] Remove raw storage URL exposure from Media Repository version-history controls until a version-specific authorized route is implemented
 - [x] Restore Media Repository version-history previews through a separate active-organization administrator delivery route
