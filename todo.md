@@ -74,6 +74,10 @@
 - [x] Scope media asset folder-label move and bulk-move mutations under active-organization ownership
 - [ ] Rebuild structured media folders as an additive organization-owned model before restoring folder creation, rename, and deletion controls
 - [x] Audit the live media folder and asset schema contract before attempting structured-folder restoration
+- [ ] Reconcile the broader media asset, version, view-event, and access-rule Drizzle contracts with live database columns before restoring advanced media features
+- [x] Reconcile verified live `media_versions.orgId` writes and declarations before creating or re-uploading organization-owned media versions
+- [x] Reconcile verified media asset metadata and version-write contracts with live schema fields using an additive migration
+- [ ] Complete remaining media view-event and access-rule contract reconciliation before restoring advanced media reporting or permission features
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding

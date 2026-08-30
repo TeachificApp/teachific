@@ -3258,14 +3258,24 @@ export type InsertMediaFolder = typeof mediaFolders.$inferInsert;
 export const mediaAssets = mysqlTable("media_assets", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  folderId: int("folder_id"),
+  folderId: int("folderId"),
   filename: varchar("filename", { length: 255 }).notNull(),
-  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
   size: bigint("size", { mode: "number" }).notNull(),
-  s3Key: varchar("s3_key", { length: 500 }).notNull(),
-  s3Url: text("s3_url").notNull(),
-  uploadedBy: int("uploaded_by").notNull(),
+  s3Key: varchar("s3Key", { length: 500 }).notNull(),
+  s3Url: text("s3Url").notNull(),
+  uploadedBy: int("uploadedBy").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  slug: varchar("slug", { length: 255 }).unique(),
+  title: varchar("title", { length: 255 }),
+  mediaType: varchar("mediaType", { length: 50 }),
+  description: text("description"),
+  access: mysqlEnum("access", ["public", "private"]).default("private").notNull(),
+  tags: text("tags"),
+  createdByUserId: int("createdByUserId"),
+  thumbnailUrl: text("thumbnailUrl"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  deletedAt: timestamp("deletedAt"),
 });
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type InsertMediaAsset = typeof mediaAssets.$inferInsert;
@@ -3273,10 +3283,20 @@ export type InsertMediaAsset = typeof mediaAssets.$inferInsert;
 export const mediaVersions = mysqlTable("media_versions", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  assetId: int("asset_id").notNull(),
-  versionNumber: int("version_number").notNull(),
-  s3Key: varchar("s3_key", { length: 500 }).notNull(),
+  assetId: int("assetId").notNull(),
+  versionNumber: int("versionNumber").notNull(),
+  s3Key: varchar("s3Key", { length: 500 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  s3Url: text("s3Url"),
+  fileName: varchar("fileName", { length: 255 }),
+  fileSize: bigint("fileSize", { mode: "number" }),
+  mimeType: varchar("mimeType", { length: 100 }),
+  notes: text("notes"),
+  uploadedByUserId: int("uploadedByUserId"),
+  scormExtractionStatus: varchar("scormExtractionStatus", { length: 32 }),
+  scormExtractedPrefix: text("scormExtractedPrefix"),
+  scormLaunchFile: text("scormLaunchFile"),
+  scormExtractionError: text("scormExtractionError"),
 });
 export type MediaVersion = typeof mediaVersions.$inferSelect;
 export type InsertMediaVersion = typeof mediaVersions.$inferInsert;
@@ -3316,9 +3336,12 @@ export type InsertMediaUploadSession = typeof mediaUploadSessions.$inferInsert;
 export const mediaViewEvents = mysqlTable("media_view_events", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),
-  assetId: int("asset_id").notNull(),
-  viewedBy: int("viewed_by"),
-  viewedAt: timestamp("viewed_at").defaultNow().notNull(),
+  assetId: int("assetId").notNull(),
+  viewedBy: int("viewedBy"),
+  viewedAt: timestamp("viewedAt").defaultNow().notNull(),
+  ipHash: varchar("ipHash", { length: 128 }),
+  viewType: mysqlEnum("viewType", ["embed", "direct"]).default("direct").notNull(),
+  referer: text("referer"),
 });
 export type MediaViewEvent = typeof mediaViewEvents.$inferSelect;
 export type InsertMediaViewEvent = typeof mediaViewEvents.$inferInsert;

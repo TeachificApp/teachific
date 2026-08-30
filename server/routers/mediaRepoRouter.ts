@@ -164,11 +164,17 @@ export const mediaRepoRouter = router({
       // Insert asset
       const [assetResult] = await db.insert(mediaAssets).values({
         orgId,
+        folderId: null,
+        filename: input.fileName,
+        mimeType: input.mimeType,
+        size: input.fileSize,
+        s3Key,
+        s3Url,
+        uploadedBy: ctx.user.id,
         slug,
         title: input.title,
         description: input.description ?? null,
         mediaType,
-        mimeType: input.mimeType,
         access: input.access,
         tags: input.tags ?? null,
         createdByUserId: ctx.user.id,
@@ -177,6 +183,7 @@ export const mediaRepoRouter = router({
 
       // Insert version 1
       await db.insert(mediaVersions).values({
+        orgId,
         assetId,
         versionNumber: 1,
         s3Key,
@@ -237,14 +244,6 @@ export const mediaRepoRouter = router({
           )!
         );
       }
-      if (input.folder !== undefined) {
-        if (input.folder === null || input.folder === "") {
-          conditions.push(isNull(mediaAssets.folder));
-        } else {
-          conditions.push(eq(mediaAssets.folder, input.folder));
-        }
-      }
-
       const where = and(...conditions);
 
       const assets = await db
@@ -273,18 +272,7 @@ export const mediaRepoRouter = router({
         .from(mediaAssets)
         .where(where);
 
-      // Get all distinct folders for sidebar
-      const folderRows = await db
-        .selectDistinct({ folder: mediaAssets.folder })
-        .from(mediaAssets)
-        .where(and(isNull(mediaAssets.deletedAt), eq(mediaAssets.orgId, orgId)))
-        .orderBy(mediaAssets.folder);
-      const folders = folderRows
-        .map(r => r.folder)
-        .filter((f): f is string => !!f)
-        .sort();
-
-      return { assets: enriched, total: count, page: input.page, pageSize: input.pageSize, folders };
+      return { assets: enriched, total: count, page: input.page, pageSize: input.pageSize, folders: [] };
     }),
 
   /**
@@ -453,6 +441,7 @@ export const mediaRepoRouter = router({
 
       // Insert a new version row copying the target's S3 key/url/size/mime.
       await db.insert(mediaVersions).values({
+        orgId: asset.orgId,
         assetId: input.assetId,
         versionNumber: nextVersion,
         s3Key: target.s3Key,
@@ -530,6 +519,7 @@ export const mediaRepoRouter = router({
       }
 
       await db.insert(mediaVersions).values({
+        orgId: asset.orgId,
         assetId: input.assetId,
         versionNumber: nextVersion,
         s3Key,
@@ -628,6 +618,7 @@ export const mediaRepoRouter = router({
       const nextVersion = (maxVer ?? 0) + 1;
 
       await db.insert(mediaVersions).values({
+        orgId: asset.orgId,
         assetId: input.assetId,
         versionNumber: nextVersion,
         s3Key: version.s3Key,
@@ -719,10 +710,11 @@ export const mediaRepoRouter = router({
       id: z.number().int().positive(),
       folder: z.string().max(255).nullable(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      const { db, orgId } = await requireActiveMediaAsset(ctx, input.id);
-      await db.update(mediaAssets).set({ folder: input.folder }).where(and(eq(mediaAssets.id, input.id), eq(mediaAssets.orgId, orgId)));
-      return { updated: true };
+    .mutation(() => {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Structured media folders are unavailable until organization-owned folders are migrated.",
+      });
     }),
 
   /**
@@ -743,15 +735,7 @@ export const mediaRepoRouter = router({
    * Get distinct folder list.
    */
   listFolders: protectedProcedure
-    .query(async ({ ctx }) => {
-      const { db, orgId } = await requireActiveMediaOrg(ctx);
-      const rows = await db
-        .selectDistinct({ folder: mediaAssets.folder })
-        .from(mediaAssets)
-        .where(and(isNull(mediaAssets.deletedAt), eq(mediaAssets.orgId, orgId)))
-        .orderBy(mediaAssets.folder);
-      return rows.map(r => r.folder).filter((f): f is string => !!f).sort();
-    }),
+    .query(() => []),
 
   /**
    * Get analytics for an asset: total views, unique viewer IPs, daily breakdown (last 30 days).
@@ -792,10 +776,10 @@ export const mediaRepoRouter = router({
         .from(mediaViewEvents)
         .where(and(
           eq(mediaViewEvents.assetId, input.assetId),
-          gte(mediaViewEvents.createdAt, thirtyDaysAgo)
+          gte(mediaViewEvents.viewedAt, thirtyDaysAgo)
         ))
-        .groupBy(sql`DATE(createdAt)`)
-        .orderBy(sql`DATE(createdAt)`);
+        .groupBy(sql`DATE(viewedAt)`)
+        .orderBy(sql`DATE(viewedAt)`);
 
       // Top referers
       const topReferers = await db

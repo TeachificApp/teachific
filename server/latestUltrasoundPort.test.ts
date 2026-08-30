@@ -4437,6 +4437,27 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaAuditSource).toContain("new, additive invitation table keyed by organization and asset");
   });
 
+  it("aligns verified media asset and version writes with the additive organization-owned database contract", () => {
+    const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
+    const mediaSchemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const migrationSource = readFileSync(new URL("../drizzle/0085_media_repository_contract_reconciliation.sql", import.meta.url), "utf8");
+    expect(mediaSchemaSource).toContain('folderId: int("folderId")');
+    expect(mediaSchemaSource).toContain('access: mysqlEnum("access", ["public", "private"])');
+    expect(mediaSchemaSource).toContain('scormExtractionStatus: varchar("scormExtractionStatus"');
+    expect(mediaSchemaSource).toContain('viewType: mysqlEnum("viewType", ["embed", "direct"])');
+    expect(migrationSource).toContain('ADD COLUMN IF NOT EXISTS `access`');
+    expect(migrationSource).toContain('ADD COLUMN IF NOT EXISTS `scormExtractionStatus`');
+    expect(migrationSource).toContain('ADD COLUMN IF NOT EXISTS `viewType`');
+    expect(mediaRouterSource).toContain("folderId: null,");
+    expect(mediaRouterSource).toContain("filename: input.fileName,");
+    expect(mediaRouterSource).toContain("uploadedBy: ctx.user.id,");
+    expect(mediaRouterSource).toContain("// Insert version 1\n      await db.insert(mediaVersions).values({\n        orgId,");
+    expect((mediaRouterSource.match(/db\.insert\(mediaVersions\)\.values\(\{\n\s*orgId:/g) ?? []).length).toBe(3);
+    expect(mediaRouterSource).toContain("folders: []");
+    expect(mediaRouterSource).toContain("Structured media folders are unavailable until organization-owned folders are migrated.");
+    expect(mediaRouterSource).toContain("gte(mediaViewEvents.viewedAt, thirtyDaysAgo)");
+  });
+
   it("requires the active organization for supported media asset administration and quarantines the global folder model", () => {
     const mediaRouterSource = readFileSync(new URL("./routers/mediaRepoRouter.ts", import.meta.url), "utf8");
     const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
