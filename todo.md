@@ -42,6 +42,11 @@
 - [x] Replace the remaining LMS content-picker workshop query and unregister the stale workshop administration API namespace
 - [ ] Rebuild advanced workshop pricing, resources, curricula, landing, waitlist, and workflow administration from an additive organization-scoped contract before re-exposing those controls
 - [x] Replace the LMS collection content picker’s stale bundle query with the supported active-organization bundle endpoint
+- [x] Audit and enforce active-organization scope for the membership and physical-product sources used by the LMS collection content picker
+- [x] Route the LMS collection picker’s membership source through the supported active-organization membership list
+- [x] Enforce active-organization ownership for physical-product listing, creation, and collection picker selection
+- [x] Enforce active-organization ownership for physical-product update, delete, and duplicate operations
+- [ ] Audit and harden remaining physical-product landing, media, pricing, order, and fulfillment administration endpoints to the active organization
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding

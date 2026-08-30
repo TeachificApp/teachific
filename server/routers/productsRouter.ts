@@ -4,7 +4,7 @@ import { z } from "zod";
 import { and, desc, eq, sql, asc } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import {
@@ -55,6 +55,26 @@ async function uniqueSlug(db: Awaited<ReturnType<typeof getDb>>, base: string): 
     i++;
     slug = `${base}-${i}`;
   }
+}
+
+async function requireActivePhysicalProductOrg(ctx: { user: { id: number; role: string } }) {
+  const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization is available." });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  return { db, orgId };
+}
+
+async function requireActivePhysicalProduct(ctx: { user: { id: number; role: string } }, productId: number) {
+  const { db, orgId } = await requireActivePhysicalProductOrg(ctx);
+  const [product] = await db.select().from(physicalProducts)
+    .where(eq(physicalProducts.id, productId)).limit(1);
+  if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+  if (product.orgId !== orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This product belongs to another organization." });
+  }
+  return { db, orgId, product };
 }
 
 // ─── Public Router ────────────────────────────────────────────────────────────
@@ -368,26 +388,17 @@ export const productsLearnerRouter = router({
 export const productsAdminRouter = router({
   /** List all products (admin) */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-      throw new TRPCError({ code: "FORBIDDEN" });
-    }
-    const db = await getDb();
-    if (!db) return [];
-    return db.select().from(physicalProducts).orderBy(desc(physicalProducts.createdAt));
+    const { db, orgId } = await requireActivePhysicalProductOrg(ctx);
+    return db.select().from(physicalProducts)
+      .where(eq(physicalProducts.orgId, orgId))
+      .orderBy(desc(physicalProducts.createdAt));
   }),
 
   /** Get a single product with its pricing options */
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db.select().from(physicalProducts)
-        .where(eq(physicalProducts.id, input.id)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, product } = await requireActivePhysicalProduct(ctx, input.id);
       const pricingOptions = await db.select().from(physicalProductPricingOptions)
         .where(eq(physicalProductPricingOptions.productId, product.id))
         .orderBy(asc(physicalProductPricingOptions.sortOrder));
@@ -398,15 +409,12 @@ export const productsAdminRouter = router({
   create: protectedProcedure
     .input(z.object({ title: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db, orgId } = await requireActivePhysicalProductOrg(ctx);
       const slug = await uniqueSlug(db, slugify(input.title));
       const [result] = await db.insert(physicalProducts).values({
         title: input.title,
         slug,
+        orgId,
         status: "draft",
       });
       const insertId = (result as any).insertId;
@@ -441,14 +449,9 @@ export const productsAdminRouter = router({
       metaDescription: z.string().optional().nullable(),
       slug: z.string().optional(),
       publishDomain: z.string().max(255).nullable().optional(),
-      brand: z.string().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.id);
       const { id, ...fields } = input;
       // Validate slug uniqueness if being changed
       if (fields.slug) {
@@ -466,11 +469,7 @@ export const productsAdminRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { db } = await requireActivePhysicalProduct(ctx, input.id);
       await db.delete(physicalProductPricingOptions)
         .where(eq(physicalProductPricingOptions.productId, input.id));
       await db.delete(physicalProducts).where(eq(physicalProducts.id, input.id));
@@ -481,14 +480,7 @@ export const productsAdminRouter = router({
   duplicate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if ((ctx.user as any).role !== "admin" && (ctx.user as any).role !== "platform_admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [product] = await db.select().from(physicalProducts)
-        .where(eq(physicalProducts.id, input.id)).limit(1);
-      if (!product) throw new TRPCError({ code: "NOT_FOUND" });
+      const { db, product } = await requireActivePhysicalProduct(ctx, input.id);
       const newSlug = await uniqueSlug(db, slugify(`${product.title} copy`));
       const { id: _id, createdAt: _c, updatedAt: _u, orderCount: _oc, ...rest } = product;
       const [result] = await db.insert(physicalProducts).values({

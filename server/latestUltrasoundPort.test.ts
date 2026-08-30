@@ -1217,7 +1217,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     );
     const dbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function requireLegacyMembershipAccess");
-    expect(membershipSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(membershipSource).toContain("const orgId = await requireActiveMembershipOrg(ctx, input?.orgId);");
+    expect(membershipSource).toContain("const orgId = await requireActiveMembershipOrg(ctx, input.orgId);");
     expect((membershipSource.match(/await requireLegacyMembershipAccess\(ctx,/g) ?? []).length).toBeGreaterThanOrEqual(11);
     expect(membershipSource).toContain("getMembershipIdByMemberRecordId(input.id)");
     expect(membershipSource).toContain("getMembershipIdByContentRecordId(input.id)");
@@ -4227,6 +4228,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(workshopsSource).toContain("await requireLegacyWorkshopAccess(ctx, registration.workshopId);");
   });
 
+  it("requires the active organization throughout supported LMS membership administration", () => {
+    const lmsRouterSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const membershipsSource = lmsRouterSource.slice(
+      lmsRouterSource.indexOf("// ── Memberships"),
+      lmsRouterSource.indexOf("// ── Bundles"),
+    );
+    expect(lmsRouterSource).toContain("async function requireActiveMembershipOrg");
+    expect(lmsRouterSource).toContain("Switch to the membership's organization before managing its memberships.");
+    expect(lmsRouterSource).toContain("This membership belongs to another organization.");
+    expect(membershipsSource).toContain("const orgId = await requireActiveMembershipOrg(ctx, input?.orgId);");
+    expect(membershipsSource).toContain("const orgId = await requireActiveMembershipOrg(ctx, input.orgId);");
+    expect((membershipsSource.match(/await requireLegacyMembershipAccess\(ctx, input\.membershipId\);/g) ?? []).length).toBeGreaterThanOrEqual(2);
+  });
+
   it("uses the supported active-organization workshop list for LMS content selection and does not mount the retired admin namespace", () => {
     const rootRouterSource = readFileSync(new URL("./routers.ts", import.meta.url), "utf8");
     const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
@@ -4241,8 +4256,31 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsAdminSource).toContain("trpc.lms.bundles.list.useQuery()");
     expect(lmsAdminSource).toContain("bundle: (bundlesData ?? []).map((b: any) => ({ id: b.id, title: b.name, type: \"bundle\" }))");
     expect(lmsAdminSource).not.toContain("trpc.bundlesAdmin");
+    expect(lmsAdminSource).toContain("trpc.lms.memberships.list.useQuery()");
+    expect(lmsAdminSource).toContain("membership: (membershipsData ?? []).map((m: any) => ({ id: m.id, title: m.name, type: \"membership\" }))");
+    expect(lmsAdminSource).not.toContain("trpc.membership.listAll");
     expect(compatibilityEntry).toContain("<WorkshopsPage initialEditId={initialEditId} />");
     expect(compatibilityEntry).not.toContain("trpc.workshopAdmin");
+  });
+
+  it("scopes core physical-product administration and collection selection to the active organization", () => {
+    const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const coreProductSource = productsRouterSource.slice(
+      productsRouterSource.indexOf("export const productsAdminRouter"),
+      productsRouterSource.indexOf("// ── Landing Page Builder"),
+    );
+    expect(productsRouterSource).toContain("async function requireActivePhysicalProductOrg");
+    expect(productsRouterSource).toContain("async function requireActivePhysicalProduct");
+    expect(productsRouterSource).toContain("This product belongs to another organization.");
+    expect(coreProductSource).toContain("const { db, orgId } = await requireActivePhysicalProductOrg(ctx);");
+    expect(coreProductSource).toContain(".where(eq(physicalProducts.orgId, orgId))");
+    expect(coreProductSource).toContain("const { db, product } = await requireActivePhysicalProduct(ctx, input.id);");
+    expect(coreProductSource).toContain("orgId,");
+    expect((coreProductSource.match(/await requireActivePhysicalProduct\(ctx, input\.id\);/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    expect(coreProductSource).not.toContain("brand: z.string().optional().nullable()");
+    expect(lmsAdminSource).toContain("trpc.productsAdmin.list.useQuery()");
+    expect(lmsAdminSource).toContain("physical: (physicalData ?? [])");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {

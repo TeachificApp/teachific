@@ -248,6 +248,21 @@ async function requireActiveWorkshopOrg(
   return activeOrgId;
 }
 
+async function requireActiveMembershipOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to the membership's organization before managing its memberships.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
 async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
   const webinar = await getWebinarById(webinarId);
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
@@ -258,7 +273,10 @@ async function requireWebinarAccess(ctx: { user: { id: number; role: string } },
 async function requireLegacyMembershipAccess(ctx: { user: { id: number; role: string } }, membershipId: number) {
   const membership = await getMembershipById(membershipId);
   if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Membership not found" });
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, membership.orgId);
+  const activeOrgId = await requireActiveMembershipOrg(ctx);
+  if (membership.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This membership belongs to another organization." });
+  }
   return membership;
 }
 
@@ -2008,15 +2026,13 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveMembershipOrg(ctx, input?.orgId);
         return getMembershipsByOrg(orgId);
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), price: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveMembershipOrg(ctx, input.orgId);
         return createMembership({ orgId, name: input.name, price: input.price ?? 0, courseIds: "[]" });
       }),
     update: protectedProcedure

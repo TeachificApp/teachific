@@ -8827,7 +8827,7 @@ function CollectionFormDialog({
   const { data: workshopsData } = trpc.lms.workshops.list.useQuery();
   const { data: downloadsData } = trpc.downloadsAdmin.list.useQuery();
   const { data: bundlesData } = trpc.lms.bundles.list.useQuery();
-  const { data: membershipsData } = trpc.membership.listAll.useQuery();
+  const { data: membershipsData } = trpc.lms.memberships.list.useQuery();
   const { data: physicalData } = trpc.productsAdmin.list.useQuery();
 
   const contentByType: Record<string, { id: number; title: string; type: string }[]> = {
@@ -8837,7 +8837,7 @@ function CollectionFormDialog({
     workshop: (workshopsData ?? []).map((w: any) => ({ id: w.id, title: w.title, type: "workshop" })),
     download: (downloadsData ?? []).map((d: any) => ({ id: d.id, title: d.title, type: "download" })),
     bundle: (bundlesData ?? []).map((b: any) => ({ id: b.id, title: b.name, type: "bundle" })),
-    membership: (membershipsData ?? []).map((m: any) => ({ id: m.id, title: m.title, type: "membership" })),
+    membership: (membershipsData ?? []).map((m: any) => ({ id: m.id, title: m.name, type: "membership" })),
     physical: (physicalData ?? []).map((p: any) => ({ id: p.id, title: p.title, type: "physical" })),
   };
 
