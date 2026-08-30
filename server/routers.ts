@@ -159,7 +159,6 @@ import { formBuilderRouter } from "./routers/formBuilderRouter";
 import { sitePagesAdminRouter, sitePagesPublicRouter } from "./routers/sitePagesRouter";
 import { siteSettingsRouter } from "./routers/siteSettingsRouter";
 import { workshopPublicRouter, workshopLearnerRouter } from "./routers/workshopRouter";
-import { bundlePublicRouter, bundleLearnerRouter, bundleAdminRouter } from "./routers/bundleRouter";
 import { emailAuthRouter } from "./routers/emailAuthRouter";
 import { widgetAdminRouter } from "./routers/widgetAdminRouter";
 import { adminUserRouter } from "./routers/adminUserRouter";
@@ -484,9 +483,6 @@ export const appRouter = router({
   siteSettings: siteSettingsRouter,
   workshopPublic: workshopPublicRouter,
   workshopLearner: workshopLearnerRouter,
-  bundlePublic: bundlePublicRouter,
-  bundleLearner: bundleLearnerRouter,
-  bundleAdmin: bundleAdminRouter,
   emailAuth: emailAuthRouter,
   widgetAdmin: widgetAdminRouter,
   quizBank: quizBankRouter,

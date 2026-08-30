@@ -29,6 +29,7 @@
 - [x] Route legacy bundle administration entry points to the supported active-organization bundle experience while the advanced contract is migrated
 - [x] Route or disable the legacy ProductSalesTab bundle sales, refund, and access flows until an additive organization-scoped bundle purchase model is implemented
 - [ ] Define and migrate one additive organization-scoped bundle data model before enabling itemized bundle pricing, sales, refunds, workflows, or public checkout
+- [x] Unregister stale bundle public, learner, and administration router namespaces while the supported LMS bundle contract is the only active path
 - [x] Enforce active-organization matching for the supported LMS bundle list, create, read, update, delete, and bundle-editor course selection flows
 - [x] Require AI-generated full lesson content to contain at least 1,500 words and surface a clear authoring status when the minimum is not met
 - [x] Remove dedicated text-to-speech/read-aloud generation and playback controls while preserving normal author-uploaded lesson audio
@@ -58,6 +59,7 @@
 - [ ] Build an organization-domain-scoped public physical-product storefront and checkout contract before restoring learner-facing product APIs
 - [x] Quarantine unscoped embedded physical-product checkout procedures until an organization-domain storefront verifies product ownership and return URLs
 - [x] Require active-organization ownership for product-scoped Printify settings and fulfillment retry actions
+- [ ] Audit registered legacy router namespaces and active client callers for source-derived schema or organization-scope conflicts
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
