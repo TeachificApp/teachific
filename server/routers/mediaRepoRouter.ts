@@ -105,6 +105,29 @@ async function assertFolderBelongsToActiveMediaOrg(
   if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found in the active organization" });
 }
 
+async function hasActiveMediaUserGrant(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId: number,
+  orgId: number,
+  assetId: number,
+): Promise<boolean> {
+  const [grant] = await db.select({ id: mediaAccessGrants.id })
+    .from(mediaAccessGrants)
+    .innerJoin(mediaAccessRules, and(
+      eq(mediaAccessRules.id, mediaAccessGrants.ruleId),
+      eq(mediaAccessRules.orgId, orgId),
+      eq(mediaAccessRules.assetId, assetId),
+      eq(mediaAccessRules.accessType, "restricted"),
+      or(isNull(mediaAccessRules.expiresAt), gte(mediaAccessRules.expiresAt, new Date())),
+    ))
+    .where(and(
+      eq(mediaAccessGrants.orgId, orgId),
+      eq(mediaAccessGrants.userId, userId),
+    ))
+    .limit(1);
+  return !!grant;
+}
+
 function generateSlug(title: string): string {
   const base = title
     .toLowerCase()
@@ -1030,10 +1053,13 @@ export const mediaRepoRouter = router({
         }
       }
 
-      if (!allowed) {
+      const hasDirectGrant = !allowed && await hasActiveMediaUserGrant(db, ctx.user.id, asset.orgId, asset.id);
+
+      if (!allowed && !hasDirectGrant) {
         throw new TRPCError({ code: "FORBIDDEN", message: "No access to this media asset" });
       }
 
+      if (hasDirectGrant) return { url: basePath, isPublic: false as const };
       const access = signMediaViewerToken(asset.slug, ctx.user.id, input.courseId ?? null);
       const authQuery = buildMediaAuthQuery({ access });
       return { url: `${basePath}${authQuery}`, isPublic: false as const };
@@ -1086,7 +1112,8 @@ export const mediaRepoRouter = router({
           allowed = !!enrollment;
         }
       }
-      if (!allowed) throw new TRPCError({ code: "FORBIDDEN", message: "No access to this media asset" });
+      const hasDirectGrant = !allowed && await hasActiveMediaUserGrant(db, ctx.user.id, asset.orgId, asset.id);
+      if (!allowed && !hasDirectGrant) throw new TRPCError({ code: "FORBIDDEN", message: "No access to this media asset" });
       const versions = await db
         .select({
           id: mediaVersions.id,
@@ -1106,8 +1133,7 @@ export const mediaRepoRouter = router({
       const current = versions[0];
       if (!current?.s3Url) throw new TRPCError({ code: "NOT_FOUND", message: "No file found for this asset" });
 
-      const access = signMediaViewerToken(asset.slug, ctx.user.id, input.courseId ?? null);
-      const authQuery = buildMediaAuthQuery({ access });
+      const authQuery = hasDirectGrant ? "" : buildMediaAuthQuery({ access: signMediaViewerToken(asset.slug, ctx.user.id, input.courseId ?? null) });
       const strategy = pickScormPlaybackMode(current, versions);
 
       if (!strategy.zipS3Url && !current.s3Key) {

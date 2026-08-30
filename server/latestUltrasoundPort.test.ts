@@ -4562,6 +4562,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaRouterSource).toContain("grantUserAccess: protectedProcedure");
     expect(mediaRouterSource).toContain("listGrantEligibleUsers: protectedProcedure");
     expect(mediaRouterSource).toContain("eq(mediaAccessGrants.orgId, orgId)");
+    expect(mediaRouterSource).toContain("hasActiveMediaUserGrant(db, ctx.user.id, asset.orgId, asset.id)");
+    expect(mediaRouterSource).toContain("if (hasDirectGrant) return { url: basePath, isPublic: false as const };");
     expect(mediaRouterSource).toContain("const basePath = `/api/media/${asset.slug}/download`;");
     expect(mediaRouterSource).toContain('mode: "clientZip" as const');
     expect(mediaRouterSource).toContain("/api/media/${asset.slug}/scorm-zip${authQuery}");
