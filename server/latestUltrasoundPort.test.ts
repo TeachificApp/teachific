@@ -17,6 +17,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(isStaleAssetError(new Error("ordinary validation error"))).toBe(false);
   });
 
+  it("retains the Teachific root application shell instead of rendering a blank landing page", () => {
+    const homeSource = readFileSync(new URL("../client/src/pages/Home.tsx", import.meta.url), "utf8");
+    expect(homeSource).toContain("getOrgSubdomainUrl");
+    expect(homeSource).toContain("return <OrgAdminDashboard");
+    expect(homeSource).toContain("return <MemberDashboard />");
+    expect(homeSource).toContain("Choose Your School");
+  });
+
   it("maps lesson quiz question variants into supported Question Bank types", () => {
     expect(mapQuestionType("multiple_choice")).toBe("mcq");
     expect(mapQuestionType("true_false")).toBe("tf");

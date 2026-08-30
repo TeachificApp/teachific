@@ -78,6 +78,7 @@
 - [x] Reconcile verified live `media_versions.orgId` writes and declarations before creating or re-uploading organization-owned media versions
 - [x] Reconcile verified media asset metadata and version-write contracts with live schema fields using an additive migration
 - [ ] Complete remaining media view-event and access-rule contract reconciliation before restoring advanced media reporting or permission features
+- [x] Verify the fresh root preview renders normally; the earlier blank checkpoint thumbnail was not an application-shell failure
 - [x] Port organization-scoped Quiz Creator question search and quiz-only find-and-replace
 - [x] Port Teachific Quiz Creator grouped-question navigation without source-project branding
 - [x] Port Quiz Creator feedback Next/Finish navigation without source-project branding
