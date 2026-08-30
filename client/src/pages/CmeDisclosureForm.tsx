@@ -5,7 +5,7 @@
  * Matches CardioServ ACCME format with joint provider statement.
  * Org-generic: uses orgName from the disclosure record.
  */
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,10 @@ export default function CmeDisclosureForm() {
     onError: (err) => toast.error(err.message || "Submission failed. Please try again."),
   });
 
+  const orgThemeStyle = {
+    "--org-primary": data?.orgPrimaryColor ?? "#189aa1",
+  } as CSSProperties & Record<"--org-primary", string>;
+
   const toggleRole = (role: string) => {
     setSelectedRoles(prev =>
       prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
@@ -97,7 +101,7 @@ export default function CmeDisclosureForm() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--org-primary)]" style={orgThemeStyle} />
       </div>
     );
   }
@@ -122,7 +126,7 @@ export default function CmeDisclosureForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <div className="max-w-md text-center space-y-4">
-          <CheckCircle2 className="w-14 h-14 text-teal-500 mx-auto" />
+          <CheckCircle2 className="w-14 h-14 text-[var(--org-primary)] mx-auto" style={orgThemeStyle} />
           <h1 className="text-2xl font-bold text-slate-800">Disclosure Submitted</h1>
           <p className="text-slate-600">
             Thank you, <strong>{data.facultyName}</strong>. Your financial disclosure for <strong>{data.courseTitle}</strong> has been received.
@@ -135,24 +139,24 @@ export default function CmeDisclosureForm() {
 
   // ── Form ──
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4">
+    <div className="min-h-screen bg-slate-50 py-8 px-4" style={orgThemeStyle}>
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-teal-600 rounded-t-xl px-6 py-5">
+        <div className="bg-[var(--org-primary)] rounded-t-xl px-6 py-5">
           <div className="flex items-center gap-3">
             <FileText className="w-6 h-6 text-white" />
             <div>
               <h1 className="text-xl font-bold text-white">Financial Disclosure Form</h1>
-              <p className="text-teal-100 text-sm">{data.orgName} · CME Joint Provider with CardioServ, LLC</p>
+              <p className="text-white/80 text-sm">{data.orgName} · CME Joint Provider with CardioServ, LLC</p>
             </div>
           </div>
         </div>
 
         {/* Pre-filled info */}
-        <div className="bg-teal-50 border border-teal-200 rounded-lg px-5 py-4 space-y-1">
-          <div className="flex gap-2 text-sm"><span className="font-semibold text-teal-700 w-16">Faculty:</span><span className="text-slate-800">{data.facultyName}</span></div>
-          <div className="flex gap-2 text-sm"><span className="font-semibold text-teal-700 w-16">Course:</span><span className="text-slate-800">{data.courseTitle}</span></div>
-          <div className="flex gap-2 text-sm"><span className="font-semibold text-teal-700 w-16">Email:</span><span className="text-slate-800">{data.facultyEmail}</span></div>
+        <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] rounded-lg px-5 py-4 space-y-1">
+          <div className="flex gap-2 text-sm"><span className="font-semibold text-[var(--org-primary)] w-16">Faculty:</span><span className="text-slate-800">{data.facultyName}</span></div>
+          <div className="flex gap-2 text-sm"><span className="font-semibold text-[var(--org-primary)] w-16">Course:</span><span className="text-slate-800">{data.courseTitle}</span></div>
+          <div className="flex gap-2 text-sm"><span className="font-semibold text-[var(--org-primary)] w-16">Email:</span><span className="text-slate-800">{data.facultyEmail}</span></div>
         </div>
 
         {/* Intro */}
@@ -163,16 +167,16 @@ export default function CmeDisclosureForm() {
 
         {/* Section A: Role */}
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="bg-teal-600 px-5 py-2.5">
+          <div className="bg-[var(--org-primary)] px-5 py-2.5">
             <h2 className="text-sm font-semibold text-white">A. Your Role in This Activity</h2>
           </div>
           <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ROLES.map(role => (
-              <label key={role} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 hover:text-teal-700">
+              <label key={role} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 hover:text-[var(--org-primary)]">
                 <Checkbox
                   checked={selectedRoles.includes(role)}
                   onCheckedChange={() => toggleRole(role)}
-                  className="data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
+                  className="data-[state=checked]:bg-[var(--org-primary)] data-[state=checked]:border-[var(--org-primary)]"
                 />
                 {role}
               </label>
@@ -182,7 +186,7 @@ export default function CmeDisclosureForm() {
 
         {/* Section B: Financial Relationships */}
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="bg-teal-600 px-5 py-2.5">
+          <div className="bg-[var(--org-primary)] px-5 py-2.5">
             <h2 className="text-sm font-semibold text-white">B. Financial Relationships with Ineligible Companies (past 24 months)</h2>
           </div>
           <div className="px-5 py-4 space-y-4">
@@ -193,7 +197,7 @@ export default function CmeDisclosureForm() {
               <Checkbox
                 checked={hasRelationships === "no"}
                 onCheckedChange={(checked) => setHasRelationships(checked ? "no" : "yes")}
-                className="data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
+                className="data-[state=checked]:bg-[var(--org-primary)] data-[state=checked]:border-[var(--org-primary)]"
               />
               In the past 24 months, I have <strong className="mx-1">not</strong> had any financial relationships with any ineligible companies.
             </label>
@@ -228,7 +232,7 @@ export default function CmeDisclosureForm() {
                       <Checkbox
                         checked={rel.ended}
                         onCheckedChange={(checked) => updateRelationship(idx, "ended", !!checked)}
-                        className="data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
+                        className="data-[state=checked]:bg-[var(--org-primary)] data-[state=checked]:border-[var(--org-primary)]"
                       />
                     </div>
                     <div className="col-span-1 flex justify-center">
@@ -272,7 +276,7 @@ export default function CmeDisclosureForm() {
           <Button
             onClick={handleSubmit}
             disabled={submitMutation.isPending}
-            className="bg-teal-600 hover:bg-teal-700 text-white px-8 gap-2"
+            className="org-primary-button px-8 gap-2"
           >
             {submitMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Submit Disclosure

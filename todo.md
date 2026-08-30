@@ -134,6 +134,7 @@
 - [x] Add explicit behavioral test proving a lead-capture widget/list from org A cannot be used to resolve audience recipients while operating under org B
 - [x] Add explicit behavioral test proving a lead-capture/widget-origin campaign recipient receives unsubscribe and tracking links from the owning organization domain, not a platform/default domain
 - [x] Require active-organization course ownership and organization-domain routing for CME disclosure administration
+- [x] Apply owning-organization theme colors to the public CME disclosure form while preserving public token access and CME-provider wording
 - [x] Scope membership all-course and all-download access grants to the owning organization
 
 ## Phase 1: Database Schema & Migrations

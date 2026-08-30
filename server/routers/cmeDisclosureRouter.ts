@@ -20,6 +20,7 @@ import {
   cmeFinancialDisclosures,
   lmsCourses,
   organizations,
+  orgThemes,
 } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 import { sendEmail } from "../_core/email";
@@ -222,7 +223,7 @@ export const cmeDisclosureRouter = router({
         .limit(1);
       if (!disclosure) throw new TRPCError({ code: "NOT_FOUND", message: "Disclosure form not found. The link may be invalid or expired." });
 
-      // Fetch course title and org name for display
+      // Fetch course title and organization-owned theme for display
       const [course] = await db
         .select({ title: lmsCourses.title })
         .from(lmsCourses)
@@ -232,8 +233,13 @@ export const cmeDisclosureRouter = router({
         ))
         .limit(1);
       const [org] = await db
-        .select({ name: organizations.name })
+        .select({
+          name: organizations.name,
+          primaryColor: orgThemes.primaryColor,
+          studentPrimaryColor: orgThemes.studentPrimaryColor,
+        })
         .from(organizations)
+        .leftJoin(orgThemes, eq(orgThemes.orgId, organizations.id))
         .where(eq(organizations.id, (disclosure as any).orgId))
         .limit(1);
 
@@ -243,6 +249,7 @@ export const cmeDisclosureRouter = router({
         facultyEmail: (disclosure as any).facultyEmail,
         courseTitle: (course as any)?.title ?? "CME Activity",
         orgName: (org as any)?.name ?? "Organization",
+        orgPrimaryColor: (org as any)?.studentPrimaryColor ?? (org as any)?.primaryColor ?? "#189aa1",
         status: (disclosure as any).status,
         // Return existing submission data if already submitted
         rolesJson: (disclosure as any).rolesJson ?? null,
