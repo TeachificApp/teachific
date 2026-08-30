@@ -3016,17 +3016,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(listingSlice).toContain("Instructor records must be loaded from the active organization.");
   });
 
-  it("shows the maintenance banner only to signed-in users with dismissal and August 25 removal safeguards", () => {
-    const bannerSource = readFileSync(new URL("../client/src/components/MaintenanceBanner.tsx", import.meta.url), "utf8");
+  it("removes the expired maintenance banner from the active application shell", () => {
     const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
-    expect(bannerSource).toContain("!user");
-    expect(bannerSource).toContain("teachific-maintenance-2026-08");
-    expect(bannerSource).toContain("Date.UTC(2026, 7, 25, 13, 0, 0)");
-    expect(bannerSource).toContain("window.setTimeout(() => setIsActive(false), remainingMs)");
-    expect(bannerSource).toContain("window.clearTimeout(removalTimer)");
-    expect(bannerSource).toContain("Scheduled Server Maintenance Aug 22–24, 2026");
-    expect(bannerSource).toContain("Dismiss scheduled maintenance notice");
-    expect(appSource).toContain("<MaintenanceBanner />");
+    expect(appSource).not.toContain("MaintenanceBanner");
+    expect(existsSync(new URL("../client/src/components/MaintenanceBanner.tsx", import.meta.url))).toBe(false);
   });
 
   it("resolves CME activity-form administration from the active organization for organization administrators", () => {

@@ -9,7 +9,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { UploadQueueProvider } from "./contexts/UploadQueueContext";
 import { UploadQueuePanel } from "./components/UploadQueuePanel";
-import { MaintenanceBanner } from "./components/MaintenanceBanner";
 import { getSubdomain } from "./hooks/useSubdomain";
 import { SubdomainThemeProvider } from "./components/SubdomainThemeProvider";
 
@@ -842,7 +841,6 @@ export default function App() {
         <TooltipProvider>
           <UploadQueueProvider>
             <Toaster richColors position="top-right" />
-            <MaintenanceBanner />
             <Router />
             <UploadQueuePanel />
           </UploadQueueProvider>
