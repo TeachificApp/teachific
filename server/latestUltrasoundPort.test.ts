@@ -1187,7 +1187,9 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("// ── Flashcards")
     );
     expect(routerSource).toContain("async function requireLegacyBundleAccess");
-    expect(bundleSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(routerSource).toContain("async function requireActiveBundleOrg(");
+    expect(bundleSource).toContain("const orgId = await requireActiveBundleOrg(ctx, input?.orgId);");
+    expect(bundleSource).toContain("const orgId = await requireActiveBundleOrg(ctx, input.orgId);");
     expect((bundleSource.match(/await requireLegacyBundleAccess\(ctx, input\.id\);/g) ?? []).length).toBe(3);
   });
 
@@ -3438,6 +3440,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsHelpersSource).toContain('await assertCourseOwnership(ctx, section.courseId);');
     expect(lmsHelpersSource).toContain('await assertCourseOwnership(ctx, courseId);');
     expect(lmsHelpersSource).not.toContain('const isPlatformAdmin = (ADMIN_ROLES as readonly string[]).includes(ctx.user.role);\n  if (isPlatformAdmin) return;');
+  });
+
+  it("requires the selected active organization for supported LMS bundle administration and bundle-editor course selection", () => {
+    const lmsRouterSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
+    const bundleEditorSource = readFileSync(new URL("../client/src/pages/products/BundleEditorPage.tsx", import.meta.url), "utf8");
+    expect(lmsRouterSource).toContain("async function requireActiveBundleOrg(");
+    expect(lmsRouterSource).toContain('message: "Switch to the bundle\'s organization before managing its bundles."');
+    expect(lmsRouterSource).toContain('message: "This bundle belongs to another organization."');
+    expect(lmsRouterSource).toContain("const orgId = await requireActiveBundleOrg(ctx, input?.orgId);");
+    expect(lmsRouterSource).toContain("const orgId = await requireActiveBundleOrg(ctx, input.orgId);");
+    expect(bundleEditorSource).toContain("trpc.lms.courses.list.useQuery(");
+    expect(bundleEditorSource).toContain("{ orgId: orgId! },");
+    expect(bundleEditorSource).toContain("{ enabled: !!orgId },");
   });
 
   it("builds embedded checkout success and account setup links from the owning organization domain", () => {

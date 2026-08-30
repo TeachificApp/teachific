@@ -211,6 +211,21 @@ async function requireOrgId(userId: number): Promise<number> {
   return orgId;
 }
 
+async function requireActiveBundleOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to the bundle's organization before managing its bundles.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
 async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
   const webinar = await getWebinarById(webinarId);
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
@@ -228,7 +243,10 @@ async function requireLegacyMembershipAccess(ctx: { user: { id: number; role: st
 async function requireLegacyBundleAccess(ctx: { user: { id: number; role: string } }, bundleId: number) {
   const bundle = await getBundleById(bundleId);
   if (!bundle) throw new TRPCError({ code: "NOT_FOUND", message: "Bundle not found" });
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, bundle.orgId);
+  const activeOrgId = await requireActiveBundleOrg(ctx);
+  if (bundle.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This bundle belongs to another organization." });
+  }
   return bundle;
 }
 
@@ -2077,8 +2095,7 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveBundleOrg(ctx, input?.orgId);
         return getBundlesByOrg(orgId);
       }),
     get: protectedProcedure
@@ -2090,8 +2107,7 @@ export const lmsRouter = router({
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), description: z.string().optional(), price: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveBundleOrg(ctx, input.orgId);
         return createBundle({ orgId, name: input.name, description: input.description ?? null, price: input.price ?? 0, courseIds: "[]" });
       }),
     update: protectedProcedure

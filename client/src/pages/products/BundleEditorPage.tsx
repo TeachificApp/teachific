@@ -28,7 +28,10 @@ export default function BundleEditorPage() {
   const { orgId } = useOrgScope();
 
   const { data: bundle, isLoading } = trpc.lms.bundles.get.useQuery({ id: bundleId }, { enabled: !!bundleId });
-  const { data: courses } = trpc.lms.courses.list.useQuery();
+  const { data: courses } = trpc.lms.courses.list.useQuery(
+    { orgId: orgId! },
+    { enabled: !!orgId },
+  );
   const updateMut = trpc.lms.bundles.update.useMutation({
     onSuccess: () => { utils.lms.bundles.get.invalidate({ id: bundleId }); toast.success("Bundle saved!"); },
     onError: (e) => toast.error(e.message),
