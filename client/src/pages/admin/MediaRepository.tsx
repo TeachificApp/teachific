@@ -570,7 +570,7 @@ function EmbedPanel({ asset, token }: { asset: any; token?: string }) {
   const origin = getOrigin();
   const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
   const displayUrl = `${origin}/media/${asset.slug}${tokenParam}`;
-  const downloadUrl = `${origin}/media/${asset.slug}/download${tokenParam}`;
+  const downloadUrl = `${origin}/api/media/${asset.slug}/download`;
   const embedUrl = `${origin}/media/${asset.slug}/embed${tokenParam}`;
   const iframeCode = `<iframe src="${embedUrl}" width="100%" height="480" frameborder="0" allowfullscreen loading="lazy" title="${asset.title.replace(/"/g, "&quot;")}"></iframe>`;
 

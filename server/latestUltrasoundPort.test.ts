@@ -4538,6 +4538,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     const mediaDeliverySource = readFileSync(new URL("./mediaDeliveryRoutes.ts", import.meta.url), "utf8");
     const serverEntrySource = readFileSync(new URL("./_core/index.ts", import.meta.url), "utf8");
     const authHelperSource = readFileSync(new URL("./authHelper.ts", import.meta.url), "utf8");
+    const mediaAdminSource = readFileSync(new URL("../client/src/pages/admin/MediaRepository.tsx", import.meta.url), "utf8");
     expect(serverEntrySource).toContain('app.use("/api/media", mediaDeliveryRouter);');
     expect(mediaDeliverySource).toContain('router.get("/:slug/download"');
     expect(mediaDeliverySource).toContain("isNull(mediaAssets.deletedAt)");
@@ -4547,6 +4548,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(mediaDeliverySource).toContain("storageGet(version.s3Key)");
     expect(mediaDeliverySource).not.toContain("verifyMediaViewerToken");
     expect(authHelperSource).toContain('"teachific_session_lax", "teachific_session_host"');
+    expect(mediaAdminSource).toContain("/api/media/${asset.slug}/download");
   });
 
   it("uses only organization-resolved library links in bundle confirmation emails", () => {
