@@ -896,7 +896,10 @@ export const mediaRepoRouter = router({
         .limit(1);
       if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found" });
 
-      const basePath = `/api/media/${asset.slug}/${input.path}`;
+      // The current-version route is the only verified media delivery surface.
+      // It can redirect browser-native PDFs, images, audio, and video inline;
+      // a distinct external embed route remains intentionally unavailable.
+      const basePath = `/api/media/${asset.slug}/download`;
 
       if (asset.access === "public") {
         return { url: basePath, isPublic: true as const };
