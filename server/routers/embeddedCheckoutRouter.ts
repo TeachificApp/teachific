@@ -128,32 +128,8 @@ export const embeddedCheckoutRouter = router({
         selectedBumps: input.selectedBumps,
       });
 
-      // Apply promo code discount if provided
-      let discountAppliedCents = 0;
-      let promoCodeId: string | undefined;
       if (input.promoCode) {
-        const stripe2 = getStripeClient();
-        try {
-          const promoCodes = await stripe2.promotionCodes.list({ code: input.promoCode, active: true, limit: 1 });
-          if (promoCodes.data.length > 0) {
-            const promoCodeObj = promoCodes.data[0];
-            promoCodeId = promoCodeObj.id;
-            const coupon = promoCodeObj.coupon;
-            if (coupon.percent_off) {
-              // percent_off is a percentage (0-100)
-              discountAppliedCents = Math.round(totalAmountCents * (coupon.percent_off / 100));
-            } else if (coupon.amount_off) {
-              // amount_off from Stripe is already in cents
-              discountAppliedCents = Math.min(coupon.amount_off, totalAmountCents);
-            }
-            totalAmountCents = Math.max(50, totalAmountCents - discountAppliedCents);
-          } else {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired promo code" });
-          }
-        } catch (e: any) {
-          if (e instanceof TRPCError) throw e;
-          // Stripe API error — ignore silently and proceed without discount
-        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Discount codes are available through the organization checkout for this product." });
       }
 
       if (totalAmountCents < 50) {
@@ -212,9 +188,6 @@ export const embeddedCheckoutRouter = router({
       if (input.lmsCourseId) metadata.fulfillment_course_id = input.lmsCourseId.toString();
       if (input.fulfillmentBrand) metadata.fulfillment_brand = input.fulfillmentBrand;
       if (input.productId) metadata.product_id = input.productId.toString();
-      if (input.promoCode) metadata.promo_code = input.promoCode.slice(0, 100);
-      if (discountAppliedCents > 0) metadata.discount_applied = (discountAppliedCents / 100).toString();
-      if (promoCodeId) metadata.promo_code_id = promoCodeId;
       // Note: additionalAccess items are stored in block data and resolved server-side
       // from the page blocks after payment — not passed through Stripe metadata.
 

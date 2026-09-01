@@ -465,7 +465,7 @@ function AdminRouter() {
           <Route path="/admin/notifications">{() => <Suspense fallback={null}><AdminNotificationsPage /></Suspense>}</Route>
           <Route path="/admin/lesson-comments">{() => <Suspense fallback={null}><AdminLessonComments /></Suspense>}</Route>
           <Route path="/admin/users/:userId">{() => <Suspense fallback={null}><AdminUserDetailPage /></Suspense>}</Route>
-          <Route path="/admin/discount-codes">{() => <Suspense fallback={null}><AdminDiscountCodesPage /></Suspense>}</Route>
+          <Route path="/admin/discount-codes" component={CouponsPage} />
           <Route path="/admin/fulfillment">{() => <Suspense fallback={null}><FulfillmentAdminPage /></Suspense>}</Route>
           <Route path="/admin/product-analytics">{() => <Suspense fallback={null}><ProductAnalyticsPage /></Suspense>}</Route>
           <Route path="/admin/user-analytics">{() => <Suspense fallback={null}><UserAnalyticsPage /></Suspense>}</Route>
@@ -658,7 +658,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/admin/notifications">{() => <Suspense fallback={null}><AdminNotificationsPage /></Suspense>}</Route>
         <Route path="/admin/lesson-comments">{() => <Suspense fallback={null}><AdminLessonComments /></Suspense>}</Route>
         <Route path="/admin/users/:userId">{() => <Suspense fallback={null}><AdminUserDetailPage /></Suspense>}</Route>
-        <Route path="/admin/discount-codes">{() => <Suspense fallback={null}><AdminDiscountCodesPage /></Suspense>}</Route>
+        <Route path="/admin/discount-codes">{() => <DashboardLayout><CouponsPage /></DashboardLayout>}</Route>
         <Route path="/admin/fulfillment">{() => <Suspense fallback={null}><FulfillmentAdminPage /></Suspense>}</Route>
         <Route path="/admin/product-analytics">{() => <Suspense fallback={null}><ProductAnalyticsPage /></Suspense>}</Route>
         <Route path="/admin/user-analytics">{() => <Suspense fallback={null}><UserAnalyticsPage /></Suspense>}</Route>

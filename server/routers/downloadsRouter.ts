@@ -14,6 +14,7 @@ import {
   digitalBundlePurchases,
   users,
   lmsArchive,
+  coupons,
 } from "../../drizzle/schema";
 import { sendEmail } from "../sendgrid";
 import { sendEmailViaOrg } from "../_core/email";
@@ -22,6 +23,7 @@ import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { sendDownloadAccessEmail, sendBundleAccessEmail } from "../lib/enrollmentEmail";
 import { addToAllContacts } from "../lib/emailListHelper";
+import { couponIsRedeemableForTarget } from "../lib/couponTargeting";
 
 async function assertAdmin(ctx: any) {
   const orgId = await getOrgIdForUserWithFallback(ctx.user!.id, ctx.user!.role);
@@ -206,35 +208,17 @@ export const downloadsLearnerRouter = router({
     return purchases;
   }),
 
-  /** Validate a Stripe promotion code and return discount details */
+  /**
+   * Legacy generic pre-validation has no trustworthy product context and cannot
+   * enforce organization-owned coupon targets. Checkout validates the code only
+   * after resolving the exact organization-owned item.
+   */
   validatePromoCode: publicProcedure
     .input(z.object({ code: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
-      try {
-        const promoCodes = await stripe.promotionCodes.list({ code: input.code.toUpperCase(), active: true, limit: 1 });
-        const promoCode = promoCodes.data[0];
-        if (!promoCode) return { valid: false as const, message: "Invalid or expired promo code" };
-        const coupon = promoCode.coupon as any;
-        if (!coupon.valid) return { valid: false as const, message: "This promo code is no longer active" };
-        const discountText = coupon.percent_off
-          ? `${coupon.percent_off}% off`
-          : coupon.amount_off
-          ? `$${(coupon.amount_off / 100).toFixed(2)} off`
-          : "Discount applied";
-        return {
-          valid: true as const,
-          promoCodeId: promoCode.id,
-          discountText,
-          percentOff: coupon.percent_off as number | null,
-          amountOff: coupon.amount_off as number | null,
-          currency: coupon.currency as string | null,
-        };
-      } catch {
-        return { valid: false as const, message: "Invalid promo code" };
-      }
-    }),
+    .query(async () => ({
+      valid: false as const,
+      message: "Discount codes are verified securely when you continue to checkout.",
+    })),
 
   /** Create Stripe checkout session for a digital product */
   createCheckout: protectedProcedure
@@ -292,27 +276,51 @@ export const downloadsLearnerRouter = router({
         },
         quantity: 1,
       }];
-      // Resolve promo code ID if provided
-      let discounts: Array<{ promotion_code: string }> | undefined;
+      // Coupon codes are validated against the download's owning organization and target scope.
+      let discounts: Array<{ coupon: string }> | undefined;
+      let internalCouponId: string | undefined;
+      let internalCouponCode: string | undefined;
       if (input.promoCode) {
+        const normalizedCode = input.promoCode.trim().toUpperCase();
+        const [coupon] = await db.select().from(coupons)
+          .where(and(eq(coupons.orgId, product.orgId), eq(coupons.code, normalizedCode)))
+          .limit(1);
+        if (!coupon || !couponIsRedeemableForTarget(coupon, "download", product.id)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This discount code is not available for this download." });
+        }
         try {
-          const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode.toUpperCase(), active: true, limit: 1 });
-          if (promoCodes.data[0]) discounts = [{ promotion_code: promoCodes.data[0].id }];
-        } catch { /* ignore invalid codes — checkout still works */ }
+          const stripeCoupon = await stripe.coupons.create({
+            ...(coupon.discountType === "percentage"
+              ? { percent_off: Number(coupon.discountValue) }
+              : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: product.currency }),
+            duration: "once",
+            name: `Teachific ${normalizedCode}`,
+          });
+          discounts = [{ coupon: stripeCoupon.id }];
+          internalCouponId = String(coupon.id);
+          internalCouponCode = normalizedCode;
+        } catch {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The discount code could not be applied. Please try again." });
+        }
       }
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: ctx.user.email ?? undefined,
         client_reference_id: ctx.user.id.toString(),
-        ...(discounts ? { discounts } : { allow_promotion_codes: true }),
+        ...(discounts ? { discounts } : {}),
         line_items: [...primaryLineItem, ...(orderBumpCheckout ? [orderBumpCheckout.lineItem] : [])],
         metadata: {
           type: "digital_download",
           product_id: product.id.toString(),
+          org_id: product.orgId.toString(),
+          content_type: "download",
+          content_id: product.id.toString(),
           user_id: ctx.user.id.toString(),
           customer_email: ctx.user.email ?? "",
           trigger_order_type: "download",
           affiliate_code: input.affiliateCode ?? "",
+          ...(internalCouponId ? { internal_coupon_id: internalCouponId } : {}),
+          ...(internalCouponCode ? { internal_coupon_code: internalCouponCode } : {}),
           ...orderBumpCheckout?.metadata,
         },
         success_url: `${origin}/downloads/${product.slug}/files?success=1`,
@@ -388,7 +396,6 @@ export const downloadsLearnerRouter = router({
         mode: "payment",
         customer_email: ctx.user.email ?? undefined,
         client_reference_id: ctx.user.id.toString(),
-        allow_promotion_codes: true,
         line_items: [{
           price_data: {
             currency: bundle.currency,

@@ -758,11 +758,30 @@ export const coupons = mysqlTable("coupons", {
   usedCount: int("usedCount").default(0).notNull(),
   expiresAt: timestamp("expiresAt"),
   appliesToCourseIds: text("appliesToCourseIds"), // JSON array, null = all courses
+  targetScope: mysqlEnum("targetScope", ["all", "content_types", "products"]).default("all").notNull(),
+  targetContentTypes: text("targetContentTypes"), // JSON ContentType array when targetScope = content_types
+  targetProducts: text("targetProducts"), // JSON { contentType, productId } array when targetScope = products
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Coupon = typeof coupons.$inferSelect;
 export type InsertCoupon = typeof coupons.$inferInsert;
+
+export const couponRedemptions = mysqlTable("coupon_redemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  couponId: int("couponId").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }).notNull(),
+  userId: int("userId"),
+  contentType: varchar("contentType", { length: 64 }).notNull(),
+  contentId: int("contentId").notNull(),
+  redeemedAt: timestamp("redeemedAt").defaultNow().notNull(),
+}, (table) => ({
+  checkoutSession: uniqueIndex("coupon_redemptions_session_unique").on(table.stripeCheckoutSessionId),
+  couponLookup: index("coupon_redemptions_coupon_idx").on(table.orgId, table.couponId),
+}));
+export type CouponRedemption = typeof couponRedemptions.$inferSelect;
+export type InsertCouponRedemption = typeof couponRedemptions.$inferInsert;
 
 // ─── Certificates ─────────────────────────────────────────────────────────────
 export const certificates = mysqlTable("certificates", {

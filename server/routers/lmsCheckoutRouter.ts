@@ -39,10 +39,12 @@ import {
   workshops,
   workshopRegistrations,
   bundles,
+  coupons,
   orgPaymentSettings,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
 import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
+import { couponIsRedeemableForTarget } from "../lib/couponTargeting";
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
@@ -564,15 +566,40 @@ export const lmsCheckoutLearnerRouter = router({
         ...(input.selectedBumpIds?.length ? { selected_bump_ids: input.selectedBumpIds.join(",") } : {}),
       };
 
-      // Promo code
-      let discounts: Array<{ promotion_code: string }> | undefined;
+      // Coupon codes are organization-owned. Global Stripe promotion codes are
+      // intentionally not accepted here because they bypass content targeting.
+      let discounts: Array<{ coupon: string }> | undefined;
       if (input.promoCode) {
+        const normalizedCode = input.promoCode.trim().toUpperCase();
+        const [coupon] = await db.select().from(coupons)
+          .where(and(eq(coupons.orgId, content.orgId), eq(coupons.code, normalizedCode)))
+          .limit(1);
+        if (!coupon || !couponIsRedeemableForTarget(coupon, input.contentType, content.id)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This discount code is not available for this item." });
+        }
         try {
-          const codes = await stripe.promotionCodes.list({ code: input.promoCode.toUpperCase(), active: true, limit: 1 });
-          if (codes.data[0]) discounts = [{ promotion_code: codes.data[0].id }];
-        } catch {}
+          const stripeCoupon = await stripe.coupons.create({
+            ...(coupon.discountType === "percentage"
+              ? { percent_off: Number(coupon.discountValue) }
+              : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: content.currency }),
+            duration: "once",
+            name: `Teachific ${normalizedCode}`,
+            metadata: {
+              source_coupon_id: String(coupon.id),
+              org_id: String(content.orgId),
+              content_type: input.contentType,
+              content_id: String(content.id),
+            },
+          });
+          discounts = [{ coupon: stripeCoupon.id }];
+          commonMeta.internal_coupon_id = String(coupon.id);
+          commonMeta.internal_coupon_code = normalizedCode;
+        } catch (error) {
+          console.error("[Checkout] Could not prepare organization coupon", error);
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The discount code could not be applied. Please try again." });
+        }
       }
-      const promoOpts = discounts ? { discounts } : { allow_promotion_codes: true };
+      const promoOpts = discounts ? { discounts } : {};
 
       // ── Build line items ──────────────────────────────────────────────────
       const lineItems: any[] = [];

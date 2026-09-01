@@ -730,7 +730,6 @@ export const funnelRouter = router({
         mode: "payment",
         customer_email: ctx.user.email ?? undefined,
         client_reference_id: ctx.user.id.toString(),
-        allow_promotion_codes: true,
         line_items: lineItems,
         metadata: {
           type: "funnel_purchase",
@@ -1268,7 +1267,6 @@ export const funnelPublicRouter = router({
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: input.email,
-        allow_promotion_codes: true,
         line_items: lineItems,
         metadata: funnelCheckoutMetadata,
         payment_intent_data: { metadata: funnelCheckoutMetadata, description: `${funnelCheckoutMetadata.product_name || "Funnel Product"} — Funnel Purchase` },
@@ -1521,24 +1519,8 @@ export const funnelPublicRouter = router({
 
       const stripe = getStripeClient();
 
-      // Apply promo code discount if provided
       if (input.promoCode) {
-        try {
-          const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode, active: true, limit: 1 });
-          if (promoCodes.data.length > 0) {
-            const coupon = promoCodes.data[0].coupon;
-            if (coupon.percent_off) {
-              totalAmountCents -= Math.round(totalAmountCents * (coupon.percent_off / 100));
-            } else if (coupon.amount_off) {
-              totalAmountCents -= Math.min(coupon.amount_off, totalAmountCents);
-            }
-            totalAmountCents = Math.max(0, totalAmountCents);
-          } else {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired promo code" });
-          }
-        } catch (e: any) {
-          if (e instanceof TRPCError) throw e;
-        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Discount codes are available through the organization checkout for this product." });
       }
 
       // ── 100% promo intercept for funnels ──────────────────────────────────
@@ -1836,7 +1818,6 @@ export const funnelPublicRouter = router({
       const cancelUrl = `${input.origin}`;
       const sessionParams: any = {
         mode: "payment",
-        allow_promotion_codes: true,
         line_items: [{
           price_data: {
             currency,
@@ -1860,40 +1841,8 @@ export const funnelPublicRouter = router({
         cancel_url: cancelUrl,
       };
       if (input.email) sessionParams.customer_email = input.email;
-      // Apply promo code if provided
       if (input.promoCode) {
-        try {
-          const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode, active: true, limit: 1 });
-          if (promoCodes.data.length > 0) {
-            const coupon = promoCodes.data[0].coupon as any;
-            let discountedAmount = Math.round(Number(unitAmount));
-            if (coupon.percent_off) discountedAmount -= Math.round(discountedAmount * (coupon.percent_off / 100));
-            else if (coupon.amount_off) discountedAmount -= Math.min(coupon.amount_off, discountedAmount);
-            if (discountedAmount <= 0) {
-              // 100% off — grant access directly
-              const userId = ctx.user?.id ?? null;
-              if (userId) {
-                const freeRef = `free_promo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-                if (input.productType === "course" || input.productType === "quiz" || input.productType === "cohort") {
-                  const [ex] = await db.select({ id: lmsEnrollments.id }).from(lmsEnrollments)
-                    .where(and(eq(lmsEnrollments.userId, userId), eq(lmsEnrollments.courseId, input.productId))).limit(1);
-                  if (!ex) await db.insert(lmsEnrollments).values({ userId, courseId: input.productId, orderId: null, affiliateCode: null });
-                } else if (input.productType === "download") {
-                  const [ex] = await db.select({ id: digitalPurchases.id }).from(digitalPurchases)
-                    .where(and(eq(digitalPurchases.userId, userId), eq(digitalPurchases.productId, input.productId))).limit(1);
-                  if (!ex) await db.insert(digitalPurchases).values({ userId, productId: input.productId, stripeCheckoutSessionId: freeRef });
-                } else if (input.productType === "bundle") {
-                  const [ex] = await db.select({ id: bundleEnrollments.id }).from(bundleEnrollments)
-                    .where(and(eq(bundleEnrollments.userId, userId), eq(bundleEnrollments.bundleId, input.productId))).limit(1);
-                  if (!ex) await db.insert(bundleEnrollments).values({ userId, bundleId: input.productId, stripeCheckoutSessionId: freeRef });
-                }
-              }
-              return { checkoutUrl: null, freeSuccess: true, successUrl };
-            }
-            sessionParams.discounts = [{ promotion_code: promoCodes.data[0].id }];
-            delete sessionParams.allow_promotion_codes;
-          }
-        } catch (e: any) { if (e instanceof TRPCError) throw e; /* ignore other promo code errors */ }
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Discount codes are available through the organization checkout for this product." });
       }
       const session = await stripe.checkout.sessions.create(sessionParams);
       return { checkoutUrl: session.url, freeSuccess: false, successUrl: null };

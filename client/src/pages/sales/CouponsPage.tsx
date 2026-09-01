@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,19 +11,44 @@ import { Tag, Plus, Copy, Trash2, Percent, DollarSign } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useOrgScope } from "@/hooks/useOrgScope";
 
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  course: "Courses",
+  download: "Downloads",
+  physical_product: "Physical products",
+  webinar: "Webinars",
+  membership: "Memberships",
+  membership_plan: "Membership plans",
+  workshop: "Workshops",
+  bundle: "Bundles",
+};
+
+type TargetScope = "all" | "content_types" | "products";
+type ProductTarget = { contentType: string; productId: number };
+
 export default function CouponsPage() {
   const { orgId, ready } = useOrgScope();
   const utils = trpc.useUtils();
+  const [showAdd, setShowAdd] = useState(false);
   const { data: coupons = [], isLoading } = trpc.lms.coupons.list.useQuery(
     { orgId: orgId!, includeInactive: true },
     { enabled: ready && !!orgId }
   );
-  const [showAdd, setShowAdd] = useState(false);
+  const { data: targetableProducts = [] } = trpc.lms.coupons.listTargetableProducts.useQuery(
+    { orgId: orgId! },
+    { enabled: ready && !!orgId && showAdd },
+  );
   const [code, setCode] = useState("");
   const [type, setType] = useState<"percent" | "fixed">("percent");
   const [value, setValue] = useState("");
   const [maxUses, setMaxUses] = useState("");
   const [expires, setExpires] = useState("");
+  const [targetScope, setTargetScope] = useState<TargetScope>("all");
+  const [targetContentTypes, setTargetContentTypes] = useState<string[]>([]);
+  const [targetProducts, setTargetProducts] = useState<ProductTarget[]>([]);
+  const productsByType = useMemo(() => targetableProducts.reduce<Record<string, typeof targetableProducts>>((groups, product) => {
+    (groups[product.contentType] ??= []).push(product);
+    return groups;
+  }, {}), [targetableProducts]);
   const createCoupon = trpc.lms.coupons.create.useMutation({
     onSuccess: () => {
       utils.lms.coupons.list.invalidate({ orgId: orgId!, includeInactive: true });
@@ -31,6 +56,9 @@ export default function CouponsPage() {
       setValue("");
       setMaxUses("");
       setExpires("");
+      setTargetScope("all");
+      setTargetContentTypes([]);
+      setTargetProducts([]);
       setShowAdd(false);
       toast.success("Coupon created");
     },
@@ -53,6 +81,8 @@ export default function CouponsPage() {
     if (!code.trim()) { toast.error("Coupon code required"); return; }
     if (!value || isNaN(Number(value))) { toast.error("Valid discount value required"); return; }
     if (!orgId) { toast.error("Organization context unavailable"); return; }
+    if (targetScope === "content_types" && targetContentTypes.length === 0) { toast.error("Choose at least one content type"); return; }
+    if (targetScope === "products" && targetProducts.length === 0) { toast.error("Choose at least one product"); return; }
     createCoupon.mutate({
       orgId,
       code,
@@ -60,7 +90,32 @@ export default function CouponsPage() {
       discountValue: Number(value),
       maxUses: maxUses ? Number(maxUses) : null,
       expiresAt: expires ? new Date(expires) : null,
+      targetScope,
+      targetContentTypes: targetScope === "content_types" ? targetContentTypes as any : [],
+      targetProducts: targetScope === "products" ? targetProducts as any : [],
     });
+  };
+
+  const toggleContentType = (contentType: string) => {
+    setTargetContentTypes(current => current.includes(contentType)
+      ? current.filter(value => value !== contentType)
+      : [...current, contentType]);
+  };
+
+  const toggleProduct = (target: ProductTarget) => {
+    setTargetProducts(current => current.some(item => item.contentType === target.contentType && item.productId === target.productId)
+      ? current.filter(item => item.contentType !== target.contentType || item.productId !== target.productId)
+      : [...current, target]);
+  };
+
+  const describeScope = (coupon: any) => {
+    if (coupon.targetScope === "content_types") {
+      try { return JSON.parse(coupon.targetContentTypes ?? "[]").map((contentType: string) => CONTENT_TYPE_LABELS[contentType] ?? contentType).join(", ") || "Selected types"; } catch { return "Selected types"; }
+    }
+    if (coupon.targetScope === "products") {
+      try { const count = JSON.parse(coupon.targetProducts ?? "[]").length; return `${count} selected product${count === 1 ? "" : "s"}`; } catch { return "Selected products"; }
+    }
+    return "All products";
   };
 
   return (
@@ -88,6 +143,7 @@ export default function CouponsPage() {
               <tr>
                 <th className="text-left p-3 font-medium">Code</th>
                 <th className="text-left p-3 font-medium">Discount</th>
+                <th className="text-left p-3 font-medium">Applies to</th>
                 <th className="text-left p-3 font-medium">Uses</th>
                 <th className="text-left p-3 font-medium">Expires</th>
                 <th className="text-left p-3 font-medium">Status</th>
@@ -106,6 +162,7 @@ export default function CouponsPage() {
                     </div>
                   </td>
                   <td className="p-3"><span className="flex items-center gap-1">{c.discountType === "percentage" ? <Percent className="w-3 h-3" /> : <DollarSign className="w-3 h-3" />}{c.discountValue}{c.discountType === "percentage" ? "%" : ""} off</span></td>
+                  <td className="p-3 text-muted-foreground">{describeScope(c)}</td>
                   <td className="p-3">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ""}</td>
                   <td className="p-3">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "No expiry"}</td>
                   <td className="p-3"><Badge variant={c.isActive ? "default" : "secondary"} className={c.isActive ? "bg-green-100 text-green-700" : ""}>{c.isActive ? "Active" : "Inactive"}</Badge></td>
@@ -118,7 +175,7 @@ export default function CouponsPage() {
         </CardContent>
       </Card>
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Create Coupon</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -144,6 +201,49 @@ export default function CouponsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Max Uses (optional)</Label><Input value={maxUses} onChange={e => setMaxUses(e.target.value)} placeholder="Unlimited" className="mt-1" /></div>
               <div><Label>Expiry Date (optional)</Label><Input type="date" value={expires} onChange={e => setExpires(e.target.value)} className="mt-1" /></div>
+            </div>
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <div>
+                <Label htmlFor="coupon-target-scope">Applies to</Label>
+                <p className="mt-1 text-xs text-muted-foreground">This discount code can target only products in the active organization.</p>
+              </div>
+              <Select value={targetScope} onValueChange={value => setTargetScope(value as TargetScope)}>
+                <SelectTrigger id="coupon-target-scope"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All products</SelectItem>
+                  <SelectItem value="content_types">Selected content types</SelectItem>
+                  <SelectItem value="products">Selected individual products</SelectItem>
+                </SelectContent>
+              </Select>
+              {targetScope === "content_types" && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {Object.entries(CONTENT_TYPE_LABELS).map(([contentType, label]) => (
+                    <label key={contentType} className="flex cursor-pointer items-center gap-2 rounded border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
+                      <input type="checkbox" className="accent-[var(--org-primary)]" checked={targetContentTypes.includes(contentType)} onChange={() => toggleContentType(contentType)} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {targetScope === "products" && (
+                <div className="max-h-56 divide-y overflow-y-auto rounded border border-border">
+                  {Object.entries(productsByType).length === 0 ? (
+                    <p className="p-3 text-sm text-muted-foreground">No eligible products are available in this organization.</p>
+                  ) : Object.entries(productsByType).map(([contentType, products]) => (
+                    <div key={contentType} className="p-2">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{CONTENT_TYPE_LABELS[contentType] ?? contentType}</p>
+                      {products.map(product => {
+                        const target = { contentType, productId: product.productId };
+                        const selected = targetProducts.some(item => item.contentType === target.contentType && item.productId === target.productId);
+                        return <label key={`${contentType}-${product.productId}`} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted/50">
+                          <input type="checkbox" className="accent-[var(--org-primary)]" checked={selected} onChange={() => toggleProduct(target)} />
+                          {product.label}
+                        </label>;
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

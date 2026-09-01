@@ -1,6 +1,13 @@
 # SCORM Host Platform - TODO
 
 - [x] Remove fabricated testimonials and unsupported social-proof claims from platform marketing content
+- [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
+- [x] Enforce organization-owned discount targeting during checkout validation and discount application
+- [x] Provide organization-admin discount targeting controls with accessible multi-product selection
+- [x] Clarify pending coupon entry state until exact organization product eligibility is confirmed at checkout
+- [x] Audit every active promo-code checkout path and enforce organization-owned coupon targets or quarantine the unsupported surface
+- [ ] Add regression coverage proving active checkout paths reject out-of-organization and out-of-scope coupon targets
+- [x] Record successful organization-owned coupon redemptions during checkout fulfillment so max-use limits remain enforceable
 - [x] Remove unsupported dashboard-style revenue, enrollment, and completion claims from platform marketing imagery
 - [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support
 - [x] Route remaining checkout confirmations through each organization’s configured transactional email sender

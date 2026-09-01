@@ -13,7 +13,7 @@ import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments } from "../drizzle/schema";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments, coupons, couponRedemptions } from "../drizzle/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
@@ -65,6 +65,47 @@ async function createInvoiceRow(db: NonNullable<Awaited<ReturnType<typeof getDb>
     });
   } catch (e: any) {
     console.error("[Invoice] Failed to create invoice row:", e.message);
+  }
+}
+
+/** Record a validated internal coupon once after Stripe confirms payment. */
+async function recordCouponRedemption(session: Stripe.Checkout.Session): Promise<void> {
+  const couponId = Number.parseInt(session.metadata?.internal_coupon_id ?? "", 10);
+  const orgId = Number.parseInt(session.metadata?.org_id ?? "", 10);
+  const contentId = Number.parseInt(session.metadata?.content_id ?? session.metadata?.product_id ?? "", 10);
+  const contentType = session.metadata?.content_type ?? session.metadata?.type;
+  if (!couponId || !orgId || !contentId || !contentType || !session.id) return;
+
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.transaction(async (tx) => {
+      const [existing] = await tx.select({ id: couponRedemptions.id })
+        .from(couponRedemptions)
+        .where(eq(couponRedemptions.stripeCheckoutSessionId, session.id))
+        .limit(1);
+      if (existing) return;
+
+      const [coupon] = await tx.select({ id: coupons.id, isActive: coupons.isActive })
+        .from(coupons)
+        .where(and(eq(coupons.id, couponId), eq(coupons.orgId, orgId)))
+        .limit(1);
+      if (!coupon?.isActive) return;
+
+      await tx.insert(couponRedemptions).values({
+        orgId,
+        couponId,
+        stripeCheckoutSessionId: session.id,
+        userId: session.metadata?.user_id ? Number.parseInt(session.metadata.user_id, 10) : null,
+        contentType,
+        contentId,
+      });
+      await tx.update(coupons)
+        .set({ usedCount: sql`${coupons.usedCount} + 1` })
+        .where(and(eq(coupons.id, couponId), eq(coupons.orgId, orgId)));
+    });
+  } catch (error) {
+    console.error("[Stripe Webhook] Failed to record coupon redemption", error);
   }
 }
 
@@ -166,6 +207,7 @@ router.post(
       switch (event.type) {
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
+          await recordCouponRedemption(session);
 
           // ── Course purchase (one-time payment) ──────────────────────────────
           if (session.mode === "payment" && session.metadata?.type === "course_purchase") {

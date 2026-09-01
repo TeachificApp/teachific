@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isStaleAssetError } from "../client/src/components/ErrorBoundary";
 import { mapQuestionType, parseBlocks } from "./lib/lessonQuizQuestionBankSync";
 import { isPublicIpAddress, validatePublicSourceUrl } from "./lib/publicSourceUrl";
+import { couponIsRedeemableForTarget } from "./lib/couponTargeting";
 import {
   FULL_LESSON_MINIMUM_WORDS,
   cleanGeneratedLessonContent,
@@ -11,6 +12,32 @@ import {
 } from "./lib/aiLessonContent";
 
 describe("latest Ultrasound-App learning feature port", () => {
+  it("applies organization coupon target scopes only to eligible content types and individual products", () => {
+    const productScopedCoupon = {
+      isActive: true,
+      expiresAt: null,
+      maxUses: 5,
+      usedCount: 1,
+      targetScope: "products",
+      targetProducts: JSON.stringify([{ contentType: "course", productId: 18 }, { contentType: "download", productId: 42 }]),
+    };
+    expect(couponIsRedeemableForTarget(productScopedCoupon, "course", 18)).toBe(true);
+    expect(couponIsRedeemableForTarget(productScopedCoupon, "course", 19)).toBe(false);
+    expect(couponIsRedeemableForTarget(productScopedCoupon, "download", 18)).toBe(false);
+
+    const typeScopedCoupon = {
+      isActive: true,
+      expiresAt: null,
+      maxUses: null,
+      usedCount: 0,
+      targetScope: "content_types",
+      targetContentTypes: JSON.stringify(["webinar", "workshop"]),
+    };
+    expect(couponIsRedeemableForTarget(typeScopedCoupon, "webinar", 6)).toBe(true);
+    expect(couponIsRedeemableForTarget(typeScopedCoupon, "course", 6)).toBe(false);
+    expect(couponIsRedeemableForTarget({ ...typeScopedCoupon, usedCount: 10, maxUses: 10 }, "webinar", 6)).toBe(false);
+  });
+
   it("recognizes HTML returned in place of a Quiz Creator JavaScript module", () => {
     expect(isStaleAssetError(new Error("'text/html' is not a valid JavaScript MIME type."))).toBe(true);
     expect(isStaleAssetError(new Error("Loading chunk 42 failed"))).toBe(true);
@@ -4032,6 +4059,20 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("requires organization-admin ownership for legacy LMS analytics, activity reporting, and coupon administration", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const lmsDbSource = readFileSync(new URL("./lmsDb.ts", import.meta.url), "utf8");
+    const checkoutSource = readFileSync(new URL("./routers/lmsCheckoutRouter.ts", import.meta.url), "utf8");
+    const downloadsSource = readFileSync(new URL("./routers/downloadsRouter.ts", import.meta.url), "utf8");
+    const funnelSource = readFileSync(new URL("./routers/funnelRouter.ts", import.meta.url), "utf8");
+    const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
+    const promoInputSource = readFileSync(new URL("../client/src/components/PromoCodeInput.tsx", import.meta.url), "utf8");
+    const webhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const targetingSource = readFileSync(new URL("./lib/couponTargeting.ts", import.meta.url), "utf8");
+    const couponPageSource = readFileSync(new URL("../client/src/pages/sales/CouponsPage.tsx", import.meta.url), "utf8");
+    const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
+    const checkoutFormSource = readFileSync(new URL("../client/src/components/CheckoutFormBlock.tsx", import.meta.url), "utf8");
+    const flexibleEmbeddedSource = readFileSync(new URL("../client/src/components/EmbeddedCheckoutBlock.tsx", import.meta.url), "utf8");
+    const inlineCheckoutSource = readFileSync(new URL("../client/src/components/InlineCheckoutBlock.tsx", import.meta.url), "utf8");
     const analyticsSource = routerSource.slice(
       routerSource.indexOf("analytics: router({"),
       routerSource.indexOf("// ── Activity")
@@ -4046,8 +4087,45 @@ describe("latest Ultrasound-App learning feature port", () => {
     );
     expect((analyticsSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(3);
     expect(activitySource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
-    expect(couponSource).toContain("Coupon does not belong to the requested organization");
+    expect(couponSource).toContain("Coupon administration must use the active organization.");
+    expect(couponSource).toContain("Coupon does not belong to the active organization");
+    expect(couponSource).toContain("listTargetableProducts: protectedProcedure");
+    expect(couponSource).toContain("assertCouponProductTargetsBelongToOrg(db, orgId, productTargets)");
+    expect(couponSource).toContain("Choose at least one product for this discount code.");
     expect(lmsDbSource).toContain("export async function getCouponById");
+    expect(targetingSource).toContain("couponAppliesToTarget");
+    expect(targetingSource).toContain("eq(table.orgId, orgId)");
+    expect(targetingSource).toContain("couponIsRedeemableForTarget");
+    expect(checkoutSource).toContain("eq(coupons.orgId, content.orgId)");
+    expect(checkoutSource).toContain("couponIsRedeemableForTarget(coupon, input.contentType, content.id)");
+    expect(checkoutSource).not.toContain("allow_promotion_codes: true");
+    expect(downloadsSource).toContain('couponIsRedeemableForTarget(coupon, "download", product.id)');
+    expect(downloadsSource).not.toContain("allow_promotion_codes: true");
+    expect(downloadsSource).toContain("Discount codes are verified securely when you continue to checkout.");
+    expect(promoInputSource).toContain('setDiscountText("Eligibility will be confirmed when checkout begins")');
+    expect(promoInputSource).not.toContain(" applied</span>");
+    expect(promoInputSource).not.toContain("downloadsLearner.validatePromoCode");
+    expect(checkoutFormSource).not.toContain("<PromoCodeInput");
+    expect(flexibleEmbeddedSource).not.toContain("<PromoCodeInput");
+    expect(inlineCheckoutSource).not.toContain("<PromoCodeInput");
+    expect(checkoutFormSource).toContain("Discount codes are available through the organization checkout for this item.");
+    expect(flexibleEmbeddedSource).toContain("Discount codes are available through the organization checkout for this item.");
+    expect(inlineCheckoutSource).toContain("Discount codes are available through the organization checkout for this item.");
+    expect(schemaSource).toContain('mysqlTable("coupon_redemptions"');
+    expect(schemaSource).toContain('uniqueIndex("coupon_redemptions_session_unique")');
+    expect(webhookSource).toContain("async function recordCouponRedemption");
+    expect(webhookSource).toContain("eq(couponRedemptions.stripeCheckoutSessionId, session.id)");
+    expect(webhookSource).toContain("usedCount: sql`${coupons.usedCount} + 1`");
+    expect(webhookSource).toContain("await recordCouponRedemption(session);");
+    expect(funnelSource).not.toContain("allow_promotion_codes: true");
+    expect(funnelSource).toContain("Discount codes are available through the organization checkout for this product.");
+    expect(embeddedCheckoutSource).toContain("Discount codes are available through the organization checkout for this product.");
+    expect(embeddedCheckoutSource).not.toContain("promotionCodes.list({ code: input.promoCode");
+    expect(couponPageSource).toContain("Selected content types");
+    expect(couponPageSource).toContain("Selected individual products");
+    expect(couponPageSource).toContain("listTargetableProducts.useQuery");
+    expect(appSource).toContain('<Route path="/admin/discount-codes" component={CouponsPage} />');
+    expect(lmsAdminSource).toContain('href: "/sales/coupons"');
   });
 
   it("requires organization-admin ownership for legacy LMS notifications, revenue partners, and course orders", () => {

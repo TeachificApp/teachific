@@ -209,6 +209,13 @@ import { downloadsAdminRouter } from "./routers/downloadsRouter";
 import { orderBumpsAdminRouter } from "./routers/orderBumpsRouter";
 import { emailCampaignsRouter } from "./emailCampaignsRouter";
 import { funnelRouter } from "./routers/funnelRouter";
+import {
+  assertCouponProductTargetsBelongToOrg,
+  COUPON_TARGET_CONTENT_TYPES,
+  listCouponTargetableProducts,
+  parseCouponProductTargets,
+  parseCouponTargetContentTypes,
+} from "./lib/couponTargeting";
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 async function requireOrgId(userId: number): Promise<number> {
@@ -1848,9 +1855,21 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), includeInactive: z.boolean().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        const orgId = await requireOrgId(ctx.user.id);
+        if (input?.orgId && input.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon administration must use the active organization." });
         await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getCouponsByOrg(orgId, input?.includeInactive ?? false);
+      }),
+    listTargetableProducts: protectedProcedure
+      .input(z.object({ orgId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = await requireOrgId(ctx.user.id);
+        if (input?.orgId && input.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon targets must use the active organization." });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        return listCouponTargetableProducts(db, orgId);
       }),
     create: protectedProcedure
       .input(z.object({
@@ -1860,10 +1879,31 @@ export const lmsRouter = router({
         discountValue: z.number().positive(),
         maxUses: z.number().int().positive().nullable().optional(),
         expiresAt: z.date().nullable().optional(),
+        targetScope: z.enum(["all", "content_types", "products"]).default("all"),
+        targetContentTypes: z.array(z.enum(COUPON_TARGET_CONTENT_TYPES)).default([]),
+        targetProducts: z.array(z.object({
+          contentType: z.enum(COUPON_TARGET_CONTENT_TYPES),
+          productId: z.number().int().positive(),
+        })).default([]),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const orgId = await requireOrgId(ctx.user.id);
+        if (input.orgId && input.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon administration must use the active organization." });
         await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const contentTypes = parseCouponTargetContentTypes(input.targetContentTypes);
+        const productTargets = parseCouponProductTargets(input.targetProducts);
+        if (input.targetScope === "content_types" && contentTypes.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one content type for this discount code." });
+        }
+        if (input.targetScope === "products" && productTargets.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one product for this discount code." });
+        }
+        const { getDb } = await import("./db");
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+        if (input.targetScope === "products") {
+          await assertCouponProductTargetsBelongToOrg(db, orgId, productTargets);
+        }
         return createCoupon({
           orgId,
           code: input.code.trim().toUpperCase(),
@@ -1871,6 +1911,9 @@ export const lmsRouter = router({
           discountValue: input.discountValue,
           maxUses: input.maxUses ?? null,
           expiresAt: input.expiresAt ?? null,
+          targetScope: input.targetScope,
+          targetContentTypes: input.targetScope === "content_types" ? JSON.stringify(contentTypes) : null,
+          targetProducts: input.targetScope === "products" ? JSON.stringify(productTargets) : null,
           isActive: true,
         });
       }),
@@ -1884,17 +1927,44 @@ export const lmsRouter = router({
         maxUses: z.number().int().positive().nullable().optional(),
         expiresAt: z.date().nullable().optional(),
         isActive: z.boolean().optional(),
+        targetScope: z.enum(["all", "content_types", "products"]).optional(),
+        targetContentTypes: z.array(z.enum(COUPON_TARGET_CONTENT_TYPES)).optional(),
+        targetProducts: z.array(z.object({
+          contentType: z.enum(COUPON_TARGET_CONTENT_TYPES),
+          productId: z.number().int().positive(),
+        })).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { getCouponById } = await import("./lmsDb");
         const coupon = await getCouponById(input.id);
         if (!coupon) throw new TRPCError({ code: "NOT_FOUND", message: "Coupon not found" });
-        if (input.orgId && input.orgId !== coupon.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon does not belong to the requested organization" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, coupon.orgId);
+        const orgId = await requireOrgId(ctx.user.id);
+        if (input.orgId && input.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon administration must use the active organization." });
+        if (coupon.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon does not belong to the active organization" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        if ((input.targetContentTypes || input.targetProducts) && !input.targetScope) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Specify a target scope when updating discount targets." });
+        }
+        const contentTypes = parseCouponTargetContentTypes(input.targetContentTypes ?? []);
+        const productTargets = parseCouponProductTargets(input.targetProducts ?? []);
+        if (input.targetScope === "content_types" && contentTypes.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one content type for this discount code." });
+        }
+        if (input.targetScope === "products") {
+          if (productTargets.length === 0) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Choose at least one product for this discount code." });
+          }
+          const { getDb } = await import("./db");
+          const db = await getDb();
+          if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+          await assertCouponProductTargetsBelongToOrg(db, coupon.orgId, productTargets);
+        }
         const { id, orgId: _orgId, ...data } = input;
         const updateData = {
           ...data,
           code: data.code ? data.code.trim().toUpperCase() : undefined,
+          targetContentTypes: input.targetScope === undefined ? undefined : input.targetScope === "content_types" ? JSON.stringify(contentTypes) : null,
+          targetProducts: input.targetScope === undefined ? undefined : input.targetScope === "products" ? JSON.stringify(productTargets) : null,
         };
         return updateCoupon(id, updateData);
       }),
@@ -1904,8 +1974,10 @@ export const lmsRouter = router({
         const { getCouponById } = await import("./lmsDb");
         const coupon = await getCouponById(input.id);
         if (!coupon) throw new TRPCError({ code: "NOT_FOUND", message: "Coupon not found" });
-        if (input.orgId && input.orgId !== coupon.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon does not belong to the requested organization" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, coupon.orgId);
+        const orgId = await requireOrgId(ctx.user.id);
+        if (input.orgId && input.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon administration must use the active organization." });
+        if (coupon.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Coupon does not belong to the active organization" });
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         await updateCoupon(input.id, { isActive: false });
         return { success: true };
       }),

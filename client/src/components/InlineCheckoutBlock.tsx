@@ -681,8 +681,10 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
             )}
           </div>
 
-          {/* ── Promo Code ──────────────────────────────────────────────── */}
-          <PromoCodeInput onApply={(code, _) => setPromoCode(code)} />
+          {/* Promo codes are unavailable until this flexible checkout has a verified product target. */}
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Discount codes are available through the organization checkout for this item.
+          </p>
 
           {/* ── Terms ───────────────────────────────────────────────────── */}
           {data.termsText && (

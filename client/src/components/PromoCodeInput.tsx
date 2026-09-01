@@ -1,11 +1,10 @@
 /**
  * PromoCodeInput.tsx
  * Reusable promo code entry widget for checkout forms.
- * Validates against Stripe via the downloadsLearner.validatePromoCode procedure,
- * then surfaces the discount description and passes the code up to the parent.
+ * Sends the code to the selected checkout. Eligibility is verified only after
+ * the server resolves the exact organization-owned product.
  */
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,28 +24,14 @@ export default function PromoCodeInput({ onApply, className }: PromoCodeInputPro
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
-  const utils = trpc.useUtils();
-
   const handleApply = async () => {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) return;
-    setChecking(true);
     setError(null);
-    try {
-      const result = await utils.client.downloadsLearner.validatePromoCode.query({ code: trimmed });
-      if (result.valid) {
-        setAppliedCode(trimmed);
-        setDiscountText(result.discountText);
-        onApply(trimmed, result.discountText);
-        setCode("");
-      } else {
-        setError((result as any).message ?? "Invalid promo code");
-      }
-    } catch {
-      setError("Could not validate promo code. Please try again.");
-    } finally {
-      setChecking(false);
-    }
+    setAppliedCode(trimmed);
+    setDiscountText("Eligibility will be confirmed when checkout begins");
+    onApply(trimmed, "Eligibility will be confirmed when checkout begins");
+    setCode("");
   };
 
   const handleClear = () => {
@@ -60,11 +45,11 @@ export default function PromoCodeInput({ onApply, className }: PromoCodeInputPro
   if (appliedCode) {
     return (
       <div className={`flex items-center gap-2 ${className ?? ""}`}>
-        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-        <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 font-mono text-xs px-2 py-0.5">
+        <CheckCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+        <Badge variant="secondary" className="bg-amber-50 text-amber-800 border-amber-200 font-mono text-xs px-2 py-0.5">
           {appliedCode}
         </Badge>
-        <span className="text-sm text-green-700 font-medium">{discountText} applied</span>
+        <span className="text-sm text-amber-800 font-medium">{discountText}</span>
         <button
           onClick={handleClear}
           className="ml-auto text-gray-400 hover:text-gray-600 transition-colors"
