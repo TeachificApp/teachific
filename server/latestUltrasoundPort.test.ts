@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isStaleAssetError } from "../client/src/components/ErrorBoundary";
 import { mapQuestionType, parseBlocks } from "./lib/lessonQuizQuestionBankSync";
 import { isPublicIpAddress, validatePublicSourceUrl } from "./lib/publicSourceUrl";
-import { couponIsRedeemableForTarget } from "./lib/couponTargeting";
+import { couponIsRedeemableForCheckout, couponIsRedeemableForTarget } from "./lib/couponTargeting";
 import {
   FULL_LESSON_MINIMUM_WORDS,
   cleanGeneratedLessonContent,
@@ -36,6 +36,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(couponIsRedeemableForTarget(typeScopedCoupon, "webinar", 6)).toBe(true);
     expect(couponIsRedeemableForTarget(typeScopedCoupon, "course", 6)).toBe(false);
     expect(couponIsRedeemableForTarget({ ...typeScopedCoupon, usedCount: 10, maxUses: 10 }, "webinar", 6)).toBe(false);
+
+    const checkoutCoupon = { ...productScopedCoupon, orgId: 7 };
+    expect(couponIsRedeemableForCheckout(checkoutCoupon, { orgId: 7, contentType: "course", productId: 18 })).toBe(true);
+    expect(couponIsRedeemableForCheckout(checkoutCoupon, { orgId: 8, contentType: "course", productId: 18 })).toBe(false);
+    expect(couponIsRedeemableForCheckout(checkoutCoupon, { orgId: 7, contentType: "course", productId: 19 })).toBe(false);
+    expect(couponIsRedeemableForCheckout(checkoutCoupon, { orgId: 7, contentType: "download", productId: 18 })).toBe(false);
   });
 
   it("recognizes HTML returned in place of a Quiz Creator JavaScript module", () => {
@@ -4097,9 +4103,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(targetingSource).toContain("eq(table.orgId, orgId)");
     expect(targetingSource).toContain("couponIsRedeemableForTarget");
     expect(checkoutSource).toContain("eq(coupons.orgId, content.orgId)");
-    expect(checkoutSource).toContain("couponIsRedeemableForTarget(coupon, input.contentType, content.id)");
+    expect(checkoutSource).toContain("couponIsRedeemableForCheckout(coupon, {");
     expect(checkoutSource).not.toContain("allow_promotion_codes: true");
-    expect(downloadsSource).toContain('couponIsRedeemableForTarget(coupon, "download", product.id)');
+    expect(downloadsSource).toContain("couponIsRedeemableForCheckout(coupon, {");
     expect(downloadsSource).not.toContain("allow_promotion_codes: true");
     expect(downloadsSource).toContain("Discount codes are verified securely when you continue to checkout.");
     expect(promoInputSource).toContain('setDiscountText("Eligibility will be confirmed when checkout begins")');

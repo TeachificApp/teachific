@@ -100,6 +100,15 @@ export function couponIsRedeemableForTarget(
   return couponAppliesToTarget(coupon, contentType, productId);
 }
 
+export function couponIsRedeemableForCheckout(
+  coupon: Parameters<typeof couponIsRedeemableForTarget>[0] & { orgId: number },
+  target: { orgId: number; contentType: CouponTargetContentType; productId: number },
+  now = new Date(),
+): boolean {
+  return coupon.orgId === target.orgId
+    && couponIsRedeemableForTarget(coupon, target.contentType, target.productId, now);
+}
+
 const productTables: Record<CouponTargetContentType, { table: any; label: any }> = {
   course: { table: lmsCourses, label: lmsCourses.title },
   download: { table: digitalProducts, label: digitalProducts.title },

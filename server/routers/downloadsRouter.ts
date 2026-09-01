@@ -285,7 +285,11 @@ export const downloadsLearnerRouter = router({
         const [coupon] = await db.select().from(coupons)
           .where(and(eq(coupons.orgId, product.orgId), eq(coupons.code, normalizedCode)))
           .limit(1);
-        if (!coupon || !couponIsRedeemableForTarget(coupon, "download", product.id)) {
+        if (!coupon || !couponIsRedeemableForCheckout(coupon, {
+          orgId: product.orgId,
+          contentType: "download",
+          productId: product.id,
+        })) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This discount code is not available for this download." });
         }
         try {

@@ -6,7 +6,7 @@
 - [x] Provide organization-admin discount targeting controls with accessible multi-product selection
 - [x] Clarify pending coupon entry state until exact organization product eligibility is confirmed at checkout
 - [x] Audit every active promo-code checkout path and enforce organization-owned coupon targets or quarantine the unsupported surface
-- [ ] Add regression coverage proving active checkout paths reject out-of-organization and out-of-scope coupon targets
+- [ ] Add end-to-end checkout-handler coverage proving active paths reject out-of-organization and out-of-scope coupon targets
 - [x] Record successful organization-owned coupon redemptions during checkout fulfillment so max-use limits remain enforceable
 - [x] Remove unsupported dashboard-style revenue, enrollment, and completion claims from platform marketing imagery
 - [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support

@@ -574,7 +574,11 @@ export const lmsCheckoutLearnerRouter = router({
         const [coupon] = await db.select().from(coupons)
           .where(and(eq(coupons.orgId, content.orgId), eq(coupons.code, normalizedCode)))
           .limit(1);
-        if (!coupon || !couponIsRedeemableForTarget(coupon, input.contentType, content.id)) {
+        if (!coupon || !couponIsRedeemableForCheckout(coupon, {
+          orgId: content.orgId,
+          contentType: input.contentType,
+          productId: content.id,
+        })) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "This discount code is not available for this item." });
         }
         try {
