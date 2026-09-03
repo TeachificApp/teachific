@@ -17,11 +17,15 @@ import * as dbHelpers from "./db";
 import { verifyEmailHtml, resetPasswordHtml, magicLinkEmailHtml } from "./emailTemplates";
 import { signSessionToken } from "./_core/context";
 import { getOrgBaseUrl } from "./lib/orgUrl";
+import { getSessionCookieOptions } from "./_core/cookies";
+import { getCourse360PlatformAppUrl } from "../shared/brands";
 
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const BCRYPT_ROUNDS = 12;
-const SITE_URL = process.env.VITE_SITE_URL || "https://teachific.app";
+function getSiteUrl() {
+  return getCourse360PlatformAppUrl().replace(/\/$/, "");
+}
 
 function generateToken(bytes = 32): string {
   return crypto.randomBytes(bytes).toString("hex");
@@ -31,17 +35,19 @@ function generateOpenId(): string {
   return `local_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
-function serializeCookie(name: string, value: string, maxAge: number): string {
-  const isProduction = process.env.NODE_ENV === "production";
-  // Use SameSite=None + Secure in production so the cookie is sent cross-subdomain
-  // (e.g. from teachific.app to myorg.teachific.app).
-  // Domain=.teachific.app ensures all subdomains share the same session.
+export function serializeCookie(
+  name: string,
+  value: string,
+  maxAge: number,
+  req: Parameters<typeof getSessionCookieOptions>[0],
+  sameSite: "none" | "lax" = process.env.NODE_ENV === "production" ? "none" : "lax",
+  includePlatformDomain = true,
+): string {
+  const options = getSessionCookieOptions(req);
   let str = `${name}=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=${maxAge}`;
-  if (isProduction) {
-    str += "; Secure; SameSite=None; Domain=.teachific.app";
-  } else {
-    str += "; SameSite=Lax";
-  }
+  if (options.secure) str += "; Secure";
+  str += sameSite === "none" ? "; SameSite=None" : "; SameSite=Lax";
+  if (includePlatformDomain && options.domain) str += `; Domain=${options.domain}`;
   return str;
 }
 
@@ -67,7 +73,7 @@ async function resolveAccountAccessBaseUrl(
   requestedOrigin?: string | null,
 ): Promise<string> {
   const normalizedOrigin = normalizeAccountAccessOrigin(requestedOrigin);
-  if (!normalizedOrigin) return SITE_URL.replace(/\/$/, "");
+  if (!normalizedOrigin) return getSiteUrl();
 
   const memberships = await db
     .select({
@@ -93,7 +99,7 @@ async function resolveAccountAccessBaseUrl(
         matchingOrganization.customDomain,
         matchingOrganization.domainVerificationStatus,
       )
-    : SITE_URL.replace(/\/$/, "");
+    : getSiteUrl();
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -160,16 +166,16 @@ export const customAuthRouter = router({
         } catch {}
 
         // Send verification email in background (non-blocking)
-        const verifyUrl = `${SITE_URL}/verify-email?token=${verificationToken}`;
+        const verifyUrl = `${getSiteUrl()}/verify-email?token=${verificationToken}`;
         sendEmail({
           to: input.email,
-          subject: "Welcome to Teachific — please verify your email",
+          subject: "Welcome to Course360 — please verify your email",
           html: verifyEmailHtml(input.name, verifyUrl),
         }).catch(() => {});
 
         // Auto sign-in: issue session cookie immediately
         const sessionToken = signSessionToken({ userId: newUser.id, ts: Date.now() });
-        ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
+        ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE, ctx.req));
       }
 
       return {
@@ -177,7 +183,7 @@ export const customAuthRouter = router({
         autoSignedIn: true,
         orgSlug,
         user: newUser ? { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } : null,
-        message: "Account created! Welcome to Teachific.",
+        message: "Account created! Welcome to Course360.",
       };
     }),
 
@@ -217,7 +223,7 @@ export const customAuthRouter = router({
       }
 
       const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
-      ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE));
+      ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE, ctx.req));
 
       // Resolve the user's primary org slug for immediate subdomain redirect
       const ROLE_PRIORITY: Record<string, number> = {
@@ -243,7 +249,7 @@ export const customAuthRouter = router({
 
   /** Logout */
   logout: publicProcedure.mutation(async ({ ctx }) => {
-    ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, "", 0));
+    ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, "", 0, ctx.req));
     return { success: true };
   }),
 
@@ -292,8 +298,8 @@ export const customAuthRouter = router({
 
   /** Resend verification email */
   resendVerification: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input }) => {
+    .input(z.object({ email: z.string().email(), origin: z.string().url().optional() }))
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return { success: true };
 
@@ -305,8 +311,13 @@ export const customAuthRouter = router({
 
       await db.update(users).set({ emailVerificationToken: verificationToken, emailVerificationExpiry: verificationExpiry }).where(eq(users.id, user.id));
 
-      const verifyUrl = `${SITE_URL}/verify-email?token=${verificationToken}`;
-      await sendEmail({ to: input.email, subject: "Verify your Teachific email address", html: verifyEmailHtml(user.name || "", verifyUrl) });
+      const baseUrl = await resolveAccountAccessBaseUrl(
+        db,
+        user.id,
+        input.origin ?? ctx.req.headers.origin ?? null,
+      );
+      const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+      await sendEmail({ to: input.email, subject: "Verify your Course360 email address", html: verifyEmailHtml(user.name || "", verifyUrl) });
       return { success: true };
     }),
 
@@ -333,7 +344,7 @@ export const customAuthRouter = router({
         input.origin ?? ctx.req.headers.origin ?? null,
       );
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
-      await sendEmail({ to: input.email, subject: "Reset your Teachific password", html: resetPasswordHtml(user.name || "", resetUrl) });
+      await sendEmail({ to: input.email, subject: "Reset your Course360 password", html: resetPasswordHtml(user.name || "", resetUrl) });
       return { success: true };
     }),
 
@@ -378,11 +389,11 @@ export const customAuthRouter = router({
       // the recipient belongs to; otherwise use the canonical platform URL.
       const baseUrl = user
         ? await resolveAccountAccessBaseUrl(db, user.id, input.origin ?? ctx.req.headers.origin ?? null)
-        : SITE_URL.replace(/\/$/, "");
+        : getSiteUrl();
       const magicUrl = `${baseUrl}/magic-link/verify?token=${token}`;
       await sendEmail({
         to: input.email,
-        subject: "Your Teachific sign-in link",
+        subject: "Your Course360 sign-in link",
         html: magicLinkEmailHtml(user?.name ?? "", magicUrl, 15),
       });
       return { success: true, message: "Check your email for a sign-in link." };
@@ -439,17 +450,12 @@ export const customAuthRouter = router({
       }
       const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
       // Set the primary cookie using the same serializer as login/register for consistency.
-      // Also set _lax and _host variants for cross-subdomain and email-client compatibility.
-      const isProduction = process.env.NODE_ENV === "production";
+      // Also set _lax and host-only variants for email-client compatibility.
       const cookieMaxAgeSeconds = COOKIE_MAX_AGE;
       ctx.res.setHeader("Set-Cookie", [
-        serializeCookie(COOKIE_NAME, sessionToken, cookieMaxAgeSeconds),
-        isProduction
-          ? `${COOKIE_NAME}_lax=${encodeURIComponent(sessionToken)}; HttpOnly; Path=/; Max-Age=${cookieMaxAgeSeconds}; Secure; SameSite=Lax; Domain=.teachific.app`
-          : `${COOKIE_NAME}_lax=${encodeURIComponent(sessionToken)}; HttpOnly; Path=/; Max-Age=${cookieMaxAgeSeconds}; SameSite=Lax`,
-        isProduction
-          ? `${COOKIE_NAME}_host=${encodeURIComponent(sessionToken)}; HttpOnly; Path=/; Max-Age=${cookieMaxAgeSeconds}; Secure; SameSite=Lax`
-          : `${COOKIE_NAME}_host=${encodeURIComponent(sessionToken)}; HttpOnly; Path=/; Max-Age=${cookieMaxAgeSeconds}; SameSite=Lax`,
+        serializeCookie(COOKIE_NAME, sessionToken, cookieMaxAgeSeconds, ctx.req),
+        serializeCookie(`${COOKIE_NAME}_lax`, sessionToken, cookieMaxAgeSeconds, ctx.req, "lax"),
+        serializeCookie(`${COOKIE_NAME}_host`, sessionToken, cookieMaxAgeSeconds, ctx.req, "lax", false),
       ]);
       const ROLE_PRIORITY: Record<string, number> = {
         org_super_admin: 100, org_admin: 90, sub_admin: 70,
