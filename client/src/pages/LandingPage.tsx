@@ -114,7 +114,7 @@ function LandingNav({ user }: { user?: { name?: string | null; email?: string | 
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90 hover:shadow-md"
                 style={{ background: `linear-gradient(135deg, ${TEAL}, ${AQUA})` }}
               >
-                Get Started Free <ArrowRight className="w-3.5 h-3.5" />
+                Create an Account <ArrowRight className="w-3.5 h-3.5" />
               </a>
             </>
           )}
@@ -145,21 +145,21 @@ function HeroSection() {
           className="mb-6 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border"
           style={{ color: TEAL, borderColor: `${TEAL}40`, background: `${TEAL}10` }}
         >
-          <Sparkles className="w-3 h-3" /> The all-in-one platform for online educators
+          <Sparkles className="w-3 h-3" /> Course tools for online educators
         </div>
 
         <h1
           className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 leading-tight tracking-tight mb-6"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
-          Turn Your Knowledge
+          Build Your Knowledge
           <br />
-          <span style={{ color: TEAL }}>Into a Thriving School</span>
+          <span style={{ color: TEAL }}>Into an Online School</span>
         </h1>
 
         <p className="max-w-2xl mx-auto text-xl text-gray-500 leading-relaxed mb-10">
-          Course360™ gives educators, trainers, and creators everything they need to build, sell, and
-          deliver online courses — without the technical headaches.
+          Course360™ provides educators, trainers, and creators with tools to build, sell, and
+          deliver online courses.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
@@ -168,7 +168,7 @@ function HeroSection() {
             className="inline-flex items-center gap-2 text-base font-bold px-8 py-4 rounded-xl text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
             style={{ background: `linear-gradient(135deg, ${TEAL}, ${AQUA})` }}
           >
-            Get Started Free <ArrowRight className="w-4 h-4" />         </a>
+            Create an Account <ArrowRight className="w-4 h-4" />         </a>
           <a
             href="#how-it-works"
             className="inline-flex items-center gap-2 text-base font-semibold text-gray-700 px-8 py-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-all"
@@ -180,9 +180,9 @@ function HeroSection() {
         {/* Trust bar */}
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
           {[
-            "No credit card required",
-            "Free plan forever",
-            "Set up in minutes",
+            "Course and quiz tools",
+            "Organization workspaces",
+            "Plan options",
           ].map((t) => (
             <span key={t} className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" style={{ color: TEAL }} />
@@ -286,7 +286,7 @@ const FEATURES = [
     icon: BookOpen,
     title: "Powerful Course Builder",
     description:
-      "Build rich, multi-section courses with video lessons, quizzes, downloadable resources, and drip scheduling. Your curriculum, your way — no coding required.",
+      "Build multi-section courses with video lessons, quizzes, downloadable resources, and drip scheduling.",
     color: "#10b981",
   },
   {
@@ -494,9 +494,9 @@ const PRICING_TIERS: PricingTier[] = [
   {
     name: "Free",
     price: "$0",
-    period: "forever",
-    description: "Explore the platform and publish your first course at no cost.",
-    cta: "Get Started Free",
+    period: "per month",
+    description: "A starting plan for creating and publishing courses.",
+    cta: "Choose Plan",
     highlighted: false,
     features: [
       "1 course",
@@ -512,8 +512,8 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Starter",
     price: "$39",
     period: "per month",
-    description: "For new creators ready to sell their first courses and memberships.",
-    cta: "Get Started Free",
+    description: "For creators building their course and membership catalog.",
+    cta: "Choose Plan",
     highlighted: false,
     features: [
       "Up to 5 courses",
@@ -528,10 +528,9 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Builder",
     price: "$99",
     period: "per month",
-    description: "For growing schools with a community and multiple instructors.",
-    cta: "Get Started Free",
+    description: "For schools using courses, communities, and multiple instructors.",
+    cta: "Choose Plan",
     highlighted: true,
-    badge: "Most Popular",
     features: [
       "Up to 20 courses",
       "Up to 5,000 students",
@@ -547,8 +546,8 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Pro",
     price: "$199",
     period: "per month",
-    description: "For established schools that need advanced analytics, email marketing, and scale.",
-    cta: "Get Started Free",
+    description: "For schools using analytics, email marketing, and broader plan limits.",
+    cta: "Choose Plan",
     highlighted: false,
     features: [
       "Up to 50 courses",
@@ -566,12 +565,12 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Enterprise",
     price: "Custom",
     period: "contact us",
-    description: "For organizations with advanced compliance, custom integrations, and unlimited scale.",
+    description: "For organizations that need a custom plan and service configuration.",
     cta: "Contact Sales",
     highlighted: false,
     features: [
-      "Unlimited everything",
-      "Unlimited storage",
+      "Custom plan limits",
+      "Custom storage allocation",
       "Dedicated account manager",
       "Custom onboarding & training",
       "Service-level planning",
@@ -620,10 +619,10 @@ function PricingSection() {
             className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            Start free. Scale when you're ready.
+            Choose a plan for your organization.
           </h2>
           <p className="max-w-xl mx-auto text-lg text-gray-500">
-            No hidden fees. No long-term contracts. Cancel anytime.
+            Review plan features and pricing before choosing an account configuration.
           </p>
         </div>
 
@@ -687,7 +686,7 @@ function PricingSection() {
               <a
                 href={
                   tier.name === "Enterprise"
-                    ? "mailto:hello@teachific.app"
+                    ? "mailto:hello@course360.app"
                     : "/register"
                 }
                 className={`w-full text-center py-3 px-6 rounded-xl text-sm font-bold transition-all block ${
@@ -795,7 +794,7 @@ function CtaSection() {
             className="inline-flex items-center gap-2 text-base font-bold px-8 py-4 rounded-xl bg-white hover:bg-gray-50 shadow-lg transition-all hover:shadow-xl hover:scale-105"
             style={{ color: TEAL }}
           >
-            Create Your Free Account <ArrowRight className="w-4 h-4" />
+            Create Your Account <ArrowRight className="w-4 h-4" />
           </a>
           <a
             href="/login"
@@ -804,9 +803,6 @@ function CtaSection() {
             Already have an account? Log In
           </a>
         </div>
-        <p className="mt-6 text-sm text-white/60">
-          Free forever. No credit card required. Upgrade anytime.
-        </p>
       </div>
     </section>
   );
@@ -823,16 +819,16 @@ function LandingFooter() {
               className="text-2xl font-extrabold mb-3"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              <span className="text-white">teach</span>
-              <span style={{ color: AQUA }}>ific</span>
+              <span className="text-white">Course</span>
+              <span style={{ color: AQUA }}>360</span>
               <span className="text-white text-lg">™</span>
             </div>
             <p className="text-sm leading-relaxed mb-3">
-              The all-in-one platform for online educators, trainers, and course creators.
+              Tools for online educators, trainers, and course creators.
             </p>
             <p className="text-xs leading-relaxed text-gray-500">
               Host SCORM 1.2 &amp; SCORM 2004 content, build and sell online courses, manage
-              learners, and track completions with a powerful learning management system (LMS).
+              learners, and track completions with a learning management system (LMS).
               Supports HTML5 eLearning, quiz builder, custom subdomains, and course analytics.
             </p>
           </div>
@@ -899,7 +895,7 @@ function LandingFooter() {
                 </a>
               </li>
               <li>
-                <a href="mailto:hello@teachific.app" className="hover:text-white transition-colors">
+                <a href="mailto:hello@course360.app" className="hover:text-white transition-colors">
                   Contact Us
                 </a>
               </li>

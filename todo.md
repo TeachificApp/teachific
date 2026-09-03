@@ -1,5 +1,9 @@
 # SCORM Host Platform - TODO
 
+- [ ] Diagnose the intermittent blank Course360 root preview after clean restarts and verify a reliable landing-page render before closing the visual issue
+- [x] Replace remaining unsupported Course360 homepage hero and pricing claims with factual product-language and neutral calls to action
+- [x] Replace the visible homepage footer source-brand fallback and remaining pricing-plan marketing claims with Course360 factual-copy and approved attribution
+
 - [ ] Remove fabricated testimonials and unsupported social-proof claims from platform marketing content
 - [ ] Rebrand visible platform identity and product labels from Teachific to Course360™
 - [ ] Host and integrate the supplied Course360 logo in global platform identity surfaces
