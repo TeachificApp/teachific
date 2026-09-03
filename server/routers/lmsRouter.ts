@@ -271,7 +271,10 @@ export const lmsPublicRouter = router({
           _source: "digital_product" as const,
         }));
         // Also include published sonoQuizzes
-        const sqRows = await db.select().from(sonoQuizzes).where(eq(sonoQuizzes.status, "published")).orderBy(desc(sonoQuizzes.createdAt));
+        const sqRows = await db.select().from(sonoQuizzes).where(and(
+          eq(sonoQuizzes.status, "published"),
+          eq(sonoQuizzes.orgId, scopeOrgId),
+        )).orderBy(desc(sonoQuizzes.createdAt));
         const sqMapped = sqRows.map(q => ({
           id: q.id,
           slug: `quiz-${q.id}`,

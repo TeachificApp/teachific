@@ -48,14 +48,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             onClick={() => setLocation("/lms/my-courses")}
             className="flex items-center gap-1 focus:outline-none"
           >
-            <span
-              className="text-[20px] font-bold tracking-tight select-none"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}
-            >
-              <span className="text-foreground">teach</span>
-              <span style={{ color: 'var(--org-primary)' }}>ific</span>
-              <span className="text-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
-            </span>
+            {activeOrg?.name ? (
+              <span className="max-w-[13rem] truncate text-[18px] font-bold tracking-tight text-foreground select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
+                {activeOrg.name}
+              </span>
+            ) : (
+              <span className="text-[20px] font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
+                <span className="text-foreground">Course</span>
+                <span style={{ color: "var(--org-primary)" }}>360</span>
+                <span className="text-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
+              </span>
+            )}
           </button>
 
           {/* Nav links */}

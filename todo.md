@@ -5,6 +5,7 @@
 - [ ] Host and integrate the supplied Course360 logo in global platform identity surfaces
 - [ ] Add linked “a SoundMedia, Inc. brand” attribution to platform-level footer surfaces
 - [ ] Replace remaining active UI Teachific labels and retired-domain examples with Course360 equivalents
+- [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
 - [x] Replace the email campaign wrapper’s legacy platform fallback with Course360 while preserving organization-specific campaign identity
 - [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers
 - [ ] Normalize every platform footer to the linked “a SoundMedia, Inc. brand” attribution
@@ -41,6 +42,9 @@
 - [x] Audit and port the compatible organization-owned Quiz Creator image-labeling question type without changing existing Question Bank records
 - [x] Audit and complete Course360 image-comparison authoring, type definitions, store defaults, preview, persistence, public delivery, and organization-scope support
 - [x] Add end-to-end organization-owned image-comparison behavior and regression coverage while preserving the standalone Quiz Creator and Question Bank boundary
+- [x] Audit and enforce organization scope for learner standalone quiz listings, and correct the StudentLayout organization-brand fallback without adding read-aloud controls
+- [ ] Design and implement an explicit organization-scoped learner quiz navigation surface and matching native quiz-results route before exposing quiz-results navigation
+- [x] Verify and enforce owning-organization scope for learner standalone quiz listings before exposing learner quiz links
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point
 - [x] Add cross-editor paste-transform regression coverage and targeted lesson, page, and email editor bundle validation

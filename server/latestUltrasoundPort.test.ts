@@ -608,6 +608,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingEditorSource).not.toContain("const org = orgs?.[0];");
     expect(studentLayoutSource).toContain("const { orgId, orgs } = useOrgScope();");
     expect(studentLayoutSource).toContain("const activeOrg = orgs.find((org: any) => org.id === orgId);");
+    expect(studentLayoutSource).toContain("{activeOrg?.name ? (");
+    expect(studentLayoutSource).toContain("{activeOrg.name}");
+    expect(studentLayoutSource).toContain('>Course</span>');
+    expect(studentLayoutSource).toContain('>360</span>');
+    expect(studentLayoutSource).not.toContain("teach</span>");
     expect(studentLayoutSource).not.toContain("const orgSlug = orgs?.[0]?.slug;");
   });
 
@@ -5228,5 +5233,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(quizRouterSource).toContain("validateImageComparisonQuestions(quiz.instructions ?? \"[]\", true)");
     expect(quizRouterSource).toContain('question.type === "image_labeling" || question.type === "image_comparison"');
     expect(validatorSource).toContain("Add both comparison images before publishing an image-comparison question.");
+  });
+
+  it("limits learner library standalone quiz listings to the resolved organization", () => {
+    const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    const librarySection = lmsRouterSource.slice(
+      lmsRouterSource.indexOf("// Also include published sonoQuizzes"),
+      lmsRouterSource.indexOf("// Also include published sonoQuizzes") + 900,
+    );
+    expect(librarySection).toContain('eq(sonoQuizzes.status, "published"),\n          eq(sonoQuizzes.orgId, scopeOrgId)');
+    expect(librarySection).not.toContain('from(sonoQuizzes).where(eq(sonoQuizzes.status, "published"))');
   });
 });
