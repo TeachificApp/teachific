@@ -194,6 +194,7 @@ export const stripeRouter = router({
       if (!["org_super_admin", "org_admin"].includes(orgCtx.role)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can manage billing" });
       }
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
 
       const priceKey = `${input.plan}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
@@ -231,8 +232,8 @@ export const stripeRouter = router({
             plan: input.plan,
           },
         },
-        success_url: `${input.origin}/billing?success=1&plan=${input.plan}&trial=1`,
-        cancel_url: `${input.origin}/billing?cancelled=1`,
+        success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}&trial=1`,
+        cancel_url: `${returnOrigin}/billing?cancelled=1`,
       });
 
       return { url: session.url };
@@ -254,9 +255,10 @@ export const stripeRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No Stripe customer found. Please subscribe first." });
       }
       const stripe = getStripe();
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
       const session = await stripe.billingPortal.sessions.create({
         customer: sub.stripeCustomerId,
-        return_url: `${input.origin}/billing`,
+        return_url: `${returnOrigin}/billing`,
       });
       return { url: session.url };
     }),
