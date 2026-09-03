@@ -31,6 +31,11 @@ export type QuestionType =
   | "image_comparison" | "drag_sort" | "branching" | "fill_blank" | "annotation" | "flashcard"
   | "likert" | "star_rating" | "open_text" | "survey_choice";
 
+const NON_SCORING_SURVEY_QUESTION_TYPES: QuestionType[] = [
+  "mcq", "truefalse", "multiselect", "hotspot", "matching",
+  "likert", "star_rating", "open_text", "survey_choice",
+];
+
 export interface HotspotMarker {
   id: string;
   x: number; // 0-100 percentage
@@ -521,6 +526,7 @@ function QuestionEditor({
   isNew: boolean;
   handleFileUpload?: Props["handleFileUpload"];
   cmeEnabled: boolean;
+  isSurveyMode: boolean;
   surveyParentOptions: Array<{ key: string; label: string }>;
   onSave: (q: QuizQuestion) => void;
   onCancel: () => void;
@@ -543,7 +549,7 @@ function QuestionEditor({
   const ansImgRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const qType = q.type ?? "mcq";
-  const isSurveyQuestion = ["likert", "star_rating", "open_text", "survey_choice"].includes(qType);
+  const isSurveyQuestion = isSurveyMode || ["likert", "star_rating", "open_text", "survey_choice"].includes(qType);
 
   // When type changes, reset options to sensible defaults
   const changeType = (newType: QuestionType) => {
@@ -638,7 +644,10 @@ function QuestionEditor({
       <div>
         <Label className="text-xs text-gray-600 mb-1 block">Question Type</Label>
         <div className="flex flex-wrap gap-1">
-          {(["mcq", "truefalse", "multiselect", "hotspot", "matching", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard", ...(cmeEnabled ? ["likert", "star_rating", "open_text", "survey_choice"] : [])] as QuestionType[]).map(t => (
+          {(isSurveyMode
+            ? NON_SCORING_SURVEY_QUESTION_TYPES
+            : (["mcq", "truefalse", "multiselect", "hotspot", "matching", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard", ...(cmeEnabled ? ["likert", "star_rating", "open_text", "survey_choice"] : [])] as QuestionType[])
+          ).map(t => (
             <button
               key={t}
               type="button"
@@ -656,7 +665,7 @@ function QuestionEditor({
       </div>
 
       {/* Question text */}
-      {cmeEnabled && ["likert", "star_rating", "open_text", "survey_choice"].includes(qType) && (
+      {cmeEnabled && isSurveyQuestion && (
         <div className="rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_7%,white)] p-3 space-y-3">
           <p className="text-xs font-semibold text-[var(--org-primary)]">CME Survey Settings</p>
           <div className="flex items-center justify-between gap-3">
@@ -1095,8 +1104,8 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
       {cmeStatus?.enabled && (
         <div className="flex items-center justify-between rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_7%,white)] px-3 py-2">
           <div>
-            <p className="text-xs font-medium text-[var(--org-primary)]">CME feedback survey</p>
-            <p className="text-xs text-[color:color-mix(in_srgb,var(--org-primary)_78%,#374151)] mt-0.5">Uses non-scoring survey questions and can require selected visible responses.</p>
+            <p className="text-xs font-medium text-[var(--org-primary)]">Non-scoring CME survey</p>
+            <p className="text-xs text-[color:color-mix(in_srgb,var(--org-primary)_78%,#374151)] mt-0.5">Responses are recorded without answer keys, scores, pass/fail results, or graded feedback. Required completion is configured separately.</p>
           </div>
           <Switch checked={isCmeSurvey} onCheckedChange={(enabled) => {
             set("isSurvey", enabled);
@@ -1178,7 +1187,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
               </div>
               {editingIndex === i && (
                 <QuestionEditor question={q} index={i} isNew={false} handleFileUpload={handleFileUpload}
-                  cmeEnabled={cmeStatus?.enabled === true} surveyParentOptions={surveyParentOptions.slice(0, i)}
+                  cmeEnabled={cmeStatus?.enabled === true} isSurveyMode={isCmeSurvey} surveyParentOptions={surveyParentOptions.slice(0, i)}
                   onSave={saveQuestion} onCancel={() => setEditingIndex(null)} />
               )}
             </div>
@@ -1189,7 +1198,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
       {/* New question form */}
       {addingNew && editingIndex === null && (
         <QuestionEditor question={{ ...EMPTY_QUESTION }} index={null} isNew={true} handleFileUpload={handleFileUpload}
-          cmeEnabled={cmeStatus?.enabled === true} surveyParentOptions={surveyParentOptions}
+          cmeEnabled={cmeStatus?.enabled === true} isSurveyMode={isCmeSurvey} surveyParentOptions={surveyParentOptions}
           onSave={saveQuestion} onCancel={() => setAddingNew(false)} />
       )}
 

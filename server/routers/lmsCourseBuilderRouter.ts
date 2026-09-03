@@ -38,7 +38,7 @@ import {
   fullLessonLengthRequirement,
   requiresFullLessonMinimum,
 } from "../lib/aiLessonContent";
-import { hasCmeOnlyInlineSurveyConfiguration } from "../lib/inlineLessonCmeSurvey";
+import { hasCmeOnlyInlineSurveyConfiguration, hasUnsupportedNonScoringSurveyQuestionType } from "../lib/inlineLessonCmeSurvey";
 import {
   lmsCourses,
   lmsSections,
@@ -917,6 +917,9 @@ export const lmsCourseBuilderRouter = router({
       await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.contentBlocks !== undefined && hasUnsupportedNonScoringSurveyQuestionType(input.contentBlocks)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Non-scoring surveys can use only response types supported by the lesson player" });
+      }
       if (input.contentBlocks !== undefined && hasCmeOnlyInlineSurveyConfiguration(input.contentBlocks)) {
         const [lessonForCme] = await db.select({ courseId: lmsLessons.courseId }).from(lmsLessons)
           .where(eq(lmsLessons.id, input.id)).limit(1);

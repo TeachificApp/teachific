@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
@@ -146,7 +147,7 @@ function InlineLessonQuiz({
   registerSurveySubmission: (quizBlockId: string, submit: (() => Promise<void>) | null) => void;
 }) {
   const questions = data.questions ?? [];
-  const [selected, setSelected] = useState<Record<string, string | number>>({});
+  const [selected, setSelected] = useState<Record<string, string | number | string[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ score: number; passed: boolean; requiresSurveyCompletion: boolean; surveyCompleted: boolean; nonScoringSurvey: boolean; passingScore: number } | null>(null);
   const submitInlineLessonQuiz = trpc.lmsLearner.submitInlineLessonQuiz.useMutation({
@@ -250,13 +251,48 @@ function InlineLessonQuiz({
                     aria-pressed={selected[questionKey] === rating}>{rating}</button>
                 ))}
               </div>
+            ) : isSurvey && qType === "multiselect" ? (
+              <div className="space-y-1.5" role="group" aria-label={q.question}>
+                {(q.options ?? []).map((opt: string, j: number) => {
+                  const selectedValues = Array.isArray(selected[questionKey]) ? selected[questionKey] as string[] : [];
+                  const value = String(j);
+                  const isSelected = selectedValues.includes(value);
+                  return <button key={j} type="button" disabled={submitted} onClick={() => setSelected((answers) => {
+                    const current = Array.isArray(answers[questionKey]) ? answers[questionKey] as string[] : [];
+                    return { ...answers, [questionKey]: current.includes(value) ? current.filter((entry) => entry !== value) : [...current, value] };
+                  })} className={cn("w-full text-left px-3.5 py-2.5 rounded-lg border text-sm transition-all", isSelected ? "border-teal-500 bg-teal-50 text-teal-900" : "border-gray-200 hover:border-teal-400 hover:bg-teal-50/50 text-gray-700")} aria-pressed={isSelected}>
+                    <span className="font-semibold mr-2 text-gray-400">{isSelected ? "✓" : "○"}</span>{opt}
+                  </button>;
+                })}
+              </div>
+            ) : isSurvey && qType === "hotspot" ? (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">Click the location that best represents your response.</p>
+                {q.hotspotImageUrl || q.imageUrl ? <button type="button" disabled={submitted} className="relative block w-full overflow-hidden rounded-lg border border-teal-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" onClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const x = Math.max(0, Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100)));
+                  const y = Math.max(0, Math.min(100, Math.round(((event.clientY - rect.top) / rect.height) * 100)));
+                  setSelected((answers) => ({ ...answers, [questionKey]: JSON.stringify({ x, y }) }));
+                }}><img src={q.hotspotImageUrl ?? q.imageUrl} alt="Select a response location" className="max-h-72 w-full object-contain bg-slate-50" />{selected[questionKey] && <span className="absolute inset-0 grid place-items-center pointer-events-none"><span className="h-4 w-4 rounded-full bg-teal-500 border-2 border-white shadow" /></span>}</button> : <p className="text-sm text-gray-500">Add an image in the lesson editor before collecting a hotspot response.</p>}
+              </div>
+            ) : isSurvey && qType === "matching" ? (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">Match each item to the response that best applies.</p>
+                {(q.matchingPairs ?? []).map((pair: any) => {
+                  let mapping: Record<string, string> = {};
+                  try { mapping = JSON.parse(String(selected[questionKey] ?? "{}")); } catch { mapping = {}; }
+                  const options = (q.matchingPairs ?? []).map((item: any) => item.right).filter(Boolean);
+                  const pairKey = String(pair.id ?? pair.left);
+                  return <div key={pairKey} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center"><p className="text-sm text-gray-700">{pair.left}</p><Select disabled={submitted} value={mapping[pairKey] ?? "__unanswered"} onValueChange={(value) => { const next = { ...mapping }; if (value === "__unanswered") delete next[pairKey]; else next[pairKey] = value; setSelected((answers) => ({ ...answers, [questionKey]: JSON.stringify(next) })); }}><SelectTrigger className="bg-white"><SelectValue placeholder="Choose a response" /></SelectTrigger><SelectContent><SelectItem value="__unanswered">Choose a response</SelectItem>{options.map((option: string) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>;
+                })}
+              </div>
             ) : (
             <div className="space-y-1.5">
               {(q.options ?? []).map((opt: string, j: number) => {
                 const selectedValue = ["likert", "survey_choice"].includes(qType) ? opt : j;
                 const isSelected = selected[questionKey] === selectedValue;
-                const isCorrect = submitted && j === q.correctAnswer;
-                const isWrong = submitted && isSelected && j !== q.correctAnswer;
+                const isCorrect = !isSurvey && submitted && j === q.correctAnswer;
+                const isWrong = !isSurvey && submitted && isSelected && j !== q.correctAnswer;
                 return (
                   <button
                     key={j}
@@ -276,7 +312,7 @@ function InlineLessonQuiz({
                 );
               })}
             </div>)}
-            {submitted && data.showExplanations && q.explanation && (
+            {submitted && !isSurvey && data.showExplanations && q.explanation && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded p-2 border border-gray-100 italic">{q.explanation}</p>
             )}
           </div>

@@ -46,6 +46,8 @@
 - [x] Gate legacy CoursePlayer completion controls through protected inline CME survey submission without client-side bypasses
 - [x] Add CME-enabled author controls for non-scoring survey questions and conditional visibility in the legacy lesson quiz editor
 - [x] Add regression coverage for organization isolation, role scope, and organization branding on ported changes
+- [x] Distinguish non-scoring inline lesson survey mode from grading for all response-capable question types while preserving the separate CME required-completion gate
+- [x] Verify non-scoring survey submissions omit grading feedback across every supported legacy inline response type
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers

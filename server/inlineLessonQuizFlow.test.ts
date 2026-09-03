@@ -56,4 +56,37 @@ describe("Course360 inline lesson CME survey flow", () => {
       requireSurveyCompletion: true,
     }).passed).toBe(true);
   });
+
+  it("allows a non-scoring survey without required completion to save even when a hypothetical quiz score would fail", () => {
+    expect(evaluateInlineLessonQuizCompletion({
+      questions: [{ id: "feedback", type: "mcq" }],
+      responses: [{ questionKey: "feedback", answerValue: 1 }],
+      scorePassed: false,
+      nonScoringSurvey: true,
+      requireSurveyCompletion: false,
+    })).toMatchObject({ nonScoringSurvey: true, requiresSurveyCompletion: false, passed: true });
+  });
+
+  it("does not treat a partially matched required survey prompt as complete", () => {
+    const questions = [{
+      id: "matching-feedback",
+      type: "matching",
+      surveyRequired: true,
+      matchingPairs: [{ id: "first" }, { id: "second" }],
+    }];
+    expect(evaluateInlineLessonQuizCompletion({
+      questions,
+      responses: [{ questionKey: "matching-feedback", answerValue: JSON.stringify({ first: "A" }) }],
+      scorePassed: false,
+      nonScoringSurvey: true,
+      requireSurveyCompletion: true,
+    })).toMatchObject({ surveyCompleted: false, passed: false });
+    expect(evaluateInlineLessonQuizCompletion({
+      questions,
+      responses: [{ questionKey: "matching-feedback", answerValue: JSON.stringify({ first: "A", second: "B" }) }],
+      scorePassed: false,
+      nonScoringSurvey: true,
+      requireSurveyCompletion: true,
+    })).toMatchObject({ surveyCompleted: true, passed: true });
+  });
 });

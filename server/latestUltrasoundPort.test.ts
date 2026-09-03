@@ -81,6 +81,24 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).toContain("onClick={handleMarkComplete}");
   });
 
+  it("treats Course360 non-scoring inline surveys as recorded feedback rather than graded quizzes", () => {
+    const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    const editorSource = readFileSync(new URL("../client/src/components/LessonQuizBlockEditor.tsx", import.meta.url), "utf8");
+    expect(playerSource).toContain("const isCorrect = !isSurvey && submitted && j === q.correctAnswer;");
+    expect(playerSource).toContain("const isWrong = !isSurvey && submitted && isSelected && j !== q.correctAnswer;");
+    expect(playerSource).toContain("submitted && !isSurvey && data.showExplanations && q.explanation");
+    expect(playerSource).toContain('isSurvey && qType === "multiselect"');
+    expect(playerSource).toContain('isSurvey && qType === "hotspot"');
+    expect(playerSource).toContain('isSurvey && qType === "matching"');
+    expect(playerSource).toContain("Click the location that best represents your response.");
+    expect(playerSource).toContain("Match each item to the response that best applies.");
+    expect(editorSource).toContain("Non-scoring CME survey");
+    expect(editorSource).toContain("Required completion is configured separately.");
+    const courseBuilderSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    expect(courseBuilderSource).toContain("hasUnsupportedNonScoringSurveyQuestionType");
+    expect(courseBuilderSource).toContain("Non-scoring surveys can use only response types supported by the lesson player");
+  });
+
   it("scopes CME activity reporting and export to the active CME-enabled organization", () => {
     const cmeRouterSource = readFileSync(new URL("./routers/cmeActivityFormRouter.ts", import.meta.url), "utf8");
     const cmePageSource = readFileSync(new URL("../client/src/pages/lms/CmeManagementPage.tsx", import.meta.url), "utf8");

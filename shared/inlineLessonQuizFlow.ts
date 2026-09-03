@@ -9,6 +9,7 @@ export type InlineLessonQuizFlowQuestion = {
   required?: unknown;
   surveyRequired?: unknown;
   showWhen?: InlineLessonQuizCondition | null;
+  matchingPairs?: Array<{ id?: unknown }>;
 };
 
 export type InlineLessonQuizFlowResponse = {
@@ -29,6 +30,22 @@ export function inlineLessonQuizQuestionKey(question: InlineLessonQuizFlowQuesti
 
 function hasResponseValue(value: unknown) {
   return value !== undefined && value !== null && String(value).trim().length > 0;
+}
+
+function hasCompletedQuestionResponse(question: InlineLessonQuizFlowQuestion, value: unknown) {
+  if (!hasResponseValue(value)) return false;
+  if (question.type !== "matching" || !Array.isArray(question.matchingPairs) || question.matchingPairs.length === 0) return true;
+  if (typeof value !== "string") return false;
+  try {
+    const matches = JSON.parse(value);
+    if (typeof matches !== "object" || matches === null || Array.isArray(matches)) return false;
+    return question.matchingPairs.every((pair, index) => {
+      const key = String(pair.id ?? index);
+      return hasResponseValue((matches as Record<string, unknown>)[key]);
+    });
+  } catch {
+    return false;
+  }
 }
 
 /** Dependent questions fail closed unless an earlier parent has the exact expected response. */
@@ -80,7 +97,7 @@ export function hasCompletedRequiredInlineSurvey(
     question.required === true || question.surveyRequired === true,
   );
   return requiredVisibleQuestions.every(({ question, index }) =>
-    hasResponseValue(answerByQuestionKey[inlineLessonQuizQuestionKey(question, index)]),
+    hasCompletedQuestionResponse(question, answerByQuestionKey[inlineLessonQuizQuestionKey(question, index)]),
   );
 }
 

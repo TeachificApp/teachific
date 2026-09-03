@@ -6,6 +6,11 @@ import {
   type InlineLessonQuizFlowResponse,
 } from "../../shared/inlineLessonQuizFlow";
 
+const NON_SCORING_SURVEY_QUESTION_TYPES = new Set([
+  "mcq", "truefalse", "multiselect", "hotspot", "matching",
+  "likert", "star_rating", "open_text", "survey_choice",
+]);
+
 export type InlineLessonSurveyResponseInput = {
   questionKey: string;
   answerValue: string | number | string[] | null;
@@ -61,6 +66,9 @@ function parseQuestion(raw: unknown): StoredInlineLessonQuizQuestion | null {
           expectedAnswer: boundedText(raw.showWhen.expectedAnswer, 1_000) ?? undefined,
         }
       : null,
+    matchingPairs: Array.isArray(raw.matchingPairs)
+      ? raw.matchingPairs.map((pair) => isRecord(pair) ? { id: boundedText(pair.id, 128) ?? undefined } : null).filter((pair): pair is { id?: string } => !!pair)
+      : undefined,
     starMax: Number.isInteger(starMaxCandidate) && starMaxCandidate >= 1 && starMaxCandidate <= 10
       ? starMaxCandidate
       : undefined,
@@ -136,6 +144,24 @@ export function hasCmeOnlyInlineSurveyConfiguration(contentBlocks: string | null
     if (block.data.isSurvey === true || block.data.requireSurveyCompletion === true) return true;
     return Array.isArray(block.data.questions) && block.data.questions.some((question) =>
       isRecord(question) && ["likert", "star_rating", "open_text", "survey_choice"].includes(String(question.type)),
+    );
+  });
+}
+
+/** Survey blocks must use a response type that the legacy learner player renders without graded feedback. */
+export function hasUnsupportedNonScoringSurveyQuestionType(contentBlocks: string | null | undefined) {
+  if (!contentBlocks) return false;
+  let blocks: unknown;
+  try {
+    blocks = JSON.parse(contentBlocks);
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(blocks)) return false;
+  return blocks.some((block) => {
+    if (!isRecord(block) || block.type !== "lesson_quiz" || !isRecord(block.data) || block.data.isSurvey !== true) return false;
+    return !Array.isArray(block.data.questions) || block.data.questions.some((question) =>
+      !isRecord(question) || !NON_SCORING_SURVEY_QUESTION_TYPES.has(String(question.type ?? "mcq")),
     );
   });
 }
