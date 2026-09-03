@@ -9,6 +9,7 @@ import { protectedProcedure, publicProcedure, adminProcedure, router } from "./_
 import { getStripe, STRIPE_PRICE_IDS, PLAN_LIMITS, type PlanTier } from "./stripePlans";
 import { getOrgSubscription, upsertOrgSubscription } from "./lmsDb";
 import { ENV } from "./_core/env";
+import { getOrgBaseUrl } from "./lib/orgUrl";
 
 async function getDb() {
   const { getDb: _getDb } = await import("./db");
@@ -530,22 +531,39 @@ export const stripeRouter = router({
   createCourseCheckout: publicProcedure
     .input(
       z.object({
-        orgId: z.number(),
         productId: z.number(),
         priceId: z.number(),
         buyerEmail: z.string().email(),
         buyerName: z.string().optional(),
-        origin: z.string().url(),
       })
     )
     .mutation(async ({ input }) => {
-      // Get org payment settings (org's own Stripe key)
       const db = await getDb();
-      const { orgPaymentSettings, orgSubscriptions } = await import("../drizzle/schema");
+      const { getDigitalProduct, listProductPrices, createDigitalOrder } = await import("./lmsDb");
+      const product = await getDigitalProduct(input.productId);
+      if (!product) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+      }
+
+      const { orgPaymentSettings, orgSubscriptions, organizations } = await import("../drizzle/schema");
+      const [organization] = await db
+        .select({
+          slug: organizations.slug,
+          customDomain: organizations.customDomain,
+          domainVerificationStatus: organizations.domainVerificationStatus,
+        })
+        .from(organizations)
+        .where(eq(organizations.id, product.orgId))
+        .limit(1);
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      }
+
+      // Get the purchased product's organization payment settings (organization Stripe key)
       const [paySettings] = await db
         .select()
         .from(orgPaymentSettings)
-        .where(eq(orgPaymentSettings.orgId, input.orgId))
+        .where(eq(orgPaymentSettings.orgId, product.orgId))
         .limit(1);
 
       if (!paySettings?.stripeSecretKey) {
@@ -559,18 +577,12 @@ export const stripeRouter = router({
       const [orgSub] = await db
         .select()
         .from(orgSubscriptions)
-        .where(eq(orgSubscriptions.orgId, input.orgId))
+        .where(eq(orgSubscriptions.orgId, product.orgId))
         .limit(1);
       const planTier = (orgSub?.plan ?? "free") as PlanTier;
       const planLimits = PLAN_LIMITS[planTier];
       const feePercent = planLimits.transactionFeePercent; // 0, 1, or 3
 
-      // Get product and price details
-      const { getDigitalProduct, listProductPrices, createDigitalOrder } = await import("./lmsDb");
-      const product = await getDigitalProduct(input.productId);
-      if (!product || product.orgId !== input.orgId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
-      }
       const prices = await listProductPrices(input.productId);
       const price = prices.find((p) => p.id === input.priceId);
       if (!price) throw new TRPCError({ code: "NOT_FOUND", message: "Price not found" });
@@ -582,12 +594,18 @@ export const stripeRouter = router({
 
       const amountCents = Math.round(Number(price.amount) * 100);
       const applicationFeeCents = feePercent > 0 ? Math.round(amountCents * feePercent / 100) : undefined;
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
+      const productPath = `/shop/${encodeURIComponent(product.slug)}`;
 
       // Create a pre-order record so we can link back on webhook
       const order = await createDigitalOrder({
         productId: input.productId,
         priceId: input.priceId,
-        orgId: input.orgId,
+        orgId: product.orgId,
         buyerEmail: input.buyerEmail,
         buyerName: input.buyerName,
         amount: price.amount,
@@ -619,14 +637,14 @@ export const stripeRouter = router({
         ...(applicationFeeCents ? { payment_intent_data: { application_fee_amount: applicationFeeCents } } : {}),
         metadata: {
           teachific_order_id: String(order.id),
-          teachific_org_id: String(input.orgId),
+          teachific_org_id: String(product.orgId),
           teachific_product_id: String(input.productId),
           teachific_fee_percent: String(feePercent),
           buyer_email: input.buyerEmail,
           buyer_name: input.buyerName ?? "",
         },
-        success_url: `${input.origin}/school/${product.orgId}/thank-you?order_id=${order.id}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${input.origin}/school/${product.orgId}/courses/${input.productId}`,
+        success_url: `${organizationBaseUrl}${productPath}?order_id=${order.id}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${organizationBaseUrl}${productPath}`,
         allow_promotion_codes: true,
       });
 

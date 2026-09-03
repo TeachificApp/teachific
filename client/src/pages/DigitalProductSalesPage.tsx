@@ -251,12 +251,10 @@ function CheckoutDialog({
     if (product.hasStripe) {
       // Use Stripe checkout with transaction fee applied server-side
       stripeCheckout.mutate({
-        orgId: product.orgId,
         productId: product.id,
         priceId: selectedPriceId,
         buyerEmail: email,
         buyerName: name,
-        origin: window.location.origin,
       });
     } else {
       // Fallback to manual order

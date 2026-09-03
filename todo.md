@@ -48,6 +48,7 @@
 - [x] Add explicit server-side return-origin validation for Creator, Studio, and Quiz Creator checkout before creating Stripe sessions
 - [x] Validate protected Course360 subscription checkout and billing-portal return origins before creating Stripe sessions
 - [x] Remove the unreferenced placeholder BillingPage with static financial values while retaining the active profile billing route
+- [x] Derive public digital-product checkout organization and return URLs from the selected product’s trusted organization record instead of caller-provided values
 - [x] Exercise all three protected product checkout routes with an allowed configured preview origin and verified member custom domain
 - [x] Add an explicit procedure-level rejection case for an unverified custom checkout return origin
 - [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
