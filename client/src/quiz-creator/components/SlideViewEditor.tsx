@@ -4,7 +4,7 @@ import { QuestionEditor } from "./QuestionEditor";
 import { Button } from "@/components/ui/button";
 
 /**
- * Teachific's iSpring-style visual workspace. It presents each question as a
+ * Course360's iSpring-style visual workspace. It presents each question as a
  * slide card while reusing the standard QuestionEditor for full authoring.
  */
 export function SlideViewEditor() {

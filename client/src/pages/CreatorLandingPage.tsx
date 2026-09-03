@@ -20,7 +20,6 @@ import {
   Lock,
   Play,
   ChevronRight,
-  Star,
   Sparkles,
   BookOpen,
   PenTool,
@@ -162,33 +161,6 @@ const FEATURES = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    name: "Sarah K.",
-    role: "Instructional Designer",
-    company: "HealthLearn Inc.",
-    quote:
-      "TeachificCreator™ replaced iSpring Suite for our entire team. The SCORM export is flawless and the branching scenario builder is incredibly intuitive.",
-    stars: 5,
-  },
-  {
-    name: "Marcus T.",
-    role: "L&D Manager",
-    company: "TechCorp Global",
-    quote:
-      "We migrated 200+ courses to TeachificCreator™ in a month. The direct publish to Teachific LMS saves us hours every week.",
-    stars: 5,
-  },
-  {
-    name: "Priya M.",
-    role: "Freelance eLearning Developer",
-    company: "Self-employed",
-    quote:
-      "As a solo creator, TeachificCreator™ gives me everything I need. The quiz builder alone is worth the subscription price.",
-    stars: 5,
-  },
-];
-
 export default function CreatorLandingPage() {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const { user } = useAuth();
@@ -232,7 +204,6 @@ export default function CreatorLandingPage() {
             <div className="hidden md:flex items-center gap-6 text-sm text-white/70">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-              <a href="#testimonials" className="hover:text-white transition-colors">Reviews</a>
               <Link href="/creator" className="hover:text-white transition-colors">Dashboard</Link>
             </div>
           </div>
@@ -574,28 +545,23 @@ export default function CreatorLandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ────────────────────────────────────────────────────── */}
-      <section id="testimonials" className="py-20 px-6 bg-white/5 border-y border-white/10">
+      {/* ── Workflow ────────────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-12">
-            Loved by Instructional Designers
+            From Outline to Learning Experience
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <Card key={t.name} className="bg-white/5 border-white/10">
+            {[
+              { step: "01", title: "Structure", detail: "Create lessons, arrange content blocks, and build a clear path through each learning objective." },
+              { step: "02", title: "Enrich", detail: "Add media, interactive checks, and SCORM-compatible course content within an editable workspace." },
+              { step: "03", title: "Review", detail: "Preview the learner experience and publish only when the course is ready for your organization." },
+            ].map((item) => (
+              <Card key={item.step} className="bg-white/5 border-white/10">
                 <CardContent className="p-6">
-                  <div className="flex gap-0.5 mb-4">
-                    {Array.from({ length: t.stars }).map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-white/70 leading-relaxed mb-4">"{t.quote}"</p>
-                  <div>
-                    <p className="font-semibold text-white text-sm">{t.name}</p>
-                    <p className="text-xs text-white/40">
-                      {t.role} · {t.company}
-                    </p>
-                  </div>
+                  <p className="text-sm font-black text-[#4ad9e0] mb-4">{item.step}</p>
+                  <h3 className="font-semibold text-white text-base mb-2">{item.title}</h3>
+                  <p className="text-sm text-white/60 leading-relaxed">{item.detail}</p>
                 </CardContent>
               </Card>
             ))}

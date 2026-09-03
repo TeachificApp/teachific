@@ -49,6 +49,12 @@
 - [x] Distinguish non-scoring inline lesson survey mode from grading for all response-capable question types while preserving the separate CME required-completion gate
 - [x] Verify non-scoring survey submissions omit grading feedback across every supported legacy inline response type
 - [x] Scope reusable lesson templates to their owning organization and add a safe append-only saved-template picker to the active lesson editor
+- [x] Normalize remaining visible Quiz Creator platform-only Teachific references to Course360 without changing organization branding or persisted identifiers
+- [x] Audit Quiz Creator visible branding surfaces and document intentionally retained legacy identifiers separately from user-facing Course360 labels
+- [x] Remove fabricated Quiz Creator landing-page testimonials and replace the social-proof area with non-user-generated product information
+- [x] Normalize remaining visible Course360 platform labels in Quiz Creator entry, download, and sign-in surfaces without changing compatibility domains or stored keys
+- [x] Normalize visible Quiz Creator and desktop-app support and sales contact addresses to Course360 domains
+- [x] Remove fabricated Creator landing-page testimonials and replace them with non-user-generated product information
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers

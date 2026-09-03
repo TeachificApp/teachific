@@ -23,7 +23,7 @@ const PRODUCT_INFO: Record<Product, {
   features: string[];
 }> = {
   creator: {
-    name: "TeachificCreator™",
+    name: "Course360 Creator™",
     tagline: "Professional course authoring and eLearning content creation",
     features: [
       "Drag-and-drop course builder",
@@ -35,7 +35,7 @@ const PRODUCT_INFO: Record<Product, {
     ],
   },
   studio: {
-    name: "Teachific Studio™",
+    name: "Course360 Studio™",
     tagline: "Screen recording, transcription, and video editing for educators",
     features: [
       "Screen, camera, and audio recording",
@@ -47,7 +47,7 @@ const PRODUCT_INFO: Record<Product, {
     ],
   },
   quizcreator: {
-    name: "Teachific QuizMaker™",
+    name: "Course360 Quiz Creator™",
     tagline: "Professional quiz and assessment builder with analytics",
     features: [
       "Multiple question types",
@@ -242,7 +242,7 @@ export function DownloadPage({ product }: DownloadPageProps) {
                 <strong>macOS:</strong> If macOS blocks the app, go to System Settings → Privacy & Security → Open Anyway.
               </p>
               <a
-                href="https://teachific.app/help"
+                href="https://course360.app/help"
                 target="_blank"
                 rel="noreferrer"
                 className="text-sm text-[#24abbc] hover:underline flex items-center gap-1 mt-2"

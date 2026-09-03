@@ -114,6 +114,35 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lessonEditorSource).toContain("Add to Lesson");
   });
 
+  it("uses Course360 wording in the Quiz Creator save prompts while preserving legacy integration keys", () => {
+    const questionListSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionList.tsx", import.meta.url), "utf8");
+    expect(questionListSource).toContain("Save this quiz to Course360 before using find and replace.");
+    expect(questionListSource).toContain("Save this quiz to Course360 before generating questions from a public source.");
+    expect(questionListSource).not.toContain("Save this quiz to Teachific before");
+  });
+
+  it("uses Course360 labels for Quiz Creator entry points while preserving organization login branding", () => {
+    const gateSource = readFileSync(new URL("../client/src/pages/QuizCreatorGate.tsx", import.meta.url), "utf8");
+    const builderSource = readFileSync(new URL("../client/src/pages/QuizBuilderPage.tsx", import.meta.url), "utf8");
+    const loginSource = readFileSync(new URL("../client/src/pages/auth/LoginPage.tsx", import.meta.url), "utf8");
+    const landingSource = readFileSync(new URL("../client/src/pages/QuizCreatorLandingPage.tsx", import.meta.url), "utf8");
+    const publicPlayerSource = readFileSync(new URL("../client/src/pages/PublicQuizPlayerPage.tsx", import.meta.url), "utf8");
+    const workspaceSource = readFileSync(new URL("../client/src/pages/QuizVisualBuilderPage.tsx", import.meta.url), "utf8");
+    const desktopDownloadSource = readFileSync(new URL("../client/src/pages/DesktopDownloadPage.tsx", import.meta.url), "utf8");
+    expect(gateSource).toContain("by Course360");
+    expect(gateSource).toContain("included with Course360 Enterprise");
+    expect(builderSource).toContain("questions with media files into Course360");
+    expect(loginSource).toContain("Course360 Quiz Creator™");
+    expect(loginSource).toContain('isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Course360 account"');
+    expect(loginSource).not.toContain("10K+");
+    expect(loginSource).not.toContain("250K+");
+    expect(gateSource).not.toContain("Teachific");
+    expect(landingSource).not.toContain("Teachific");
+    expect(publicPlayerSource).not.toContain("Teachific");
+    expect(workspaceSource).not.toContain("Teachific");
+    expect(desktopDownloadSource).not.toContain("Teachific");
+  });
+
   it("scopes CME activity reporting and export to the active CME-enabled organization", () => {
     const cmeRouterSource = readFileSync(new URL("./routers/cmeActivityFormRouter.ts", import.meta.url), "utf8");
     const cmePageSource = readFileSync(new URL("../client/src/pages/lms/CmeManagementPage.tsx", import.meta.url), "utf8");
@@ -302,7 +331,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("result.value as unknown[]");
     expect(questionListSource).toContain("trpc.quizMaker.findAndReplaceText.useMutation");
     expect(questionListSource).toContain("Changes are applied only to this saved quiz. Question Bank records remain unchanged.");
-    expect(questionListSource).toContain("Save this quiz to Teachific before using find and replace.");
+    expect(questionListSource).toContain("Save this quiz to Course360 before using find and replace.");
   });
 
   it("renders Quiz Creator question groups as collapsible navigation without source-project branding", () => {
@@ -636,6 +665,8 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("does not ship fabricated testimonials or unsupported social-proof claims in platform marketing", () => {
     const landingPageSource = readFileSync(new URL("../client/src/pages/LandingPage.tsx", import.meta.url), "utf8");
+    const quizCreatorLandingSource = readFileSync(new URL("../client/src/pages/QuizCreatorLandingPage.tsx", import.meta.url), "utf8");
+    const creatorLandingSource = readFileSync(new URL("../client/src/pages/CreatorLandingPage.tsx", import.meta.url), "utf8");
     expect(landingPageSource).not.toContain("Dr. Sarah Mitchell");
     expect(landingPageSource).not.toContain("James Okafor");
     expect(landingPageSource).not.toContain("Priya Sharma");
@@ -645,6 +676,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingPageSource).not.toContain("$12,480");
     expect(landingPageSource).not.toContain("Revenue up 34% this month");
     expect(landingPageSource).not.toContain("847 new enrollments");
+    expect(quizCreatorLandingSource).not.toContain("TESTIMONIALS");
+    expect(quizCreatorLandingSource).not.toContain("Trusted by Educators Who Create at Scale");
+    expect(quizCreatorLandingSource).toContain("A Clear Assessment Workflow");
+    expect(creatorLandingSource).not.toContain("TESTIMONIALS");
+    expect(creatorLandingSource).not.toContain("Loved by Instructional Designers");
+    expect(creatorLandingSource).toContain("From Outline to Learning Experience");
   });
 
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
@@ -1102,17 +1139,17 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(questionBankPage).toContain("trpc.quizBank.generateQuestions.useMutation");
   });
 
-  it("provides a Teachific-branded visual workspace for an authorized standalone Quiz Creator quiz", () => {
+  it("provides a Course360-branded visual workspace for an authorized standalone Quiz Creator quiz", () => {
     const appSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
     const workspaceSource = readFileSync(new URL("../client/src/pages/QuizVisualBuilderPage.tsx", import.meta.url), "utf8");
     expect(appSource).toContain('path="/quiz-creator/:quizId/builder"');
     expect(workspaceSource).toContain("trpc.quizMaker.getQuiz.useQuery");
-    expect(workspaceSource).toContain("Back to Teachific Quiz Creator");
+    expect(workspaceSource).toContain("Back to Course360 Quiz Creator");
     expect(workspaceSource).toContain("BrandingPanel");
     expect(workspaceSource).not.toContain("All About Ultrasound");
   });
 
-  it("offers Teachific Form and Slides authoring modes in the visual Quiz Creator workspace", () => {
+  it("offers Course360 Form and Slides authoring modes in the visual Quiz Creator workspace", () => {
     const workspaceSource = readFileSync(new URL("../client/src/pages/QuizVisualBuilderPage.tsx", import.meta.url), "utf8");
     const slideEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/SlideViewEditor.tsx", import.meta.url), "utf8");
     expect(workspaceSource).toContain('editorViewMode: "form"');
@@ -1603,9 +1640,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(widgetRendererSource).toContain("fontFamily: widget.organizationTheme?.fontFamily");
   });
 
-  it("uses Teachific labeling and active organization styles for Question Bank folder controls", () => {
+  it("uses Course360 Quiz Creator labeling and active organization styles for Question Bank folder controls", () => {
     const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
-    expect(lmsAdminSource).toContain("Teachific Quiz Creator");
+    expect(lmsAdminSource).toContain("Course360 Quiz Creator");
     expect(lmsAdminSource).toContain("org-primary-button");
     expect(lmsAdminSource).toContain("var(--org-primary)");
     expect(lmsAdminSource).not.toContain('>SonoQuiz<');

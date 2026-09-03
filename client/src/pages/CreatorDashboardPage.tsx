@@ -165,7 +165,7 @@ export default function CreatorDashboardPage() {
           <div className="flex items-center gap-6">
             <Link href="/creator-pro">
               <span className="text-lg font-bold tracking-tight">
-                <span className="text-white">Teachific</span>
+                <span className="text-white">Course360</span>
                 <span className="text-[#4ad9e0]">Creator</span>
                 <sup className="text-[10px] text-[#4ad9e0] ml-0.5">™</sup>
               </span>

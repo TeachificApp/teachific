@@ -49,7 +49,7 @@ const APP_META: Record<AppKey, {
     name: "Course360 Quiz Creator™",
     tagline: "Create interactive quizzes and assessments",
     backPath: "/quiz-creator-app",
-    backLabel: "Back to QuizMaker Dashboard",
+    backLabel: "Back to Course360 Quiz Creator Dashboard",
     upgradePath: "/quiz-creator-pro",
     color: "text-orange-600",
     bgGradient: "from-orange-50 to-white",
@@ -110,7 +110,7 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
                 <div>
                   <p className="font-semibold text-amber-900 text-lg">Pro or Enterprise Plan Required</p>
                   <p className="text-amber-800 text-sm mt-1">
-                    The {meta.name} desktop app is available on <strong>Pro and Enterprise</strong> Teachific plans, or as a standalone purchase.
+                    The {meta.name} desktop app is available on <strong>Pro and Enterprise</strong> Course360 plans, or as a standalone purchase.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -186,10 +186,10 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
                 <p className="text-xs text-slate-400 text-center pt-1">
                   Having trouble? Contact{" "}
                   <a
-                    href="mailto:support@teachific.app"
+                    href="mailto:support@course360.app"
                     className="underline hover:text-slate-600"
                   >
-                    support@teachific.app
+                    support@course360.app
                   </a>
                 </p>
               </CardContent>
@@ -205,7 +205,7 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
                   {[
                     { step: "1", title: "Download the installer", desc: "Click the button above for your operating system." },
                     { step: "2", title: "Run the installer", desc: "Windows: extract the .zip file, then double-click the .exe installer and follow the prompts. macOS: open the .dmg, drag the app to Applications." },
-                    { step: "3", title: "Launch and sign in", desc: `Open ${meta.name} and sign in with your Teachific account to activate.` },
+                    { step: "3", title: "Launch and sign in", desc: `Open ${meta.name} and sign in with your Course360 account to activate.` },
                     { step: "4", title: "Start creating", desc: "Your subscription is automatically verified — no extra steps needed." },
                   ].map(({ step, title, desc }) => (
                     <li key={step} className="flex items-start gap-3">

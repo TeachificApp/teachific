@@ -439,7 +439,7 @@ export default function QuizBuilderPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><FileArchive className="h-5 w-5 text-primary" />Quiz Import Instructions</DialogTitle>
-            <DialogDescription>How to import questions with media files into Teachific</DialogDescription>
+            <DialogDescription>How to import questions with media files into Course360</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <div className="rounded-lg border bg-muted/40 p-4 space-y-2">

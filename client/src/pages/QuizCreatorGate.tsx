@@ -58,7 +58,7 @@ function QuizCreatorUpgradeWall() {
           <span className="text-3xl font-black tracking-tight">
             <span className="text-white">Quiz</span>
             <span className="text-teal-400">Creator</span>
-            <span className="text-white/40 text-lg font-medium ml-1">by Teachific</span>
+            <span className="text-white/40 text-lg font-medium ml-1">by Course360</span>
           </span>
         </div>
 
@@ -70,10 +70,10 @@ function QuizCreatorUpgradeWall() {
         </div>
 
         <h1 className="text-2xl font-bold text-white mb-3">
-          QuizMaker Access Required
+          Course360 Quiz Creator Access Required
         </h1>
         <p className="text-white/60 mb-8 leading-relaxed">
-          QuizMaker is available as a standalone subscription or included with Teachific Enterprise.
+          Quiz Creator is available as a standalone subscription or included with Course360 Enterprise.
           Upgrade to start building professional quizzes with hotspot, matching, and 5 other question types.
         </p>
 
@@ -92,7 +92,7 @@ function QuizCreatorUpgradeWall() {
 
         <p className="text-white/30 text-xs mt-8">
           Already have a license?{" "}
-          <a href="mailto:support@teachific.com" className="text-teal-400 hover:underline">
+          <a href="mailto:support@course360.app" className="text-teal-400 hover:underline">
             Contact support
           </a>{" "}
           to have it applied to your account.

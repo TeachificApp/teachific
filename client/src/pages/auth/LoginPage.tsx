@@ -104,12 +104,12 @@ export default function LoginPage() {
   // ── Desktop-app minimal login ────────────────────────────────────────────
   if (isDesktop) {
     const appName = returnTo.startsWith("/studio")
-      ? "Teachific Studio™"
+      ? "Course360 Studio™"
       : returnTo.startsWith("/quiz-creator")
-      ? "Teachific QuizMaker™"
+      ? "Course360 Quiz Creator™"
       : contextParam === "desktop" && !returnTo
-      ? "Teachific"
-      : "TeachificCreator™";
+      ? "Course360™"
+      : "Course360 Creator™";
 
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-white px-8">
@@ -120,13 +120,7 @@ export default function LoginPage() {
               className="text-3xl font-bold tracking-tight"
               style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              teach
-            </span>
-            <span
-              className="text-3xl font-bold tracking-tight"
-              style={{ color: TEAL, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              ific
+              Course360
             </span>
             <span
               className="text-sm font-bold ml-0.5"
@@ -151,7 +145,7 @@ export default function LoginPage() {
             >
               Sign in
             </h2>
-            <p className="text-sm text-slate-500">Use your Teachific account credentials</p>
+            <p className="text-sm text-slate-500">Use your Course360 account credentials</p>
           </div>
 
           {error && (
@@ -269,13 +263,7 @@ export default function LoginPage() {
               className="text-3xl font-bold text-white tracking-tight"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              teach
-            </span>
-            <span
-              className="text-3xl font-bold tracking-tight"
-              style={{ color: TEAL_LIGHT, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              ific
+              Course360
             </span>
             <span
               className="text-sm font-bold ml-0.5"
@@ -306,8 +294,7 @@ export default function LoginPage() {
               Your revenue.
             </h1>
             <p className="text-white/60 text-base leading-relaxed max-w-sm">
-              Join thousands of educators who turned their expertise into a thriving online school
-              with Teachific.
+              Build and deliver learning experiences with Course360 while retaining organization-specific branding.
             </p>
           </div>
 
@@ -326,23 +313,6 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center gap-6 pt-2">
-            <div>
-              <p className="text-2xl font-bold text-white">10K+</p>
-              <p className="text-white/45 text-xs">Courses created</p>
-            </div>
-            <div className="w-px h-10 bg-white/15" />
-            <div>
-              <p className="text-2xl font-bold text-white">250K+</p>
-              <p className="text-white/45 text-xs">Active learners</p>
-            </div>
-            <div className="w-px h-10 bg-white/15" />
-            <div>
-              <p className="text-2xl font-bold text-white">98%</p>
-              <p className="text-white/45 text-xs">Satisfaction</p>
-            </div>
-          </div>
         </div>
 
         <p className="relative z-10 text-white/25 text-xs">
@@ -352,7 +322,7 @@ export default function LoginPage() {
 
       {/* ── Right panel: form ───────────────────────────────────────── */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12">
-        {/* Logo: org branding on subdomain, Teachific on root */}
+        {/* Logo: organization branding on subdomain, Course360 on root */}
         <div className="mb-8 text-center">
           {isOrgSubdomain ? (
             branding?.logoUrl ? (
@@ -378,7 +348,7 @@ export default function LoginPage() {
               Welcome back
             </h2>
             <p className="text-sm text-slate-500">
-              {isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Teachific account"}
+              {isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Course360 account"}
             </p>
           </div>
 
