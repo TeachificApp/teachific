@@ -153,7 +153,7 @@ async function startServer() {
   app.get("/api/platform-identity", (_req, res) => {
     res.json({
       title: process.env.VITE_APP_TITLE ?? "Course360™",
-      logo: process.env.VITE_APP_LOGO ?? "/manus-storage/course360-logo_3d94d0e3.png",
+      logo: process.env.VITE_APP_LOGO ?? "/manus-storage/course360-logo_4b20a5ab.png",
     });
   });
 
