@@ -106,6 +106,7 @@
 - [x] Replace active API documentation retired-platform base URL example with the Course360 platform URL
 - [x] Replace active Kajabi, Teachable, and Thinkific migration-import source-brand copy with Course360 wording while preserving import behavior
 - [x] Remove the predictable legacy member-import default password and require a server-owned invitation or password-setup path for imported accounts
+- [x] Replace active Members page source-brand account labels with Course360 wording while preserving member creation and import behavior
 - [x] Require active-organization ownership for issued certificate listing
 - [x] Require active-organization and CME entitlement for any CME activity certificate report or export
 - [x] Add an additive organization-owned inline CME survey attempt and response model without changing standalone Question Bank records

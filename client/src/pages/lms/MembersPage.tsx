@@ -552,7 +552,7 @@ export default function MembersPage() {
                 onChange={(e) => setEnrollEmail(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                The student must already have a Teachific account with this email.
+                The student must already have a Course360 account with this email.
               </p>
             </div>
             <div className="flex flex-col gap-1.5">
