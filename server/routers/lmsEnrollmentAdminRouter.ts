@@ -29,6 +29,7 @@ import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { addToAllContacts } from "../lib/emailListHelper";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import {
   lmsCourses,
@@ -1619,12 +1620,23 @@ CRITICAL REQUIREMENTS:
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
       const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (!orgId || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
       const pricingOptions = await db.select().from(lmsPricingOptions)
         .where(and(eq(lmsPricingOptions.courseId, input.courseId), eq(lmsPricingOptions.isActive, true)))
         .orderBy(asc(lmsPricingOptions.sortOrder));
       // Build checkout URL for each pricing option
       const buildCheckoutUrl = (optionId?: number) => {
-        const base = `${input.origin}/courses/${course.slug}`;
+        const base = `${organizationBaseUrl}/courses/${encodeURIComponent(course.slug)}`;
         return optionId ? `${base}?pricingOptionId=${optionId}&checkout=1` : `${base}?checkout=1`;
       };
       const buildEmbedCode = (url: string) =>
