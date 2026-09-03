@@ -7,6 +7,7 @@ import { storagePut } from "../storage";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import {
   getTitleByIsbn,
   isBookvaultConfigured,
@@ -31,6 +32,7 @@ import {
   physicalProducts,
   physicalProductPricingOptions,
   physicalProductOrders,
+  organizations,
   users,
 } from "../../drizzle/schema";
 
@@ -210,6 +212,17 @@ export const productsLearnerRouter = router({
       if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
       if (product.status !== "published" && !product.isFree) throw new TRPCError({ code: "FORBIDDEN", message: "This product is not available." });
       if (product.checkoutMode !== "native") throw new TRPCError({ code: "BAD_REQUEST", message: "This product uses an external checkout." });
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, product.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
       const userId = ctx.user?.id ?? 0;
       if (product.isFree || Number(product.price) === 0) {
         // Auto-grant free product (only if user is logged in)
@@ -252,7 +265,7 @@ export const productsLearnerRouter = router({
         }],
         metadata: { type: "physical_product", product_id: product.id.toString(), user_id: userId.toString(), customer_email: ctx.user?.email ?? "" },
         payment_intent_data: { description: `${product.title} — Physical Product` },
-        return_url: `${input.origin}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=physical`,
+        return_url: `${organizationBaseUrl}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&type=physical`,
         ...shippingOpts,
       });
       return {

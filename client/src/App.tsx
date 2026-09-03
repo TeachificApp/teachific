@@ -722,6 +722,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />
         <Route path="/webinar/:slug/watch" component={WebinarWatchPage} />
         <Route path="/shop/:slug" component={DigitalProductSalesPage} />
+        <Route path="/checkout/complete" component={CheckoutCompletePage} />
         <Route path="/forms/:orgSlug/:slug" component={FormPlayerPage} />
         <Route path="/forms/:slug" component={FormPlayerPage} />
         <Route path="/quiz/:shareToken" component={PublicQuizPlayerPage} />
