@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useMemo, useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useOrgScope } from "@/hooks/useOrgScope";
@@ -171,7 +171,7 @@ function CmeFormsList({ onSelect }: { onSelect: (courseId: number, courseTitle: 
 function CmeActivityReportPanel() {
   const [courseId, setCourseId] = useState<string>("");
   const { data: activities } = trpc.cme.listCmeActivityForms.useQuery({});
-  const reportInput = courseId ? { courseId: Number(courseId), page: 1, pageSize: 50 } : undefined;
+  const reportInput = useMemo(() => courseId ? { courseId: Number(courseId), page: 1, pageSize: 50 } : undefined, [courseId]);
   const { data: report, isLoading } = trpc.cme.getCmeActivityReport.useQuery(reportInput!, { enabled: !!reportInput });
   const exportCsv = trpc.cme.exportCmeActivityReportCsv.useMutation({
     onSuccess: ({ csv, filename }) => {
