@@ -54,8 +54,8 @@ export function getCourse360PlatformEmailIdentity() {
 }
 
 export function getCourse360PlatformAppUrl() {
-  const configuredAppUrl = process.env.VITE_OAUTH_PORTAL_URL?.trim();
-  return configuredAppUrl && !isRetiredPlatformValue(configuredAppUrl)
+  const configuredAppUrl = process.env.VITE_SITE_URL?.trim();
+  return configuredAppUrl && !isRetiredPlatformValue(configuredAppUrl) && !/manus\.im/i.test(configuredAppUrl)
     ? configuredAppUrl
     : "https://course360.app";
 }

@@ -5,6 +5,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getDb } from "../db";
 import { sendEmail } from "../_core/email";
 import { ENV } from "../_core/env";
+import { getCourse360PlatformAppUrl } from "../../shared/brands";
 import { mediaAssets, mediaVersions, platformSettings, users } from "../../drizzle/schema";
 import {
   needsScormExtraction,
@@ -22,8 +23,15 @@ import {
 } from "./scormHealth";
 import { desc, inArray } from "drizzle-orm";
 
+export function resolveScormHealthAlertAppBaseUrl(configuredUrl?: string | null): string {
+  const normalized = configuredUrl?.trim().replace(/\/$/, "");
+  return normalized && !/teachific/i.test(normalized)
+    ? normalized
+    : getCourse360PlatformAppUrl().replace(/\/$/, "");
+}
+
 function appBaseUrl(): string {
-  return (process.env.VITE_APP_URL || ENV.appUrl || "https://teachific.app").replace(/\/$/, "");
+  return resolveScormHealthAlertAppBaseUrl(process.env.VITE_APP_URL || ENV.appUrl);
 }
 
 export async function resolveScormAlertEmail(): Promise<string | null> {
@@ -354,7 +362,7 @@ export async function runScormHealthAlertPass(): Promise<{
       try {
         await sendEmail({
           to: { name: "Platform Admin", email: alertEmail },
-          subject: `[Teachific] SCORM health alert — ${toEmail.length} package${toEmail.length === 1 ? "" : "s"} need attention`,
+          subject: `[Course360] SCORM health alert — ${toEmail.length} package${toEmail.length === 1 ? "" : "s"} need attention`,
           htmlBody: buildAlertEmailHtml(toEmail),
           brandMode: "teachific",
         });
