@@ -1,5 +1,5 @@
 /**
- * Teachific Platform Subscription Plans
+ * Course360 Platform Subscription Plans
  * Defines plan limits and manages Stripe products/prices.
  */
 import Stripe from "stripe";
@@ -206,6 +206,15 @@ export function getStripe(): Stripe {
 // These are populated at server startup via ensureStripePlans()
 export const STRIPE_PRICE_IDS: Record<string, string> = {};
 
+async function syncStripeProductDisplay(
+  stripe: Stripe,
+  product: Stripe.Product,
+  plan: { name: string; description: string },
+): Promise<Stripe.Product> {
+  if (product.name === plan.name && product.description === plan.description) return product;
+  return stripe.products.update(product.id, { name: plan.name, description: plan.description });
+}
+
 /**
  * Idempotently create Stripe products and prices for all paid plans.
  * Stores price IDs in STRIPE_PRICE_IDS for use in checkout sessions.
@@ -225,12 +234,17 @@ export async function ensureStripePlans(): Promise<void> {
     // Find or create product
     const products = await stripe.products.list({ limit: 100 });
     let product = products.data.find((p) => p.metadata?.teachific_tier === tier);
+    const productDisplay = {
+      name: `Course360 ${plan.name}`,
+      description: `Course360 ${plan.name} plan`,
+    };
     if (!product) {
       product = await stripe.products.create({
-        name: `Teachific ${plan.name}`,
-        description: `Teachific ${plan.name} plan`,
+        ...productDisplay,
         metadata: { teachific_tier: tier },
       });
+    } else {
+      product = await syncStripeProductDisplay(stripe, product, productDisplay);
     }
 
     // Monthly price
@@ -267,11 +281,11 @@ export async function ensureStripePlans(): Promise<void> {
     STRIPE_PRICE_IDS[annualKey] = annualPrice.id;
   }
 
-  // ── Teachific Studio™ — Web + Desktop plans ────────────────────────────────────
+  // ── Course360 Studio™ — Web + Desktop plans ────────────────────────────────────
   const studioAppPlans: Record<"web" | "desktop" | "bundle", { name: string; monthlyPrice: number; annualPrice: number; description: string }> = {
-    web:     { name: "Teachific Studio™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Teachific Studio™ Web — browser-based editing, CC styling, transcript editing" },
-    desktop: { name: "Teachific Studio™ Desktop", monthlyPrice: 4700, annualPrice: 39900, description: "Teachific Studio™ Desktop — full desktop app, HD MP4 export, multi-track editing" },
-    bundle:  { name: "Teachific Studio™ Bundle",  monthlyPrice: 6700, annualPrice: 54900, description: "Teachific Studio™ Bundle — Web + Desktop apps" },
+    web:     { name: "Course360 Studio™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Course360 Studio™ Web — browser-based editing, CC styling, transcript editing" },
+    desktop: { name: "Course360 Studio™ Desktop", monthlyPrice: 4700, annualPrice: 39900, description: "Course360 Studio™ Desktop — full desktop app, HD MP4 export, multi-track editing" },
+    bundle:  { name: "Course360 Studio™ Bundle",  monthlyPrice: 6700, annualPrice: 54900, description: "Course360 Studio™ Bundle — Web + Desktop apps" },
   };
   for (const [tier, plan] of Object.entries(studioAppPlans) as ["web"|"desktop"|"bundle", typeof studioAppPlans["web"]][]) {
     const productKey = `studio_${tier}`;
@@ -282,6 +296,8 @@ export async function ensureStripePlans(): Promise<void> {
         name: plan.name, description: plan.description,
         metadata: { product_key: productKey, product_type: "studio", access_tier: tier },
       });
+    } else {
+      product = await syncStripeProductDisplay(stripe, product, plan);
     }
     const existingPrices = await stripe.prices.list({ product: product.id, limit: 100 });
     let monthlyPrice = existingPrices.data.find(
@@ -308,11 +324,11 @@ export async function ensureStripePlans(): Promise<void> {
     STRIPE_PRICE_IDS[`studio_${tier}_annual`] = annualPrice.id;
   }
 
-  // ── TeachificCreator™ — Web + Desktop plans ──────────────────────────────────────
+  // ── Course360 Creator™ — Web + Desktop plans ─────────────────────────────────────
   const creatorAppPlans: Record<"web" | "desktop" | "bundle", { name: string; monthlyPrice: number; annualPrice: number; description: string }> = {
-    web:     { name: "TeachificCreator™ Web",    monthlyPrice: 9900,  annualPrice: 89900,  description: "TeachificCreator™ Web — browser-based SCORM authoring, branching scenarios, AI content generation" },
-    desktop: { name: "TeachificCreator™ Desktop", monthlyPrice: 11700, annualPrice: 99900,  description: "TeachificCreator™ Desktop — full desktop authoring suite" },
-    bundle:  { name: "TeachificCreator™ Bundle",  monthlyPrice: 14900, annualPrice: 129900, description: "TeachificCreator™ Bundle — Web + Desktop apps" },
+    web:     { name: "Course360 Creator™ Web",    monthlyPrice: 9900,  annualPrice: 89900,  description: "Course360 Creator™ Web — browser-based SCORM authoring, branching scenarios, AI content generation" },
+    desktop: { name: "Course360 Creator™ Desktop", monthlyPrice: 11700, annualPrice: 99900,  description: "Course360 Creator™ Desktop — full desktop authoring suite" },
+    bundle:  { name: "Course360 Creator™ Bundle",  monthlyPrice: 14900, annualPrice: 129900, description: "Course360 Creator™ Bundle — Web + Desktop apps" },
   };
   for (const [tier, plan] of Object.entries(creatorAppPlans) as ["web"|"desktop"|"bundle", typeof creatorAppPlans["web"]][]) {
     const productKey = `creator_${tier}`;
@@ -323,6 +339,8 @@ export async function ensureStripePlans(): Promise<void> {
         name: plan.name, description: plan.description,
         metadata: { product_key: productKey, product_type: "creator", access_tier: tier },
       });
+    } else {
+      product = await syncStripeProductDisplay(stripe, product, plan);
     }
     const existingPrices = await stripe.prices.list({ product: product.id, limit: 100 });
     let monthlyPrice = existingPrices.data.find(
@@ -349,11 +367,11 @@ export async function ensureStripePlans(): Promise<void> {
     STRIPE_PRICE_IDS[`creator_${tier}_annual`] = annualPrice.id;
   }
 
-  // ── Teachific QuizMaker™ — Web + Desktop plans ─────────────────────────────────
+  // ── Course360 Quiz Creator™ — Web + Desktop plans ───────────────────────────────
   const quizCreatorAppPlans: Record<"web" | "desktop" | "bundle", { name: string; monthlyPrice: number; annualPrice: number; description: string }> = {
-    web:     { name: "Teachific QuizMaker™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Teachific QuizMaker™ Web — browser-based quiz creation, 7 question types, LMS integration" },
-    desktop: { name: "Teachific QuizMaker™ Desktop", monthlyPrice: 4800, annualPrice: 39900, description: "Teachific QuizMaker™ Desktop — full desktop quiz authoring, AES-256 encrypted .quiz files" },
-    bundle:  { name: "Teachific QuizMaker™ Bundle",  monthlyPrice: 6500, annualPrice: 54900, description: "Teachific QuizMaker™ Bundle — Web + Desktop apps" },
+    web:     { name: "Course360 Quiz Creator™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Course360 Quiz Creator™ Web — browser-based quiz creation, 7 question types, LMS integration" },
+    desktop: { name: "Course360 Quiz Creator™ Desktop", monthlyPrice: 4800, annualPrice: 39900, description: "Course360 Quiz Creator™ Desktop — full desktop quiz authoring, AES-256 encrypted .quiz files" },
+    bundle:  { name: "Course360 Quiz Creator™ Bundle",  monthlyPrice: 6500, annualPrice: 54900, description: "Course360 Quiz Creator™ Bundle — Web + Desktop apps" },
   };
   for (const [tier, plan] of Object.entries(quizCreatorAppPlans) as ["web"|"desktop"|"bundle", typeof quizCreatorAppPlans["web"]][]) {
     const productKey = `quiz_creator_${tier}`;
@@ -364,6 +382,8 @@ export async function ensureStripePlans(): Promise<void> {
         name: plan.name, description: plan.description,
         metadata: { product_key: productKey, product_type: "quiz_creator", access_tier: tier },
       });
+    } else {
+      product = await syncStripeProductDisplay(stripe, product, plan);
     }
     const existingPrices = await stripe.prices.list({ product: product.id, limit: 100 });
     let monthlyPrice = existingPrices.data.find(
