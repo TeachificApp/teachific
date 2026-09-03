@@ -11,6 +11,9 @@ describe("Course360 role-guard support fallback", () => {
 
     expect(source).toContain("support@course360.app");
     expect(source).not.toContain("support@teachific.app");
+    expect(source).not.toContain("if (false)");
+    expect(source).not.toContain('href="/premium"');
+    expect(source).not.toMatch(/specialty protocols|clinical tools|daily challenge archive/i);
     expect(source).toContain("trpc.system.requestAccess.useMutation");
     expect(source).toContain("the platform administrator has been notified");
   });

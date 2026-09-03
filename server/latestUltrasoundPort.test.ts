@@ -1889,10 +1889,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(layoutSource).not.toContain("EchoAssist");
   });
 
-  it("uses generic Teachific wording in the premium access guard", () => {
+  it("removes the unreachable legacy clinical premium branch from the access guard", () => {
     const roleGuardSource = readFileSync(new URL("../client/src/components/RoleGuard.tsx", import.meta.url), "utf8");
-    expect(roleGuardSource).toContain("expanded learning tools, guided resources");
-    expect(roleGuardSource).toContain("Unlimited flashcards and case studies");
+    expect(roleGuardSource).toContain("PremiumPearlGate");
+    expect(roleGuardSource).not.toContain("if (false)");
+    expect(roleGuardSource).not.toContain("expanded learning tools, guided resources");
+    expect(roleGuardSource).not.toContain("Unlimited flashcards and case studies");
     expect(roleGuardSource).not.toContain("EchoAssist");
     expect(roleGuardSource).not.toContain("Ultrasound Flashcards");
   });
