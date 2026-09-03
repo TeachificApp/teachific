@@ -77,6 +77,16 @@ function cleanSourceText(value: string) {
     .trim();
 }
 
+const SOURCE_REFERENCE_PATTERN = /\b(?:source\s+(?:page|url|document|file|material|text)|(?:the|this)\s+(?:source|website|web\s*page|document|transcript|pdf|file|passage|reading)|according\s+to\s+(?:the|this)|as\s+(?:stated|described)\s+(?:in|on))\b/i;
+
+/** Rejects source provenance in outputs grounded by a private author-supplied URL. */
+export function assertSourceBlindGeneratedContent(value: string, sourceUrl: string) {
+  const hostname = validatePublicSourceUrl(sourceUrl).hostname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (/https?:\/\//i.test(value) || new RegExp(`\\b${hostname}\\b`, "i").test(value) || SOURCE_REFERENCE_PATTERN.test(value)) {
+    throw new Error("Generated questions must not identify or refer to the private source page.");
+  }
+}
+
 async function requestSource(url: URL, address: string, family: number) {
   const client = url.protocol === "https:" ? https : http;
   return await new Promise<{ statusCode: number; headers: http.IncomingHttpHeaders; body: Buffer }>((resolve, reject) => {

@@ -29,7 +29,7 @@ import { and, eq, inArray, like, sql, desc, asc } from "drizzle-orm";
 import { storagePut } from "../storage";
 import { invokeLLM } from "../_core/llm";
 import { buildAiSourceMessage } from "../lib/aiSourceFile";
-import { fetchPublicSourceText } from "../lib/publicSourceUrl";
+import { assertSourceBlindGeneratedContent, fetchPublicSourceText } from "../lib/publicSourceUrl";
 import { assertActiveQuizBankOrganization } from "../lib/quizBankActiveOrganization";
 import { parseISpringQuizFromBuffer } from "../lib/iSpringQuizParser";
 import { rewriteStorageRefs, uploadISpringImagesFromZip } from "../lib/iSpringImageImporter";
@@ -743,6 +743,23 @@ export const quizBankRouter = router({
       const parsed = JSON.parse(response.choices[0]?.message?.content ?? "{}") as { questions?: Array<{ questionText: string; explanationText: string; choices: Array<{ choiceText: string; isCorrect: boolean; feedbackText: string }> }> };
       const generated = (parsed.questions ?? []).slice(0, input.count);
       if (generated.length === 0) throw new TRPCError({ code: "BAD_GATEWAY", message: "No questions were generated. Please try again." });
+      if (input.sourceUrl) {
+        try {
+          for (const question of generated) {
+            assertSourceBlindGeneratedContent(question.questionText, input.sourceUrl);
+            assertSourceBlindGeneratedContent(question.explanationText, input.sourceUrl);
+            for (const choice of question.choices) {
+              assertSourceBlindGeneratedContent(choice.choiceText, input.sourceUrl);
+              assertSourceBlindGeneratedContent(choice.feedbackText, input.sourceUrl);
+            }
+          }
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_GATEWAY",
+            message: error instanceof Error ? error.message : "Generated content could not be safely used.",
+          });
+        }
+      }
 
       const createdIds: number[] = [];
       for (const generatedQuestion of generated) {

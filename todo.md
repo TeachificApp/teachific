@@ -59,6 +59,7 @@
 - [x] Add secure, organization-scoped public web-page grounding to Question Bank AI generation with SSRF, redirect, size, and source-reference safeguards
 - [x] Enforce server-resolved active-organization alignment for Quiz Bank source generation and behaviorally reject another active organization’s bank
 - [x] Add procedure-level Quiz Bank generation coverage for a multi-organization administrator using a non-active bank
+- [x] Reject source-identifying Question Bank AI output when a public web page is used only as private factual grounding
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers
