@@ -67,5 +67,6 @@ describe("Course360 shared Layout navigation", () => {
     expect(screen.queryByText("Educator Tools")).toBeNull();
     expect(screen.queryByText("Lab Admin Portal")).toBeNull();
     expect(screen.queryByText("Accreditation Manager")).toBeNull();
+    expect(screen.queryByText("SonoShop")).toBeNull();
   });
 });

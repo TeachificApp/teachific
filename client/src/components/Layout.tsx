@@ -9,7 +9,7 @@ import { Link, Link as WouterLink, useLocation } from "wouter";
 import {
   Heart, Calculator, ClipboardList, Activity,
   Scan, BookOpen, FileText, Menu, X, ChevronRight,
-  Stethoscope, Zap, ExternalLink, ShoppingBag, FlaskConical, MessageCircle, Award, Shield, GraduationCap,
+  Stethoscope, Zap, ExternalLink, FlaskConical, MessageCircle, Award, Shield, GraduationCap,
   BookMarked, Library, Plus, Crown, Droplets, Building2, Users, UserPlus,
   LogIn, LogOut, ChevronDown, Webhook, Layers, Lock, ClipboardCheck, Brain,
   DollarSign, Briefcase
@@ -228,20 +228,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* AAUS Store */}
-        <div className="px-3 pb-2">
-          <a
-            href="https://course360.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-150 group w-full"
-            style={{ background: "linear-gradient(135deg, #189aa1 0%, #4ad9e0 100%)" }}
-          >
-            <ShoppingBag className="w-4 h-4 text-white flex-shrink-0" />
-            <span className="text-sm font-semibold text-white">SonoShop</span>
-            <ExternalLink className="w-3 h-3 text-white/70 ml-auto" />
-          </a>
-        </div>
         {/* Footer */}
         <div className="px-4 py-3 border-t border-white/10">
           <a href="https://course360.app" target="_blank" rel="noopener noreferrer"
