@@ -215,9 +215,9 @@ export default function FulfillmentAdmin() {
                     >
                       <SelectTrigger><SelectValue placeholder="Select access scope..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="aaus">Teachific™ Membership</SelectItem>
-                        <SelectItem value="iheartecho">Teachific™ Membership Access</SelectItem>
-                        <SelectItem value="both">All Teachific™ Membership Access</SelectItem>
+                        <SelectItem value="aaus">Course360™ Membership</SelectItem>
+                        <SelectItem value="iheartecho">Course360™ Membership Access</SelectItem>
+                        <SelectItem value="both">All Course360™ Membership Access</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
