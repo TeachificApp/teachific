@@ -102,6 +102,7 @@
 - [x] Add behavioral certificate-issuance coverage for organization-owned template fallback, certificate record ownership, and organization email identity
 - [x] Replace active certificate-settings Teachific labels and fallback placeholder copy with Course360 and organization-neutral wording while retaining persisted compatibility fields
 - [x] Replace active School Profile retired support address and source-brand help text with Course360 support fallback copy
+- [x] Replace active Billing Page source-brand subscription copy and retired support fallback with Course360 wording
 - [x] Require active-organization ownership for issued certificate listing
 - [x] Require active-organization and CME entitlement for any CME activity certificate report or export
 - [x] Add an additive organization-owned inline CME survey attempt and response model without changing standalone Question Bank records

@@ -264,7 +264,7 @@ export default function BillingPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Billing & Plans</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Manage your Teachific subscription and payment methods.
+              Manage your Course360 subscription and payment methods.
             </p>
           </div>
         </div>
@@ -621,7 +621,7 @@ export default function BillingPage() {
       <div className="text-center text-sm text-muted-foreground">
         All plans include core LMS features. Upgrade to unlock more members, courses, and advanced capabilities.
         {" "}
-        <a href="mailto:support@teachific.app" className="text-primary hover:underline">Contact support</a>
+        <a href="mailto:support@course360.app" className="text-primary hover:underline">Contact support</a>
       </div>
     </div>
   );
