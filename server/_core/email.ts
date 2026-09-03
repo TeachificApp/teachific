@@ -589,9 +589,9 @@ export function buildWelcomeEmail(opts: {
   const previewText = `Your account has been set up — sign in to get started`;
   const roleLabels: Record<string, string> = {
     premium_user: "Premium Access",
-    diy_user: "DIY Accreditation",
-    diy_admin: "Lab Admin",
-    platform_admin: "Platform Admin",
+    diy_user: "Creator Access",
+    diy_admin: "Organization Administration",
+    platform_admin: "Platform Administration",
   };
   const roleList = opts.roles
     .filter(r => roleLabels[r])
@@ -603,7 +603,7 @@ export function buildWelcomeEmail(opts: {
       Welcome to ${bc.displayName}, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Your account has been set up by an administrator. You now have access to the ${bc.displayName} clinical platform.
+      Your account has been set up by an administrator. You now have access to ${bc.displayName}.
     </p>
     ${roleList ? `
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
