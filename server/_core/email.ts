@@ -928,35 +928,35 @@ export function buildPlatformFreeWelcomeEmail(opts: {
   firstName: string;
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = "Welcome to Teachific™ - Your Free Account is Ready";
-  const previewText = "Your free Teachific™ account is ready - sign in to get started";
+  const subject = "Welcome to Course360™ — Your Account Is Ready";
+  const previewText = "Your Course360 account is ready. Sign in to get started.";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
-      Welcome to Teachific™, ${opts.firstName}!
+      Welcome to Course360™, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Your free Teachific™ account has been created. You now have access to our learning tools and course catalog.
+      Your account has been created. You can now access the learning tools and content available to you.
     </p>
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
-      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${brandColor};">Your free access includes:</p>
+      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${brandColor};">Your account gives you access to:</p>
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#475569;">
-        <li style="margin:4px 0;">ACR TI-RADS Thyroid Nodule Assessment</li>
-        <li style="margin:4px 0;">Daily Challenge - Thyroid category</li>
-        <li style="margin:4px 0;">Access to the Teachific™ learning community</li>
+        <li style="margin:4px 0;">Learning content made available by your organization</li>
+        <li style="margin:4px 0;">Available community and collaboration features</li>
+        <li style="margin:4px 0;">Your Course360 learning dashboard</li>
       </ul>
     </div>
     <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
-      Upgrade to <strong>Premium</strong> to unlock all courses, unlimited content, and advanced coaching tools.
+      Your organization may make additional learning and authoring capabilities available through its selected plan.
     </p>
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.loginUrl}"
         style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
-        Sign In to Teachific™
+        Sign In to Course360™
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -967,35 +967,32 @@ export function buildPlatformPremiumWelcomeEmail(opts: {
   firstName: string;
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = "Welcome to Teachific™ Premium - Full Access Unlocked";
-  const previewText = "Your Teachific™ Premium account is ready - full access awaits";
+  const subject = "Welcome to Course360™ — Expanded Access Is Ready";
+  const previewText = "Your Course360 account now has access to the capabilities in your plan.";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
-      Welcome to Teachific™ Premium, ${opts.firstName}!
+      Welcome to Course360™, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Your premium membership is now active. You have full access to every clinical intelligence tool, learning resource, and feature on the platform.
+      Your plan access is now active. You can use the learning, authoring, and collaboration capabilities included with your plan.
     </p>
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
-      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${brandColor};">Your Premium access includes:</p>
+      <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${brandColor};">Your plan may include:</p>
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#475569;">
-        <li style="margin:4px 0;">All 9 Clinical Intelligence tools (TI-RADS, LI-RADS, BI-RADS, O-RADS, Vascular, Renal, MSK, OB/Gyn, POCUS)</li>
-        <li style="margin:4px 0;">Daily Challenge - all 11 specialty categories</li>
-        <li style="margin:4px 0;">Unlimited course content</li>
-        <li style="margin:4px 0;">Full Case Library (500+ cases)</li>
-        <li style="margin:4px 0;">SoundBytes clinical audio library</li>
-        <li style="margin:4px 0;">AI-powered coaching tools</li>
+        <li style="margin:4px 0;">Expanded course and content access</li>
+        <li style="margin:4px 0;">Authoring and administrative capabilities</li>
+        <li style="margin:4px 0;">Additional collaboration and reporting features</li>
       </ul>
     </div>
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.loginUrl}"
         style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
-        Open Teachific™
+        Open Course360™
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
