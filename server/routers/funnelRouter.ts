@@ -1181,6 +1181,13 @@ export const funnelPublicRouter = router({
       if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel page not found" });
       const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.funnelId));
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel not found" });
+      const organization = await getOrgById(funnel.orgId);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
 
       // Parse blocks to find checkout_form block
       let checkoutBlock: any = null;
@@ -1237,14 +1244,14 @@ export const funnelPublicRouter = router({
       const thankYouPage = allPages.find(p => p.pageType === "thank_you");
       const successRedirect = checkoutBlock.data?.successRedirect;
       const resolveSuccessUrl = (redirect: string | undefined) => {
-        if (!redirect) return thankYouPage ? `${input.origin}/${funnel.slug}/${thankYouPage.slug}?success=1` : `${input.origin}/${funnel.slug}/${page.slug}?success=1`;
-        if (redirect === "__dashboard__") return `${input.origin}/my-dashboard?purchase=success`;
-        if (redirect.startsWith("__funnel__:")) return `${input.origin}/${redirect.slice(11)}?success=1`;
+        if (!redirect) return thankYouPage ? `${organizationBaseUrl}/${funnel.slug}/${thankYouPage.slug}?success=1` : `${organizationBaseUrl}/${funnel.slug}/${page.slug}?success=1`;
+        if (redirect === "__dashboard__") return `${organizationBaseUrl}/my-dashboard?purchase=success`;
+        if (redirect.startsWith("__funnel__:")) return `${organizationBaseUrl}/${redirect.slice(11)}?success=1`;
         if (redirect.startsWith("http")) return redirect;
-        return `${input.origin}${redirect}`;
+        return `${organizationBaseUrl}${redirect}`;
       };
       const successUrl = resolveSuccessUrl(successRedirect);
-      const cancelUrl = `${input.origin}/${funnel.slug}/${page.slug}`;
+      const cancelUrl = `${organizationBaseUrl}/${funnel.slug}/${page.slug}`;
 
       const funnelCheckoutMetadata = {
           type: "funnel_form_purchase",
@@ -1295,7 +1302,7 @@ export const funnelPublicRouter = router({
         source: "checkout_form",
         ipAddress: ip || null,
         userAgent: ua || null,
-        sourcePage: input.origin ? `${input.origin}/${funnel.slug}/${page.slug}` : null,
+        sourcePage: `${organizationBaseUrl}/${funnel.slug}/${page.slug}`,
       });
       return { checkoutUrl: session.url };
     }),
@@ -1608,7 +1615,7 @@ export const funnelPublicRouter = router({
         source: "checkout_form",
         ipAddress: ip || null,
         userAgent: ua || null,
-        sourcePage: input.origin ? `${input.origin}/${funnel.slug}/${page.slug}` : null,
+        sourcePage: `${orgBaseUrl}/${funnel.slug}/${page.slug}`,
       });
 
       return {
