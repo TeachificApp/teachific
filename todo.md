@@ -39,6 +39,8 @@
 - [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
 - [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
 - [x] Audit and port the compatible organization-owned Quiz Creator image-labeling question type without changing existing Question Bank records
+- [x] Audit and complete Course360 image-comparison authoring, type definitions, store defaults, preview, persistence, public delivery, and organization-scope support
+- [x] Add end-to-end organization-owned image-comparison behavior and regression coverage while preserving the standalone Quiz Creator and Question Bank boundary
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point
 - [x] Add cross-editor paste-transform regression coverage and targeted lesson, page, and email editor bundle validation

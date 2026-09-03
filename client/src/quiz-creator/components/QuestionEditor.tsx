@@ -3,6 +3,7 @@ import { McqEditor } from "./editors/McqEditor";
 import { TfEditor, FillBlankEditor, ShortAnswerEditor, ImageChoiceEditor } from "./editors/SimpleEditors";
 import { HotspotEditor } from "./editors/HotspotEditor";
 import { ImageLabelingEditor } from "./editors/ImageLabelingEditor";
+import { ImageComparisonEditor } from "./editors/ImageComparisonEditor";
 import { MatchingEditor } from "./editors/MatchingEditor";
 import { OrderingEditor, DragWordsEditor, DropdownEditor, NumericEditor, LikertEditor, EssayEditor, DragDropEditor } from "./editors/AdvancedEditors";
 import { BranchingEditor } from "./BranchingEditor";
@@ -17,6 +18,7 @@ const TYPE_LABELS: Record<string, string> = {
   matching: "Matching",
   hotspot: "Hotspot",
   image_labeling: "Image Labeling",
+  image_comparison: "Image Comparison",
   fill_blank: "Fill in the Blank",
   short_answer: "Short Answer",
   image_choice: "Image Choice",
@@ -233,6 +235,9 @@ export function QuestionEditor() {
         )}
         {question.type === "image_labeling" && (
           <ImageLabelingEditor data={question.data as any} image={question.image} onChange={updateData} />
+        )}
+        {question.type === "image_comparison" && (
+          <ImageComparisonEditor data={question.data as any} onChange={updateData} />
         )}
         {question.type === "fill_blank" && (
           <FillBlankEditor data={question.data as any} onChange={updateData} />

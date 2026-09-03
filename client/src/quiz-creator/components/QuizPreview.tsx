@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { X, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, ImageLabelingData, DrawConfig } from "../types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, ImageLabelingData, ImageComparisonData, DrawConfig } from "../types/quiz";
 import { DndOrdering, DndDragWords } from "./DndQuizInteractions";
 import { ImageLabelingInteraction } from "./ImageLabelingInteraction";
+import { ImageComparisonPlayer } from "@/components/InteractiveQuizQuestions";
 import { gradeImageLabelingAnswer } from "../../../../shared/imageLabeling";
 import { RichTextDisplay } from "@/components/RichTextEditor";
 
@@ -593,6 +594,7 @@ export function QuizPreview({ onClose }: Props) {
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "hotspot" && (q.data as HotspotData).imageUrl && <HotspotQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "image_labeling" && <ImageLabelingInteraction data={q.data as ImageLabelingData} imageUrl={q.image?.url} imageAlt={q.image?.alt} answer={answers[q.id] as Record<string, string> | undefined} onChange={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
+          {q.type === "image_comparison" && <ImageComparisonPlayer question={q.data as ImageComparisonData} submitted={false} />}
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} shuffleChoices={quiz.meta.shuffleAnswers} />}

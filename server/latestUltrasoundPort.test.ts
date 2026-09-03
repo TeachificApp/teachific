@@ -5204,4 +5204,29 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderPageSource).toContain("description=\"Add organization-authorized PDFs or images to ground the generated questions.\"");
     expect(courseBuilderPageSource).toContain("sourceFiles: aiSourceFiles.map(({ url, mimeType }) => ({ url, mimeType }))");
   });
+
+  it("delivers image-comparison questions end to end in Quiz Creator while preserving the Question Bank boundary", () => {
+    const typesSource = readFileSync(new URL("../client/src/quiz-creator/types/quiz.ts", import.meta.url), "utf8");
+    const storeSource = readFileSync(new URL("../client/src/quiz-creator/store/quizStore.ts", import.meta.url), "utf8");
+    const questionListSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionList.tsx", import.meta.url), "utf8");
+    const questionEditorSource = readFileSync(new URL("../client/src/quiz-creator/components/QuestionEditor.tsx", import.meta.url), "utf8");
+    const previewSource = readFileSync(new URL("../client/src/quiz-creator/components/QuizPreview.tsx", import.meta.url), "utf8");
+    const publicPlayerSource = readFileSync(new URL("../client/src/pages/PublicQuizPlayerPage.tsx", import.meta.url), "utf8");
+    const quizRouterSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const validatorSource = readFileSync(new URL("./lib/imageComparisonQuestion.ts", import.meta.url), "utf8");
+
+    expect(typesSource).toContain('| "image_comparison"');
+    expect(typesSource).toContain("export interface ImageComparisonData");
+    expect(storeSource).toContain('case "image_comparison"');
+    expect(storeSource).toContain('type === "image_comparison" ? 0 : 1');
+    expect(questionListSource).toContain('"image_comparison"');
+    expect(questionEditorSource).toContain('import { ImageComparisonEditor }');
+    expect(questionEditorSource).toContain('question.type === "image_comparison"');
+    expect(previewSource).toContain('ImageComparisonPlayer question={q.data as ImageComparisonData} submitted={false}');
+    expect(publicPlayerSource).toContain('ImageComparisonPlayer question={q.data as any} submitted={submitted}');
+    expect(quizRouterSource).toContain("validateImageComparisonQuestions(input.questionsJson)");
+    expect(quizRouterSource).toContain("validateImageComparisonQuestions(quiz.instructions ?? \"[]\", true)");
+    expect(quizRouterSource).toContain('question.type === "image_labeling" || question.type === "image_comparison"');
+    expect(validatorSource).toContain("Add both comparison images before publishing an image-comparison question.");
+  });
 });

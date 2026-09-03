@@ -6,6 +6,7 @@ export type QuestionType =
   | "matching"
   | "hotspot"
   | "image_labeling"
+  | "image_comparison"
   | "fill_blank"
   | "short_answer"
   | "image_choice"
@@ -76,6 +77,13 @@ export interface ImageLabelTarget {
 export interface ImageLabelingData {
   labels: ImageLabelChoice[];
   targets: ImageLabelTarget[];
+}
+
+export interface ImageComparisonData {
+  comparisonImageA: string;
+  comparisonImageB: string;
+  comparisonLabelA?: string;
+  comparisonLabelB?: string;
 }
 
 export interface FillBlankBlank {
@@ -191,6 +199,7 @@ export type QuestionData =
   | MatchingData
   | HotspotData
   | ImageLabelingData
+  | ImageComparisonData
   | FillBlankData
   | ShortAnswerData
   | ImageChoiceData

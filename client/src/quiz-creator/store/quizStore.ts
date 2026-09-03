@@ -42,6 +42,8 @@ function defaultData(type: QuestionType): QuestionData {
         ],
         targets: [],
       };
+    case "image_comparison":
+      return { comparisonImageA: "", comparisonImageB: "", comparisonLabelA: "Image A", comparisonLabelB: "Image B" };
     case "fill_blank":
       return {
         template: "The {{blank1}} is important for {{blank2}}.",
@@ -125,7 +127,7 @@ function newQuestion(type: QuestionType, order: number): QuizQuestion {
     id: uuidv4(),
     type,
     order,
-    points: type === "likert" || type === "essay" ? 0 : 1,
+    points: type === "likert" || type === "essay" || type === "image_comparison" ? 0 : 1,
     required: true,
     stem: "",
     image: null,

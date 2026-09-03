@@ -8,6 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import { fetchPublicSourceText } from "./lib/publicSourceUrl";
 import { canUseMockExamSubscription } from "./lib/mockExamEntitlement";
 import { validateImageLabelingQuestions } from "./lib/imageLabelingQuestion";
+import { validateImageComparisonQuestions } from "./lib/imageComparisonQuestion";
 
 type QuizMakerContext = { user: { id: number; role: string } };
 
@@ -613,6 +614,8 @@ export const quizMakerRouter = router({
       const db = (await getDb())!;
       const imageLabelingValidation = validateImageLabelingQuestions(input.questionsJson);
       if (imageLabelingValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageLabelingValidation });
+      const imageComparisonValidation = validateImageComparisonQuestions(input.questionsJson);
+      if (imageComparisonValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageComparisonValidation });
       let requestedMockExamEnabled: boolean | undefined;
       if (input.settingsJson) {
         try {
@@ -877,6 +880,8 @@ export const quizMakerRouter = router({
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
       const imageLabelingValidation = validateImageLabelingQuestions(quiz.instructions ?? "[]", true);
       if (imageLabelingValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageLabelingValidation });
+      const imageComparisonValidation = validateImageComparisonQuestions(quiz.instructions ?? "[]", true);
+      if (imageComparisonValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageComparisonValidation });
 
       // Generate a unique share token if one doesn't exist
       let token = quiz.shareToken;
@@ -1330,8 +1335,8 @@ export const quizMakerRouter = router({
       if (selectedQuestions.some((question) => !question.id)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Every quiz question must be saved before it can synchronize to the Question Bank." });
       }
-      if (selectedQuestions.some((question) => question.type === "image_labeling")) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Image-labeling questions are delivered in Quiz Creator and cannot be exported to the Question Bank." });
+      if (selectedQuestions.some((question) => question.type === "image_labeling" || question.type === "image_comparison")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Image-labeling and image-comparison questions are delivered in Quiz Creator and cannot be exported to the Question Bank." });
       }
 
       let exportedCount = 0;

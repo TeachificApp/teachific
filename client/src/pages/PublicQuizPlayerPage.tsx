@@ -938,7 +938,7 @@ export default function PublicQuizPlayerPage() {
           {q.type === "likert" && <LikertQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "essay" && <EssayQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} data={q.data as EssayData} />}
           {q.type === "image_comparison" && (
-            <ImageComparisonPlayer question={q as any} submitted={submitted} />
+            <ImageComparisonPlayer question={q.data as any} submitted={submitted} />
           )}
           {q.type === "drag_sort" && (
             <DragSortPlayer question={q as any} submitted={submitted} answer={answers[q.id]} onAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />

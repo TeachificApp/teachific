@@ -27,6 +27,7 @@ const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   matching: <Shuffle className="w-3.5 h-3.5" />,
   hotspot: <MapPin className="w-3.5 h-3.5" />,
   image_labeling: <Tags className="w-3.5 h-3.5" />,
+  image_comparison: <Image className="w-3.5 h-3.5" />,
   fill_blank: <AlignLeft className="w-3.5 h-3.5" />,
   short_answer: <MessageSquare className="w-3.5 h-3.5" />,
   image_choice: <Image className="w-3.5 h-3.5" />,
@@ -45,6 +46,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   matching: "Matching",
   hotspot: "Hotspot",
   image_labeling: "Image Labeling",
+  image_comparison: "Image Comparison",
   fill_blank: "Fill in the Blank",
   short_answer: "Short Answer",
   image_choice: "Image Choice",
@@ -59,7 +61,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 
 const QUESTION_TYPES: QuestionType[] = [
   "mcq", "tf", "matching", "ordering", "fill_blank", "drag_words", "dropdown",
-  "hotspot", "image_labeling", "drag_drop", "image_choice", "short_answer", "numeric", "likert", "essay",
+  "hotspot", "image_labeling", "image_comparison", "drag_drop", "image_choice", "short_answer", "numeric", "likert", "essay",
 ];
 
 function SortableQuestionItem({ question, isActive, onClick, groupColor }: { question: QuizQuestion; isActive: boolean; onClick: () => void; groupColor?: string }) {
