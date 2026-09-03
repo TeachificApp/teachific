@@ -103,6 +103,7 @@
 - [x] Replace active certificate-settings Teachific labels and fallback placeholder copy with Course360 and organization-neutral wording while retaining persisted compatibility fields
 - [x] Replace active School Profile retired support address and source-brand help text with Course360 support fallback copy
 - [x] Replace active Billing Page source-brand subscription copy and retired support fallback with Course360 wording
+- [x] Replace active API documentation retired-platform base URL example with the Course360 platform URL
 - [x] Remove the predictable legacy member-import default password and require a server-owned invitation or password-setup path for imported accounts
 - [x] Require active-organization ownership for issued certificate listing
 - [x] Require active-organization and CME entitlement for any CME activity certificate report or export
