@@ -12,6 +12,10 @@ describe("Course360 funnel checkout organization URLs", () => {
       source.indexOf("createFunnelPaymentIntent: publicProcedure"),
       source.indexOf("submitLead: publicProcedure"),
     );
+    const directCheckoutSlice = source.slice(
+      source.indexOf("createDirectCheckout: publicProcedure"),
+      source.indexOf("// ─── Analytics"),
+    );
 
     expect(checkoutSlice).toContain("const organization = await getOrgById(funnel.orgId);");
     expect(checkoutSlice).toContain("const organizationBaseUrl = getOrgBaseUrl(");
@@ -27,5 +31,13 @@ describe("Course360 funnel checkout organization URLs", () => {
     expect(inlineCheckoutSlice).toContain("const orgBaseUrl = getOrgBaseUrl(");
     expect(inlineCheckoutSlice).toContain("sourcePage: `${orgBaseUrl}/${funnel.slug}/${page.slug}`,");
     expect(inlineCheckoutSlice).not.toContain("sourcePage: input.origin ? `${input.origin}/${funnel.slug}/${page.slug}` : null,");
+
+    expect(directCheckoutSlice).toContain("let productOrgId: number | null = null;");
+    expect(directCheckoutSlice).toContain("const organization = await getOrgById(productOrgId);");
+    expect(directCheckoutSlice).toContain("const organizationBaseUrl = getOrgBaseUrl(");
+    expect(directCheckoutSlice).toContain("const successUrl = `${organizationBaseUrl}/?purchase=success&product=${encodeURIComponent(productName)}`;");
+    expect(directCheckoutSlice).toContain("const cancelUrl = organizationBaseUrl;");
+    expect(directCheckoutSlice).not.toContain("const successUrl = `${input.origin}/my-dashboard?purchase=success");
+    expect(directCheckoutSlice).not.toContain("const cancelUrl = `${input.origin}`;");
   });
 });

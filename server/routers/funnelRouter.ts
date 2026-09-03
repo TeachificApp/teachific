@@ -1777,8 +1777,9 @@ export const funnelPublicRouter = router({
       let productName = "";
       let unitAmount = 0; // in dollars — will be converted to cents for Stripe
       let currency = "usd";
+      let productOrgId: number | null = null;
       if (input.productType === "course" || input.productType === "quiz" || input.productType === "cohort") {
-        const [course] = await db.select({ id: lmsCourses.id, title: lmsCourses.title, price: lmsCourses.price, currency: lmsCourses.currency, isFree: lmsCourses.isFree, pricingType: lmsCourses.pricingType })
+        const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId, title: lmsCourses.title, price: lmsCourses.price, currency: lmsCourses.currency, isFree: lmsCourses.isFree, pricingType: lmsCourses.pricingType })
           .from(lmsCourses).where(eq(lmsCourses.id, input.productId)).limit(1);
         if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
         if (course.isFree || course.pricingType === "free" || !course.price) throw new TRPCError({ code: "BAD_REQUEST", message: "Course is free — use free enrollment" });
@@ -1795,34 +1796,46 @@ export const funnelPublicRouter = router({
         productName = course.title;
         unitAmount = course.price;
         currency = course.currency ?? "usd";
+        productOrgId = course.orgId;
       } else if (input.productType === "download") {
-        const [prod] = await db.select({ id: digitalProducts.id, title: digitalProducts.title, price: digitalProducts.price })
+        const [prod] = await db.select({ id: digitalProducts.id, orgId: digitalProducts.orgId, title: digitalProducts.title, price: digitalProducts.price })
           .from(digitalProducts).where(eq(digitalProducts.id, input.productId)).limit(1);
         if (!prod) throw new TRPCError({ code: "NOT_FOUND", message: "Download not found" });
         if (!prod.price) throw new TRPCError({ code: "BAD_REQUEST", message: "Product has no price" });
         productName = prod.title;
         unitAmount = prod.price;
+        productOrgId = prod.orgId;
       } else if (input.productType === "bundle") {
-        const [bundle] = await db.select({ id: digitalBundles.id, title: digitalBundles.title, discountPrice: digitalBundles.discountPrice, originalPrice: digitalBundles.originalPrice })
+        const [bundle] = await db.select({ id: digitalBundles.id, orgId: digitalBundles.orgId, title: digitalBundles.title, discountPrice: digitalBundles.discountPrice, originalPrice: digitalBundles.originalPrice })
           .from(digitalBundles).where(eq(digitalBundles.id, input.productId)).limit(1);
         if (!bundle) throw new TRPCError({ code: "NOT_FOUND", message: "Bundle not found" });
         const bundlePrice = bundle.discountPrice || bundle.originalPrice;
         if (!bundlePrice) throw new TRPCError({ code: "BAD_REQUEST", message: "Bundle has no price" });
         productName = bundle.title;
         unitAmount = bundlePrice;
+        productOrgId = bundle.orgId;
       } else {
         // physical product
         const { physicalProducts } = await import("../../drizzle/schema");
-        const [prod] = await db.select({ id: physicalProducts.id, title: physicalProducts.title, price: physicalProducts.price })
+        const [prod] = await db.select({ id: physicalProducts.id, orgId: physicalProducts.orgId, title: physicalProducts.title, price: physicalProducts.price })
           .from(physicalProducts).where(eq(physicalProducts.id, input.productId)).limit(1);
         if (!prod) throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
         if (!prod.price) throw new TRPCError({ code: "BAD_REQUEST", message: "Product has no price" });
         productName = prod.title;
         unitAmount = prod.price;
+        productOrgId = prod.orgId;
       }
       // ── Build Stripe session ─────────────────────────────────────────────────
-      const successUrl = `${input.origin}/my-dashboard?purchase=success&product=${encodeURIComponent(productName)}`;
-      const cancelUrl = `${input.origin}`;
+      if (!productOrgId) throw new TRPCError({ code: "NOT_FOUND", message: "Product organization not found" });
+      const organization = await getOrgById(productOrgId);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
+      const successUrl = `${organizationBaseUrl}/?purchase=success&product=${encodeURIComponent(productName)}`;
+      const cancelUrl = organizationBaseUrl;
       const sessionParams: any = {
         mode: "payment",
         line_items: [{
