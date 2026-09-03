@@ -92,7 +92,7 @@ export function CertificateSettingsTab({ orgId }: Props) {
         <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300">
           <Award className="h-4 w-4 mt-0.5 shrink-0" />
           <div>
-            <strong>Teachific branding</strong> appears on certificates for your current plan ({plan}).{" "}
+            <strong>Course360 platform attribution</strong> appears on certificates for your current plan ({plan}).{" "}
             <span className="font-medium">Upgrade to Pro or Enterprise</span> to remove it and use fully white-labelled certificates.
           </div>
         </div>
@@ -145,7 +145,7 @@ export function CertificateSettingsTab({ orgId }: Props) {
                           </Badge>
                         )}
                         {tpl.showTeachificBranding && (
-                          <Badge variant="outline" className="text-xs">Teachific branded</Badge>
+                          <Badge variant="outline" className="text-xs">Course360 platform attribution</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -365,7 +365,7 @@ function TemplateDialog({ open, onClose, template, canWhiteLabel, onSave, isSavi
             <Textarea
               value={form.footerText}
               onChange={(e) => set("footerText", e.target.value)}
-              placeholder="e.g. This certificate is issued by Teachific and is valid for CPD purposes."
+              placeholder="e.g. This certificate is issued by your organization. Add any applicable credential wording."
               rows={2}
             />
           </div>
@@ -374,7 +374,7 @@ function TemplateDialog({ open, onClose, template, canWhiteLabel, onSave, isSavi
           {canWhiteLabel && (
             <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
               <div>
-                <p className="text-sm font-medium">Show Teachific branding</p>
+                <p className="text-sm font-medium">Show Course360 platform attribution</p>
                 <p className="text-xs text-muted-foreground">When off, only your org's branding appears on the certificate.</p>
               </div>
               <Switch

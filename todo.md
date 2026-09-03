@@ -100,6 +100,7 @@
 - [x] Use the completed course’s organization identity in certificate emails and remove legacy source-brand assets and unsupported certificate-validity claims
 - [x] Replace active certificate PDF fallback branding, signature, and footer defaults with neutral Course360 organization-safe values
 - [x] Add behavioral certificate-issuance coverage for organization-owned template fallback, certificate record ownership, and organization email identity
+- [x] Replace active certificate-settings Teachific labels and fallback placeholder copy with Course360 and organization-neutral wording while retaining persisted compatibility fields
 - [x] Require active-organization ownership for issued certificate listing
 - [x] Require active-organization and CME entitlement for any CME activity certificate report or export
 - [x] Add an additive organization-owned inline CME survey attempt and response model without changing standalone Question Bank records
