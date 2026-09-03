@@ -1,14 +1,16 @@
 /**
- * Teachific™ Branded Email Templates
+ * Course360™ transactional email templates
  *
  * All transactional emails use a consistent branded layout:
- * - Teal (#24abbc) header with Teachific™ wordmark
+ * - Teal (#24abbc) header with Course360™ wordmark
  * - Clean white body with readable typography
  * - Teal CTA buttons
  * - Footer with copyright and contact info
  */
 
-const SITE_URL = process.env.VITE_SITE_URL ?? "https://teachific.app";
+import { getCourse360PlatformAppUrl } from "../shared/brands";
+
+const SITE_URL = getCourse360PlatformAppUrl();
 const YEAR = new Date().getFullYear();
 
 /** Escape user-controlled strings before interpolating into HTML email templates. */
@@ -55,7 +57,7 @@ function emailLayout(opts: {
               <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td>
-                    <span style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;line-height:1;">teach</span><span style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#4ad9e0;line-height:1;">ific</span><span style="font-size:14px;font-weight:700;color:#ffffff;vertical-align:super;margin-left:1px;">™</span>
+                    <span style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;line-height:1;">Course</span><span style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#4ad9e0;line-height:1;">360</span><span style="font-size:14px;font-weight:700;color:#ffffff;vertical-align:super;margin-left:1px;">™</span>
                   </td>
                 </tr>
               </table>
@@ -76,7 +78,7 @@ function emailLayout(opts: {
                 <tr>
                   <td style="font-size:12px;color:#94a3b8;line-height:1.6;">
                     ${opts.footerNote ? `<p style="margin:0 0 8px;">${opts.footerNote}</p>` : ""}
-                    <p style="margin:0;">© ${YEAR} Teachific™ · <a href="${SITE_URL}" style="color:#24abbc;text-decoration:none;">${SITE_URL.replace("https://", "")}</a> · <a href="mailto:hello@teachific.net" style="color:#24abbc;text-decoration:none;">hello@teachific.net</a></p>
+                    <p style="margin:0;">© ${YEAR} Course360™ · <a href="${SITE_URL}" style="color:#24abbc;text-decoration:none;">${SITE_URL.replace("https://", "")}</a> · <a href="mailto:support@course360.app" style="color:#24abbc;text-decoration:none;">support@course360.app</a> · <a href="https://soundmedianow.com/" style="color:#24abbc;text-decoration:none;">a SoundMedia, Inc. brand</a></p>
                   </td>
                 </tr>
               </table>
@@ -117,17 +119,17 @@ export function verifyEmailHtml(name: string, verifyUrl: string): string {
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Verify your email address</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Thanks for signing up for Teachific™! Please verify your email address to activate your account and start building your online school.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Thanks for signing up for Course360™! Please verify your email address to activate your account and start building your online school.</p>
     ${ctaButton("Verify Email Address", verifyUrl)}
-    ${infoBox("This link expires in <strong>24 hours</strong>. If you didn't create a Teachific account, you can safely ignore this email.")}
+    ${infoBox("This link expires in <strong>24 hours</strong>. If you didn't create a Course360 account, you can safely ignore this email.")}
     ${divider()}
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">Can't click the button? Copy and paste this link into your browser:<br/><a href="${verifyUrl}" style="color:#24abbc;word-break:break-all;">${verifyUrl}</a></p>
   `;
   return emailLayout({
-    preheader: "Verify your email to activate your Teachific account.",
-    title: "Verify your email — Teachific™",
+    preheader: "Verify your email to activate your Course360 account.",
+    title: "Verify your email — Course360™",
     body,
-    footerNote: "You're receiving this email because you created a Teachific account.",
+    footerNote: "You're receiving this email because you created a Course360 account.",
   });
 }
 
@@ -137,15 +139,15 @@ export function resetPasswordHtml(name: string, resetUrl: string): string {
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Reset your password</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">We received a request to reset the password for your Teachific account. Click the button below to choose a new password.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">We received a request to reset the password for your Course360 account. Click the button below to choose a new password.</p>
     ${ctaButton("Reset Password", resetUrl)}
     ${infoBox("This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password will not be changed.")}
     ${divider()}
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">Can't click the button? Copy and paste this link into your browser:<br/><a href="${resetUrl}" style="color:#24abbc;word-break:break-all;">${resetUrl}</a></p>
   `;
   return emailLayout({
-    preheader: "Reset your Teachific password — link expires in 1 hour.",
-    title: "Reset your password — Teachific™",
+    preheader: "Reset your Course360 password — link expires in 1 hour.",
+    title: "Reset your password — Course360™",
     body,
     footerNote: "You're receiving this email because a password reset was requested for your account.",
   });
@@ -155,9 +157,9 @@ export function resetPasswordHtml(name: string, resetUrl: string): string {
 
 export function welcomeEmailHtml(name: string, dashboardUrl: string = `${SITE_URL}/lms`): string {
   const body = `
-    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Welcome to Teachific™! 🎉</h2>
+    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Welcome to Course360™!</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your account is verified and ready to go. Teachific gives you everything you need to build, sell, and deliver world-class online courses — without the technical headaches.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your account is verified and ready to go. Course360 helps you create, sell, and deliver online learning content.</p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
       <tr>
         <td style="padding:12px 16px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;font-size:14px;color:#475569;line-height:1.6;">
@@ -171,10 +173,10 @@ export function welcomeEmailHtml(name: string, dashboardUrl: string = `${SITE_UR
     <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7;">Need help getting started? Visit our <a href="${SITE_URL}/help" style="color:#24abbc;text-decoration:none;">Help Center</a> or reply to this email and we'll get back to you.</p>
   `;
   return emailLayout({
-    preheader: "Your Teachific account is ready — start building your school today.",
-    title: "Welcome to Teachific™",
+    preheader: "Your Course360 account is ready — start building your school today.",
+    title: "Welcome to Course360™",
     body,
-    footerNote: "You're receiving this email because you created a Teachific account.",
+    footerNote: "You're receiving this email because you created a Course360 account.",
   });
 }
 
@@ -201,7 +203,7 @@ export function courseEnrollmentHtml(opts: {
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Log in to your account to start learning right away.</p>
     ${ctaButton("Start Learning", loginUrl)}
     ${divider()}
-    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${orgName ? `This enrollment was managed by ${orgName} via Teachific™.` : "Powered by Teachific™."}</p>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${orgName ? `This enrollment was managed by ${orgName}.` : "Managed through Course360™."}</p>
   `;
   return emailLayout({
     preheader: `You've been enrolled in ${plural ? `${courseTitles.length} courses` : courseTitles[0]}${orgName ? ` at ${orgName}` : ""}.`,
@@ -237,9 +239,9 @@ export function purchaseConfirmationHtml(opts: {
   `;
   return emailLayout({
     preheader: `Payment confirmed — you now have access to ${courseTitle}.`,
-    title: "Purchase confirmation — Teachific™",
+    title: "Purchase confirmation — Course360™",
     body,
-    footerNote: "You're receiving this email because you made a purchase on Teachific.",
+    footerNote: "You're receiving this email because you made a purchase through Course360.",
   });
 }
 
@@ -271,9 +273,9 @@ export function groupManagerAssignmentHtml(opts: {
   `;
   return emailLayout({
     preheader: `You've been assigned as Group Manager for ${groupName}.`,
-    title: "Group Manager assignment — Teachific™",
+    title: "Group Manager assignment — Course360™",
     body,
-    footerNote: `This email was sent on behalf of ${orgName ?? "your organization"} via Teachific™.`,
+    footerNote: `This email was sent on behalf of ${orgName ?? "your organization"}.`,
   });
 }
 
@@ -288,8 +290,8 @@ export function campaignEmailHtml(opts: {
 }): string {
   const { orgName, bodyHtml, unsubscribeUrl } = opts;
   const footerNote = unsubscribeUrl
-    ? `This email was sent by <strong>${orgName}</strong> via Teachific™. <a href="${unsubscribeUrl}" style="color:#24abbc;">Unsubscribe</a>`
-    : `This email was sent by <strong>${orgName}</strong> via Teachific™.`;
+    ? `This email was sent by <strong>${orgName}</strong>. <a href="${unsubscribeUrl}" style="color:#24abbc;">Unsubscribe</a>`
+    : `This email was sent by <strong>${orgName}</strong>.`;
   return emailLayout({
     title: `Message from ${orgName}`,
     body: bodyHtml,
@@ -323,7 +325,7 @@ export function certificateCompletionHtml(opts: {
     ${certificateUrl ? ctaButton("Download Your Certificate", certificateUrl) : ""}
     ${courseUrl && !certificateUrl ? ctaButton("View Course", courseUrl) : ""}
     ${divider()}
-    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${orgName ? `This certificate was issued by ${orgName} via Teachific™.` : "Powered by Teachific™."}</p>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${orgName ? `This certificate was issued by ${orgName}.` : "Issued through Course360™."}</p>
   `;
   return emailLayout({
     preheader: `You've completed "${courseTitle}" — your certificate is ready!`,
@@ -353,7 +355,7 @@ export function dripUnlockHtml(opts: {
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Log in to continue your learning journey.</p>
     ${courseUrl ? ctaButton("Continue Learning", courseUrl) : ""}
     ${divider()}
-    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${orgName ? `This notification was sent on behalf of ${orgName} via Teachific™.` : "Powered by Teachific™."}</p>
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${orgName ? `This notification was sent on behalf of ${orgName}.` : "Sent through Course360™."}</p>
   `;
   return emailLayout({
     preheader: `New lessons are available in "${courseTitle}"!`,
@@ -366,14 +368,14 @@ export function dripUnlockHtml(opts: {
 export function magicLinkEmailHtml(name: string, magicUrl: string, expiryMinutes = 15): string {
   return emailLayout({
     title: "Your sign-in link",
-    preheader: "Click to sign in to Teachific — link expires in " + expiryMinutes + " minutes.",
+    preheader: "Click to sign in to Course360 — link expires in " + expiryMinutes + " minutes.",
     body: `
       <p style="margin:0 0 20px;font-size:16px;color:#374151;">Hi ${escapeHtml(name) || "there"},</p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-        Click the button below to sign in to your Teachific account. This link expires in
+        Click the button below to sign in to your Course360 account. This link expires in
         <strong>${expiryMinutes} minutes</strong> and can only be used once.
       </p>
-      ${ctaButton("Sign in to Teachific", magicUrl)}
+      ${ctaButton("Sign in to Course360", magicUrl)}
       <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
         If you didn't request this link, you can safely ignore this email — your account is secure.
       </p>
