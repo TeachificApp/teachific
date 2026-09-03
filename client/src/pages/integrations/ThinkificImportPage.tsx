@@ -97,7 +97,7 @@ export default function ThinkificImportPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Import from Thinkific</h1>
         <p className="text-muted-foreground mt-1">
-          Connect your Thinkific school to import users, courses, and enrollments into Teachific.
+          Connect your Thinkific school to import users, courses, and enrollments into Course360.
         </p>
       </div>
 
@@ -213,7 +213,7 @@ export default function ThinkificImportPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Sync Data</h2>
             <p className="text-sm text-muted-foreground">
-              Sync your Thinkific data into Teachific. Run in order: Users → Courses → Enrollments.
+              Sync your Thinkific data into Course360. Run in order: Users → Courses → Enrollments.
               Existing records are skipped (safe to re-run).
             </p>
 
@@ -228,7 +228,7 @@ export default function ThinkificImportPage() {
                     <div>
                       <p className="font-medium text-sm">Sync Users</p>
                       <p className="text-xs text-muted-foreground">
-                        Import all Thinkific users as Teachific members
+                        Import all Thinkific users as Course360 members
                       </p>
                     </div>
                   </div>

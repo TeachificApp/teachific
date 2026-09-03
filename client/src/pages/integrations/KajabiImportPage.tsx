@@ -95,7 +95,7 @@ export default function KajabiImportPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Import from Kajabi</h1>
         <p className="text-muted-foreground mt-1">
-          Connect your Kajabi site to import members, products, and memberships into Teachific.
+          Connect your Kajabi site to import members, products, and memberships into Course360.
         </p>
       </div>
 
@@ -195,7 +195,7 @@ export default function KajabiImportPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Sync Data</h2>
             <p className="text-sm text-muted-foreground">
-              Sync your Kajabi data into Teachific. Run in order: Members → Products → Memberships.
+              Sync your Kajabi data into Course360. Run in order: Members → Products → Memberships.
               Existing records are skipped (safe to re-run).
             </p>
 
@@ -210,7 +210,7 @@ export default function KajabiImportPage() {
                     <div>
                       <p className="font-medium text-sm">Sync Members</p>
                       <p className="text-xs text-muted-foreground">
-                        Import all Kajabi members as Teachific users
+                        Import all Kajabi members as Course360 users
                       </p>
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export default function KajabiImportPage() {
                     <div>
                       <p className="font-medium text-sm">Sync Products</p>
                       <p className="text-xs text-muted-foreground">
-                        Import all Kajabi products as Teachific courses
+                        Import all Kajabi products as Course360 courses
                       </p>
                     </div>
                   </div>

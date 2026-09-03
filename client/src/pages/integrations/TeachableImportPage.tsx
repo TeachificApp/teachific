@@ -95,7 +95,7 @@ export default function TeachableImportPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Import from Teachable</h1>
         <p className="text-muted-foreground mt-1">
-          Connect your Teachable school to import users, courses, and enrollments into Teachific.
+          Connect your Teachable school to import users, courses, and enrollments into Course360.
         </p>
       </div>
 
@@ -195,7 +195,7 @@ export default function TeachableImportPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Sync Data</h2>
             <p className="text-sm text-muted-foreground">
-              Sync your Teachable data into Teachific. Run in order: Users → Courses → Enrollments.
+              Sync your Teachable data into Course360. Run in order: Users → Courses → Enrollments.
               Existing records are skipped (safe to re-run).
             </p>
 
@@ -210,7 +210,7 @@ export default function TeachableImportPage() {
                     <div>
                       <p className="font-medium text-sm">Sync Users</p>
                       <p className="text-xs text-muted-foreground">
-                        Import all Teachable users as Teachific members
+                        Import all Teachable users as Course360 members
                       </p>
                     </div>
                   </div>
