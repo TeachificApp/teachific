@@ -470,14 +470,14 @@ export function emailBlockToHtml(block: Block): string {
     case "footer": {
       const bg = (d.bgColor as string) ?? "#0e1e2e";
       const textColor = (d.textColor as string) ?? "#ffffff";
-      const copyright = (d.copyrightText as string) ?? `\u00a9 ${new Date().getFullYear()} Teachific\u2122. All rights reserved. Teachific\u2122 is a <a href="https://www.soundmedianow.com" style="color:inherit">SoundMedia, Inc.</a> brand.`;
+      const copyright = (d.copyrightText as string) ?? `\u00a9 ${new Date().getFullYear()} Course360\u2122. All rights reserved. Course360\u2122 is <a href="https://soundmedianow.com/" style="color:inherit">a SoundMedia, Inc. brand</a>.`;
       // Support both d.links (array) and d.footerLinks (legacy key)
       const links = ((d.links ?? d.footerLinks) as { text: string; url: string }[] | undefined) ?? [];
       const linksHtml = links
         .filter((l) => l && l.text && l.url)
         .map((l) => `<a href="${l.url}" style="color:${orgPrimary};text-decoration:none;margin:0 8px;">${l.text}</a>`)
         .join(" &middot; ");
-      const accountNotice = `<p style="color:${textColor};font-size:11px;margin:8px 0 0;opacity:0.7;">You are receiving this email because you have an account on Teachific\u2122</p>`;
+      const accountNotice = `<p style="color:${textColor};font-size:11px;margin:8px 0 0;opacity:0.7;">You are receiving this email because you have an account on Course360\u2122</p>`;
       return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:0 0 8px 8px;"><tr><td style="padding:20px 32px;text-align:center;"><p style="color:${textColor};font-size:12px;margin:0 0 8px;">${copyright}</p>${linksHtml ? `<p style="margin:4px 0;font-size:12px;">${linksHtml}</p>` : ""}${accountNotice}</td></tr></table>`;
     }
     case "data_table": {

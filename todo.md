@@ -8,7 +8,9 @@
 - [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
 - [x] Replace the email campaign wrapper’s legacy platform fallback with Course360 while preserving organization-specific campaign identity
 - [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers
-- [ ] Normalize every platform footer to the linked “a SoundMedia, Inc. brand” attribution
+- [x] Normalize every active platform footer to the linked “a SoundMedia, Inc. brand” attribution
+- [x] Audit every active platform and organization footer surface and add the linked SoundMedia attribution only where platform identity is appropriate
+- [x] Replace legacy Course360 platform fallback text in the email block editor and verification footer while preserving organization-authored footer overrides
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
 - [x] Enforce organization-owned discount targeting during checkout validation and discount application
 - [x] Provide organization-admin discount targeting controls with accessible multi-product selection
@@ -46,6 +48,7 @@
 - [ ] Design and implement an explicit organization-scoped learner quiz navigation surface and matching native quiz-results route before exposing quiz-results navigation
 - [ ] Add protected active-organization learner native quiz-attempt summaries and a completed-attempt results route without exposing other organizations’ attempts
 - [ ] Show learner quiz navigation and native quiz-results links only when the active organization has relevant available or completed quiz attempts
+- [x] Audit learner native quiz-results feasibility; defer learner-facing results until public Quiz Creator attempts have authenticated ownership and server-owned scoring rather than client-supplied scores
 - [x] Verify the legacy standalone quiz table is unavailable in the active database contract and quarantine it from learner library reads rather than exposing unscoped or failing listings
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point

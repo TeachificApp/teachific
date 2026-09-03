@@ -709,11 +709,10 @@ function DashboardLayoutContent({
             <div className="px-3 py-2 border-t border-sidebar-border/40">
               <PlanBadgeSidebar />
               <p className="text-[10px] text-muted-foreground/50 mt-2 leading-tight text-center">
-                Course360™ is a{" "}
-                <a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer"
+                Course360™ is <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer"
                   className="underline hover:text-muted-foreground/80 transition-colors">
-                  SoundMedia, Inc.
-                </a>{" "}brand
+                  a SoundMedia, Inc. brand
+                </a>
               </p>
             </div>
           )}

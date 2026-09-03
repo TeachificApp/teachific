@@ -789,6 +789,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(certificateEmailSource).not.toContain("valid for professional portfolio use");
   });
 
+  it("uses the Course360 fallback and linked SoundMedia attribution in email and verification footers", () => {
+    const emailBlockEditor = readFileSync(new URL("../client/src/components/EmailBlockEditor.tsx", import.meta.url), "utf8");
+    const verifyEmailPage = readFileSync(new URL("../client/src/pages/auth/VerifyEmailPage.tsx", import.meta.url), "utf8");
+    const dashboardLayout = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+
+    expect(emailBlockEditor).toContain("Course360\\u2122 is <a href=\"https://soundmedianow.com/\"");
+    expect(emailBlockEditor).toContain("account on Course360\\u2122");
+    expect(emailBlockEditor).not.toContain("account on Teachific\\u2122");
+    expect(verifyEmailPage).toContain("Course360™. All rights reserved.");
+    expect(verifyEmailPage).toContain("https://soundmedianow.com/");
+    expect(verifyEmailPage).not.toContain("Teachific™ is a");
+    expect(dashboardLayout).toContain("a SoundMedia, Inc. brand");
+    expect(dashboardLayout).toContain("https://soundmedianow.com/");
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");
