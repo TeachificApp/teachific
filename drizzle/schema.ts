@@ -4258,6 +4258,27 @@ export const quizzes = mysqlTable("quizzes", {
 export type Quiz = typeof quizzes.$inferSelect;
 export type InsertQuiz = typeof quizzes.$inferInsert;
 
+// ─── Quiz Creator Widget Launch Credentials ──────────────────────────────────
+// Opaque widget credentials are stored only as SHA-256 digests. The owning
+// organization is explicit so credentials cannot cross tenant boundaries.
+export const quizWidgetLaunches = mysqlTable("quiz_widget_launches", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  quizId: int("quiz_id").notNull(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+  label: varchar("label", { length: 120 }),
+  createdByUserId: int("created_by_user_id").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("quiz_widget_launches_token_hash_unique").on(table.tokenHash),
+  index("quiz_widget_launches_org_quiz_active_idx").on(table.orgId, table.quizId, table.isActive, table.expiresAt),
+]);
+export type QuizWidgetLaunch = typeof quizWidgetLaunches.$inferSelect;
+export type InsertQuizWidgetLaunch = typeof quizWidgetLaunches.$inferInsert;
+
 // ─── Quiz Question Pools (from bank tags) ─────────────────────────────────────
 export const quizQuestionPools = mysqlTable("quiz_question_pools", {
   id: int("id").autoincrement().primaryKey(),

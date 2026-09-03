@@ -2,15 +2,24 @@ import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
 import { TRPCError } from "@trpc/server";
-import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, orgSubscriptions, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
-import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
+import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, orgSubscriptions, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags, quizWidgetLaunches } from "../drizzle/schema";
+import { eq, and, asc, desc, gt, inArray, isNull, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { fetchPublicSourceText } from "./lib/publicSourceUrl";
 import { canUseMockExamSubscription } from "./lib/mockExamEntitlement";
 import { validateImageLabelingQuestions } from "./lib/imageLabelingQuestion";
 import { validateImageComparisonQuestions } from "./lib/imageComparisonQuestion";
+import { getOrgBaseUrl } from "./lib/orgUrl";
+import {
+  buildQuizWidgetEmbed,
+  createQuizWidgetToken,
+  DEFAULT_QUIZ_WIDGET_EXPIRY_DAYS,
+  hashQuizWidgetToken,
+  MAX_QUIZ_WIDGET_EXPIRY_DAYS,
+} from "./lib/quizWidgetLaunch";
 
 type QuizMakerContext = { user: { id: number; role: string } };
+type PublicQuizContext = { user?: { id: number; role: string } | null };
 
 async function getMockExamAvailability(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
@@ -101,6 +110,39 @@ async function requireQuizMakerChoiceAccess(ctx: QuizMakerContext, choiceId: num
   if (!choice) throw new TRPCError({ code: "NOT_FOUND", message: "Answer choice not found" });
   await requireQuizMakerQuestionAccess(ctx, choice.questionId);
   return choice;
+}
+
+async function resolveWidgetQuiz(ctx: PublicQuizContext, rawToken: string) {
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Sign in to access this embedded quiz." });
+  }
+  const db = (await getDb())!;
+  const [launch] = await db.select({
+    orgId: quizWidgetLaunches.orgId,
+    quizId: quizWidgetLaunches.quizId,
+  }).from(quizWidgetLaunches).where(and(
+    eq(quizWidgetLaunches.tokenHash, hashQuizWidgetToken(rawToken)),
+    eq(quizWidgetLaunches.isActive, true),
+    isNull(quizWidgetLaunches.revokedAt),
+    gt(quizWidgetLaunches.expiresAt, new Date()),
+  )).limit(1);
+  if (!launch) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "This quiz widget is unavailable." });
+  }
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId || activeOrgId !== launch.orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This quiz widget is not available in the active organization." });
+  }
+  const [quiz] = await db.select().from(quizzes).where(and(
+    eq(quizzes.id, launch.quizId),
+    eq(quizzes.orgId, launch.orgId),
+    eq(quizzes.isPublished, true),
+  )).limit(1);
+  const visibility = (quiz as any)?.visibility ?? "published";
+  if (!quiz || visibility === "archived" || visibility === "draft") {
+    throw new TRPCError({ code: "NOT_FOUND", message: "This quiz widget is unavailable." });
+  }
+  return { db, quiz, launch };
 }
 
 function buildVisualQuizConfig(quiz: typeof quizzes.$inferSelect, mockExamEnabled: boolean) {
@@ -937,6 +979,91 @@ export const quizMakerRouter = router({
       return { success: true };
     }),
 
+  /** Create a credentialed HTML widget for an active-organization published quiz. */
+  createWidgetLaunch: protectedProcedure
+    .input(z.object({
+      quizId: z.number().int().positive(),
+      label: z.string().trim().min(1).max(120).optional(),
+      expiresInDays: z.number().int().min(1).max(MAX_QUIZ_WIDGET_EXPIRY_DAYS).default(DEFAULT_QUIZ_WIDGET_EXPIRY_DAYS),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      if (!quiz.isPublished) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Publish this quiz before generating an HTML widget." });
+      }
+      if (!quiz.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Secure widgets require an organization-owned quiz." });
+      }
+      const db = (await getDb())!;
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, quiz.orgId)).limit(1);
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "The quiz organization could not be resolved." });
+      }
+      const baseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + input.expiresInDays * 24 * 60 * 60 * 1000);
+      const token = createQuizWidgetToken();
+      await db.transaction(async (tx) => {
+        await tx.update(quizWidgetLaunches)
+          .set({ isActive: false, revokedAt: now })
+          .where(and(
+            eq(quizWidgetLaunches.orgId, quiz.orgId),
+            eq(quizWidgetLaunches.quizId, quiz.id),
+            eq(quizWidgetLaunches.isActive, true),
+            isNull(quizWidgetLaunches.revokedAt),
+          ));
+        await tx.insert(quizWidgetLaunches).values({
+          orgId: quiz.orgId,
+          quizId: quiz.id,
+          tokenHash: hashQuizWidgetToken(token),
+          label: input.label ?? null,
+          createdByUserId: ctx.user.id,
+          expiresAt,
+        });
+      });
+      return { ...buildQuizWidgetEmbed({ baseUrl, token, quizTitle: quiz.title }), expiresAt };
+    }),
+
+  /** Return non-sensitive active widget status for authorized organization staff. */
+  getWidgetLaunchStatus: protectedProcedure
+    .input(z.object({ quizId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      const db = (await getDb())!;
+      const [launch] = await db.select({
+        id: quizWidgetLaunches.id,
+        label: quizWidgetLaunches.label,
+        expiresAt: quizWidgetLaunches.expiresAt,
+        createdAt: quizWidgetLaunches.createdAt,
+      }).from(quizWidgetLaunches).where(and(
+        eq(quizWidgetLaunches.orgId, quiz.orgId),
+        eq(quizWidgetLaunches.quizId, quiz.id),
+        eq(quizWidgetLaunches.isActive, true),
+        isNull(quizWidgetLaunches.revokedAt),
+        gt(quizWidgetLaunches.expiresAt, new Date()),
+      )).orderBy(desc(quizWidgetLaunches.createdAt)).limit(1);
+      return launch ?? null;
+    }),
+
+  /** Immediately revoke every active widget credential for one authorized organization quiz. */
+  revokeWidgetLaunch: protectedProcedure
+    .input(z.object({ quizId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      const db = (await getDb())!;
+      await db.update(quizWidgetLaunches).set({ isActive: false, revokedAt: new Date() }).where(and(
+        eq(quizWidgetLaunches.orgId, quiz.orgId),
+        eq(quizWidgetLaunches.quizId, quiz.id),
+        eq(quizWidgetLaunches.isActive, true),
+        isNull(quizWidgetLaunches.revokedAt),
+      ));
+      return { success: true };
+    }),
+
   /**
    * Load an unpublished or published quiz for an authorized staff preview.
    * This procedure is deliberately protected and resolves access through the
@@ -1007,13 +1134,37 @@ export const quizMakerRouter = router({
       };
     }),
 
+  /** Load a published quiz through an opaque widget credential after learner sign-in. */
+  getWidgetQuiz: publicProcedure
+    .input(z.object({ widgetToken: z.string().min(32).max(256) }))
+    .query(async ({ ctx, input }) => {
+      const { db, quiz } = await resolveWidgetQuiz(ctx, input.widgetToken);
+      const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
+      return {
+        id: quiz.id,
+        title: quiz.title,
+        description: quiz.description,
+        passingScore: quiz.passingScore,
+        timeLimit: quiz.timeLimit,
+        maxAttempts: quiz.maxAttempts,
+        shuffleQuestions: quiz.shuffleQuestions,
+        shuffleAnswers: quiz.shuffleAnswers,
+        showFeedbackImmediately: quiz.showFeedbackImmediately,
+        showCorrectAnswers: quiz.showCorrectAnswers,
+        mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
+        questions,
+      };
+    }),
+
   // ── Attempt Tracking ──────────────────────────────────────────────────────
 
   /** Submit a quiz attempt from the public player (no auth required) */
   submitAttempt: publicProcedure
     .input(
       z.object({
-        shareToken: z.string().min(1),
+        shareToken: z.string().min(1).optional(),
+        widgetToken: z.string().min(32).max(256).optional(),
         takerName: z.string().max(255).optional(),
         takerEmail: z.string().email().max(320).optional(),
         score: z.number(),
@@ -1021,14 +1172,15 @@ export const quizMakerRouter = router({
         passed: z.boolean(),
         timeTakenSeconds: z.number().optional(),
         answersJson: z.string(), // JSON snapshot of all answers
+      }).refine((input) => Boolean(input.shareToken) !== Boolean(input.widgetToken), {
+        message: "Provide exactly one quiz access credential.",
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
-        .select()
-        .from(quizzes)
-        .where(and(eq(quizzes.shareToken, input.shareToken), eq(quizzes.isPublished, true)));
+      const quiz = input.widgetToken
+        ? (await resolveWidgetQuiz(ctx, input.widgetToken)).quiz
+        : (await db.select().from(quizzes).where(and(eq(quizzes.shareToken, input.shareToken!), eq(quizzes.isPublished, true))))[0];
       if (!quiz) throw new Error("Quiz not found or not published");
       // Enforce visibility: archived/draft quizzes cannot accept submissions
       const quizVis2 = (quiz as any).visibility ?? "published";
@@ -1037,6 +1189,7 @@ export const quizMakerRouter = router({
 
       const [result] = await db.insert(quizAttempts).values({
         quizId: quiz.id,
+        userId: input.widgetToken ? ctx.user!.id : undefined,
         totalPoints: Math.round(input.totalPoints),
         earnedPoints: Math.round(input.score),
         scorePercent: String(scorePct),
@@ -1058,7 +1211,7 @@ export const quizMakerRouter = router({
         legacyTakerName: input.takerName || undefined,
         legacyTakerEmail: input.takerEmail || undefined,
         legacyAnswersJson: input.answersJson,
-        legacyShareToken: input.shareToken,
+        legacyShareToken: input.shareToken ?? quiz.shareToken ?? undefined,
         legacySubmittedAt: new Date(),
       });
 
@@ -1221,10 +1374,16 @@ export const quizMakerRouter = router({
 
   /** Get quiz branding (for the public player) */
   getQuizBranding: publicProcedure
-    .input(z.object({ shareToken: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .input(z.object({
+      shareToken: z.string().min(1).optional(),
+      widgetToken: z.string().min(32).max(256).optional(),
+    }).refine((input) => Boolean(input.shareToken) !== Boolean(input.widgetToken), {
+      message: "Provide exactly one quiz access credential.",
+    }))
+    .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const [quiz] = await db
+      const widgetQuiz = input.widgetToken ? (await resolveWidgetQuiz(ctx, input.widgetToken)).quiz : null;
+      const [shareQuiz] = widgetQuiz ? [null] : await db
         .select({
           brandPrimaryColor: quizzes.brandPrimaryColor,
           brandBgColor: quizzes.brandBgColor,
@@ -1233,9 +1392,16 @@ export const quizMakerRouter = router({
           completionMessage: quizzes.completionMessage,
         })
         .from(quizzes)
-        .where(and(eq(quizzes.shareToken, input.shareToken), eq(quizzes.isPublished, true)));
+        .where(and(eq(quizzes.shareToken, input.shareToken!), eq(quizzes.isPublished, true)));
+      const quiz = widgetQuiz ?? shareQuiz;
       if (!quiz) return null;
-      return quiz;
+      return {
+        brandPrimaryColor: quiz.brandPrimaryColor,
+        brandBgColor: quiz.brandBgColor,
+        brandLogoUrl: quiz.brandLogoUrl,
+        brandFontFamily: quiz.brandFontFamily,
+        completionMessage: quiz.completionMessage,
+      };
     }),
 
   // ── SCORM Export ──────────────────────────────────────────────────────────

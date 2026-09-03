@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Copy, Check, Globe, GlobeLock, Code, Link2, ExternalLink } from "lucide-react";
+import { X, Copy, Check, Globe, GlobeLock, Code, Link2, ExternalLink, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useQuizStore } from "../store/quizStore";
 import { getOrgSubdomainUrl } from "@/hooks/useSubdomain";
@@ -14,14 +14,22 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
   const { quiz } = useQuizStore();
   const [copied, setCopied] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [widgetEmbedCode, setWidgetEmbedCode] = useState<string | null>(null);
+  const [widgetExpiryDays, setWidgetExpiryDays] = useState(30);
 
   const publishMutation = trpc.quizMaker.publish.useMutation();
   const unpublishMutation = trpc.quizMaker.unpublish.useMutation();
+  const createWidgetLaunch = trpc.quizMaker.createWidgetLaunch.useMutation();
+  const revokeWidgetLaunch = trpc.quizMaker.revokeWidgetLaunch.useMutation();
   const utils = trpc.useUtils();
 
   const { data: publishStatus, refetch } = trpc.quizMaker.getPublishStatus.useQuery(
     { quizId: quizId! },
     { enabled: !!quizId }
+  );
+  const { data: widgetStatus, refetch: refetchWidgetStatus } = trpc.quizMaker.getWidgetLaunchStatus.useQuery(
+    { quizId: quizId! },
+    { enabled: !!quizId && open && !!publishStatus?.isPublished }
   );
 
   if (!open) return null;
@@ -69,6 +77,32 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
       alert("Failed to unpublish: " + (err as Error).message);
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const handleCreateWidget = async () => {
+    if (!quizId) return;
+    try {
+      const launch = await createWidgetLaunch.mutateAsync({
+        quizId,
+        expiresInDays: widgetExpiryDays,
+      });
+      setWidgetEmbedCode(launch.embedCode);
+      copyToClipboard(launch.embedCode, "widget");
+      await refetchWidgetStatus();
+    } catch (error) {
+      alert("Unable to create secure widget: " + (error as Error).message);
+    }
+  };
+
+  const handleRevokeWidget = async () => {
+    if (!quizId) return;
+    try {
+      await revokeWidgetLaunch.mutateAsync({ quizId });
+      setWidgetEmbedCode(null);
+      await refetchWidgetStatus();
+    } catch (error) {
+      alert("Unable to revoke secure widget: " + (error as Error).message);
     }
   };
 
@@ -201,6 +235,58 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                   </button>
                 </div>
                 <p className="text-xs text-gray-400">Paste this HTML into any website to embed the quiz.</p>
+              </div>
+
+              <div className="space-y-3 rounded-xl border border-teal-100 bg-teal-50/60 p-4">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-teal-700" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">Secure learner widget</p>
+                    <p className="mt-0.5 text-xs text-gray-600">Learners must sign in to this organization. Creating a replacement revokes the prior widget credential.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="widget-expiry" className="text-xs font-medium text-gray-600">Expires in</label>
+                  <select
+                    id="widget-expiry"
+                    value={widgetExpiryDays}
+                    onChange={(event) => setWidgetExpiryDays(Number(event.target.value))}
+                    className="h-8 rounded-lg border border-teal-200 bg-white px-2 text-xs text-gray-700"
+                  >
+                    <option value={7}>7 days</option>
+                    <option value={30}>30 days</option>
+                    <option value={60}>60 days</option>
+                    <option value={90}>90 days</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleCreateWidget}
+                    disabled={createWidgetLaunch.isPending}
+                    className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                  >
+                    {createWidgetLaunch.isPending ? "Creating..." : widgetStatus ? "Replace & Copy" : "Create & Copy"}
+                  </button>
+                  {widgetStatus && (
+                    <button
+                      type="button"
+                      onClick={handleRevokeWidget}
+                      disabled={revokeWidgetLaunch.isPending}
+                      className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {revokeWidgetLaunch.isPending ? "Revoking..." : "Revoke"}
+                    </button>
+                  )}
+                </div>
+                {widgetStatus && <p className="text-xs text-gray-500">Active widget expires {new Date(widgetStatus.expiresAt).toLocaleDateString()}.</p>}
+                {widgetEmbedCode && (
+                  <textarea
+                    readOnly
+                    value={widgetEmbedCode}
+                    rows={3}
+                    aria-label="Secure learner widget HTML"
+                    className="w-full resize-none rounded-lg border border-teal-200 bg-white px-3 py-2 font-mono text-xs text-gray-600"
+                  />
+                )}
               </div>
 
               {/* Visibility */}

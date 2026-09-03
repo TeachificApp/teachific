@@ -5250,6 +5250,31 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(validatorSource).toContain("Add both comparison images before publishing an image-comparison question.");
   });
 
+  it("keeps secure Quiz Creator widgets opaque, organization-scoped, expiring, revocable, and learner-authenticated", () => {
+    const routerSource = readFileSync(new URL("./quizMakerRouter.ts", import.meta.url), "utf8");
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const playerSource = readFileSync(new URL("../client/src/pages/PublicQuizPlayerPage.tsx", import.meta.url), "utf8");
+    const shareDialogSource = readFileSync(new URL("../client/src/quiz-creator/components/ShareDialog.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('mysqlTable("quiz_widget_launches"');
+    expect(routerSource).toContain("createWidgetLaunch: protectedProcedure");
+    expect(routerSource).toContain("revokeWidgetLaunch: protectedProcedure");
+    expect(routerSource).toContain("getWidgetQuiz: publicProcedure");
+    expect(routerSource).toContain("hashQuizWidgetToken");
+    expect(routerSource).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(routerSource).toContain("getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)");
+    expect(routerSource).toContain("Secure widgets require an organization-owned quiz.");
+    expect(routerSource).toContain("Sign in to access this embedded quiz.");
+    expect(routerSource).toContain("eq(quizWidgetLaunches.isActive, true)");
+    expect(routerSource).toContain("isNull(quizWidgetLaunches.revokedAt)");
+    expect(routerSource).toContain("gt(quizWidgetLaunches.expiresAt, new Date())");
+    expect(playerSource).toContain("getWidgetQuiz.useQuery");
+    expect(playerSource).toContain("Sign in to continue");
+    expect(shareDialogSource).toContain("Secure learner widget");
+    expect(shareDialogSource).toContain("Replace & Copy");
+    expect(shareDialogSource).toContain("Revoke");
+    expect(shareDialogSource).not.toContain("origin: window.location.origin");
+  });
+
   it("quarantines unavailable legacy standalone quizzes from learner library listings", () => {
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     const librarySection = lmsRouterSource.slice(

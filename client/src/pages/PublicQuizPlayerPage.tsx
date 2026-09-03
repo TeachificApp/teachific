@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import React from "react";
-import { useParams } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { getLoginUrl } from "@/const";
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award, Flag } from "lucide-react";
 import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, ImageLabelingData, BranchRule, DrawConfig } from "@/quiz-creator/types/quiz";
 import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInteractions";
@@ -541,24 +542,31 @@ function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): 
 
 export default function PublicQuizPlayerPage() {
   const { shareToken, quizId } = useParams<{ shareToken?: string; quizId?: string }>();
+  const [location] = useLocation();
+  const widgetToken = useMemo(() => new URLSearchParams(window.location.search).get("token") ?? "", [location]);
   const staffPreviewQuizId = Number(quizId);
   const isStaffPreview = Number.isInteger(staffPreviewQuizId) && staffPreviewQuizId > 0;
+  const isWidget = Boolean(widgetToken);
   const { data: publicQuiz, isLoading: isPublicLoading, error: publicError } = trpc.quizMaker.getPublishedQuiz.useQuery(
     { shareToken: shareToken || "" },
-    { enabled: !!shareToken && !isStaffPreview, retry: false }
+    { enabled: !!shareToken && !isStaffPreview && !isWidget, retry: false }
+  );
+  const { data: widgetQuiz, isLoading: isWidgetLoading, error: widgetError } = trpc.quizMaker.getWidgetQuiz.useQuery(
+    { widgetToken },
+    { enabled: isWidget && !isStaffPreview, retry: false }
   );
   const { data: publicBranding } = trpc.quizMaker.getQuizBranding.useQuery(
-    { shareToken: shareToken || "" },
-    { enabled: !!shareToken && !isStaffPreview }
+    isWidget ? { widgetToken } : { shareToken: shareToken || "" },
+    { enabled: (isWidget || !!shareToken) && !isStaffPreview }
   );
   const { data: staffQuiz, isLoading: isStaffLoading, error: staffError } = trpc.quizMaker.getStaffPreviewQuiz.useQuery(
     { quizId: staffPreviewQuizId || 0 },
     { enabled: isStaffPreview, retry: false }
   );
-  const quiz = isStaffPreview ? staffQuiz : publicQuiz;
+  const quiz = isStaffPreview ? staffQuiz : (isWidget ? widgetQuiz : publicQuiz);
   const branding = isStaffPreview ? staffQuiz?.branding : publicBranding;
-  const isLoading = isStaffPreview ? isStaffLoading : isPublicLoading;
-  const error = isStaffPreview ? staffError : publicError;
+  const isLoading = isStaffPreview ? isStaffLoading : (isWidget ? isWidgetLoading : isPublicLoading);
+  const error = isStaffPreview ? staffError : (isWidget ? widgetError : publicError);
 
   const submitAttemptMutation = trpc.quizMaker.submitAttempt.useMutation();
 
@@ -663,7 +671,17 @@ export default function PublicQuizPlayerPage() {
             <XCircle className="w-8 h-8 text-red-500" />
           </div>
           <h1 className="text-xl font-bold text-gray-800 mb-2">Quiz Not Found</h1>
-          <p className="text-gray-500 text-sm">This quiz may have been unpublished or the link is invalid.</p>
+          <p className="text-gray-500 text-sm">{isWidget ? "This widget may have expired, been revoked, or requires access through the correct organization." : "This quiz may have been unpublished or the link is invalid."}</p>
+          {isWidget && (error as any)?.data?.code === "UNAUTHORIZED" && (
+            <button
+              type="button"
+              onClick={() => { window.location.href = getLoginUrl(`${window.location.pathname}${window.location.search}`); }}
+              className="mt-4 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Sign in to continue
+            </button>
+          )}
         </div>
       </div>
     );
@@ -805,7 +823,7 @@ export default function PublicQuizPlayerPage() {
     // Submit attempt to backend (fire and forget)
     if (!isStaffPreview) {
       submitAttemptMutation.mutate({
-        shareToken: shareToken || "",
+        ...(isWidget ? { widgetToken } : { shareToken: shareToken || "" }),
         score,
         totalPoints,
         passed,

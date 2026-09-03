@@ -59,6 +59,8 @@
 - [x] Assess the upstream large Question Bank quiz-load fix; defer it because Course360 delivers serialized Quiz Creator questions rather than the upstream standalone Question Bank hydration contract
 - [x] Audit the upstream standalone quiz administrator URL-access fix against Course360’s active organization-scoped staff-preview contract
 - [x] Require server-resolved active-organization alignment for organization-owned Quiz Creator staff, edit, and export access without changing public share-token delivery
+- [x] Audit and port the secure organization-scoped standalone Quiz Creator HTML widget-launch capability with opaque credentials, expiry, rotation, revocation, and learner sign-in requirements
+- [x] Resolve secure Quiz Creator widget URLs server-side from the owning organization learner base URL with custom-domain precedence and add domain-isolation behavior coverage
 - [x] Verify lesson ownership and active-organization scope before applying CME survey completion rules
 - [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
 - [x] Preserve validated question and answer-choice media when importing SCORM or .quiz questions into the active organization’s Question Bank
