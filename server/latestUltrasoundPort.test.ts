@@ -1865,10 +1865,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(`${healthAlertSource}\n${sharingMonitorSource}`).not.toContain("UltrasoundAssist");
   });
 
-  it("uses Teachific-only wording in the account upgrade prompt", () => {
-    const upgradePromptSource = readFileSync(new URL("../client/src/components/UpgradePrompt.tsx", import.meta.url), "utf8");
-    expect(upgradePromptSource).toContain("Teachific™ Premium");
-    expect(upgradePromptSource).not.toContain("UltrasoundAssist");
+  it("does not retain the unreferenced legacy clinical upgrade prompt", () => {
+    const legacyPromptPath = new URL("../client/src/components/UpgradePrompt.tsx", import.meta.url);
+    expect(existsSync(legacyPromptPath)).toBe(false);
   });
 
   it("uses Teachific branding in platform analytics PDF exports", () => {

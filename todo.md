@@ -13,6 +13,9 @@
 - [x] Replace active shared transactional-email platform fallback identity with Course360 while preserving organization sender precedence
 - [x] Replace active Course360 Learn subdomain access messaging and source-branded local identifiers while preserving administrator access rules
 - [x] Rebrand active shared platform display configuration fallbacks to Course360 while retaining compatibility-only brand keys
+- [x] Remove the unreferenced legacy clinical upgrade prompt rather than porting source-specific clinical content or unsupported premium routes
+- [ ] Audit remaining `/premium` links and upgrade prompts and replace unsupported source-specific routes with supported Course360 plan surfaces or document their valid contract
+- [ ] Add focused regression coverage proving active Course360 upgrade surfaces contain no source-specific clinical copy
 - [x] Replace active custom-auth email-template source branding and retired platform fallback URLs with Course360 while preserving organization-provided links
 - [x] Rebrand active Stripe subscription catalog product names and descriptions to Course360 without changing price identifiers or billing behavior
 - [x] Rebrand active Stripe Creator, Studio, and Quiz Creator checkout messages to Course360 without changing product keys or checkout flows
