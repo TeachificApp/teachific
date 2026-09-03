@@ -97,11 +97,11 @@ export function RoleGuard({ roles, allowAdmin = true, teaserHeight, children }: 
       if (data.success) {
         toast.success("Request sent — the platform administrator has been notified.");
       } else {
-        toast.success("Request submitted — please contact support@teachific.app if you need immediate assistance.");
+        toast.success("Request submitted — please contact support@course360.app if you need immediate assistance.");
       }
     },
     onError: () => {
-      toast.error("Could not send request. Please email support@teachific.app directly.");
+      toast.error("Could not send request. Please email support@course360.app directly.");
     },
   });
 
@@ -339,13 +339,13 @@ export function RoleGuard({ roles, allowAdmin = true, teaserHeight, children }: 
 
         {/* Help text */}
         <p className="text-xs text-muted-foreground">
-          If you believe this is an error, contact your Lab Admin or{" "}
+          If you believe this is an error, contact your organization administrator or{" "}
           <a
-            href="mailto:support@teachific.app"
+            href="mailto:support@course360.app"
             className="underline"
             style={{ color: "#189aa1" }}
           >
-            support@teachific.app
+            support@course360.app
           </a>
         </p>
       </div>

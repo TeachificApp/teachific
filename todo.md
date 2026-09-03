@@ -18,6 +18,7 @@
 - [x] Add focused regression coverage proving active Course360 upgrade surfaces contain no source-specific clinical copy
 - [x] Replace active unsupported `/premium` navigation links and remove unused stale premium pricing constants and source-specific upgrade defaults
 - [x] Replace active custom-auth email-template source branding and retired platform fallback URLs with Course360 while preserving organization-provided links
+- [x] Replace active role-guard source-domain support fallbacks with Course360 while preserving organization-specific access-request behavior
 - [x] Rebrand active Stripe subscription catalog product names and descriptions to Course360 without changing price identifiers or billing behavior
 - [x] Rebrand active Stripe Creator, Studio, and Quiz Creator checkout messages to Course360 without changing product keys or checkout flows
 - [x] Add explicit server-side return-origin validation for Creator, Studio, and Quiz Creator checkout before creating Stripe sessions
