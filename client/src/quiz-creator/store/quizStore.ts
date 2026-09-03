@@ -34,6 +34,14 @@ function defaultData(type: QuestionType): QuestionData {
       };
     case "hotspot":
       return { imageUrl: "", imageAlt: "", regions: [], multiSelect: false };
+    case "image_labeling":
+      return {
+        labels: [
+          { id: uuidv4(), text: "Label 1" },
+          { id: uuidv4(), text: "Label 2" },
+        ],
+        targets: [],
+      };
     case "fill_blank":
       return {
         template: "The {{blank1}} is important for {{blank2}}.",

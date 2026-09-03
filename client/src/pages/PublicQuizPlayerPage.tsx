@@ -3,9 +3,11 @@ import React from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award, Flag } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, BranchRule, DrawConfig } from "@/quiz-creator/types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, ImageLabelingData, BranchRule, DrawConfig } from "@/quiz-creator/types/quiz";
 import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInteractions";
+import { ImageLabelingInteraction } from "@/quiz-creator/components/ImageLabelingInteraction";
 import { getMockExamReviewSummary, shouldOpenMockExamReview, toggleMockExamFlag } from "../../../shared/mockExamFlow";
+import { gradeImageLabelingAnswer } from "../../../shared/imageLabeling";
 import {
   ImageComparisonPlayer,
   DragSortPlayer,
@@ -56,6 +58,8 @@ function isAnswerCorrect(q: QuizQuestion, ans: Answer | undefined): boolean {
       const userAns = (a[b.id] ?? "").trim();
       return b.acceptedAnswers.some((accepted) => b.caseSensitive ? userAns === accepted : userAns.toLowerCase() === accepted.toLowerCase());
     });
+  } else if (q.type === "image_labeling") {
+    return gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans);
   }
   return false;
 }
@@ -525,6 +529,8 @@ function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): 
       const a = (ans as Record<string, string>) ?? {};
       const allCorrect = data.blanks.every((b) => a[b.id] === b.correctWord);
       if (allCorrect) earned += q.points;
+    } else if (q.type === "image_labeling") {
+      if (gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans)) earned += q.points;
     }
     // likert and essay are not auto-graded
   });
@@ -755,6 +761,8 @@ export default function PublicQuizPlayerPage() {
                   const data = q.data as MatchingData;
                   const a = (ans as Record<string, string>) ?? {};
                   isCorrect = data.pairs.every((p) => a[p.id] === p.id);
+                } else if (q.type === "image_labeling") {
+                  isCorrect = gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans);
                 }
                 return (
                   <div key={q.id} className="flex items-center gap-2 text-sm">
@@ -905,7 +913,7 @@ export default function PublicQuizPlayerPage() {
               )}
             </div>
             <p className="text-base font-medium text-gray-800">{q.stem || "(No question text)"}</p>
-             {q.image && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
+             {q.image && q.type !== "image_labeling" && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
             {q.audio && (
               <div className="mt-3 flex items-center gap-2 p-2 bg-gray-50 rounded-xl">
                 <audio src={q.audio.url} controls className="flex-1 h-8" />
@@ -919,6 +927,7 @@ export default function PublicQuizPlayerPage() {
           {q.type === "tf" && <TfQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "hotspot" && (q.data as HotspotData).imageUrl && <HotspotQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
+          {q.type === "image_labeling" && <ImageLabelingInteraction data={q.data as ImageLabelingData} imageUrl={q.image?.url} imageAlt={q.image?.alt} answer={answers[q.id] as Record<string, string> | undefined} onChange={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} />}
           {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} primaryColor={primaryColor} shuffleChoices={quiz.shuffleAnswers} />}

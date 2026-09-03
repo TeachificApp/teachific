@@ -1,8 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { X, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
-import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, DrawConfig } from "../types/quiz";
+import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, ImageLabelingData, DrawConfig } from "../types/quiz";
 import { DndOrdering, DndDragWords } from "./DndQuizInteractions";
+import { ImageLabelingInteraction } from "./ImageLabelingInteraction";
+import { gradeImageLabelingAnswer } from "../../../../shared/imageLabeling";
 import { RichTextDisplay } from "@/components/RichTextEditor";
 
 interface Props {
@@ -469,6 +471,8 @@ export function QuizPreview({ onClose }: Props) {
         const a = (ans as Record<string, string>) ?? {};
         const allCorrect = data.blanks.every((b) => Number(a[b.id]) === b.correctIndex);
         if (allCorrect) earned += q.points;
+      } else if (q.type === "image_labeling") {
+        if (gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans)) earned += q.points;
       }
     });
     return earned;
@@ -484,6 +488,7 @@ export function QuizPreview({ onClose }: Props) {
       return JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
     }
     if (question.type === "tf") return answer === (question.data as TfData).correct;
+    if (question.type === "image_labeling") return gradeImageLabelingAnswer((question.data as ImageLabelingData).targets, answer);
     return false;
   };
 
@@ -580,13 +585,14 @@ export function QuizPreview({ onClose }: Props) {
               <span className="text-xs text-gray-400">{q.points} point{q.points !== 1 ? "s" : ""}</span>
             </div>
             <p className="text-base font-medium text-gray-800">{q.stem || "(No question text)"}</p>
-            {q.image && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
+            {q.image && q.type !== "image_labeling" && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
           </div>
 
           {q.type === "mcq" && <McqQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} shuffleChoices={quiz.meta.shuffleAnswers} />}
           {q.type === "tf" && <TfQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "hotspot" && (q.data as HotspotData).imageUrl && <HotspotQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
+          {q.type === "image_labeling" && <ImageLabelingInteraction data={q.data as ImageLabelingData} imageUrl={q.image?.url} imageAlt={q.image?.alt} answer={answers[q.id] as Record<string, string> | undefined} onChange={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} shuffleChoices={quiz.meta.shuffleAnswers} />}

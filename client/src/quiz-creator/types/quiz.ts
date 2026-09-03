@@ -5,6 +5,7 @@ export type QuestionType =
   | "tf"
   | "matching"
   | "hotspot"
+  | "image_labeling"
   | "fill_blank"
   | "short_answer"
   | "image_choice"
@@ -58,6 +59,23 @@ export interface HotspotData {
   imageAlt: string;
   regions: HotspotRegion[];
   multiSelect: boolean;
+}
+
+export interface ImageLabelChoice {
+  id: string;
+  text: string;
+}
+
+export interface ImageLabelTarget {
+  id: string;
+  x: number;
+  y: number;
+  labelId: string;
+}
+
+export interface ImageLabelingData {
+  labels: ImageLabelChoice[];
+  targets: ImageLabelTarget[];
 }
 
 export interface FillBlankBlank {
@@ -172,6 +190,7 @@ export type QuestionData =
   | TfData
   | MatchingData
   | HotspotData
+  | ImageLabelingData
   | FillBlankData
   | ShortAnswerData
   | ImageChoiceData
