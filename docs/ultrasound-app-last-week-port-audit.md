@@ -19,3 +19,11 @@ Dedicated quiz read-aloud, voice selection, voice samples, synthesis, and any so
 ## Next decision
 
 Start with a focused Course360 compatibility map for required CME survey completion and conditional lesson-quiz questions. Do not copy upstream code verbatim: Course360 needs active-organization ownership, existing CME gates, and organization branding preserved at every learner and authoring surface.
+
+## September 2026 follow-up outcomes
+
+| Upstream area | Course360 outcome | Scope and safeguards |
+|---|---|---|
+| CME inline surveys, dependent questions, activity reporting, and CSV exports | Ported | Stored lesson blocks are validated server-side; attempts and responses are organization-owned; CME and active-organization gates apply before persistence, completion, reporting, or export. |
+| Question Bank public-source generation | Ported | Public web-page grounding is bounded and private to the authoring request. It rejects unsafe addresses, nonstandard ports, redirects, oversized/non-text sources, cross-active-organization banks, and source-identifying generated output. |
+| Standalone Quiz Creator mock-exam review controls | Deferred | Course360's public standalone player currently reads a separate legacy quiz delivery contract that does not safely persist Visual Builder metadata. No partial client-only port was made. |
