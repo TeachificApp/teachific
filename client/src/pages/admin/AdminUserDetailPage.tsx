@@ -1691,7 +1691,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
             </Button>
           }
         />
-        <p className="text-xs text-gray-400 mb-3">Teachific™ platform app subscriptions</p>
+        <p className="text-xs text-gray-400 mb-3">Course360™ platform app subscriptions</p>
 
       {memberships.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-8">No app subscriptions found.</p>
