@@ -40,7 +40,7 @@ const PLAN_FEATURES = [
   "Branching scenarios & dialogue trees",
   "Advanced interactions (hotspot, timeline, drag-drop, flip cards)",
   "Video & audio narration recording",
-  "Publish directly to Teachific LMS™",
+  "Publish directly to Course360™",
   "AI slide content & quiz generator",
   "Content Library (characters, backgrounds, icons, objects)",
   "Role-Play scenario builder",
@@ -58,7 +58,7 @@ const PLAN = {
   cta: "Start Free Trial",
   // kept for legacy shape compatibility
   id: "pro",
-  name: "TeachificCreator™",
+  name: "Course360 Creator™",
   badge: null,
   highlight: true,
   features: PLAN_FEATURES,
@@ -68,7 +68,7 @@ const PLAN = {
 const TIERS = [
   {
     id: "pro",
-    name: "TeachificCreator™",
+    name: "Course360 Creator™",
     badge: null,
     monthlyPrice: 117,
     annualPrice: 999,
@@ -85,7 +85,7 @@ const TIERS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in TeachificCreator™",
+      "Everything in Course360 Creator™",
       "Unlimited seats",
       "SSO / SAML integration",
       "On-premise deployment option",
@@ -132,8 +132,8 @@ const FEATURES = [
   },
   {
     icon: Zap,
-    title: "Publish to Teachific LMS",
-    desc: "One-click publishing directly to your Teachific school. Your course is live and trackable in seconds.",
+    title: "Publish to Course360™",
+    desc: "One-click publishing directly to your Course360™ school. Your course is live and trackable in seconds.",
   },
   {
     icon: BrainCircuit,
@@ -206,7 +206,7 @@ export default function CreatorLandingPage() {
 
   function handleCTA(planId: string) {
     if (planId === "enterprise") {
-      window.location.href = "mailto:sales@teachific.app";
+      window.location.href = "mailto:sales@course360.app";
       return;
     }
     if (user) {
@@ -224,7 +224,7 @@ export default function CreatorLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-bold tracking-tight">
-                <span className="text-white">Teachific</span>
+                <span className="text-white">Course360</span>
                 <span className="text-[#4ad9e0]">Creator</span>
                 <sup className="text-[10px] text-[#4ad9e0] ml-0.5">™</sup>
               </span>
@@ -290,7 +290,7 @@ export default function CreatorLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            TeachificCreator™ is a powerful, web-based eLearning authoring tool. Build interactive
+            Course360 Creator™ is a powerful, web-based eLearning authoring tool. Build interactive
             slides, quizzes, branching scenarios, and publish to SCORM 1.2, SCORM 2004, or HTML5 —
             all from your browser.
           </p>
@@ -326,7 +326,7 @@ export default function CreatorLandingPage() {
               <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
               <div className="w-3 h-3 rounded-full bg-green-500/60" />
               <div className="ml-4 flex-1 h-5 bg-white/5 rounded text-xs text-white/30 flex items-center px-3">
-                TeachificCreator™ — Module 1: Introduction to eLearning
+                Course360 Creator™ — Module 1: Introduction to eLearning
               </div>
             </div>
             {/* Editor layout */}
@@ -425,14 +425,14 @@ export default function CreatorLandingPage() {
       <section className="py-16 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">
-            TeachificCreator™ vs. Traditional Authoring Tools
+            Course360 Creator™ vs. Traditional Authoring Tools
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="text-left py-3 px-4 text-white/60 font-medium">Feature</th>
-                  <th className="py-3 px-4 text-[#4ad9e0] font-bold">TeachificCreator™</th>
+                  <th className="py-3 px-4 text-[#4ad9e0] font-bold">Course360 Creator™</th>
                   <th className="py-3 px-4 text-white/40 font-medium">iSpring Suite</th>
                   <th className="py-3 px-4 text-white/40 font-medium">Articulate 360</th>
                 </tr>
@@ -614,7 +614,7 @@ export default function CreatorLandingPage() {
                 Start Authoring Today
               </h2>
               <p className="text-lg text-white/60 mb-8">
-                Join thousands of instructional designers who have switched to TeachificCreator™.
+                Join instructional designers building with Course360 Creator™.
                 No installs. No plugins. Just pure web-based eLearning authoring power.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -634,7 +634,7 @@ export default function CreatorLandingPage() {
                     className="border-white/20 text-white hover:bg-white/10 h-14 text-base px-8"
                   >
                     <Users className="mr-2 w-5 h-5" />
-                    View Teachific LMS
+                    View Course360™
                   </Button>
                 </Link>
               </div>
@@ -654,20 +654,20 @@ export default function CreatorLandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">
-              Teachific<span className="text-[#4ad9e0]">Creator</span>
+              Course360<span className="text-[#4ad9e0]"> Creator</span>
               <sup className="text-[10px] text-[#4ad9e0]">™</sup>
             </span>
-            <span className="text-white/30 text-sm">by Teachific™</span>
+            <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-white/40">
-            <Link href="/" className="hover:text-white transition-colors">Teachific Home</Link>
-            <Link href="/studio-pro" className="hover:text-white transition-colors">Teachific Studio™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
+            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360 Studio™</Link>
             <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">Quiz Creator™</Link>
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
           </div>
           <p className="text-sm text-white/30">
-            © {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand
+            © {new Date().getFullYear()} Course360™. All rights reserved. <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">a SoundMedia, Inc. brand</a>
           </p>
         </div>
       </footer>
