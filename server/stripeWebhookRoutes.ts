@@ -20,6 +20,14 @@ import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 import { sendPurchaseConfirmationEmail } from "./routers/downloadsRouter";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 
+export function getOrgAdminPurchaseDashboardUrl(org: {
+  slug: string;
+  customDomain?: string | null;
+  domainVerificationStatus?: string | null;
+}): string {
+  return `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/admin?tab=enrollments`;
+}
+
 // ─── Invoice row helper ───────────────────────────────────────────────────────
 async function createInvoiceRow(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, opts: {
   orgId: number;
@@ -121,15 +129,21 @@ async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
     const db = await getDb();
     if (!db) return;
     const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];
-    const [orgRow] = await db.select({ name: organizations.name })
+    const [orgRow] = await db.select({
+      name: organizations.name,
+      slug: organizations.slug,
+      customDomain: organizations.customDomain,
+      domainVerificationStatus: organizations.domainVerificationStatus,
+    })
       .from(organizations).where(eq(organizations.id, orgId)).limit(1);
+    if (!orgRow) return;
     const orgName = orgRow?.name ?? `School #${orgId}`;
     const adminMembers = await db
       .select({ email: users.email, name: users.name })
       .from(orgMembers)
       .innerJoin(users, eq(orgMembers.userId, users.id))
       .where(and(eq(orgMembers.orgId, orgId), inArray(orgMembers.role, ORG_ADMIN_ROLES)));
-    const adminDashboardUrl = `https://teachific.com/admin?tab=enrollments`;
+    const adminDashboardUrl = getOrgAdminPurchaseDashboardUrl(orgRow);
     const { subject, htmlBody, previewText } = buildOrgAdminNewPurchaseEmail({
       orgName,
       buyerName: opts.buyerName,
