@@ -365,7 +365,7 @@ function removeNavItemById(items: SiteNavItem[], id: string): SiteNavItem[] {
 export default function SitePagesAdmin() {
   const params = useQueryParams();
   const [, navigate] = useLocation();
-  const initialDomain = params.get("domain") ?? "teachific.app/learn";
+  const initialDomain = params.get("domain") ?? "course360.app";
 
   const [domain, setDomain] = useState(initialDomain);
   const [expanded, setExpanded] = useState<Set<string>>(
@@ -606,11 +606,11 @@ export default function SitePagesAdmin() {
             <p className="text-sm text-gray-500">
               Drag to reorder. Links can point to site pages ({`/`}slug) or external URLs.
               Pages with &quot;Show in header nav&quot; enabled also appear automatically when no custom menu is saved.
-              {menuKey === "sidebar" && domain === "teachific.app" && (
+              {menuKey === "sidebar" && domain === "course360.app" && (
                 <>
                   {" "}
-                  Sidebar menus for the App domain are saved here for planning and export; the live clinical
-                  tools sidebar on teachific.app is not replaced.
+                  Sidebar menus for the Course360 platform domain are saved here for planning and export;
+                  the live application sidebar is managed separately.
                 </>
               )}
             </p>

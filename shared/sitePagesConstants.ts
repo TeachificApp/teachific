@@ -4,9 +4,11 @@
 import type { Brand } from "./brands";
 
 export const SITE_PAGE_DOMAINS = [
-  { value: "teachific.app", label: "Teachific — platform root", brand: "teachific" as Brand },
-  { value: "www.teachific.app", label: "Teachific — marketing root", brand: "teachific" as Brand },
-  { value: "app.teachific.app", label: "Teachific — app", brand: "teachific" as Brand },
+  { value: "course360.app", label: "Course360 — platform root", brand: "teachific" as Brand },
+  { value: "www.course360.app", label: "Course360 — marketing root", brand: "teachific" as Brand },
+  { value: "teachific.app", label: "Legacy platform root", brand: "teachific" as Brand },
+  { value: "www.teachific.app", label: "Legacy marketing root", brand: "teachific" as Brand },
+  { value: "app.teachific.app", label: "Legacy app domain", brand: "teachific" as Brand },
 ] as const;
 
 export type SitePageDomain = (typeof SITE_PAGE_DOMAINS)[number]["value"];
