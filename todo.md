@@ -15,6 +15,10 @@
 - [x] Rebrand active shared platform display configuration fallbacks to Course360 while retaining compatibility-only brand keys
 - [x] Replace active custom-auth email-template source branding and retired platform fallback URLs with Course360 while preserving organization-provided links
 - [x] Rebrand active Stripe subscription catalog product names and descriptions to Course360 without changing price identifiers or billing behavior
+- [x] Rebrand active Stripe Creator, Studio, and Quiz Creator checkout messages to Course360 without changing product keys or checkout flows
+- [x] Add explicit server-side return-origin validation for Creator, Studio, and Quiz Creator checkout before creating Stripe sessions
+- [x] Exercise all three protected product checkout routes with an allowed configured preview origin and verified member custom domain
+- [x] Add an explicit procedure-level rejection case for an unverified custom checkout return origin
 - [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
 - [x] Replace the email campaign wrapper’s legacy platform fallback with Course360 while preserving organization-specific campaign identity
 - [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers

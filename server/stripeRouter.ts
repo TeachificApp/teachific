@@ -1,5 +1,5 @@
 /**
- * Stripe Billing Router for Teachific
+ * Stripe Billing Router for Course360
  * Handles org subscription checkout, customer portal, and payment settings.
  */
 import { TRPCError } from "@trpc/server";
@@ -15,6 +15,87 @@ async function getDb() {
   const db = await _getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
   return db;
+}
+
+const COURSE360_CHECKOUT_PLATFORM_HOSTS = new Set([
+  "course360.app",
+  "www.course360.app",
+  "teachific.app",
+  "www.teachific.app",
+]);
+
+function hostFromUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPreviewUrl = ENV.appUrl): string | null {
+  try {
+    const parsed = new URL(origin);
+    const hostname = parsed.hostname.toLowerCase();
+    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+    const isConfiguredPreview = hostname === hostFromUrl(configuredPreviewUrl);
+    const isPlatformSubdomain = hostname.endsWith(".course360.app") || hostname.endsWith(".teachific.app");
+    const isSecure = parsed.protocol === "https:" || isLocalhost;
+
+    if (isSecure && (isLocalhost || isConfiguredPreview || isPlatformSubdomain || COURSE360_CHECKOUT_PLATFORM_HOSTS.has(hostname))) {
+      return parsed.origin;
+    }
+  } catch {
+    // The request schema validates URL syntax; this is a separate, fail-closed host check.
+  }
+  return null;
+}
+
+function normalizeConfiguredDomain(domain: string | null | undefined): string | null {
+  if (!domain) return null;
+  return hostFromUrl(domain.includes("://") ? domain : `https://${domain}`);
+}
+
+export function matchesVerifiedMemberCustomDomain(
+  hostname: string,
+  organizations: Array<{ customDomain: string | null; domainVerificationStatus: string | null }>,
+): boolean {
+  return organizations.some((organization) =>
+    organization.domainVerificationStatus === "verified"
+    && normalizeConfiguredDomain(organization.customDomain) === hostname,
+  );
+}
+
+export async function resolveProductCheckoutReturnOrigin(origin: string, userId: number): Promise<string> {
+  const approvedPlatformOrigin = parseApprovedPlatformCheckoutOrigin(origin);
+  if (approvedPlatformOrigin) return approvedPlatformOrigin;
+
+  let hostname: string;
+  let normalizedOrigin: string;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.protocol !== "https:") throw new Error("Custom organization origins must use HTTPS");
+    hostname = parsed.hostname.toLowerCase();
+    normalizedOrigin = parsed.origin;
+  } catch {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Checkout return URL is not permitted" });
+  }
+
+  const db = await getDb();
+  const { orgMembers, organizations } = await import("../drizzle/schema");
+  const memberOrganizations = await db
+    .select({
+      customDomain: organizations.customDomain,
+      domainVerificationStatus: organizations.domainVerificationStatus,
+    })
+    .from(orgMembers)
+    .innerJoin(organizations, eq(organizations.id, orgMembers.orgId))
+    .where(eq(orgMembers.userId, userId));
+
+  if (!matchesVerifiedMemberCustomDomain(hostname, memberOrganizations)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Checkout return URL is not permitted" });
+  }
+  return normalizedOrigin;
 }
 
 // ─── Helper: get org context for the current user ─────────────────────────────
@@ -705,7 +786,7 @@ export const stripeRouter = router({
       await db.update(users).set({ studioTrialEndsAt: trialEndsAt }).where(eq(users.id, input.userId));
       return { success: true };
     }),
-  // ── TeachificCreator™ checkout (Web / Desktop / Bundle) ───────────────────────────
+  // ── Course360 Creator™ checkout (Web / Desktop / Bundle) ─────────────────────────
   createCreatorSingleCheckout: protectedProcedure
     .input(z.object({
       interval: z.enum(["monthly", "annual"]),
@@ -714,9 +795,10 @@ export const stripeRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
       const priceKey = `creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "TeachificCreator price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Creator price not found. Please try again shortly." });
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
@@ -735,13 +817,13 @@ export const stripeRouter = router({
           trial_period_days: 14,
           metadata: { user_id: String(ctx.user.id), product_type: "creator", access_tier: input.accessTier },
         },
-        success_url: `${input.origin}/creator?upgraded=1`,
-        cancel_url: `${input.origin}/creator-pro`,
+        success_url: `${returnOrigin}/creator?upgraded=1`,
+        cancel_url: `${returnOrigin}/creator-pro`,
       });
       return { checkoutUrl: session.url };
     }),
 
-  // ── Teachific Studio™ checkout (Web / Desktop / Bundle) ──────────────────────────────
+  // ── Course360 Studio™ checkout (Web / Desktop / Bundle) ───────────────────────────
   createStudioSingleCheckout: protectedProcedure
     .input(z.object({
       interval: z.enum(["monthly", "annual"]),
@@ -750,9 +832,10 @@ export const stripeRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
       const priceKey = `studio_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Teachific Studio price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Studio price not found. Please try again shortly." });
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
@@ -771,13 +854,13 @@ export const stripeRouter = router({
           trial_period_days: 14,
           metadata: { user_id: String(ctx.user.id), product_type: "studio", access_tier: input.accessTier },
         },
-        success_url: `${input.origin}/studio?upgraded=1`,
-        cancel_url: `${input.origin}/studio-pro`,
+        success_url: `${returnOrigin}/studio?upgraded=1`,
+        cancel_url: `${returnOrigin}/studio-pro`,
       });
       return { checkoutUrl: session.url };
     }),
 
-  // ── Teachific QuizMaker™ checkout (Web / Desktop / Bundle) ─────────────────────────
+  // ── Course360 Quiz Creator™ checkout (Web / Desktop / Bundle) ─────────────────────
   createQuizCreatorCheckout: protectedProcedure
     .input(z.object({
       interval: z.enum(["monthly", "annual"]),
@@ -786,9 +869,10 @@ export const stripeRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const stripe = getStripe();
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
       const priceKey = `quiz_creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "QuizMaker price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Quiz Creator price not found. Please try again shortly." });
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
@@ -807,8 +891,8 @@ export const stripeRouter = router({
           trial_period_days: 14,
           metadata: { user_id: String(ctx.user.id), product_type: "quiz_creator", access_tier: input.accessTier },
         },
-        success_url: `${input.origin}/quiz-creator?upgraded=1`,
-        cancel_url: `${input.origin}/quiz-creator-pro`,
+        success_url: `${returnOrigin}/quiz-creator?upgraded=1`,
+        cancel_url: `${returnOrigin}/quiz-creator-pro`,
       });
       return { checkoutUrl: session.url };
      }),
