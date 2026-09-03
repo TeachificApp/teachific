@@ -3636,9 +3636,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(enrollmentEmailSource).not.toContain('https://teachific.app/downloads/bundle/${opts.bundleSlug}');
   });
 
-  it("uses Teachific-neutral wording in organization-owned enrollment and access email templates", () => {
+  it("uses Course360-neutral wording in organization-owned enrollment and access email templates", () => {
     const enrollmentEmailSource = readFileSync(new URL("./lib/enrollmentEmail.ts", import.meta.url), "utf8");
-    expect(enrollmentEmailSource).toContain('Teachific™ Learning');
+    expect(enrollmentEmailSource).toContain('Course360™ Learning');
+    expect(enrollmentEmailSource).toContain('https://course360.app');
+    expect(enrollmentEmailSource).not.toContain('Teachific™ Learning');
     expect(enrollmentEmailSource).toContain('Your online learning access');
     expect(enrollmentEmailSource).not.toContain('General &amp; Vascular Ultrasound Clinical Intelligence');
     expect(enrollmentEmailSource).not.toContain('aaus_logo_ring');

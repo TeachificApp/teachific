@@ -16,10 +16,10 @@ const brandDark = "#0e4a50";
 // as the learning platform. Falls back to the platform-wide SENDGRID_FROM_EMAIL.
 const LMS_FROM_EMAIL = process.env.LMS_FROM_EMAIL
   || process.env.SENDGRID_FROM_EMAIL
-  || "learn@teachific.com";
+  || "learn@course360.app";
 const LMS_FROM_NAME = process.env.LMS_FROM_NAME
   || process.env.SENDGRID_FROM_NAME
-  || "Teachific™ Learning";
+  || "Course360™ Learning";
 
 export type ContentType = "course" | "download" | "bundle" | "quiz";
 
@@ -53,7 +53,7 @@ function buildAccessUrl(destination: string, accessToken?: string | null, orgBas
   return orgBaseUrl ? `${orgBaseUrl}/auth/access?token=${accessToken}&next=${encoded}` : destination;
 }
 
-function emailWrapper(content: string): string {
+export function buildEnrollmentEmailWrapper(content: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,7 +68,7 @@ function emailWrapper(content: string): string {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,#0e4a50 0%,#0e4a50 60%,${brandColor} 100%);padding:28px 32px;text-align:center;">
-              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Teachific™ Learning</div>
+              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Course360™ Learning</div>
               <div style="font-size:12px;color:#4ad9e0;margin-top:4px;">Your online learning access</div>
             </td>
           </tr>
@@ -80,7 +80,7 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="background:#f8fffe;border-top:1px solid #e5f7f8;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                © Teachific™ · <a href="https://www.teachific.com" style="color:${brandColor};text-decoration:none;">www.teachific.com</a>
+                © Course360™ · <a href="https://course360.app" style="color:${brandColor};text-decoration:none;">course360.app</a>
               </p>
             </td>
           </tr>
@@ -163,7 +163,7 @@ export async function sendEnrollmentEmail(opts: {
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
-  const htmlBody = emailWrapper(`
+  const htmlBody = buildEnrollmentEmailWrapper(`
     <h2 style="margin:0 0 8px;font-size:22px;color:${brandDark};font-family:Georgia,serif;">
       Welcome, ${firstName}! 🎉
     </h2>
@@ -217,7 +217,7 @@ export async function sendDownloadAccessEmail(opts: {
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
-  const htmlBody = emailWrapper(`
+  const htmlBody = buildEnrollmentEmailWrapper(`
     <h2 style="margin:0 0 8px;font-size:22px;color:${brandDark};font-family:Georgia,serif;">
       Hi ${firstName}, your download is ready! 📥
     </h2>
@@ -270,7 +270,7 @@ export async function sendBundleAccessEmail(opts: {
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
-  const htmlBody = emailWrapper(`
+  const htmlBody = buildEnrollmentEmailWrapper(`
     <h2 style="margin:0 0 8px;font-size:22px;color:${brandDark};font-family:Georgia,serif;">
       Hi ${firstName}, your bundle is ready! 📦
     </h2>
@@ -322,7 +322,7 @@ export async function sendQuizAccessEmail(opts: {
   const introHtml = opts.customIntro
     ? `<div style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">${opts.customIntro}</div>`
     : "";
-  const htmlBody = emailWrapper(`
+  const htmlBody = buildEnrollmentEmailWrapper(`
     <h2 style="margin:0 0 8px;font-size:22px;color:${brandDark};font-family:Georgia,serif;">
       Hi ${firstName}, you've been invited! 🎯
     </h2>
