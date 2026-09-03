@@ -148,14 +148,15 @@ export const lmsPublicRouter = router({
       // If we can't resolve an org, return empty (prevents cross-org leakage)
       if (scopeOrgId === null) return { courses: [], total: 0, page: input.page, pageSize: input.pageSize };
 
-      // If type is explicitly "quiz", merge lmsCourses quizzes + sonoQuizzes
+      // If type is explicitly "quiz", return only organization-owned LMS quiz courses.
+      // The retired sonoQuizzes table is not present in the active database contract and
+      // must not be used for learner library discovery.
       if (input.type === "quiz") {
         const lmsConditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.type, "quiz"), eq(lmsCourses.orgId, scopeOrgId)];
 
         const offset = (input.page - 1) * input.pageSize;
         const [lmsQuizRows, sqRows] = await Promise.all([
           db.select().from(lmsCourses).where(and(...lmsConditions)).orderBy(desc(lmsCourses.createdAt)),
-          db.select().from(sonoQuizzes).where(eq(sonoQuizzes.status, "published")).orderBy(desc(sonoQuizzes.createdAt)),
         ]);
         const lmsMapped = lmsQuizRows.map(c => ({ ...c, instructor: null, _source: "lms_course" as const }));
         const sqMapped = sqRows.map(q => ({
@@ -270,30 +271,7 @@ export const lmsPublicRouter = router({
           instructor: null,
           _source: "digital_product" as const,
         }));
-        // Also include published sonoQuizzes
-        const sqRows = await db.select().from(sonoQuizzes).where(and(
-          eq(sonoQuizzes.status, "published"),
-          eq(sonoQuizzes.orgId, scopeOrgId),
-        )).orderBy(desc(sonoQuizzes.createdAt));
-        const sqMapped = sqRows.map(q => ({
-          id: q.id,
-          slug: `quiz-${q.id}`,
-          title: q.title,
-          subtitle: q.description ?? null,
-          description: q.description ?? null,
-          coverImageUrl: q.coverImageUrl ?? null,
-          status: "public" as const,
-          type: "quiz" as const,
-          
-          price: 0,
-          isFree: true,
-          isFeatured: false,
-          showInLibrary: true,
-          createdAt: q.createdAt,
-          updatedAt: q.updatedAt,
-          instructor: null,
-          _source: "sono_quiz" as const,
-        }));
+        const sqMapped: any[] = [];
         // Merge all, sort by createdAt desc, then paginate
         const combined = [...enriched, ...dpMapped, ...sqMapped].sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

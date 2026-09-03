@@ -44,7 +44,9 @@
 - [x] Add end-to-end organization-owned image-comparison behavior and regression coverage while preserving the standalone Quiz Creator and Question Bank boundary
 - [x] Audit and enforce organization scope for learner standalone quiz listings, and correct the StudentLayout organization-brand fallback without adding read-aloud controls
 - [ ] Design and implement an explicit organization-scoped learner quiz navigation surface and matching native quiz-results route before exposing quiz-results navigation
-- [x] Verify and enforce owning-organization scope for learner standalone quiz listings before exposing learner quiz links
+- [ ] Add protected active-organization learner native quiz-attempt summaries and a completed-attempt results route without exposing other organizations’ attempts
+- [ ] Show learner quiz navigation and native quiz-results links only when the active organization has relevant available or completed quiz attempts
+- [x] Verify the legacy standalone quiz table is unavailable in the active database contract and quarantine it from learner library reads rather than exposing unscoped or failing listings
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point
 - [x] Add cross-editor paste-transform regression coverage and targeted lesson, page, and email editor bundle validation

@@ -5235,13 +5235,14 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(validatorSource).toContain("Add both comparison images before publishing an image-comparison question.");
   });
 
-  it("limits learner library standalone quiz listings to the resolved organization", () => {
+  it("quarantines unavailable legacy standalone quizzes from learner library listings", () => {
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     const librarySection = lmsRouterSource.slice(
-      lmsRouterSource.indexOf("// Also include published sonoQuizzes"),
-      lmsRouterSource.indexOf("// Also include published sonoQuizzes") + 900,
+      lmsRouterSource.indexOf("When no type filter (All Types)"),
+      lmsRouterSource.indexOf("When no type filter (All Types)") + 2_400,
     );
-    expect(librarySection).toContain('eq(sonoQuizzes.status, "published"),\n          eq(sonoQuizzes.orgId, scopeOrgId)');
-    expect(librarySection).not.toContain('from(sonoQuizzes).where(eq(sonoQuizzes.status, "published"))');
+    expect(lmsRouterSource).toContain("The retired sonoQuizzes table is not present in the active database contract");
+    expect(librarySection).toContain("const sqMapped: any[] = [];");
+    expect(librarySection).not.toContain("from(sonoQuizzes)");
   });
 });
