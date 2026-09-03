@@ -191,6 +191,7 @@
 - [x] Enforce active-organization matching for the supported LMS bundle list, create, read, update, delete, and bundle-editor course selection flows
 - [x] Require AI-generated full lesson content to contain at least 1,500 words and surface a clear authoring status when the minimum is not met
 - [x] Remove dedicated text-to-speech/read-aloud generation and playback controls while preserving normal author-uploaded lesson audio
+- [x] Add focused regression coverage that rejects dedicated read-aloud and text-to-speech implementation paths in active Course360 source
 - [x] Verify the logged-in maintenance banner automatically disappears after the configured expiration timestamp
 - [x] Remove source-specific legacy navigation routes and source-branded platform logo fallbacks from active Teachific layouts
 - [x] Remove provider/source names and hard-coded provider addresses from active CME client copy while retaining the allowed server-side service-address fallback
