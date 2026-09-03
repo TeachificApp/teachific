@@ -149,6 +149,15 @@ describe("Course360 hosted checkout coupon scope", () => {
       success_url: "https://learn.academy.example.test/checkout/complete?session_id={CHECKOUT_SESSION_ID}&content_type=course&slug=organization-course",
       cancel_url: "https://learn.academy.example.test/checkout/course/organization-course",
     }));
+    expect(stripeCouponCreate).toHaveBeenCalledWith(expect.objectContaining({
+      name: "Course360 ORGONLY",
+      metadata: expect.objectContaining({
+        source_coupon_id: "10",
+        org_id: "7",
+        content_type: "course",
+        content_id: "41",
+      }),
+    }));
     expect(JSON.stringify(stripeSessionCreate.mock.calls)).not.toContain("attacker.example.test");
   });
 });

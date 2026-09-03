@@ -63,6 +63,7 @@
 - [x] Add end-to-end checkout-handler coverage proving active paths reject out-of-organization and out-of-scope coupon targets
 - [x] Restore the missing organization-scoped coupon checkout helper import in the active hosted checkout handler before validating coupon scope behavior
 - [x] Resolve active hosted-checkout success and cancellation URLs from the purchased content’s verified organization domain rather than a caller-provided origin
+- [x] Replace the active hosted-checkout Stripe coupon legacy platform label with Course360 wording while preserving discount behavior
 - [x] Record successful organization-owned coupon redemptions during checkout fulfillment so max-use limits remain enforceable
 - [x] Remove unsupported dashboard-style revenue, enrollment, and completion claims from platform marketing imagery
 - [x] Migrate legacy funnel product catalog procedures and picker callers to organization-scoped, dollar-denominated product data with membership-plan support

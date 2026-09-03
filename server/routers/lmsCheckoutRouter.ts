@@ -606,7 +606,7 @@ export const lmsCheckoutLearnerRouter = router({
               ? { percent_off: Number(coupon.discountValue) }
               : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: content.currency }),
             duration: "once",
-            name: `Teachific ${normalizedCode}`,
+            name: `Course360 ${normalizedCode}`,
             metadata: {
               source_coupon_id: String(coupon.id),
               org_id: String(content.orgId),
