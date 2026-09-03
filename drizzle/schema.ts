@@ -4584,6 +4584,7 @@ export type LmsSectionTemplate = typeof lmsSectionTemplates.$inferSelect;
 
 export const lessonTemplates = mysqlTable("lesson_templates", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   lessonType: varchar("lesson_type", { length: 64 }).default("video").notNull(),
   blocks: longtext("blocks"),
@@ -4592,7 +4593,9 @@ export const lessonTemplates = mysqlTable("lesson_templates", {
   createdByAdminId: int("created_by_admin_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  orgCreatedIndex: index("lesson_templates_org_created_idx").on(table.orgId, table.createdAt),
+}));
 export type LessonTemplate = typeof lessonTemplates.$inferSelect;
 
 export const userRoles = mysqlTable("user_roles", {

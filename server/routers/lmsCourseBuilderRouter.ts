@@ -102,6 +102,42 @@ async function assertStandaloneQuizForCourse(db: any, courseId: number, standalo
   if (!quiz) throw new TRPCError({ code: "FORBIDDEN", message: "The selected quiz belongs to another organisation." });
 }
 
+export function cloneLessonTemplateBlocks(blocksJson: string | null | undefined): Record<string, unknown>[] {
+  if (!blocksJson) return [];
+  let sourceBlocks: unknown;
+  try {
+    sourceBlocks = JSON.parse(blocksJson);
+  } catch {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "The saved lesson template has invalid block data" });
+  }
+  if (!Array.isArray(sourceBlocks)) throw new TRPCError({ code: "BAD_REQUEST", message: "The saved lesson template has invalid block data" });
+  const copyBlock = (value: unknown): Record<string, unknown> | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const copy = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+    copy.id = `block_${randomBytes(10).toString("hex")}`;
+    if (Array.isArray(copy.children)) copy.children = copy.children.map(copyBlock).filter(Boolean);
+    if (copy.data && typeof copy.data === "object" && !Array.isArray(copy.data)) {
+      const data = copy.data as Record<string, unknown>;
+      if (Array.isArray(data.blocks)) data.blocks = data.blocks.map(copyBlock).filter(Boolean);
+      if (Array.isArray(data.columns)) data.columns = data.columns.map((column) => {
+        if (Array.isArray(column)) return column.map(copyBlock).filter(Boolean);
+        if (!column || typeof column !== "object") return column;
+        const columnCopy = JSON.parse(JSON.stringify(column)) as Record<string, unknown>;
+        if (Array.isArray(columnCopy.blocks)) columnCopy.blocks = columnCopy.blocks.map(copyBlock).filter(Boolean);
+        return columnCopy;
+      });
+    }
+    if (Array.isArray(copy.columns)) copy.columns = copy.columns.map((column) => {
+      if (!column || typeof column !== "object" || Array.isArray(column)) return column;
+      const columnCopy = JSON.parse(JSON.stringify(column)) as Record<string, unknown>;
+      if (Array.isArray(columnCopy.blocks)) columnCopy.blocks = columnCopy.blocks.map(copyBlock).filter(Boolean);
+      return columnCopy;
+    });
+    return copy;
+  };
+  return sourceBlocks.map(copyBlock).filter((block): block is Record<string, unknown> => !!block);
+}
+
 export const lmsCourseBuilderRouter = router({
   // ── Lesson fetch for editor ──
   getLessonAdmin: protectedProcedure
@@ -694,11 +730,15 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
       if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const [course] = lesson.courseId ? await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, lesson.courseId)).limit(1) : [];
+      if (!course?.orgId) throw new TRPCError({ code: "NOT_FOUND", message: "Owning organization not found" });
       const [result] = await db.insert(lessonTemplates).values({
+        orgId: course.orgId,
         title: input.title,
         lessonType: lesson.type ?? "video",
         blocks: lesson.contentBlocks ?? "[]",
@@ -713,7 +753,9 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) return [];
-      return db.select().from(lessonTemplates).orderBy(desc(lessonTemplates.createdAt));
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+      return db.select().from(lessonTemplates).where(eq(lessonTemplates.orgId, orgId)).orderBy(desc(lessonTemplates.createdAt));
     }),
   deleteLessonTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
@@ -721,20 +763,26 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.delete(lessonTemplates).where(eq(lessonTemplates.id, input.id));
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+      await db.delete(lessonTemplates).where(and(eq(lessonTemplates.id, input.id), eq(lessonTemplates.orgId, orgId)));
       return { success: true };
     }),
-  /** Apply a lesson template to an existing lesson (replaces its content blocks) */
+  /** Add independent copies of template blocks to an existing lesson. */
   applyLessonTemplate: protectedProcedure
     .input(z.object({ lessonId: z.number(), templateId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [template] = await db.select().from(lessonTemplates).where(eq(lessonTemplates.id, input.templateId)).limit(1);
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, contentBlocks: lmsLessons.contentBlocks }).from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      const [course] = lesson?.courseId ? await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, lesson.courseId)).limit(1) : [];
+      if (!course?.orgId) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const [template] = await db.select().from(lessonTemplates).where(and(eq(lessonTemplates.id, input.templateId), eq(lessonTemplates.orgId, course.orgId))).limit(1);
       if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
-      await db.update(lmsLessons).set({ contentBlocks: template.blocks }).where(eq(lmsLessons.id, input.lessonId));
-      return { success: true };
+      const templateBlocks = cloneLessonTemplateBlocks(template.blocks);
+      return { success: true, addedBlockCount: templateBlocks.length, blocks: templateBlocks };
     }),
 
   /** Copy a section from another course into this course */

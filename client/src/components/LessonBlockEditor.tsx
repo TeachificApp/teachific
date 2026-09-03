@@ -66,7 +66,7 @@ interface LessonBlockEditorProps {
 }
 
 // Picker tab type
-type PickerTab = "catalog" | "from_lessons" | "templates" | "import_url";
+type PickerTab = "catalog" | "from_lessons" | "templates" | "lesson_templates" | "import_url";
 
 const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockEditorProps>(function LessonBlockEditor({
   lessonId,
@@ -938,6 +938,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             { id: "catalog", icon: <Plus className="w-3.5 h-3.5" />, label: "New Block" },
             { id: "from_lessons", icon: <BookOpen className="w-3.5 h-3.5" />, label: "Copy" },
             { id: "templates", icon: <Layers className="w-3.5 h-3.5" />, label: "Templates" },
+            { id: "lesson_templates", icon: <BookOpen className="w-3.5 h-3.5" />, label: "Saved Lessons" },
             { id: "import_url", icon: <Globe className="w-3.5 h-3.5" />, label: "Import URL" },
           ] as const).map(tab => (
             <button
@@ -1155,6 +1156,17 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               setBlocks(prev => [...prev, block]);
               setAddMenuOpen(false);
               toast.success("Block template inserted!");
+            }}
+          />
+        )}
+        {pickerTab === "lesson_templates" && lessonId && (
+          <LessonTemplatesTabContent
+            lessonId={lessonId}
+            onInsert={(templateBlocks) => {
+              setBlocks((current) => [...current, ...templateBlocks]);
+              setSelectedBlockId(templateBlocks[templateBlocks.length - 1]?.id ?? null);
+              setAddMenuOpen(false);
+              toast.success("Saved lesson template added. Save this lesson to keep the new blocks.");
             }}
           />
         )}
@@ -1402,6 +1414,48 @@ function BlockTemplatesTabContent({ onInsert }: { onInsert: (block: Block) => vo
                 </div>
               </div>
             );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LessonTemplatesTabContent({ lessonId, onInsert }: { lessonId: number; onInsert: (blocks: Block[]) => void }) {
+  const [search, setSearch] = useState("");
+  const { data: templates, isLoading } = trpc.lmsAdmin.listLessonTemplates.useQuery();
+  const applyTemplate = trpc.lmsAdmin.applyLessonTemplate.useMutation({
+    onSuccess: (result) => onInsert(result.blocks as Block[]),
+    onError: (error) => toast.error(error.message),
+  });
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleTemplates = (templates ?? []).filter((template: any) =>
+    !normalizedSearch || `${template.title ?? ""} ${template.tags ?? ""}`.toLowerCase().includes(normalizedSearch),
+  );
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden gap-3">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide org-text">Saved Lesson Templates</p>
+        <p className="mt-0.5 text-xs text-gray-500">Add independent copies of saved blocks. Current lesson blocks remain in place until you save.</p>
+      </div>
+      <div className="relative shrink-0">
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search lesson templates…" className="h-8 pl-8 text-xs" />
+      </div>
+      {isLoading ? (
+        <p className="py-6 text-center text-xs text-gray-400">Loading lesson templates…</p>
+      ) : visibleTemplates.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400"><BookOpen className="w-8 h-8 opacity-30" /><p className="text-xs">No saved lesson templates match this search.</p></div>
+      ) : (
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {visibleTemplates.map((template: any) => {
+            let blockCount = 0;
+            try { blockCount = Array.isArray(typeof template.blocks === "string" ? JSON.parse(template.blocks) : template.blocks) ? (typeof template.blocks === "string" ? JSON.parse(template.blocks) : template.blocks).length : 0; } catch { blockCount = 0; }
+            return <div key={template.id} className="flex items-center justify-between gap-3 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_5%,white)] px-3 py-2.5">
+              <div className="min-w-0"><p className="truncate text-sm font-semibold text-gray-800">{template.title}</p><p className="mt-0.5 text-xs text-gray-500">{blockCount} block{blockCount === 1 ? "" : "s"}{template.tags ? ` · ${template.tags}` : ""}</p></div>
+              <Button size="sm" disabled={blockCount === 0 || applyTemplate.isPending} className="h-7 shrink-0 org-primary-button text-xs" onClick={() => applyTemplate.mutate({ lessonId, templateId: template.id })}><Plus className="mr-1 h-3 w-3" />{applyTemplate.isPending ? "Adding…" : "Add to Lesson"}</Button>
+            </div>;
           })}
         </div>
       )}

@@ -99,6 +99,21 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseBuilderSource).toContain("Non-scoring surveys can use only response types supported by the lesson player");
   });
 
+  it("keeps reusable lesson templates organization-owned and inserts independent copies through the active lesson editor", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const courseBuilderSource = readFileSync(new URL("./routers/lmsCourseBuilderRouter.ts", import.meta.url), "utf8");
+    const lessonEditorSource = readFileSync(new URL("../client/src/components/LessonBlockEditor.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('export const lessonTemplates = mysqlTable("lesson_templates", {');
+    expect(schemaSource).toContain('orgId: int("orgId").notNull()');
+    expect(courseBuilderSource).toContain("eq(lessonTemplates.orgId, orgId)");
+    expect(courseBuilderSource).toContain("eq(lessonTemplates.orgId, course.orgId)");
+    expect(courseBuilderSource).toContain("cloneLessonTemplateBlocks");
+    expect(courseBuilderSource).toContain("addedBlockCount: templateBlocks.length, blocks: templateBlocks");
+    expect(lessonEditorSource).toContain('id: "lesson_templates"');
+    expect(lessonEditorSource).toContain("Saved Lesson Templates");
+    expect(lessonEditorSource).toContain("Add to Lesson");
+  });
+
   it("scopes CME activity reporting and export to the active CME-enabled organization", () => {
     const cmeRouterSource = readFileSync(new URL("./routers/cmeActivityFormRouter.ts", import.meta.url), "utf8");
     const cmePageSource = readFileSync(new URL("../client/src/pages/lms/CmeManagementPage.tsx", import.meta.url), "utf8");
