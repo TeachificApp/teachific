@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as sharedEmail from "./_core/email";
 import {
   buildWelcomeEmail,
   buildPlatformFreeWelcomeEmail,
@@ -41,5 +42,12 @@ describe("Course360 platform welcome email fallbacks", () => {
     expect(email.htmlBody).toContain("Platform Administration");
     expect(email.htmlBody).toContain("Your account has been set up by an administrator.");
     expect(email.htmlBody).not.toMatch(/DIY Accreditation|Lab Admin|clinical platform/i);
+  });
+
+  it("does not retain dormant clinical case or Daily Challenge email-builder exports", () => {
+    expect(sharedEmail).not.toHaveProperty("buildStreakReminderEmail");
+    expect(sharedEmail).not.toHaveProperty("buildNewCaseSubmissionAdminEmail");
+    expect(sharedEmail).not.toHaveProperty("buildCaseApprovedEmail");
+    expect(sharedEmail).not.toHaveProperty("buildCaseRejectedEmail");
   });
 });
