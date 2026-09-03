@@ -1790,7 +1790,7 @@ function AdditionalAccessEditor({
   };
 
   const addMembership = (brand: string) => {
-    const label = brand === "teachific" ? "Teachific™ Membership" : brand === "teachific" ? "Teachific™ Membership" : "All Memberships";
+    const label = brand === "teachific" ? "Course360™ Membership" : brand === "teachific" ? "Course360™ Membership" : "All Memberships";
     onSet("additionalAccess", [...items, { type: "membership", brand, label }]);
   };
 
@@ -1848,7 +1848,7 @@ function AdditionalAccessEditor({
         {(["teachific", "both"] as const).map(b => (
           <button key={b} onClick={() => addMembership(b)}
             className="text-xs px-2 py-0.5 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 transition-colors">
-            {b === "teachific" ? "Teachific™" : b === "both" ? "Both" : "Teachific™"}
+            {b === "teachific" ? "Course360™" : b === "both" ? "Both" : "Course360™"}
           </button>
         ))}
       </div>
