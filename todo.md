@@ -36,7 +36,7 @@
 - [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
 - [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
 - [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
-- [ ] Verify lesson ownership and active-organization scope before applying CME survey completion rules
+- [x] Verify lesson ownership and active-organization scope before applying CME survey completion rules
 - [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
 - [ ] Port compatible CME certificate fixes with CME entitlement gates and organization-specific identity
 - [ ] Add regression coverage for organization isolation, role scope, and organization branding on ported changes

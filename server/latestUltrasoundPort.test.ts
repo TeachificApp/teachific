@@ -12,6 +12,15 @@ import {
 } from "./lib/aiLessonContent";
 
 describe("latest Ultrasound-App learning feature port", () => {
+  it("verifies a lesson belongs to the enrolled active-organization course before marking it complete", () => {
+    const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    const completionStart = lmsRouterSource.indexOf("markLessonComplete:");
+    const completionEnd = lmsRouterSource.indexOf("submitQuiz:", completionStart);
+    const completionSource = lmsRouterSource.slice(completionStart, completionEnd);
+    expect(completionSource).toContain('message: "Lesson does not belong to this course"');
+    expect(completionSource).toContain("enrollment.orgId !== course.orgId");
+  });
+
   it("applies organization coupon target scopes only to eligible content types and individual products", () => {
     const productScopedCoupon = {
       isActive: true,
@@ -1561,9 +1570,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(roleGuardSource).not.toContain("Ultrasound Flashcards");
   });
 
-  it("uses Teachific platform wording in user subscription details", () => {
+  it("uses Course360 platform wording in user subscription details", () => {
     const userDetailSource = readFileSync(new URL("../client/src/pages/admin/AdminUserDetailPage.tsx", import.meta.url), "utf8");
-    expect(userDetailSource).toContain("Teachific™ platform app subscriptions");
+    expect(userDetailSource).toContain("Course360™ platform app subscriptions");
     expect(userDetailSource).not.toContain("UltrasoundAssist™ and EchoAssist™ app subscriptions");
   });
 

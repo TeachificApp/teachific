@@ -800,9 +800,21 @@ export const lmsLearnerRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      let lessonCourseId = lesson.courseId;
+      if (!lessonCourseId && lesson.sectionId) {
+        const [section] = await db.select({ courseId: lmsSections.courseId })
+          .from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1);
+        lessonCourseId = section?.courseId ?? null;
+      }
+      if (lessonCourseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+      }
       const [enrollment] = await db.select().from(lmsEnrollments)
         .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
-      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN" });
+      if (!enrollment || enrollment.orgId !== course.orgId) throw new TRPCError({ code: "FORBIDDEN" });
 
       const [existing] = await db.select().from(lmsLessonProgress)
         .where(and(eq(lmsLessonProgress.enrollmentId, enrollment.id), eq(lmsLessonProgress.lessonId, input.lessonId))).limit(1);
