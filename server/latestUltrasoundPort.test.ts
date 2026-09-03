@@ -81,6 +81,29 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(playerSource).toContain("onClick={handleMarkComplete}");
   });
 
+  it("scopes CME activity reporting and export to the active CME-enabled organization", () => {
+    const cmeRouterSource = readFileSync(new URL("./routers/cmeActivityFormRouter.ts", import.meta.url), "utf8");
+    const cmePageSource = readFileSync(new URL("../client/src/pages/lms/CmeManagementPage.tsx", import.meta.url), "utf8");
+    const reportStart = cmeRouterSource.indexOf("async function getCmeActivityReport");
+    const reportEnd = cmeRouterSource.indexOf("// ─── Zod schema for the form data", reportStart);
+    const reportSource = cmeRouterSource.slice(reportStart, reportEnd);
+    expect(reportSource).toContain("eq(cmeActivityForms.orgId, orgId)");
+    expect(reportSource).toContain("eq(lmsEnrollments.orgId, orgId)");
+    expect(reportSource).toContain("eq(lmsCertificates.orgId, orgId)");
+    expect(reportSource).toContain("eq(lmsLessonProgress.orgId, orgId)");
+    expect(reportSource).toContain("eq(lmsQuizAttempts.orgId, orgId)");
+    expect(reportSource).toContain("eq(lmsInlineQuizAttempts.orgId, orgId)");
+    expect(reportSource).toContain("eq(lmsInlineQuizResponses.orgId, orgId)");
+    expect(cmeRouterSource).toContain("getCmeActivityReport: protectedProcedure");
+    expect(cmeRouterSource).toContain("exportCmeActivityReportCsv: protectedProcedure");
+    expect(cmeRouterSource).toContain("await assertCmeEnabled(orgId, ctx.user.role)");
+    expect(cmeRouterSource).toContain("organizationName = org?.cmeOrgName?.trim() || org?.name?.trim() || \"Organization\"");
+    expect(cmeRouterSource).toContain("source.replace(/\"/g, '\"\"')");
+    expect(cmePageSource).toContain("CME Activity Reports");
+    expect(cmePageSource).toContain("trpc.cme.getCmeActivityReport.useQuery");
+    expect(cmePageSource).toContain("trpc.cme.exportCmeActivityReportCsv.useMutation");
+  });
+
   it("applies organization coupon target scopes only to eligible content types and individual products", () => {
     const productScopedCoupon = {
       isActive: true,

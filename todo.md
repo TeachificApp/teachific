@@ -40,7 +40,7 @@
 - [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
 - [ ] Port compatible CME certificate fixes with CME entitlement gates and organization-specific identity
 - [x] Require active-organization ownership for issued certificate listing
-- [ ] Require active-organization and CME entitlement for any CME activity certificate report or export
+- [x] Require active-organization and CME entitlement for any CME activity certificate report or export
 - [x] Add an additive organization-owned inline CME survey attempt and response model without changing standalone Question Bank records
 - [x] Add a protected stored-block inline CME survey submission procedure with active-organization, enrollment, course, and CME-entitlement checks
 - [x] Gate legacy CoursePlayer completion controls through protected inline CME survey submission without client-side bypasses

@@ -61,6 +61,7 @@ import {
   Pencil,
   Lock,
   Info,
+  BarChart3,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 
@@ -163,6 +164,62 @@ function CmeFormsList({ onSelect }: { onSelect: (courseId: number, courseTitle: 
         </Table>
       </div>
     </div>
+  );
+}
+
+// ─── CME Activity Reporting ───────────────────────────────────────────────────
+function CmeActivityReportPanel() {
+  const [courseId, setCourseId] = useState<string>("");
+  const { data: activities } = trpc.cme.listCmeActivityForms.useQuery({});
+  const reportInput = courseId ? { courseId: Number(courseId), page: 1, pageSize: 50 } : undefined;
+  const { data: report, isLoading } = trpc.cme.getCmeActivityReport.useQuery(reportInput!, { enabled: !!reportInput });
+  const exportCsv = trpc.cme.exportCmeActivityReportCsv.useMutation({
+    onSuccess: ({ csv, filename }) => {
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const selectedActivity = activities?.find((activity: any) => activity.id === Number(courseId));
+
+  return (
+    <Card className="border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]">
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base text-slate-800 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-[var(--org-primary)]" />CME Activity Reports</CardTitle>
+        <CardDescription>Review learner completion, certificates, quiz attempts, and submitted CME survey responses for an activity in this organization.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+          <div className="space-y-1 flex-1">
+            <Label className="text-xs text-slate-600">CME Activity</Label>
+            <Select value={courseId} onValueChange={setCourseId}>
+              <SelectTrigger className="bg-white"><SelectValue placeholder="Select a CME activity" /></SelectTrigger>
+              <SelectContent>{(activities ?? []).map((activity: any) => <SelectItem key={activity.id} value={String(activity.id)}>{activity.title}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <Button disabled={!courseId || exportCsv.isPending} onClick={() => exportCsv.mutate({ courseId: Number(courseId) })} className="org-primary-button gap-1.5"><Download className="w-3.5 h-3.5" />{exportCsv.isPending ? "Preparing…" : "Export CSV"}</Button>
+        </div>
+        {!courseId && <p className="text-sm text-slate-500 rounded-lg bg-slate-50 px-3 py-4">Select a CME activity to view organization-scoped learner activity records.</p>}
+        {courseId && isLoading && <p className="text-sm text-slate-500 py-6 text-center">Loading report…</p>}
+        {report && <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[["Enrollments", report.summary.enrollmentCount], ["Completed", report.summary.completionCount], ["Certificates", report.summary.certificateCount]].map(([label, value]) => <div key={String(label)} className="rounded-lg bg-[color:color-mix(in_srgb,var(--org-primary)_7%,white)] border border-[color:color-mix(in_srgb,var(--org-primary)_15%,transparent)] p-3"><p className="text-xs text-slate-500">{label}</p><p className="text-xl font-semibold text-[var(--org-primary)]">{value}</p></div>)}
+          </div>
+          <div className="rounded-xl border border-slate-200 overflow-x-auto"><Table>
+            <TableHeader><TableRow className="bg-slate-50"><TableHead>Learner</TableHead><TableHead>Progress</TableHead><TableHead>Completed</TableHead><TableHead>Certificate</TableHead><TableHead>Activity</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {report.learners.map((learner: any, index: number) => <TableRow key={`${learner.learnerEmail}-${index}`}><TableCell><p className="text-sm font-medium text-slate-800">{learner.learnerName || "—"}</p><p className="text-xs text-slate-500">{learner.learnerEmail}</p></TableCell><TableCell className="text-sm text-slate-700">{Number(learner.progressPercent ?? 0).toFixed(2)}%</TableCell><TableCell className="text-xs text-slate-600">{learner.completedAt ? new Date(learner.completedAt).toLocaleDateString() : "—"}</TableCell><TableCell className="text-xs text-slate-600">{learner.certificateIssuedAt ? new Date(learner.certificateIssuedAt).toLocaleDateString() : "—"}</TableCell><TableCell className="text-xs text-slate-600">{learner.quizAttempts.length} attempt{learner.quizAttempts.length === 1 ? "" : "s"}</TableCell></TableRow>)}
+              {report.learners.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-slate-500">No full enrollments are available for this activity.</TableCell></TableRow>}
+            </TableBody>
+          </Table></div>
+          {selectedActivity && <p className="text-xs text-slate-500">Report records are limited to <span className="font-medium text-slate-700">{selectedActivity.title}</span> in the active organization.</p>}
+        </div>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -873,9 +930,10 @@ export default function CmeManagementPage() {
                   onBack={() => setSelectedCourse(null)}
                 />
               ) : (
-                <CmeFormsList
-                  onSelect={(id, title) => setSelectedCourse({ id, title })}
-                />
+                <div className="space-y-6">
+                  <CmeFormsList onSelect={(id, title) => setSelectedCourse({ id, title })} />
+                  <CmeActivityReportPanel />
+                </div>
               )}
             </CardContent>
           </Card>

@@ -22,14 +22,22 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq, and, desc } from "drizzle-orm";
+import { asc, eq, and, desc, inArray } from "drizzle-orm";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb, requireOrgAdmin, getOrgIdForUserWithFallback } from "../db";
 import {
   cmeActivityForms,
   cmeSendHistory,
   lmsCourses,
+  lmsCertificates,
+  lmsEnrollments,
+  lmsInlineQuizAttempts,
+  lmsInlineQuizResponses,
+  lmsLessonProgress,
+  lmsLessons,
+  lmsQuizAttempts,
   organizations,
+  users,
 } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 import { uploadCmePdfToDrive } from "../lib/googleDriveCme";
@@ -76,6 +84,149 @@ async function assertCmeEnabled(orgId: number, platformRole: string): Promise<vo
       message: "CME processing is not enabled for this organisation. Contact your platform administrator.",
     });
   }
+}
+
+const cmeReportOptionsSchema = z.object({
+  courseId: z.number().int().positive(),
+  page: z.number().int().positive().default(1),
+  pageSize: z.number().int().min(1).max(100).default(50),
+});
+
+function csvCell(value: unknown): string {
+  const source = value === null || value === undefined ? "" : value instanceof Date ? value.toISOString() : String(value);
+  return `"${source.replace(/"/g, '""')}"`;
+}
+
+async function getCmeActivityReport(
+  orgId: number,
+  input: z.infer<typeof cmeReportOptionsSchema>,
+  includeAll = false,
+) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const page = Math.max(1, input.page);
+  const pageSize = Math.min(100, Math.max(1, input.pageSize));
+  const [activity] = await db.select({
+    courseId: cmeActivityForms.courseId,
+    activityTitle: cmeActivityForms.activityTitle,
+    creditHours: cmeActivityForms.cmeCreditsRequested,
+    courseTitle: lmsCourses.title,
+  }).from(cmeActivityForms)
+    .innerJoin(lmsCourses, and(eq(lmsCourses.id, cmeActivityForms.courseId), eq(lmsCourses.orgId, orgId)))
+    .where(and(eq(cmeActivityForms.orgId, orgId), eq(cmeActivityForms.courseId, input.courseId)))
+    .limit(1);
+  if (!activity) throw new TRPCError({ code: "NOT_FOUND", message: "CME activity not found in the active organization" });
+
+  const allEnrollments = await db.select({
+    enrollmentId: lmsEnrollments.id,
+    userId: lmsEnrollments.userId,
+    enrolledAt: lmsEnrollments.enrolledAt,
+    completedAt: lmsEnrollments.completedAt,
+    progressPercent: lmsEnrollments.progressPercent,
+    learnerName: users.name,
+    learnerEmail: users.email,
+  }).from(lmsEnrollments)
+    .innerJoin(users, eq(users.id, lmsEnrollments.userId))
+    .where(and(
+      eq(lmsEnrollments.orgId, orgId),
+      eq(lmsEnrollments.courseId, activity.courseId),
+      eq(lmsEnrollments.enrollmentType, "full"),
+    ))
+    .orderBy(asc(users.name), asc(users.email));
+  const reportEnrollments = includeAll ? allEnrollments : allEnrollments.slice((page - 1) * pageSize, page * pageSize);
+  const userIds = reportEnrollments.map((enrollment) => enrollment.userId);
+  const enrollmentIds = reportEnrollments.map((enrollment) => enrollment.enrollmentId);
+
+  const [allActivityCertificates, certificates, lessonProgress, standardAttempts, inlineAttempts] = await Promise.all([
+    db.select({ userId: lmsCertificates.userId }).from(lmsCertificates)
+      .where(and(eq(lmsCertificates.orgId, orgId), eq(lmsCertificates.courseId, activity.courseId))),
+    userIds.length ? db.select({ userId: lmsCertificates.userId, issuedAt: lmsCertificates.issuedAt })
+      .from(lmsCertificates)
+      .where(and(eq(lmsCertificates.orgId, orgId), eq(lmsCertificates.courseId, activity.courseId), inArray(lmsCertificates.userId, userIds))) : Promise.resolve([]),
+    enrollmentIds.length ? db.select({ enrollmentId: lmsLessonProgress.enrollmentId, completedAt: lmsLessonProgress.completedAt })
+      .from(lmsLessonProgress)
+      .innerJoin(lmsEnrollments, and(
+        eq(lmsEnrollments.id, lmsLessonProgress.enrollmentId),
+        eq(lmsEnrollments.orgId, orgId),
+        eq(lmsEnrollments.courseId, activity.courseId),
+      ))
+      .where(and(eq(lmsLessonProgress.orgId, orgId), inArray(lmsLessonProgress.enrollmentId, enrollmentIds))) : Promise.resolve([]),
+    userIds.length ? db.select({
+      userId: lmsQuizAttempts.userId,
+      lessonTitle: lmsLessons.title,
+      score: lmsQuizAttempts.score,
+      passed: lmsQuizAttempts.passed,
+      submittedAt: lmsQuizAttempts.completedAt,
+    }).from(lmsQuizAttempts)
+      .leftJoin(lmsLessons, and(eq(lmsLessons.id, lmsQuizAttempts.lessonId), eq(lmsLessons.courseId, activity.courseId)))
+      .where(and(eq(lmsQuizAttempts.orgId, orgId), eq(lmsQuizAttempts.courseId, activity.courseId), inArray(lmsQuizAttempts.userId, userIds))) : Promise.resolve([]),
+    userIds.length ? db.select({
+      id: lmsInlineQuizAttempts.id,
+      userId: lmsInlineQuizAttempts.userId,
+      lessonTitle: lmsLessons.title,
+      score: lmsInlineQuizAttempts.score,
+      passed: lmsInlineQuizAttempts.passed,
+      submittedAt: lmsInlineQuizAttempts.submittedAt,
+    }).from(lmsInlineQuizAttempts)
+      .leftJoin(lmsLessons, and(eq(lmsLessons.id, lmsInlineQuizAttempts.lessonId), eq(lmsLessons.courseId, activity.courseId)))
+      .where(and(eq(lmsInlineQuizAttempts.orgId, orgId), eq(lmsInlineQuizAttempts.courseId, activity.courseId), inArray(lmsInlineQuizAttempts.userId, userIds))) : Promise.resolve([]),
+  ]);
+  const inlineIds = inlineAttempts.map((attempt) => attempt.id);
+  const responses = inlineIds.length ? await db.select({
+    attemptId: lmsInlineQuizResponses.attemptId,
+    questionText: lmsInlineQuizResponses.questionText,
+    questionType: lmsInlineQuizResponses.questionType,
+    answerValue: lmsInlineQuizResponses.answerValue,
+  }).from(lmsInlineQuizResponses)
+    .innerJoin(lmsInlineQuizAttempts, and(
+      eq(lmsInlineQuizAttempts.id, lmsInlineQuizResponses.attemptId),
+      eq(lmsInlineQuizAttempts.orgId, orgId),
+      eq(lmsInlineQuizAttempts.courseId, activity.courseId),
+    ))
+    .where(and(eq(lmsInlineQuizResponses.orgId, orgId), inArray(lmsInlineQuizResponses.attemptId, inlineIds))) : [];
+
+  const certificateByUser = new Map<number, Date>();
+  certificates.forEach((certificate) => {
+    if (certificate.userId && (!certificateByUser.has(certificate.userId) || certificate.issuedAt < certificateByUser.get(certificate.userId)!)) certificateByUser.set(certificate.userId, certificate.issuedAt);
+  });
+  const completionByEnrollment = new Map<number, Date>();
+  lessonProgress.forEach((progress) => {
+    if (progress.completedAt && (!completionByEnrollment.has(progress.enrollmentId) || progress.completedAt > completionByEnrollment.get(progress.enrollmentId)!)) completionByEnrollment.set(progress.enrollmentId, progress.completedAt);
+  });
+  const attemptsByUser = new Map<number, Array<Record<string, unknown>>>();
+  [...standardAttempts.map((attempt) => ({ kind: "quiz", ...attempt, responses: [] })), ...inlineAttempts.map((attempt) => ({ kind: "inline", ...attempt }))].forEach((attempt) => {
+    const attempts = attemptsByUser.get(attempt.userId) ?? [];
+    attempts.push(attempt);
+    attemptsByUser.set(attempt.userId, attempts);
+  });
+  const responsesByAttempt = new Map<number, typeof responses>();
+  responses.forEach((response) => responsesByAttempt.set(response.attemptId, [...(responsesByAttempt.get(response.attemptId) ?? []), response]));
+  attemptsByUser.forEach((attempts) => attempts.forEach((attempt) => {
+    if (attempt.kind === "inline" && typeof attempt.id === "number") attempt.responses = responsesByAttempt.get(attempt.id) ?? [];
+  }));
+
+  return {
+    activityTitle: activity.activityTitle?.trim() || activity.courseTitle,
+    courseId: activity.courseId,
+    creditHours: activity.creditHours,
+    summary: {
+      enrollmentCount: allEnrollments.length,
+      completionCount: allEnrollments.filter((enrollment) => enrollment.completedAt).length,
+      certificateCount: new Set(allActivityCertificates.map((certificate) => certificate.userId).filter((userId): userId is number => userId !== null)).size,
+    },
+    page,
+    pageSize,
+    totalLearners: allEnrollments.length,
+    learners: reportEnrollments.map((enrollment) => ({
+      learnerName: enrollment.learnerName ?? "",
+      learnerEmail: enrollment.learnerEmail ?? "",
+      enrolledAt: enrollment.enrolledAt,
+      completedAt: enrollment.completedAt ?? completionByEnrollment.get(enrollment.enrollmentId) ?? null,
+      progressPercent: enrollment.progressPercent,
+      certificateIssuedAt: certificateByUser.get(enrollment.userId) ?? null,
+      quizAttempts: attemptsByUser.get(enrollment.userId) ?? [],
+    })),
+  };
 }
 
 // ─── Zod schema for the form data ────────────────────────────────────────────
@@ -434,6 +585,45 @@ export const cmeActivityFormRouter = router({
           approvedAt: form?.approvedAt ?? null,
         };
       });
+    }),
+
+  // ── CME Activity Report & Export ───────────────────────────────────────────
+  getCmeActivityReport: protectedProcedure
+    .input(cmeReportOptionsSchema.extend({ orgId: z.number().int().positive().optional() }))
+    .query(async ({ ctx, input }) => {
+      const orgId = await resolveOrgId(ctx.user.id, ctx.user.role, input.orgId);
+      await assertCmeEnabled(orgId, ctx.user.role);
+      return getCmeActivityReport(orgId, input);
+    }),
+
+  exportCmeActivityReportCsv: protectedProcedure
+    .input(z.object({ courseId: z.number().int().positive(), orgId: z.number().int().positive().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await resolveOrgId(ctx.user.id, ctx.user.role, input.orgId);
+      await assertCmeEnabled(orgId, ctx.user.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [org] = await db.select({ name: organizations.name, cmeOrgName: organizations.cmeOrgName })
+        .from(organizations).where(eq(organizations.id, orgId)).limit(1);
+      const report = await getCmeActivityReport(orgId, { courseId: input.courseId, page: 1, pageSize: 100 }, true);
+      const organizationName = org?.cmeOrgName?.trim() || org?.name?.trim() || "Organization";
+      const rows = report.learners.flatMap((learner) => {
+        const attempts = learner.quizAttempts.length ? learner.quizAttempts : [{ kind: "", lessonTitle: "", score: "", passed: "", submittedAt: "", responses: [] }];
+        return attempts.flatMap((attempt: any) => {
+          const responses = attempt.responses?.length ? attempt.responses : [{ questionText: "", questionType: "", answerValue: "" }];
+          return responses.map((response: any) => [
+            organizationName, report.activityTitle, report.creditHours ?? "", learner.learnerName, learner.learnerEmail,
+            learner.enrolledAt, learner.completedAt, learner.progressPercent, learner.certificateIssuedAt,
+            attempt.kind, attempt.lessonTitle, attempt.score, attempt.passed, attempt.submittedAt,
+            response.questionText, response.questionType, response.answerValue,
+          ].map(csvCell).join(","));
+        });
+      });
+      const safeTitle = report.activityTitle.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "cme-activity";
+      return {
+        filename: `${safeTitle}-activity-report.csv`,
+        csv: [["Organization", "Activity", "Credit Hours", "Learner Name", "Learner Email", "Enrolled At", "Completed At", "Progress Percent", "Certificate Issued At", "Attempt Type", "Lesson", "Score", "Passed", "Submitted At", "Survey Question", "Survey Question Type", "Survey Response"].map(csvCell).join(","), ...rows].join("\n"),
+      };
     }),
 
   // ── Get form (existing or defaults) ──────────────────────────────────────
