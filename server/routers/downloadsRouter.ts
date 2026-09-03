@@ -233,6 +233,17 @@ export const downloadsLearnerRouter = router({
         .where(eq(digitalProducts.id, input.productId)).limit(1);
       if (!product) throw new TRPCError({ code: "NOT_FOUND" });
       if ((product as any).bundleOnly) throw new TRPCError({ code: "FORBIDDEN", message: "This product is only available as part of a bundle." });
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, product.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Product organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
       const orderBumpCheckout = await buildOrderBumpCheckoutLine(db, {
         orderBumpId: input.orderBumpId,
         triggerType: "download",
@@ -262,7 +273,6 @@ export const downloadsLearnerRouter = router({
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
 
-      const origin = ctx.req.headers.origin || `https://${ctx.req.headers.host}`;
       const shippingOptions = orderBumpCheckout?.requiresShipping
         ? { shipping_address_collection: { allowed_countries: ["US", "CA"] as any } }
         : {};
@@ -300,7 +310,7 @@ export const downloadsLearnerRouter = router({
               ? { percent_off: Number(coupon.discountValue) }
               : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: product.currency }),
             duration: "once",
-            name: `Teachific ${normalizedCode}`,
+            name: `Course360 ${normalizedCode}`,
           });
           discounts = [{ coupon: stripeCoupon.id }];
           internalCouponId = String(coupon.id);
@@ -329,8 +339,8 @@ export const downloadsLearnerRouter = router({
           ...(internalCouponCode ? { internal_coupon_code: internalCouponCode } : {}),
           ...orderBumpCheckout?.metadata,
         },
-        success_url: `${origin}/downloads/${product.slug}/files?success=1`,
-        cancel_url: `${origin}/downloads/${product.slug}`,
+        success_url: `${organizationBaseUrl}/downloads/${encodeURIComponent(product.slug)}/files?success=1`,
+        cancel_url: `${organizationBaseUrl}/downloads/${encodeURIComponent(product.slug)}`,
         ...shippingOptions,
       });
 
