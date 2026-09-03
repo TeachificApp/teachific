@@ -33,6 +33,7 @@ import { assertSourceBlindGeneratedContent, fetchPublicSourceText } from "../lib
 import { assertActiveQuizBankOrganization } from "../lib/quizBankActiveOrganization";
 import { parseISpringQuizFromBuffer } from "../lib/iSpringQuizParser";
 import { rewriteStorageRefs, uploadISpringImagesFromZip } from "../lib/iSpringImageImporter";
+import { parseQuizFileQuestionBankItems } from "../lib/quizFileQuestionBankImport";
 
 // ─── Question type enum ───────────────────────────────────────────────────────
 const QUESTION_TYPES = ["mc","tf","ms","hotspot","puzzle","matching","sequence","numeric","short_answer","info_slide"] as const;
@@ -506,7 +507,7 @@ export const quizBankRouter = router({
           if (!response.ok) throw new Error(`Could not download import file (HTTP ${response.status})`);
           const buffer = Buffer.from(await response.arrayBuffer());
           if ((job.filename ?? "").toLowerCase().endsWith(".quiz")) {
-            parsedQuestions = parseTeachificQuizQuestions(buffer.toString("utf8"));
+            parsedQuestions = parseQuizFileQuestionBankItems(buffer.toString("utf8"));
           } else {
             const AdmZip = (await import("adm-zip")).default;
             const zip = new AdmZip(buffer);
@@ -526,6 +527,7 @@ export const quizBankRouter = router({
                   choices: question.answers.map((answer) => ({
                     text: rewriteStorageRefs(answer.html || answer.text, imageMap),
                     isCorrect: answer.isCorrect,
+                    mediaType: answer.imageRef && imageMap.get(answer.imageRef) ? "image" : "none",
                     mediaUrl: answer.imageRef ? imageMap.get(answer.imageRef) : undefined,
                   })),
                   importGroup: group.name,
@@ -536,7 +538,22 @@ export const quizBankRouter = router({
                 /\.(xml|qti)$/i.test(entry.entryName) &&
                 /<(questestinterop|assessment|item)\b/i.test(entry.getData().toString("utf8"))
               );
-              parsedQuestions = qtiEntries.flatMap((entry) => parseSCORMQuestions(entry.getData().toString("utf8")));
+              const parsedQtiQuestions = qtiEntries.flatMap((entry) => parseSCORMQuestions(entry.getData().toString("utf8")));
+              const qtiImageRefs = parsedQtiQuestions.flatMap((question) => [
+                question.packageMediaRef,
+                ...question.choices.map((choice: any) => choice.packageMediaRef),
+              ].filter((ref): ref is string => !!ref));
+              const qtiImageMap = await uploadISpringImagesFromZip(zip.getEntries(), qtiImageRefs);
+              parsedQuestions = parsedQtiQuestions.map((question) => ({
+                ...question,
+                mediaType: question.packageMediaRef && qtiImageMap.get(question.packageMediaRef) ? "image" : "none",
+                mediaUrl: question.packageMediaRef ? qtiImageMap.get(question.packageMediaRef) : undefined,
+                choices: question.choices.map((choice: any) => ({
+                  ...choice,
+                  mediaType: choice.packageMediaRef && qtiImageMap.get(choice.packageMediaRef) ? "image" : "none",
+                  mediaUrl: choice.packageMediaRef ? qtiImageMap.get(choice.packageMediaRef) : undefined,
+                })),
+              }));
               if (parsedQuestions.length === 0) throw iSpringError;
             }
           }
@@ -594,6 +611,8 @@ export const quizBankRouter = router({
             questionHtml: q.questionHtml,
             mediaType: q.mediaType ?? "none",
             mediaUrl: q.mediaUrl,
+            mediaAlt: q.mediaAlt,
+            hotspotZones: q.hotspotZones,
             points: q.points ?? 1,
             difficulty: q.difficulty ?? "medium",
             explanationText: q.explanationText,
@@ -609,6 +628,10 @@ export const quizBankRouter = router({
                 isCorrect: c.isCorrect ?? false,
                 sortOrder: i,
                 feedbackText: c.feedback,
+                mediaType: c.mediaType ?? "none",
+                mediaUrl: c.mediaUrl,
+                matchPairId: c.matchPairId,
+                matchSide: c.matchSide,
               }))
             );
           }
@@ -794,52 +817,6 @@ export const quizBankRouter = router({
 });
 
 // ─── CSV Parser ───────────────────────────────────────────────────────────────
-function parseTeachificQuizQuestions(contents: string): any[] {
-  const lines = contents.trim().split(/\r?\n/);
-  if (lines[0] !== "TEACHIFIC_QUIZ_V1" || !lines[1]) {
-    throw new Error("Invalid .quiz file: expected a TEACHIFIC_QUIZ_V1 header");
-  }
-  let payload: any;
-  try {
-    payload = JSON.parse(Buffer.from(lines[1], "base64").toString("utf8"));
-  } catch {
-    throw new Error("Could not parse .quiz file. Encrypted files are not supported for import.");
-  }
-  if (!Array.isArray(payload?.questions)) throw new Error("Invalid .quiz file structure");
-  const typeMap: Record<string, string> = {
-    mcq: "mc",
-    image_choice: "mc",
-    tf: "tf",
-    short_answer: "short_answer",
-    matching: "matching",
-    hotspot: "hotspot",
-  };
-  return payload.questions.map((question: any) => {
-    const data = question.data ?? {};
-    let choices: Array<{ text: string; isCorrect: boolean }> = [];
-    if (question.type === "mcq" || question.type === "image_choice") {
-      choices = (data.choices ?? []).map((choice: any, index: number) => ({
-        text: choice.text || choice.label || `Option ${index + 1}`,
-        isCorrect: choice.correct === true,
-      }));
-    } else if (question.type === "tf") {
-      choices = [
-        { text: "True", isCorrect: data.correct === true },
-        { text: "False", isCorrect: data.correct === false },
-      ];
-    } else if (question.type === "short_answer") {
-      choices = data.sampleAnswer ? [{ text: data.sampleAnswer, isCorrect: true }] : [];
-    }
-    return {
-      questionType: typeMap[question.type] ?? "mc",
-      questionText: question.stem || "Imported question",
-      explanationText: question.explanation || undefined,
-      points: question.points ?? 1,
-      choices,
-    };
-  });
-}
-
 function parseCSVQuestions(csvText: string): any[] {
   const lines = csvText.split("\n").filter(l => l.trim());
   if (lines.length < 2) return [];
@@ -912,7 +889,14 @@ function detectQuestionType(row: Record<string, string>): string {
 }
 
 // ─── SCORM QTI XML Parser ─────────────────────────────────────────────────────
-function parseSCORMQuestions(xmlText: string): any[] {
+function packageImageRef(xml: string): string | undefined {
+  const match = xml.match(/<(?:matimage|img)\b[^>]*(?:uri|src)=["']([^"']+)["'][^>]*>/i);
+  const candidate = match?.[1]?.trim();
+  if (!candidate || candidate.length > 500 || candidate.includes("://") || candidate.startsWith("/") || candidate.includes("..")) return undefined;
+  return /\.(?:png|jpe?g|gif|webp|svg)$/i.test(candidate) ? candidate : undefined;
+}
+
+export function parseSCORMQuestions(xmlText: string): any[] {
   const questions: any[] = [];
 
   // Simple regex-based QTI parser (handles SCORM 1.2 and 2004 QTI)
@@ -929,6 +913,7 @@ function parseSCORMQuestions(xmlText: string): any[] {
 
     const questionText = stripHtml(matTextMatch[1]).trim();
     if (!questionText) continue;
+    const questionPackageMediaRef = packageImageRef(matTextMatch[1]);
 
     // Extract response type
     const rtMatch = itemXml.match(/rcardinality="([^"]+)"/i);
@@ -943,7 +928,7 @@ function parseSCORMQuestions(xmlText: string): any[] {
       const choiceId = choiceMatch[1];
       const choiceText = stripHtml(choiceMatch[2]).trim();
       if (choiceText) {
-        choices.push({ id: choiceId, text: choiceText, isCorrect: false });
+        choices.push({ id: choiceId, text: choiceText, isCorrect: false, packageMediaRef: packageImageRef(choiceMatch[2]) });
       }
     }
 
@@ -969,6 +954,7 @@ function parseSCORMQuestions(xmlText: string): any[] {
       explanationText,
       points: 1,
       difficulty: "medium",
+      packageMediaRef: questionPackageMediaRef,
     });
   }
 

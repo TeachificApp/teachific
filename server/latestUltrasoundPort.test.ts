@@ -3242,6 +3242,20 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(fileDetailSource).toContain("originalZipKey");
   });
 
+  it("preserves safe SCORM and .quiz question and answer-choice media in active-organization Question Bank imports", () => {
+    const quizBankRouterSource = readFileSync(new URL("./routers/quizBankRouter.ts", import.meta.url), "utf8");
+    const quizFileImportSource = readFileSync(new URL("./lib/quizFileQuestionBankImport.ts", import.meta.url), "utf8");
+    expect(quizBankRouterSource).toContain("parseQuizFileQuestionBankItems");
+    expect(quizBankRouterSource).toContain("mediaAlt: q.mediaAlt");
+    expect(quizBankRouterSource).toContain("hotspotZones: q.hotspotZones");
+    expect(quizBankRouterSource).toContain("mediaUrl: c.mediaUrl");
+    expect(quizBankRouterSource).toContain("matchPairId: c.matchPairId");
+    expect(quizFileImportSource).toContain("safeMediaUrl");
+    expect(quizFileImportSource).toContain("question.type === \"matching\"");
+    expect(quizFileImportSource).toContain("question.type === \"hotspot\"");
+    expect(quizFileImportSource).toContain('url.protocol === "https:" || url.protocol === "http:"');
+  });
+
   it("provides draggable editor height and a sticky toolbar for shared rich-text authoring", () => {
     const richTextEditorSource = readFileSync(new URL("../client/src/components/RichTextEditor.tsx", import.meta.url), "utf8");
     expect(richTextEditorSource).toContain("const [editorHeight, setEditorHeight]");
