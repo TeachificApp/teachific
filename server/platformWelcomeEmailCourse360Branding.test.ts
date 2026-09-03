@@ -49,5 +49,7 @@ describe("Course360 platform welcome email fallbacks", () => {
     expect(sharedEmail).not.toHaveProperty("buildNewCaseSubmissionAdminEmail");
     expect(sharedEmail).not.toHaveProperty("buildCaseApprovedEmail");
     expect(sharedEmail).not.toHaveProperty("buildCaseRejectedEmail");
+    expect(sharedEmail).not.toHaveProperty("buildPhysicianOverReadInvitationEmail");
+    expect(sharedEmail).not.toHaveProperty("buildOverReadCompletedEmail");
   });
 });
