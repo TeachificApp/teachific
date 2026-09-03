@@ -11,6 +11,9 @@
 - [ ] Replace remaining active UI Teachific labels and retired-domain examples with Course360 equivalents
 - [x] Replace the active enrollment-email platform fallback identity with Course360 while preserving organization-owned learner access URLs
 - [x] Replace active shared transactional-email platform fallback identity with Course360 while preserving organization sender precedence
+- [x] Resolve campaign email wrapper identity and unsubscribe links from the sending organization’s configured brand and verified domain
+- [x] Restore a defined tracked click/open base URL and add active campaign-rendering coverage before publishing the organization-branded campaign email correction
+- [x] Add direct final campaign-email HTML composition coverage for organization branding, verified-domain unsubscribe, click tracking, and open tracking
 - [x] Rebrand shared free and premium account welcome-email fallbacks to Course360 without changing account-entitlement behavior
 - [x] Replace active shared administrator welcome-email clinical role labels and platform claims with Course360-neutral onboarding copy
 - [x] Replace shared purchase-confirmation, organization purchase-alert, and payment-failure source-brand support fallbacks with Course360 wording while preserving supplied organization URLs

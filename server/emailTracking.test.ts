@@ -8,6 +8,13 @@
  *    injectOpenPixel, injectUnsubscribeFooter
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  buildCampaignUnsubscribeUrl,
+  composeCampaignEmailHtml,
+  getCampaignOrganizationBrandName,
+  injectCampaignClickTracking,
+  injectCampaignOpenPixel,
+} from "./lib/emailCampaignPresentation";
 
 // ─── sendgridSuppressions helpers ────────────────────────────────────────────
 
@@ -98,11 +105,6 @@ describe("email HTML helpers", () => {
    * Inline copies of the helpers so we can unit-test them without
    * importing the full tRPC router (which requires a DB connection).
    */
-  function buildUnsubscribeUrl(token: string, origin?: string): string {
-    const base = origin ?? "https://app.teachific.com";
-    return `${base}/api/unsubscribe?token=${encodeURIComponent(token)}`;
-  }
-
   function wrapCampaignHtml(htmlBody: string, orgName: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -136,24 +138,6 @@ describe("email HTML helpers", () => {
 </html>`;
   }
 
-  function injectClickTracking(html: string, campaignId: number, recipientId: number): string {
-    return html.replace(
-      /href="(https?:\/\/[^"]+)"/gi,
-      (_, url: string) => {
-        const encoded = Buffer.from(url).toString("base64url");
-        return `href="/api/email/click?c=${campaignId}&r=${recipientId}&u=${encoded}"`;
-      },
-    );
-  }
-
-  function injectOpenPixel(html: string, campaignId: number, recipientId: number): string {
-    const pixel = `<img src="/api/email/open?c=${campaignId}&r=${recipientId}" width="1" height="1" style="display:block;border:0;" alt="" />`;
-    const closeBodyIdx = html.lastIndexOf("</body>");
-    if (closeBodyIdx !== -1) {
-      return html.slice(0, closeBodyIdx) + pixel + html.slice(closeBodyIdx);
-    }
-    return html + pixel;
-  }
 
   function injectUnsubscribeFooter(htmlBody: string, unsubscribeUrl: string, orgName: string): string {
     const footer = `
@@ -168,14 +152,49 @@ describe("email HTML helpers", () => {
     return htmlBody + footer;
   }
 
-  it("buildUnsubscribeUrl: builds correct URL with token", () => {
-    const url = buildUnsubscribeUrl("abc123", "https://app.teachific.com");
-    expect(url).toBe("https://app.teachific.com/api/unsubscribe?token=abc123");
+  it("buildCampaignUnsubscribeUrl: falls back to the Course360 organization subdomain", () => {
+    const url = buildCampaignUnsubscribeUrl({ name: "Northstar Learning", slug: "northstar" }, "abc123");
+    expect(url).toBe("https://northstar.course360.app/unsubscribe?token=abc123");
   });
 
-  it("buildUnsubscribeUrl: URL-encodes special characters in token", () => {
-    const url = buildUnsubscribeUrl("abc+def=xyz", "https://app.teachific.com");
-    expect(url).toContain("abc%2Bdef%3Dxyz");
+  it("buildCampaignUnsubscribeUrl: prefers a verified custom domain and encodes the token", () => {
+    const url = buildCampaignUnsubscribeUrl({
+      name: "Northstar Learning",
+      slug: "northstar",
+      customDomain: "learn.northstar.example",
+      domainVerificationStatus: "verified",
+    }, "abc+def=xyz");
+    expect(url).toBe("https://learn.northstar.example/unsubscribe?token=abc%2Bdef%3Dxyz");
+  });
+
+  it("getCampaignOrganizationBrandName: prefers the configured organization sender identity", () => {
+    expect(getCampaignOrganizationBrandName({
+      name: "Northstar Learning",
+      slug: "northstar",
+      customSenderName: "Northstar Academy",
+    })).toBe("Northstar Academy");
+  });
+
+  it("composeCampaignEmailHtml: keeps organization brand and every tracked URL on a verified custom domain", () => {
+    const result = composeCampaignEmailHtml(
+      '<p>Welcome <a href="https://example.com/offer">View offer</a></p>',
+      {
+        name: "Northstar Learning",
+        slug: "northstar",
+        customSenderName: "Northstar Academy",
+        customDomain: "learn.northstar.example",
+        domainVerificationStatus: "verified",
+      },
+      42,
+      7,
+      "abc+def",
+    );
+
+    expect(result).toContain("Northstar Academy");
+    expect(result).toContain("https://learn.northstar.example/unsubscribe?token=abc%2Bdef");
+    expect(result).toContain("https://learn.northstar.example/api/email/click?c=42&r=7&u=");
+    expect(result).toContain("https://learn.northstar.example/api/email/open?c=42&r=7");
+    expect(result).not.toContain("teachific.app");
   });
 
   it("wrapCampaignHtml: wraps body in 600px email container", () => {
@@ -188,14 +207,14 @@ describe("email HTML helpers", () => {
 
   it("injectClickTracking: rewrites http/https links", () => {
     const html = '<a href="https://example.com/page">Click</a>';
-    const result = injectClickTracking(html, 42, 7);
-    expect(result).toContain("/api/email/click?c=42&r=7&u=");
+    const result = injectCampaignClickTracking(html, { name: "Northstar", slug: "northstar" }, 42, 7);
+    expect(result).toContain("https://northstar.course360.app/api/email/click?c=42&r=7&u=");
     expect(result).not.toContain('href="https://example.com/page"');
   });
 
   it("injectClickTracking: does not rewrite mailto or relative links", () => {
     const html = '<a href="mailto:test@example.com">Mail</a><a href="/local">Local</a>';
-    const result = injectClickTracking(html, 1, 1);
+    const result = injectCampaignClickTracking(html, { name: "Northstar", slug: "northstar" }, 1, 1);
     // mailto and relative links should be unchanged
     expect(result).toContain('href="mailto:test@example.com"');
     expect(result).toContain('href="/local"');
@@ -203,8 +222,13 @@ describe("email HTML helpers", () => {
 
   it("injectOpenPixel: inserts 1x1 pixel before </body>", () => {
     const html = "<html><body><p>Hi</p></body></html>";
-    const result = injectOpenPixel(html, 5, 3);
-    expect(result).toContain("/api/email/open?c=5&r=3");
+    const result = injectCampaignOpenPixel(html, {
+      name: "Northstar",
+      slug: "northstar",
+      customDomain: "learn.northstar.example",
+      domainVerificationStatus: "verified",
+    }, 5, 3);
+    expect(result).toContain("https://learn.northstar.example/api/email/open?c=5&r=3");
     expect(result).toContain('width="1" height="1"');
     // Pixel should be before </body>
     const pixelIdx = result.indexOf("/api/email/open");
@@ -214,8 +238,9 @@ describe("email HTML helpers", () => {
 
   it("injectOpenPixel: appends pixel when no </body> tag", () => {
     const html = "<p>No body tag</p>";
-    const result = injectOpenPixel(html, 1, 2);
-    expect(result.endsWith('alt="" />')).toBe(true);
+    const result = injectCampaignOpenPixel(html, { name: "Northstar", slug: "northstar" }, 1, 2);
+    expect(result).toContain("https://northstar.course360.app/api/email/open?c=1&r=2");
+    expect(result.endsWith('style="display:block;width:1px;height:1px;border:0;" />')).toBe(true);
   });
 
   it("injectUnsubscribeFooter: appends footer with unsubscribe link", () => {
