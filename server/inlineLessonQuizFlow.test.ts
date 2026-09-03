@@ -6,13 +6,25 @@ import {
 
 describe("Course360 inline lesson CME survey flow", () => {
   const questions = [
-    { id: "attend", type: "survey_choice" },
-    { id: "why", type: "open_text", showWhen: { parentQuestionKey: "attend", expectedAnswer: "No" } },
+    { id: "attend", type: "survey_choice", surveyRequired: true },
+    { id: "why", type: "open_text", surveyRequired: true, showWhen: { parentQuestionKey: "attend", expectedAnswer: "No" } },
   ];
 
   it("fails closed for a dependent question until its earlier answer matches", () => {
     expect(getVisibleInlineLessonQuizQuestionIndexes(questions, {})).toEqual([0]);
     expect(getVisibleInlineLessonQuizQuestionIndexes(questions, { attend: "No" })).toEqual([0, 1]);
+  });
+
+  it("does not let a supplied answer for a hidden parent unlock a later dependent question", () => {
+    const chainedQuestions = [
+      { id: "attend", type: "survey_choice" },
+      { id: "why", type: "open_text", showWhen: { parentQuestionKey: "attend", expectedAnswer: "No" } },
+      { id: "follow_up", type: "open_text", showWhen: { parentQuestionKey: "why", expectedAnswer: "Scheduling" } },
+    ];
+    expect(getVisibleInlineLessonQuizQuestionIndexes(chainedQuestions, {
+      attend: "Yes",
+      why: "Scheduling",
+    })).toEqual([0]);
   });
 
   it("requires responses for each visible item when configured as a completion survey", () => {
@@ -28,6 +40,18 @@ describe("Course360 inline lesson CME survey flow", () => {
         { questionKey: "attend", answerValue: "No" },
         { questionKey: "why", answerValue: "Scheduling" },
       ],
+      scorePassed: false,
+      requireSurveyCompletion: true,
+    }).passed).toBe(true);
+  });
+
+  it("does not require an optional visible survey item", () => {
+    expect(evaluateInlineLessonQuizCompletion({
+      questions: [
+        { id: "required", type: "survey_choice", surveyRequired: true },
+        { id: "optional", type: "open_text" },
+      ],
+      responses: [{ questionKey: "required", answerValue: "Yes" }],
       scorePassed: false,
       requireSurveyCompletion: true,
     }).passed).toBe(true);

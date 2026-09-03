@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   Pencil, Trash2, Plus, Database, Search, Video, Image as ImageIcon,
   FolderOpen, Tag, Crosshair, Shuffle, CheckSquare, ToggleLeft, AlignLeft,
-  ChevronDown, ChevronUp, GripVertical, X, Loader2,
+  ChevronDown, ChevronUp, GripVertical, X, Loader2, Star,
 } from "lucide-react";
 import { InteractiveQuestionEditorPanel } from "@/components/InteractiveQuestionEditorPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +28,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 export type QuestionType =
   | "mcq" | "truefalse" | "multiselect" | "hotspot" | "matching"
-  | "image_comparison" | "drag_sort" | "branching" | "fill_blank" | "annotation" | "flashcard";
+  | "image_comparison" | "drag_sort" | "branching" | "fill_blank" | "annotation" | "flashcard"
+  | "likert" | "star_rating" | "open_text" | "survey_choice";
 
 export interface HotspotMarker {
   id: string;
@@ -45,6 +46,7 @@ export interface MatchingPair {
 }
 
 export interface QuizQuestion {
+  id?: string;
   type?: QuestionType;
   question: string;
   options: string[];
@@ -72,6 +74,9 @@ export interface QuizQuestion {
   annotationTargetZones?: string | null;
   flashcardFront?: string | null;
   flashcardBack?: string | null;
+  surveyRequired?: boolean;
+  showWhen?: { parentQuestionKey?: string; expectedAnswer?: string } | null;
+  starMax?: number;
 }
 
 export interface LessonQuizData {
@@ -82,6 +87,8 @@ export interface LessonQuizData {
   shuffleQuestions?: boolean;
   shuffleAnswers?: boolean;
   requirePassToComplete?: boolean;
+  isSurvey?: boolean;
+  requireSurveyCompletion?: boolean;
 }
 
 interface Props {
@@ -108,6 +115,10 @@ const QUESTION_TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   fill_blank: <AlignLeft size={12} />,
   annotation: <Crosshair size={12} />,
   flashcard: <ToggleLeft size={12} />,
+  likert: <AlignLeft size={12} />,
+  star_rating: <Star size={12} />,
+  open_text: <Pencil size={12} />,
+  survey_choice: <CheckSquare size={12} />,
 };
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
@@ -122,6 +133,10 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   fill_blank: "Fill in Blank",
   annotation: "Annotation",
   flashcard: "Flashcard",
+  likert: "Likert Scale",
+  star_rating: "Star Rating",
+  open_text: "Open Response",
+  survey_choice: "Survey Choice",
 };
 
 const EMPTY_QUESTION: QuizQuestion = {
@@ -496,6 +511,8 @@ function QuestionEditor({
   index,
   isNew,
   handleFileUpload,
+  cmeEnabled,
+  surveyParentOptions,
   onSave,
   onCancel,
 }: {
@@ -503,6 +520,8 @@ function QuestionEditor({
   index: number | null;
   isNew: boolean;
   handleFileUpload?: Props["handleFileUpload"];
+  cmeEnabled: boolean;
+  surveyParentOptions: Array<{ key: string; label: string }>;
   onSave: (q: QuizQuestion) => void;
   onCancel: () => void;
 }) {
@@ -524,6 +543,7 @@ function QuestionEditor({
   const ansImgRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const qType = q.type ?? "mcq";
+  const isSurveyQuestion = ["likert", "star_rating", "open_text", "survey_choice"].includes(qType);
 
   // When type changes, reset options to sensible defaults
   const changeType = (newType: QuestionType) => {
@@ -533,6 +553,9 @@ function QuestionEditor({
       options: newType === "truefalse" ? ["True", "False"] :
                newType === "mcq" ? ["", "", "", ""] :
                newType === "multiselect" ? ["", "", "", ""] :
+               newType === "likert" ? ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"] :
+               newType === "survey_choice" ? ["Yes", "No"] :
+               newType === "star_rating" || newType === "open_text" ? [] :
                prev.options,
       correctAnswer: 0,
       correctAnswers: [],
@@ -603,17 +626,19 @@ function QuestionEditor({
         <p className="text-xs font-semibold text-gray-700">
           {isNew ? "New Question" : `Edit Question ${(index ?? 0) + 1}`}
         </p>
-        <button type="button" className="text-xs text-[var(--org-primary)] hover:brightness-90 flex items-center gap-1"
-          onClick={() => setSaveToBankOpen(true)}>
-          <Database size={11} /> Save to Bank
-        </button>
+        {!isSurveyQuestion && (
+          <button type="button" className="text-xs text-[var(--org-primary)] hover:brightness-90 flex items-center gap-1"
+            onClick={() => setSaveToBankOpen(true)}>
+            <Database size={11} /> Save to Bank
+          </button>
+        )}
       </div>
 
       {/* Question Type Selector */}
       <div>
         <Label className="text-xs text-gray-600 mb-1 block">Question Type</Label>
         <div className="flex flex-wrap gap-1">
-          {(["mcq", "truefalse", "multiselect", "hotspot", "matching", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard"] as QuestionType[]).map(t => (
+          {(["mcq", "truefalse", "multiselect", "hotspot", "matching", "image_comparison", "drag_sort", "branching", "fill_blank", "annotation", "flashcard", ...(cmeEnabled ? ["likert", "star_rating", "open_text", "survey_choice"] : [])] as QuestionType[]).map(t => (
             <button
               key={t}
               type="button"
@@ -631,6 +656,37 @@ function QuestionEditor({
       </div>
 
       {/* Question text */}
+      {cmeEnabled && ["likert", "star_rating", "open_text", "survey_choice"].includes(qType) && (
+        <div className="rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_7%,white)] p-3 space-y-3">
+          <p className="text-xs font-semibold text-[var(--org-primary)]">CME Survey Settings</p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium text-gray-700">Required response</p>
+              <p className="text-xs text-gray-500">Only visible required questions block lesson completion.</p>
+            </div>
+            <Switch checked={q.surveyRequired === true} onCheckedChange={(surveyRequired) => setQ((prev) => ({ ...prev, surveyRequired }))} />
+          </div>
+          {qType === "star_rating" && (
+            <div className="max-w-32">
+              <Label className="text-xs text-gray-600">Maximum stars</Label>
+              <Input type="number" min={1} max={10} value={q.starMax ?? 5} onChange={(event) => setQ((prev) => ({ ...prev, starMax: Math.min(10, Math.max(1, Number(event.target.value) || 5)) }))} className="h-8 mt-1 text-xs" />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-600">Show only when</Label>
+            <Select value={q.showWhen?.parentQuestionKey ?? "always"} onValueChange={(parentQuestionKey) => setQ((prev) => ({ ...prev, showWhen: parentQuestionKey === "always" ? null : { parentQuestionKey, expectedAnswer: prev.showWhen?.expectedAnswer ?? "" } }))}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="always">Always show</SelectItem>
+                {surveyParentOptions.map((parent) => <SelectItem key={parent.key} value={parent.key}>{parent.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {q.showWhen?.parentQuestionKey && (
+              <Input value={q.showWhen.expectedAnswer ?? ""} onChange={(event) => setQ((prev) => ({ ...prev, showWhen: { parentQuestionKey: prev.showWhen?.parentQuestionKey, expectedAnswer: event.target.value } }))} placeholder="Expected parent response" className="h-8 text-xs" />
+            )}
+          </div>
+        </div>
+      )}
       <div>
         <Label className="text-xs text-gray-600">Question</Label>
         <Textarea
@@ -921,6 +977,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
   const [aiPreview, setAiPreview] = useState<QuizQuestion[] | null>(null);
   const [editingAiIndex, setEditingAiIndex] = useState<number | null>(null);
   const [aiQType, setAiQType] = useState<"mcq" | "truefalse" | "multiselect">("mcq");
+  const { data: cmeStatus } = trpc.cme.getCmeStatus.useQuery({}, { enabled: !!courseId });
 
   // AI source selection
   const [aiSource, setAiSource] = useState<"lesson" | "course" | "pick" | "topic">("lesson");
@@ -956,11 +1013,23 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
   const set = (key: keyof LessonQuizData, value: any) => onChange({ ...data, [key]: value });
   const requirePass = data.requirePassToComplete ?? true;
   const questions = data.questions ?? [];
+  const isCmeSurvey = cmeStatus?.enabled === true && data.isSurvey === true;
+  const requiresCmeSurveyCompletion = isCmeSurvey && data.requireSurveyCompletion === true;
+  const surveyParentOptions = questions.map((question, index) => ({
+    key: question.id ?? String(index),
+    label: `Question ${index + 1}: ${question.question.slice(0, 60) || "Untitled"}`,
+  }));
 
   const saveQuestion = (q: QuizQuestion) => {
+    const withStableKey = { ...q, id: q.id ?? `question-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
     const qs = [...questions];
-    if (editingIndex === null) { qs.push(q); } else { qs[editingIndex] = q; }
-    set("questions", qs);
+    if (editingIndex === null) { qs.push(withStableKey); } else { qs[editingIndex] = withStableKey; }
+    const isSurveyQuestion = ["likert", "star_rating", "open_text", "survey_choice"].includes(withStableKey.type ?? "mcq");
+    onChange({
+      ...data,
+      questions: qs,
+      ...(isSurveyQuestion && cmeStatus?.enabled ? { isSurvey: true, requirePassToComplete: false } : {}),
+    });
     setEditingIndex(null);
     setAddingNew(false);
   };
@@ -1023,17 +1092,41 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
           placeholder="Knowledge Check" className="h-8 text-sm mt-1" />
       </div>
 
+      {cmeStatus?.enabled && (
+        <div className="flex items-center justify-between rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_7%,white)] px-3 py-2">
+          <div>
+            <p className="text-xs font-medium text-[var(--org-primary)]">CME feedback survey</p>
+            <p className="text-xs text-[color:color-mix(in_srgb,var(--org-primary)_78%,#374151)] mt-0.5">Uses non-scoring survey questions and can require selected visible responses.</p>
+          </div>
+          <Switch checked={isCmeSurvey} onCheckedChange={(enabled) => {
+            set("isSurvey", enabled);
+            if (!enabled) set("requireSurveyCompletion", false);
+            if (enabled) set("requirePassToComplete", false);
+          }} />
+        </div>
+      )}
+
+      {isCmeSurvey && (
+        <div className="flex items-center justify-between rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)] bg-white px-3 py-2">
+          <div>
+            <p className="text-xs font-medium text-gray-700">Require survey completion</p>
+            <p className="text-xs text-gray-500 mt-0.5">The learner must submit every visible required survey response before this lesson can be completed.</p>
+          </div>
+          <Switch checked={requiresCmeSurveyCompletion} onCheckedChange={(enabled) => set("requireSurveyCompletion", enabled)} />
+        </div>
+      )}
+
       {/* Require pass toggle */}
-      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+      {!isCmeSurvey && <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
         <div>
           <p className="text-xs font-medium text-gray-700">Require Pass to Complete</p>
           <p className="text-xs text-gray-400 mt-0.5">Student must reach passing score to mark lesson complete</p>
         </div>
         <Switch checked={requirePass} onCheckedChange={(v) => set("requirePassToComplete", v)} />
-      </div>
+      </div>}
 
       {/* Passing score */}
-      {requirePass && (
+      {!isCmeSurvey && requirePass && (
         <div>
           <Label className="text-xs text-gray-600">Passing Score (%)</Label>
           <Input type="number" min={0} max={100} value={data.passingScore ?? 70}
@@ -1085,6 +1178,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
               </div>
               {editingIndex === i && (
                 <QuestionEditor question={q} index={i} isNew={false} handleFileUpload={handleFileUpload}
+                  cmeEnabled={cmeStatus?.enabled === true} surveyParentOptions={surveyParentOptions.slice(0, i)}
                   onSave={saveQuestion} onCancel={() => setEditingIndex(null)} />
               )}
             </div>
@@ -1095,6 +1189,7 @@ export default function LessonQuizBlockEditor({ data, onChange, handleFileUpload
       {/* New question form */}
       {addingNew && editingIndex === null && (
         <QuestionEditor question={{ ...EMPTY_QUESTION }} index={null} isNew={true} handleFileUpload={handleFileUpload}
+          cmeEnabled={cmeStatus?.enabled === true} surveyParentOptions={surveyParentOptions}
           onSave={saveQuestion} onCancel={() => setAddingNew(false)} />
       )}
 

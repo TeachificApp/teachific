@@ -45,6 +45,10 @@ export function isInlineLessonQuizQuestionVisible(
     inlineLessonQuizQuestionKey(candidate, index) === String(condition.parentQuestionKey),
   );
   if (parentIndex < 0 || parentIndex >= questionIndex) return false;
+  // A response supplied for an invisible parent must not unlock a later child.
+  // Conditions only permit backwards references, so this recursive check remains
+  // acyclic while ensuring the whole dependency chain is actually visible.
+  if (!isInlineLessonQuizQuestionVisible(questions, parentIndex, answerByQuestionKey)) return false;
   const actualAnswer = answerByQuestionKey[String(condition.parentQuestionKey)];
   return hasResponseValue(actualAnswer) && String(actualAnswer) === String(condition.expectedAnswer);
 }
@@ -58,7 +62,7 @@ export function getVisibleInlineLessonQuizQuestionIndexes(
   );
 }
 
-/** Required unscored surveys are complete only after every visible item has a response. */
+/** Required unscored surveys are complete only after every visible required item has a response. */
 export function hasCompletedRequiredInlineSurvey(
   questions: InlineLessonQuizFlowQuestion[],
   responses: InlineLessonQuizFlowResponse[],
@@ -72,7 +76,10 @@ export function hasCompletedRequiredInlineSurvey(
   );
   const visibleQuestions = getVisibleInlineLessonQuizQuestionIndexes(questions, answerByQuestionKey)
     .map((index) => ({ question: questions[index], index }));
-  return visibleQuestions.length > 0 && visibleQuestions.every(({ question, index }) =>
+  const requiredVisibleQuestions = visibleQuestions.filter(({ question }) =>
+    question.required === true || question.surveyRequired === true,
+  );
+  return requiredVisibleQuestions.every(({ question, index }) =>
     hasResponseValue(answerByQuestionKey[inlineLessonQuizQuestionKey(question, index)]),
   );
 }

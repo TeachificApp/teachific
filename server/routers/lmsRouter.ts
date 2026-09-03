@@ -27,7 +27,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgBySlug, getPrimaryOrgId } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgBySlug, getOrgIdForUserWithFallback, getPrimaryOrgId } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -88,6 +88,8 @@ import {
   userActivityLogs,
   organizations,
   lmsQuizAttempts,
+  lmsInlineQuizAttempts,
+  lmsInlineQuizResponses,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
@@ -97,6 +99,13 @@ import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 import { getOrgBaseUrl } from "../lib/orgUrl";
+import {
+  evaluateStoredInlineLessonQuizSubmission,
+  getRequiredCmeSurveyBlockIds,
+  getStoredInlineLessonQuizBlock,
+  normalizeInlineLessonSurveyResponses,
+  serializeInlineLessonSurveyAnswer,
+} from "../lib/inlineLessonCmeSurvey";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsQuizLandingRouter } from "./lmsQuizLandingRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
@@ -792,6 +801,174 @@ export const lmsLearnerRouter = router({
       return { ...lesson, quiz };
     }),
 
+  /**
+   * Persist one inline lesson quiz or CME survey attempt. The caller may identify a
+   * course, lesson, block, and answers only; all question text, question types,
+   * scoring, required-survey state, and organization ownership are read from the
+   * stored lesson and authorized enrollment.
+   */
+  submitInlineLessonQuiz: protectedProcedure
+    .input(z.object({
+      lessonId: z.number().int().positive(),
+      courseSlug: z.string().min(1).max(255),
+      quizBlockId: z.string().min(1).max(128),
+      responses: z.array(z.object({
+        questionKey: z.string().min(1).max(128),
+        answerValue: z.union([
+          z.string().max(20_000),
+          z.number().finite(),
+          z.array(z.string().max(1_000)).min(1).max(100),
+          z.null(),
+        ]),
+      })).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId })
+        .from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+      const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
+        .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+
+      const [enrollment] = await db.select({ id: lmsEnrollments.id, orgId: lmsEnrollments.orgId, courseId: lmsEnrollments.courseId })
+        .from(lmsEnrollments)
+        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id)))
+        .limit(1);
+      if (!enrollment || enrollment.orgId !== course.orgId || enrollment.courseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not enrolled in this course" });
+      }
+
+      const [lesson] = await db.select({ id: lmsLessons.id, courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, contentBlocks: lmsLessons.contentBlocks })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      let lessonCourseId = lesson.courseId;
+      if (!lessonCourseId && lesson.sectionId) {
+        const [section] = await db.select({ courseId: lmsSections.courseId }).from(lmsSections)
+          .where(eq(lmsSections.id, lesson.sectionId)).limit(1);
+        lessonCourseId = section?.courseId ?? null;
+      }
+      if (lessonCourseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+      }
+
+      const block = getStoredInlineLessonQuizBlock(lesson.contentBlocks, input.quizBlockId);
+      if (!block) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This lesson does not contain the selected built-in lesson quiz" });
+      }
+      const submittedResponses = normalizeInlineLessonSurveyResponses(block.data.questions, input.responses);
+      if (!submittedResponses) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Responses must match the visible questions in this lesson quiz" });
+      }
+      const result = evaluateStoredInlineLessonQuizSubmission({
+        block,
+        responses: submittedResponses,
+        cmeEnabled: organization.cmeEnabled,
+      });
+      if (result.requiresSurveyCompletion && !result.surveyCompleted) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Please answer every required visible survey question before continuing" });
+      }
+
+      const [attempt] = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(lmsInlineQuizAttempts).values({
+          orgId: course.orgId,
+          userId: ctx.user.id,
+          enrollmentId: enrollment.id,
+          courseId: course.id,
+          lessonId: lesson.id,
+          quizBlockId: block.id,
+          score: result.score,
+          passed: result.passed,
+        }).$returningId();
+        await tx.insert(lmsInlineQuizResponses).values(submittedResponses.map((response) => ({
+          orgId: course.orgId,
+          attemptId: created.id,
+          questionKey: response.questionKey,
+          questionText: response.question.question,
+          questionType: String(response.question.type ?? "mcq"),
+          answerValue: serializeInlineLessonSurveyAnswer(response.answerValue),
+        })));
+        return [created];
+      });
+
+      return {
+        attemptId: attempt.id,
+        score: result.score,
+        passed: result.passed,
+        nonScoringSurvey: result.nonScoringSurvey,
+        requiresSurveyCompletion: result.requiresSurveyCompletion,
+        surveyCompleted: result.surveyCompleted,
+        passingScore: block.data.passingScore,
+      };
+    }),
+
+  /** Revalidate required CME survey attempts for the authenticated learner before lesson completion. */
+  getRequiredInlineLessonSurveyCompletion: protectedProcedure
+    .input(z.object({
+      lessonId: z.number().int().positive(),
+      courseSlug: z.string().min(1).max(255),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId })
+        .from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+      const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
+        .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      if (!organization?.cmeEnabled) return { required: false, complete: true, completedBlockIds: [] as string[], requiredBlockIds: [] as string[] };
+
+      const [enrollment] = await db.select({ id: lmsEnrollments.id, orgId: lmsEnrollments.orgId, courseId: lmsEnrollments.courseId })
+        .from(lmsEnrollments)
+        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id)))
+        .limit(1);
+      if (!enrollment || enrollment.orgId !== course.orgId || enrollment.courseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not enrolled in this course" });
+      }
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, contentBlocks: lmsLessons.contentBlocks })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      let lessonCourseId = lesson.courseId;
+      if (!lessonCourseId && lesson.sectionId) {
+        const [section] = await db.select({ courseId: lmsSections.courseId }).from(lmsSections)
+          .where(eq(lmsSections.id, lesson.sectionId)).limit(1);
+        lessonCourseId = section?.courseId ?? null;
+      }
+      if (lessonCourseId !== course.id) throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+
+      const requiredBlockIds = getRequiredCmeSurveyBlockIds(lesson.contentBlocks);
+      if (requiredBlockIds.length === 0) return { required: false, complete: true, completedBlockIds: [] as string[], requiredBlockIds: [] as string[] };
+      const completedAttempts = await db.select({ quizBlockId: lmsInlineQuizAttempts.quizBlockId })
+        .from(lmsInlineQuizAttempts)
+        .where(and(
+          eq(lmsInlineQuizAttempts.orgId, course.orgId),
+          eq(lmsInlineQuizAttempts.userId, ctx.user.id),
+          eq(lmsInlineQuizAttempts.enrollmentId, enrollment.id),
+          eq(lmsInlineQuizAttempts.courseId, course.id),
+          eq(lmsInlineQuizAttempts.lessonId, input.lessonId),
+          eq(lmsInlineQuizAttempts.passed, true),
+          inArray(lmsInlineQuizAttempts.quizBlockId, requiredBlockIds),
+        ));
+      const completedBlockIds = [...new Set(completedAttempts.map((attempt) => attempt.quizBlockId))];
+      return {
+        required: true,
+        complete: requiredBlockIds.every((blockId) => completedBlockIds.includes(blockId)),
+        completedBlockIds,
+        requiredBlockIds,
+      };
+    }),
+
   /** Mark a lesson complete */
   markLessonComplete: protectedProcedure
     .input(z.object({ lessonId: z.number(), courseSlug: z.string() }))
@@ -800,7 +977,11 @@ export const lmsLearnerRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
-      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, contentBlocks: lmsLessons.contentBlocks })
         .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
       if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
       let lessonCourseId = lesson.courseId;
@@ -815,6 +996,29 @@ export const lmsLearnerRouter = router({
       const [enrollment] = await db.select().from(lmsEnrollments)
         .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
       if (!enrollment || enrollment.orgId !== course.orgId) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
+        .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      const requiredSurveyBlockIds = organization?.cmeEnabled
+        ? getRequiredCmeSurveyBlockIds(lesson.contentBlocks)
+        : [];
+      if (requiredSurveyBlockIds.length > 0) {
+        const completedSurveyAttempts = await db.select({ quizBlockId: lmsInlineQuizAttempts.quizBlockId })
+          .from(lmsInlineQuizAttempts)
+          .where(and(
+            eq(lmsInlineQuizAttempts.orgId, course.orgId),
+            eq(lmsInlineQuizAttempts.userId, ctx.user.id),
+            eq(lmsInlineQuizAttempts.enrollmentId, enrollment.id),
+            eq(lmsInlineQuizAttempts.courseId, course.id),
+            eq(lmsInlineQuizAttempts.lessonId, input.lessonId),
+            eq(lmsInlineQuizAttempts.passed, true),
+            inArray(lmsInlineQuizAttempts.quizBlockId, requiredSurveyBlockIds),
+          ));
+        const completedBlockIds = new Set(completedSurveyAttempts.map((attempt) => attempt.quizBlockId));
+        if (requiredSurveyBlockIds.some((blockId) => !completedBlockIds.has(blockId))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Please complete the required survey before marking this lesson complete" });
+        }
+      }
 
       const [existing] = await db.select().from(lmsLessonProgress)
         .where(and(eq(lmsLessonProgress.enrollmentId, enrollment.id), eq(lmsLessonProgress.lessonId, input.lessonId))).limit(1);

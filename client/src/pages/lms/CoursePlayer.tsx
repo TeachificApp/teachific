@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getSubdomain } from "@/hooks/useSubdomain";
 import { shouldAutoCompleteCmeLessonOnAdvance } from "@shared/cmeLessonCompletion";
+import { getVisibleInlineLessonQuizQuestionIndexes, inlineLessonQuizQuestionKey } from "@shared/inlineLessonQuizFlow";
 import LessonEffectPlayer, { fireLessonCompleteEffect } from "@/components/LessonEffectPlayer";
 import { BlockPreview, type Block } from "@/components/BlockPreview";
 
@@ -127,56 +128,140 @@ function QuizRunner({ lesson, courseSlug, onComplete, submitQuizLabel = "Submit 
 }
 
 // ─── Inline Lesson Quiz (for lesson_quiz content blocks) ────────────────────
-function InlineLessonQuiz({ data }: { data: { title?: string; questions?: any[]; showExplanations?: boolean; passingScore?: number; shuffleQuestions?: boolean; requirePassToComplete?: boolean } }) {
+function InlineLessonQuiz({
+  data,
+  courseSlug,
+  lessonId,
+  quizBlockId,
+  isAdminPreview,
+  onSubmitted,
+  registerSurveySubmission,
+}: {
+  data: { title?: string; questions?: any[]; showExplanations?: boolean; passingScore?: number; shuffleQuestions?: boolean; requirePassToComplete?: boolean; isSurvey?: boolean; requireSurveyCompletion?: boolean };
+  courseSlug: string;
+  lessonId: number;
+  quizBlockId: string;
+  isAdminPreview: boolean;
+  onSubmitted: () => void;
+  registerSurveySubmission: (quizBlockId: string, submit: (() => Promise<void>) | null) => void;
+}) {
   const questions = data.questions ?? [];
-  const shuffled = data.shuffleQuestions
-    ? [...questions].sort(() => Math.random() - 0.5)
-    : questions;
-  const [selected, setSelected] = useState<Record<number, number>>({});
+  const [selected, setSelected] = useState<Record<string, string | number>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [result, setResult] = useState<{ score: number; passed: boolean; requiresSurveyCompletion: boolean; surveyCompleted: boolean; nonScoringSurvey: boolean; passingScore: number } | null>(null);
+  const submitInlineLessonQuiz = trpc.lmsLearner.submitInlineLessonQuiz.useMutation({
+    onSuccess: (submission) => {
+      setResult(submission);
+      setSubmitted(true);
+      onSubmitted();
+      if (submission.passed) toast.success(submission.nonScoringSurvey ? "Survey saved." : `Score: ${submission.score}%`);
+      else toast.error(submission.requiresSurveyCompletion ? "Please answer every required visible survey question." : `Score: ${submission.score}% — ${submission.passingScore}% required to pass.`);
+    },
+    onError: (error) => toast.error(`Could not save answers: ${error.message}`),
+  });
+
+  const answerByQuestionKey = selected as Record<string, unknown>;
+  const visibleIndexes = getVisibleInlineLessonQuizQuestionIndexes(questions, answerByQuestionKey);
+  const visibleQuestions = visibleIndexes.map((sourceIndex) => ({ question: questions[sourceIndex], sourceIndex }));
+  const displayQuestions = data.shuffleQuestions && !questions.some((question: any) => question.showWhen)
+    ? [...visibleQuestions].sort(() => Math.random() - 0.5)
+    : visibleQuestions;
+  const isSurvey = data.isSurvey === true || data.requireSurveyCompletion === true;
+  const score = result?.score ?? 0;
+  const passed = result?.passed ?? false;
+  const allVisibleQuestionsAnswered = visibleQuestions.every(({ question, sourceIndex }) => {
+    if (isSurvey && question.surveyRequired !== true && question.required !== true) return true;
+    const value = selected[inlineLessonQuizQuestionKey(question, sourceIndex)];
+    return value !== undefined && value !== null && String(value).trim().length > 0;
+  });
+  const submitAnswers = useCallback(async () => {
+    if (!allVisibleQuestionsAnswered) {
+      toast.error(isSurvey ? "Please answer every required visible survey question." : "Please answer every visible question.");
+      throw new Error("Required inline lesson quiz responses are missing");
+    }
+    if (isAdminPreview) {
+      const localScore = isSurvey ? 0 : Math.round((visibleQuestions.filter(({ question, sourceIndex }) =>
+        String(selected[inlineLessonQuizQuestionKey(question, sourceIndex)]) === String(question.correctAnswer),
+      ).length / visibleQuestions.length) * 100);
+      setResult({ score: localScore, passed: isSurvey || data.requirePassToComplete === false || localScore >= (data.passingScore ?? 70), requiresSurveyCompletion: false, surveyCompleted: true, nonScoringSurvey: isSurvey, passingScore: data.passingScore ?? 70 });
+      setSubmitted(true);
+      return;
+    }
+    const submission = await submitInlineLessonQuiz.mutateAsync({
+      lessonId,
+      courseSlug,
+      quizBlockId,
+      responses: visibleQuestions.map(({ question, sourceIndex }) => ({
+        questionKey: inlineLessonQuizQuestionKey(question, sourceIndex),
+        answerValue: selected[inlineLessonQuizQuestionKey(question, sourceIndex)] ?? null,
+      })),
+    });
+    if (!submission.passed) throw new Error("The inline lesson quiz has not been completed");
+  }, [allVisibleQuestionsAnswered, courseSlug, data.passingScore, data.requirePassToComplete, isAdminPreview, isSurvey, lessonId, quizBlockId, selected, submitInlineLessonQuiz, visibleQuestions]);
+
+  useEffect(() => {
+    if (data.requireSurveyCompletion !== true || isAdminPreview) return;
+    registerSurveySubmission(quizBlockId, submitAnswers);
+    return () => registerSurveySubmission(quizBlockId, null);
+  }, [data.requireSurveyCompletion, isAdminPreview, quizBlockId, registerSurveySubmission, submitAnswers]);
 
   if (questions.length === 0) return null;
-
-  const score = submitted
-    ? Math.round((shuffled.filter((q, i) => selected[i] === q.correctAnswer).length / shuffled.length) * 100)
-    : 0;
-  const passed = score >= (data.passingScore ?? 70);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
       <div className="px-5 py-3 flex items-center gap-2" style={{ background: "linear-gradient(to right, var(--org-primary), var(--org-accent))" }}>
         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
         <h3 className="text-white font-semibold text-sm">{data.title || "Knowledge Check"}</h3>
-        <span className="ml-auto text-teal-100 text-xs">{questions.length} question{questions.length !== 1 ? "s" : ""}{data.requirePassToComplete !== false ? ` · Pass: ${data.passingScore ?? 70}%` : ""}</span>
+        <span className="ml-auto text-teal-100 text-xs">{questions.length} question{questions.length !== 1 ? "s" : ""}{!isSurvey && data.requirePassToComplete !== false ? ` · Pass: ${data.passingScore ?? 70}%` : ""}</span>
       </div>
       <div className="p-5 space-y-5">
         {submitted && (
           <div className={`rounded-lg p-3 border text-sm font-semibold ${
             passed ? "bg-green-50 border-green-300 text-green-700" : "bg-red-50 border-red-300 text-red-700"
           }`}>
-            {data.requirePassToComplete !== false
+            {!isSurvey && data.requirePassToComplete !== false
               ? (passed ? `✓ Passed! Score: ${score}%` : `✗ Score: ${score}% — ${data.passingScore ?? 70}% required to pass`)
-              : `Score: ${score}%`}
+              : (isSurvey ? "Survey saved." : `Score: ${score}%`)}
             {!passed && (
-              <button className="ml-3 text-xs underline" onClick={() => { setSelected({}); setSubmitted(false); setShowResults(false); }}>Retake</button>
+              <button className="ml-3 text-xs underline" onClick={() => { setSelected({}); setSubmitted(false); setResult(null); }}>Retake</button>
             )}
           </div>
         )}
-        {shuffled.map((q: any, i: number) => (
-          <div key={i} className="space-y-2">
-            <p className="font-medium text-gray-900 text-sm">{i + 1}. {q.question}</p>
+        {displayQuestions.map(({ question: q, sourceIndex }: { question: any; sourceIndex: number }, displayIndex: number) => {
+          const questionKey = inlineLessonQuizQuestionKey(q, sourceIndex);
+          const qType = q.type ?? "mcq";
+          return (
+          <div key={questionKey} className="space-y-2">
+            <p className="font-medium text-gray-900 text-sm">{displayIndex + 1}. {q.question}</p>
             {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-48 rounded-lg border border-gray-200 object-cover" />}
+            {qType === "open_text" ? (
+              <Textarea
+                value={String(selected[questionKey] ?? "")}
+                disabled={submitted}
+                onChange={(event) => setSelected((answers) => ({ ...answers, [questionKey]: event.target.value }))}
+                placeholder="Enter your response"
+                className="min-h-24"
+              />
+            ) : qType === "star_rating" ? (
+              <div className="flex gap-2" role="radiogroup" aria-label={q.question}>
+                {Array.from({ length: Math.min(10, Math.max(1, Number(q.starMax) || 5)) }, (_, index) => index + 1).map((rating) => (
+                  <button key={rating} type="button" disabled={submitted} onClick={() => setSelected((answers) => ({ ...answers, [questionKey]: rating }))}
+                    className={cn("h-9 w-9 rounded-md border text-sm font-semibold", selected[questionKey] === rating ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600 hover:border-teal-400")}
+                    aria-pressed={selected[questionKey] === rating}>{rating}</button>
+                ))}
+              </div>
+            ) : (
             <div className="space-y-1.5">
               {(q.options ?? []).map((opt: string, j: number) => {
-                const isSelected = selected[i] === j;
+                const selectedValue = ["likert", "survey_choice"].includes(qType) ? opt : j;
+                const isSelected = selected[questionKey] === selectedValue;
                 const isCorrect = submitted && j === q.correctAnswer;
                 const isWrong = submitted && isSelected && j !== q.correctAnswer;
                 return (
                   <button
                     key={j}
                     disabled={submitted}
-                    onClick={() => !submitted && setSelected(s => ({ ...s, [i]: j }))}
+                    onClick={() => !submitted && setSelected(s => ({ ...s, [questionKey]: selectedValue }))}
                     className={`w-full text-left px-3.5 py-2.5 rounded-lg border text-sm transition-all ${
                       isCorrect ? "border-green-500 bg-green-50 text-green-800 font-medium" :
                       isWrong ? "border-red-400 bg-red-50 text-red-800" :
@@ -190,19 +275,19 @@ function InlineLessonQuiz({ data }: { data: { title?: string; questions?: any[];
                   </button>
                 );
               })}
-            </div>
+            </div>)}
             {submitted && data.showExplanations && q.explanation && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded p-2 border border-gray-100 italic">{q.explanation}</p>
             )}
           </div>
-        ))}
+        )})}
         {!submitted && (
           <button
             className="mt-2 px-5 py-2 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 org-btn"
-            disabled={Object.keys(selected).length < shuffled.length}
-            onClick={() => setSubmitted(true)}
+            disabled={!allVisibleQuestionsAnswered || submitInlineLessonQuiz.isPending}
+            onClick={() => { void submitAnswers().catch(() => {}); }}
           >
-            Submit Answers
+            {submitInlineLessonQuiz.isPending ? "Saving..." : isSurvey ? "Save Survey" : "Submit Answers"}
           </button>
         )}
       </div>
@@ -765,7 +850,12 @@ export default function CoursePlayer() {
   const [instructorPopup, setInstructorPopup] = useState<any>(null);
   const [contentFullscreen, setContentFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const inlineSurveySubmitters = useRef(new Map<string, () => Promise<void>>());
   const utils = trpc.useUtils();
+  const registerInlineSurveySubmission = useCallback((quizBlockId: string, submit: (() => Promise<void>) | null) => {
+    if (submit) inlineSurveySubmitters.current.set(quizBlockId, submit);
+    else inlineSurveySubmitters.current.delete(quizBlockId);
+  }, []);
   const organizationSlug = getSubdomain();
   const { data: organization } = trpc.orgs.publicSchoolBySlug.useQuery(
     { slug: organizationSlug! },
@@ -793,6 +883,10 @@ export default function CoursePlayer() {
   const { data: certData } = trpc.lmsLearner.getCourseCertificate.useQuery(
     { courseSlug: slug! },
     { enabled: !!slug && !!user }
+  );
+  const { refetch: refetchRequiredInlineSurveyCompletion } = trpc.lmsLearner.getRequiredInlineLessonSurveyCompletion.useQuery(
+    { lessonId: selectedLessonId!, courseSlug: slug! },
+    { enabled: !!selectedLessonId && !!slug && !!user && !data?.isAdminPreview }
   );
 
   const [optimisticCompleted, setOptimisticCompleted] = useState<Set<number>>(new Set());
@@ -892,12 +986,37 @@ export default function CoursePlayer() {
 
   const handleMarkComplete = async () => {
     if (!selectedLessonId) return;
-    // Optimistically mark as complete immediately so checkmarks appear in both sidebars
-    setOptimisticCompleted(prev => new Set([...prev, selectedLessonId]));
     // In admin preview mode the enrollment is synthetic (id: -1) — skip the server call
     // to avoid a FORBIDDEN error. Progress is not persisted in preview mode.
     if (!data?.isAdminPreview) {
+      try {
+        const surveyCompletion = await refetchRequiredInlineSurveyCompletion();
+        if (surveyCompletion.data?.required && !surveyCompletion.data.complete) {
+          const pendingBlockIds = surveyCompletion.data.requiredBlockIds.filter((blockId) => !surveyCompletion.data!.completedBlockIds.includes(blockId));
+          for (const blockId of pendingBlockIds) {
+            const submitPendingSurvey = inlineSurveySubmitters.current.get(blockId);
+            if (!submitPendingSurvey) {
+              toast.error("Please complete the required survey before marking this lesson complete.");
+              return;
+            }
+            await submitPendingSurvey();
+          }
+          const verifiedSurveyCompletion = await refetchRequiredInlineSurveyCompletion();
+          if (verifiedSurveyCompletion.data?.required && !verifiedSurveyCompletion.data.complete) {
+            toast.error("Please complete the required survey before marking this lesson complete.");
+            return;
+          }
+        }
+      } catch {
+        // The mutation's own error handler provides the specific validation message.
+        return;
+      }
+      // Optimistically mark as complete immediately so checkmarks appear in both sidebars.
+      // The server independently enforces this same survey gate before persistence.
+      setOptimisticCompleted(prev => new Set([...prev, selectedLessonId]));
       await markComplete.mutateAsync({ lessonId: selectedLessonId, courseSlug: slug! });
+    } else {
+      setOptimisticCompleted(prev => new Set([...prev, selectedLessonId]));
     }
     // Fire the effect BEFORE navigating — the LessonEffectPlayer must still be mounted
     // when the custom event fires. Navigating immediately (setSelectedLessonId) causes React
@@ -1884,7 +2003,16 @@ export default function CoursePlayer() {
                     <div className="mt-4 space-y-4">
                       {contentBlocks.map((block: Block) => (
                         block.type === "lesson_quiz" ? (
-                          <InlineLessonQuiz key={block.id} data={block.data as any} />
+                          <InlineLessonQuiz
+                            key={block.id}
+                            data={block.data as any}
+                            courseSlug={slug!}
+                            lessonId={lessonData.id}
+                            quizBlockId={String(block.id)}
+                            isAdminPreview={!!data?.isAdminPreview}
+                            onSubmitted={() => { void refetchRequiredInlineSurveyCompletion(); }}
+                            registerSurveySubmission={registerInlineSurveySubmission}
+                          />
                         ) : block.type === "lesson_flashcard" ? (
                           <InlineLessonFlashcardDeck key={block.id} data={block.data as any} />
                         ) : block.type === "lesson_certificate" ? (

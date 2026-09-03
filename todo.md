@@ -41,7 +41,11 @@
 - [ ] Port compatible CME certificate fixes with CME entitlement gates and organization-specific identity
 - [x] Require active-organization ownership for issued certificate listing
 - [ ] Require active-organization and CME entitlement for any CME activity certificate report or export
-- [ ] Add regression coverage for organization isolation, role scope, and organization branding on ported changes
+- [x] Add an additive organization-owned inline CME survey attempt and response model without changing standalone Question Bank records
+- [x] Add a protected stored-block inline CME survey submission procedure with active-organization, enrollment, course, and CME-entitlement checks
+- [x] Gate legacy CoursePlayer completion controls through protected inline CME survey submission without client-side bypasses
+- [x] Add CME-enabled author controls for non-scoring survey questions and conditional visibility in the legacy lesson quiz editor
+- [x] Add regression coverage for organization isolation, role scope, and organization branding on ported changes
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers

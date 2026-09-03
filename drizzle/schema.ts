@@ -2755,6 +2755,43 @@ export const lmsLessonProgress = mysqlTable("lms_lesson_progress", {
 export type LmsLessonProgress = typeof lmsLessonProgress.$inferSelect;
 export type InsertLmsLessonProgress = typeof lmsLessonProgress.$inferInsert;
 
+// ─── Inline Lesson CME Survey Attempts & Responses ──────────────────────────
+// Inline lesson survey blocks are course-content data, not standalone Question
+// Bank records. These append-only rows keep responses in the owning
+// organization for CME-gated activity reporting and protected completion.
+export const lmsInlineQuizAttempts = mysqlTable("lms_inline_quiz_attempts", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  userId: int("user_id").notNull(),
+  enrollmentId: int("enrollment_id").notNull(),
+  courseId: int("course_id").notNull(),
+  lessonId: int("lesson_id").notNull(),
+  quizBlockId: varchar("quiz_block_id", { length: 128 }).notNull(),
+  score: int("score").notNull(),
+  passed: boolean("passed").notNull(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+}, (table) => ({
+  orgCourseLessonIndex: index("lms_inline_quiz_attempts_org_course_lesson_idx").on(table.orgId, table.courseId, table.lessonId),
+  enrollmentBlockIndex: index("lms_inline_quiz_attempts_enrollment_block_idx").on(table.enrollmentId, table.quizBlockId),
+}));
+export type LmsInlineQuizAttempt = typeof lmsInlineQuizAttempts.$inferSelect;
+export type InsertLmsInlineQuizAttempt = typeof lmsInlineQuizAttempts.$inferInsert;
+
+export const lmsInlineQuizResponses = mysqlTable("lms_inline_quiz_responses", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("orgId").notNull(),
+  attemptId: int("attempt_id").notNull(),
+  questionKey: varchar("question_key", { length: 128 }).notNull(),
+  questionText: text("question_text").notNull(),
+  questionType: varchar("question_type", { length: 32 }).notNull(),
+  answerValue: text("answer_value"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgAttemptIndex: index("lms_inline_quiz_responses_org_attempt_idx").on(table.orgId, table.attemptId),
+}));
+export type LmsInlineQuizResponse = typeof lmsInlineQuizResponses.$inferSelect;
+export type InsertLmsInlineQuizResponse = typeof lmsInlineQuizResponses.$inferInsert;
+
 export const lmsQuizzes = mysqlTable("lms_quizzes", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("orgId").notNull(),

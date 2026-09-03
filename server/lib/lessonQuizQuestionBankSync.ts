@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { lmsCourses, lmsLessons, lmsQuizQuestions, lmsQuizzes, questionBankFolders, questionBankItems } from "../../drizzle/schema";
+import { INLINE_SURVEY_QUESTION_TYPES } from "../../shared/inlineLessonQuizFlow";
 
 type BankQuestionType = "mcq" | "tf" | "short_answer" | "matching" | "multiple_select" | "hotspot" | "ordering" | "fill_blank";
 
@@ -91,6 +92,9 @@ export async function syncLessonQuizBlocksToQuestionBank(db: any, lessonId: numb
     if (block?.type !== "lesson_quiz" || !Array.isArray(block?.data?.questions)) continue;
     const sourceBlockId = String(block.id ?? "lesson-quiz");
     for (const [sourceQuestionIndex, raw] of block.data.questions.entries()) {
+      // CME feedback and survey prompts are append-only lesson activity data.
+      // They intentionally do not become standalone Question Bank questions.
+      if (INLINE_SURVEY_QUESTION_TYPES.has(String(raw?.type))) continue;
       const stem = String(raw?.question ?? raw?.stem ?? "").trim();
       if (!stem) continue;
       const questionType = mapQuestionType(raw?.type);

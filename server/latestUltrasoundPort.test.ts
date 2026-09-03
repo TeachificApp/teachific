@@ -29,6 +29,56 @@ describe("latest Ultrasound-App learning feature port", () => {
     const completionSource = lmsRouterSource.slice(completionStart, completionEnd);
     expect(completionSource).toContain('message: "Lesson does not belong to this course"');
     expect(completionSource).toContain("enrollment.orgId !== course.orgId");
+    expect(completionSource).toContain("getRequiredCmeSurveyBlockIds(lesson.contentBlocks)");
+    expect(completionSource).toContain("eq(lmsInlineQuizAttempts.orgId, course.orgId)");
+    expect(completionSource).toContain("Please complete the required survey before marking this lesson complete");
+  });
+
+  it("persists inline CME survey attempts from stored blocks with active-organization and entitlement guards", () => {
+    const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    const submissionStart = lmsRouterSource.indexOf("submitInlineLessonQuiz:");
+    const submissionEnd = lmsRouterSource.indexOf("getRequiredInlineLessonSurveyCompletion:", submissionStart);
+    const submissionSource = lmsRouterSource.slice(submissionStart, submissionEnd);
+    expect(submissionSource).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(submissionSource).toContain("activeOrgId !== course.orgId");
+    expect(submissionSource).toContain("organizations.cmeEnabled");
+    expect(submissionSource).toContain("getStoredInlineLessonQuizBlock(lesson.contentBlocks, input.quizBlockId)");
+    expect(submissionSource).toContain("normalizeInlineLessonSurveyResponses(block.data.questions, input.responses)");
+    expect(submissionSource).not.toContain("input.score");
+    expect(submissionSource).toContain("orgId: course.orgId");
+    expect(submissionSource).toContain("questionText: response.question.question");
+    expect(submissionSource).toContain("await db.transaction(async (tx) => {");
+  });
+
+  it("keeps inline CME survey persistence separate from standalone Question Bank records", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const syncSource = readFileSync(new URL("./lib/lessonQuizQuestionBankSync.ts", import.meta.url), "utf8");
+    expect(schemaSource).toContain('mysqlTable("lms_inline_quiz_attempts"');
+    expect(schemaSource).toContain('mysqlTable("lms_inline_quiz_responses"');
+    expect(schemaSource).toContain('orgId: int("orgId").notNull()');
+    expect(syncSource).toContain("INLINE_SURVEY_QUESTION_TYPES.has(String(raw?.type))");
+  });
+
+  it("only exposes legacy CME survey author settings after verified CME status and sends both completion controls through protected submission and revalidation", () => {
+    const editorSource = readFileSync(new URL("../client/src/components/LessonQuizBlockEditor.tsx", import.meta.url), "utf8");
+    const playerSource = readFileSync(new URL("../client/src/pages/lms/CoursePlayer.tsx", import.meta.url), "utf8");
+    const completionStart = playerSource.indexOf("const handleMarkComplete = async () => {");
+    const completionEnd = playerSource.indexOf("// Wait for auth", completionStart);
+    const completionSource = playerSource.slice(completionStart, completionEnd);
+    expect(editorSource).toContain("trpc.cme.getCmeStatus.useQuery({}, { enabled: !!courseId })");
+    expect(editorSource).toContain("cmeEnabled ? [\"likert\", \"star_rating\", \"open_text\", \"survey_choice\"]");
+    expect(editorSource).toContain("Only visible required questions block lesson completion.");
+    expect(editorSource).toContain("Require survey completion");
+    expect(editorSource).toContain("const requiresCmeSurveyCompletion = isCmeSurvey && data.requireSurveyCompletion === true;");
+    expect(editorSource).toContain('text-[var(--org-primary)]">CME Survey Settings');
+    expect(editorSource).toContain("border-[color:color-mix(in_srgb,var(--org-primary)_18%,transparent)]");
+    expect(editorSource).not.toContain("border-teal-100");
+    expect(completionSource).toContain("refetchRequiredInlineSurveyCompletion()");
+    expect(completionSource).toContain("inlineSurveySubmitters.current.get(blockId)");
+    expect(completionSource).toContain("await submitPendingSurvey()");
+    expect(playerSource).toContain("registerSurveySubmission={registerInlineSurveySubmission}");
+    expect(completionSource).toContain("Please complete the required survey before marking this lesson complete.");
+    expect(playerSource).toContain("onClick={handleMarkComplete}");
   });
 
   it("applies organization coupon target scopes only to eligible content types and individual products", () => {
