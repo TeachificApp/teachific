@@ -43,6 +43,17 @@ export interface CertificateOptions {
   template?: CertificateTemplate | null;
 }
 
+export function resolveCertificateIdentity(template?: CertificateTemplate | null) {
+  const tmpl = template ?? {};
+  const organizationName = tmpl.organizationName?.trim() || "Course360™";
+  return {
+    organizationName,
+    signatureName: tmpl.signatureText || tmpl.signatureName || "Course360 Team",
+    signatureTitle: tmpl.signatureTitleText || tmpl.signatureTitle || `Certificate Administrator, ${organizationName}`,
+    footerText: tmpl.footerText || `© ${organizationName}`,
+  };
+}
+
 /** Fetch a URL and return a Buffer (used for logo/background images) */
 function fetchBuffer(url: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -64,10 +75,7 @@ export async function generateCertificatePdf(opts: CertificateOptions): Promise<
   const GOLD = tmpl.accentColorHex || tmpl.accentColor || "#c9a84c";
   const DARK = tmpl.textColorHex || tmpl.textColor || "#0e1e2e";
   const LIGHT_BG = "#f0fbfc";
-  const orgName = tmpl.organizationName || "Teachific™";
-  const sigName = tmpl.signatureText || tmpl.signatureName || "Lara Williams, RVT, RDMS";
-  const sigTitle = tmpl.signatureTitleText || tmpl.signatureTitle || `Founder, ${orgName}`;
-  const footerText = tmpl.footerText || `www.teachific.com  ·  © ${orgName}`;
+  const { organizationName: orgName, signatureName: sigName, signatureTitle: sigTitle, footerText } = resolveCertificateIdentity(tmpl);
   const layout = tmpl.layout || "classic";
 
   // Pre-fetch images if provided

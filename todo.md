@@ -78,6 +78,7 @@
 - [x] Audit remaining Ultrasound-App CME certificate changes and port a compatible organization-scoped certificate-template and organization-branded email improvement without altering unrelated learner records
 - [x] Scope certificate-template selection and default fallback to the completed course’s owning organization during certificate issuance
 - [x] Use the completed course’s organization identity in certificate emails and remove legacy source-brand assets and unsupported certificate-validity claims
+- [x] Replace active certificate PDF fallback branding, signature, and footer defaults with neutral Course360 organization-safe values
 - [x] Add behavioral certificate-issuance coverage for organization-owned template fallback, certificate record ownership, and organization email identity
 - [x] Require active-organization ownership for issued certificate listing
 - [x] Require active-organization and CME entitlement for any CME activity certificate report or export
