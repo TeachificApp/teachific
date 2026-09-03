@@ -34,6 +34,12 @@
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
 - [x] Require organization-admin ownership before native SCORM package creation from the Question Bank import workflow
 - [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
+- [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
+- [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
+- [ ] Verify lesson ownership and active-organization scope before applying CME survey completion rules
+- [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
+- [ ] Port compatible CME certificate fixes with CME entitlement gates and organization-specific identity
+- [ ] Add regression coverage for organization isolation, role scope, and organization branding on ported changes
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers
