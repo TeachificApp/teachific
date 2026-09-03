@@ -1,6 +1,7 @@
 import type { CookieOptions, Request } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const PLATFORM_COOKIE_DOMAINS = ["course360.app", "teachific.app"] as const;
 
 function isIpAddress(host: string) {
   // Basic IPv4 check and IPv6 presence detection.
@@ -21,6 +22,20 @@ function isSecureRequest(req: Request) {
   return protoList.some(proto => proto.trim().toLowerCase() === "https");
 }
 
+/**
+ * Return a cookie domain only for approved platform roots and their direct
+ * organization subdomains. Custom organization domains remain host-only.
+ */
+export function getPlatformSessionCookieDomain(hostname: string): string | undefined {
+  const normalized = hostname.trim().toLowerCase().replace(/\.$/, "");
+  for (const rootDomain of PLATFORM_COOKIE_DOMAINS) {
+    if (normalized === rootDomain || normalized === `www.${rootDomain}` || normalized.endsWith(`.${rootDomain}`)) {
+      return `.${rootDomain}`;
+    }
+  }
+  return undefined;
+}
+
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
@@ -32,19 +47,16 @@ export function getSessionCookieOptions(
   //   hostname !== "127.0.0.1" &&
   //   hostname !== "::1";
 
-  // In production, set Domain=.teachific.app so the Manus OAuth session cookie
-  // is also shared across all subdomains (myorg.teachific.app, etc.)
+  // In production, share platform sessions across each approved platform's
+  // organization subdomains while keeping custom organization domains isolated.
   const hostname = req.hostname ?? "";
-  const isTeachificProd =
-    hostname === "teachific.app" ||
-    hostname === "www.teachific.app" ||
-    hostname.endsWith(".teachific.app");
+  const domain = getPlatformSessionCookieDomain(hostname);
 
   return {
     httpOnly: true,
     path: "/",
     sameSite: "none",
     secure: isSecureRequest(req),
-    ...(isTeachificProd ? { domain: ".teachific.app" } : {}),
+    ...(domain ? { domain } : {}),
   };
 }

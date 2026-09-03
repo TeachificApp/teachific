@@ -158,6 +158,7 @@
 - [x] Require active-organization ownership for product-scoped Printify settings and fulfillment retry actions
 - [ ] Audit registered legacy router namespaces and active client callers for source-derived schema or organization-scope conflicts
 - [ ] Audit hard-coded Teachific learner and checkout URLs and replace organization-owned links with owning-domain resolution
+- [x] Share authenticated Course360 session cookies across approved Course360 organization subdomains while retaining legacy-domain compatibility and custom-domain isolation
 - [x] Resolve static organization metadata from Course360 subdomains and verified custom domains without emitting retired platform canonical URLs
 - [x] Audit active Course360 learner, checkout, invitation, and notification URL construction for platform-domain fallbacks and fix the verified email campaign tracking routing gap
 - [x] Scope administrator-created password-reset emails to the owning organization domain when active organization context is available
