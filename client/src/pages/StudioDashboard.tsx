@@ -172,7 +172,7 @@ export default function StudioDashboard() {
               <strong>{studioTrialDaysLeft} day{studioTrialDaysLeft !== 1 ? "s" : ""} left in trial</strong>
             </span>
           )}
-          <span>Your exports include a <strong>Created with Teachific™</strong> watermark on the free/trial plan.</span>
+          <span>Your exports include a <strong>Created with Course360™</strong> watermark on the free/trial plan.</span>
           <Link href="/studio-pro">
             <span className="underline underline-offset-2 cursor-pointer hover:text-[#a0f0f5] transition-colors">Upgrade to remove →</span>
           </Link>
