@@ -27,7 +27,7 @@ function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream;
 }
 
-const COURSE360_ICON = import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png";
+const COURSE360_ICON = "/manus-storage/course360-logo_4b20a5ab.png";
 
 export default function GetAppBanner() {
   const [visible, setVisible] = useState(false);

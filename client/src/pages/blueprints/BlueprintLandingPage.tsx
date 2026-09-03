@@ -140,7 +140,7 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
       <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <a href="https://course360.app" className="flex items-center gap-1.5 font-bold text-lg">
-            <img src={import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png"} alt="Course360™" className="h-9 w-28 object-contain object-left" />
+            <img src="/manus-storage/course360-logo_4b20a5ab.png" alt="Course360™" className="h-9 w-28 object-contain object-left" />
           </a>
           <Button size="sm" onClick={handleGetStarted} disabled={isLoading2}>
             {isLoading2 ? <Loader2 className="w-4 h-4 animate-spin" /> : isPaid ? `Buy — $${parseFloat(String(blueprint.price)).toFixed(2)}` : "Get Started Free"}

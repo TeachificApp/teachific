@@ -1579,7 +1579,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
     expect(brandNavSource).toContain('title: "Course360™"');
     expect(brandNavSource).toContain('logoAlt: "Course360™"');
-    expect(lmsLayoutSource).toContain('const PLATFORM_LOGO_URL = import.meta.env.VITE_APP_LOGO');
+    expect(lmsLayoutSource).toContain('const PLATFORM_LOGO_URL = "/manus-storage/course360-logo_4b20a5ab.png"');
     expect(lmsLayoutSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
     expect(brandNavSource).not.toContain("UltrasoundAssist");
     expect(brandNavSource).not.toContain("EchoAssist");

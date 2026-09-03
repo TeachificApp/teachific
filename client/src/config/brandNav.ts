@@ -58,7 +58,7 @@ export function getBrandNavConfig(_brand?: Brand): BrandNavConfig {
   return {
     navGroups: PLATFORM_NAV_GROUPS,
     hiddenNavItems: PLATFORM_HIDDEN_NAV,
-    logoUrl: import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png",
+    logoUrl: "/manus-storage/course360-logo_4b20a5ab.png",
     logoAlt: "Course360™",
     title: "Course360™",
     subtitle: "SCORM & LMS Hosting Platform",

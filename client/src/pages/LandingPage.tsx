@@ -38,7 +38,7 @@ function LandingNav({ user }: { user?: { name?: string | null; email?: string | 
         {/* Logo */}
         <a href="/" className="flex items-center gap-1 select-none">
           <img
-            src={import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png"}
+            src="/manus-storage/course360-logo_4b20a5ab.png"
             alt="Course360™"
             className="h-11 w-32 object-contain object-left"
           />

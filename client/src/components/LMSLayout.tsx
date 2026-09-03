@@ -18,7 +18,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import NameCollectionModal from "@/components/NameCollectionModal";
 
-const PLATFORM_LOGO_URL = import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png";
+const PLATFORM_LOGO_URL = "/manus-storage/course360-logo_4b20a5ab.png";
 const MEMBERS_URL = "/";
 import { getAdminUrl, APP_URL, getSubdomain } from "@/hooks/useSubdomain";
 import { useSiteNavMenu } from "@/hooks/useSiteNavMenu";
