@@ -202,6 +202,7 @@
 - [ ] Audit hard-coded Teachific learner and checkout URLs and replace organization-owned links with owning-domain resolution
 - [x] Share authenticated Course360 session cookies across approved Course360 organization subdomains while retaining legacy-domain compatibility and custom-domain isolation
 - [x] Align custom-auth session-cookie sharing and resend-verification links with Course360 platform and verified organization-domain routing
+- [x] Unregister the unreferenced legacy email-auth public router while retaining the supported Course360 custom-authentication flows
 - [x] Rebrand organization-link invitation emails to Course360 and resolve acceptance links through the initiating organization’s verified base URL
 - [x] Resolve Stripe purchase notification dashboard links from the owning organization’s verified learner base URL
 - [x] Rebrand active SCORM health-alert platform fallback URLs and administrator notification copy to Course360 without changing global alert scope

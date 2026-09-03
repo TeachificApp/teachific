@@ -162,7 +162,6 @@ import { emailCampaignRouter } from "./routers/emailCampaignRouter";
 import { formBuilderRouter } from "./routers/formBuilderRouter";
 import { sitePagesAdminRouter, sitePagesPublicRouter } from "./routers/sitePagesRouter";
 import { siteSettingsRouter } from "./routers/siteSettingsRouter";
-import { emailAuthRouter } from "./routers/emailAuthRouter";
 import { widgetAdminRouter } from "./routers/widgetAdminRouter";
 import { adminUserRouter } from "./routers/adminUserRouter";
 import { cmeActivityFormRouter } from "./routers/cmeActivityFormRouter";
@@ -484,7 +483,6 @@ export const appRouter = router({
   sitePagesAdmin: sitePagesAdminRouter,
   sitePagesPublic: sitePagesPublicRouter,
   siteSettings: siteSettingsRouter,
-  emailAuth: emailAuthRouter,
   widgetAdmin: widgetAdminRouter,
   quizBank: quizBankRouter,
   quiz: quizRouter,
