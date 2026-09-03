@@ -1,6 +1,7 @@
 import { COOKIE_NAME, IMPERSONATION_ORIGINAL_COOKIE } from "@shared/const";
 import dns from "node:dns";
 import { sendEmail } from "./sendgrid";
+import { getOrgLinkInvitationUrl } from "./lib/orgLinkInvitationUrl";
 import https from "node:https";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
@@ -2206,7 +2207,6 @@ export const appRouter = router({
           primaryOrgId: z.number(),
           linkedOrgEmail: z.string().email(), // email of the target org's admin
           targetOrgId: z.number().optional(), // specific org to link (when target owns multiple)
-          origin: z.string().optional(),
         }))
         .mutation(async ({ ctx, input }) => {
           const db = await getDb();
@@ -2287,10 +2287,11 @@ export const appRouter = router({
           });
           // Always send email verification — even for self-links (same owner, different orgs)
           // The target admin must click the link to verify and accept
+          const invitationUrl = getOrgLinkInvitationUrl(primaryOrg, token);
           await sendEmail({
             to: input.linkedOrgEmail,
             subject: `Organization link invitation from ${primaryOrg.name}`,
-            html: `<p>You have been invited to link your organization <strong>${linkedOrg.name}</strong> with <strong>${primaryOrg.name}</strong> on Teachific.</p><p>This allows you to switch between both organizations from your dashboard.</p><p><a href="${input.origin ?? ""}/org-link/accept?token=${token}">Accept Link Invitation</a></p><p>This link expires in 7 days.</p>`,
+            html: `<p>You have been invited to link your organization <strong>${linkedOrg.name}</strong> with <strong>${primaryOrg.name}</strong> using Course360.</p><p>This allows you to switch between both organizations from your dashboard.</p><p><a href="${invitationUrl}">Accept Link Invitation</a></p><p>This link expires in 7 days.</p>`,
           });
           return { ok: true, linkedOrgName: linkedOrg.name, linkedOrgId: linkedOrg.id };
         }),
