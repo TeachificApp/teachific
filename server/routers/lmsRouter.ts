@@ -2565,10 +2565,12 @@ export const lmsGroupRouter = router({
       pageSize: z.number().int().min(1).max(100).default(30),
     }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
+      await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const conditions: any[] = [];
+      const conditions: any[] = [eq(lmsCourses.orgId, orgId)];
       if (input.courseId) conditions.push(eq(lmsCertificates.courseId, input.courseId));
       if (input.userId) conditions.push(eq(lmsCertificates.userId, input.userId));
       const offset = (input.page - 1) * input.pageSize;

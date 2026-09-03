@@ -39,6 +39,8 @@
 - [x] Verify lesson ownership and active-organization scope before applying CME survey completion rules
 - [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
 - [ ] Port compatible CME certificate fixes with CME entitlement gates and organization-specific identity
+- [x] Require active-organization ownership for issued certificate listing
+- [ ] Require active-organization and CME entitlement for any CME activity certificate report or export
 - [ ] Add regression coverage for organization isolation, role scope, and organization branding on ported changes
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates

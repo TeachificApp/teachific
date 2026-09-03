@@ -12,6 +12,16 @@ import {
 } from "./lib/aiLessonContent";
 
 describe("latest Ultrasound-App learning feature port", () => {
+  it("scopes issued certificate reporting to the authorized active organization", () => {
+    const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    const certificateStart = lmsRouterSource.indexOf("listIssuedCertificates:");
+    const certificateEnd = lmsRouterSource.indexOf("generateQuizFromLesson:", certificateStart);
+    const certificateSource = lmsRouterSource.slice(certificateStart, certificateEnd);
+    expect(certificateSource).toContain("getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(certificateSource).toContain("requireOrgAdmin(ctx.user.id, ctx.user.role, orgId)");
+    expect(certificateSource).toContain("eq(lmsCourses.orgId, orgId)");
+  });
+
   it("verifies a lesson belongs to the enrolled active-organization course before marking it complete", () => {
     const lmsRouterSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     const completionStart = lmsRouterSource.indexOf("markLessonComplete:");
