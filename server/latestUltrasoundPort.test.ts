@@ -3240,6 +3240,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(fileDetailSource).toContain("Save to Question Bank");
     expect(fileDetailSource).toContain("extract-from-package");
     expect(fileDetailSource).toContain("originalZipKey");
+    const questionBankDialogSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
+    expect(questionBankDialogSource).toContain("Choose hosting options");
+    expect(questionBankDialogSource).toContain("Host &amp; import");
+    expect(questionBankDialogSource).toContain('window.location.assign("/question-bank/import")');
   });
 
   it("preserves safe SCORM and .quiz question and answer-choice media in active-organization Question Bank imports", () => {

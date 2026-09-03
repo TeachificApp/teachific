@@ -41,6 +41,8 @@
 - [x] Preserve validated question and answer-choice media when importing SCORM or .quiz questions into the active organization’s Question Bank
 - [x] Add behavioral iSpring SCORM import coverage proving parsed question and answer-choice media persist to active-organization Question Bank records
 - [x] Define and test the generic QTI SCORM media-support boundary separately from iSpring package media handling
+- [x] Route the active-organization Question Bank SCORM/.quiz dialog into the existing native-host, Question Bank-only, and combined package-import workflow
+- [x] Audit every remaining SCORM/.quiz import entry point: package import exposes all destinations, the Question Bank dialog routes to it, and hosted packages can be saved to the Question Bank
 - [ ] Port compatible CME certificate fixes with CME entitlement gates and organization-specific identity
 - [x] Audit remaining Ultrasound-App CME certificate changes and port a compatible organization-scoped certificate-template and organization-branded email improvement without altering unrelated learner records
 - [x] Scope certificate-template selection and default fallback to the completed course’s owning organization during certificate issuance

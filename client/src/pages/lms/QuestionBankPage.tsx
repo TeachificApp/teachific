@@ -470,6 +470,25 @@ function ImportDialog({ bankId, orgId, onClose, initialJobId }: { bankId: number
             </p>
           </div>
 
+          {source === "scorm" && (
+            <Alert className="border-primary/25 bg-primary/5">
+              <AlertDescription className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Need to host this SCORM or <code className="text-xs">.quiz</code> package as well? Open the package import workflow to choose <strong>Host natively</strong>, <strong>Import to Question Bank</strong>, or <strong>Host &amp; import</strong> for your active organization.
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={() => { window.location.assign("/question-bank/import"); }}
+                >
+                  Choose hosting options
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           <MediaLibraryPicker
             orgId={orgId}
             accept="all"
