@@ -44,7 +44,7 @@ import {
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
 import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
-import { couponIsRedeemableForTarget } from "../lib/couponTargeting";
+import { couponIsRedeemableForCheckout } from "../lib/couponTargeting";
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
