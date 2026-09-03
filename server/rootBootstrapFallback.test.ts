@@ -9,6 +9,7 @@ vi.mock("react-dom/client", () => ({
 }));
 
 import { mountCourse360Bootstrap } from "../client/src/BootstrapShell";
+import { isCourse360PlatformRoot } from "../client/src/lib/platformRoot";
 
 function renderedText() {
   const collect = (node: unknown): string => {
@@ -80,10 +81,19 @@ describe("Course360 root bootstrap fallback", () => {
     );
 
     expect(appBootstrapSource).toContain('const DeferredApp = lazy(async () => {');
-    expect(appBootstrapSource).toContain('return await import("./App");');
+    expect(appBootstrapSource).toContain('await import("./pages/LandingPage")');
+    expect(appBootstrapSource).toContain('await import("./App")');
     expect(appBootstrapSource).toContain("[Course360 App Load Error]");
     expect(appBootstrapSource).toContain("<Suspense fallback={<AppLoadFallback />}>");
     expect(appBootstrapSource).toContain("<DeferredApp />");
     expect(appBootstrapSource).toContain("Retry loading Course360");
+  });
+
+  it("loads the lightweight landing module only at a platform root and retains the full router for organization domains and nested routes", () => {
+    expect(isCourse360PlatformRoot({ hostname: "course360.app", pathname: "/" })).toBe(true);
+    expect(isCourse360PlatformRoot({ hostname: "scormhost-fjxmsdmk.manus.space", pathname: "/" })).toBe(true);
+    expect(isCourse360PlatformRoot({ hostname: "academy.course360.app", pathname: "/" })).toBe(false);
+    expect(isCourse360PlatformRoot({ hostname: "academy.example.org", pathname: "/" })).toBe(false);
+    expect(isCourse360PlatformRoot({ hostname: "course360.app", pathname: "/login" })).toBe(false);
   });
 });

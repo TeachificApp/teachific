@@ -5,6 +5,7 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import React, { lazy, Suspense } from "react";
 import superjson from "superjson";
 import { getLoginUrl } from "./const";
+import { isCourse360PlatformRoot } from "./lib/platformRoot";
 
 function AppLoadFallback() {
   return (
@@ -40,7 +41,9 @@ function AppLoadFailure() {
 
 const DeferredApp = lazy(async () => {
   try {
-    return await import("./App");
+    return isCourse360PlatformRoot(window.location)
+      ? await import("./pages/LandingPage")
+      : await import("./App");
   } catch (error) {
     console.error("[Course360 App Load Error]", error);
     return { default: AppLoadFailure };
