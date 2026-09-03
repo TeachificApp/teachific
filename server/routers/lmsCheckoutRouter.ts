@@ -45,6 +45,7 @@ import {
 import { assertAdmin } from "./lmsHelpers";
 import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
 import { couponIsRedeemableForCheckout } from "../lib/couponTargeting";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
@@ -510,6 +511,24 @@ export const lmsCheckoutLearnerRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment is closed for this item." });
       }
 
+      const [organization] = await db
+        .select({
+          slug: organizations.slug,
+          customDomain: organizations.customDomain,
+          domainVerificationStatus: organizations.domainVerificationStatus,
+        })
+        .from(organizations)
+        .where(eq(organizations.id, content.orgId))
+        .limit(1);
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      }
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
+
       // Resolve effective pricing
       let effectivePrice = Number(content.price);
       let pricingType = content.pricingType;
@@ -551,8 +570,8 @@ export const lmsCheckoutLearnerRouter = router({
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2024-06-20" as any });
 
-      const successUrl = `${input.origin}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&content_type=${input.contentType}&slug=${content.slug}`;
-      const cancelUrl  = `${input.origin}/checkout/${input.contentType}/${content.slug}`;
+      const successUrl = `${organizationBaseUrl}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&content_type=${input.contentType}&slug=${encodeURIComponent(content.slug)}`;
+      const cancelUrl  = `${organizationBaseUrl}/checkout/${input.contentType}/${encodeURIComponent(content.slug)}`;
 
       const commonMeta: Record<string, string> = {
         user_id:      ctx.user.id.toString(),

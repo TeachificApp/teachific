@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { coupons, lmsCourses, lmsPricingOptions } from "../drizzle/schema";
+import { coupons, lmsCourses, lmsPricingOptions, organizations } from "../drizzle/schema";
 
 const getDb = vi.hoisted(() => vi.fn());
 const Stripe = vi.hoisted(() => vi.fn());
@@ -32,7 +32,10 @@ const course = {
   enrollmentClosed: false,
 };
 
-function createDbForCoupon(coupon: Record<string, unknown>) {
+function createDbForCoupon(
+  coupon: Record<string, unknown>,
+  organization = { slug: "academy", customDomain: null, domainVerificationStatus: null },
+) {
   let table: unknown;
   const chain = {
     from(nextTable: unknown) {
@@ -44,6 +47,7 @@ function createDbForCoupon(coupon: Record<string, unknown>) {
     },
     limit() {
       if (table === lmsCourses) return Promise.resolve([course]);
+      if (table === organizations) return Promise.resolve([organization]);
       if (table === coupons) return Promise.resolve([coupon]);
       return Promise.resolve([]);
     },
@@ -101,5 +105,50 @@ describe("Course360 hosted checkout coupon scope", () => {
     });
 
     expect(stripeCouponsCreate).not.toHaveBeenCalled();
+  });
+
+  it("uses the purchased content organization's verified custom domain for Stripe return URLs instead of the caller-provided origin", async () => {
+    const stripeCouponCreate = vi.fn().mockResolvedValue({ id: "stripe_coupon_1" });
+    const stripeSessionCreate = vi.fn().mockResolvedValue({ id: "checkout_1", url: "https://checkout.stripe.test/session" });
+    Stripe.mockImplementation(() => ({
+      coupons: { create: stripeCouponCreate },
+      checkout: { sessions: { create: stripeSessionCreate } },
+    }));
+    getDb.mockResolvedValue(createDbForCoupon({
+      id: 10,
+      orgId: 7,
+      code: "ORGONLY",
+      isActive: true,
+      expiresAt: null,
+      maxUses: null,
+      usedCount: 0,
+      targetScope: "all",
+      targetProducts: null,
+      targetContentTypes: null,
+      appliesToCourseIds: null,
+      discountType: "percentage",
+      discountValue: "10",
+    }, {
+      slug: "academy",
+      customDomain: "learn.academy.example.test",
+      domainVerificationStatus: "verified",
+    }));
+
+    const caller = lmsCheckoutLearnerRouter.createCaller({
+      user: { id: 101, email: "learner@example.test", role: "user" },
+    } as any);
+
+    await expect(caller.createHostedCheckoutSession({
+      contentType: "course",
+      slug: course.slug,
+      origin: "https://attacker.example.test",
+      promoCode: "orgonly",
+    })).resolves.toMatchObject({ type: "redirect", sessionId: "checkout_1" });
+
+    expect(stripeSessionCreate).toHaveBeenCalledWith(expect.objectContaining({
+      success_url: "https://learn.academy.example.test/checkout/complete?session_id={CHECKOUT_SESSION_ID}&content_type=course&slug=organization-course",
+      cancel_url: "https://learn.academy.example.test/checkout/course/organization-course",
+    }));
+    expect(JSON.stringify(stripeSessionCreate.mock.calls)).not.toContain("attacker.example.test");
   });
 });
