@@ -1,16 +1,56 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
-import { getDb, requireOrgAdmin } from "./db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
 import { TRPCError } from "@trpc/server";
-import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
+import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, orgSubscriptions, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags } from "../drizzle/schema";
 import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { fetchPublicSourceText } from "./lib/publicSourceUrl";
+import { canUseMockExamSubscription } from "./lib/mockExamEntitlement";
 
 type QuizMakerContext = { user: { id: number; role: string } };
 
+async function getMockExamAvailability(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  orgId: number,
+) {
+  const [subscription] = await db
+    .select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
+    .from(orgSubscriptions)
+    .where(eq(orgSubscriptions.orgId, orgId))
+    .limit(1);
+  if (!subscription) return { plan: "free", canUseMockExams: false };
+  return {
+    plan: subscription.plan,
+    canUseMockExams: canUseMockExamSubscription(subscription.plan, subscription.status),
+  };
+}
+
 async function resolveQuizMakerOrg(ctx: QuizMakerContext) {
   return requireOrgAdmin(ctx.user.id, ctx.user.role);
+}
+
+async function requireMockExamPlan(ctx: QuizMakerContext, quizOrgId: number) {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before changing mock-exam settings." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  if (activeOrgId !== quizOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Mock-exam settings can only be changed in the active organization.",
+    });
+  }
+  const db = (await getDb())!;
+  const availability = await getMockExamAvailability(db, quizOrgId);
+  if (!availability.canUseMockExams) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Mock exams are available on Pro and Enterprise plans. Upgrade this organization to enable mock-exam delivery.",
+    });
+  }
+  return { db, activeOrgId, availability };
 }
 
 /**
@@ -52,6 +92,42 @@ async function requireQuizMakerChoiceAccess(ctx: QuizMakerContext, choiceId: num
   if (!choice) throw new TRPCError({ code: "NOT_FOUND", message: "Answer choice not found" });
   await requireQuizMakerQuestionAccess(ctx, choice.questionId);
   return choice;
+}
+
+function buildVisualQuizConfig(quiz: typeof quizzes.$inferSelect, mockExamEnabled: boolean) {
+  let questions: unknown[] = [];
+  try {
+    const parsed = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+    if (Array.isArray(parsed)) questions = parsed;
+  } catch {
+    // The existing editor can recover a saved quiz with no questions, but must
+    // never treat malformed server data as executable client configuration.
+  }
+  return {
+    meta: {
+      id: String(quiz.id),
+      title: quiz.title,
+      description: quiz.description ?? "",
+      author: "",
+      authorEmail: "",
+      createdAt: quiz.createdAt?.toISOString?.() ?? new Date().toISOString(),
+      updatedAt: quiz.updatedAt?.toISOString?.() ?? new Date().toISOString(),
+      version: 1,
+      licenseKey: null,
+      teachificOrgId: quiz.orgId,
+      tags: [],
+      passingScore: (quiz as any).passingScore ?? 70,
+      timeLimit: (quiz as any).timeLimit ?? null,
+      shuffleQuestions: Boolean((quiz as any).shuffleQuestions),
+      shuffleAnswers: Boolean((quiz as any).shuffleAnswers),
+      showFeedback: (quiz as any).showFeedbackImmediately === false ? "deferred" : "immediate",
+      allowRetry: true,
+      maxAttempts: (quiz as any).maxAttempts ?? 0,
+      cloudId: quiz.id,
+      mockExamEnabled,
+    },
+    questions,
+  };
 }
 
 type SerializedQuizQuestion = {
@@ -193,6 +269,7 @@ export const quizMakerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
 
       const questions = await db
         .select()
@@ -215,6 +292,11 @@ export const quizMakerRouter = router({
 
       return {
         ...quiz,
+        mockExamEntitlement: mockExamAvailability.canUseMockExams,
+        builderConfig: buildVisualQuizConfig(
+          quiz,
+          Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
+        ),
         questions: questions.map((q: any) => ({
           ...q,
           choices: (choicesByQuestion[q.id] || []).sort((a: any, b: any) => a.sortOrder - b.sortOrder),
@@ -264,12 +346,13 @@ export const quizMakerRouter = router({
         shuffleAnswers: z.boolean().optional(),
         showFeedbackImmediately: z.boolean().optional(),
         showCorrectAnswers: z.boolean().optional(),
+        mockExamEnabled: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const { quizId, ...data } = input;
-      await requireQuizMakerAccess(ctx, quizId);
+      const quiz = await requireQuizMakerAccess(ctx, quizId);
 
       const updateData: any = {};
       if (data.title !== undefined) updateData.title = data.title;
@@ -282,6 +365,10 @@ export const quizMakerRouter = router({
       if (data.shuffleAnswers !== undefined) updateData.shuffleAnswers = data.shuffleAnswers;
       if (data.showFeedbackImmediately !== undefined) updateData.showFeedbackImmediately = data.showFeedbackImmediately;
       if (data.showCorrectAnswers !== undefined) updateData.showCorrectAnswers = data.showCorrectAnswers;
+      if (data.mockExamEnabled !== undefined) {
+        if (data.mockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);
+        updateData.mockExamEnabled = data.mockExamEnabled;
+      }
 
       if (Object.keys(updateData).length > 0) {
         await db.update(quizzes).set(updateData).where(eq(quizzes.id, quizId));
@@ -516,10 +603,22 @@ export const quizMakerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
+      let requestedMockExamEnabled: boolean | undefined;
+      if (input.settingsJson) {
+        try {
+          const settings = JSON.parse(input.settingsJson);
+          if (typeof settings.mockExamEnabled === "boolean") {
+            requestedMockExamEnabled = settings.mockExamEnabled;
+          }
+        } catch {
+          // Existing settings parsing intentionally falls back to default values.
+        }
+      }
 
       if (input.quizId) {
         // Update existing
-        await requireQuizMakerAccess(ctx, input.quizId);
+        const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+        if (requestedMockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);
 
         // Parse settings to apply quiz-level fields
         const updateFields: any = {
@@ -537,6 +636,9 @@ export const quizMakerRouter = router({
             if (settings.shuffleAnswers !== undefined) updateFields.shuffleAnswers = !!settings.shuffleAnswers;
             if (settings.showFeedbackImmediately !== undefined) updateFields.showFeedbackImmediately = !!settings.showFeedbackImmediately;
             if (settings.showCorrectAnswers !== undefined) updateFields.showCorrectAnswers = !!settings.showCorrectAnswers;
+            if (requestedMockExamEnabled !== undefined) {
+              updateFields.mockExamEnabled = requestedMockExamEnabled;
+            }
           } catch (e) { /* ignore parse errors */ }
         }
         await db.update(quizzes).set(updateFields).where(eq(quizzes.id, input.quizId));
@@ -545,6 +647,7 @@ export const quizMakerRouter = router({
       } else {
         // Create new
         const orgId = await resolveQuizMakerOrg(ctx);
+        if (requestedMockExamEnabled) await requireMockExamPlan(ctx, orgId);
         const [result] = await db.insert(quizzes).values({
           title: input.title,
           description: input.description || null,
@@ -557,6 +660,7 @@ export const quizMakerRouter = router({
           shuffleAnswers: false,
           showFeedbackImmediately: true,
           showCorrectAnswers: true,
+          mockExamEnabled: requestedMockExamEnabled ?? false,
           isPublished: false,
         });
         return { id: result.insertId };
@@ -675,7 +779,8 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      await requireQuizMakerAccess(ctx, input.quizId);
+      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      if (quiz.mockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);
       await db.update(quizzes).set({ isPublished: true }).where(eq(quizzes.id, input.quizId));
       return { success: true };
     }),
@@ -701,6 +806,7 @@ export const quizMakerRouter = router({
         shuffleAnswers: quiz.shuffleAnswers,
         showFeedbackImmediately: quiz.showFeedbackImmediately,
         showCorrectAnswers: quiz.showCorrectAnswers,
+        mockExamEnabled: quiz.mockExamEnabled,
         isPublished: false,
       });
       const newQuizId = newQuiz.insertId;
@@ -823,6 +929,8 @@ export const quizMakerRouter = router({
     .input(z.object({ quizId: z.number() }))
     .query(async ({ ctx, input }) => {
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      const db = (await getDb())!;
+      const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
       const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
 
       return {
@@ -836,6 +944,7 @@ export const quizMakerRouter = router({
         shuffleAnswers: quiz.shuffleAnswers,
         showFeedbackImmediately: quiz.showFeedbackImmediately,
         showCorrectAnswers: quiz.showCorrectAnswers,
+        mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
         questions,
         previewMode: "staff" as const,
         branding: {
@@ -863,6 +972,7 @@ export const quizMakerRouter = router({
       if (quizVis === "archived" || quizVis === "draft") throw new Error("Quiz not found or not published");
       // Parse questions from the instructions JSON field
       const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
 
       return {
         id: quiz.id,
@@ -875,6 +985,7 @@ export const quizMakerRouter = router({
         shuffleAnswers: quiz.shuffleAnswers,
         showFeedbackImmediately: quiz.showFeedbackImmediately,
         showCorrectAnswers: quiz.showCorrectAnswers,
+        mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
         questions,
       };
     }),

@@ -1,6 +1,6 @@
 # SCORM Host Platform - TODO
 
-- [x] Remove fabricated testimonials and unsupported social-proof claims from platform marketing content
+- [ ] Remove fabricated testimonials and unsupported social-proof claims from platform marketing content
 - [ ] Rebrand visible platform identity and product labels from Teachific to Course360™
 - [ ] Host and integrate the supplied Course360 logo in global platform identity surfaces
 - [ ] Add linked “a SoundMedia, Inc. brand” attribution to platform-level footer surfaces
@@ -56,10 +56,27 @@
 - [x] Normalize visible Quiz Creator and desktop-app support and sales contact addresses to Course360 domains
 - [x] Remove fabricated Creator landing-page testimonials and replace them with non-user-generated product information
 - [x] Assess upstream standalone Quiz Creator mock-exam review, question flagging, and final-scoring controls; defer port because Course360 public delivery reads a separate legacy quiz contract that does not persist Visual Builder metadata safely
+- [x] Implement organization-scoped, Pro-or-higher Visual Builder mock-exam settings in Course360’s separate standalone public quiz delivery contract with protected publication mapping
+- [x] Add entitled standalone learner mock-exam review navigation, question flagging, and final-scoring controls without weakening attempt access or answer-key rules
+- [x] Add end-to-end mock-exam publication, active-organization, plan-entitlement, and learner behavior regression coverage
+- [x] Add procedure-level mock-exam save, publication, and public-delivery tests for non-active, non-Pro, and inactive-subscription organizations
+- [x] Add behavioral learner-flow coverage for mock-exam review navigation, flagging, and explicit final scoring
+- [x] Add procedure-level wrong-active-organization tests for mock-exam save and publication
+- [x] Add component-level mock-exam review, question-return, flag-preservation, and final-submission behavior coverage
 - [x] Add secure, organization-scoped public web-page grounding to Question Bank AI generation with SSRF, redirect, size, and source-reference safeguards
 - [x] Enforce server-resolved active-organization alignment for Quiz Bank source generation and behaviorally reject another active organization’s bank
 - [x] Add procedure-level Quiz Bank generation coverage for a multi-organization administrator using a non-active bank
 - [x] Reject source-identifying Question Bank AI output when a public web page is used only as private factual grounding
+- [x] Replace unsupported platform-quality claims in Course360 marketing copy with factual product language
+- [x] Audit all active Course360 marketing and landing pages for unsupported quality, volume, ranking, and comparative claims before completing the copy cleanup
+- [x] Remove unsupported public platform volume and guarantee claims and normalize remaining Creator and Studio Course360 labels
+- [x] Remove fabricated Studio landing-page testimonials and reviews navigation, and normalize Studio platform copy and contact routing
+- [x] Complete a static public/platform marketing audit and regression sweep for fabricated testimonials and unsupported claims outside the four main landing pages
+- [x] Enumerate every route-backed public Course360 platform marketing surface and extend the integrity audit to each applicable static page
+- [x] Remove the fabricated Course360 registration-page testimonial and replace it with factual onboarding information
+- [x] Extend regression coverage for neutral organization-logo and checkout social-proof defaults before completing the broader marketing audit
+- [x] Replace unsubstantiated checkout guarantee, clinical, and testimonial template defaults with neutral organization-configurable wording
+- [x] Replace the unsupported Creator landing comparative-product claim with factual Course360 capability wording
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers

@@ -139,10 +139,10 @@ const BUILT_IN_TEMPLATES: Array<{
     },
   },
   {
-    id: "high_trust_medical",
-    name: "High-Trust Medical",
-    description: "Full trust stack with HIPAA, CME accreditation, money-back guarantee, and FAQ. Ideal for clinical courses.",
-    emoji: "🏥",
+    id: "detailed_checkout",
+    name: "Detailed Checkout",
+    description: "Adds product details and editable FAQs for organizations that need additional purchase information.",
+    emoji: "🧾",
     config: {
       sections: [
         {
@@ -153,31 +153,18 @@ const BUILT_IN_TEMPLATES: Array<{
           seals: [
             { id: "stripe_secure", preset: "stripe_secure", label: "Secure Payment", enabled: true },
             { id: "ssl_encrypted", preset: "ssl_encrypted", label: "SSL Encrypted", enabled: true },
-            { id: "hipaa_compliant", preset: "hipaa_compliant", label: "HIPAA Compliant", enabled: true },
-            { id: "accredited_cme", preset: "accredited_cme", label: "Accredited CME", enabled: true },
-            { id: "money_back_30", preset: "money_back_30", label: "30-Day Money-Back", enabled: true },
-            { id: "satisfaction_guaranteed", preset: "satisfaction_guaranteed", label: "Satisfaction Guaranteed", enabled: true },
           ],
         },
         { type: "course_includes", enabled: true, order: 1, headline: "What's included" },
         {
-          type: "guarantee",
-          enabled: true,
-          order: 2,
-          icon: "ShieldCheck",
-          headline: "30-Day Money-Back Guarantee",
-          body: "If you're not completely satisfied within 30 days of purchase, we'll refund your payment in full — no questions asked.",
-          badgeLabel: "30-Day Guarantee",
-        },
-        {
           type: "faq",
           enabled: true,
-          order: 3,
+          order: 2,
           headline: "Frequently asked questions",
           items: [
-            { id: "faq_1", question: "Is this course accredited for CME?", answer: "Yes — this course is accredited for continuing medical education. Your certificate will be issued upon completion.", enabled: true },
-            { id: "faq_2", question: "How long do I have access?", answer: "You have lifetime access to all course materials once enrolled.", enabled: true },
-            { id: "faq_3", question: "Can I get a refund?", answer: "Yes — we offer a 30-day money-back guarantee. Contact us within 30 days of purchase for a full refund.", enabled: true },
+            { id: "faq_1", question: "Does this product include a certificate?", answer: "Certificate availability and eligibility are set by the organization for each product.", enabled: true },
+            { id: "faq_2", question: "How long do I have access?", answer: "The organization sets access duration for each product. Review the product details before purchase.", enabled: true },
+            { id: "faq_3", question: "Where can I find purchase terms?", answer: "Review the organization’s checkout terms and policies before purchase.", enabled: true },
           ],
         },
       ],
@@ -186,7 +173,7 @@ const BUILT_IN_TEMPLATES: Array<{
   {
     id: "subscription_focus",
     name: "Subscription Focus",
-    description: "Highlights recurring value with testimonials and FAQ. Best for membership or subscription products.",
+    description: "Provides editable recurring-access details and FAQs for membership or subscription products.",
     emoji: "🔄",
     config: {
       sections: [
@@ -198,21 +185,13 @@ const BUILT_IN_TEMPLATES: Array<{
           seals: [
             { id: "stripe_secure", preset: "stripe_secure", label: "Secure Payment", enabled: true },
             { id: "ssl_encrypted", preset: "ssl_encrypted", label: "SSL Encrypted", enabled: true },
-            { id: "satisfaction_guaranteed", preset: "satisfaction_guaranteed", label: "Cancel Anytime", enabled: true },
           ],
         },
         { type: "course_includes", enabled: true, order: 1, headline: "Everything you get" },
         {
-          type: "testimonials",
-          enabled: true,
-          order: 2,
-          headline: "What our members say",
-          testimonials: [],
-        },
-        {
           type: "faq",
           enabled: true,
-          order: 3,
+          order: 2,
           headline: "Frequently asked questions",
           items: [
             { id: "faq_1", question: "Can I cancel anytime?", answer: "Yes — you can cancel your subscription at any time from your account settings. You'll retain access until the end of your current billing period.", enabled: true },
@@ -225,7 +204,7 @@ const BUILT_IN_TEMPLATES: Array<{
   {
     id: "course_bundle",
     name: "Course Bundle",
-    description: "Emphasises value with a full seal grid, guarantee, and testimonials. Great for bundles and high-ticket offers.",
+    description: "Highlights included products with organization-configurable checkout information.",
     emoji: "📦",
     config: {
       sections: [
@@ -237,27 +216,9 @@ const BUILT_IN_TEMPLATES: Array<{
           seals: [
             { id: "stripe_secure", preset: "stripe_secure", label: "Secure Payment", enabled: true },
             { id: "ssl_encrypted", preset: "ssl_encrypted", label: "SSL Encrypted", enabled: true },
-            { id: "money_back_30", preset: "money_back_30", label: "30-Day Money-Back", enabled: true },
-            { id: "satisfaction_guaranteed", preset: "satisfaction_guaranteed", label: "Satisfaction Guaranteed", enabled: true },
           ],
         },
         { type: "course_includes", enabled: true, order: 1, headline: "Everything included in this bundle" },
-        {
-          type: "guarantee",
-          enabled: true,
-          order: 2,
-          icon: "ShieldCheck",
-          headline: "30-Day Money-Back Guarantee",
-          body: "Not satisfied? Get a full refund within 30 days — no questions asked.",
-          badgeLabel: "30-Day Guarantee",
-        },
-        {
-          type: "testimonials",
-          enabled: true,
-          order: 3,
-          headline: "Trusted by healthcare professionals",
-          testimonials: [],
-        },
       ],
     },
   },

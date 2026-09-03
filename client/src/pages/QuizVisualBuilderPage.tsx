@@ -83,7 +83,7 @@ export default function QuizVisualBuilderPage() {
           </aside>
         )}
       </div>
-      {showSettings && <QuizSettings onClose={() => setShowSettings(false)} />}
+      {showSettings && <QuizSettings onClose={() => setShowSettings(false)} canUseMockExams={Boolean(data?.mockExamEntitlement)} />}
       {showCloud && <CloudQuizBrowser onClose={() => setShowCloud(false)} />}
       {showPreview && <QuizPreview onClose={() => setShowPreview(false)} />}
     </div>

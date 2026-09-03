@@ -145,7 +145,7 @@ const PLANS = [
       "SSO / SAML integration",
       "White-label quiz player",
       "Unlimited storage",
-      "Custom SLA & uptime guarantee",
+      "Service-level planning",
       "Dedicated onboarding & training",
     ],
     cta: "Contact Sales",

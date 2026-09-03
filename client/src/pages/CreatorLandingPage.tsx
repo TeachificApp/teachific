@@ -53,7 +53,7 @@ const PLAN = {
   monthlyPrice: 117,
   annualPrice: 999,
   annualMonthly: 83, // 999/12 rounded
-  description: "Everything you need to build world-class eLearning — one simple plan.",
+  description: "Core tools to build eLearning in one plan.",
   cta: "Start Free Trial",
   // kept for legacy shape compatibility
   id: "pro",
@@ -71,7 +71,7 @@ const TIERS = [
     badge: null,
     monthlyPrice: 117,
     annualPrice: 999,
-    description: "Everything you need to build world-class eLearning — one simple plan.",
+    description: "Core tools to build eLearning in one plan.",
     features: PLAN_FEATURES,
     cta: "Start Free Trial",
     highlight: true,
@@ -88,7 +88,7 @@ const TIERS = [
       "Unlimited seats",
       "SSO / SAML integration",
       "On-premise deployment option",
-      "Custom SLA & uptime guarantee",
+      "Service-level planning",
       "Unlimited storage",
       "White-label player",
       "Dedicated onboarding & training",
@@ -248,7 +248,7 @@ export default function CreatorLandingPage() {
         <div className="relative max-w-4xl mx-auto text-center">
           <Badge className="mb-6 bg-[#24abbc]/20 text-[#4ad9e0] border-[#24abbc]/40 text-sm px-4 py-1">
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            The web-based iSpring alternative
+            Browser-based eLearning authoring
           </Badge>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight tracking-tight mb-6">
@@ -348,7 +348,7 @@ export default function CreatorLandingPage() {
       <section className="border-y border-white/10 bg-white/5 py-10 px-6">
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { value: "50,000+", label: "Courses Created" },
+            { value: "Web", label: "Browser-based authoring" },
             { value: "7", label: "Question Types" },
             { value: "SCORM 1.2 & 2004", label: "Export Standards" },
             { value: "14-day", label: "Free Trial" },
@@ -372,7 +372,7 @@ export default function CreatorLandingPage() {
               Built for Instructional Designers
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto">
-              Every feature you need to create world-class eLearning — without leaving your browser.
+              Create eLearning materials in your browser with integrated authoring tools.
             </p>
           </div>
 

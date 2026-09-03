@@ -159,7 +159,7 @@ function HeroSection() {
 
         <p className="max-w-2xl mx-auto text-xl text-gray-500 leading-relaxed mb-10">
           Course360™ gives educators, trainers, and creators everything they need to build, sell, and
-          deliver world-class online courses — without the technical headaches.
+          deliver online courses — without the technical headaches.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
@@ -574,7 +574,7 @@ const PRICING_TIERS: PricingTier[] = [
       "Unlimited storage",
       "Dedicated account manager",
       "Custom onboarding & training",
-      "SLA uptime guarantee",
+      "Service-level planning",
       "Custom integrations & API",
       "Audit logs & compliance reports",
             "Stripe payments — 0% platform fee",
@@ -786,8 +786,8 @@ function CtaSection() {
           Start building today.
         </h2>
         <p className="text-xl text-white/80 mb-10 max-w-xl mx-auto">
-          Join thousands of educators who chose Course360™ to share their expertise, grow their
-          audience, and build sustainable income from their knowledge.
+          Use Course360™ to share your expertise, grow an audience, and deliver learning experiences
+          from your own branded school.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a

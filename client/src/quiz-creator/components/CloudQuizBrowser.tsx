@@ -56,6 +56,7 @@ export function CloudQuizBrowser({ onClose }: Props) {
           showFeedback: "immediate" as const,
           allowRetry: true,
           maxAttempts: quiz.maxAttempts || 0,
+          mockExamEnabled: Boolean(quiz.mockExamEnabled),
           cloudId: quiz.id,
         },
         questions,

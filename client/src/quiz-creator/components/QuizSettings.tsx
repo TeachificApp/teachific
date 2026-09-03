@@ -5,11 +5,12 @@ import type { QuestionGroup, DrawConfig, GroupDrawConfig } from "../types/quiz";
 
 interface Props {
   onClose: () => void;
+  canUseMockExams?: boolean;
 }
 
 type Tab = "general" | "scoring" | "branding" | "navigation" | "groups" | "intro" | "results";
 
-export function QuizSettings({ onClose }: Props) {
+export function QuizSettings({ onClose, canUseMockExams = false }: Props) {
   const { quiz, updateMeta } = useQuizStore();
   const m = quiz.meta;
   const [tab, setTab] = useState<Tab>("general");
@@ -258,6 +259,30 @@ export function QuizSettings({ onClose }: Props) {
                   />
                   <span className="text-sm text-gray-700">Allow retry after failure</span>
                 </label>
+              </div>
+              <div className="space-y-3 pt-4 border-t border-gray-100">
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Mock Exam</h4>
+                  <p className="mt-1 text-xs text-gray-500">Enable final submission, flagged-question review, and answer review before scoring.</p>
+                </div>
+                {canUseMockExams ? (
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={m.mockExamEnabled ?? false}
+                      onChange={(e) => updateMeta({ mockExamEnabled: e.target.checked })}
+                      className="accent-teal-500 w-4 h-4"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Use mock-exam delivery</span>
+                      <p className="text-xs text-gray-400">Learners can flag questions and review their responses before final scoring.</p>
+                    </div>
+                  </label>
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
+                    Mock exams are available on Pro and Enterprise plans for this organization. <a href="/billing" className="font-semibold underline underline-offset-2">View plans</a>
+                  </div>
+                )}
               </div>
             </div>
           )}

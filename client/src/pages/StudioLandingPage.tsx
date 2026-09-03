@@ -19,7 +19,6 @@ import {
   Sparkles,
   ArrowRight,
   Play,
-  Star,
   Users,
   Clock,
   BarChart3,
@@ -39,7 +38,7 @@ const PLAN_FEATURES = [
   "Export to MP4 (up to 4K)",
   "Auto-save recordings to Media Library",
   "Snap-to-corner draggable camera bubble",
-  "Publish directly to Teachific LMS™",
+  "Publish directly to Course360 LMS™",
   "50 GB media storage",
   "Priority email & chat support",
 ];
@@ -47,11 +46,11 @@ const PLAN_FEATURES = [
 const PLANS = [
   {
     id: "pro",
-    name: "Teachific Studio™",
+    name: "Course360 Studio™",
     badge: null,
     monthlyPrice: 47,
     annualPrice: 399,
-    description: "Everything you need to record, edit, and publish professional training videos — one simple plan.",
+    description: "Tools to record, edit, and publish training videos in one plan.",
     features: PLAN_FEATURES,
     cta: "Start Free Trial",
     highlight: true,
@@ -64,11 +63,11 @@ const PLANS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in Teachific Studio™",
+      "Everything in Course360 Studio™",
       "Unlimited seats",
       "SSO / SAML integration",
       "Unlimited storage",
-      "Custom SLA & uptime guarantee",
+      "Service-level planning",
       "White-label player",
       "Dedicated onboarding & training",
     ],
@@ -120,35 +119,8 @@ const FEATURES = [
   },
   {
     icon: Mic,
-    title: "Publish to Teachific LMS™",
-    desc: "One-click publish your finished video directly to your Teachific school. Live in seconds.",
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: "James R.",
-    role: "L&D Manager",
-    company: "TechCorp Global",
-    quote:
-      "The transcript-based editing is a game-changer. I cut a 30-minute recording down to 12 minutes in under 5 minutes — just by deleting text.",
-    stars: 5,
-  },
-  {
-    name: "Anika S.",
-    role: "Instructional Designer",
-    company: "HealthLearn Inc.",
-    quote:
-      "Auto-highlight clips save me hours every week. Studio finds the best moments and I just approve them. My learners love the short-form previews.",
-    stars: 5,
-  },
-  {
-    name: "Tom W.",
-    role: "Freelance Trainer",
-    company: "Self-employed",
-    quote:
-      "At $47/mo I get everything I need: screen + cam recording, captions, and direct publish to my Teachific school. No other tool comes close.",
-    stars: 5,
+    title: "Publish to Course360 LMS™",
+    desc: "Publish finished video directly to your Course360 school.",
   },
 ];
 
@@ -169,7 +141,7 @@ export default function StudioLandingPage() {
 
   function handleCTA(planId: string) {
     if (planId === "enterprise") {
-      window.location.href = "mailto:sales@teachific.app";
+      window.location.href = "mailto:sales@course360.app";
       return;
     }
     if (user) {
@@ -187,7 +159,7 @@ export default function StudioLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-bold tracking-tight cursor-pointer">
-                <span className="text-white">Teachific</span>
+                <span className="text-white">Course360</span>
                 <span className="text-violet-400"> Studio</span>
                 <sup className="text-[10px] text-violet-400 ml-0.5">™</sup>
               </span>
@@ -195,7 +167,6 @@ export default function StudioLandingPage() {
             <div className="hidden md:flex items-center gap-6 text-sm text-white/70">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-              <a href="#testimonials" className="hover:text-white transition-colors">Reviews</a>
               <Link href="/studio" className="hover:text-white transition-colors">Dashboard</Link>
             </div>
           </div>
@@ -250,8 +221,8 @@ export default function StudioLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Teachific Studio™ is a professional screen and camera recording tool with AI transcription,
-            transcript-based editing, auto-highlight clips, and one-click publish to your Teachific LMS™.
+            Course360 Studio™ is a screen and camera recording tool with AI transcription,
+            transcript-based editing, auto-highlight clips, and direct publishing to Course360 LMS™.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -285,7 +256,7 @@ export default function StudioLandingPage() {
               <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
               <div className="w-3 h-3 rounded-full bg-green-500/60" />
               <div className="ml-4 flex-1 h-5 bg-white/5 rounded text-xs text-white/30 flex items-center px-3">
-                Teachific Studio™ — Module 3: Product Demo Recording
+                Course360 Studio™ — Module 3: Product Demo Recording
               </div>
             </div>
             <div className="flex h-[380px]">
@@ -398,53 +369,25 @@ export default function StudioLandingPage() {
         </div>
       </section>
 
-      {/* ── Comparison ──────────────────────────────────────────────────────── */}
+      {/* ── Workflow ────────────────────────────────────────────────────────── */}
       <section className="py-16 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">
-            Teachific Studio™ vs. Other Recording Tools
+            A Clear Recording Workflow
           </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-4 text-white/60 font-medium">Feature</th>
-                  <th className="py-3 px-4 text-violet-400 font-bold">Teachific Studio™</th>
-                  <th className="py-3 px-4 text-white/40 font-medium">Other Tools</th>
-                  <th className="py-3 px-4 text-white/40 font-medium">Screen Recorders</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["Screen + camera recording", true, true, true],
-                  ["AI transcription", true, true, false],
-                  ["Transcript-based editing", true, true, false],
-                  ["Auto-generate highlight clips", true, false, false],
-                  ["Direct LMS publish", true, false, false],
-                  ["Closed caption style editor", true, false, true],
-                  ["Starting price/mo", "$47", "$12.50", "$33"],
-                ].map(([feature, ts, other, cam], i) => (
-                  <tr key={i} className="border-b border-white/5 hover:bg-white/5">
-                    <td className="py-3 px-4 text-white/70">{feature}</td>
-                    {[ts, other, cam].map((val, j) => (
-                      <td key={j} className="py-3 px-4 text-center">
-                        {typeof val === "boolean" ? (
-                          val ? (
-                            <CheckCircle2 className="w-5 h-5 text-violet-400 mx-auto" />
-                          ) : (
-                            <span className="text-white/20">—</span>
-                          )
-                        ) : (
-                          <span className={j === 0 ? "text-violet-400 font-bold" : "text-white/40"}>
-                            {val}
-                          </span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ["Record", "Capture a screen, browser tab, window, camera, or combined layout."],
+              ["Refine", "Use the transcript, captions, and clip controls to prepare the recording."],
+              ["Publish", "Export the finished file or make it available through your Course360 school."],
+            ].map(([title, description]) => (
+              <Card key={title} className="border-white/10 bg-white/5">
+                <CardContent className="p-5">
+                  <h3 className="mb-2 font-semibold text-violet-300">{title}</h3>
+                  <p className="text-sm leading-relaxed text-white/60">{description}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -550,28 +493,22 @@ export default function StudioLandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ────────────────────────────────────────────────────── */}
-      <section id="testimonials" className="py-20 px-6 bg-white/5 border-y border-white/10">
+      {/* ── Workflow summary ────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-12">
-            Loved by Training Video Creators
+            From Recording to Delivery
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
-              <Card key={t.name} className="bg-white/5 border-white/10">
+            {[
+              ["Capture", "Record your chosen screen and camera layout in the browser."],
+              ["Edit", "Use transcript-aware editing, clips, and caption controls to prepare the video."],
+              ["Deliver", "Export the completed recording or publish it to your Course360 school."],
+            ].map(([title, description]) => (
+              <Card key={title} className="bg-white/5 border-white/10">
                 <CardContent className="p-6">
-                  <div className="flex gap-0.5 mb-4">
-                    {Array.from({ length: t.stars }).map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-white/70 leading-relaxed mb-4">"{t.quote}"</p>
-                  <div>
-                    <p className="font-semibold text-white text-sm">{t.name}</p>
-                    <p className="text-xs text-white/40">
-                      {t.role} · {t.company}
-                    </p>
-                  </div>
+                  <h3 className="mb-2 font-semibold text-violet-300">{title}</h3>
+                  <p className="text-sm text-white/70 leading-relaxed">{description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -590,8 +527,7 @@ export default function StudioLandingPage() {
                 Start Recording Today
               </h2>
               <p className="text-lg text-white/60 mb-8">
-                Join thousands of trainers and instructional designers who use Teachific Studio™ to create
-                professional training videos — without the complexity.
+                Use Course360 Studio™ to record and prepare training videos in your browser.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
@@ -610,7 +546,7 @@ export default function StudioLandingPage() {
                     className="border-white/20 text-white hover:bg-white/10 h-14 text-base px-8"
                   >
                     <Users className="mr-2 w-5 h-5" />
-                    View Teachific LMS™
+                    View Course360 LMS™
                   </Button>
                 </Link>
               </div>

@@ -229,13 +229,12 @@ export default function RegisterPage() {
             ))}
           </div>
 
-          {/* Testimonial */}
+          {/* Onboarding guidance */}
           {!hasBlueprintInstall && (
             <div className="rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
-              <p className="text-white/70 text-sm italic leading-relaxed">
-                "Teachific helped me go from zero to $12K/month in under 6 months. The platform just works."
+              <p className="text-white/70 text-sm leading-relaxed">
+                Create your account to set up a school, add content, and invite learners when you are ready.
               </p>
-              <p className="text-white/40 text-xs mt-2">— Sarah K., Nutrition Coach</p>
             </div>
           )}
         </div>

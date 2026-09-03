@@ -679,6 +679,11 @@ describe("latest Ultrasound-App learning feature port", () => {
     const landingPageSource = readFileSync(new URL("../client/src/pages/LandingPage.tsx", import.meta.url), "utf8");
     const quizCreatorLandingSource = readFileSync(new URL("../client/src/pages/QuizCreatorLandingPage.tsx", import.meta.url), "utf8");
     const creatorLandingSource = readFileSync(new URL("../client/src/pages/CreatorLandingPage.tsx", import.meta.url), "utf8");
+    const studioLandingSource = readFileSync(new URL("../client/src/pages/StudioLandingPage.tsx", import.meta.url), "utf8");
+    const registerPageSource = readFileSync(new URL("../client/src/pages/auth/RegisterPage.tsx", import.meta.url), "utf8");
+    const adminLandingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const lmsLandingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const checkoutEditorSource = readFileSync(new URL("../client/src/components/CheckoutPageEditor.tsx", import.meta.url), "utf8");
     expect(landingPageSource).not.toContain("Dr. Sarah Mitchell");
     expect(landingPageSource).not.toContain("James Okafor");
     expect(landingPageSource).not.toContain("Priya Sharma");
@@ -688,12 +693,82 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingPageSource).not.toContain("$12,480");
     expect(landingPageSource).not.toContain("Revenue up 34% this month");
     expect(landingPageSource).not.toContain("847 new enrollments");
+    expect(landingPageSource).not.toContain("world-class online courses");
     expect(quizCreatorLandingSource).not.toContain("TESTIMONIALS");
     expect(quizCreatorLandingSource).not.toContain("Trusted by Educators Who Create at Scale");
     expect(quizCreatorLandingSource).toContain("A Clear Assessment Workflow");
     expect(creatorLandingSource).not.toContain("TESTIMONIALS");
     expect(creatorLandingSource).not.toContain("Loved by Instructional Designers");
+    expect(creatorLandingSource).not.toContain("world-class eLearning");
+    expect(creatorLandingSource).not.toContain("50,000+");
+    expect(creatorLandingSource).not.toContain("iSpring alternative");
+    expect(creatorLandingSource).toContain("Browser-based eLearning authoring");
     expect(creatorLandingSource).toContain("From Outline to Learning Experience");
+    expect(studioLandingSource).not.toContain("TESTIMONIALS");
+    expect(studioLandingSource).not.toContain("#testimonials");
+    expect(studioLandingSource).not.toContain("Teachific Studio™");
+    expect(studioLandingSource).not.toContain("sales@teachific.app");
+    expect(studioLandingSource).not.toContain("Join thousands of trainers");
+    expect(studioLandingSource).not.toContain("vs. Other Recording Tools");
+    expect(studioLandingSource).toContain("A Clear Recording Workflow");
+    expect(studioLandingSource).toContain("From Recording to Delivery");
+    expect(registerPageSource).not.toContain("Sarah K., Nutrition Coach");
+    expect(registerPageSource).not.toContain("$12K/month");
+    expect(registerPageSource).toContain("Create your account to set up a school");
+    for (const builderSource of [adminLandingBuilderSource, lmsLandingBuilderSource]) {
+      expect(builderSource).not.toContain('headline: "Trusted By"');
+      expect(builderSource).not.toContain('a: "You get lifetime access."');
+      expect(builderSource).not.toContain("Join thousands of educators improving their skills.");
+      expect(builderSource).toContain('headline: "Organization logos"');
+      expect(builderSource).toContain('a: "Access is set by the course owner."');
+    }
+    expect(lmsLandingBuilderSource).not.toContain('headline: "Join fellow learners"');
+    const checkoutTemplateSource = checkoutEditorSource.slice(
+      checkoutEditorSource.indexOf("const BUILT_IN_TEMPLATES"),
+      checkoutEditorSource.indexOf("// ─── Section metadata"),
+    );
+    expect(checkoutTemplateSource).toContain('name: "Detailed Checkout"');
+    expect(checkoutTemplateSource).not.toContain("high_trust_medical");
+    expect(checkoutTemplateSource).not.toContain("hipaa_compliant");
+    expect(checkoutTemplateSource).not.toContain("accredited_cme");
+    expect(checkoutTemplateSource).not.toContain("money_back_30");
+    expect(checkoutTemplateSource).not.toContain("satisfaction_guaranteed");
+    expect(checkoutTemplateSource).not.toContain('type: "guarantee"');
+    expect(checkoutTemplateSource).not.toContain('type: "testimonials"');
+  });
+
+  it("audits every route-backed static Course360 platform marketing and support surface for unsupported public claims", () => {
+    const staticPlatformSources = [
+      "../client/src/pages/LandingPage.tsx",
+      "../client/src/pages/HelpPage.tsx",
+      "../client/src/pages/SupportPage.tsx",
+      "../client/src/pages/PlatformPoliciesPage.tsx",
+      "../client/src/pages/QuizCreatorGate.tsx",
+      "../client/src/pages/QuizCreatorLandingPage.tsx",
+      "../client/src/pages/StudioLandingPage.tsx",
+      "../client/src/pages/CreatorLandingPage.tsx",
+      "../client/src/pages/DesktopDownloadPage.tsx",
+      "../client/src/pages/auth/LoginPage.tsx",
+      "../client/src/pages/auth/RegisterPage.tsx",
+      "../client/src/pages/auth/ForgotPasswordPage.tsx",
+      "../client/src/pages/auth/ResetPasswordPage.tsx",
+      "../client/src/pages/auth/VerifyEmailPage.tsx",
+      "../client/src/pages/auth/MagicLinkVerifyPage.tsx",
+      "../client/src/pages/blueprints/BlueprintLandingPage.tsx",
+    ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
+    const prohibitedStaticClaims = [
+      "TESTIMONIALS",
+      "Trusted by educators worldwide",
+      "world-class",
+      "Join thousands",
+      "10,000+",
+      "50,000+",
+      "iSpring alternative",
+      "Full refund guarantee",
+    ];
+    for (const source of staticPlatformSources) {
+      for (const claim of prohibitedStaticClaims) expect(source).not.toContain(claim);
+    }
   });
 
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
@@ -1223,6 +1298,40 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(shareDialogSource).toContain("unpublishMutation");
     expect(shareDialogSource).toContain("Publish Quiz");
     expect(shareDialogSource).toContain("Draft — Unpublish");
+  });
+
+  it("maps organization-scoped Pro mock exams from the Visual Builder through protected publication to standalone learner review", () => {
+    const schemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
+    const routerSource = readFileSync(new URL("../server/quizMakerRouter.ts", import.meta.url), "utf8");
+    const settingsSource = readFileSync(new URL("../client/src/quiz-creator/components/QuizSettings.tsx", import.meta.url), "utf8");
+    const workspaceSource = readFileSync(new URL("../client/src/pages/QuizVisualBuilderPage.tsx", import.meta.url), "utf8");
+    const playerSource = readFileSync(new URL("../client/src/pages/PublicQuizPlayerPage.tsx", import.meta.url), "utf8");
+    expect(schemaSource).toContain('mockExamEnabled: boolean("mock_exam_enabled").default(false).notNull()');
+    expect(routerSource).toContain("async function requireMockExamPlan");
+    expect(routerSource).toContain("activeOrgId !== quizOrgId");
+    expect(routerSource).toContain("Mock exams are available on Pro and Enterprise plans");
+    expect(routerSource).toContain("requestedMockExamEnabled");
+    const cloudSaveStart = routerSource.indexOf("saveQuiz: protectedProcedure");
+    const cloudSaveEnd = routerSource.indexOf("findAndReplaceText:", cloudSaveStart);
+    const cloudSaveSource = routerSource.slice(cloudSaveStart, cloudSaveEnd);
+    expect(cloudSaveSource).toContain("if (requestedMockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);");
+    expect(cloudSaveSource.indexOf("if (requestedMockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);"))
+      .toBeLessThan(cloudSaveSource.indexOf("// Parse settings to apply quiz-level fields"));
+    expect(routerSource).toContain("if (quiz.mockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId)");
+    expect(routerSource).toContain("getPublishedQuiz: publicProcedure");
+    expect(routerSource).toContain("mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams)");
+    expect(routerSource).toContain("builderConfig: buildVisualQuizConfig");
+    expect(settingsSource).toContain("canUseMockExams?: boolean");
+    expect(settingsSource).toContain("Mock exams are available on Pro and Enterprise plans for this organization");
+    expect(workspaceSource).toContain("canUseMockExams={Boolean(data?.mockExamEntitlement)}");
+    expect(playerSource).toContain("const isMockExam = Boolean((quiz as any).mockExamEnabled)");
+    expect(playerSource).toContain("Mock exam review");
+    expect(playerSource).toContain("Flag question");
+    expect(playerSource).toContain("Submit for final scoring");
+    expect(playerSource).toContain('{isMockExam ? "Review answers" : "Submit Quiz"}');
+    expect(playerSource).toContain("getMockExamReviewSummary");
+    expect(playerSource).toContain("toggleMockExamFlag(current, q.id)");
+    expect(playerSource).toContain("shouldOpenMockExamReview(isMockExam, isLastLinear)");
   });
 
   it("wires the Quiz Creator staff preview through a protected route without recording learner attempts", () => {

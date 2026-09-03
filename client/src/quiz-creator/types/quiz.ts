@@ -313,6 +313,8 @@ export interface QuizMeta {
   showFeedback: "immediate" | "deferred" | "never";
   allowRetry: boolean;
   maxAttempts: number;
+  /** Persisted on the owning standalone quiz only after the server verifies a Pro-or-higher organization plan. */
+  mockExamEnabled?: boolean;
   // Enhanced features
   branding?: QuizBranding;
   introSlide?: QuizIntroSlide;

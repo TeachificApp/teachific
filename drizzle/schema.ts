@@ -4235,6 +4235,7 @@ export const quizzes = mysqlTable("quizzes", {
   showExplanations: boolean("show_explanations").default(true).notNull(),
   allowPartialCredit: boolean("allow_partial_credit").default(true).notNull(),
   penaltyForWrong: boolean("penalty_for_wrong").default(false).notNull(),
+  mockExamEnabled: boolean("mock_exam_enabled").default(false).notNull(),
   isPublished: boolean("isPublished").default(false).notNull(),
   visibility: mysqlEnum("visibility", ["draft","published","hidden","private","archived"]).default("private").notNull(),
   quizType: varchar("quiz_type", { length: 32 }).default("assessment").notNull(),

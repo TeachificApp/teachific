@@ -1,9 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import React from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Clock, Award, Flag } from "lucide-react";
 import type { QuizQuestion, McqData, TfData, MatchingData, HotspotData, FillBlankData, ShortAnswerData, ImageChoiceData, OrderingData, DragWordsData, DropdownData, NumericData, LikertData, EssayData, BranchRule, DrawConfig } from "@/quiz-creator/types/quiz";
 import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInteractions";
+import { getMockExamReviewSummary, shouldOpenMockExamReview, toggleMockExamFlag } from "../../../shared/mockExamFlow";
 import {
   ImageComparisonPlayer,
   DragSortPlayer,
@@ -558,6 +560,8 @@ export default function PublicQuizPlayerPage() {
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [submitted, setSubmitted] = useState(false);
   const [started, setStarted] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, true>>({});
   const startTimeRef = useRef<number>(0);
 
   // Branching state: tracks the path of question IDs visited
@@ -660,6 +664,8 @@ export default function PublicQuizPlayerPage() {
   }
 
   const totalPoints = questions.reduce((s, q) => s + q.points, 0);
+  const isMockExam = Boolean((quiz as any).mockExamEnabled);
+  const mockExamReviewSummary = getMockExamReviewSummary(questions, answers, flaggedQuestions);
 
   // ─── Start Screen ──────────────────────────────────────────────────────────
   if (!started) {
@@ -766,7 +772,7 @@ export default function PublicQuizPlayerPage() {
 
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => { setSubmitted(false); setAnswers({}); setCurrentIdx(0); startTimeRef.current = Date.now(); }}
+            onClick={() => { setSubmitted(false); setReviewing(false); setAnswers({}); setFlaggedQuestions({}); setCurrentIdx(0); startTimeRef.current = Date.now(); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
             >
               <RotateCcw className="w-4 h-4" /> Retry
@@ -802,6 +808,43 @@ export default function PublicQuizPlayerPage() {
 
     setSubmitted(true);
   };
+
+  if (isMockExam && reviewing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: bgGradient }}>
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: primaryColor }}>
+              <Flag className="h-4 w-4" /> Mock exam review
+            </div>
+            <h1 className="mt-1 text-2xl font-bold text-gray-800">Review your responses</h1>
+            <p className="mt-1 text-sm text-gray-500">{mockExamReviewSummary.answeredCount} of {questions.length} questions answered{mockExamReviewSummary.flaggedCount ? ` · ${mockExamReviewSummary.flaggedCount} flagged` : ""}. Choose a question to review before final scoring.</p>
+          </div>
+          <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
+            {mockExamReviewSummary.questions.map((question) => {
+              return (
+                <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => { setCurrentIdx(question.index); setReviewing(false); }}
+                  aria-label={`Review question ${question.index + 1}${question.answered ? ", answered" : ", unanswered"}${question.flagged ? ", flagged" : ""}`}
+                  className={`relative rounded-lg border px-2 py-2 text-sm font-semibold transition-colors ${question.answered ? "border-[var(--org-primary)] bg-[color:color-mix(in_srgb,var(--org-primary)_12%,white)] text-[var(--org-primary)]" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
+                  style={question.answered ? ({ "--org-primary": primaryColor } as React.CSSProperties) : undefined}
+                >
+                  {question.index + 1}
+                  {question.flagged && <Flag className="absolute -right-1 -top-1 h-3.5 w-3.5 fill-amber-400 text-amber-500" />}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+            <button type="button" onClick={() => setReviewing(false)} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Continue reviewing</button>
+            <button type="button" onClick={handleSubmit} className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white" style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}>Submit for final scoring</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─── Question Screen ───────────────────────────────────────────────────────
   const q = questions[currentIdx];
@@ -849,6 +892,17 @@ export default function PublicQuizPlayerPage() {
                 Q{currentIdx + 1}
               </span>
               <span className="text-xs text-gray-400">{q.points} point{q.points !== 1 ? "s" : ""}</span>
+              {isMockExam && (
+                <button
+                  type="button"
+                  onClick={() => setFlaggedQuestions((current) => toggleMockExamFlag(current, q.id))}
+                  className={`ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${flaggedQuestions[q.id] ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                  aria-pressed={Boolean(flaggedQuestions[q.id])}
+                >
+                  <Flag className={`h-3.5 w-3.5 ${flaggedQuestions[q.id] ? "fill-amber-400" : ""}`} />
+                  {flaggedQuestions[q.id] ? "Flagged" : "Flag question"}
+                </button>
+              )}
             </div>
             <p className="text-base font-medium text-gray-800">{q.stem || "(No question text)"}</p>
              {q.image && <img src={q.image.url} alt={q.image.alt} className="mt-3 rounded-xl max-h-48 object-cover" />}
@@ -939,7 +993,7 @@ export default function PublicQuizPlayerPage() {
 
                 if (target) {
                   if (target.type === "end" || target.type === "result") {
-                    handleSubmit();
+                    if (shouldOpenMockExamReview(isMockExam, true)) setReviewing(true); else handleSubmit();
                     return;
                   }
                   if (target.type === "question") {
@@ -951,7 +1005,7 @@ export default function PublicQuizPlayerPage() {
                 if (currentIdx < questions.length - 1) {
                   setCurrentIdx((i) => i + 1);
                 } else {
-                  handleSubmit();
+                  if (shouldOpenMockExamReview(isMockExam, true)) setReviewing(true); else handleSubmit();
                 }
               } else {
                 setCurrentIdx((i) => i + 1);
@@ -973,11 +1027,11 @@ export default function PublicQuizPlayerPage() {
 
             return isLastLinear ? (
               <button
-                onClick={handleSubmit}
+                onClick={() => shouldOpenMockExamReview(isMockExam, isLastLinear) ? setReviewing(true) : handleSubmit()}
                 className="px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all"
                 style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
               >
-                Submit Quiz
+                {isMockExam ? "Review answers" : "Submit Quiz"}
               </button>
             ) : (
               <button
