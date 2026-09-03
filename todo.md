@@ -25,6 +25,7 @@
 - [x] Add component-level render coverage proving mounted shared Layout navigation exposes only Course360-safe dashboard, learning, community, and billing destinations
 - [x] Remove active source-specific clinical, accreditation, and educator account-menu entries from shared Layout while retaining platform administration, instructor, affiliate, dashboard, and billing access
 - [x] Remove the active legacy shared-layout store promotion and source-specific store label while retaining Course360 platform and organization-owned product navigation
+- [x] Replace active Course Builder organization-domain examples and destination placeholders with Course360 equivalents while preserving verified custom-domain guidance
 - [x] Rebrand active Stripe subscription catalog product names and descriptions to Course360 without changing price identifiers or billing behavior
 - [x] Rebrand active Stripe Creator, Studio, and Quiz Creator checkout messages to Course360 without changing product keys or checkout flows
 - [x] Add explicit server-side return-origin validation for Creator, Studio, and Quiz Creator checkout before creating Stripe sessions

@@ -6161,7 +6161,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           <div className="space-y-3 py-2">
             <div>
               <Label className="text-xs">Destination URL *</Label>
-              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://your-school.teachific.app/courses/..." className="mt-1 text-sm" />
+              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://your-school.course360.app/courses/..." className="mt-1 text-sm" />
             </div>
             <div>
               <Label className="text-xs">Custom Slug (optional)</Label>
@@ -11521,31 +11521,31 @@ function LMSPublishDomainSettings() {
                 value={courseDomain}
                 onChange={setCourseDomain}
                 label="Courses Default Domain"
-                description="Course landing pages use your org domain by default (e.g. yourslug.teachific.app/courses/course-slug) or a verified custom domain."
+                description="Course landing pages use your org domain by default (e.g. yourslug.course360.app/courses/course-slug) or a verified custom domain."
               />
               <DomainSelect
                 value={funnelDomain}
                 onChange={setFunnelDomain}
                 label="Funnels Default Domain"
-                description="Funnels use your org domain by default (e.g. yourslug.teachific.app/funnel-slug/page-slug) or a verified funnel domain."
+                description="Funnels use your org domain by default (e.g. yourslug.course360.app/funnel-slug/page-slug) or a verified funnel domain."
               />
               <DomainSelect
                 value={downloadDomain}
                 onChange={setDownloadDomain}
                 label="Downloads Default Domain"
-                description="Download landing pages use your org domain by default (e.g. yourslug.teachific.app/downloads/download-slug) or a verified download domain."
+                description="Download landing pages use your org domain by default (e.g. yourslug.course360.app/downloads/download-slug) or a verified download domain."
               />
               <DomainSelect
                 value={productDomain}
                 onChange={setProductDomain}
                 label="Products Default Domain"
-                description="Product pages use your org domain by default (e.g. yourslug.teachific.app/products/product-slug) or a verified product domain."
+                description="Product pages use your org domain by default (e.g. yourslug.course360.app/products/product-slug) or a verified product domain."
               />
               <DomainSelect
                 value={formDomain}
                 onChange={setFormDomain}
                 label="Forms Default Domain"
-                description="Public forms use your org domain by default (e.g. yourslug.teachific.app/forms/form-slug) or a verified form domain."
+                description="Public forms use your org domain by default (e.g. yourslug.course360.app/forms/form-slug) or a verified form domain."
               />
               <div className="flex justify-end pt-2 border-t border-gray-100">
                 <Button
