@@ -2,7 +2,7 @@
  * Account Sharing Monitor
  * 
  * Detects potential account sharing by monitoring IP access patterns for paid content.
- * Flags accounts with suspicious multi-IP usage and alerts support@teachific.com.
+ * Flags accounts with suspicious multi-IP usage and alerts the Course360 support inbox.
  * 
  * Detection rules:
  * - 3+ distinct IPs accessing paid content within a 24-hour window → flagged
@@ -19,8 +19,10 @@ import { sendEmail } from "../sendgrid";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const ALERT_EMAIL = "support@teachific.com";
-const ALERT_NAME = "Support Team";
+export const ACCOUNT_SHARING_ALERT_RECIPIENT = {
+  email: "support@course360.app",
+  name: "Course360 Support",
+} as const;
 
 // Thresholds
 const MAX_IPS_24H = 3;       // Max distinct IPs in 24 hours before flagging
@@ -172,7 +174,7 @@ async function detectSuspiciousAccounts(): Promise<SuspiciousUser[]> {
 
 // ─── Flagging & Alerting ──────────────────────────────────────────────────────
 
-function buildAlertEmail(flaggedUsers: SuspiciousUser[]): string {
+export function buildAccountSharingAlertEmail(flaggedUsers: SuspiciousUser[]): string {
   const rows = flaggedUsers.map(u => `
     <tr style="border-bottom: 1px solid #e5e7eb;">
       <td style="padding: 12px 8px; font-size: 14px;">${u.userName || "Unknown"}</td>
@@ -236,7 +238,7 @@ function buildAlertEmail(flaggedUsers: SuspiciousUser[]): string {
       </div>
       <div style="padding: 16px; background: #f9fafb; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
         <p style="margin: 0; font-size: 12px; color: #9ca3af; text-align: center;">
-          This is an automated alert from the Teachific™ Account Sharing Monitor
+          This is an automated alert from the Course360™ Account Sharing Monitor
         </p>
       </div>
     </div>
@@ -262,18 +264,18 @@ async function flagAndAlert(suspiciousUsers: SuspiciousUser[]): Promise<void> {
   }
 
   // Send consolidated alert email
-  const htmlBody = buildAlertEmail(suspiciousUsers);
-  const subject = `⚠️ Account Sharing Alert: ${suspiciousUsers.length} account${suspiciousUsers.length > 1 ? "s" : ""} flagged`;
+  const htmlBody = buildAccountSharingAlertEmail(suspiciousUsers);
+  const subject = `Course360 Account Sharing Alert: ${suspiciousUsers.length} account${suspiciousUsers.length > 1 ? "s" : ""} flagged`;
 
   const sent = await sendEmail({
-    to: { name: ALERT_NAME, email: ALERT_EMAIL },
+    to: ACCOUNT_SHARING_ALERT_RECIPIENT,
     subject,
     htmlBody,
     previewText: `${suspiciousUsers.length} account(s) flagged for potential sharing abuse`,
   });
 
   if (sent) {
-    console.log(`[SharingMonitor] Alert sent to ${ALERT_EMAIL} for ${suspiciousUsers.length} user(s)`);
+    console.log(`[SharingMonitor] Alert sent to ${ACCOUNT_SHARING_ALERT_RECIPIENT.email} for ${suspiciousUsers.length} user(s)`);
   } else {
     console.warn("[SharingMonitor] Failed to send alert email");
   }

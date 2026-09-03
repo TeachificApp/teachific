@@ -1856,12 +1856,12 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(formBuilderSource).not.toContain("bg-purple-50");
   });
 
-  it("uses Course360 wording in SCORM health alerts while retaining compatible account-sharing monitoring", () => {
+  it("uses Course360 wording in SCORM and account-sharing operational alerts while retaining compatible monitoring", () => {
     const healthAlertSource = readFileSync(new URL("./lib/scormHealthAlerts.ts", import.meta.url), "utf8");
     const sharingMonitorSource = readFileSync(new URL("./jobs/sharingMonitor.ts", import.meta.url), "utf8");
     expect(healthAlertSource).toContain('subject: `[Course360] SCORM health alert');
     expect(healthAlertSource).toContain('brandMode: "teachific"');
-    expect(sharingMonitorSource).toContain("Teachific™ Account Sharing Monitor");
+    expect(sharingMonitorSource).toContain("Course360™ Account Sharing Monitor");
     expect(`${healthAlertSource}\n${sharingMonitorSource}`).not.toContain("UltrasoundAssist");
   });
 

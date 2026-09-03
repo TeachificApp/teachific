@@ -171,6 +171,7 @@
 - [x] Rebrand organization-link invitation emails to Course360 and resolve acceptance links through the initiating organization’s verified base URL
 - [x] Resolve Stripe purchase notification dashboard links from the owning organization’s verified learner base URL
 - [x] Rebrand active SCORM health-alert platform fallback URLs and administrator notification copy to Course360 without changing global alert scope
+- [x] Rebrand active account-sharing monitor platform alert copy and fallback recipient to Course360 without changing its scheduled monitoring behavior
 - [x] Resolve static organization metadata from Course360 subdomains and verified custom domains without emitting retired platform canonical URLs
 - [x] Audit active Course360 learner, checkout, invitation, and notification URL construction for platform-domain fallbacks and fix the verified email campaign tracking routing gap
 - [x] Scope administrator-created password-reset emails to the owning organization domain when active organization context is available
