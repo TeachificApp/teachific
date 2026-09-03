@@ -31,15 +31,15 @@ const FAQS = [
     items: [
       {
         q: "What creative tools are included with my subscription?",
-        a: "Teachific Studio™ (video recording & editing), TeachificCreator™ (eLearning authoring), and Teachific QuizMaker™ (quiz builder) are all web-based tools available within your dashboard. Access depends on your plan tier.",
+        a: "Course360 Studio™ (video recording & editing), Course360 Creator™ (eLearning authoring), and Course360 Quiz Creator™ (quiz builder) are all web-based tools available within your dashboard. Access depends on your plan tier.",
       },
       {
-        q: "Which plan do I need for Teachific Studio™?",
-        a: "Teachific Studio™ is available on the Builder plan and above. It includes browser-based video/audio recording, AI transcription, caption styling, and clip extraction.",
+        q: "Which plan do I need for Course360 Studio™?",
+        a: "Course360 Studio™ is available on the Builder plan and above. It includes browser-based video/audio recording, AI transcription, caption styling, and clip extraction.",
       },
       {
-        q: "Can I use TeachificCreator™ to build interactive eLearning content?",
-        a: "Yes! TeachificCreator™ is a full web-based authoring tool for creating interactive slides, SCORM packages, and multimedia lessons. Access it from the Studio dashboard or the Creator section.",
+        q: "Can I use Course360 Creator™ to build interactive eLearning content?",
+        a: "Yes! Course360 Creator™ is a full web-based authoring tool for creating interactive slides, SCORM packages, and multimedia lessons. Access it from the Studio dashboard or the Creator section.",
       },
       {
         q: "How do I access QuizMaker™?",
@@ -56,7 +56,7 @@ const FAQS = [
       },
       {
         q: "Can students access courses on mobile?",
-        a: "Yes. The Teachific learner portal is fully responsive and works on all modern mobile browsers. Students can also access courses through your school's subdomain.",
+        a: "Yes. The Course360 learner portal is fully responsive and works on all modern mobile browsers. Students can also access courses through your school's subdomain.",
       },
       {
         q: "How do I issue certificates?",
@@ -64,7 +64,7 @@ const FAQS = [
       },
       {
         q: "What video formats are supported?",
-        a: "Teachific supports MP4, MOV, and WebM video files. We recommend MP4 (H.264) for best compatibility. Videos are processed and streamed optimally after upload.",
+        a: "Course360 supports MP4, MOV, and WebM video files. We recommend MP4 (H.264) for best compatibility. Videos are processed and streamed optimally after upload.",
       },
     ],
   },
@@ -73,7 +73,7 @@ const FAQS = [
     items: [
       {
         q: "What browsers are supported?",
-        a: "Teachific works best on the latest versions of Chrome, Firefox, Edge, and Safari. Internet Explorer is not supported.",
+        a: "Course360 works best on the latest versions of Chrome, Firefox, Edge, and Safari. Internet Explorer is not supported.",
       },
       {
         q: "How do I embed a course or quiz on my website?",
@@ -129,7 +129,7 @@ export default function HelpPage() {
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Link href="/" className="text-2xl font-bold tracking-tight">
-              teach<span className="text-[#4ad9e0]">ific</span>
+              Course360<span className="text-[#4ad9e0]">™</span>
               <span className="text-xs align-super text-[#4ad9e0] ml-0.5">™</span>
             </Link>
           </div>
@@ -197,12 +197,12 @@ export default function HelpPage() {
             asChild
             className="bg-[#4ad9e0] hover:bg-[#3bc8cf] text-[#0d1b2e] font-semibold"
           >
-            <a href="mailto:support@teachific.net">
+            <a href="mailto:support@course360.app">
               <Mail className="w-4 h-4 mr-2" />
               Email Support
             </a>
           </Button>
-          <p className="text-slate-400 text-xs mt-4">support@teachific.net</p>
+          <p className="text-slate-400 text-xs mt-4">support@course360.app</p>
         </div>
       </div>
     </div>
