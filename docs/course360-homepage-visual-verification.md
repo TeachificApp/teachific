@@ -6,4 +6,6 @@ After the preview stabilized, a standard viewport capture rendered normally and 
 
 Later on September 3, 2026, after the development service had stabilized following a restart, both a fresh standard desktop viewport capture and a full-page desktop capture rendered the complete Course360 landing page normally. This improves confidence that the blank result is timing-related, but the intermittent post-restart condition remains open until it is reproduced or ruled out through additional clean-restart checks.
 
+After the latest organization-domain routing checkpoints on September 3, 2026, a fresh 1280×720 standard capture and the subsequent full-page capture both rendered normally. The standard capture showed the complete navigation and hero, and the full-page capture showed the complete public page through its Course360 footer. No client-console errors or failed network requests were observed during the related post-restart checks. This is additional monitoring evidence only; the intermittent post-restart capture item remains open.
+
 When it renders, the visible hero uses the Course360 logo, the revised factual headline and description, a neutral account-creation call to action, and neutral capability labels. No user-generated reviews, volume claims, comparative claims, free-plan promises, or setup-time promises appear in the verified viewport.
