@@ -49,8 +49,8 @@ const DEFAULT_TEMPLATE: Omit<CertTemplate, "id" | "createdAt"> = {
   accentColor: "#c9a84c",
   textColor: "#0e1e2e",
   fontFamily: "Helvetica",
-  footerText: "teachific.app  ·  © Teachific™",
-  organizationName: "Teachific",
+  footerText: "course360.app  ·  © Course360™",
+  organizationName: "Course360",
   layout: "classic",
   pdfTemplateUrl: null,
   isDefault: false,
@@ -180,7 +180,7 @@ function TemplateEditor({
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Footer</p>
         <div>
           <Label>Footer Text</Label>
-          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="teachific.app  ·  © Teachific™" />
+          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="course360.app  ·  © Course360™" />
         </div>
       </div>
 

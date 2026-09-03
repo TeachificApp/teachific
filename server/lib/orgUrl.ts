@@ -3,14 +3,14 @@
  *
  * Mirrors client/src/lib/orgUrl.ts so server code (emails, webhooks, etc.)
  * always builds URLs scoped to the org's own subdomain or custom domain
- * instead of hardcoding learn.teachific.com.
+ * instead of hardcoding a platform learning domain.
  */
 
 /**
  * Returns the base URL for an org.
  * Priority:
  *  1. Verified custom domain
- *  2. {slug}.teachific.app
+ *  2. {slug}.course360.app
  */
 export function getOrgBaseUrl(
   slug: string,
@@ -23,7 +23,7 @@ export function getOrgBaseUrl(
     }
     return `https://${customDomain}`;
   }
-  return `https://${slug}.teachific.app`;
+  return `https://${slug}.course360.app`;
 }
 
 /** Returns the full URL for a course page on the org's subdomain. */

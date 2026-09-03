@@ -1343,7 +1343,7 @@ export default function CourseLanding() {
   const landingOrganizationName = organization?.name
     ?? (course as any)?.organizationName
     ?? (course as any)?.orgName
-    ?? "Teachific™";
+    ?? "Course360™";
   const isOrganizationLanding = !!organizationSlug && !!organization?.id;
   const heroColor = lp?.heroImageUrl ? undefined : landingAccentColor;
   const heroBg = lp?.heroImageUrl
@@ -1352,8 +1352,8 @@ export default function CourseLanding() {
 
   // Set page title
   useEffect(() => {
-    if (course?.title) document.title = `${course.title} | ${isOrganizationLanding ? landingOrganizationName : "Teachific™"}`;
-    return () => { document.title = isOrganizationLanding ? landingOrganizationName : "Teachific™"; };
+    if (course?.title) document.title = `${course.title} | ${isOrganizationLanding ? landingOrganizationName : "Course360™"}`;
+    return () => { document.title = isOrganizationLanding ? landingOrganizationName : "Course360™"; };
   }, [course?.title, isOrganizationLanding, landingOrganizationName]);
 
   return (
@@ -1378,7 +1378,7 @@ export default function CourseLanding() {
               </Badge>
               <Badge variant="outline" className="border-teal-400 text-teal-200 flex items-center gap-1.5">
                 {isOrganizationLanding && organization?.logoUrl && <img src={organization.logoUrl} alt="" className="h-3.5 max-w-16 object-contain" />}
-                {isOrganizationLanding ? landingOrganizationName : "Teachific™"}
+                {isOrganizationLanding ? landingOrganizationName : "Course360™"}
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{lp?.heroTitle ?? course.title}</h1>

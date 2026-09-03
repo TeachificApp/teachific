@@ -1,5 +1,5 @@
 /**
- * LMSLayout — Dedicated layout for the teachific.app/learn subdomain.
+ * LMSLayout — Dedicated layout for the Course360 learning domain.
  * No sidebar — navigation is handled via the top header only.
  *
  * My Dashboard and My Profile redirect to the platform home
@@ -18,7 +18,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import NameCollectionModal from "@/components/NameCollectionModal";
 
-const PLATFORM_LOGO_URL: string | null = null;
+const PLATFORM_LOGO_URL = import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png";
 const MEMBERS_URL = "/";
 import { getAdminUrl, APP_URL, getSubdomain } from "@/hooks/useSubdomain";
 import { useSiteNavMenu } from "@/hooks/useSiteNavMenu";
@@ -32,7 +32,7 @@ interface NavItem {
   external?: boolean;
 }
 
-const PLATFORM_SITE_URL = "https://teachific.app";
+const PLATFORM_SITE_URL = "https://course360.app";
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Education Library", href: "/education-library", icon: <BookOpen className="w-4 h-4" /> },
@@ -49,7 +49,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
     { enabled: !!subdomain },
   );
   const isOrganizationShell = !!subdomain;
-  const shellBrandName = organization?.name ?? "Teachific™";
+  const shellBrandName = organization?.name ?? "Course360™";
   const shellBrandLogo = organization?.logoUrl ?? PLATFORM_LOGO_URL;
   const defaultNavItems = NAV_ITEMS;
   const { items: headerNavItems } = useSiteNavMenu("header", defaultNavItems.map((item) => ({
@@ -113,7 +113,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             >
-              Teachific™
+              Course360™
             </a>
           </nav>}
 
@@ -263,7 +263,7 @@ export default function LMSLayout({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <ExternalLink className="w-4 h-4" /> Teachific™
+                <ExternalLink className="w-4 h-4" /> Course360™
               </a>
             </div>}
           </div>

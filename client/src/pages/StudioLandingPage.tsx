@@ -630,20 +630,20 @@ export default function StudioLandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">
-              Teachific<span className="text-violet-400"> Studio</span>
+              Course360<span className="text-violet-400"> Studio</span>
               <sup className="text-[10px] text-violet-400">™</sup>
             </span>
-            <span className="text-white/30 text-sm">by Teachific™</span>
+            <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-white/40">
-            <Link href="/" className="hover:text-white transition-colors">Teachific Home</Link>
-            <Link href="/creator-pro" className="hover:text-white transition-colors">TeachificCreator™</Link>
-            <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">QuizMaker™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
+            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360 Creator™</Link>
+            <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">Course360 Quiz Creator™</Link>
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
           </div>
           <p className="text-sm text-white/30">
-            © {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand
+            © {new Date().getFullYear()} Course360™. All rights reserved. <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">a SoundMedia, Inc. brand</a>
           </p>
         </div>
       </footer>

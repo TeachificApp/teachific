@@ -772,7 +772,7 @@ export default function CoursePlayer() {
     { enabled: !!organizationSlug },
   );
   const playerLogo = organization?.logoUrl ?? LOGO;
-  const playerBrandName = organization?.name ?? (data as any)?.course?.organizationName ?? "Teachific™";
+  const playerBrandName = organization?.name ?? (data as any)?.course?.organizationName ?? "Course360™";
 
   const { data, isLoading } = trpc.lmsLearner.getCoursePlayer.useQuery(
     { slug: slug!, orgId: organization?.id, preview: isPreviewMode || adminPreviewStudent || isAdmin },

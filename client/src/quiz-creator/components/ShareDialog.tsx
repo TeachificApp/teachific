@@ -175,7 +175,7 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                 </div>
                 {orgSlug && (
                   <p className="text-xs text-gray-400">
-                    Quiz will be served on your school's subdomain: <span className="font-mono text-teal-600">{orgSlug}.teachific.app</span>
+                    Quiz will be served on your school's subdomain: <span className="font-mono text-teal-600">{orgSlug}.course360.app</span>
                   </p>
                 )}
               </div>

@@ -149,6 +149,13 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  app.get("/api/platform-identity", (_req, res) => {
+    res.json({
+      title: process.env.VITE_APP_TITLE ?? "Course360™",
+      logo: process.env.VITE_APP_LOGO ?? "/manus-storage/course360-logo_3d94d0e3.png",
+    });
+  });
+
   // Stripe webhooks MUST be before express.json() for raw body signature verification
   app.use("/api/stripe", stripeWebhookRouter);
   app.use("/api/webhooks/stripe", embeddedCheckoutWebhookRouter);

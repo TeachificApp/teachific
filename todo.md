@@ -1,6 +1,11 @@
 # SCORM Host Platform - TODO
 
 - [x] Remove fabricated testimonials and unsupported social-proof claims from platform marketing content
+- [ ] Rebrand visible platform identity and product labels from Teachific to Course360™
+- [ ] Host and integrate the supplied Course360 logo in global platform identity surfaces
+- [ ] Add linked “a SoundMedia, Inc. brand” attribution to platform-level footer surfaces
+- [ ] Replace remaining active UI Teachific labels and retired-domain examples with Course360 equivalents
+- [ ] Normalize every platform footer to the linked “a SoundMedia, Inc. brand” attribution
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
 - [x] Enforce organization-owned discount targeting during checkout validation and discount application
 - [x] Provide organization-admin discount targeting controls with accessible multi-product selection

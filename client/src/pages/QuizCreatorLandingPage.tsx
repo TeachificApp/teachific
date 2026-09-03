@@ -581,7 +581,7 @@ export default function QuizCreatorLandingPage() {
                     className="border-white/20 text-white hover:bg-white/10 text-lg px-10 py-4 rounded-xl h-auto"
                   >
                     <Users className="mr-2 w-5 h-5" />
-                    View Teachific LMS™
+                    View Course360™
                   </Button>
                 </Link>
               </div>
@@ -595,21 +595,21 @@ export default function QuizCreatorLandingPage() {
       <footer className="border-t border-white/10 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-black">
-              <span className="text-white">Teachific</span>
-              <span className="text-teal-400"> QuizMaker</span>
+              <span className="text-lg font-black">
+              <span className="text-white">Course360</span>
+              <span className="text-teal-400"> Quiz Creator</span>
               <sup className="text-[10px] text-teal-400">™</sup>
             </span>
-            <span className="text-white/30 text-sm">by Teachific™</span>
+            <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-white/40 text-sm">
-            <Link href="/" className="hover:text-white transition-colors">Teachific Home</Link>
-            <Link href="/creator-pro" className="hover:text-white transition-colors">TeachificCreator™</Link>
-            <Link href="/studio-pro" className="hover:text-white transition-colors">Teachific Studio™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
+            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360 Creator™</Link>
+            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360 Studio™</Link>
             <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
             <Link href="/register" className="hover:text-white transition-colors">Register</Link>
           </div>
-          <p className="text-white/30 text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand</p>
+          <p className="text-white/30 text-xs">© {new Date().getFullYear()} Course360™. All rights reserved. <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">a SoundMedia, Inc. brand</a></p>
         </div>
       </footer>
     </div>

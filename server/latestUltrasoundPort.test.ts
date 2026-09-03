@@ -874,7 +874,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseLandingSource).toContain("backgroundColor: landingAccentColor");
     expect(courseLandingSource).toContain("const landingOrganizationName = organization?.name");
     expect(courseLandingSource).toContain("const isOrganizationLanding = !!organizationSlug && !!organization?.id");
-    expect(courseLandingSource).toContain("isOrganizationLanding ? landingOrganizationName : \"Teachific™\"");
+    expect(courseLandingSource).toContain("isOrganizationLanding ? landingOrganizationName : \"Course360™\"");
     expect(coursePlayerSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
     expect(coursePlayerSource).toContain("const playerBrandName = organization?.name");
     expect(coursePlayerSource).toContain("orgId: organization?.id");
@@ -886,7 +886,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsLayoutSource).toContain("DollarSign className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
     expect(lmsLayoutSource).toContain("BookOpen className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
     expect(lmsLayoutSource).toContain("const isOrganizationShell = !!subdomain");
-    expect(lmsLayoutSource).toContain("const shellBrandName = organization?.name ?? \"Teachific™\"");
+    expect(lmsLayoutSource).toContain("const shellBrandName = organization?.name ?? \"Course360™\"");
     expect(lmsLayoutSource).toContain("!isOrganizationShell && <nav");
     expect(landingBuilderSource).toContain('defaultData: { quote: "", author: "", avatarUrl: ""');
     expect(landingBuilderSource).toContain('defaultData: { headline: "", reviews: []');
@@ -1567,7 +1567,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(userDetailSource).not.toContain("UltrasoundAssist™ and EchoAssist™ app subscriptions");
   });
 
-  it("uses generic Teachific labels in the reusable navigation configuration", () => {
+  it("uses Course360 platform labels and logo fallback in the reusable navigation configuration", () => {
     const brandNavSource = readFileSync(new URL("../client/src/config/brandNav.ts", import.meta.url), "utf8");
     const lmsLayoutSource = readFileSync(new URL("../client/src/components/LMSLayout.tsx", import.meta.url), "utf8");
     expect(brandNavSource).toContain("const PLATFORM_NAV_GROUPS");
@@ -1577,7 +1577,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).toContain('path: "/products/community"');
     expect(brandNavSource).toContain("navGroups: PLATFORM_NAV_GROUPS");
     expect(brandNavSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
-    expect(lmsLayoutSource).toContain("const PLATFORM_LOGO_URL: string | null = null;");
+    expect(brandNavSource).toContain('title: "Course360™"');
+    expect(brandNavSource).toContain('logoAlt: "Course360™"');
+    expect(lmsLayoutSource).toContain('const PLATFORM_LOGO_URL = import.meta.env.VITE_APP_LOGO');
     expect(lmsLayoutSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
     expect(brandNavSource).not.toContain("UltrasoundAssist");
     expect(brandNavSource).not.toContain("EchoAssist");

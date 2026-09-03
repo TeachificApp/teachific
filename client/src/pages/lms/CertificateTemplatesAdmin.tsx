@@ -58,7 +58,7 @@ const DEFAULT_FORM: TemplateFormData = {
   bodyText: null,
   signatureText: null,
   signatureTitleText: null,
-  footerText: "www.teachific.com  ·  © Teachific™",
+  footerText: "www.course360.app  ·  © Course360™",
   primaryColorHex: "#189aa1",
   accentColorHex: "#c9a84c",
   textColorHex: "#0e1e2e",
@@ -341,7 +341,7 @@ function TemplateEditor({
             <Input
               value={form.signatureTitleText ?? ""}
               onChange={e => set("signatureTitleText", e.target.value || null)}
-              placeholder="e.g. Founder, Teachific™"
+              placeholder="e.g. Founder, Course360™"
             />
           </div>
         </div>
@@ -355,7 +355,7 @@ function TemplateEditor({
           <Input
             value={form.footerText ?? ""}
             onChange={e => set("footerText", e.target.value || null)}
-            placeholder="www.teachific.com  ·  © Teachific™"
+            placeholder="www.course360.app  ·  © Course360™"
           />
         </div>
       </div>

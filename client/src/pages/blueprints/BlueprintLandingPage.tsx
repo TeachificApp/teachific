@@ -121,8 +121,8 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
         <Layers className="w-16 h-16 text-muted-foreground/30 mb-4" />
         <h1 className="text-2xl font-bold mb-2">Blueprint Not Found</h1>
         <p className="text-muted-foreground mb-6">This blueprint link may have expired or been removed.</p>
-        <Button onClick={() => window.location.href = "https://teachific.app"}>
-          Go to Teachific
+        <Button onClick={() => window.location.href = "https://course360.app"}>
+          Go to Course360
         </Button>
       </div>
     );
@@ -139,10 +139,8 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
       {/* Nav */}
       <nav className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <a href="https://teachific.app" className="flex items-center gap-1.5 font-bold text-lg">
-            <span className="text-slate-900">teach</span>
-            <span className="text-[#24abbc]">ific</span>
-            <span className="text-slate-900 text-sm">™</span>
+          <a href="https://course360.app" className="flex items-center gap-1.5 font-bold text-lg">
+            <img src={import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png"} alt="Course360™" className="h-9 w-28 object-contain object-left" />
           </a>
           <Button size="sm" onClick={handleGetStarted} disabled={isLoading2}>
             {isLoading2 ? <Loader2 className="w-4 h-4 animate-spin" /> : isPaid ? `Buy — $${parseFloat(String(blueprint.price)).toFixed(2)}` : "Get Started Free"}
@@ -299,7 +297,7 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
         <div className="max-w-2xl mx-auto px-4 text-center text-white">
           <h2 className="text-3xl font-bold mb-3">Ready to launch your school?</h2>
           <p className="text-white/80 mb-8 text-lg">
-            Create your free Teachific account and this blueprint will be installed automatically.
+            Create your free Course360 account and this blueprint will be installed automatically.
           </p>
           <Button
             size="lg"
@@ -317,20 +315,20 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
             )}
           </Button>
           <p className="text-white/60 text-sm mt-3">
-            {isPaid ? "One-time purchase · Includes Teachific account" : "No credit card required · Cancel anytime"}
+            {isPaid ? "One-time purchase · Includes Course360 account" : "No credit card required · Cancel anytime"}
           </p>
         </div>
       </div>
 
       {/* Footer */}
       <footer className="border-t py-8 text-center text-sm text-slate-400">
-        <a href="https://teachific.app" className="hover:text-[#24abbc] transition-colors">
-          Powered by Teachific™
+        <a href="https://course360.app" className="hover:text-[#24abbc] transition-colors">
+          Powered by Course360™
         </a>
         {" · "}
-        <a href="https://teachific.app/privacy" className="hover:text-[#24abbc] transition-colors">Privacy</a>
+        <a href="https://course360.app/privacy" className="hover:text-[#24abbc] transition-colors">Privacy</a>
         {" · "}
-        <a href="https://teachific.app/terms" className="hover:text-[#24abbc] transition-colors">Terms</a>
+        <a href="https://course360.app/terms" className="hover:text-[#24abbc] transition-colors">Terms</a>
       </footer>
     </div>
   );

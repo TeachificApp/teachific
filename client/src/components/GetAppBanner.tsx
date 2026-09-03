@@ -27,15 +27,15 @@ function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream;
 }
 
-const TEACHIFIC_ICON = "/logo192.png";
+const COURSE360_ICON = import.meta.env.VITE_APP_LOGO || "/manus-storage/course360-logo_3d94d0e3.png";
 
 export default function GetAppBanner() {
   const [visible, setVisible] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [location] = useLocation();
-  const appName = "Teachific™";
-  const appIcon = TEACHIFIC_ICON;
+  const appName = "Course360™";
+  const appIcon = COURSE360_ICON;
 
   useEffect(() => {
     // Only show on dashboard route
@@ -97,7 +97,7 @@ export default function GetAppBanner() {
       setDeferredPrompt(null);
     } else {
       // Fallback: link to the app URL for manual install
-      window.open(import.meta.env.VITE_APP_URL || "https://teachific.app", "_blank");
+      window.open(import.meta.env.VITE_APP_URL || "https://course360.app", "_blank");
     }
   }
 

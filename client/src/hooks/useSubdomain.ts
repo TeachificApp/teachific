@@ -2,18 +2,18 @@
  * useSubdomain
  *
  * Detects whether the app is running on an org-specific subdomain
- * (e.g. myorg.teachific.app) and returns the subdomain slug.
+ * (e.g. myorg.course360.app) and returns the subdomain slug.
  *
- * Returns null when running on the root domain (teachific.app, www.teachific.app,
+ * Returns null when running on the root domain (course360.app, www.course360.app,
  * localhost, Railway preview URLs, or any Manus preview URL).
  */
 
 const ROOT_DOMAINS = new Set([
-  "teachific.app",
-  "www.teachific.app",
-  "app.teachific.app",
-  "api.teachific.app",
-  "admin.teachific.app",
+  "course360.app",
+  "www.course360.app",
+  "app.course360.app",
+  "api.course360.app",
+  "admin.course360.app",
   "localhost",
   "127.0.0.1",
 ]);
@@ -24,11 +24,11 @@ const MANUS_PREVIEW_PATTERN = /\.manus\.(space|computer)$/;
 // Railway preview domains follow the pattern: *.up.railway.app
 const RAILWAY_PREVIEW_PATTERN = /\.up\.railway\.app$/;
 
-// Any domain that is NOT teachific.app (or a subdomain of it) should be treated
+// Any domain that is NOT course360.app (or a subdomain of it) should be treated
 // as a root domain — this covers Railway URLs, custom domains not yet mapped, etc.
-function isTeachificSubdomain(hostname: string): boolean {
-  // Must end with .teachific.app and have something before it
-  return hostname.endsWith(".teachific.app") && hostname !== "teachific.app" && hostname !== "www.teachific.app";
+function isCourse360Subdomain(hostname: string): boolean {
+  // Must end with .course360.app and have something before it
+  return hostname.endsWith(".course360.app") && hostname !== "course360.app" && hostname !== "www.course360.app";
 }
 
 export function getSubdomain(): string | null {
@@ -39,11 +39,11 @@ export function getSubdomain(): string | null {
   if (MANUS_PREVIEW_PATTERN.test(hostname)) return null;
   if (RAILWAY_PREVIEW_PATTERN.test(hostname)) return null;
 
-  // Only treat as a subdomain if it's actually a subdomain of teachific.app
-  if (!isTeachificSubdomain(hostname)) return null;
+  // Only treat as a subdomain if it's actually a subdomain of course360.app
+  if (!isCourse360Subdomain(hostname)) return null;
 
-  // Extract the subdomain part: "myorg" from "myorg.teachific.app"
-  const sub = hostname.replace(/\.teachific\.app$/, "");
+  // Extract the subdomain part: "myorg" from "myorg.course360.app"
+  const sub = hostname.replace(/\.course360\.app$/, "");
 
   // Exclude reserved platform subdomains that should never be treated as org slugs
   const RESERVED_SUBDOMAINS = new Set([
@@ -65,20 +65,20 @@ export function useSubdomain(): string | null {
 
 /**
  * Returns true if the current environment supports real subdomains
- * (i.e. we're on teachific.app, not localhost or a preview URL).
+ * (i.e. we're on course360.app, not localhost or a preview URL).
  */
 export function supportsSubdomains(): boolean {
   const hostname = window.location.hostname;
   return (
-    hostname === "teachific.app" ||
-    hostname === "www.teachific.app" ||
-    isTeachificSubdomain(hostname)
+    hostname === "course360.app" ||
+    hostname === "www.course360.app" ||
+    isCourse360Subdomain(hostname)
   );
 }
 
 /**
  * Builds the full URL for an org's subdomain.
- * On teachific.app: returns https://slug.teachific.app/path
+ * On course360.app: returns https://slug.course360.app/path
  * On localhost/preview: returns /school/slug/path (fallback, no real subdomain)
  */
 export function getOrgSubdomainUrl(slug: string, path = ""): string {
@@ -97,8 +97,8 @@ export function getOrgSubdomainUrl(slug: string, path = ""): string {
     return `${protocol}//${hostname}${portSuffix}/school/${slug}${path}`;
   }
 
-  // On root domain (teachific.app or www.teachific.app), build the subdomain URL
-  return `${protocol}//${slug}.teachific.app${path}`;
+  // On root domain (course360.app or www.course360.app), build the subdomain URL
+  return `${protocol}//${slug}.course360.app${path}`;
 }
 
 /**
