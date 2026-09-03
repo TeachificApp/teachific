@@ -88,6 +88,7 @@ import {
   userRoles,
   userActivityLogs,
   organizations,
+  coupons,
   lmsQuizAttempts,
   lmsInlineQuizAttempts,
   lmsInlineQuizResponses,
@@ -96,6 +97,7 @@ import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_
 import { notifyOwner } from "../_core/notification";
 import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripePaymentLinks";
 import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
+import { couponIsRedeemableForCheckout, type CouponTargetContentType } from "../lib/couponTargeting";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -1637,14 +1639,29 @@ export const lmsLearnerRouter = router({
         );
       };
 
-      // Resolve promo code → Stripe promotion_code ID
-      let discounts: Array<{ promotion_code: string }> | undefined;
-      if (input.promoCode) {
-        try {
-          const codes = await stripe.promotionCodes.list({ code: input.promoCode.toUpperCase(), active: true, limit: 1 });
-          if (codes.data[0]) discounts = [{ promotion_code: codes.data[0].id }];
-        } catch { /* ignore */ }
-      }
+      const createScopedDiscount = async (target: {
+        orgId: number;
+        contentType: CouponTargetContentType;
+        productId: number;
+        currency: string;
+      }): Promise<Array<{ coupon: string }> | undefined> => {
+        if (!input.promoCode?.trim()) return undefined;
+        const normalizedCode = input.promoCode.trim().toUpperCase();
+        const [coupon] = await db.select().from(coupons)
+          .where(and(eq(coupons.orgId, target.orgId), eq(coupons.code, normalizedCode)))
+          .limit(1);
+        if (!coupon || !couponIsRedeemableForCheckout(coupon, target)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This discount code is not available for this item." });
+        }
+        const stripeCoupon = await stripe.coupons.create({
+          ...(coupon.discountType === "percentage"
+            ? { percent_off: Number(coupon.discountValue) }
+            : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: target.currency }),
+          duration: "once",
+          name: `Course360 ${normalizedCode}`,
+        });
+        return [{ coupon: stripeCoupon.id }];
+      };
 
       if (input.productType === "course") {
         const slug = input.productSlug;
@@ -1659,11 +1676,17 @@ export const lmsLearnerRouter = router({
           return { checkoutUrl: null, alreadyEnrolled: false, free: true };
         }
         const organizationBaseUrl = await resolveOrganizationBaseUrl(course.orgId);
+        const discounts = await createScopedDiscount({
+          orgId: course.orgId,
+          contentType: "course",
+          productId: course.id,
+          currency: course.currency ?? "usd",
+        });
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: ctx.user.email ?? undefined,
           client_reference_id: ctx.user.id.toString(),
-          ...(discounts ? { discounts } : { allow_promotion_codes: true }),
+          ...(discounts ? { discounts } : {}),
           line_items: [{ price_data: { currency: course.currency ?? "usd", product_data: { name: course.title, images: course.coverImageUrl ? [course.coverImageUrl] : undefined }, unit_amount: Math.round(Number(course.price) * 100) }, quantity: 1 }],
           metadata: { type: "lms_course", course_id: course.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", source: "upgrade_prompt" },
           success_url: `${organizationBaseUrl}/courses/${encodeURIComponent(course.slug)}?success=1`,
@@ -1685,11 +1708,17 @@ export const lmsLearnerRouter = router({
           return { checkoutUrl: null, alreadyEnrolled: false, free: true };
         }
         const organizationBaseUrl = await resolveOrganizationBaseUrl(product.orgId);
+        const discounts = await createScopedDiscount({
+          orgId: product.orgId,
+          contentType: "download",
+          productId: product.id,
+          currency: product.currency,
+        });
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: ctx.user.email ?? undefined,
           client_reference_id: ctx.user.id.toString(),
-          ...(discounts ? { discounts } : { allow_promotion_codes: true }),
+          ...(discounts ? { discounts } : {}),
           line_items: [{ price_data: { currency: product.currency, product_data: { name: product.title, images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined }, unit_amount: Math.round(Number(product.price) * 100) }, quantity: 1 }],
           metadata: { type: "digital_download", product_id: product.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", source: "upgrade_prompt" },
           success_url: `${organizationBaseUrl}/downloads/${encodeURIComponent(product.slug)}/files?success=1`,
@@ -1708,11 +1737,17 @@ export const lmsLearnerRouter = router({
         if (product.isFree || !product.price) return { checkoutUrl: null, alreadyEnrolled: false, free: true };
         const allowedCountries = product.shippingCountries ? (JSON.parse(product.shippingCountries) as string[]) : ["US", "CA", "GB", "AU", "NZ"];
         const organizationBaseUrl = await resolveOrganizationBaseUrl(product.orgId);
+        const discounts = await createScopedDiscount({
+          orgId: product.orgId,
+          contentType: "physical_product",
+          productId: product.id,
+          currency: product.currency,
+        });
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: ctx.user.email ?? undefined,
           client_reference_id: ctx.user.id.toString(),
-          ...(discounts ? { discounts } : { allow_promotion_codes: true }),
+          ...(discounts ? { discounts } : {}),
           shipping_address_collection: { allowed_countries: allowedCountries as any },
           line_items: [{ price_data: { currency: product.currency, product_data: { name: product.title, images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined }, unit_amount: Math.round(Number(product.price) * 100) }, quantity: 1 }],
           metadata: { type: "physical_product", product_id: product.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", source: "upgrade_prompt" },

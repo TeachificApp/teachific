@@ -56,6 +56,7 @@
 - [x] Resolve organization-admin generated course checkout links from the course’s verified organization domain rather than caller-provided origins
 - [x] Derive direct funnel-CTA checkout organization and success/cancellation URLs from the selected product record rather than caller-provided origins
 - [x] Derive upgrade-prompt course, download, and physical-product checkout return URLs from trusted product organization records rather than caller-provided origins
+- [x] Validate upgrade-prompt discount codes against the selected course, download, or physical product organization and configured target scope before creating a Stripe coupon
 - [x] Exercise all three protected product checkout routes with an allowed configured preview origin and verified member custom domain
 - [x] Add an explicit procedure-level rejection case for an unverified custom checkout return origin
 - [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
