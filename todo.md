@@ -6,6 +6,7 @@
 - [ ] After a clean development preview restart, re-run the root check once module throttling clears and record the module HTTP status, mounted root state, and visible hero render
 - [x] Replace an empty root on Course360 App-module load failure with a lightweight retryable bootstrap fallback
 - [x] Execute the Course360 bootstrap failure and timeout paths in focused regression coverage and verify rendered loading and retry states
+- [x] Defer the full Course360 App module behind the loaded provider boundary so the root loading shell remains visible while route imports resolve
 - [x] Replace remaining unsupported Course360 homepage hero and pricing claims with factual product-language and neutral calls to action
 - [x] Replace the visible homepage footer source-brand fallback and remaining pricing-plan marketing claims with Course360 factual-copy and approved attribution
 

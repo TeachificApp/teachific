@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const render = vi.hoisted(() => vi.fn());
@@ -69,5 +71,19 @@ describe("Course360 root bootstrap fallback", () => {
     await Promise.resolve();
 
     expect(render.mock.calls.at(-1)?.[0]?.type).toBe(AppBootstrap);
+  });
+
+  it("keeps the full App graph deferred behind a visible suspense and retryable failure state", () => {
+    const appBootstrapSource = fs.readFileSync(
+      path.resolve(process.cwd(), "client/src/AppBootstrap.tsx"),
+      "utf8",
+    );
+
+    expect(appBootstrapSource).toContain('const DeferredApp = lazy(async () => {');
+    expect(appBootstrapSource).toContain('return await import("./App");');
+    expect(appBootstrapSource).toContain("[Course360 App Load Error]");
+    expect(appBootstrapSource).toContain("<Suspense fallback={<AppLoadFallback />}>");
+    expect(appBootstrapSource).toContain("<DeferredApp />");
+    expect(appBootstrapSource).toContain("Retry loading Course360");
   });
 });
