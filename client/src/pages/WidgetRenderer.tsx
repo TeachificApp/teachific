@@ -392,12 +392,12 @@ export default function WidgetRenderer() {
       {/* Powered by footer */}
       <div style={{ marginTop: 20, textAlign: "center" }}>
         <a
-          href="https://teachific.app"
+          href="https://course360.app"
           target="_blank"
           rel="noopener noreferrer"
           style={{ fontSize: 11, color: t.subtext, textDecoration: "none", opacity: 0.6 }}
         >
-          Powered by Teachific™
+          Powered by Course360™
         </a>
       </div>
     </div>
