@@ -231,13 +231,7 @@ function statusBadge(status: string) {
   return <Badge className="bg-gray-100 text-gray-600 border-gray-200">Draft</Badge>;
 }
 
-// All custom domains hosted on this platform
-const CUSTOM_DOMAINS = [
-  "teachific.app",
-  "www.teachific.app",
-  "app.teachific.app",
-];
-const DEFAULT_HOST_DOMAIN = "teachific.app";
+const DEFAULT_HOST_DOMAIN = "course360.app";
 
 function getPublicUrl(slug: string, hostDomain?: string | null) {
   const domain = hostDomain || DEFAULT_HOST_DOMAIN;
