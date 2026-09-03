@@ -55,6 +55,10 @@
 - [x] Normalize remaining visible Course360 platform labels in Quiz Creator entry, download, and sign-in surfaces without changing compatibility domains or stored keys
 - [x] Normalize visible Quiz Creator and desktop-app support and sales contact addresses to Course360 domains
 - [x] Remove fabricated Creator landing-page testimonials and replace them with non-user-generated product information
+- [x] Assess upstream standalone Quiz Creator mock-exam review, question flagging, and final-scoring controls; defer port because Course360 public delivery reads a separate legacy quiz contract that does not persist Visual Builder metadata safely
+- [x] Add secure, organization-scoped public web-page grounding to Question Bank AI generation with SSRF, redirect, size, and source-reference safeguards
+- [x] Enforce server-resolved active-organization alignment for Quiz Bank source generation and behaviorally reject another active organization’s bank
+- [x] Add procedure-level Quiz Bank generation coverage for a multi-organization administrator using a non-active bank
 - [x] Repair the production dependency lockfile mismatch preventing deployment
 - [ ] Exclude read-aloud/TTS features and all source-project branding while porting LMS and quiz updates
 - [x] Remove unsafe source-project branding/domain constants from audited active customer-facing Teachific source while preserving documented CME-provider wording and compatibility-only legacy identifiers

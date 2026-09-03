@@ -4,7 +4,6 @@ import https from "node:https";
 import { isIP } from "node:net";
 
 const MAX_SOURCE_BYTES = 750_000;
-const MAX_REDIRECTS = 3;
 const REQUEST_TIMEOUT_MS = 8_000;
 
 function isPrivateIpv4(address: string) {
@@ -54,6 +53,9 @@ export function validatePublicSourceUrl(input: string) {
   if (isIP(hostname) && !isPublicIpAddress(hostname)) {
     throw new Error("Private or reserved network URLs cannot be used as an AI source.");
   }
+  if (url.port && !((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80"))) {
+    throw new Error("The source URL must use the standard public HTTP or HTTPS port.");
+  }
   return url;
 }
 
@@ -83,7 +85,7 @@ async function requestSource(url: URL, address: string, family: number) {
       hostname: url.hostname,
       port: url.port || undefined,
       path: `${url.pathname}${url.search}`,
-      headers: { Accept: "text/html,text/plain,application/json,application/xml,text/xml;q=0.9,*/*;q=0.1", "User-Agent": "Teachific-Quiz-Source/1.0" },
+      headers: { Accept: "text/html,text/plain,application/json,application/xml,text/xml;q=0.9,*/*;q=0.1", "User-Agent": "Course360-Quiz-Source/1.0" },
       lookup: (_hostname, _options, callback) => callback(null, address, family),
     }, (response) => {
       const chunks: Buffer[] = [];
@@ -104,24 +106,20 @@ async function requestSource(url: URL, address: string, family: number) {
 }
 
 export async function fetchPublicSourceText(input: string) {
-  let url = validatePublicSourceUrl(input);
-  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
-    const address = await resolvePublicAddress(url);
-    const response = await requestSource(url, address.address, address.family);
-    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-      url = validatePublicSourceUrl(new URL(response.headers.location, url).toString());
-      continue;
-    }
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw new Error("The source URL could not be read.");
-    }
-    const contentType = String(response.headers["content-type"] ?? "").toLowerCase();
-    if (contentType && !/(text\/|application\/(json|xml))/.test(contentType)) {
-      throw new Error("The source URL must return readable text, HTML, JSON, or XML content.");
-    }
-    const text = cleanSourceText(response.body.toString("utf8"));
-    if (text.length < 40) throw new Error("The source URL did not contain enough readable text.");
-    return text.slice(0, 60_000);
+  const url = validatePublicSourceUrl(input);
+  const address = await resolvePublicAddress(url);
+  const response = await requestSource(url, address.address, address.family);
+  if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+    throw new Error("The source URL must not redirect.");
   }
-  throw new Error("The source URL redirected too many times.");
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw new Error("The source URL could not be read.");
+  }
+  const contentType = String(response.headers["content-type"] ?? "").toLowerCase();
+  if (contentType && !/(text\/|application\/(json|xml))/.test(contentType)) {
+    throw new Error("The source URL must return readable text, HTML, JSON, or XML content.");
+  }
+  const text = cleanSourceText(response.body.toString("utf8"));
+  if (text.length < 40) throw new Error("The source URL did not contain enough readable text.");
+  return text.slice(0, 60_000);
 }

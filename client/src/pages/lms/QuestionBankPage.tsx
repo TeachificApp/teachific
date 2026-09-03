@@ -544,8 +544,8 @@ function ImportDialog({ bankId, orgId, onClose, initialJobId }: { bankId: number
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function QuestionBankPage() {
   const { orgId } = useOrgScope();
-  const search = useSearch();
-  const queryParams = new URLSearchParams(search);
+  const locationSearch = useSearch();
+  const queryParams = new URLSearchParams(locationSearch);
   const directImportJobId = Number(queryParams.get("importJob")) || undefined;
   const directImportBankId = Number(queryParams.get("bankId")) || undefined;
 
@@ -571,6 +571,7 @@ export default function QuestionBankPage() {
   const [aiTagIds, setAiTagIds] = useState<number[]>([]);
   const [aiFolderId, setAiFolderId] = useState<number | undefined>(undefined);
   const [aiInstructions, setAiInstructions] = useState("");
+  const [aiSourceUrl, setAiSourceUrl] = useState("");
 
   useEffect(() => {
     if (!directImportJobId || !directImportBankId) return;
@@ -625,6 +626,7 @@ export default function QuestionBankPage() {
       setShowAiGenerate(false);
       setAiTopic("");
       setAiInstructions("");
+      setAiSourceUrl("");
       setAiTagIds([]);
       setAiFolderId(undefined);
       toast.success(`${result.count} AI-generated question${result.count === 1 ? "" : "s"} added to this bank`);
@@ -968,13 +970,18 @@ export default function QuestionBankPage() {
               </div>
             )}
             <div>
+              <Label htmlFor="ai-question-source-url">Public source URL <span className="font-normal text-muted-foreground">(optional)</span></Label>
+              <Input id="ai-question-source-url" type="url" value={aiSourceUrl} onChange={(event) => setAiSourceUrl(event.target.value)} placeholder="https://example.org/reference" />
+              <p className="mt-1 text-xs text-muted-foreground">Use a public web page as private factual grounding. Private, local, credentialed, redirected, oversized, and non-text sources are rejected.</p>
+            </div>
+            <div>
               <Label htmlFor="ai-question-instructions">Additional instructions <span className="font-normal text-muted-foreground">(optional)</span></Label>
               <Textarea id="ai-question-instructions" value={aiInstructions} onChange={(event) => setAiInstructions(event.target.value)} placeholder="Include a short rationale; avoid trick questions; use terminology appropriate for the intended learners." rows={2} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAiGenerate(false)}>Cancel</Button>
-            <Button disabled={!selectedBankId || aiTopic.trim().length < 3 || generateQuestions.isPending} onClick={() => generateQuestions.mutate({ bankId: selectedBankId!, topic: aiTopic.trim(), count: aiCount, questionType: aiQuestionType, difficulty: aiDifficulty, tagIds: aiTagIds, folderId: aiFolderId, additionalInstructions: aiInstructions.trim() || undefined })}>
+            <Button disabled={!selectedBankId || aiTopic.trim().length < 3 || generateQuestions.isPending} onClick={() => generateQuestions.mutate({ bankId: selectedBankId!, topic: aiTopic.trim(), count: aiCount, questionType: aiQuestionType, difficulty: aiDifficulty, tagIds: aiTagIds, folderId: aiFolderId, additionalInstructions: aiInstructions.trim() || undefined, sourceUrl: aiSourceUrl.trim() || undefined })}>
               {generateQuestions.isPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Generate Questions
             </Button>
           </DialogFooter>
