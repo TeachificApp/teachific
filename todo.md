@@ -5,6 +5,7 @@
 - [ ] Host and integrate the supplied Course360 logo in global platform identity surfaces
 - [ ] Add linked “a SoundMedia, Inc. brand” attribution to platform-level footer surfaces
 - [ ] Replace remaining active UI Teachific labels and retired-domain examples with Course360 equivalents
+- [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers
 - [ ] Normalize every platform footer to the linked “a SoundMedia, Inc. brand” attribution
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
 - [x] Enforce organization-owned discount targeting during checkout validation and discount application
@@ -36,6 +37,7 @@
 - [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
 - [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
 - [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
+- [ ] Audit and port the compatible organization-owned Quiz Creator image-labeling question type without changing existing Question Bank records
 - [x] Verify lesson ownership and active-organization scope before applying CME survey completion rules
 - [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
 - [x] Preserve validated question and answer-choice media when importing SCORM or .quiz questions into the active organization’s Question Bank

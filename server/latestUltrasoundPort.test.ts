@@ -2155,6 +2155,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(authoringRouterSource).toContain("delete(authoringSlides)");
     expect(authoringRouterSource).toContain("exportPackage: protectedProcedure");
     expect(authoringRouterSource).toMatch(/exportPackage:[\s\S]*eq\(authoringProjects\.orgId, orgId\)/);
+    expect(authoringRouterSource).toContain("Created with Course360™");
+    expect(authoringRouterSource).toContain("https://course360.app");
+    expect(authoringRouterSource).toContain('id="teachific-watermark"');
   });
 
   it("authorizes optional webinar organization inputs against the active organization", () => {
