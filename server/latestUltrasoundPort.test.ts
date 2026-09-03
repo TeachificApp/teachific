@@ -3284,6 +3284,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pasteTransformSource).toContain("mergeEmojiOnlyBlocks");
   });
 
+  it("uses one wrapped rich-text campaign HTML value for preview, draft save, and send", () => {
+    const campaignEditorSource = readFileSync(new URL("../client/src/pages/EmailCampaignEditor.tsx", import.meta.url), "utf8");
+    const emailLayoutSource = readFileSync(new URL("../shared/emailCampaignLayout.ts", import.meta.url), "utf8");
+    expect(campaignEditorSource).toContain("const wrappedHtml = useMemo(() => wrapInBrandedEmail(htmlBody, previewText)");
+    expect(campaignEditorSource).toContain("htmlBody: wrappedHtml");
+    expect(campaignEditorSource).toContain("srcDoc={wrappedHtml}");
+    expect(emailLayoutSource).toContain('const title = headerTitle ?? "Course360™"');
+  });
+
   it("shares the paste-safe rich-text editor across lesson and page authoring without a separate email TipTap handler", () => {
     const lessonEditorSource = readFileSync(new URL("../client/src/components/lms/LessonEditorSheet.tsx", import.meta.url), "utf8");
     const adminLandingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");

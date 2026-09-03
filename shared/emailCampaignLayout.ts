@@ -40,7 +40,7 @@ export function wrapInBrandedCampaignEmail(
   const preview = previewText
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
     : "";
-  const title = headerTitle ?? "Teachific™";
+  const title = headerTitle ?? "Course360™";
   const subtext = headerSubtext ?? "";
   const showHeader = headerEnabled !== false;
   const bgColor = headerColor || null;

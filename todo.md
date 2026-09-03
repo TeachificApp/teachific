@@ -5,6 +5,7 @@
 - [ ] Host and integrate the supplied Course360 logo in global platform identity surfaces
 - [ ] Add linked “a SoundMedia, Inc. brand” attribution to platform-level footer surfaces
 - [ ] Replace remaining active UI Teachific labels and retired-domain examples with Course360 equivalents
+- [x] Replace the email campaign wrapper’s legacy platform fallback with Course360 while preserving organization-specific campaign identity
 - [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers
 - [ ] Normalize every platform footer to the linked “a SoundMedia, Inc. brand” attribution
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
@@ -41,6 +42,9 @@
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point
 - [x] Add cross-editor paste-transform regression coverage and targeted lesson, page, and email editor bundle validation
+- [x] Audit the recent organization-scoped email campaign rich-text display and preview reliability improvement and document exact Course360 parity or any remaining gap
+- [x] Add regression coverage that email campaign preview, draft save, and send use the same wrapped rich-text HTML
+- [x] Run targeted email campaign editor and preview validation before completing the compatibility audit
 - [x] Assess the upstream large Question Bank quiz-load fix; defer it because Course360 delivers serialized Quiz Creator questions rather than the upstream standalone Question Bank hydration contract
 - [x] Audit the upstream standalone quiz administrator URL-access fix against Course360’s active organization-scoped staff-preview contract
 - [x] Require server-resolved active-organization alignment for organization-owned Quiz Creator staff, edit, and export access without changing public share-token delivery
