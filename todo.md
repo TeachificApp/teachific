@@ -20,6 +20,7 @@
 - [x] Replace active custom-auth email-template source branding and retired platform fallback URLs with Course360 while preserving organization-provided links
 - [x] Replace active role-guard source-domain support fallbacks with Course360 while preserving organization-specific access-request behavior
 - [x] Remove the unreachable legacy clinical premium branch from RoleGuard without changing supported plan-gating behavior
+- [x] Replace the active analytics PDF platform title with Course360 while preserving organization data and export behavior
 - [x] Rebrand active Stripe subscription catalog product names and descriptions to Course360 without changing price identifiers or billing behavior
 - [x] Rebrand active Stripe Creator, Studio, and Quiz Creator checkout messages to Course360 without changing product keys or checkout flows
 - [x] Add explicit server-side return-origin validation for Creator, Studio, and Quiz Creator checkout before creating Stripe sessions

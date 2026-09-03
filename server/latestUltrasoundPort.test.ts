@@ -1872,9 +1872,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(existsSync(legacyUpgradeConstantsPath)).toBe(false);
   });
 
-  it("uses Teachific branding in platform analytics PDF exports", () => {
+  it("uses Course360 branding in platform analytics PDF exports", () => {
     const pdfExportSource = readFileSync(new URL("../client/src/lib/exportAnalyticsPdf.ts", import.meta.url), "utf8");
-    expect(pdfExportSource).toContain("Teachific™ Analytics");
+    expect(pdfExportSource).toContain("Course360™ Analytics");
     expect(pdfExportSource).not.toContain("UltrasoundAssist");
   });
 

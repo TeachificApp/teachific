@@ -43,7 +43,7 @@ function drawFooter(pdf: jsPDF, pageNum: number, totalPages: number) {
   pdf.line(PAGE_MARGIN, y - 2, PAGE_W - PAGE_MARGIN, y - 2);
   pdf.setFontSize(7);
   pdf.setTextColor(150, 150, 150);
-  pdf.text("Teachific™ Analytics", PAGE_MARGIN, y);
+  pdf.text("Course360™ Analytics", PAGE_MARGIN, y);
   pdf.text(`Page ${pageNum} of ${totalPages}`, PAGE_W - PAGE_MARGIN, y, { align: "right" });
   pdf.setTextColor(0, 0, 0);
 }
