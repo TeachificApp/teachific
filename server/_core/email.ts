@@ -13,13 +13,18 @@ import { sql, eq } from "drizzle-orm";
 /**
  * Resolve the email sender identity for an org.
  * If the org has its own SendGrid key + sender configured, returns those.
- * Otherwise returns null (caller should fall back to Teachific's platform key).
+ * Otherwise returns null (caller should fall back to Course360's platform key).
  */
 export interface OrgEmailSender {
   apiKey: string;       // decrypted SendGrid API key
   fromName: string;     // e.g. "Acme Academy"
   fromEmail: string;    // e.g. "hello@acme.com"
 }
+
+export const COURSE360_PLATFORM_EMAIL_IDENTITY = {
+  fromName: "Course360",
+  fromEmail: "hello@course360.app",
+} as const;
 
 export async function getOrgEmailSender(orgId: number): Promise<OrgEmailSender | null> {
   try {
@@ -45,8 +50,8 @@ export async function getOrgEmailSender(orgId: number): Promise<OrgEmailSender |
       console.warn(`[email] Failed to decrypt org ${orgId} SendGrid key — falling back to platform sender`);
       return null;
     }
-    const fromName = org.customSenderName || org.name || "Teachific";
-    const fromEmail = org.customSenderEmail || process.env.SENDGRID_FROM_EMAIL || "hello@teachific.net";
+    const fromName = org.customSenderName || org.name || COURSE360_PLATFORM_EMAIL_IDENTITY.fromName;
+    const fromEmail = org.customSenderEmail || process.env.SENDGRID_FROM_EMAIL || COURSE360_PLATFORM_EMAIL_IDENTITY.fromEmail;
     return { apiKey, fromName, fromEmail };
   } catch (e: any) {
     console.warn(`[email] getOrgEmailSender(${orgId}) failed:`, e.message);
@@ -56,7 +61,7 @@ export async function getOrgEmailSender(orgId: number): Promise<OrgEmailSender |
 
 /**
  * Send a transactional email, routing through the org's own SendGrid key/sender
- * when available, falling back to Teachific's platform key.
+ * when available, falling back to Course360's platform key.
  */
 export async function sendEmailViaOrg(
   opts: SendEmailOptions,
@@ -189,7 +194,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
       return false;
     }
 
-    console.log(`[email] Sent "${opts.subject}" to ${opts.to.email} [brand=teachific]`);
+    console.log(`[email] Sent "${opts.subject}" to ${opts.to.email} [brand=course360]`);
     _logEmailSend(opts.to, opts.subject, "sent").catch(() => {});
     return true;
   } catch (err) {
