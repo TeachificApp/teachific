@@ -32,7 +32,7 @@ export default function PlatformPoliciesPage() {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Teachific
+            Back to Course360
           </button>
           <span className="text-muted-foreground">/</span>
           <span className="font-medium text-sm">Legal Policies</span>
@@ -49,7 +49,7 @@ export default function PlatformPoliciesPage() {
             <h1 className="text-3xl font-bold text-foreground">Legal Policies</h1>
           </div>
           <p className="text-muted-foreground">
-            Teachific™ Platform — these policies govern your use of the Teachific platform and services.
+            Course360™ Platform — these policies govern your use of the Course360 platform and services.
           </p>
         </div>
 
@@ -78,8 +78,8 @@ export default function PlatformPoliciesPage() {
                   <p className="font-medium text-base">Terms of Service not yet published.</p>
                   <p className="text-sm mt-1">
                     Please check back soon or contact{" "}
-                    <a href="mailto:support@teachific.app" className="text-teal-600 hover:underline">
-                      support@teachific.app
+                    <a href="mailto:support@course360.app" className="text-teal-600 hover:underline">
+                      support@course360.app
                     </a>
                     .
                   </p>
@@ -101,8 +101,8 @@ export default function PlatformPoliciesPage() {
                   <p className="font-medium text-base">Privacy Policy not yet published.</p>
                   <p className="text-sm mt-1">
                     Please check back soon or contact{" "}
-                    <a href="mailto:support@teachific.app" className="text-teal-600 hover:underline">
-                      support@teachific.app
+                    <a href="mailto:support@course360.app" className="text-teal-600 hover:underline">
+                      support@course360.app
                     </a>
                     .
                   </p>
@@ -114,7 +114,7 @@ export default function PlatformPoliciesPage() {
 
         {/* Footer note */}
         <p className="text-xs text-muted-foreground text-center mt-10">
-          © {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand
+          © {new Date().getFullYear()} Course360™. All rights reserved. <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">a SoundMedia, Inc. brand</a>
         </p>
       </div>
     </div>
