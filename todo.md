@@ -1,9 +1,9 @@
 # SCORM Host Platform - TODO
 
-- [ ] Diagnose the intermittent blank Course360 root preview after clean restarts and verify a reliable landing-page render before closing the visual issue
+- [x] Diagnose the intermittent blank Course360 root preview after clean restarts and verify a reliable landing-page render before closing the visual issue
 - [x] Recheck the published root page in a non-rate-limited session and record both visible content and mounted DOM state
 - [x] Document a repeatable monitoring procedure that distinguishes preview-gateway rate limiting from a true Course360 application render failure
-- [ ] After a clean development preview restart, re-run the root check once module throttling clears and record the module HTTP status, mounted root state, and visible hero render
+- [x] After a clean development preview restart, re-run the root check once module throttling clears and record the module HTTP status, mounted root state, and visible hero render
 - [x] Add focused runtime verification that the bootstrap loading or retryable fallback state visibly mounts when the deferred application graph is unavailable
 - [x] Replace an empty root on Course360 App-module load failure with a lightweight retryable bootstrap fallback
 - [x] Execute the Course360 bootstrap failure and timeout paths in focused regression coverage and verify rendered loading and retry states
