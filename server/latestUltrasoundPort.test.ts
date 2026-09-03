@@ -1867,7 +1867,9 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("does not retain the unreferenced legacy clinical upgrade prompt", () => {
     const legacyPromptPath = new URL("../client/src/components/UpgradePrompt.tsx", import.meta.url);
+    const legacyUpgradeConstantsPath = new URL("../shared/appConstants.ts", import.meta.url);
     expect(existsSync(legacyPromptPath)).toBe(false);
+    expect(existsSync(legacyUpgradeConstantsPath)).toBe(false);
   });
 
   it("uses Teachific branding in platform analytics PDF exports", () => {
@@ -1921,7 +1923,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).not.toContain("iHeartEcho");
   });
 
-  it("removes visible source-project branding from active Teachific app, domain, form, and membership surfaces", () => {
+  it("removes visible source-project branding from active Course360 app, domain, form, and membership surfaces", () => {
     const cleanedFiles = [
       "../client/src/components/GetAppBanner.tsx",
       "../client/src/hooks/useSubdomain.ts",
@@ -1932,7 +1934,6 @@ describe("latest Ultrasound-App learning feature port", () => {
       "../client/src/pages/admin/AdminUserDetailPage.tsx",
       "../client/src/components/ProductSalesTab.tsx",
       "../client/src/components/IncludedItemsBlock.tsx",
-      "../shared/appConstants.ts",
       "../shared/sitePagesConstants.ts",
       "../shared/communityMember.ts",
       "./lib/membershipFulfillment.ts",

@@ -109,9 +109,9 @@ const BASE_NAV_GROUPS = [
     ],
   },
   {
-    label: "Premium",
+    label: "Account",
     items: [
-      { path: "/premium", label: "Premium Access", icon: Crown },
+      { path: "/billing", label: "Plans & Billing", icon: Crown },
     ],
   },
 ];
@@ -484,7 +484,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold"
                                 style={{ background: "#189aa115", color: "#189aa1", border: "1px solid #189aa140" }}>
                                 <Crown className="w-2.5 h-2.5" />
-                                PREMIUM
+                                PLAN
                               </span>
                             )}
                           </div>
@@ -496,9 +496,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {allBadges.length > 0 && (
                         <div className="px-4 py-2.5 border-b border-gray-100">
                           <a
-                            href="/premium"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href="/billing"
                             className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 hover:text-[#189aa1] transition-colors flex items-center gap-1"
                           >
                             My Subscriptions
@@ -507,9 +505,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             {allBadges.map(({ label, color }) => (
                               <a
                                 key={label}
-                                href="/premium"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href="/billing"
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold hover:opacity-80 transition-opacity"
                                 style={{ background: color + "15", color, border: `1px solid ${color}40` }}
                               >
