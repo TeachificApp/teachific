@@ -28,7 +28,7 @@ const APP_META: Record<AppKey, {
   bgGradient: string;
 }> = {
   creator: {
-    name: "TeachificCreator™",
+    name: "Course360 Creator™",
     tagline: "Build stunning slide-based courses and export to SCORM",
     backPath: "/creator",
     backLabel: "Back to Creator Dashboard",
@@ -37,7 +37,7 @@ const APP_META: Record<AppKey, {
     bgGradient: "from-teal-50 to-white",
   },
   studio: {
-    name: "Teachific Studio™",
+    name: "Course360 Studio™",
     tagline: "Record, edit, and publish professional video lessons",
     backPath: "/studio",
     backLabel: "Back to Studio Dashboard",
@@ -46,7 +46,7 @@ const APP_META: Record<AppKey, {
     bgGradient: "from-violet-50 to-white",
   },
   quizCreator: {
-    name: "Teachific QuizMaker™",
+    name: "Course360 Quiz Creator™",
     tagline: "Create interactive quizzes and assessments",
     backPath: "/quiz-creator-app",
     backLabel: "Back to QuizMaker Dashboard",
