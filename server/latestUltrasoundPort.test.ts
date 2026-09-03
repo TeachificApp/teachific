@@ -771,6 +771,19 @@ describe("latest Ultrasound-App learning feature port", () => {
     }
   });
 
+  it("scopes certificate issuance templates and certificate records to the completed course organization", () => {
+    const certificateHelperSource = readFileSync(new URL("./routers/lmsHelpers.ts", import.meta.url), "utf8");
+    const certificateEmailSource = readFileSync(new URL("./lib/certificateEmail.ts", import.meta.url), "utf8");
+    expect(certificateHelperSource).toContain("orgId: lmsCourses.orgId");
+    expect(certificateHelperSource).toContain("eq(lmsCertificateTemplates.orgId, course.orgId)");
+    expect(certificateHelperSource).toContain("isNull(lmsCertificateTemplates.orgId)");
+    expect(certificateHelperSource).toContain("orgId: course.orgId");
+    expect(certificateHelperSource).toContain("organizationName: organization?.name");
+    expect(certificateEmailSource).toContain("a SoundMedia, Inc. brand");
+    expect(certificateEmailSource).not.toContain("aaus_logo_ring");
+    expect(certificateEmailSource).not.toContain("valid for professional portfolio use");
+  });
+
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
     const embeddedCheckoutSource = readFileSync(new URL("./routers/embeddedCheckoutRouter.ts", import.meta.url), "utf8");
     expect(embeddedCheckoutSource).toContain("amount: totalAmountCents,");

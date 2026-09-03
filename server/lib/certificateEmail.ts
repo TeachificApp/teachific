@@ -8,13 +8,27 @@ const SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send";
 const brandColor = "#189aa1";
 const brandDark = "#0e1e2e";
 
-function emailWrapper(content: string): string {
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[character] ?? character));
+}
+
+function emailWrapper(content: string, organizationName: string, organizationLogoUrl?: string | null): string {
+  const safeOrganizationName = escapeHtml(organizationName);
+  const logo = organizationLogoUrl
+    ? `<img src="${escapeHtml(organizationLogoUrl)}" alt="${safeOrganizationName}" width="80" height="80" style="border-radius:50%;display:block;margin:0 auto 12px;object-fit:contain;" />`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Certificate of Completion — Teachific™</title>
+  <title>Certificate of Completion — ${safeOrganizationName}</title>
 </head>
 <body style="margin:0;padding:0;background:#f0fbfc;font-family:Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fbfc;padding:32px 16px;">
@@ -23,11 +37,8 @@ function emailWrapper(content: string): string {
         <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
           <tr>
             <td style="background:linear-gradient(135deg,${brandDark} 0%,#0e4a50 60%,${brandColor} 100%);padding:28px 32px;text-align:center;">
-              <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp"
-                alt="Teachific™" width="80" height="80"
-                style="border-radius:50%;display:block;margin:0 auto 12px;" />
-              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Teachific™</div>
-              <div style="font-size:12px;color:#4ad9e0;margin-top:4px;">General & Vascular Ultrasound Clinical Intelligence</div>
+              ${logo}
+              <div style="font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">${safeOrganizationName}</div>
             </td>
           </tr>
           <tr>
@@ -38,7 +49,7 @@ function emailWrapper(content: string): string {
           <tr>
             <td style="background:#f8fffe;border-top:1px solid #e5f7f8;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#94a3b8;">
-                © Teachific™ · <a href="https://www.teachific.com" style="color:${brandColor};text-decoration:none;">www.teachific.com</a>
+                © ${safeOrganizationName} · <a href="https://soundmedianow.com/" style="color:${brandColor};text-decoration:none;">a SoundMedia, Inc. brand</a>
               </p>
             </td>
           </tr>
@@ -56,10 +67,15 @@ export async function sendCertificateEmail(opts: {
   certificateUrl: string;
   pdfBuffer: Buffer;
   issuedAt: Date;
+  organizationName?: string | null;
+  organizationLogoUrl?: string | null;
+  senderName?: string | null;
+  senderEmail?: string | null;
 }): Promise<boolean> {
   const apiKey = process.env.SENDGRID_API_KEY;
-  const senderEmail = process.env.SENDGRID_FROM_EMAIL || "noreply@teachific.com";
-  const senderName = process.env.SENDGRID_FROM_NAME || "Teachific™";
+  const senderEmail = opts.senderEmail || process.env.SENDGRID_FROM_EMAIL || "noreply@course360.app";
+  const senderName = opts.senderName || process.env.SENDGRID_FROM_NAME || "Course360™";
+  const organizationName = opts.organizationName?.trim() || "Course360™";
 
   if (!apiKey) {
     console.warn("[certificate-email] SENDGRID_API_KEY not set — skipping email");
@@ -80,8 +96,8 @@ export async function sendCertificateEmail(opts: {
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:14px 16px;border-radius:0 8px 8px 0;margin:0 0 24px;">
       <p style="margin:0;font-size:14px;color:#0e4a50;font-weight:600;">What this means:</p>
       <ul style="margin:8px 0 0;padding-left:20px;font-size:14px;color:#475569;">
-        <li style="margin:4px 0;">You have demonstrated mastery of the course content</li>
-        <li style="margin:4px 0;">Your certificate is valid for professional portfolio use</li>
+        <li style="margin:4px 0;">Your course completion has been recorded</li>
+        <li style="margin:4px 0;">Keep this certificate with your course records</li>
         <li style="margin:4px 0;">Keep learning — more courses are available in your library</li>
       </ul>
     </div>
@@ -94,7 +110,7 @@ export async function sendCertificateEmail(opts: {
     <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">
       Your certificate PDF is also attached to this email.
     </p>
-  `);
+  `, organizationName, opts.organizationLogoUrl);
 
   const pdfBase64 = opts.pdfBuffer.toString("base64");
 

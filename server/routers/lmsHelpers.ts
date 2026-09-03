@@ -68,6 +68,7 @@ import {
   mediaUploadFolders,
   mediaUploadResponses,
   orgMembers,
+  organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
@@ -197,7 +198,7 @@ export async function issueCertificateIfEnabled(
 ) {
   if (!db) return;
   // Check course has certificate enabled
-  const [course] = await db.select({ hasCertificate: lmsCourses.hasCertificate, title: lmsCourses.title, certificateTemplateId: lmsCourses.certificateTemplateId, creditHours: lmsCourses.creditHours, certificateTitleOverride: lmsCourses.certificateTitleOverride }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+  const [course] = await db.select({ orgId: lmsCourses.orgId, hasCertificate: lmsCourses.hasCertificate, title: lmsCourses.title, certificateTemplateId: lmsCourses.certificateTemplateId, creditHours: lmsCourses.creditHours, certificateTitleOverride: lmsCourses.certificateTitleOverride }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
   if (!course?.hasCertificate) return;
 
   // Check if certificate already issued
@@ -215,17 +216,38 @@ export async function issueCertificateIfEnabled(
 
   const learnerName = user.displayName || user.name || "Learner";
   const issuedAt = new Date();
+  const [organization] = await db.select({
+    name: organizations.name,
+    logoUrl: organizations.logoUrl,
+    customSenderEmail: organizations.customSenderEmail,
+    customSenderName: organizations.customSenderName,
+    senderDomainVerified: organizations.senderDomainVerified,
+  }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
 
   // Fetch certificate template if assigned
   let template: any = null;
   if (course.certificateTemplateId) {
-    const [tmpl] = await db.select().from(lmsCertificateTemplates).where(eq(lmsCertificateTemplates.id, course.certificateTemplateId)).limit(1);
+    const [tmpl] = await db.select().from(lmsCertificateTemplates).where(and(
+      eq(lmsCertificateTemplates.id, course.certificateTemplateId),
+      or(eq(lmsCertificateTemplates.orgId, course.orgId), isNull(lmsCertificateTemplates.orgId)),
+    )).limit(1);
     template = tmpl ?? null;
   }
   if (!template) {
-    // Fall back to default template
-    const [defaultTmpl] = await db.select().from(lmsCertificateTemplates).where(eq(lmsCertificateTemplates.isDefault, true)).limit(1);
-    template = defaultTmpl ?? null;
+    // Prefer the owning organization’s default, then an intentional platform-global default.
+    const [organizationDefault] = await db.select().from(lmsCertificateTemplates).where(and(
+      eq(lmsCertificateTemplates.orgId, course.orgId),
+      eq(lmsCertificateTemplates.isDefault, true),
+    )).limit(1);
+    if (organizationDefault) {
+      template = organizationDefault;
+    } else {
+      const [platformDefault] = await db.select().from(lmsCertificateTemplates).where(and(
+        isNull(lmsCertificateTemplates.orgId),
+        eq(lmsCertificateTemplates.isDefault, true),
+      )).limit(1);
+      template = platformDefault ?? null;
+    }
   }
 
   // Generate PDF — if the template has a custom uploaded PDF, fetch it and
@@ -264,6 +286,7 @@ export async function issueCertificateIfEnabled(
 
   // Save certificate record
   await db.insert(lmsCertificates).values({
+    orgId: course.orgId,
     userId,
     courseId,
     enrollmentId,
@@ -281,6 +304,10 @@ export async function issueCertificateIfEnabled(
       certificateUrl,
       pdfBuffer,
       issuedAt,
+      organizationName: organization?.name,
+      organizationLogoUrl: organization?.logoUrl,
+      senderEmail: organization?.senderDomainVerified ? organization.customSenderEmail : null,
+      senderName: organization?.senderDomainVerified ? organization.customSenderName : null,
     });
   }
 
