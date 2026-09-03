@@ -1878,12 +1878,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pdfExportSource).not.toContain("UltrasoundAssist");
   });
 
-  it("uses generic Teachific labels in the shared platform navigation", () => {
+  it("uses the Course360 brand-aware navigation instead of legacy clinical sidebar declarations", () => {
     const layoutSource = readFileSync(new URL("../client/src/components/Layout.tsx", import.meta.url), "utf8");
-    expect(layoutSource).toContain('label: "Guided Tools"');
-    expect(layoutSource).toContain('label: "Clinical Calculators"');
-    expect(layoutSource).toContain("Submit Clinical Case");
-    expect(layoutSource).toContain("Educator Tools");
+    const brandNavSource = readFileSync(new URL("../client/src/config/brandNav.ts", import.meta.url), "utf8");
+    expect(layoutSource).toContain("getBrandNavConfig(brandConfig.brand)");
+    expect(layoutSource).not.toContain("BASE_NAV_GROUPS");
+    expect(layoutSource).not.toContain("Clinical Calculators");
+    expect(layoutSource).not.toContain("Learn Fetal Echo");
+    expect(brandNavSource).toContain('{ path: "/courses", label: "Courses", icon: BookOpen }');
+    expect(brandNavSource).toContain('{ path: "/quizzes", label: "Quizzes", icon: ClipboardCheck }');
     expect(layoutSource).not.toContain("UltrasoundAssist");
     expect(layoutSource).not.toContain("PediatricAssist");
     expect(layoutSource).not.toContain("EchoAssist");

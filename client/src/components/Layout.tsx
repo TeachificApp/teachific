@@ -3,7 +3,7 @@
   Brand: Teal #189aa1, Aqua #4ad9e0, Dark sidebar
   Fonts: Merriweather headings, Open Sans body
 */
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import NameCollectionModal from "@/components/NameCollectionModal";
 import { Link, Link as WouterLink, useLocation } from "wouter";
 import {
@@ -56,137 +56,8 @@ function PendingBadge() {
   );
 }
 
-// navGroups is built dynamically in the Layout component using live Learn link URLs from DB
-const BASE_NAV_GROUPS = [
-  {
-    label: "Overview",
-    items: [
-      { path: "/", label: "Dashboard", icon: Heart },
-    ],
-  },
-  {
-    label: "Clinical Tools",
-    items: [
-      { path: "/ultrasound-assist", label: "Guided Tools", icon: Stethoscope },
-      { path: "/calculators", label: "Clinical Calculators", icon: Calculator },
-      { path: "/pediatric-navigator", label: "Pediatric Tools", icon: Stethoscope },
-      { path: "/pediatric-calculators", label: "Pediatric Calculators", icon: Calculator },
-      { path: "/clinical-intelligence", label: "Clinical Intelligence", icon: Brain },
-    ],
-  },
-  {
-    label: "Learning",
-    items: [
-      { path: "/quickfire", label: "Daily Challenge", icon: Zap },
-      { path: "/flashcards", label: "Flashcards", icon: Layers },
-      { path: "/case-library", label: "Case Library", icon: Library },
-      { path: "/soundbytes", label: "SoundBytes™", icon: BookMarked },
-      { path: "/cme", label: "CME Hub", icon: GraduationCap },
-      { path: "/registry-review", label: "Registry Review Hub", icon: ClipboardCheck },
-      // Learn links below use __LEARN_FETAL_ECHO_URL__, __LEARN_ECHO_URL__, __LEARN_POCUS_URL__
-      // as placeholders — replaced at runtime in the Layout component with DB values
-      { path: "__LEARN_FETAL_ECHO_URL__", label: "Learn Fetal Echo", icon: BookOpen, external: true },
-      { path: "__LEARN_ECHO_URL__", label: "Learn Echo", icon: BookOpen, external: true },
-      { path: "__LEARN_VASCULAR_URL__", label: "Learn Vascular", icon: BookOpen, external: true },
-      { path: "__LEARN_POCUS_URL__", label: "Learn POCUS", icon: BookOpen, external: true },
-    ],
-  },
-  // Accreditation section hidden until requested
-  // { label: "Accreditation", items: [
-  //   { path: "/accreditation-navigator", label: "Accreditation Navigator™", icon: Award },
-  //   { path: "/diy-accreditation-smart", label: "DIY Accreditation™", icon: ClipboardList },
-  // ] },
-  {
-    label: "Community",
-    items: [
-      { path: "/community", label: "Community Hub", icon: Users },
-    ],
-  },
-  {
-    label: "Career",
-    items: [
-      { path: "/career-network", label: "Career Network", icon: Briefcase },
-    ],
-  },
-  {
-    label: "Account",
-    items: [
-      { path: "/billing", label: "Plans & Billing", icon: Crown },
-    ],
-  },
-];
-
-// Flat list for header label lookup (includes hidden routes not shown in sidebar)
-const hiddenNavItems = [
-  { path: "/image-quality-review", label: "Image Quality Review" },
-  { path: "/profile", label: "My Profile" },
-  { path: "/case-library/submit", label: "Submit a Case" },
-  { path: "/admin/cases-aaus", label: "Case Management" },
-  { path: "/admin/quickfire-aaus", label: "Daily Challenge Admin" },
-  { path: "/admin/thinkific-webhook-aaus", label: "Thinkific Webhook" },
-  { path: "/echo-assist-hub", label: "Echo Tools" },
-  { path: "/scan-coach", label: "Scan Coach" },
-  { path: "/pocus-assist-hub", label: "Point-of-Care Tools" },
-  { path: "/pocus-efast-navigator", label: "eFAST Navigator" },
-  { path: "/pocus-rush-navigator", label: "RUSH Navigator" },
-  { path: "/pocus-cardiac-navigator", label: "Cardiac POCUS Navigator" },
-  { path: "/pocus-lung-navigator", label: "Lung POCUS Navigator" },
-  { path: "/pocus-efast-scan-coach", label: "eFAST ScanCoach™" },
-  { path: "/pocus-rush-scan-coach", label: "RUSH ScanCoach™" },
-  { path: "/pocus-cardiac-scan-coach", label: "Cardiac POCUS ScanCoach™" },
-  { path: "/pocus-lung-scan-coach", label: "Lung POCUS ScanCoach™" },
-  { path: "/ecg-navigator", label: "ECG Navigator" },
-  { path: "/ecg-coach", label: "ECG Coach" },
-  { path: "/ecg-assist", label: "ECG Tools" },
-  { path: "/fetal-echo-assist", label: "Fetal Echo Tools" },
-  { path: "/fetal-navigator", label: "Fetal Echo Navigator" },
-  { path: "/fetal-scan-coach", label: "Fetal Echo ScanCoach™" },
-  { path: "/pediatric-echo-assist", label: "Pediatric Echo Tools" },
-  { path: "/achd-echo-assist", label: "Congenital Echo Tools" },
-  { path: "/diy-accreditation-plans", label: "DIY Accreditation™ Plans" },
-  { path: "/diy-accreditation-smart", label: "DIY Accreditation™" },
-  { path: "/diy-register", label: "Register Your Lab" },
-  { path: "/lab-admin", label: "Lab Admin Portal" },
-  { path: "/diy-member", label: "Member Portal" },
-  // Specialty navigators
-  { path: "/ultrasound-assist", label: "Guided Tools" },
-  { path: "/calculators", label: "Clinical Calculators" },
-  { path: "/abdominal-navigator", label: "Abdominal Navigator" },
-  { path: "/abdominal-scan-coach", label: "Abdominal ScanCoach™" },
-  { path: "/pelvic-gyn-navigator", label: "Pelvic/Gyn Navigator" },
-  { path: "/pelvic-gyn-scan-coach", label: "Pelvic/Gyn ScanCoach™" },
-  { path: "/ob1-navigator", label: "OB 1st Trimester Navigator" },
-  { path: "/ob1-scan-coach", label: "OB 1st Trimester ScanCoach™" },
-  { path: "/ob23-navigator", label: "OB 2nd/3rd Trimester Navigator" },
-  { path: "/ob23-scan-coach", label: "OB 2nd/3rd Trimester ScanCoach™" },
-  { path: "/thyroid-navigator", label: "Thyroid Navigator" },
-  { path: "/thyroid-scan-coach", label: "Thyroid ScanCoach™" },
-  { path: "/scrotum-navigator", label: "Scrotal Navigator" },
-  { path: "/scrotum-scan-coach", label: "Scrotal ScanCoach™" },
-  { path: "/breast-navigator", label: "Breast Navigator" },
-  { path: "/breast-scan-coach", label: "Breast ScanCoach™" },
-  { path: "/venous-navigator", label: "Venous Navigator" },
-  { path: "/venous-scan-coach", label: "Venous ScanCoach™" },
-  { path: "/arterial-navigator", label: "Arterial Navigator" },
-  { path: "/arterial-scan-coach", label: "Arterial ScanCoach™" },
-  { path: "/abdominal-vascular-navigator", label: "Abdominal Vascular Navigator" },
-  { path: "/abdominal-vascular-scan-coach", label: "Abdominal Vascular ScanCoach™" },
-  { path: "/aorta-navigator", label: "Abdominal Aorta Navigator" },
-  { path: "/aorta-scan-coach", label: "Abdominal Aorta ScanCoach™" },
-  { path: "/carotid-navigator", label: "Carotid Navigator" },
-  { path: "/carotid-scan-coach", label: "Carotid ScanCoach™" },
-  { path: "/tcd-navigator", label: "TCD Navigator" },
-  { path: "/tcd-scan-coach", label: "TCD ScanCoach™" },
-  { path: "/msk-navigator", label: "MSK Navigator" },
-  { path: "/msk-scan-coach", label: "MSK ScanCoach™" },
-  { path: "/pocus-assist", label: "Point-of-Care Tools" },
-  { path: "/pediatric-navigator", label: "Pediatric Navigator" },
-  { path: "/pediatric-scan-coach", label: "Pediatric Scan Coach" },
-  { path: "/pediatric-calculators", label: "Pediatric Calculators" },
-  { path: "/soundbytes", label: "SoundBytes™" },
-  { path: "/educator-assist", label: "Educator Tools" },
-];
-// staticNavItems is now resolved inside the Layout function body (brand-aware)
+// Navigation is resolved inside the Layout function body through the shared,
+// platform-owned brand configuration.
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   // On learn, members, and accreditation domains, the domain-specific layout
@@ -226,8 +97,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isAdmin = (user as any)?.role === "admin";
   // Use appRoles (the authoritative role array from auth.me) for access checks
   const appRoles: string[] = (user as any)?.appRoles ?? [];
-  const hasDiyAccess = appRoles.includes("diy_user") || appRoles.includes("diy_admin") || appRoles.includes("platform_admin") || appRoles.includes("platform_owner") || isAdmin;
-  const hasDiyAdmin = appRoles.includes("diy_admin");
   const isDemoMode = !!(user as any)?.demoMode;
 
   // Brand-aware navigation
@@ -441,12 +310,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {accountOpen && (() => {
                   const roles: string[] = (user as any).appRoles ?? [];
                   const isPremiumUser = (user as any).isPremium === true;
-                  const hasDiyAdmin = roles.includes("diy_admin");
                   const hasPlatformAdmin = roles.includes("platform_admin") || roles.includes("platform_owner") || roles.includes("platform_moderator") || (user as any).role === "admin";
-                  const hasAccreditationManager = roles.includes("accreditation_manager") || hasPlatformAdmin;
                   const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-                    diy_user:  { label: "DIY Accreditation", color: "#f59e0b" },
-                    diy_admin: { label: "Lab Admin",         color: "#f97316" },
                     platform_owner:     { label: "Platform Owner",     color: "#7c3aed" },
                     platform_admin:     { label: "Platform Admin",     color: "#dc2626" },
                     platform_moderator: { label: "Moderator",          color: "#0891b2" },
@@ -525,57 +390,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           <GraduationCap className="w-3.5 h-3.5 text-[#189aa1]" />
                           My Dashboard
                         </a>
-                        <WouterLink href="/case-library/submit">
-                          <button onClick={() => setAccountOpen(false)}
-                            className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs md:text-sm text-gray-700 hover:bg-[#f0fbfc] hover:text-[#189aa1] transition-all text-left">
-                            <Plus className="w-3.5 h-3.5 text-[#189aa1]" />
-                            Submit Clinical Case
-                          </button>
-                        </WouterLink>
                         <SiteNavProfileLinks
                           items={profileNavItems}
                           location={location}
                           onNavigate={() => setAccountOpen(false)}
                         />
                       </div>
-
-                      {/* Accreditation Portal section — for any DIY user or admin */}
-                      {(hasDiyAccess || hasDiyAdmin) && (
-                        <div className="px-2 py-1.5 border-t border-gray-100">
-                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Accreditation</div>
-                          {/* Lab Admin Portal — all DIY users */}
-                          <WouterLink href="/lab-admin">
-                            <button onClick={() => setAccountOpen(false)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-all text-left">
-                              <Building2 className="w-3.5 h-3.5 text-orange-500" />
-                              Lab Admin Portal
-                            </button>
-                          </WouterLink>
-                          {/* Member Portal — all DIY users */}
-                          <WouterLink href="/diy-member">
-                            <button onClick={() => setAccountOpen(false)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-all text-left">
-                              <Users className="w-3.5 h-3.5 text-orange-500" />
-                              Member Portal
-                            </button>
-                          </WouterLink>
-                        </div>
-                      )}
-
-                      {/* Educator tools — admin-only */}
-                      {hasPlatformAdmin && (
-                        <div className="px-2 py-1.5 border-t border-gray-100">
-                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Educator Platform</div>
-                          <WouterLink href="/educator-assist">
-                            <button onClick={() => setAccountOpen(false)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-teal-50 hover:text-[#189aa1] transition-all text-left">
-                              <GraduationCap className="w-3.5 h-3.5 text-[#189aa1]" />
-                              <span className="flex-1">Educator Tools</span>
-                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Admin</span>
-                            </button>
-                          </WouterLink>
-                        </div>
-                      )}
 
                       {/* Platform Admin section — only for platform_admin */}
                       {hasPlatformAdmin && (
@@ -587,20 +407,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                               <Shield className="w-3.5 h-3.5 text-teal-500" />
                               <span className="flex-1">Platform Management</span>
                               <PendingBadge />
-                            </button>
-                          </WouterLink>
-                        </div>
-                      )}
-
-                      {/* Accreditation Manager section — for platform_admin and accreditation_manager */}
-                      {hasAccreditationManager && (
-                        <div className="px-2 py-1.5 border-t border-gray-100">
-                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Accreditation</div>
-                          <WouterLink href="/accreditation-manager">
-                            <button onClick={() => setAccountOpen(false)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all text-left">
-                              <ClipboardList className="w-3.5 h-3.5 text-indigo-500" />
-                              <span className="flex-1">Accreditation Manager</span>
                             </button>
                           </WouterLink>
                         </div>
