@@ -1268,7 +1268,7 @@ export const funnelPublicRouter = router({
           product_type: selectedProduct.productType ?? selectedProduct.type ?? "other",
           product_id: selectedProduct.productId ? selectedProduct.productId.toString() : "",
           success_url: successUrl.slice(0, 490),
-          brand_mode: checkoutBlock.data?.brandMode ?? "aaus",
+          brand_mode: checkoutBlock.data?.brandMode ?? "teachific",
         };
 
       const session = await stripe.checkout.sessions.create({
@@ -1588,7 +1588,7 @@ export const funnelPublicRouter = router({
           product_type: selectedProduct.productType ?? selectedProduct.type ?? "other",
           product_id: selectedProduct.productId ? selectedProduct.productId.toString() : "",
           success_url: successUrl.slice(0, 490),
-          brand_mode: checkoutBlock.data?.brandMode ?? "aaus",
+          brand_mode: checkoutBlock.data?.brandMode ?? "teachific",
         },
         automatic_payment_methods: { enabled: true },
       });

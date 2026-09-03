@@ -25,12 +25,16 @@ describe("Course360 funnel checkout organization URLs", () => {
     expect(checkoutSlice).toContain("return redirect;");
     expect(checkoutSlice).toContain("const cancelUrl = `${organizationBaseUrl}/${funnel.slug}/${page.slug}`;");
     expect(checkoutSlice).toContain("sourcePage: `${organizationBaseUrl}/${funnel.slug}/${page.slug}`,");
+    expect(checkoutSlice).toContain('brand_mode: checkoutBlock.data?.brandMode ?? "teachific",');
     expect(checkoutSlice).not.toContain("const cancelUrl = `${input.origin}/${funnel.slug}/${page.slug}`;");
     expect(checkoutSlice).not.toContain("sourcePage: input.origin ? `${input.origin}/${funnel.slug}/${page.slug}` : null,");
+    expect(checkoutSlice).not.toContain('brand_mode: checkoutBlock.data?.brandMode ?? "aaus",');
 
     expect(inlineCheckoutSlice).toContain("const orgBaseUrl = getOrgBaseUrl(");
     expect(inlineCheckoutSlice).toContain("sourcePage: `${orgBaseUrl}/${funnel.slug}/${page.slug}`,");
+    expect(inlineCheckoutSlice).toContain('brand_mode: checkoutBlock.data?.brandMode ?? "teachific",');
     expect(inlineCheckoutSlice).not.toContain("sourcePage: input.origin ? `${input.origin}/${funnel.slug}/${page.slug}` : null,");
+    expect(inlineCheckoutSlice).not.toContain('brand_mode: checkoutBlock.data?.brandMode ?? "aaus",');
 
     expect(directCheckoutSlice).toContain("let productOrgId: number | null = null;");
     expect(directCheckoutSlice).toContain("const organization = await getOrgById(productOrgId);");
