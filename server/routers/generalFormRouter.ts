@@ -2803,7 +2803,7 @@ ${pageText}`;
         widget,
         settings: parseEmbedSettings(widget.settingsJson),
         allowedDomains: parseAllowedDomains(widget.allowedDomains),
-        hostDomain: template?.hostDomain ?? "teachific.app",
+        hostDomain: template?.hostDomain ?? "course360.app",
         publicSlug: template?.publicSlug ?? null,
       };
     }),

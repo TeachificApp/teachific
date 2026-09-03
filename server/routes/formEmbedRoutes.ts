@@ -78,7 +78,7 @@ export function registerFormEmbedRoutes(app: Express) {
         return;
       }
 
-      const hostDomain = template.hostDomain ?? "teachific.app";
+      const hostDomain = template.hostDomain ?? "course360.app";
       const protocol = req.protocol === "https" ? "https" : "https";
       const baseUrl = `${protocol}://${hostDomain}`;
       const embedUrl = `${baseUrl}/forms/${template.publicSlug}/embed?widget=${encodeURIComponent(widgetKey)}`;

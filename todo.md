@@ -121,6 +121,7 @@
 - [x] Add Course360 primary platform domains to the Site Pages registry and select them by default while retaining deployed legacy domain records for compatibility
 - [x] Replace active Platform Admin sitemap base URL, live-link wording, and Quiz Creator dashboard labels with Course360 display values while retaining route paths
 - [x] Replace the active Form Builder retired default public host with course360.app while preserving saved organization hostDomain values; the former client domain list was unused and removed
+- [x] Replace remaining server-side form embed retired host fallbacks with course360.app while preserving saved form hostDomain values
 - [x] Require active-organization ownership for issued certificate listing
 - [x] Require active-organization and CME entitlement for any CME activity certificate report or export
 - [x] Add an additive organization-owned inline CME survey attempt and response model without changing standalone Question Bank records
