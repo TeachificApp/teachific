@@ -115,7 +115,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // ─── Sitemap ────────────────────────────────────────────────────────────────
-const BASE = "https://teachific.app";
+const BASE = "https://course360.app";
 type SitemapEntry = { label: string; path: string; description?: string };
 type SitemapSection = { title: string; icon: React.ReactNode; entries: SitemapEntry[] };
 
@@ -266,9 +266,9 @@ const SITEMAP_SECTIONS: SitemapSection[] = [
       { label: "Course360 Studio™ Dashboard", path: "/studio" },
       { label: "Course360 Studio™ Download (legacy)", path: "/studio/download" },
       { label: "Course360 Studio™ Pro (Marketing)", path: "/studio-pro" },
-      { label: "Teachific QuizMaker™ Dashboard", path: "/quiz-creator-app" },
-      { label: "Teachific QuizMaker™ Download (legacy)", path: "/quiz-creator-app/download" },
-      { label: "Teachific QuizMaker™ Pro (Marketing)", path: "/quiz-creator-pro" },
+      { label: "Course360 Quiz Creator™ Dashboard", path: "/quiz-creator-app" },
+      { label: "Course360 Quiz Creator™ Download (legacy)", path: "/quiz-creator-app/download" },
+      { label: "Course360 Quiz Creator™ Pro (Marketing)", path: "/quiz-creator-pro" },
     ],
   },
   {
@@ -307,7 +307,7 @@ function SitemapTab() {
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Platform Sitemap</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            {totalPages} pages across {SITEMAP_SECTIONS.length} sections — live links to teachific.app
+            {totalPages} pages across {SITEMAP_SECTIONS.length} sections — live links to course360.app
           </p>
         </div>
         <div className="relative w-64">
