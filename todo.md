@@ -155,6 +155,7 @@
 - [x] Require active-organization ownership for product-scoped Printify settings and fulfillment retry actions
 - [ ] Audit registered legacy router namespaces and active client callers for source-derived schema or organization-scope conflicts
 - [ ] Audit hard-coded Teachific learner and checkout URLs and replace organization-owned links with owning-domain resolution
+- [x] Audit active Course360 learner, checkout, invitation, and notification URL construction for platform-domain fallbacks and fix the verified email campaign tracking routing gap
 - [x] Scope administrator-created password-reset emails to the owning organization domain when active organization context is available
 - [x] Validate public magic-link and password-reset origins against recipient organization memberships when a user account exists
 - [x] Audit administrator-created magic-link flows; no separate administrator magic-link sender is currently registered

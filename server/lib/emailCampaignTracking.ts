@@ -24,7 +24,7 @@ export function getEmailCampaignAppUrl(orgBaseUrl?: string): string {
     }
     return `https://${canonical.replace(/\/$/, "")}`;
   }
-  return "https://teachific.app";
+  return "https://course360.app";
 }
 
 function buildClickTrackingUrl(
