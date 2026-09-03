@@ -277,12 +277,12 @@ function BareRouter() {
         <Route path="/quiz-creator-app" component={QuizCreatorDashboard} />
         {/* QuizMaker sales/marketing page */}
         <Route path="/quiz-creator-pro" component={QuizCreatorLandingPage} />
-        {/* Teachific Studio standalone dashboard */}
+        {/* Course360 Studio standalone dashboard */}
         <Route path="/studio/download">{() => <DesktopDownloadPage app="studio" />}</Route>
         <Route path="/studio" component={StudioDashboard} />
-        {/* Teachific Studio sales/marketing page */}
+        {/* Course360 Studio sales and marketing page */}
         <Route path="/studio-pro" component={StudioLandingPage} />
-        {/* TeachificCreator™ — eLearning authoring tool */}
+        {/* Course360 Creator — eLearning authoring tool */}
         <Route path="/creator-pro" component={CreatorLandingPage} />
         <Route path="/creator/download">{() => <DesktopDownloadPage app="creator" />}</Route>
         <Route path="/creator" component={CreatorDashboardPage} />
@@ -498,36 +498,36 @@ function AdminRouter() {
 
 /**
  * SubdomainSchoolRouter
- * When the app is accessed via an org subdomain (e.g. myorg.teachific.app),
+ * When the app is accessed via an organization subdomain (e.g. academy.course360.app),
  * serve both the learner portal AND the admin dashboard for org admins.
  */
 function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
-  const isTeachificLearn = subdomain === "learn";
-  const schoolSubdomain = isTeachificLearn ? "teach" : subdomain;
+  const isCourse360Learn = subdomain === "learn";
+  const schoolSubdomain = isCourse360Learn ? "teach" : subdomain;
   const { user, loading } = useAuth();
   const { data: orgs, isLoading: orgsLoading } = trpc.orgs.myOrgs.useQuery(undefined, {
-    enabled: isTeachificLearn && !!user,
+    enabled: isCourse360Learn && !!user,
   });
-  const canAccessTeachificLearn = !isTeachificLearn ||
+  const canAccessCourse360Learn = !isCourse360Learn ||
     user?.role === "site_owner" ||
     user?.role === "site_admin" ||
     (orgs ?? []).some((org: any) => org.role === "org_admin" || org.role === "org_super_admin");
 
-  if (isTeachificLearn && (loading || (!!user && orgsLoading))) {
+  if (isCourse360Learn && (loading || (!!user && orgsLoading))) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Loading...</div>;
   }
 
-  if (isTeachificLearn && !user) {
+  if (isCourse360Learn && !user) {
     return <LoginPage />;
   }
 
-  if (isTeachificLearn && !canAccessTeachificLearn) {
+  if (isCourse360Learn && !canAccessCourse360Learn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-slate-900">Teachific Learn is for org admins</h1>
+          <h1 className="text-xl font-bold text-slate-900">Course360 Learn is for organization administrators</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Sign in with an organization admin account to access Teachific platform tutorials and FAQs.
+            Sign in with an organization administrator account to access Course360 platform tutorials and FAQs.
           </p>
           <button
             className="mt-5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
@@ -771,7 +771,7 @@ function Router() {
   // If running on an org subdomain, serve the school portal directly
   const subdomain = getSubdomain();
   if (subdomain) {
-    // Blueprint referral subdomains: slug.teachific.app where slug is NOT an org slug.
+    // Blueprint referral subdomains: a non-organization Course360 subdomain can resolve to a blueprint.
     // We optimistically render BlueprintLandingPage; if the slug is actually an org,
     // the SubdomainSchoolRouter handles it. We detect blueprint subdomains by checking
     // if the subdomain starts with "bp-" prefix OR by querying the landing page endpoint.

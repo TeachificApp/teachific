@@ -11,6 +11,7 @@
 - [ ] Replace remaining active UI Teachific labels and retired-domain examples with Course360 equivalents
 - [x] Replace the active enrollment-email platform fallback identity with Course360 while preserving organization-owned learner access URLs
 - [x] Replace active shared transactional-email platform fallback identity with Course360 while preserving organization sender precedence
+- [x] Replace active Course360 Learn subdomain access messaging and source-branded local identifiers while preserving administrator access rules
 - [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
 - [x] Replace the email campaign wrapper’s legacy platform fallback with Course360 while preserving organization-specific campaign identity
 - [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers
