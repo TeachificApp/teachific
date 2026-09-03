@@ -65,7 +65,14 @@ async function requireQuizMakerAccess(ctx: QuizMakerContext, quizId: number) {
   if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
 
   if (quiz.orgId && quiz.orgId > 0) {
-    await requireOrgAdmin(ctx.user.id, ctx.user.role, quiz.orgId);
+    const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+    if (!activeOrgId || activeOrgId !== quiz.orgId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Switch to the quiz organization before managing this Quiz Creator item.",
+      });
+    }
+    await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
     return quiz;
   }
 

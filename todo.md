@@ -38,6 +38,9 @@
 - [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
 - [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
 - [x] Audit and port the compatible organization-owned Quiz Creator image-labeling question type without changing existing Question Bank records
+- [x] Assess the upstream large Question Bank quiz-load fix; defer it because Course360 delivers serialized Quiz Creator questions rather than the upstream standalone Question Bank hydration contract
+- [x] Audit the upstream standalone quiz administrator URL-access fix against Course360’s active organization-scoped staff-preview contract
+- [x] Require server-resolved active-organization alignment for organization-owned Quiz Creator staff, edit, and export access without changing public share-token delivery
 - [x] Verify lesson ownership and active-organization scope before applying CME survey completion rules
 - [ ] Port compatible question-bank improvements with organization-owned media and branded learner delivery
 - [x] Preserve validated question and answer-choice media when importing SCORM or .quiz questions into the active organization’s Question Bank

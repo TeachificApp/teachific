@@ -42,7 +42,7 @@ describe("Course360 mock-exam active organization enforcement", () => {
   it("rejects mock-exam enablement for an organization other than the server-resolved active organization", async () => {
     const caller = appRouter.createCaller(createMultiOrgAdminContext());
     await expect(caller.quizMaker.updateQuiz({ quizId: 12, mockExamEnabled: true }))
-      .rejects.toThrow("Mock-exam settings can only be changed in the active organization.");
+      .rejects.toThrow("Switch to the quiz organization before managing this Quiz Creator item.");
   });
 
   it("rejects cloud-save mock-exam enablement and publication for an organization other than the server-resolved active organization", async () => {
@@ -52,8 +52,16 @@ describe("Course360 mock-exam active organization enforcement", () => {
       title: "Cross-organization mock exam",
       questionsJson: "[]",
       settingsJson: JSON.stringify({ mockExamEnabled: true }),
-    })).rejects.toThrow("Mock-exam settings can only be changed in the active organization.");
+    })).rejects.toThrow("Switch to the quiz organization before managing this Quiz Creator item.");
     await expect(caller.quizMaker.publishQuiz({ quizId: 12 }))
-      .rejects.toThrow("Mock-exam settings can only be changed in the active organization.");
+      .rejects.toThrow("Switch to the quiz organization before managing this Quiz Creator item.");
+  });
+
+  it("rejects direct Quiz Creator management and staff-preview access outside the active organization", async () => {
+    const caller = appRouter.createCaller(createMultiOrgAdminContext());
+    await expect(caller.quizMaker.getQuiz({ quizId: 12 }))
+      .rejects.toThrow("Switch to the quiz organization before managing this Quiz Creator item.");
+    await expect(caller.quizMaker.getStaffPreviewQuiz({ quizId: 12 }))
+      .rejects.toThrow("Switch to the quiz organization before managing this Quiz Creator item.");
   });
 });
