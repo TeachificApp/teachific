@@ -1061,7 +1061,7 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -1069,7 +1069,7 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
 
 /**
  * Notify org admins of a new purchase made through their school.
- * Sent from Teachific email (not Manus) to all org_super_admin / org_admin members.
+ * Sent from the Course360 transactional email sender (not Manus) to all org_super_admin / org_admin members.
  */
 export function buildOrgAdminNewPurchaseEmail(opts: {
   orgName: string;
@@ -1106,7 +1106,7 @@ export function buildOrgAdminNewPurchaseEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
-      This is an automated notification from Teachific™. You are receiving this because you are an admin of ${opts.orgName}.
+      This is an automated notification from Course360™. You are receiving it because you are an administrator of ${opts.orgName}.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -1139,7 +1139,7 @@ export function buildPaymentFailedEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };

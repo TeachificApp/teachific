@@ -12,6 +12,7 @@
 - [x] Replace the active enrollment-email platform fallback identity with Course360 while preserving organization-owned learner access URLs
 - [x] Replace active shared transactional-email platform fallback identity with Course360 while preserving organization sender precedence
 - [x] Rebrand shared free and premium account welcome-email fallbacks to Course360 without changing account-entitlement behavior
+- [x] Replace shared purchase-confirmation, organization purchase-alert, and payment-failure source-brand support fallbacks with Course360 wording while preserving supplied organization URLs
 - [x] Replace active Course360 Learn subdomain access messaging and source-branded local identifiers while preserving administrator access rules
 - [x] Rebrand active shared platform display configuration fallbacks to Course360 while retaining compatibility-only brand keys
 - [x] Remove the unreferenced legacy clinical upgrade prompt rather than porting source-specific clinical content or unsupported premium routes
