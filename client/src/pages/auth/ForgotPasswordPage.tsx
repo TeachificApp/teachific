@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="relative z-10 text-white/25 text-xs">
-          © {new Date().getFullYear()} Teachific™. All rights reserved. Teachific™ is a{" "}<a href="https://www.soundmedianow.com" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">SoundMedia, Inc.</a>{" "}brand
+          © {new Date().getFullYear()} Course360™. All rights reserved. <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">a SoundMedia, Inc. brand</a>
         </p>
       </div>}
 
