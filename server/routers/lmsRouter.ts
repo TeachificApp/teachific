@@ -33,6 +33,7 @@ import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import {
   lmsCourses,
@@ -1186,7 +1187,20 @@ export const lmsLearnerRouter = router({
 
       // Load per-org invoice settings
       const _invoiceSettings = await getOrCreateOrgPaymentSettings(course.orgId).catch(() => null);
-      const [_orgRow] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      const [_orgRow] = await db.select({
+        name: organizations.name,
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      if (!_orgRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      }
+      const organizationBaseUrl = getOrgBaseUrl(
+        _orgRow.slug,
+        _orgRow.customDomain,
+        _orgRow.domainVerificationStatus,
+      );
       const _buildInvoiceOpts = (productLabel: string) => {
         const prefix = _invoiceSettings?.invoicePrefix?.trim() || "";
         const num = _invoiceSettings?.nextInvoiceNumber ?? 1;
@@ -1239,8 +1253,9 @@ export const lmsLearnerRouter = router({
         trigger_order_type: "course",
         ...orderBumpCheckout?.metadata,
       };
-      const successUrl = `${input.origin}/courses/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${input.origin}/courses/${course.slug}`;
+      const coursePath = `/courses/${encodeURIComponent(course.slug)}`;
+      const successUrl = `${organizationBaseUrl}${coursePath}/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${organizationBaseUrl}${coursePath}`;
 
       let session: any;
 
@@ -1492,6 +1507,20 @@ export const lmsLearnerRouter = router({
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
 
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      if (!organization) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+      }
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
+
       const orderBumpCheckout = await buildOrderBumpCheckoutLine(db, {
         orderBumpId: input.orderBumpId,
         triggerType: "course",
@@ -1521,8 +1550,9 @@ export const lmsLearnerRouter = router({
         ...orderBumpCheckout?.metadata,
       };
 
-      const successUrl = `${input.origin}/courses/${course.slug}/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${input.origin}/courses/${course.slug}`;
+      const coursePath = `/courses/${encodeURIComponent(course.slug)}`;
+      const successUrl = `${organizationBaseUrl}${coursePath}/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${organizationBaseUrl}${coursePath}`;
 
       let discounts: Array<{ promotion_code: string }> | undefined;
       if (input.promoCode) {
