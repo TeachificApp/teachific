@@ -15,6 +15,7 @@ import {
   users,
   lmsArchive,
   coupons,
+  organizations,
 } from "../../drizzle/schema";
 import { sendEmail } from "../sendgrid";
 import { sendEmailViaOrg } from "../_core/email";
@@ -24,6 +25,7 @@ import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { sendDownloadAccessEmail, sendBundleAccessEmail } from "../lib/enrollmentEmail";
 import { addToAllContacts } from "../lib/emailListHelper";
 import { couponIsRedeemableForTarget } from "../lib/couponTargeting";
+import { getOrgBaseUrl } from "../lib/orgUrl";
 
 async function assertAdmin(ctx: any) {
   const orgId = await getOrgIdForUserWithFallback(ctx.user!.id, ctx.user!.role);
@@ -383,6 +385,17 @@ export const downloadsLearnerRouter = router({
       const [bundle] = await db.select().from(digitalBundles)
         .where(eq(digitalBundles.id, input.bundleId)).limit(1);
       if (!bundle || bundle.status !== "published") throw new TRPCError({ code: "NOT_FOUND" });
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, bundle.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Bundle organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
 
       // Check if already purchased
       const [existing] = await db.select().from(digitalBundlePurchases)
@@ -395,7 +408,6 @@ export const downloadsLearnerRouter = router({
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
 
-      const origin = ctx.req.headers.origin || `https://${ctx.req.headers.host}`;
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: ctx.user.email ?? undefined,
@@ -418,8 +430,8 @@ export const downloadsLearnerRouter = router({
           user_id: ctx.user.id.toString(),
           customer_email: ctx.user.email ?? "",
         },
-        success_url: `${origin}/my-downloads?success=1`,
-        cancel_url: `${origin}/bundles/${bundle.slug}`,
+        success_url: `${organizationBaseUrl}/my-downloads?success=1`,
+        cancel_url: `${organizationBaseUrl}/bundles/${encodeURIComponent(bundle.slug)}`,
       });
 
       return { checkoutUrl: session.url, alreadyPurchased: false };
