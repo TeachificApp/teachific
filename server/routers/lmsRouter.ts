@@ -1613,18 +1613,29 @@ export const lmsLearnerRouter = router({
   /** Upgrade-prompt checkout — supports course / download / physical product with optional promo code */
   upgradePromptCheckout: protectedProcedure
     .input(z.object({
-      productType: z.enum(["course", "download", "product"]),
-      productSlug: z.string().optional(),
-      productId: z.number().optional(),
-      promoCode: z.string().optional(),
-      origin: z.string(),
-    }))
+        productType: z.enum(["course", "download", "product"]),
+        productSlug: z.string().optional(),
+        productId: z.number().optional(),
+        promoCode: z.string().optional(),
+      }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const Stripe = (await import("stripe")).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" as any });
-      const origin = input.origin || ctx.req.headers.origin || `https://${ctx.req.headers.host}`;
+      const resolveOrganizationBaseUrl = async (organizationId: number) => {
+        const [organization] = await db.select({
+          slug: organizations.slug,
+          customDomain: organizations.customDomain,
+          domainVerificationStatus: organizations.domainVerificationStatus,
+        }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+        if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Product organization not found" });
+        return getOrgBaseUrl(
+          organization.slug,
+          organization.customDomain,
+          organization.domainVerificationStatus,
+        );
+      };
 
       // Resolve promo code → Stripe promotion_code ID
       let discounts: Array<{ promotion_code: string }> | undefined;
@@ -1647,6 +1658,7 @@ export const lmsLearnerRouter = router({
           await db.insert(lmsEnrollments).values({ userId: ctx.user.id, courseId: course.id });
           return { checkoutUrl: null, alreadyEnrolled: false, free: true };
         }
+        const organizationBaseUrl = await resolveOrganizationBaseUrl(course.orgId);
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: ctx.user.email ?? undefined,
@@ -1654,8 +1666,8 @@ export const lmsLearnerRouter = router({
           ...(discounts ? { discounts } : { allow_promotion_codes: true }),
           line_items: [{ price_data: { currency: course.currency ?? "usd", product_data: { name: course.title, images: course.coverImageUrl ? [course.coverImageUrl] : undefined }, unit_amount: Math.round(Number(course.price) * 100) }, quantity: 1 }],
           metadata: { type: "lms_course", course_id: course.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", source: "upgrade_prompt" },
-          success_url: `${origin}/courses/${course.slug}?success=1`,
-          cancel_url: `${origin}/courses/${course.slug}`,
+          success_url: `${organizationBaseUrl}/courses/${encodeURIComponent(course.slug)}?success=1`,
+          cancel_url: `${organizationBaseUrl}/courses/${encodeURIComponent(course.slug)}`,
         });
         return { checkoutUrl: session.url, alreadyEnrolled: false };
       }
@@ -1672,6 +1684,7 @@ export const lmsLearnerRouter = router({
           await db.insert(digitalPurchases).values({ userId: ctx.user.id, productId: product.id });
           return { checkoutUrl: null, alreadyEnrolled: false, free: true };
         }
+        const organizationBaseUrl = await resolveOrganizationBaseUrl(product.orgId);
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: ctx.user.email ?? undefined,
@@ -1679,8 +1692,8 @@ export const lmsLearnerRouter = router({
           ...(discounts ? { discounts } : { allow_promotion_codes: true }),
           line_items: [{ price_data: { currency: product.currency, product_data: { name: product.title, images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined }, unit_amount: Math.round(Number(product.price) * 100) }, quantity: 1 }],
           metadata: { type: "digital_download", product_id: product.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", source: "upgrade_prompt" },
-          success_url: `${origin}/downloads/${product.slug}/files?success=1`,
-          cancel_url: `${origin}/downloads/${product.slug}`,
+          success_url: `${organizationBaseUrl}/downloads/${encodeURIComponent(product.slug)}/files?success=1`,
+          cancel_url: `${organizationBaseUrl}/downloads/${encodeURIComponent(product.slug)}`,
         });
         return { checkoutUrl: session.url, alreadyEnrolled: false };
       }
@@ -1694,6 +1707,7 @@ export const lmsLearnerRouter = router({
         if (!product) throw new TRPCError({ code: "NOT_FOUND" });
         if (product.isFree || !product.price) return { checkoutUrl: null, alreadyEnrolled: false, free: true };
         const allowedCountries = product.shippingCountries ? (JSON.parse(product.shippingCountries) as string[]) : ["US", "CA", "GB", "AU", "NZ"];
+        const organizationBaseUrl = await resolveOrganizationBaseUrl(product.orgId);
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: ctx.user.email ?? undefined,
@@ -1702,8 +1716,8 @@ export const lmsLearnerRouter = router({
           shipping_address_collection: { allowed_countries: allowedCountries as any },
           line_items: [{ price_data: { currency: product.currency, product_data: { name: product.title, images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined }, unit_amount: Math.round(Number(product.price) * 100) }, quantity: 1 }],
           metadata: { type: "physical_product", product_id: product.id.toString(), user_id: ctx.user.id.toString(), customer_email: ctx.user.email ?? "", source: "upgrade_prompt" },
-          success_url: `${origin}/product/${product.slug}?success=1`,
-          cancel_url: `${origin}/product/${product.slug}`,
+          success_url: `${organizationBaseUrl}/product/${encodeURIComponent(product.slug)}?success=1`,
+          cancel_url: `${organizationBaseUrl}/product/${encodeURIComponent(product.slug)}`,
         });
         return { checkoutUrl: session.url, alreadyEnrolled: false };
       }

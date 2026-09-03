@@ -2906,7 +2906,6 @@ function UpgradePromptBlockPreview({ d }: { d: Record<string, any> }) {
         productSlug: productSlug || undefined,
         productId: productId || undefined,
         promoCode: promoCode || undefined,
-        origin: window.location.origin,
       });
       if (result.checkoutUrl) {
         window.open(result.checkoutUrl, "_blank");
