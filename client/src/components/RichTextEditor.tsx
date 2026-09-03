@@ -22,6 +22,7 @@
  */
 
 import { useEditor, EditorContent, Node, mergeAttributes } from "@tiptap/react";
+import { DOMParser as PmDOMParser } from "@tiptap/pm/model";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -39,6 +40,7 @@ import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
+import { mergeEmojiOnlyPlainTextLines, normalizePastedRichTextHtml, plainTextToPasteHtml, shouldFallbackToPlainTextEmojiPaste } from "../../../shared/richTextPasteTransform";
 
 // Extended Table with borderless attribute
 const CustomTable = Table.extend({
@@ -713,60 +715,20 @@ export function RichTextEditor({
       // Strip non-standard HTML attributes that external editors (web pages, Google Docs, Word, etc.)
       // add to elements. Without this, unknown attributes like containerstyle/wrapperstyle render
       // as visible raw text in the TipTap editor area.
-      transformPastedHTML: (html: string) => {
-        try {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, "text/html");
-          // ── Convert ChatGPT / Wikipedia MathML to TipTap math nodes ──────────
-          // ChatGPT wraps each equation in <span class="math"> or similar, with
-          // a <math> element that contains <annotation encoding="application/x-tex">
-          // holding the raw LaTeX.  We replace the whole math container with a
-          // TipTap-compatible node that the Mathematics extension can parse.
-          doc.body.querySelectorAll<HTMLElement>("math").forEach((mathEl) => {
-            const annotation = mathEl.querySelector('annotation[encoding="application/x-tex"]');
-            const latex = annotation?.textContent?.trim() ?? "";
-            if (!latex) return;
-            // Determine display mode: MathML uses display="block" for block equations
-            const isBlock = mathEl.getAttribute("display") === "block" ||
-              mathEl.closest(".math-display, .katex-display, [data-display='block']") !== null;
-            // Build the replacement element that the Mathematics extension parses
-            const replacement = isBlock
-              ? Object.assign(doc.createElement("div"), {
-                  dataset: { type: "block-math", latex },
-                })
-              : Object.assign(doc.createElement("span"), {
-                  dataset: { type: "inline-math", latex },
-                });
-            replacement.setAttribute("data-type", isBlock ? "block-math" : "inline-math");
-            replacement.setAttribute("data-latex", latex);
-            // Replace the outermost math container (could be wrapped in a <span class="math">)
-            const container = mathEl.closest(".math, .math-inline, .math-display") ?? mathEl;
-            container.replaceWith(replacement);
-          });
-          // ── Strip non-standard attributes from other editors ──────────────────
-          const nonStandardAttrs = [
-            "containerstyle", "wrapperstyle", "containerStyle", "wrapperStyle",
-          ];
-          doc.body.querySelectorAll("*").forEach((el) => {
-            nonStandardAttrs.forEach((attr) => el.removeAttribute(attr));
-            // Remove any data-mce-* or data-stringify-* attributes from MCE/other editors
-            Array.from(el.attributes).forEach((a) => {
-              if (
-                a.name.startsWith("data-mce") ||
-                a.name.startsWith("data-stringify") ||
-                a.name.startsWith("data-sheets")
-              ) {
-                el.removeAttribute(a.name);
-              }
-            });
-          });
-          return doc.body.innerHTML;
-        } catch {
-          return html;
-        }
-      },
+      transformPastedHTML: normalizePastedRichTextHtml,
+      transformPastedText: mergeEmojiOnlyPlainTextLines,
       handlePaste: (view, event) => {
-        const pastedHtml = event.clipboardData?.getData("text/html");
+        const pastedHtml = event.clipboardData?.getData("text/html") ?? "";
+        const pastedText = event.clipboardData?.getData("text/plain") ?? "";
+        const hasImage = pastedHtml.includes("data:image") || pastedHtml.includes("<img");
+        if (shouldFallbackToPlainTextEmojiPaste({ pastedHtml, pastedText, hasImage })) {
+          event.preventDefault();
+          const container = document.createElement("div");
+          container.innerHTML = plainTextToPasteHtml(pastedText);
+          const slice = PmDOMParser.fromSchema(view.state.schema).parseSlice(container, { preserveWhitespace: true });
+          view.dispatch(view.state.tr.replaceSelection(slice));
+          return true;
+        }
         if (pastedHtml?.includes("data:image")) {
           event.preventDefault();
           toast.info("Uploading pasted images...");

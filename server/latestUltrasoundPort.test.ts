@@ -3272,6 +3272,30 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(richTextEditorSource).toContain("maxHeight = 600");
   });
 
+  it("preserves rich formatting and repairs malformed emoji-only blocks through the shared paste transform", () => {
+    const richTextEditorSource = readFileSync(new URL("../client/src/components/RichTextEditor.tsx", import.meta.url), "utf8");
+    const pasteTransformSource = readFileSync(new URL("../shared/richTextPasteTransform.ts", import.meta.url), "utf8");
+    expect(richTextEditorSource).toContain("transformPastedHTML: normalizePastedRichTextHtml");
+    expect(richTextEditorSource).toContain("transformPastedText: mergeEmojiOnlyPlainTextLines");
+    expect(richTextEditorSource).toContain("shouldFallbackToPlainTextEmojiPaste");
+    expect(richTextEditorSource).toContain("PmDOMParser.fromSchema");
+    expect(pasteTransformSource).toContain("normalizeInlineStyleSpans");
+    expect(pasteTransformSource).toContain("plainTextToPasteHtml");
+    expect(pasteTransformSource).toContain("mergeEmojiOnlyBlocks");
+  });
+
+  it("shares the paste-safe rich-text editor across lesson and page authoring without a separate email TipTap handler", () => {
+    const lessonEditorSource = readFileSync(new URL("../client/src/components/lms/LessonEditorSheet.tsx", import.meta.url), "utf8");
+    const adminLandingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const lmsLandingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+    const emailBlockEditorSource = readFileSync(new URL("../client/src/components/EmailBlockEditor.tsx", import.meta.url), "utf8");
+    expect(lessonEditorSource).toContain("RichTextEditor");
+    expect(adminLandingBuilderSource).toContain("RichTextEditor");
+    expect(lmsLandingBuilderSource).toContain("RichTextEditor");
+    expect(emailBlockEditorSource).not.toContain("useEditor(");
+    expect(emailBlockEditorSource).not.toContain("contentEditable");
+  });
+
   it("uses organization theme tokens for Question Bank package importer controls", () => {
     const importPageSource = readFileSync(new URL("../client/src/pages/QuestionBankImportPage.tsx", import.meta.url), "utf8");
     expect(importPageSource).toContain("bg-primary border-primary text-primary-foreground");
