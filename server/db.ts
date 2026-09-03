@@ -117,6 +117,9 @@ export async function createManualUser(data: {
   passwordHash: string;
   role: "site_admin" | "org_super_admin" | "org_admin" | "member" | "user";
   loginMethod: string;
+  emailVerified?: boolean;
+  resetToken?: string;
+  resetTokenExpiry?: Date;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -127,7 +130,9 @@ export async function createManualUser(data: {
     passwordHash: data.passwordHash,
     role: data.role,
     loginMethod: data.loginMethod,
-    emailVerified: true,
+    emailVerified: data.emailVerified ?? true,
+    resetToken: data.resetToken ?? null,
+    resetTokenExpiry: data.resetTokenExpiry ?? null,
     lastSignedIn: new Date(),
   });
 }

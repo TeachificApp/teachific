@@ -55,7 +55,7 @@ export default function MembersPage() {
   const [bulkPreview, setBulkPreview] = useState<Array<{name: string; email: string; password?: string; role: "org_admin" | "user"; memberSubRole: "basic_member" | "instructor"}>>([]);
   const [bulkFileName, setBulkFileName] = useState("");
   const [bulkParseError, setBulkParseError] = useState("");
-  const [bulkResult, setBulkResult] = useState<{created: number; updated: number; failed: number; errors: string[]; total: number; importedMembers: Array<{name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated"}>} | null>(null);
+  const [bulkResult, setBulkResult] = useState<{created: number; updated: number; failed: number; errors: string[]; total: number; setupEmailsSent: number; setupEmailsFailed: number; importedMembers: Array<{name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated"}>} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { orgId } = useOrgScope();
@@ -103,7 +103,7 @@ export default function MembersPage() {
         return {
           name: cols[nameIdx] ?? "",
           email: cols[emailIdx] ?? "",
-          password: passIdx >= 0 && cols[passIdx] ? cols[passIdx] : "Teachific@123",
+          password: passIdx >= 0 && cols[passIdx] ? cols[passIdx] : undefined,
           role: (roleIdx >= 0 && cols[roleIdx]?.toLowerCase().includes("admin") ? "org_admin" : "user") as "org_admin" | "user",
           memberSubRole: (subRoleIdx >= 0 && cols[subRoleIdx]?.toLowerCase().includes("instructor") ? "instructor" : "basic_member") as "basic_member" | "instructor",
         };
@@ -724,7 +724,7 @@ export default function MembersPage() {
                   <FileSpreadsheet className="h-10 w-10 text-muted-foreground mx-auto" />
                   <div>
                     <p className="text-sm font-medium">Upload a CSV file</p>
-                    <p className="text-xs text-muted-foreground mt-1">Required columns: <code className="bg-muted px-1 rounded">name</code>, <code className="bg-muted px-1 rounded">email</code>. Optional: <code className="bg-muted px-1 rounded">password</code>, <code className="bg-muted px-1 rounded">role</code>, <code className="bg-muted px-1 rounded">memberSubRole</code> (use <code className="bg-muted px-1 rounded">instructor</code>).</p>
+                    <p className="text-xs text-muted-foreground mt-1">Required columns: <code className="bg-muted px-1 rounded">name</code>, <code className="bg-muted px-1 rounded">email</code>. Optional: <code className="bg-muted px-1 rounded">password</code>, <code className="bg-muted px-1 rounded">role</code>, <code className="bg-muted px-1 rounded">memberSubRole</code> (use <code className="bg-muted px-1 rounded">instructor</code>). Leave password blank to send a secure setup link.</p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -772,7 +772,7 @@ export default function MembersPage() {
                         </TableBody>
                       </Table>
                     </div>
-                    <p className="text-xs text-muted-foreground">Default password: <code className="bg-muted px-1 rounded">Teachific@123</code> (if not specified in CSV)</p>
+                    <p className="text-xs text-muted-foreground">Rows without a password receive a secure, one-time password setup link by email.</p>
                   </div>
                 )}
               </>
@@ -782,7 +782,7 @@ export default function MembersPage() {
                   <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-sm">Import Complete</p>
-                    <p className="text-xs">{bulkResult.created} created · {bulkResult.updated} updated · {bulkResult.failed} failed out of {bulkResult.total} total</p>
+                    <p className="text-xs">{bulkResult.created} created · {bulkResult.updated} updated · {bulkResult.failed} failed out of {bulkResult.total} total{bulkResult.setupEmailsSent ? ` · ${bulkResult.setupEmailsSent} setup email${bulkResult.setupEmailsSent === 1 ? "" : "s"} sent` : ""}</p>
                   </div>
                 </div>
                 {bulkResult.importedMembers.length > 0 && (

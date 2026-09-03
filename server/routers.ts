@@ -2,6 +2,9 @@ import { COOKIE_NAME, IMPERSONATION_ORIGINAL_COOKIE } from "@shared/const";
 import dns from "node:dns";
 import { sendEmail } from "./sendgrid";
 import { getOrgLinkInvitationUrl } from "./lib/orgLinkInvitationUrl";
+import { sendEmailViaOrg } from "./_core/email";
+import { resetPasswordHtml } from "./emailTemplates";
+import { getOrgBaseUrl } from "./lib/orgUrl";
 import https from "node:https";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
@@ -1964,9 +1967,19 @@ export const appRouter = router({
             if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
           }
           let created = 0, updated = 0, failed = 0;
+          let setupEmailsSent = 0, setupEmailsFailed = 0;
           const errors: string[] = [];
           const importedMembers: Array<{ name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated" }> = [];
           const bcrypt = await import("bcryptjs");
+          const organization = await getOrgById(input.orgId);
+          if (!organization) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+          }
+          const organizationBaseUrl = getOrgBaseUrl(
+            organization.slug,
+            organization.customDomain,
+            organization.domainStatus,
+          );
           for (const u of input.users) {
             try {
               const existing = await getUserByEmail(u.email);
@@ -1978,21 +1991,49 @@ export const appRouter = router({
                 updated++;
                 importedMembers.push({ name: u.name, email: u.email, role: existingMember?.role ?? orgRole, memberSubRole: existingMember?.memberSubRole ?? u.memberSubRole, status: "updated" });
               } else {
-                const password = u.password || nanoid(12);
+                const requiresPasswordSetup = !u.password;
+                const password = u.password || nanoid(48);
+                const resetToken = requiresPasswordSetup ? nanoid(48) : undefined;
+                const resetTokenExpiry = requiresPasswordSetup
+                  ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+                  : undefined;
                 const passwordHash = await bcrypt.default.hash(password, 10);
                 const openId = `manual_${nanoid(20)}`;
-                await createManualUser({ openId, name: u.name, email: u.email, loginMethod: "email", role: "user", passwordHash });
+                await createManualUser({
+                  openId,
+                  name: u.name,
+                  email: u.email,
+                  loginMethod: "email",
+                  role: "user",
+                  passwordHash,
+                  emailVerified: !requiresPasswordSetup,
+                  resetToken,
+                  resetTokenExpiry,
+                });
                 const newUser = await getUserByEmail(u.email);
                 if (!newUser) throw new Error("Failed to create user");
                 const orgRole = u.role === "org_admin" ? "org_admin" : "member";
                 await addOrgMember(input.orgId, newUser.id, orgRole, ctx.user.id, u.memberSubRole);
                 if (orgRole === "org_admin") await grantTeachificSchoolAccess(newUser.id);
+                if (requiresPasswordSetup && resetToken) {
+                  const setupUrl = `${organizationBaseUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+                  const wasSent = await sendEmailViaOrg({
+                    to: { name: u.name, email: u.email },
+                    subject: `Set up your ${organization.name} account`,
+                    html: resetPasswordHtml(u.name, setupUrl),
+                  }, input.orgId);
+                  if (wasSent) setupEmailsSent++;
+                  else {
+                    setupEmailsFailed++;
+                    errors.push(`${u.email}: account was created, but the password setup email could not be sent`);
+                  }
+                }
                 created++;
                 importedMembers.push({ name: u.name, email: u.email, role: orgRole, memberSubRole: u.memberSubRole, status: "created" });
               }
             } catch (e: any) { failed++; errors.push(`${u.email}: ${e.message}`); }
           }
-                    return { total: input.users.length, created, updated, failed, errors, importedMembers };
+                    return { total: input.users.length, created, updated, failed, errors, importedMembers, setupEmailsSent, setupEmailsFailed };
         }),
       // Org admin (or platform admin) manually sets a member's password
       resetPassword: orgAdminProcedure
