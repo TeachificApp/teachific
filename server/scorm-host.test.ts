@@ -17,6 +17,7 @@ vi.mock("./db", () => ({
   getAllOrgs: vi.fn().mockResolvedValue([]),
   updateOrg: vi.fn().mockResolvedValue(undefined),
   getOrgsByUserId: vi.fn().mockResolvedValue([]),
+  getOrgIdForUserWithFallback: vi.fn().mockResolvedValue(1),
   addOrgMember: vi.fn().mockResolvedValue(undefined),
   getOrgMembers: vi.fn().mockResolvedValue([]),
   getOrgMember: vi.fn().mockResolvedValue(null),
@@ -226,12 +227,10 @@ describe("orgs", () => {
 
 // ─── Versions tests ───────────────────────────────────────────────────────────
 describe("versions", () => {
-  it("returns empty version list for unknown package", async () => {
+  it("rejects a version listing for an unknown package", async () => {
     const ctx = makeCtx("admin");
     const caller = appRouter.createCaller(ctx);
-    const result = await caller.versions.list({ packageId: 999 });
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBe(0);
+    await expect(caller.versions.list({ packageId: 999 })).rejects.toThrow();
   });
 });
 

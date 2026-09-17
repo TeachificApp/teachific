@@ -35,6 +35,7 @@ import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
+import { getActiveEnrollment } from "../lib/enrollmentAccess";
 import {
   lmsCourses,
   lmsSections,
@@ -606,29 +607,34 @@ export const lmsLearnerRouter = router({
 
   /** Get full course content for enrolled user (or preview lessons) */
   getCoursePlayer: protectedProcedure
-    .input(z.object({ slug: z.string(), orgId: z.number().optional(), preview: z.boolean().optional() }))
+    .input(z.object({ slug: z.string(), preview: z.boolean().optional() }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const courseScope = input.orgId
-        ? and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, input.orgId))
-        : eq(lmsCourses.slug, input.slug);
-      const [course] = await db.select().from(lmsCourses).where(courseScope).limit(1);
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization context." });
+      const [course] = await db.select().from(lmsCourses)
+        .where(and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, activeOrgId)))
+        .limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
       // Check enrollment first — must happen before isAdminPreview check
-      const [enrollment] = await db.select().from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
 
       // Admin preview mode: only active when admin is NOT enrolled AND explicitly requested preview.
       // If the admin IS enrolled, treat them as a regular enrolled user so progress is tracked.
       const isAdminPreview = input.preview && ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role) && !enrollment;
 
-      // Fetch sections + ALL lessons for this course in 2 parallel queries (avoids N+1)
+      // Include lessons owned through a section; legacy imports can leave courseId null
+      // on section-owned rows. Heavy lesson content is fetched by getLesson.
       // Select only lightweight columns for the sidebar — heavy content (contentBlocks, content, videoContent)
       // is fetched on-demand by getLesson when the student opens a specific lesson.
-      const [sections, allCourseLessons] = await Promise.all([
-        db.select().from(lmsSections).where(eq(lmsSections.courseId, course.id)).orderBy(asc(lmsSections.position)),
-        db.select({
+      const sections = await db.select().from(lmsSections)
+        .where(eq(lmsSections.courseId, course.id)).orderBy(asc(lmsSections.position));
+      const sectionIds = sections.map(section => section.id);
+      const lessonScope = sectionIds.length > 0
+        ? or(eq(lmsLessons.courseId, course.id), inArray(lmsLessons.sectionId, sectionIds))
+        : eq(lmsLessons.courseId, course.id);
+      const allCourseLessons = await db.select({
           id: lmsLessons.id,
           courseId: lmsLessons.courseId,
           sectionId: lmsLessons.sectionId,
@@ -659,12 +665,9 @@ export const lmsLearnerRouter = router({
           createdAt: lmsLessons.createdAt,
           updatedAt: lmsLessons.updatedAt,
         }).from(lmsLessons).where(
-          // Admins (in preview mode) see all lessons; enrolled learners only see published lessons
-          isAdminPreview
-            ? eq(lmsLessons.courseId, course.id)
-            : and(eq(lmsLessons.courseId, course.id), eq(lmsLessons.lessonStatus, "published"))
-        ).orderBy(asc(lmsLessons.position)),
-      ]);
+          // Admins (in preview mode) see all lessons; enrolled learners only see published lessons.
+          isAdminPreview ? lessonScope : and(lessonScope, eq(lmsLessons.lessonStatus, "published"))
+        ).orderBy(asc(lmsLessons.position));
       // Group lessons by sectionId in JS — no extra round-trips
       const lessonsBySectionId = new Map<number, typeof allCourseLessons>();
       const topLevelLessons: typeof allCourseLessons = [];
@@ -737,7 +740,14 @@ export const lmsLearnerRouter = router({
         const [section] = await db.select().from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1);
         if (section) resolvedCourseId = section.courseId;
       }
-            if (!resolvedCourseId) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!resolvedCourseId) throw new TRPCError({ code: "NOT_FOUND" });
+      const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId })
+        .from(lmsCourses).where(eq(lmsCourses.id, resolvedCourseId)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This lesson is not available in the active organization" });
+      }
       const isAdmin = ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user.role);
       // Block draft lessons from non-admin learners
       if (!isAdmin && lesson.lessonStatus === "draft") {
@@ -745,9 +755,8 @@ export const lmsLearnerRouter = router({
       }
       const pm = lesson.previewMode ?? (lesson.isPreview ? "preview" : "none");
       if (pm !== "preview" && !isAdmin) {
-        // Check enrollment
-        const [enrollment] = await db.select().from(lmsEnrollments)
-          .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, resolvedCourseId))).limit(1);
+        // Expired, suspended, and cancelled enrollments cannot load protected media.
+        const enrollment = await getActiveEnrollment(db as any, ctx.user.id, resolvedCourseId);
         if (pm === "preview_hide_after_purchase" && enrollment && enrollment.enrollmentType !== "free_preview") {
           // Purchased (full access) — hide this lesson (it was a pre-purchase teaser)
           throw new TRPCError({ code: "FORBIDDEN", message: "This preview lesson is no longer available after purchase" });
@@ -782,7 +791,20 @@ export const lmsLearnerRouter = router({
         }
       }
 
-      return { ...lesson, quiz };
+      let linkedMediaAsset: { id: number; slug: string; mediaType: string | null; fileName: string | null } | null = null;
+      if (lesson.mediaAssetId) {
+        const [asset] = await db.select({ id: mediaAssets.id, slug: mediaAssets.slug, mediaType: mediaAssets.mediaType })
+          .from(mediaAssets)
+          .where(and(eq(mediaAssets.id, lesson.mediaAssetId), eq(mediaAssets.orgId, course.orgId)))
+          .limit(1);
+        if (asset) {
+          const [version] = await db.select({ fileName: mediaVersions.fileName })
+            .from(mediaVersions).where(eq(mediaVersions.assetId, asset.id)).orderBy(desc(mediaVersions.versionNumber)).limit(1);
+          linkedMediaAsset = { ...asset, fileName: version?.fileName ?? null };
+        }
+      }
+
+      return { ...lesson, quiz, linkedMediaAsset };
     }),
 
   /**

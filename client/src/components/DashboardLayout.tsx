@@ -182,7 +182,7 @@ const navGroups: NavGroup[] = [
           { label: "Media Library", path: "/media-library" },
           { label: "Question Bank", path: "/lms/manage/question_bank" },
           { label: "Teach Games", path: "/lms/teach-games" },
-          { label: "Teachific Studio™", path: "/studio" },
+          { label: "Course360 Studio™", path: "/studio" },
         ],
       },
     ],
@@ -404,9 +404,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full bg-white/5 backdrop-blur rounded-2xl border border-white/10 shadow-2xl">
           <div className="flex flex-col items-center gap-4">
             <span className="text-4xl font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.03em" }}>
-              <span className="text-white">teach</span>
-              <span style={{ color: "#24abbc" }}>ific</span>
-              <span className="text-white" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "2px" }}>™</span>
+              <span className="text-white">Course360™</span>
             </span>
             {errorCode === "registration_closed" ? (
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3 text-sm text-amber-300 text-center">
@@ -569,13 +567,11 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed && (
                 <span className="text-[21px] font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
-                  <span className="text-sidebar-foreground">teach</span>
-                  <span style={{ color: "#24abbc" }}>ific</span>
-                  <span className="text-sidebar-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
+                  <span className="text-sidebar-foreground">Course360™</span>
                 </span>
               )}
               {isCollapsed && (
-                <span className="text-[21px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#24abbc" }}>t</span>
+                <span className="text-[21px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#24abbc" }}>C</span>
               )}
             </div>
           </SidebarHeader>

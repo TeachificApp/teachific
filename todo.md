@@ -54,6 +54,8 @@
 - [x] Resolve active funnel checkout default success, cancellation, and source-page URLs from the owning funnel organization’s verified domain rather than caller-provided origins
 - [x] Replace remaining active funnel checkout source-page caller-origin URLs with the owning funnel organization’s verified base URL and extend regression coverage
 - [x] Resolve organization-admin generated course checkout links from the course’s verified organization domain rather than caller-provided origins
+- [x] Resolve Course Player course and lesson access exclusively from the server-resolved active organization, ignoring caller-controlled organization identifiers
+- [x] Retain section-owned published lessons and route linked SCORM, .quiz, and ZIP media through protected native playback in Course Player
 - [x] Derive direct funnel-CTA checkout organization and success/cancellation URLs from the selected product record rather than caller-provided origins
 - [x] Derive upgrade-prompt course, download, and physical-product checkout return URLs from trusted product organization records rather than caller-provided origins
 - [x] Resolve digital-bundle checkout success and cancellation URLs from the selected bundle’s verified organization domain rather than request-header origins

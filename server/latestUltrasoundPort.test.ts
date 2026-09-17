@@ -821,6 +821,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(verifyEmailPage).not.toContain("Teachific™ is a");
     expect(dashboardLayout).toContain("a SoundMedia, Inc. brand");
     expect(dashboardLayout).toContain("https://soundmedianow.com/");
+    expect(dashboardLayout).toContain(">Course360™<");
+    expect(dashboardLayout).not.toContain('>teach</span>');
   });
 
   it("stores embedded checkout pending purchase amounts in dollars while Stripe receives cents", () => {
@@ -1178,10 +1180,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(courseLandingSource).toContain("isOrganizationLanding ? landingOrganizationName : \"Course360™\"");
     expect(coursePlayerSource).toContain('import { getSubdomain } from "@/hooks/useSubdomain"');
     expect(coursePlayerSource).toContain("const playerBrandName = organization?.name");
-    expect(coursePlayerSource).toContain("orgId: organization?.id");
+    expect(coursePlayerSource).not.toContain("orgId: organization?.id");
     expect(lmsRouterSource).toContain("getCoursePlayer: protectedProcedure");
-    expect(lmsRouterSource).toContain("orgId: z.number().optional()");
-    expect(lmsRouterSource).toContain("eq(lmsCourses.orgId, input.orgId)");
+    expect(lmsRouterSource).toContain("const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(lmsRouterSource).toContain("eq(lmsCourses.orgId, activeOrgId)");
     expect(myCoursesSource).toContain("{invoice.orgName && <p className=");
     expect(lmsLayoutSource).toContain("hover:text-[var(--org-primary)]");
     expect(lmsLayoutSource).toContain("DollarSign className=\"w-3.5 h-3.5 text-[var(--org-primary)]\"");
