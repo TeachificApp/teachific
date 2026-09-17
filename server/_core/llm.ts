@@ -219,7 +219,7 @@ async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   const {
     messages, tools, toolChoice, tool_choice,
-    outputSchema, output_schema, responseFormat, response_format,
+    outputSchema, output_schema, responseFormat, response_format, maxTokens, max_tokens,
   } = params;
 
   const normalizedToolChoice = normalizeToolChoice(toolChoice || tool_choice, tools);
@@ -228,7 +228,7 @@ async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
   const requestParams: any = {
     model,
     messages: messages.map(normalizeMessage) as any,
-    max_tokens: 4096,
+    max_tokens: maxTokens ?? max_tokens ?? 4096,
   };
   if (tools && tools.length > 0) requestParams.tools = tools;
   if (normalizedToolChoice) requestParams.tool_choice = normalizedToolChoice;
@@ -253,13 +253,15 @@ async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
   }
   const {
     messages, tools, toolChoice, tool_choice,
-    outputSchema, output_schema, responseFormat, response_format,
+    outputSchema, output_schema, responseFormat, response_format, maxTokens, max_tokens,
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    // Kept aligned with the live Manus model catalog. This remains a fast,
+    // cost-conscious default for structured authoring and marketing drafts.
+    model: "gemini-3-flash-preview",
     messages: messages.map(normalizeMessage),
-    max_tokens: 32768,
+    max_tokens: maxTokens ?? max_tokens ?? 32768,
     thinking: { budget_tokens: 128 },
   };
 

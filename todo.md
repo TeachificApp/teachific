@@ -120,6 +120,9 @@
 - [x] Audit the recent organization-scoped email campaign rich-text display and preview reliability improvement and document exact Course360 parity or any remaining gap
 - [x] Add regression coverage that email campaign preview, draft save, and send use the same wrapped rich-text HTML
 - [x] Run targeted email campaign editor and preview validation before completing the compatibility audit
+- [x] Add Course360-safe rich-text email normalization for editor rendering and server-side campaign preview, draft, and delivery composition
+- [x] Add an organization-admin Social Content Generator with server-resolved active-organization authorization, editable text drafts, and no cross-organization persistence
+- [x] Update the default Manus LLM request model to a current catalog model and honor per-request output token limits
 - [x] Assess the upstream large Question Bank quiz-load fix; defer it because Course360 delivers serialized Quiz Creator questions rather than the upstream standalone Question Bank hydration contract
 - [x] Audit the upstream standalone quiz administrator URL-access fix against Course360’s active organization-scoped staff-preview contract
 - [x] Require server-resolved active-organization alignment for organization-owned Quiz Creator staff, edit, and export access without changing public share-token delivery

@@ -44,6 +44,7 @@ import {
   OpenTemplateLibraryButton,
   useBlockTemplateLibrary,
 } from "@/components/BlockTemplateLibrary";
+import { prepareEmailRichTextHtml } from "@shared/emailRichTextHtml";
 
 function getActiveEmailPrimary(): string {
   if (typeof window === "undefined") return "#000000";
@@ -336,7 +337,7 @@ export function emailBlockToHtml(block: Block): string {
 
   switch (block.type) {
     case "text": {
-      const html = (d.html as string) ?? "";
+      const html = prepareEmailRichTextHtml((d.html as string) ?? "");
       const bg = (d.bgColor as string) ?? "";
       const color = (d.textColor as string) ?? "#1a2e3b";
       const bgStyle = bg && bg !== "#ffffff" ? `background:${bg};` : "";

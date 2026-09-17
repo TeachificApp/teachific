@@ -1,4 +1,6 @@
 /** Max content width for platform email campaigns (matches editor + sent mail). */
+import { prepareEmailRichTextHtml } from "./emailRichTextHtml";
+
 export const EMAIL_CAMPAIGN_CONTAINER_WIDTH_PX = 750;
 
 /** Default width for image blocks when not explicitly set narrower. */
@@ -122,7 +124,7 @@ function normalizeImgTag(attrs: string): string {
  */
 export function normalizeCampaignEmailHtml(html: string, accentColor?: string | null): string {
   const w = EMAIL_CAMPAIGN_CONTAINER_WIDTH_PX;
-  let out = html
+  let out = prepareEmailRichTextHtml(html)
     .replace(/max-width:\s*600px/gi, `max-width:${w}px`)
     .replace(/\bwidth=["']600["']/gi, `width="${w}"`);
 

@@ -104,6 +104,7 @@ import RecordPage from "./pages/RecordPage";
 import WebsitePage from "./pages/marketing/WebsitePage";
 import EmailCampaignsPage from "./pages/marketing/EmailCampaignsPage";
 import EmailCampaignDashboard from "./pages/marketing/EmailCampaignDashboard";
+import SocialContentGeneratorPage from "./pages/marketing/SocialContentGeneratorPage";
 import NewsletterSubscribe from "./pages/marketing/NewsletterSubscribe";
 import NewsletterSubscribersPage from "./pages/marketing/NewsletterSubscribersPage";
 import FunnelsPage from "./pages/marketing/FunnelsPage";
@@ -645,6 +646,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/members">{() => { window.location.replace("/members/users"); return null; }}</Route>
         <Route path="/lms/email-marketing">{() => { window.location.replace("/marketing/email"); return null; }}</Route>
         <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
+        <Route path="/marketing/social">{() => <DashboardLayout><SocialContentGeneratorPage /></DashboardLayout>}</Route>
         <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
         <Route path="/marketing/widgets">{() => <DashboardLayout><WidgetsPage /></DashboardLayout>}</Route>
         <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
