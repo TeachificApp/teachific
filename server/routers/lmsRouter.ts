@@ -502,9 +502,17 @@ export const lmsPublicRouter = router({
       utmMedium: z.string().max(128).optional(),
       utmCampaign: z.string().max(128).optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req);
+      if (!publicScope) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      const [course] = await db
+        .select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId })
+        .from(lmsCourses)
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, publicScope.id)))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
       // Check if already registered for this course+email
       const [existing] = await db
         .select({ id: freePreviewEnrollments.id, accessToken: freePreviewEnrollments.accessToken, accessExpiresAt: freePreviewEnrollments.accessExpiresAt })
@@ -533,41 +541,33 @@ export const lmsPublicRouter = router({
         accessToken,
         accessExpiresAt,
       });
-      // Fetch course title for confirmation email
-      const [course] = await db
-        .select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId })
-        .from(lmsCourses)
-        .where(eq(lmsCourses.id, input.courseId))
-        .limit(1);
-      if (course) {
-        try {
-          const [organization] = await db
-            .select({
-              slug: organizations.slug,
-              customDomain: organizations.customDomain,
-              domainVerificationStatus: organizations.domainVerificationStatus,
-            })
-            .from(organizations)
-            .where(eq(organizations.id, course.orgId))
-            .limit(1);
-          if (!organization) throw new Error("Course organization is unavailable");
-          const previewUrl = getFreePreviewCourseUrl(organization, course.slug, accessToken);
-          const emailData = buildFreePreviewConfirmationEmail({
-            firstName: input.firstName,
-            courseTitle: course.title,
-            previewUrl,
-            accessExpiresAt,
-          });
-          await sendEmail({
-            to: { name: input.firstName + (input.lastName ? ` ${input.lastName}` : ""), email: input.email.toLowerCase() },
-            subject: emailData.subject,
-            htmlBody: emailData.htmlBody,
-            previewText: emailData.previewText,
-          });
-        } catch (emailErr) {
-          // Non-fatal — log but don't fail the registration
-          console.error("[FreePreview] Failed to send confirmation email:", emailErr);
-        }
+      try {
+        const [organization] = await db
+          .select({
+            slug: organizations.slug,
+            customDomain: organizations.customDomain,
+            domainVerificationStatus: organizations.domainVerificationStatus,
+          })
+          .from(organizations)
+          .where(eq(organizations.id, course.orgId))
+          .limit(1);
+        if (!organization) throw new Error("Course organization is unavailable");
+        const previewUrl = getFreePreviewCourseUrl(organization, course.slug, accessToken);
+        const emailData = buildFreePreviewConfirmationEmail({
+          firstName: input.firstName,
+          courseTitle: course.title,
+          previewUrl,
+          accessExpiresAt,
+        });
+        await sendEmail({
+          to: { name: input.firstName + (input.lastName ? ` ${input.lastName}` : ""), email: input.email.toLowerCase() },
+          subject: emailData.subject,
+          htmlBody: emailData.htmlBody,
+          previewText: emailData.previewText,
+        });
+      } catch (emailErr) {
+        // Non-fatal — log but don't fail the registration
+        console.error("[FreePreview] Failed to send confirmation email:", emailErr);
       }
       return { accessToken, isNew: true };
     }),

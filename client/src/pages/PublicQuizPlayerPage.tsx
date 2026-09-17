@@ -576,6 +576,8 @@ export default function PublicQuizPlayerPage() {
   const [started, setStarted] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, true>>({});
+  const [takerEmail, setTakerEmail] = useState("");
+  const [identityError, setIdentityError] = useState<string | null>(null);
   const startTimeRef = useRef<number>(0);
 
   // Branching state: tracks the path of question IDs visited
@@ -689,6 +691,7 @@ export default function PublicQuizPlayerPage() {
 
   const totalPoints = questions.reduce((s, q) => s + q.points, 0);
   const isMockExam = Boolean((quiz as any).mockExamEnabled);
+  const requiresTakerEmail = !isWidget && Number(quiz.maxAttempts ?? 0) > 0;
   const mockExamReviewSummary = getMockExamReviewSummary(questions, answers, flaggedQuestions);
 
   // ─── Start Screen ──────────────────────────────────────────────────────────
@@ -725,8 +728,33 @@ export default function PublicQuizPlayerPage() {
             </div>
           </div>
 
+          {requiresTakerEmail && (
+            <div className="mb-4 text-left">
+              <label htmlFor="quiz-attempt-email" className="mb-1.5 block text-sm font-medium text-gray-700">Email address</label>
+              <input
+                id="quiz-attempt-email"
+                type="email"
+                value={takerEmail}
+                onChange={(event) => { setTakerEmail(event.target.value); setIdentityError(null); }}
+                placeholder="you@example.com"
+                autoComplete="email"
+                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-800 outline-none focus:ring-2"
+                style={{ "--tw-ring-color": `${primaryColor}50` } as any}
+              />
+              <p className="mt-1.5 text-xs text-gray-500">This quiz allows {quiz.maxAttempts} attempt{Number(quiz.maxAttempts) === 1 ? "" : "s"} per email address.</p>
+              {identityError && <p className="mt-1.5 text-xs font-medium text-red-600">{identityError}</p>}
+            </div>
+          )}
+
           <button
-            onClick={() => { setStarted(true); startTimeRef.current = Date.now(); }}
+            onClick={() => {
+              if (requiresTakerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(takerEmail.trim())) {
+                setIdentityError("Enter a valid email address to begin this limited-attempt quiz.");
+                return;
+              }
+              setStarted(true);
+              startTimeRef.current = Date.now();
+            }}
             className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
             style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
           >
@@ -822,6 +850,7 @@ export default function PublicQuizPlayerPage() {
     if (!isStaffPreview) {
       submitAttemptMutation.mutate({
         ...(isWidget ? { widgetToken } : { shareToken: shareToken || "" }),
+        ...(requiresTakerEmail ? { takerEmail: takerEmail.trim().toLowerCase() } : {}),
         timeTakenSeconds: timeTaken,
         answersJson: JSON.stringify(answers),
       });

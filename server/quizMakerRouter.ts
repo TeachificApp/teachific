@@ -1183,6 +1183,29 @@ export const quizMakerRouter = router({
       // Enforce visibility: archived/draft quizzes cannot accept submissions
       const quizVis2 = (quiz as any).visibility ?? "published";
       if (quizVis2 === "archived" || quizVis2 === "draft") throw new Error("Quiz not found or not published");
+      const maxAttempts = Number(quiz.maxAttempts ?? 0);
+      const normalizedTakerEmail = input.takerEmail?.trim().toLowerCase();
+      if (maxAttempts > 0) {
+        if (!input.widgetToken && !normalizedTakerEmail) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "An email address is required when this quiz has a limited number of attempts.",
+          });
+        }
+        const attemptIdentity = input.widgetToken
+          ? eq(quizAttempts.userId, ctx.user!.id)
+          : eq(quizAttempts.guestEmail, normalizedTakerEmail!);
+        const [{ count: completedAttempts }] = await db.select({ count: sql<number>`count(*)` })
+          .from(quizAttempts)
+          .where(and(
+            eq(quizAttempts.quizId, quiz.id),
+            eq(quizAttempts.status, "completed"),
+            attemptIdentity,
+          ));
+        if (Number(completedAttempts ?? 0) >= maxAttempts) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Maximum attempts reached." });
+        }
+      }
       let submittedAnswers: Record<string, unknown>;
       try {
         const parsed = JSON.parse(input.answersJson);
@@ -1213,7 +1236,7 @@ export const quizMakerRouter = router({
         status: "completed",
         completedAt: new Date(),
         timeSpentSeconds: input.timeTakenSeconds || undefined,
-        guestEmail: input.takerEmail || undefined,
+        guestEmail: normalizedTakerEmail || undefined,
         sourceType: "standalone",
         // Retain the proven legacy fields during the gradual compatibility window.
         legacyQuizId: quiz.id,
@@ -1225,7 +1248,7 @@ export const quizMakerRouter = router({
         legacyIsCompleted: true,
         legacyTimeTakenSeconds: input.timeTakenSeconds || undefined,
         legacyTakerName: input.takerName || undefined,
-        legacyTakerEmail: input.takerEmail || undefined,
+        legacyTakerEmail: normalizedTakerEmail || undefined,
         legacyAnswersJson: input.answersJson,
         legacyShareToken: input.shareToken ?? quiz.shareToken ?? undefined,
         legacySubmittedAt: new Date(),

@@ -13,6 +13,7 @@ const query = () => ({
 
 vi.mock("../db", () => ({
   getDb: vi.fn(async () => ({ select: vi.fn(query) })),
+  getOrgIdForUserWithFallback: vi.fn(async () => 9),
   requireOrgAdmin: vi.fn(async () => {
     if (!authorizeStaff) throw new Error("Not an organization administrator");
   }),

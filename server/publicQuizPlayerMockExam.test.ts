@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const submitAttempt = vi.fn();
+const quizFixture = vi.hoisted(() => ({ maxAttempts: null as number | null }));
 
 vi.mock("wouter", () => ({
   useParams: () => ({ shareToken: "mock-exam-token" }),
@@ -26,7 +27,7 @@ vi.mock("@/lib/trpc", () => ({
             ],
             passingScore: 70,
             timeLimit: null,
-            maxAttempts: null,
+            maxAttempts: quizFixture.maxAttempts,
             shuffleQuestions: false,
             shuffleAnswers: false,
             showFeedbackImmediately: true,
@@ -48,7 +49,10 @@ vi.mock("@/lib/trpc", () => ({
 import PublicQuizPlayerPage from "../client/src/pages/PublicQuizPlayerPage";
 
 describe("Course360 public mock-exam delivery", () => {
-  beforeEach(() => submitAttempt.mockReset());
+  beforeEach(() => {
+    submitAttempt.mockReset();
+    quizFixture.maxAttempts = null;
+  });
 
   it("enters review, returns to a selected flagged question, preserves the flag, and submits only from final review", async () => {
     const user = userEvent.setup();
@@ -79,5 +83,19 @@ describe("Course360 public mock-exam delivery", () => {
       answersJson: "{}",
     }));
     expect(screen.getByText("Not Quite")).toBeTruthy();
+  });
+
+  it("requires an email before a limited-attempt share quiz can begin", async () => {
+    quizFixture.maxAttempts = 1;
+    const user = userEvent.setup();
+    render(createElement(PublicQuizPlayerPage));
+
+    await user.click(screen.getByRole("button", { name: "Start Quiz" }));
+    expect(screen.getByText("Enter a valid email address to begin this limited-attempt quiz.")).toBeTruthy();
+    expect(screen.queryByText("First question")).toBeNull();
+
+    await user.type(screen.getByLabelText("Email address"), "learner@example.test");
+    await user.click(screen.getByRole("button", { name: "Start Quiz" }));
+    expect(screen.getByText("First question")).toBeTruthy();
   });
 });

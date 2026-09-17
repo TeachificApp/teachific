@@ -106,6 +106,8 @@
 - [x] Require organization-admin ownership before native SCORM package creation from the Question Bank import workflow
 - [x] Resolve public LMS catalog, featured, and direct course lookup scope from the request’s verified organization domain before honoring legacy platform catalog hints
 - [x] Resolve public instructor profiles and instructor-course relationships from the request’s verified organization domain before returning public content
+- [x] Resolve legacy Quiz Creator list, create, administration, and staff-preview access from the server-held active organization, ignoring client-selected organization identifiers
+- [x] Persist legacy Quiz Creator prices as decimal dollars and reserve cents conversion for Stripe boundaries only
 - [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
 - [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
 - [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
@@ -118,6 +120,7 @@
 - [ ] Show learner quiz navigation and native quiz-results links only when the active organization has relevant available or completed quiz attempts
 - [x] Audit learner native quiz-results feasibility; defer learner-facing results until public Quiz Creator attempts have authenticated ownership and server-owned scoring rather than client-supplied scores
 - [x] Derive public Quiz Creator attempt score, pass/fail status, and persisted analytics values from the saved server quiz definition rather than client-reported totals
+- [x] Require an email identity and enforce configured maximum attempts for public Quiz Creator share-link delivery while retaining authenticated widget identity checks
 - [x] Verify the legacy standalone quiz table is unavailable in the active database contract and quarantine it from learner library reads rather than exposing unscoped or failing listings
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point

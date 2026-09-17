@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fixture = vi.hoisted(() => ({
   inserted: [] as any[],
+  completedAttempts: 0,
   quiz: {
     id: 44,
     orgId: 9,
@@ -9,6 +10,7 @@ const fixture = vi.hoisted(() => ({
     isPublished: true,
     visibility: "published",
     passingScore: 70,
+    maxAttempts: null as number | null,
     instructions: JSON.stringify([
       {
         id: "q1",
@@ -28,9 +30,11 @@ const fixture = vi.hoisted(() => ({
 
 vi.mock("./db", () => ({
   getDb: async () => ({
-    select: () => ({
+    select: (selection?: Record<string, unknown>) => ({
       from: () => ({
-        where: async () => [fixture.quiz],
+        where: async () => Object.prototype.hasOwnProperty.call(selection ?? {}, "count")
+          ? [{ count: fixture.completedAttempts }]
+          : [fixture.quiz],
       }),
     }),
     insert: () => ({
@@ -49,6 +53,8 @@ import { quizMakerRouter } from "./quizMakerRouter";
 describe("Course360 public Quiz Creator server scoring", () => {
   beforeEach(() => {
     fixture.inserted.splice(0);
+    fixture.completedAttempts = 0;
+    fixture.quiz.maxAttempts = null;
   });
 
   it("derives earned points, total points, percentage, and pass status from saved quiz questions", async () => {
@@ -99,6 +105,23 @@ describe("Course360 public Quiz Creator server scoring", () => {
       shareToken: fixture.quiz.shareToken,
       answersJson: "not-json",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(fixture.inserted).toHaveLength(0);
+  });
+
+  it("requires an email identity and enforces configured max attempts for public share links", async () => {
+    fixture.quiz.maxAttempts = 1;
+    const caller = quizMakerRouter.createCaller({ user: null } as any);
+    await expect(caller.submitAttempt({
+      shareToken: fixture.quiz.shareToken,
+      answersJson: JSON.stringify({ q1: ["a"], q2: false }),
+    })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    fixture.completedAttempts = 1;
+    await expect(caller.submitAttempt({
+      shareToken: fixture.quiz.shareToken,
+      takerEmail: "learner@example.test",
+      answersJson: JSON.stringify({ q1: ["a"], q2: false }),
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(fixture.inserted).toHaveLength(0);
   });
 });

@@ -31,6 +31,8 @@ describe("Course360 free preview confirmation URLs", () => {
     );
 
     expect(routeSource).toContain("orgId: lmsCourses.orgId");
+    expect(routeSource).toContain("resolvePublicOrganizationScope(db as any, ctx.req)");
+    expect(routeSource).toContain("eq(lmsCourses.orgId, publicScope.id)");
     expect(routeSource).toContain("eq(organizations.id, course.orgId)");
     expect(routeSource).toContain("getFreePreviewCourseUrl(organization, course.slug, accessToken)");
     expect(routeSource).not.toMatch(/teachific\.app|allaboutultrasound\.com|input\.origin/i);

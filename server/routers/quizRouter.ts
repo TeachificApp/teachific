@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb, requireOrgAdmin } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { TRPCError } from "@trpc/server";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -50,7 +50,8 @@ const quizSettingsSchema = z.object({
   allowPartialCredit: z.boolean().default(true),
   penaltyForWrong: z.boolean().default(false),
   themeConfig: z.any().optional(),
-  priceAmountCents: z.number().default(0),
+  /** Decimal dollars; conversion to cents belongs only at a Stripe boundary. */
+  priceAmount: z.number().min(0).default(0),
   currency: z.string().default("usd"),
 });
 
@@ -103,7 +104,7 @@ export async function resolveEmbeddedLearnerQuizAccess(
   if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found." });
 
   if (input.authorPreview) {
-    await requireOrgAdmin(ctx.user.id, ctx.user.role, quiz.orgId);
+    await requireActiveQuizOrgAdmin(ctx, quiz.orgId);
     return { quiz, course: null, lesson: null, isStaffPreview: true };
   }
 
@@ -145,7 +146,7 @@ export async function resolveEmbeddedLearnerQuizAccess(
   // access to the specific owning organization. Do not rely on their global role.
   let isStaffPreview = false;
   try {
-    await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
+    await requireActiveQuizOrgAdmin(ctx, course.orgId);
     isStaffPreview = true;
   } catch {
     // Learners proceed through the published-course and enrollment checks below.
@@ -198,8 +199,21 @@ async function requireQuizAdmin(ctx: RequestContext, quizId: number) {
     .where(eq(quizzes.id, quizId))
     .limit(1);
   if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found." });
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, quiz.orgId);
+  await requireActiveQuizOrgAdmin(ctx, quiz.orgId);
   return quiz;
+}
+
+/** Resolve legacy Quiz Creator authoring from the server-held active organization only. */
+async function requireActiveQuizOrgAdmin(ctx: RequestContext, quizOrgId?: number) {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing Quiz Creator content." });
+  }
+  if (quizOrgId && activeOrgId !== quizOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the quiz organization before managing this Quiz Creator item." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
 }
 
 async function requireQuizBankInOrg(bankId: number, orgId: number) {
@@ -417,11 +431,11 @@ export const quizRouter = router({
 
   // ─── Quiz CRUD ────────────────────────────────────────────────────────────
   listQuizzes: protectedProcedure
-    .input(z.object({ orgId: z.number() }))
-    .query(async ({ input, ctx }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+    .input(z.object({ orgId: z.number().optional() }).optional())
+    .query(async ({ ctx }) => {
+      const orgId = await requireActiveQuizOrgAdmin(ctx);
       return (await db()).select().from(quizzes)
-        .where(eq(quizzes.orgId, input.orgId))
+        .where(eq(quizzes.orgId, orgId))
         .orderBy(desc(quizzes.createdAt));
     }),
 
@@ -444,10 +458,10 @@ export const quizRouter = router({
     }),
 
   createQuiz: protectedProcedure
-    .input(z.object({ orgId: z.number(), ...quizSettingsSchema.shape }))
+    .input(z.object({ orgId: z.number().optional(), ...quizSettingsSchema.shape }))
     .mutation(async ({ input, ctx }) => {
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
-      const { orgId, ...settings } = input;
+      const orgId = await requireActiveQuizOrgAdmin(ctx);
+      const { orgId: _ignoredOrgId, ...settings } = input;
       const [result] = await (await db()).insert(quizzes).values({
         orgId,
         title: settings.title,
@@ -464,7 +478,7 @@ export const quizRouter = router({
         allowPartialCredit: settings.allowPartialCredit,
         penaltyForWrong: settings.penaltyForWrong,
         themeConfig: settings.themeConfig,
-        priceAmount: (settings.priceAmountCents / 100).toFixed(2),
+        priceAmount: settings.priceAmount.toFixed(2),
         currency: settings.currency,
         status: "draft",
       });
