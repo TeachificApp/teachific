@@ -117,6 +117,7 @@
 - [ ] Add protected active-organization learner native quiz-attempt summaries and a completed-attempt results route without exposing other organizations’ attempts
 - [ ] Show learner quiz navigation and native quiz-results links only when the active organization has relevant available or completed quiz attempts
 - [x] Audit learner native quiz-results feasibility; defer learner-facing results until public Quiz Creator attempts have authenticated ownership and server-owned scoring rather than client-supplied scores
+- [x] Derive public Quiz Creator attempt score, pass/fail status, and persisted analytics values from the saved server quiz definition rather than client-reported totals
 - [x] Verify the legacy standalone quiz table is unavailable in the active database contract and quarantine it from learner library reads rather than exposing unscoped or failing listings
 - [x] Audit and port the recent rich-text paste-formatting reliability improvement across Course360 lesson, page, and email editors without rewriting existing content
 - [x] Verify or apply the shared rich-text paste transform to every TipTap-based lesson, page, and email editor entry point

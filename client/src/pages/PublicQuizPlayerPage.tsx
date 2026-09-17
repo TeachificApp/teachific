@@ -815,18 +815,13 @@ export default function PublicQuizPlayerPage() {
 
   // ─── Submit Handler ────────────────────────────────────────────────────────
   const handleSubmit = () => {
-    const score = calcScore(questions, answers);
-    const pct = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    const passed = pct >= (quiz.passingScore ?? 70);
     const timeTaken = Math.round((Date.now() - startTimeRef.current) / 1000);
 
-    // Submit attempt to backend (fire and forget)
+    // The server scores the raw answers from its saved quiz definition. Never
+    // submit client-derived score or pass/fail values as authority.
     if (!isStaffPreview) {
       submitAttemptMutation.mutate({
         ...(isWidget ? { widgetToken } : { shareToken: shareToken || "" }),
-        score,
-        totalPoints,
-        passed,
         timeTakenSeconds: timeTaken,
         answersJson: JSON.stringify(answers),
       });

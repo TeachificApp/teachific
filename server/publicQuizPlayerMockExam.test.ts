@@ -8,6 +8,7 @@ const submitAttempt = vi.fn();
 
 vi.mock("wouter", () => ({
   useParams: () => ({ shareToken: "mock-exam-token" }),
+  useLocation: () => ["/quizzes/mock-exam-token", vi.fn()],
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -36,6 +37,7 @@ vi.mock("@/lib/trpc", () => ({
           error: null,
         }),
       },
+      getWidgetQuiz: { useQuery: () => ({ data: null, isLoading: false, error: null }) },
       getQuizBranding: { useQuery: () => ({ data: null }) },
       getStaffPreviewQuiz: { useQuery: () => ({ data: null, isLoading: false, error: null }) },
       submitAttempt: { useMutation: () => ({ mutate: submitAttempt }) },

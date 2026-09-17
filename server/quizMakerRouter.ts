@@ -10,6 +10,7 @@ import { canUseMockExamSubscription } from "./lib/mockExamEntitlement";
 import { validateImageLabelingQuestions } from "./lib/imageLabelingQuestion";
 import { validateImageComparisonQuestions } from "./lib/imageComparisonQuestion";
 import { getOrgBaseUrl } from "./lib/orgUrl";
+import { scorePublicQuizAttempt } from "../shared/quizScoring";
 import {
   buildQuizWidgetEmbed,
   createQuizWidgetToken,
@@ -1167,10 +1168,7 @@ export const quizMakerRouter = router({
         widgetToken: z.string().min(32).max(256).optional(),
         takerName: z.string().max(255).optional(),
         takerEmail: z.string().email().max(320).optional(),
-        score: z.number(),
-        totalPoints: z.number(),
-        passed: z.boolean(),
-        timeTakenSeconds: z.number().optional(),
+        timeTakenSeconds: z.number().int().min(0).max(60 * 60 * 24).optional(),
         answersJson: z.string(), // JSON snapshot of all answers
       }).refine((input) => Boolean(input.shareToken) !== Boolean(input.widgetToken), {
         message: "Provide exactly one quiz access credential.",
@@ -1185,15 +1183,33 @@ export const quizMakerRouter = router({
       // Enforce visibility: archived/draft quizzes cannot accept submissions
       const quizVis2 = (quiz as any).visibility ?? "published";
       if (quizVis2 === "archived" || quizVis2 === "draft") throw new Error("Quiz not found or not published");
-      const scorePct = input.totalPoints > 0 ? (input.score / input.totalPoints) * 100 : 0;
+      let submittedAnswers: Record<string, unknown>;
+      try {
+        const parsed = JSON.parse(input.answersJson);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("Answers must be an object");
+        }
+        submittedAnswers = parsed as Record<string, unknown>;
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Quiz answers are invalid." });
+      }
+      let savedQuestions: any[];
+      try {
+        const parsed = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+        savedQuestions = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This quiz needs to be resaved before attempts can be scored." });
+      }
+      const scoring = scorePublicQuizAttempt(savedQuestions, submittedAnswers);
+      const passed = scoring.scorePercent >= Number(quiz.passingScore ?? 70);
 
       const [result] = await db.insert(quizAttempts).values({
         quizId: quiz.id,
         userId: input.widgetToken ? ctx.user!.id : undefined,
-        totalPoints: Math.round(input.totalPoints),
-        earnedPoints: Math.round(input.score),
-        scorePercent: String(scorePct),
-        passed: input.passed,
+        totalPoints: Math.round(scoring.totalPoints),
+        earnedPoints: Math.round(scoring.earnedPoints),
+        scorePercent: String(scoring.scorePercent),
+        passed,
         status: "completed",
         completedAt: new Date(),
         timeSpentSeconds: input.timeTakenSeconds || undefined,
@@ -1202,10 +1218,10 @@ export const quizMakerRouter = router({
         // Retain the proven legacy fields during the gradual compatibility window.
         legacyQuizId: quiz.id,
         legacyOrgId: quiz.orgId || undefined,
-        legacyScoreRaw: input.score,
-        legacyScorePct: scorePct,
-        legacyTotalPoints: input.totalPoints,
-        legacyIsPassed: input.passed,
+        legacyScoreRaw: scoring.earnedPoints,
+        legacyScorePct: scoring.scorePercent,
+        legacyTotalPoints: scoring.totalPoints,
+        legacyIsPassed: passed,
         legacyIsCompleted: true,
         legacyTimeTakenSeconds: input.timeTakenSeconds || undefined,
         legacyTakerName: input.takerName || undefined,

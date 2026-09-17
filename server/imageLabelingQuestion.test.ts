@@ -80,6 +80,6 @@ describe("Course360 image-labeling question grading", () => {
     expect(previewSource).toContain("<ImageLabelingInteraction");
     expect(publicPlayerSource).toContain("<ImageLabelingInteraction");
     expect(routerSource).toContain("validateImageLabelingQuestions(input.questionsJson)");
-    expect(routerSource).toContain("Image-labeling questions are delivered in Quiz Creator and cannot be exported to the Question Bank.");
+    expect(routerSource).toContain("Image-labeling and image-comparison questions are delivered in Quiz Creator and cannot be exported to the Question Bank.");
   });
 });
