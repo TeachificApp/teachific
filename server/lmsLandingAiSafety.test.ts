@@ -5,6 +5,7 @@ const routerSource = readFileSync(new URL("./routers/lmsQuizLandingRouter.ts", i
 const lmsAdminSource = readFileSync(new URL("../client/src/pages/admin/LMSAdmin.tsx", import.meta.url), "utf8");
 const courseBuilderSource = readFileSync(new URL("../client/src/pages/lms/CourseBuilderPage.tsx", import.meta.url), "utf8");
 const landingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
+const productsRouterSource = readFileSync(new URL("./routers/productsRouter.ts", import.meta.url), "utf8");
 
 describe("Course360 landing-page AI claims safety", () => {
   it("prohibits invented endorsements and unsupported claims in course landing generation", () => {
@@ -32,5 +33,15 @@ describe("Course360 landing-page AI claims safety", () => {
     expect(courseBuilderSource).toContain("sessionStorage.setItem(`landing-page-ai-draft:${courseId}`, JSON.stringify(result.blocks));");
     expect(landingBuilderSource).toContain("AI draft loaded for review.");
     expect(landingBuilderSource).toContain("setAiDraftLoaded(false);");
+  });
+
+  it("prohibits unsupported claims and raw-output logging in physical-product landing generation", () => {
+    const generationSection = productsRouterSource.slice(
+      productsRouterSource.indexOf("aiGenerateLandingPage: protectedProcedure"),
+      productsRouterSource.indexOf("// ─── After Purchase Workflow"),
+    );
+    expect(generationSection).toContain("Do not invent testimonials, reviews, ratings, customers, outcomes, certifications");
+    expect(generationSection).toContain("Do not add a testimonial, review, rating, customer, outcome, certification, guarantee, or claim not supplied above.");
+    expect(generationSection).not.toContain('console.error("[aiGenerateLandingPage products] parse error:", err?.message, "raw:"');
   });
 });

@@ -4844,7 +4844,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingGeneratorSource).not.toContain("reviews: array of");
     expect(landingGeneratorSource).not.toContain("What Customers Are Saying");
     expect(landingGeneratorSource).not.toContain("hero, text (features/what you get), text (about/description), reviews");
-    expect(landingGeneratorSource).toContain("hero, text (features/what you get), text (about/description), faq, cta_standalone");
+    expect(landingGeneratorSource).toContain("hero, text (provided features and what the buyer receives), text (product description), faq, cta_standalone");
   });
 
   it("does not seed or infer customer reviews, testimonials, or ratings in authoring and learner-facing surfaces", () => {

@@ -821,7 +821,7 @@ export const productsAdminRouter = router({
         ? pricingOptions.map(p => `${p.label}: $${Number(p.price).toFixed(2)}`).join(", ")
         : "Contact for pricing";
 
-      const systemPrompt = `You are an expert landing page designer for physical products. Generate a complete, compelling landing page block structure as JSON. The blocks should be professional, conversion-focused, and specific to the content provided. Return ONLY valid JSON, no markdown.`;
+      const systemPrompt = `You are an expert landing page designer for physical products. Generate a complete, compelling landing page block structure as JSON. The blocks should be professional, conversion-focused, and specific only to the content provided. Do not invent testimonials, reviews, ratings, customers, outcomes, certifications, statistics, guarantees, or other unsupported claims. Return ONLY valid JSON, no markdown.`;
       const userPrompt = `Generate a landing page for this physical product:
 
 Title: ${product.title}
@@ -868,8 +868,8 @@ Block data schemas:
    bgColor: "#f0fafa"
    align: "center"
 
-Create blocks in this order: hero, text (features/what you get), text (about/description), faq, cta_standalone.
-Make ALL content specific and compelling based on the product title and description above. Do NOT use generic placeholder text.`;
+Create blocks in this order: hero, text (provided features and what the buyer receives), text (product description), faq, cta_standalone.
+Make ALL content specific and compelling based only on the product title and description above. Do NOT use generic placeholder text. Do not add a testimonial, review, rating, customer, outcome, certification, guarantee, or claim not supplied above.`;
 
       const response = await invokeLLM({
         messages: [
@@ -883,7 +883,7 @@ Make ALL content specific and compelling based on the product title and descript
         const raw = response.choices[0].message.content as string;
         blocks = parseLandingBlocks(raw);
       } catch (err: any) {
-        console.error("[aiGenerateLandingPage products] parse error:", err?.message, "raw:", (response.choices[0]?.message?.content as string)?.slice(0, 400));
+        console.error("[aiGenerateLandingPage products] parse error:", err?.message);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI returned invalid JSON: ${err?.message ?? "unknown error"}. Please try again.` });
       }
       const blocksJson = JSON.stringify(blocks);

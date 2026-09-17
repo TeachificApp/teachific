@@ -5288,6 +5288,7 @@
 - [x] Remove fabricated testimonial and review defaults from the Landing Page Builder block catalog
 - [x] Prohibit AI course landing-page generation from inventing testimonials, endorsements, outcome claims, credentials, guarantees, or other unsupported content, and avoid logging raw generated output on parse failure
 - [x] Return course landing-page AI output as a browser-session review draft; preserve the saved page until an administrator explicitly selects Save Page
+- [x] Apply the same unsupported-claims and raw-output logging safeguards to organization-scoped physical-product landing-page generation
 - [x] Replace platform-branded landing page defaults with organization-neutral content and configurable organization identity
 - [x] Replace SchoolMemberLayout.tsx organization navigation accents with CSS variables
 - [x] Replace StudentLayout.tsx organization identity accents with CSS variables
