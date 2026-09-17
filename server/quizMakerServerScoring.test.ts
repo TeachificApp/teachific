@@ -55,15 +55,21 @@ describe("Course360 public Quiz Creator server scoring", () => {
     fixture.inserted.splice(0);
     fixture.completedAttempts = 0;
     fixture.quiz.maxAttempts = null;
+    fixture.quiz.visibility = "published";
   });
 
   it("derives earned points, total points, percentage, and pass status from saved quiz questions", async () => {
     const caller = quizMakerRouter.createCaller({ user: null } as any);
-    await caller.submitAttempt({
+    await expect(caller.submitAttempt({
       shareToken: fixture.quiz.shareToken,
       takerEmail: "learner@example.test",
       timeTakenSeconds: 12,
       answersJson: JSON.stringify({ q1: ["a"], q2: false }),
+    })).resolves.toMatchObject({
+      earnedPoints: 5,
+      totalPoints: 5,
+      scorePercent: 100,
+      passed: true,
     });
 
     expect(fixture.inserted).toHaveLength(1);
@@ -105,6 +111,18 @@ describe("Course360 public Quiz Creator server scoring", () => {
       shareToken: fixture.quiz.shareToken,
       answersJson: "not-json",
     })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(fixture.inserted).toHaveLength(0);
+  });
+
+  it("does not expose or accept attempts for a private quiz through a share credential", async () => {
+    fixture.quiz.visibility = "private";
+    const caller = quizMakerRouter.createCaller({ user: null } as any);
+    await expect(caller.getPublishedQuiz({ shareToken: fixture.quiz.shareToken })).rejects.toThrow("Quiz not found or not published");
+    await expect(caller.getQuizBranding({ shareToken: fixture.quiz.shareToken })).resolves.toBeNull();
+    await expect(caller.submitAttempt({
+      shareToken: fixture.quiz.shareToken,
+      answersJson: JSON.stringify({ q1: ["a"], q2: false }),
+    })).rejects.toThrow("Quiz not found or not published");
     expect(fixture.inserted).toHaveLength(0);
   });
 

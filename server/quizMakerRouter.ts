@@ -22,6 +22,11 @@ import {
 type QuizMakerContext = { user: { id: number; role: string } };
 type PublicQuizContext = { user?: { id: number; role: string } | null };
 
+/** A public share credential may open published or unlisted quizzes, never private or retired content. */
+function isPublicQuizDeliveryVisible(quiz: { visibility?: string | null }) {
+  return !["draft", "private", "archived"].includes(quiz.visibility ?? "published");
+}
+
 async function getMockExamAvailability(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   orgId: number,
@@ -1112,9 +1117,8 @@ export const quizMakerRouter = router({
         .from(quizzes)
         .where(and(eq(quizzes.shareToken, input.shareToken), eq(quizzes.isPublished, true)));
        if (!quiz) throw new Error("Quiz not found or not published");
-      // Enforce visibility: archived/draft quizzes are not accessible
-      const quizVis = (quiz as any).visibility ?? "published";
-      if (quizVis === "archived" || quizVis === "draft") throw new Error("Quiz not found or not published");
+      // A share credential does not override private, draft, or archived visibility.
+      if (!isPublicQuizDeliveryVisible(quiz)) throw new Error("Quiz not found or not published");
       // Parse questions from the instructions JSON field
       const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
       const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
@@ -1180,9 +1184,8 @@ export const quizMakerRouter = router({
         ? (await resolveWidgetQuiz(ctx, input.widgetToken)).quiz
         : (await db.select().from(quizzes).where(and(eq(quizzes.shareToken, input.shareToken!), eq(quizzes.isPublished, true))))[0];
       if (!quiz) throw new Error("Quiz not found or not published");
-      // Enforce visibility: archived/draft quizzes cannot accept submissions
-      const quizVis2 = (quiz as any).visibility ?? "published";
-      if (quizVis2 === "archived" || quizVis2 === "draft") throw new Error("Quiz not found or not published");
+      // A share credential does not override private, draft, or archived visibility.
+      if (!isPublicQuizDeliveryVisible(quiz)) throw new Error("Quiz not found or not published");
       const maxAttempts = Number(quiz.maxAttempts ?? 0);
       const normalizedTakerEmail = input.takerEmail?.trim().toLowerCase();
       if (maxAttempts > 0) {
@@ -1254,7 +1257,13 @@ export const quizMakerRouter = router({
         legacySubmittedAt: new Date(),
       });
 
-      return { attemptId: result.insertId };
+      return {
+        attemptId: result.insertId,
+        earnedPoints: scoring.earnedPoints,
+        totalPoints: scoring.totalPoints,
+        scorePercent: scoring.scorePercent,
+        passed,
+      };
     }),
 
   /** Get attempts for an authorized organization quiz */
@@ -1429,11 +1438,13 @@ export const quizMakerRouter = router({
           brandLogoUrl: quizzes.brandLogoUrl,
           brandFontFamily: quizzes.brandFontFamily,
           completionMessage: quizzes.completionMessage,
+          visibility: quizzes.visibility,
         })
         .from(quizzes)
         .where(and(eq(quizzes.shareToken, input.shareToken!), eq(quizzes.isPublished, true)));
       const quiz = widgetQuiz ?? shareQuiz;
       if (!quiz) return null;
+      if (!widgetQuiz && !isPublicQuizDeliveryVisible(quiz)) return null;
       return {
         brandPrimaryColor: quiz.brandPrimaryColor,
         brandBgColor: quiz.brandBgColor,

@@ -578,6 +578,13 @@ export default function PublicQuizPlayerPage() {
   const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, true>>({});
   const [takerEmail, setTakerEmail] = useState("");
   const [identityError, setIdentityError] = useState<string | null>(null);
+  const [attemptSubmissionError, setAttemptSubmissionError] = useState<string | null>(null);
+  const [authoritativeAttemptResult, setAuthoritativeAttemptResult] = useState<{
+    earnedPoints: number;
+    totalPoints: number;
+    scorePercent: number;
+    passed: boolean;
+  } | null>(null);
   const startTimeRef = useRef<number>(0);
 
   // Branching state: tracks the path of question IDs visited
@@ -771,9 +778,12 @@ export default function PublicQuizPlayerPage() {
 
   // ─── Results Screen ────────────────────────────────────────────────────────
   if (submitted) {
-    const score = calcScore(questions, answers);
-    const pct = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    const passed = pct >= (quiz.passingScore ?? 70);
+    const localScore = calcScore(questions, answers);
+    const localPct = totalPoints > 0 ? Math.round((localScore / totalPoints) * 100) : 0;
+    const score = authoritativeAttemptResult?.earnedPoints ?? localScore;
+    const displayedTotalPoints = authoritativeAttemptResult?.totalPoints ?? totalPoints;
+    const pct = authoritativeAttemptResult?.scorePercent ?? localPct;
+    const passed = authoritativeAttemptResult?.passed ?? localPct >= (quiz.passingScore ?? 70);
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: bgGradient }}>
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
@@ -786,7 +796,7 @@ export default function PublicQuizPlayerPage() {
           <h2 className="text-2xl font-bold text-gray-800 mb-1">
             {completionMessage ? completionMessage : (passed ? "Quiz Passed!" : "Not Quite")}
           </h2>
-          <p className="text-gray-500 mb-2">You scored {score}/{totalPoints} points ({pct}%)</p>
+          <p className="text-gray-500 mb-2">You scored {score}/{displayedTotalPoints} points ({pct}%)</p>
           <p className="text-sm text-gray-400 mb-6">Passing score: {quiz.passingScore}%</p>
 
           {/* Per-question breakdown */}
@@ -826,7 +836,7 @@ export default function PublicQuizPlayerPage() {
 
           <div className="flex gap-3 justify-center">
             <button
-            onClick={() => { setSubmitted(false); setReviewing(false); setAnswers({}); setFlaggedQuestions({}); setCurrentIdx(0); startTimeRef.current = Date.now(); }}
+            onClick={() => { setSubmitted(false); setReviewing(false); setAuthoritativeAttemptResult(null); setAnswers({}); setFlaggedQuestions({}); setCurrentIdx(0); startTimeRef.current = Date.now(); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
             >
               <RotateCcw className="w-4 h-4" /> Retry
@@ -848,12 +858,22 @@ export default function PublicQuizPlayerPage() {
     // The server scores the raw answers from its saved quiz definition. Never
     // submit client-derived score or pass/fail values as authority.
     if (!isStaffPreview) {
+      setAttemptSubmissionError(null);
       submitAttemptMutation.mutate({
         ...(isWidget ? { widgetToken } : { shareToken: shareToken || "" }),
         ...(requiresTakerEmail ? { takerEmail: takerEmail.trim().toLowerCase() } : {}),
         timeTakenSeconds: timeTaken,
         answersJson: JSON.stringify(answers),
+      }, {
+        onSuccess: (result) => {
+          setAuthoritativeAttemptResult(result);
+          setSubmitted(true);
+        },
+        onError: (submissionError) => setAttemptSubmissionError(
+          submissionError.message || "Your attempt could not be saved. Please review your details and try again.",
+        ),
       });
+      return;
     }
 
     setSubmitted(true);
@@ -936,6 +956,11 @@ export default function PublicQuizPlayerPage() {
 
         {/* Question */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {attemptSubmissionError && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {attemptSubmissionError}
+            </div>
+          )}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold text-white px-2 py-0.5 rounded-full" style={{ background: primaryColor }}>

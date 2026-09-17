@@ -41,7 +41,12 @@ vi.mock("@/lib/trpc", () => ({
       getWidgetQuiz: { useQuery: () => ({ data: null, isLoading: false, error: null }) },
       getQuizBranding: { useQuery: () => ({ data: null }) },
       getStaffPreviewQuiz: { useQuery: () => ({ data: null, isLoading: false, error: null }) },
-      submitAttempt: { useMutation: () => ({ mutate: submitAttempt }) },
+      submitAttempt: { useMutation: () => ({
+        mutate: (input: unknown, options?: { onSuccess?: () => void }) => {
+          submitAttempt(input);
+          options?.onSuccess?.();
+        },
+      }) },
     },
   },
 }));
