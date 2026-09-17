@@ -68,6 +68,7 @@
 - [x] Validate upgrade-prompt discount codes against the selected course, download, or physical product organization and configured target scope before creating a Stripe coupon
 - [x] Exercise all three protected product checkout routes with an allowed configured preview origin and verified member custom domain
 - [x] Add an explicit procedure-level rejection case for an unverified custom checkout return origin
+- [x] Remove public embedded-checkout inputs and fulfillment branches that could grant legacy source-project membership brands; free-order confirmations use direct Course360 organization links rather than a missing auto-login dependency
 - [x] Replace the active StudentLayout source-brand fallback with Course360 while preserving organization-specific learner branding and domain routing
 - [x] Replace the email campaign wrapper’s legacy platform fallback with Course360 while preserving organization-specific campaign identity
 - [x] Normalize the user-facing authoring export watermark to Course360 and course360.app while preserving compatibility-only identifiers

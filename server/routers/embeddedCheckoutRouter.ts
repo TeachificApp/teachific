@@ -10,11 +10,10 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "../_core/trpc";
 import { getDb, getOrgById, getOrCreateUserByEmail } from "../db";
-import { funnelPurchases, lmsEnrollments, brandMemberships, digitalPurchases, lmsCourses, digitalProducts, digitalBundles, physicalProducts, funnelPages } from "../../drizzle/schema";
+import { funnelPurchases, lmsEnrollments, digitalPurchases, lmsCourses, digitalProducts, digitalBundles, physicalProducts, funnelPages } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
 import { sendEmail, buildFunnelPurchaseConfirmationEmail } from "../_core/email";
-import { generateAutoLoginToken } from "../routes/autoLogin";
 import { assertFreeOrderEligible, resolveEmbeddedCheckoutExpectedCents } from "../lib/checkoutPricing";
 import { getStripeClient } from "../lib/stripeClient";
 import { getOrgBaseUrl } from "../lib/orgUrl";
@@ -89,9 +88,8 @@ export const embeddedCheckoutRouter = router({
         sourceFunnelPageId: z.number().optional(),
         sourceLandingPageId: z.number().optional(),
         sourceLmsLessonId: z.number().optional(),
-        // Fulfillment: auto-enroll in LMS course or grant membership access on payment success
+        // Fulfillment: auto-enroll in an organization course after payment success.
         lmsCourseId: z.number().optional(),       // If set, enroll user in this course after payment
-        fulfillmentBrand: z.enum(["aaus", "iheartecho", "both"]).optional(),
         // Direct product ID for download/bundle/quiz fulfillment (overrides productType-based lookup)
         productId: z.number().optional(),
         // Redirect after success
@@ -101,7 +99,6 @@ export const embeddedCheckoutRouter = router({
         additionalAccess: z.array(z.object({
           type: z.string(),
           productId: z.number().optional(),
-          brand: z.string().optional(),
           label: z.string(),
         })).optional(),
         // Optional promo code to validate and apply
@@ -186,7 +183,6 @@ export const embeddedCheckoutRouter = router({
 
       // Fulfillment metadata — used by webhook to auto-enroll/grant access
       if (input.lmsCourseId) metadata.fulfillment_course_id = input.lmsCourseId.toString();
-      if (input.fulfillmentBrand) metadata.fulfillment_brand = input.fulfillmentBrand;
       if (input.productId) metadata.product_id = input.productId.toString();
       // Note: additionalAccess items are stored in block data and resolved server-side
       // from the page blocks after payment — not passed through Stripe metadata.
@@ -301,14 +297,12 @@ export const embeddedCheckoutRouter = router({
       sourceLandingPageId: z.number().optional(),
       sourceLmsLessonId: z.number().optional(),
       lmsCourseId: z.number().optional(),
-      fulfillmentBrand: z.enum(["aaus", "iheartecho", "both"]).optional(),
       productId: z.number().optional(),
       successRedirect: z.string().optional(),
       origin: z.string(),
       additionalAccess: z.array(z.object({
         type: z.string(),
         productId: z.number().optional(),
-        brand: z.string().optional(),
         label: z.string(),
       })).optional(),
     }))
@@ -321,6 +315,7 @@ export const embeddedCheckoutRouter = router({
       const organization = await getOrgById(orgId);
       if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Checkout organization not found" });
       const orgBaseUrl = getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus);
+      const baseUrl = orgBaseUrl;
 
       await assertFreeOrderEligible(db, {
         productName: input.productName,
@@ -368,7 +363,7 @@ export const embeddedCheckoutRouter = router({
                 to: { name: customerName || firstName, email: input.email },
                 subject: `Your account is ready — set your password to access ${input.productName || "your purchase"}`,
                 htmlBody: emailContent.htmlBody,
-                previewText: `Set your password to access your ${input.productName || "purchase"} on Teachific`,
+                previewText: `Set your password to access your ${input.productName || "purchase"} on Course360`,
               }, orgId);
               console.log(`[FreeOrder] Sent set-password email to ${input.email} (new user ${userId})`);
             } catch (emailErr) {
@@ -424,27 +419,6 @@ export const embeddedCheckoutRouter = router({
         fulfillmentNotes.push(`Download access: #${input.productId}`);
       }
 
-      // ── Membership Access ──
-      if (input.fulfillmentBrand && userId) {
-        const brandsToGrant: ("aaus" | "iheartecho")[] =
-          input.fulfillmentBrand === "both" ? ["aaus", "iheartecho"] : [input.fulfillmentBrand];
-        for (const brand of brandsToGrant) {
-          const [existing] = await db.select({ id: brandMemberships.id }).from(brandMemberships)
-            .where(and(eq(brandMemberships.userId, userId), eq(brandMemberships.brand, brand))).limit(1);
-          if (existing) {
-            await db.update(brandMemberships)
-              .set({ tier: "premium", status: "active", source: "free", grantedAt: new Date() })
-              .where(eq(brandMemberships.id, existing.id));
-          } else {
-            await db.insert(brandMemberships).values({
-              userId, brand, tier: "premium", status: "active", source: "free",
-              stripeSubscriptionId: null, stripeCustomerId: null,
-            });
-          }
-        }
-        fulfillmentNotes.push(`Membership access: ${input.fulfillmentBrand === "both" ? "all" : "standard"}`);
-      }
-
       // ── Additional Access Items ──
       if (input.additionalAccess?.length && userId) {
         for (const item of input.additionalAccess) {
@@ -463,24 +437,6 @@ export const embeddedCheckoutRouter = router({
                 await db.insert(digitalPurchases).values({ userId, productId: item.productId, stripeCheckoutSessionId: null });
               }
               fulfillmentNotes.push(`Bonus download: ${item.label}`);
-            } else if (item.type === "membership" && item.brand) {
-              const brandsToGrant: ("aaus" | "iheartecho")[] =
-                item.brand === "both" ? ["aaus", "iheartecho"] : [item.brand as "aaus" | "iheartecho"];
-              for (const brand of brandsToGrant) {
-                const [existing] = await db.select({ id: brandMemberships.id }).from(brandMemberships)
-                  .where(and(eq(brandMemberships.userId, userId), eq(brandMemberships.brand, brand))).limit(1);
-                if (existing) {
-                  await db.update(brandMemberships)
-                    .set({ tier: "premium", status: "active", source: "free", grantedAt: new Date() })
-                    .where(eq(brandMemberships.id, existing.id));
-                } else {
-                  await db.insert(brandMemberships).values({
-                    userId, brand, tier: "premium", status: "active", source: "free",
-                    stripeSubscriptionId: null, stripeCustomerId: null,
-                  });
-                }
-              }
-              fulfillmentNotes.push(`Bonus membership: ${item.label}`);
             }
           } catch (itemErr) {
             console.error(`[FreeOrder] Failed to grant additional access item "${item.label}":`, itemErr);
@@ -509,29 +465,17 @@ export const embeddedCheckoutRouter = router({
             loginUrl = `${baseUrl}/my-downloads`;
           } else if (input.productType === "bundle") {
             loginUrl = `${baseUrl}/my-courses`;
-          } else if (input.fulfillmentBrand) {
-            loginUrl = `${baseUrl}/dashboard`;
-          }
-          // Generate auto-login token so the email link logs them in automatically
-          let autoLoginUrl = loginUrl;
-          if (userId) {
-            try {
-              const token = await generateAutoLoginToken(userId, loginUrl);
-              autoLoginUrl = `${baseUrl}/api/auth/auto-login?token=${token}`;
-            } catch (tokenErr) {
-              console.error(`[FreeOrder] Failed to generate auto-login token for user ${userId}:`, tokenErr);
-            }
           }
           const { subject, htmlBody, previewText } = buildFunnelPurchaseConfirmationEmail({
             firstName,
             productName: input.productName,
             amountPaid: 0,
-            loginUrl: autoLoginUrl,
-            brandMode: brandMode as any,
+            loginUrl,
+            brandMode: "course360",
           });
           const { sendEmailViaOrg } = await import("../_core/email");
           await sendEmailViaOrg({ to: { name: customerName || firstName, email: input.email }, subject, htmlBody, previewText }, orgId);
-          console.log(`[FreeOrder] Confirmation email sent to ${input.email} (auto-login: ${userId ? 'yes' : 'no'})`);
+          console.log(`[FreeOrder] Confirmation email sent to ${input.email}`);
         } catch (err) {
           console.error(`[FreeOrder] Failed to send confirmation email:`, err);
         }
