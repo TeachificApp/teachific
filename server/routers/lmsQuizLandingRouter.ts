@@ -720,7 +720,7 @@ Rules:
         ? pricing.map(p => `${p.label ?? "Option"}: $${Number(p.price ?? 0).toFixed(2)}${p.subscriptionInterval ? "/" + p.subscriptionInterval : ""} (${p.pricingType ?? "one_time"})`).join(", ")
         : course.price ? `$${Number(course.price).toFixed(2)}` : "Free";
 
-      const systemPrompt = `You are an expert landing page designer for online ${typeLabel}s. Generate a complete, compelling landing page block structure as JSON. The blocks should be professional, conversion-focused, and specific to the content provided. Return ONLY valid JSON, no markdown.`;
+      const systemPrompt = `You are an expert landing page designer for online ${typeLabel}s. Generate a complete, compelling landing page block structure as JSON. The blocks should be professional, conversion-focused, and specific only to the content provided. Do not invent testimonials, reviews, ratings, named learners, outcome claims, credentials, statistics, guarantees, accreditation, or other unsupported claims. Return ONLY valid JSON, no markdown.`;
       const userPrompt = `Generate a landing page for this ${typeLabel}:
 
 Title: ${course.title}
@@ -778,8 +778,8 @@ Block data schemas:
    bgColor: "#f0fafa"
    align: "center"
 
-Create blocks in this order: hero, text (what you'll learn + benefits), curriculum_auto, text (about the instructor/course), pricing_options_auto, faq, cta_standalone.
-Make ALL content specific and compelling based on the course title, description, and curriculum above. Do NOT use generic placeholder text.`;
+Create blocks in this order: hero, text (what learners can expect from the provided material), curriculum_auto, text (about the course only), pricing_options_auto, faq, cta_standalone.
+Make ALL content specific and compelling based only on the course title, description, and curriculum above. Do NOT use generic placeholder text. Do not add a testimonial, review, rating, learner name, result, or claim not supplied above.`;
 
       const response = await invokeLLM({
         messages: [
@@ -793,7 +793,7 @@ Make ALL content specific and compelling based on the course title, description,
         const raw = response.choices[0].message.content as string;
         blocks = parseLandingBlocks(raw);
       } catch (err: any) {
-        console.error("[aiGenerateLandingPage] parse error:", err?.message, "raw:", (response.choices[0]?.message?.content as string)?.slice(0, 400));
+        console.error("[aiGenerateLandingPage] parse error:", err?.message);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI returned invalid JSON: ${err?.message ?? "unknown error"}. Please try again.` });
       }
       // Save the generated blocks
