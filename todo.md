@@ -59,6 +59,10 @@
 - [x] Resolve digital-bundle checkout success and cancellation URLs from the selected bundle’s verified organization domain rather than request-header origins
 - [x] Resolve individual-download checkout success and cancellation URLs from the selected product’s verified organization domain rather than request-header origins
 - [x] Replace the active individual-download Stripe coupon legacy platform label with Course360 wording while preserving coupon scope and metadata
+- [x] Resolve native physical-product checkout return URLs from the selected product’s verified organization domain rather than request-header origins
+- [x] Validate native physical-product checkout discount codes against the selected product’s organization and configured target scope before creating Stripe coupons
+- [x] Preserve shipping collection and order fulfillment for native physical-product checkout with a valid 100% discount
+- [x] Add focused route-level coverage proving scoped physical-product coupons cannot bypass required shipping and fulfillment behavior
 - [x] Validate upgrade-prompt discount codes against the selected course, download, or physical product organization and configured target scope before creating a Stripe coupon
 - [x] Exercise all three protected product checkout routes with an allowed configured preview origin and verified member custom domain
 - [x] Add an explicit procedure-level rejection case for an unverified custom checkout return origin

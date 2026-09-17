@@ -95,9 +95,9 @@ export async function fulfillPrintfulOrder(
     return { submitted: false, error: message };
   }
 
-  const externalId = `aaus-ppo-${order.id}`;
+  const externalId = `course360-ppo-${order.id}`;
   const shipping = (process.env.PRINTFUL_SHIPPING_METHOD ?? ENV.printfulShippingMethod ?? "STANDARD").trim();
-  const retailPrice = (product.price / 100).toFixed(2);
+  const retailPrice = Number(product.price).toFixed(2);
 
   try {
     const result = await createOrder(
@@ -113,7 +113,7 @@ export async function fulfillPrintfulOrder(
           state_code: order.shippingState?.trim() || undefined,
           zip,
           country_code: country,
-          email: email || "orders@teachific.app",
+          email: email || "orders@course360.app",
           phone: "0000000000",
         },
         items: [{

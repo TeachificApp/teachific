@@ -95,7 +95,7 @@ export async function fulfillPrintifyOrder(
   }
 
   const { first, last } = splitFullName(order.shippingName);
-  const externalId = `aaus-ppo-${order.id}`;
+  const externalId = `course360-ppo-${order.id}`;
   const shippingMethod = Number.parseInt(
     process.env.PRINTIFY_SHIPPING_METHOD ?? ENV.printifyShippingMethod ?? "1",
     10,
@@ -114,7 +114,7 @@ export async function fulfillPrintifyOrder(
       address_to: {
         first_name: first,
         last_name: last,
-        email: email || "orders@teachific.app",
+        email: email || "orders@course360.app",
         phone: "0000000000",
         country,
         region: order.shippingState?.trim() || "",

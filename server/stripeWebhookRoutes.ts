@@ -8,18 +8,21 @@ import type Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getStripe, PLAN_LIMITS, type PlanTier } from "./stripePlans";
 import { upsertOrgSubscription, createEnrollment, getEnrollment } from "./lmsDb";
-import { getUserByEmail, getDb } from "./db";
+import { getUserByEmail, getOrCreateUserByEmail, getDb } from "./db";
 import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments, coupons, couponRedemptions } from "../drizzle/schema";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments, coupons, couponRedemptions, physicalProducts, physicalProductOrders } from "../drizzle/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 import { sendPurchaseConfirmationEmail } from "./routers/downloadsRouter";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 import { getCourse360PlatformAppUrl } from "../shared/brands";
+import { fulfillBookvaultOrder } from "./lib/fulfillBookvaultOrder";
+import { fulfillPrintfulOrder } from "./lib/fulfillPrintfulOrder";
+import { fulfillPrintifyOrder } from "./lib/fulfillPrintifyOrder";
 
 export function getOrgAdminPurchaseDashboardUrl(org: {
   slug: string;
@@ -119,6 +122,94 @@ async function recordCouponRedemption(session: Stripe.Checkout.Session): Promise
     });
   } catch (error) {
     console.error("[Stripe Webhook] Failed to record coupon redemption", error);
+  }
+}
+
+/**
+ * Persist a completed native physical-product Checkout session and hand it to
+ * exactly one configured fulfillment provider. Guest sessions are resolved to
+ * a Course360 account by the Stripe-confirmed email only after checkout
+ * succeeds, so shipping is never bypassed by a zero-dollar coupon.
+ */
+export async function fulfillNativePhysicalProductCheckout(session: Stripe.Checkout.Session): Promise<void> {
+  if (session.mode !== "payment" || session.metadata?.type !== "physical_product") return;
+
+  const productId = Number.parseInt(session.metadata.product_id ?? "", 10);
+  const orgId = Number.parseInt(session.metadata.org_id ?? "", 10);
+  const metadataUserId = Number.parseInt(session.metadata.user_id ?? "", 10);
+  const buyerEmail = session.customer_details?.email ?? session.customer_email ?? session.metadata.customer_email ?? "";
+  if (!productId || !orgId || !buyerEmail || !session.id) {
+    console.warn("[Stripe Webhook] Skipped physical-product fulfillment: required checkout data is missing");
+    return;
+  }
+
+  const db = await getDb();
+  if (!db) return;
+
+  const [product] = await db.select().from(physicalProducts)
+    .where(and(eq(physicalProducts.id, productId), eq(physicalProducts.orgId, orgId)))
+    .limit(1);
+  if (!product) {
+    console.warn(`[Stripe Webhook] Skipped physical-product fulfillment: product ${productId} is not in organization ${orgId}`);
+    return;
+  }
+
+  let userId = Number.isInteger(metadataUserId) && metadataUserId > 0 ? metadataUserId : 0;
+  if (!userId) {
+    const resolved = await getOrCreateUserByEmail({
+      email: buyerEmail,
+      name: session.customer_details?.name ?? undefined,
+    });
+    userId = resolved.user.id;
+  }
+
+  const [existingOrder] = await db.select({ id: physicalProductOrders.id })
+    .from(physicalProductOrders)
+    .where(eq(physicalProductOrders.stripeCheckoutSessionId, session.id))
+    .limit(1);
+
+  let orderId = existingOrder?.id;
+  if (!orderId) {
+    const shippingDetails = (session as any).shipping_details ?? (session as any).collected_information?.shipping_details;
+    const shippingAddress = shippingDetails?.address ?? null;
+    const [result] = await db.insert(physicalProductOrders).values({
+      userId,
+      productId,
+      pricingOptionId: Number.parseInt(session.metadata.pricing_option_id ?? "", 10) || null,
+      amountPaid: (Number(session.amount_total ?? 0) / 100).toFixed(2),
+      currency: (session.currency ?? product.currency ?? "usd").toLowerCase(),
+      stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : null,
+      stripeCheckoutSessionId: session.id,
+      shippingName: shippingDetails?.name ?? session.customer_details?.name ?? null,
+      shippingLine1: shippingAddress?.line1 ?? null,
+      shippingLine2: shippingAddress?.line2 ?? null,
+      shippingCity: shippingAddress?.city ?? null,
+      shippingState: shippingAddress?.state ?? null,
+      shippingPostalCode: shippingAddress?.postal_code ?? null,
+      shippingCountry: shippingAddress?.country ?? null,
+      notes: `Stripe Checkout ${session.id}`,
+    });
+    orderId = (result as any).insertId as number;
+  }
+
+  if (!orderId) {
+    console.error(`[Stripe Webhook] Could not persist physical-product order for Checkout session ${session.id}`);
+    return;
+  }
+
+  const providerOptions = { customerEmail: buyerEmail };
+  try {
+    // A product should be linked to only one provider. The order remains
+    // retryable through the existing organization-admin fulfillment controls.
+    if (product.bookvaultEnabled) {
+      await fulfillBookvaultOrder(db, orderId, providerOptions);
+    } else if (product.printfulEnabled) {
+      await fulfillPrintfulOrder(db, orderId, providerOptions);
+    } else if (product.printifyEnabled) {
+      await fulfillPrintifyOrder(db, orderId, providerOptions);
+    }
+  } catch (error) {
+    console.error(`[Stripe Webhook] Physical-product fulfillment handoff failed for order ${orderId}:`, error);
   }
 }
 
@@ -227,6 +318,12 @@ router.post(
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
           await recordCouponRedemption(session);
+
+          // ── Native physical-product purchase ────────────────────────────────────────
+          if (session.mode === "payment" && session.metadata?.type === "physical_product") {
+            await fulfillNativePhysicalProductCheckout(session);
+            break;
+          }
 
           // ── Course purchase (one-time payment) ──────────────────────────────
           if (session.mode === "payment" && session.metadata?.type === "course_purchase") {

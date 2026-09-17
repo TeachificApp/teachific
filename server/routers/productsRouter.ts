@@ -33,8 +33,10 @@ import {
   physicalProductPricingOptions,
   physicalProductOrders,
   organizations,
+  coupons,
   users,
 } from "../../drizzle/schema";
+import { couponIsRedeemableForCheckout } from "../lib/couponTargeting";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -334,6 +336,17 @@ export const productsLearnerRouter = router({
       if (product.checkoutMode !== "native") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This product uses an external checkout. Use the Shopify or external URL instead." });
       }
+      const [organization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, product.orgId)).limit(1);
+      if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Product organization not found" });
+      const organizationBaseUrl = getOrgBaseUrl(
+        organization.slug,
+        organization.customDomain,
+        organization.domainVerificationStatus,
+      );
 
       // Resolve pricing
       let unitAmount = product.price;
@@ -366,7 +379,6 @@ export const productsLearnerRouter = router({
       }
 
       const stripe = getStripeClient();
-      const origin = ctx.req.headers.origin || `https://${ctx.req.headers.host}`;
 
       // Allowed shipping countries (default to US + CA if not specified)
       const allowedCountries = product.shippingCountries
@@ -374,28 +386,37 @@ export const productsLearnerRouter = router({
         : ["US", "CA", "GB", "AU", "NZ"];
 
       // Resolve promo code if provided
-      let discounts: Array<{ promotion_code: string }> | undefined;
-      if (input.promoCode) {
-        try {
-          const promoCodes = await stripe.promotionCodes.list({ code: input.promoCode.toUpperCase(), active: true, limit: 1 });
-          if (promoCodes.data[0]) {
-            discounts = [{ promotion_code: promoCodes.data[0].id }];
-            // ── 100% promo intercept for physical products ────────────────────
-            const coupon = promoCodes.data[0].coupon as any;
-            const priceCents = unitAmount;
-            const discountedCents = coupon.percent_off === 100 ? 0 : coupon.amount_off ? Math.max(0, priceCents - coupon.amount_off) : priceCents;
-            if (discountedCents === 0) {
-              if (userId) await db.insert(physicalProductOrders).values({ userId, productId: product.id, pricingOptionId: input.pricingOptionId ?? null, amountPaid: 0, currency: product.currency });
-              return { checkoutUrl: null, free: true };
-            }
-          }
-        } catch { /* ignore */ }
+      let discounts: Array<{ coupon: string }> | undefined;
+      let internalCouponId: string | undefined;
+      let internalCouponCode: string | undefined;
+      if (input.promoCode?.trim()) {
+        const normalizedCode = input.promoCode.trim().toUpperCase();
+        const [coupon] = await db.select().from(coupons)
+          .where(and(eq(coupons.orgId, product.orgId), eq(coupons.code, normalizedCode)))
+          .limit(1);
+        if (!coupon || !couponIsRedeemableForCheckout(coupon, {
+          orgId: product.orgId,
+          contentType: "physical_product",
+          productId: product.id,
+        })) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This discount code is not available for this product." });
+        }
+        const stripeCoupon = await stripe.coupons.create({
+          ...(coupon.discountType === "percentage"
+            ? { percent_off: Number(coupon.discountValue) }
+            : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: product.currency }),
+          duration: "once",
+          name: `Course360 ${normalizedCode}`,
+        });
+        discounts = [{ coupon: stripeCoupon.id }];
+        internalCouponId = String(coupon.id);
+        internalCouponCode = normalizedCode;
       }
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_email: userEmail,
         client_reference_id: userId ? userId.toString() : undefined,
-        ...(discounts ? { discounts } : { allow_promotion_codes: true }),
+        ...(discounts ? { discounts } : {}),
         // Always collect shipping address for native physical products
         shipping_address_collection: {
           allowed_countries: allowedCountries as any,
@@ -415,13 +436,16 @@ export const productsLearnerRouter = router({
         metadata: {
           type: "physical_product",
           product_id: product.id.toString(),
+          org_id: product.orgId.toString(),
           pricing_option_id: input.pricingOptionId?.toString() ?? "",
           user_id: userId ? userId.toString() : "",
           customer_email: userEmail ?? "",
+          ...(internalCouponId ? { internal_coupon_id: internalCouponId } : {}),
+          ...(internalCouponCode ? { internal_coupon_code: internalCouponCode } : {}),
         },
         payment_intent_data: { description: `${pricingLabel} — Physical Product` },
-        success_url: `${origin}/product/${product.slug}?success=1`,
-        cancel_url: `${origin}/product/${product.slug}`,
+        success_url: `${organizationBaseUrl}/product/${encodeURIComponent(product.slug)}?success=1`,
+        cancel_url: `${organizationBaseUrl}/product/${encodeURIComponent(product.slug)}`,
       });
       return { checkoutUrl: session.url, free: false };
     }),
