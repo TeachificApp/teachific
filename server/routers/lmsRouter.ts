@@ -27,7 +27,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgBySlug, getOrgIdForUserWithFallback, getPrimaryOrgId } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUserWithFallback } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -35,6 +35,7 @@ import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { getFreePreviewCourseUrl } from "../lib/freePreviewUrl";
+import { resolvePublicOrganizationScope } from "../lib/publicOrgRequestScope";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getActiveEnrollment } from "../lib/enrollmentAccess";
 import {
@@ -137,20 +138,16 @@ export const lmsPublicRouter = router({
       // orgSlug: when on a subdomain, pass the slug to scope to that org; absent = primary org
       orgSlug: z.string().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Resolve org scope: subdomain slug → org, or fall back to primary org
-      let scopeOrgId: number | null = null;
-      if (input.orgSlug) {
-        const org = await getOrgBySlug(input.orgSlug);
-        scopeOrgId = org?.id ?? null;
-      } else {
-        scopeOrgId = await getPrimaryOrgId();
-      }
-      // If we can't resolve an org, return empty (prevents cross-org leakage)
-      if (scopeOrgId === null) return { courses: [], total: 0, page: input.page, pageSize: input.pageSize };
+      // A verified custom learner domain or Course360 subdomain has precedence over
+      // the legacy orgSlug hint. This prevents an organization-domain visitor from
+      // requesting another organization's public catalog through tRPC input.
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+      if (!publicScope) return { courses: [], total: 0, page: input.page, pageSize: input.pageSize };
+      const scopeOrgId = publicScope.id;
 
       // If type is explicitly "quiz", return only organization-owned LMS quiz courses.
       // The retired sonoQuizzes table is not present in the active database contract and
@@ -159,29 +156,11 @@ export const lmsPublicRouter = router({
         const lmsConditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.type, "quiz"), eq(lmsCourses.orgId, scopeOrgId)];
 
         const offset = (input.page - 1) * input.pageSize;
-        const [lmsQuizRows, sqRows] = await Promise.all([
+        const [lmsQuizRows] = await Promise.all([
           db.select().from(lmsCourses).where(and(...lmsConditions)).orderBy(desc(lmsCourses.createdAt)),
         ]);
         const lmsMapped = lmsQuizRows.map(c => ({ ...c, instructor: null, _source: "lms_course" as const }));
-        const sqMapped = sqRows.map(q => ({
-          id: q.id,
-          slug: `quiz-${q.id}`,
-          title: q.title,
-          subtitle: q.description ?? null,
-          description: q.description ?? null,
-          coverImageUrl: q.coverImageUrl ?? null,
-          status: "public" as const,
-          type: "quiz" as const,
-          price: 0,
-          isFree: true,
-          isFeatured: false,
-          showInLibrary: true,
-          createdAt: q.createdAt,
-          updatedAt: q.updatedAt,
-          instructor: null,
-          _source: "sono_quiz" as const,
-        }));
-        const combined = [...lmsMapped, ...sqMapped].sort((a, b) =>
+        const combined = lmsMapped.sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         const paginated = combined.slice(offset, offset + input.pageSize);
@@ -251,7 +230,7 @@ export const lmsPublicRouter = router({
         }
       }
 
-      // When no type filter (All Types), also include digitalProducts and sonoQuizzes
+      // When no type filter (All Types), also include organization-owned digital products.
       if (!input.type) {
         const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true), eq(digitalProducts.orgId, scopeOrgId)];
         if (input.isFree !== undefined) dpConditions.push(eq(digitalProducts.isFree, input.isFree));
@@ -275,12 +254,11 @@ export const lmsPublicRouter = router({
           instructor: null,
           _source: "digital_product" as const,
         }));
-        const sqMapped: any[] = [];
         // Merge all, sort by createdAt desc, then paginate
-        const combined = [...enriched, ...dpMapped, ...sqMapped].sort((a, b) =>
+        const combined = [...enriched, ...dpMapped].sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        const totalCombined = Number(count) + dpRows.length + sqRows.length;
+        const totalCombined = Number(count) + dpRows.length;
         const paginated = combined.slice(offset, offset + input.pageSize);
         return { courses: paginated, total: totalCombined, page: input.page, pageSize: input.pageSize };
       }
@@ -289,11 +267,15 @@ export const lmsPublicRouter = router({
     }),
 
   /** List featured courses for LMS home page */
-  listFeatured: publicProcedure.query(async () => {
+  listFeatured: publicProcedure
+    .input(z.object({ orgSlug: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input?.orgSlug);
+    if (!publicScope) return [];
     const courses = await db.select().from(lmsCourses)
-      .where(and(eq(lmsCourses.status, "public"), eq(lmsCourses.isFeatured, true)))
+      .where(and(eq(lmsCourses.status, "public"), eq(lmsCourses.isFeatured, true), eq(lmsCourses.orgId, publicScope.id)))
       .orderBy(desc(lmsCourses.updatedAt))
       .limit(8);
     // Batch-fetch primary instructors (avoids N+1)
@@ -323,11 +305,14 @@ export const lmsPublicRouter = router({
 
   /** Get a single course by slug (public or preview) */
   getCourse: publicProcedure
-    .input(z.object({ slug: z.string(), preview: z.boolean().optional() }))
+    .input(z.object({ slug: z.string(), preview: z.boolean().optional(), orgSlug: z.string().optional() }))
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.slug)).limit(1);
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+      if (!publicScope) throw new TRPCError({ code: "NOT_FOUND" });
+      const [course] = await db.select().from(lmsCourses)
+        .where(and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, publicScope.id))).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
       // draft, archived, and private are not publicly accessible; hidden is accessible by direct URL
       // Admins can always see any course regardless of status or preview flag

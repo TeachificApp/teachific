@@ -104,6 +104,7 @@
 - [x] Enforce authenticated user and organization ownership for chunked package version upload session initiation, chunks, and finalization
 - [x] Bind chunked package version attribution to the authenticated user rather than request-body uploadedBy data
 - [x] Require organization-admin ownership before native SCORM package creation from the Question Bank import workflow
+- [x] Resolve public LMS catalog, featured, and direct course lookup scope from the request’s verified organization domain before honoring legacy platform catalog hints
 - [ ] Audit and port applicable Ultrasound-App LMS and quiz updates with active-organization authorization
 - [ ] Audit last-week Ultrasound-App LMS, quiz integration, question bank, and CME certificate changes for Course360 compatibility
 - [ ] Port compatible LMS and quiz integration improvements with active-organization and tiered-role enforcement
