@@ -114,6 +114,7 @@
 - [x] Audit and port the compatible organization-owned Quiz Creator image-labeling question type without changing existing Question Bank records
 - [x] Audit and complete Course360 image-comparison authoring, type definitions, store defaults, preview, persistence, public delivery, and organization-scope support
 - [x] Add end-to-end organization-owned image-comparison behavior and regression coverage while preserving the standalone Quiz Creator and Question Bank boundary
+- [x] Add server-authoritative conditional Quiz Creator question visibility with save-time same-quiz/earlier-parent validation, author controls, learner filtering, and hidden-question scoring exclusion
 - [x] Audit and enforce organization scope for learner standalone quiz listings, and correct the StudentLayout organization-brand fallback without adding read-aloud controls
 - [ ] Design and implement an explicit organization-scoped learner quiz navigation surface and matching native quiz-results route before exposing quiz-results navigation
 - [ ] Add protected active-organization learner native quiz-attempt summaries and a completed-attempt results route without exposing other organizations’ attempts

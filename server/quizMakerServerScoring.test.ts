@@ -126,6 +126,18 @@ describe("Course360 public Quiz Creator server scoring", () => {
     expect(fixture.inserted).toHaveLength(0);
   });
 
+  it("rejects malformed conditional visibility before changing a saved quiz", async () => {
+    const caller = quizMakerRouter.createCaller({ user: { id: 5, role: "org_admin" } } as any);
+    await expect(caller.saveQuiz({
+      quizId: fixture.quiz.id,
+      title: "Conditional quiz",
+      questionsJson: JSON.stringify([
+        { id: "child", type: "tf", showWhen: { parentQuestionId: "missing", expectedAnswer: "true" } },
+      ]),
+    })).rejects.toThrow("A conditional question must reference an earlier question");
+    expect(fixture.inserted).toHaveLength(0);
+  });
+
   it("requires an email identity and enforces configured max attempts for public share links", async () => {
     fixture.quiz.maxAttempts = 1;
     const caller = quizMakerRouter.createCaller({ user: null } as any);

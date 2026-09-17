@@ -11,6 +11,7 @@ import { validateImageLabelingQuestions } from "./lib/imageLabelingQuestion";
 import { validateImageComparisonQuestions } from "./lib/imageComparisonQuestion";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 import { scorePublicQuizAttempt } from "../shared/quizScoring";
+import { validateQuizQuestionDependencies } from "../shared/quizQuestionDependency";
 import {
   buildQuizWidgetEmbed,
   createQuizWidgetToken,
@@ -664,6 +665,8 @@ export const quizMakerRouter = router({
       if (imageLabelingValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageLabelingValidation });
       const imageComparisonValidation = validateImageComparisonQuestions(input.questionsJson);
       if (imageComparisonValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageComparisonValidation });
+      const dependencyValidation = validateQuizQuestionDependencies(input.questionsJson);
+      if (dependencyValidation) throw new TRPCError({ code: "BAD_REQUEST", message: dependencyValidation });
       let requestedMockExamEnabled: boolean | undefined;
       if (input.settingsJson) {
         try {

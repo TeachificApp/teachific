@@ -234,6 +234,12 @@ export interface BranchRule {
   priority: number; // lower = evaluated first
 }
 
+/** Show this question only when an earlier supported question has the selected answer. */
+export interface QuizQuestionDependency {
+  parentQuestionId: string;
+  expectedAnswer: string;
+}
+
 export interface QuizQuestion {
   id: string;
   type: QuestionType;
@@ -260,6 +266,7 @@ export interface QuizQuestion {
   backgroundColor?: string;
   // Branching / conditional logic
   branchRules?: BranchRule[];
+  showWhen?: QuizQuestionDependency;
   // Group assignment
   groupId?: string;
   // Randomization override

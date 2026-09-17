@@ -9,6 +9,7 @@ import { DndOrdering, DndDragWords } from "@/quiz-creator/components/DndQuizInte
 import { ImageLabelingInteraction } from "@/quiz-creator/components/ImageLabelingInteraction";
 import { getMockExamReviewSummary, shouldOpenMockExamReview, toggleMockExamFlag } from "../../../shared/mockExamFlow";
 import { gradeImageLabelingAnswer } from "../../../shared/imageLabeling";
+import { filterVisibleDependentQuestions } from "../../../shared/quizQuestionDependency";
 import {
   ImageComparisonPlayer,
   DragSortPlayer,
@@ -639,11 +640,24 @@ export default function PublicQuizPlayerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quiz, started]);
 
+  // Conditional visibility is based on the saved definition and raw answers;
+  // the server repeats this filter before scoring or persisting an attempt.
+  const visibleQuestions = useMemo(
+    () => filterVisibleDependentQuestions(questions, answers),
+    [questions, answers],
+  );
+
+  useEffect(() => {
+    if (currentIdx >= visibleQuestions.length && visibleQuestions.length > 0) {
+      setCurrentIdx(visibleQuestions.length - 1);
+    }
+  }, [currentIdx, visibleQuestions.length]);
+
   // Auto-detect branching: enabled if any question has branchRules defined
   const branchingEnabled = useMemo(() => {
-    if (!questions || questions.length === 0) return false;
-    return questions.some((qq) => qq.branchRules && qq.branchRules.length > 0);
-  }, [questions]);
+    if (!visibleQuestions || visibleQuestions.length === 0) return false;
+    return visibleQuestions.some((qq) => qq.branchRules && qq.branchRules.length > 0);
+  }, [visibleQuestions]);
 
   // Apply font family
   useEffect(() => {
@@ -696,10 +710,10 @@ export default function PublicQuizPlayerPage() {
     );
   }
 
-  const totalPoints = questions.reduce((s, q) => s + q.points, 0);
+  const totalPoints = visibleQuestions.reduce((s, q) => s + q.points, 0);
   const isMockExam = Boolean((quiz as any).mockExamEnabled);
   const requiresTakerEmail = !isWidget && Number(quiz.maxAttempts ?? 0) > 0;
-  const mockExamReviewSummary = getMockExamReviewSummary(questions, answers, flaggedQuestions);
+  const mockExamReviewSummary = getMockExamReviewSummary(visibleQuestions, answers, flaggedQuestions);
 
   // ─── Start Screen ──────────────────────────────────────────────────────────
   if (!started) {
@@ -719,7 +733,7 @@ export default function PublicQuizPlayerPage() {
           <div className="grid grid-cols-2 gap-3 mb-6 text-sm">
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-gray-400 text-xs">Questions</p>
-              <p className="font-bold text-gray-800">{questions.length}</p>
+              <p className="font-bold text-gray-800">{visibleQuestions.length}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-gray-400 text-xs">Total Points</p>
@@ -778,7 +792,7 @@ export default function PublicQuizPlayerPage() {
 
   // ─── Results Screen ────────────────────────────────────────────────────────
   if (submitted) {
-    const localScore = calcScore(questions, answers);
+    const localScore = calcScore(visibleQuestions, answers);
     const localPct = totalPoints > 0 ? Math.round((localScore / totalPoints) * 100) : 0;
     const score = authoritativeAttemptResult?.earnedPoints ?? localScore;
     const displayedTotalPoints = authoritativeAttemptResult?.totalPoints ?? totalPoints;
@@ -802,7 +816,7 @@ export default function PublicQuizPlayerPage() {
           {/* Per-question breakdown */}
           {quiz.showCorrectAnswers && (
             <div className="text-left border-t border-gray-100 pt-4 mb-6 max-h-60 overflow-y-auto space-y-2">
-              {questions.map((q, i) => {
+              {visibleQuestions.map((q, i) => {
                 const ans = answers[q.id];
                 let isCorrect = false;
                 if (q.type === "mcq" || q.type === "image_choice") {
@@ -888,7 +902,7 @@ export default function PublicQuizPlayerPage() {
               <Flag className="h-4 w-4" /> Mock exam review
             </div>
             <h1 className="mt-1 text-2xl font-bold text-gray-800">Review your responses</h1>
-            <p className="mt-1 text-sm text-gray-500">{mockExamReviewSummary.answeredCount} of {questions.length} questions answered{mockExamReviewSummary.flaggedCount ? ` · ${mockExamReviewSummary.flaggedCount} flagged` : ""}. Choose a question to review before final scoring.</p>
+            <p className="mt-1 text-sm text-gray-500">{mockExamReviewSummary.answeredCount} of {visibleQuestions.length} questions answered{mockExamReviewSummary.flaggedCount ? ` · ${mockExamReviewSummary.flaggedCount} flagged` : ""}. Choose a question to review before final scoring.</p>
           </div>
           <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
             {mockExamReviewSummary.questions.map((question) => {
@@ -917,7 +931,7 @@ export default function PublicQuizPlayerPage() {
   }
 
   // ─── Question Screen ───────────────────────────────────────────────────────
-  const q = questions[currentIdx];
+  const q = visibleQuestions[currentIdx] ?? visibleQuestions[0];
   if (!q) return null;
 
   return (
@@ -941,7 +955,7 @@ export default function PublicQuizPlayerPage() {
               </span>
             )}
             <span className="text-sm text-gray-500">
-              {currentIdx + 1} / {questions.length}
+              {currentIdx + 1} / {visibleQuestions.length}
             </span>
           </div>
         </div>
@@ -950,7 +964,7 @@ export default function PublicQuizPlayerPage() {
         <div className="h-1 bg-gray-100">
           <div
             className="h-full transition-all"
-            style={{ width: `${((currentIdx + 1) / questions.length) * 100}%`, background: primaryColor }}
+            style={{ width: `${((currentIdx + 1) / visibleQuestions.length) * 100}%`, background: primaryColor }}
           />
         </div>
 
@@ -1032,7 +1046,7 @@ export default function PublicQuizPlayerPage() {
                 setQuestionPath(newPath);
                 const prevId = newPath[newPath.length - 1];
                 if (prevId) {
-                  const prevIdx = questions.findIndex((qq) => qq.id === prevId);
+                  const prevIdx = visibleQuestions.findIndex((qq) => qq.id === prevId);
                   if (prevIdx >= 0) setCurrentIdx(prevIdx);
                 } else {
                   setCurrentIdx(0);
@@ -1049,12 +1063,12 @@ export default function PublicQuizPlayerPage() {
 
           {(() => {
             // Determine if this is the last question (branching or linear)
-            const isLastLinear = currentIdx >= questions.length - 1;
+            const isLastLinear = currentIdx >= visibleQuestions.length - 1;
             const handleNext = () => {
               if (branchingEnabled) {
                 // Evaluate branch rules
                 const cumulativeScore = calcScore(
-                  questions.filter((qq) => answers[qq.id] !== undefined),
+                  visibleQuestions.filter((qq) => answers[qq.id] !== undefined),
                   answers
                 );
                 const target = evaluateBranchRules(
@@ -1073,12 +1087,12 @@ export default function PublicQuizPlayerPage() {
                     return;
                   }
                   if (target.type === "question") {
-                    const targetIdx = questions.findIndex((qq) => qq.id === target.questionId);
+                    const targetIdx = visibleQuestions.findIndex((qq) => qq.id === target.questionId);
                     if (targetIdx >= 0) { setCurrentIdx(targetIdx); return; }
                   }
                 }
                 // Default: go to next linear question
-                if (currentIdx < questions.length - 1) {
+                if (currentIdx < visibleQuestions.length - 1) {
                   setCurrentIdx((i) => i + 1);
                 } else {
                   if (shouldOpenMockExamReview(isMockExam, true)) setReviewing(true); else handleSubmit();

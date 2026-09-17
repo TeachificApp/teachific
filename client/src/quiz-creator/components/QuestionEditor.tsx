@@ -31,6 +31,21 @@ const TYPE_LABELS: Record<string, string> = {
   essay: "Essay",
 };
 
+function conditionalAnswerOptions(question: QuizQuestion) {
+  if (question.type === "tf") {
+    return [{ value: "true", label: "True" }, { value: "false", label: "False" }];
+  }
+  if (question.type === "mcq" || question.type === "image_choice") {
+    const choices = (question.data as any)?.choices;
+    return Array.isArray(choices)
+      ? choices
+        .filter((choice: any) => typeof choice?.id === "string" && choice.id)
+        .map((choice: any) => ({ value: choice.id, label: choice.text || choice.id }))
+      : [];
+  }
+  return [];
+}
+
 export function QuestionEditor() {
   const { quiz, activeQuestionId, updateQuestion, deleteQuestion } = useQuizStore();
   const question = quiz.questions.find((q) => q.id === activeQuestionId);
@@ -51,6 +66,14 @@ export function QuestionEditor() {
   const updateQuestionFeedback = (kind: "correct" | "incorrect", html: string) => {
     update({ feedback: { ...question.feedback, [kind]: html } });
   };
+  const questionIndex = quiz.questions.findIndex((candidate) => candidate.id === question.id);
+  const conditionalParents = quiz.questions.filter((candidate, index) =>
+    index < questionIndex && conditionalAnswerOptions(candidate).length > 0,
+  );
+  const selectedConditionalParent = conditionalParents.find(
+    (candidate) => candidate.id === question.showWhen?.parentQuestionId,
+  );
+  const conditionalAnswers = selectedConditionalParent ? conditionalAnswerOptions(selectedConditionalParent) : [];
 
   const [showMediaPanel, setShowMediaPanel] = useState(false);
 
@@ -342,6 +365,40 @@ export function QuestionEditor() {
             </span>
           </label>
         </div>
+      </div>
+
+      {/* Conditional question visibility */}
+      <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-4">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-teal-800">Conditional visibility</label>
+        <p className="mt-1 text-xs text-teal-700">Optionally show this question only when an earlier supported question has a selected answer.</p>
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <select
+            value={question.showWhen?.parentQuestionId ?? ""}
+            onChange={(event) => {
+              const parent = conditionalParents.find((candidate) => candidate.id === event.target.value);
+              const firstAnswer = parent ? conditionalAnswerOptions(parent)[0] : undefined;
+              update({ showWhen: parent && firstAnswer
+                ? { parentQuestionId: parent.id, expectedAnswer: firstAnswer.value }
+                : undefined });
+            }}
+            className="w-full rounded-lg border border-teal-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400/50"
+          >
+            <option value="">Always show this question</option>
+            {conditionalParents.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>After: {candidate.stem || `Question ${candidate.order + 1}`}</option>
+            ))}
+          </select>
+          {selectedConditionalParent && (
+            <select
+              value={question.showWhen?.expectedAnswer ?? ""}
+              onChange={(event) => update({ showWhen: { parentQuestionId: selectedConditionalParent.id, expectedAnswer: event.target.value } })}
+              className="w-full rounded-lg border border-teal-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400/50"
+            >
+              {conditionalAnswers.map((answer) => <option key={answer.value} value={answer.value}>Show when answer is: {answer.label}</option>)}
+            </select>
+          )}
+        </div>
+        {conditionalParents.length === 0 && <p className="mt-2 text-xs text-gray-500">Add an earlier multiple-choice, image-choice, or true/false question to enable this setting.</p>}
       </div>
 
       {/* Feedback mode and question-level feedback */}

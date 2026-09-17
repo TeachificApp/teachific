@@ -1,10 +1,12 @@
 import { gradeImageLabelingAnswer } from "./imageLabeling";
+import { filterVisibleDependentQuestions, type QuizQuestionDependency } from "./quizQuestionDependency";
 
 export type PublicQuizScoringQuestion = {
   id: string | number;
   type?: string;
   points?: number;
   data?: Record<string, any> | null;
+  showWhen?: QuizQuestionDependency | null;
 };
 
 export type PublicQuizAttemptScore = {
@@ -100,8 +102,9 @@ export function scorePublicQuizAttempt(
   questions: PublicQuizScoringQuestion[],
   answers: Record<string, unknown>,
 ): PublicQuizAttemptScore {
-  const totalPoints = questions.reduce((total, question) => total + pointsFor(question), 0);
-  const earnedPoints = questions.reduce(
+  const visibleQuestions = filterVisibleDependentQuestions(questions, answers);
+  const totalPoints = visibleQuestions.reduce((total, question) => total + pointsFor(question), 0);
+  const earnedPoints = visibleQuestions.reduce(
     (total, question) => total + (answerIsCorrect(question, answers[String(question.id)]) ? pointsFor(question) : 0),
     0,
   );
