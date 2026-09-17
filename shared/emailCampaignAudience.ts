@@ -53,8 +53,6 @@ export const AudienceFilterSchema = z.object({
   enrolledBefore: z.string().optional(),
   purchasedAfter: z.string().optional(),
   purchasedBefore: z.string().optional(),
-  /** Legacy app-membership filter retained only for imported compatibility records. */
-  brands: z.array(z.enum(["aaus", "iheartecho"])).default([]),
   /** Users subscribed to these membership plan IDs (membership_subscriptions) */
   membershipPlanIds: z.array(z.number().int()).default([]),
   /** Users enrolled in these bundle IDs (bundle_enrollments) */
@@ -117,7 +115,6 @@ export const DEFAULT_AUDIENCE_FILTER: AudienceFilter = {
   inGroupIds: [],
   inCohortGroupIds: [],
   submittedFormIds: [],
-  brands: [],
   membershipPlanIds: [],
   bundleIds: [],
   workshopIds: [],

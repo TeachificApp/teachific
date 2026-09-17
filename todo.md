@@ -135,6 +135,7 @@
 - [x] Update the default Manus LLM request model to a current catalog model and honor per-request output token limits
 - [x] Add one bounded Retry-After-aware Forge LLM retry with generic client-safe provider failures for email and social generation
 - [x] Require active-organization administrator authority, supported image MIME types, normalized extensions, bounded size, and organization-owned storage keys for rich-text image uploads
+- [x] Remove legacy source-project brand membership filters from campaign audience contracts and recipient resolution; retain organization-owned membership-plan targeting only
 - [x] Assess the upstream large Question Bank quiz-load fix; defer it because Course360 delivers serialized Quiz Creator questions rather than the upstream standalone Question Bank hydration contract
 - [x] Audit the upstream standalone quiz administrator URL-access fix against Course360’s active organization-scoped staff-preview contract
 - [x] Require server-resolved active-organization alignment for organization-owned Quiz Creator staff, edit, and export access without changing public share-token delivery

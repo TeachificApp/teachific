@@ -20,7 +20,6 @@ import {
   emailListSubscribers,
   userInterests,
   lmsOrders,
-  brandMemberships,
   membershipPlans,
   membershipSubscriptions,
   digitalBundles,
@@ -468,26 +467,6 @@ async function emailsMatchingDimension(
     return matches;
   }
 
-  // ── New dimensions ────────────────────────────────────────────────────────
-
-  if (dimension === "brands" && filter.brands.length > 0) {
-    const rows = await db
-      .select({ userId: brandMemberships.userId })
-      .from(brandMemberships)
-      .where(
-        and(
-          inArray(brandMemberships.brand, filter.brands as string[]),
-          eq(brandMemberships.status, "active"),
-        ),
-      );
-    const idSet = new Set(rows.map((r) => r.userId));
-    const allUsers = await loadAllUsers();
-    for (const u of allUsers) {
-      if (u.email && idSet.has(u.id)) matches.add(normalizeEmail(u.email));
-    }
-    return matches;
-  }
-
   if (dimension === "membershipPlans" && filter.membershipPlanIds.length > 0) {
       const rows = await db
         .select({ userId: membershipSubscriptions.userId })
@@ -810,7 +789,6 @@ function activeDimensions(filter: AudienceFilter): string[] {
   if (filter.inGroupIds.length > 0) dims.push("groups");
   if (filter.inCohortGroupIds.length > 0) dims.push("cohorts");
   if (filter.submittedFormIds.length > 0) dims.push("forms");
-  if ((filter.brands ?? []).length > 0) dims.push("brands");
   if ((filter.membershipPlanIds ?? []).length > 0) dims.push("membershipPlans");
   if ((filter.bundleIds ?? []).length > 0) dims.push("bundles");
   if ((filter.workshopIds ?? []).length > 0) dims.push("workshops");
