@@ -165,6 +165,7 @@
 - [x] Add regression coverage for organization isolation, role scope, and organization branding on ported changes
 - [x] Distinguish non-scoring inline lesson survey mode from grading for all response-capable question types while preserving the separate CME required-completion gate
 - [x] Verify non-scoring survey submissions omit grading feedback across every supported legacy inline response type
+- [x] Restore authenticated learners’ latest authorized inline lesson survey answers and local in-progress drafts without weakening active-organization, enrollment, lesson, or block checks
 - [x] Scope reusable lesson templates to their owning organization and add a safe append-only saved-template picker to the active lesson editor
 - [x] Normalize remaining visible Quiz Creator platform-only Teachific references to Course360 without changing organization branding or persisted identifiers
 - [x] Audit Quiz Creator visible branding surfaces and document intentionally retained legacy identifiers separately from user-facing Course360 labels

@@ -47,7 +47,13 @@ function lessonSurveyBlocks() {
   }]);
 }
 
-function createDb({ activeOrg = 1, cmeEnabled = true, completedAttempts = [] as string[] } = {}) {
+function createDb({
+  activeOrg = 1,
+  cmeEnabled = true,
+  completedAttempts = [] as string[],
+  savedAttempt = null as { id: number; passed: boolean; score: number; submittedAt?: Date } | null,
+  savedResponses = [] as Array<{ questionKey: string; questionType: string; answerValue: string | null }>,
+} = {}) {
   const writes: Array<{ table: unknown; values: unknown }> = [];
   const recordWrite = (table: unknown, values: unknown) => { writes.push({ table, values }); };
   const db = {
@@ -108,6 +114,12 @@ function createDb({ activeOrg = 1, cmeEnabled = true, completedAttempts = [] as 
         if (table === lmsInlineQuizAttempts) {
           const rows = completedAttempts.map((quizBlockId) => ({ quizBlockId }));
           result.then = (resolve: (value: unknown) => unknown) => Promise.resolve(rows).then(resolve);
+          result.orderBy = () => ({
+            limit: async () => savedAttempt ? [savedAttempt] : [],
+          });
+        }
+        if (table === lmsInlineQuizResponses) {
+          result.then = (resolve: (value: unknown) => unknown) => Promise.resolve(savedResponses).then(resolve);
         }
         return result;
       },
@@ -155,5 +167,32 @@ describe("Course360 inline CME survey learner procedures", () => {
     const caller = lmsLearnerRouter.createCaller(createContext());
     await expect(caller.markLessonComplete({ courseSlug: "course-a", lessonId: 21 }))
       .rejects.toMatchObject({ message: "Please complete the required survey before marking this lesson complete" });
+  });
+
+  it("restores only the current learner's active-organization answers for the exact inline quiz block", async () => {
+    const fixture = createDb({
+      savedAttempt: { id: 91, passed: true, score: 0, submittedAt: new Date("2026-09-17T00:00:00.000Z") },
+      savedResponses: [{ questionKey: "recommend", questionType: "survey_choice", answerValue: "Yes" }],
+    });
+    mockState.db = fixture.db;
+    const caller = lmsLearnerRouter.createCaller(createContext());
+
+    await expect(caller.getInlineLessonQuizAttempt({
+      courseSlug: "course-a", lessonId: 21, quizBlockId: "feedback-block",
+    })).resolves.toEqual({
+      attempt: expect.objectContaining({ id: 91, passed: true, score: 0 }),
+      responses: [{ questionKey: "recommend", questionType: "survey_choice", answerValue: "Yes" }],
+    });
+  });
+
+  it("does not disclose a saved inline quiz attempt across active organizations", async () => {
+    const fixture = createDb({ savedAttempt: { id: 91, passed: true, score: 0 } });
+    mockState.db = fixture.db;
+    mockState.activeOrgId = 2;
+    const caller = lmsLearnerRouter.createCaller(createContext());
+
+    await expect(caller.getInlineLessonQuizAttempt({
+      courseSlug: "course-a", lessonId: 21, quizBlockId: "feedback-block",
+    })).rejects.toMatchObject({ message: "This course is not available in the active organization" });
   });
 });

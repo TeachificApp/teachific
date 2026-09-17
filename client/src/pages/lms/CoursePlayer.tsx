@@ -152,16 +152,76 @@ function InlineLessonQuiz({
   const [selected, setSelected] = useState<Record<string, string | number | string[]>>({});
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ score: number; passed: boolean; requiresSurveyCompletion: boolean; surveyCompleted: boolean; nonScoringSurvey: boolean; passingScore: number } | null>(null);
+  const answerDraftKey = `inline-lesson-quiz-answers:${courseSlug}:${lessonId}:${quizBlockId}`;
+  const restoredAnswerKeyRef = useRef<string | null>(null);
+  const { data: savedAttempt, isLoading: isSavedAttemptLoading } = trpc.lmsLearner.getInlineLessonQuizAttempt.useQuery(
+    { lessonId, courseSlug, quizBlockId },
+    { enabled: !isAdminPreview },
+  );
   const submitInlineLessonQuiz = trpc.lmsLearner.submitInlineLessonQuiz.useMutation({
     onSuccess: (submission) => {
       setResult(submission);
       setSubmitted(true);
+      sessionStorage.removeItem(answerDraftKey);
       onSubmitted();
       if (submission.passed) toast.success(submission.nonScoringSurvey ? "Survey saved." : `Score: ${submission.score}%`);
       else toast.error(submission.requiresSurveyCompletion ? "Please answer every required visible survey question." : `Score: ${submission.score}% — ${submission.passingScore}% required to pass.`);
     },
     onError: (error) => toast.error(`Could not save answers: ${error.message}`),
   });
+
+  useEffect(() => {
+    if (restoredAnswerKeyRef.current === answerDraftKey) return;
+    if (!isAdminPreview && isSavedAttemptLoading) return;
+
+    try {
+      const localDraft = sessionStorage.getItem(answerDraftKey);
+      if (localDraft) {
+        const parsed = JSON.parse(localDraft);
+        if (parsed && typeof parsed === "object" && parsed.selected && typeof parsed.selected === "object") {
+          setSelected(parsed.selected as Record<string, string | number | string[]>);
+          restoredAnswerKeyRef.current = answerDraftKey;
+          return;
+        }
+      }
+    } catch {
+      sessionStorage.removeItem(answerDraftKey);
+    }
+
+    const responses = savedAttempt?.responses ?? [];
+    if (responses.length > 0) {
+      const responsesByKey = new Map(responses.map((response: any) => [response.questionKey, response.answerValue]));
+      const restored: Record<string, string | number | string[]> = {};
+      questions.forEach((question: any, index: number) => {
+        const questionKey = inlineLessonQuizQuestionKey(question, index);
+        const value = responsesByKey.get(questionKey);
+        if (value === undefined || value === null) return;
+        const questionType = question.type ?? "mcq";
+        if (questionType === "star_rating") {
+          const rating = Number(value);
+          if (Number.isFinite(rating)) restored[questionKey] = rating;
+        } else if (questionType === "multiselect") {
+          try {
+            const selections = JSON.parse(String(value));
+            if (Array.isArray(selections) && selections.every((selection) => typeof selection === "string")) restored[questionKey] = selections;
+          } catch { /* Ignore malformed legacy multi-select values. */ }
+        } else if (["mcq", "truefalse"].includes(questionType)) {
+          const optionIndex = Number(value);
+          if (Number.isInteger(optionIndex) && optionIndex >= 0 && optionIndex < (question.options ?? []).length) restored[questionKey] = optionIndex;
+        } else {
+          restored[questionKey] = String(value);
+        }
+      });
+      setSelected(restored);
+    }
+    if (savedAttempt) setSubmitted(true);
+    restoredAnswerKeyRef.current = answerDraftKey;
+  }, [answerDraftKey, isAdminPreview, isSavedAttemptLoading, questions, savedAttempt]);
+
+  useEffect(() => {
+    if (restoredAnswerKeyRef.current !== answerDraftKey || submitted) return;
+    sessionStorage.setItem(answerDraftKey, JSON.stringify({ selected }));
+  }, [answerDraftKey, selected, submitted]);
 
   const answerByQuestionKey = selected as Record<string, unknown>;
   const visibleIndexes = getVisibleInlineLessonQuizQuestionIndexes(questions, answerByQuestionKey);

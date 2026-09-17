@@ -915,6 +915,74 @@ export const lmsLearnerRouter = router({
       };
     }),
 
+  /** Restore the authenticated learner's latest saved answers for one authorized inline lesson quiz block. */
+  getInlineLessonQuizAttempt: protectedProcedure
+    .input(z.object({
+      lessonId: z.number().int().positive(),
+      courseSlug: z.string().min(1).max(255),
+      quizBlockId: z.string().min(1).max(128),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId })
+        .from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+
+      const [enrollment] = await db.select({ id: lmsEnrollments.id, orgId: lmsEnrollments.orgId, courseId: lmsEnrollments.courseId })
+        .from(lmsEnrollments)
+        .where(and(
+          eq(lmsEnrollments.userId, ctx.user.id),
+          eq(lmsEnrollments.orgId, course.orgId),
+          eq(lmsEnrollments.courseId, course.id),
+        ))
+        .limit(1);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "You are not enrolled in this course" });
+
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, contentBlocks: lmsLessons.contentBlocks })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      let lessonCourseId = lesson.courseId;
+      if (!lessonCourseId && lesson.sectionId) {
+        const [section] = await db.select({ courseId: lmsSections.courseId })
+          .from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1);
+        lessonCourseId = section?.courseId ?? null;
+      }
+      if (lessonCourseId !== course.id || !getStoredInlineLessonQuizBlock(lesson.contentBlocks, input.quizBlockId)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Inline lesson quiz not found" });
+      }
+
+      const [attempt] = await db.select({
+        id: lmsInlineQuizAttempts.id,
+        passed: lmsInlineQuizAttempts.passed,
+        score: lmsInlineQuizAttempts.score,
+        submittedAt: lmsInlineQuizAttempts.submittedAt,
+      }).from(lmsInlineQuizAttempts).where(and(
+        eq(lmsInlineQuizAttempts.orgId, course.orgId),
+        eq(lmsInlineQuizAttempts.userId, ctx.user.id),
+        eq(lmsInlineQuizAttempts.enrollmentId, enrollment.id),
+        eq(lmsInlineQuizAttempts.courseId, course.id),
+        eq(lmsInlineQuizAttempts.lessonId, input.lessonId),
+        eq(lmsInlineQuizAttempts.quizBlockId, input.quizBlockId),
+      )).orderBy(desc(lmsInlineQuizAttempts.submittedAt)).limit(1);
+      if (!attempt) return null;
+
+      const responses = await db.select({
+        questionKey: lmsInlineQuizResponses.questionKey,
+        questionType: lmsInlineQuizResponses.questionType,
+        answerValue: lmsInlineQuizResponses.answerValue,
+      }).from(lmsInlineQuizResponses).where(and(
+        eq(lmsInlineQuizResponses.orgId, course.orgId),
+        eq(lmsInlineQuizResponses.attemptId, attempt.id),
+      ));
+      return { attempt, responses };
+    }),
+
   /** Revalidate required CME survey attempts for the authenticated learner before lesson completion. */
   getRequiredInlineLessonSurveyCompletion: protectedProcedure
     .input(z.object({
