@@ -168,8 +168,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
   const [tone, setTone] = useState("professional");
   const [includeEmoji, setIncludeEmoji] = useState(false);
   const [emailType, setEmailType] = useState("general");
-  const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [selectedProductType, setSelectedProductType] = useState<"course" | "workshop" | "cohort" | "webinar" | "download">("course");
+  const [selectedProductKey, setSelectedProductKey] = useState<string>("");
 
   const { data: promoProducts } = trpc.emailCampaign.getProductsForEmailPromo.useQuery(undefined, {
     enabled: open && emailType === "promo",
@@ -184,7 +183,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
     ...(promoProducts.downloads ?? []).map(p => ({ ...p, kind: "download" as const })),
   ] : [];
 
-  const selectedProduct = allProducts.find(p => String(p.id) === selectedProductId);
+  const selectedProduct = allProducts.find(p => `${p.kind}:${p.id}` === selectedProductKey);
 
   const generateMutation = trpc.emailCampaign.generateFullEmailContent.useMutation({
     onSuccess: (result) => {
@@ -192,17 +191,22 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
         onApplyBlocks(result.blocks as Block[]);
         setOpen(false);
         setPrompt("");
-        setSelectedProductId("");
+        setSelectedProductKey("");
       }
     },
   });
 
   function handleGenerate() {
-    let finalPrompt = prompt.trim();
-    if (emailType === "promo" && selectedProduct) {
-      finalPrompt = `Write a promotional email for the following course/product:\n\nTitle: ${selectedProduct.title}\nDescription: ${selectedProduct.description || "(no description provided)"}\nLanding Page URL: ${selectedProduct.url}\n\nAdditional instructions: ${finalPrompt || "Highlight the key benefits and include a clear call-to-action button linking to the landing page."}`;
-    }
-    generateMutation.mutate({ prompt: finalPrompt, tone, includeEmoji, emailType });
+    const finalPrompt = prompt.trim() || "Highlight the key benefits and include a clear call-to-action.";
+    generateMutation.mutate({
+      prompt: finalPrompt,
+      tone: tone as "professional" | "friendly" | "urgent" | "educational" | "celebratory",
+      includeEmoji,
+      emailType: emailType as "general" | "promo" | "welcome" | "newsletter" | "event" | "followup",
+      ...(emailType === "promo" && selectedProduct ? {
+        promoProduct: { id: selectedProduct.id, type: selectedProduct.kind },
+      } : {}),
+    });
   }
 
   return (
@@ -227,7 +231,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
                 <label className="text-xs font-medium text-gray-700 block mb-1">Email Type</label>
                 <select
                   value={emailType}
-                  onChange={e => { setEmailType(e.target.value); setSelectedProductId(""); }}
+                  onChange={e => { setEmailType(e.target.value); setSelectedProductKey(""); }}
                   className="w-full h-8 rounded-md border border-gray-200 bg-white px-2 text-xs"
                 >
                   <option value="general">General / Announcement</option>
@@ -246,13 +250,13 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
                     <p className="text-xs text-gray-400">Loading your courses and products…</p>
                   ) : (
                     <select
-                      value={selectedProductId}
-                      onChange={e => setSelectedProductId(e.target.value)}
+                      value={selectedProductKey}
+                      onChange={e => setSelectedProductKey(e.target.value)}
                       className="w-full h-8 rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] bg-white px-2 text-xs"
                     >
                       <option value="">— Select a product —</option>
                       {allProducts.map(p => (
-                        <option key={`${p.kind}-${p.id}`} value={String(p.id)}>
+                        <option key={`${p.kind}-${p.id}`} value={`${p.kind}:${p.id}`}>
                           [{p.kind.charAt(0).toUpperCase() + p.kind.slice(1)}] {p.title}
                         </option>
                       ))}
@@ -313,7 +317,7 @@ function AiFullEmailGenerator({ onApplyBlocks }: { onApplyBlocks: (blocks: Block
             <div className="flex gap-2 mt-4">
               <Button
                 className="flex-1 bg-[var(--org-primary)] hover:brightness-90 text-white"
-                disabled={(emailType === "promo" ? !selectedProductId : !prompt.trim()) || generateMutation.isPending}
+                disabled={(emailType === "promo" ? !selectedProductKey : !prompt.trim()) || generateMutation.isPending}
                 onClick={handleGenerate}
               >
                 {generateMutation.isPending ? "Generating…" : "Generate Email"}

@@ -5605,6 +5605,8 @@
 - [x] Update AiFullEmailGenerator: rename Course Launch to Course/Product Promo, add product picker
 - [x] Inject selected product title, description, and landing page URL into AI prompt
 - [x] Update generateFullEmailContent to use product context in system prompt
+- [x] Resolve Course/Product Promo details server-side from the selected active-organization product, including trusted verified-domain landing URL and decimal-dollar display price
+- [x] Prevent client-forged promotion ownership, URL, and price context; keep product type and identifier paired in the email generator picker
 
 ## Email Campaign Block Picker Popup
 - [x] Convert EmailBlockEditor Add Block from sidebar panel to Dialog modal popup (matching lesson editor style)
