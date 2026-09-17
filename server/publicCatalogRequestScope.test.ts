@@ -62,6 +62,8 @@ describe("Course360 public catalog request scope", () => {
     expect(publicSource).toContain("resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug)");
     expect(publicSource).toContain("eq(lmsCourses.orgId, publicScope.id)");
     expect(publicSource).toContain("listFeatured: publicProcedure");
+    expect(publicSource).toContain("eq(lmsInstructors.orgId, publicScope.id)");
+    expect(publicSource).toContain("eq(lmsCourseInstructors.orgId, publicScope.id)");
     expect(publicSource).not.toContain("getPrimaryOrgId()");
     expect(publicSource).not.toContain("sqRows");
     expect(publicSource).not.toContain('_source: "sono_quiz"');

@@ -387,27 +387,38 @@ export const lmsPublicRouter = router({
 
   /** Get instructor public profile */
   getInstructor: publicProcedure
-    .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .input(z.object({ id: z.number(), orgSlug: z.string().optional() }))
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [instructor] = await db.select().from(lmsInstructors).where(and(eq(lmsInstructors.id, input.id), eq(lmsInstructors.isActive, true))).limit(1);
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+      if (!publicScope) throw new TRPCError({ code: "NOT_FOUND" });
+      const [instructor] = await db.select().from(lmsInstructors)
+        .where(and(eq(lmsInstructors.id, input.id), eq(lmsInstructors.orgId, publicScope.id), eq(lmsInstructors.isActive, true)))
+        .limit(1);
       if (!instructor) throw new TRPCError({ code: "NOT_FOUND" });
       // Courses taught
-      const cis = await db.select({ courseId: lmsCourseInstructors.courseId }).from(lmsCourseInstructors).where(eq(lmsCourseInstructors.instructorId, input.id));
+      const cis = await db.select({ courseId: lmsCourseInstructors.courseId }).from(lmsCourseInstructors)
+        .where(and(eq(lmsCourseInstructors.instructorId, input.id), eq(lmsCourseInstructors.orgId, publicScope.id)));
       const courseIds = cis.map(c => c.courseId);
       const courses = courseIds.length > 0
         ? await db.select({ id: lmsCourses.id, slug: lmsCourses.slug, title: lmsCourses.title, coverImageUrl: lmsCourses.coverImageUrl, status: lmsCourses.status })
-            .from(lmsCourses).where(and(eq(lmsCourses.status, "public"), sql`${lmsCourses.id} IN (${sql.join(courseIds.map(id => sql`${id}`), sql`, `)})`))
+            .from(lmsCourses).where(and(eq(lmsCourses.status, "public"), eq(lmsCourses.orgId, publicScope.id), sql`${lmsCourses.id} IN (${sql.join(courseIds.map(id => sql`${id}`), sql`, `)})`))
         : [];
       return { ...instructor, courses };
     }),
 
   /** List all active instructors */
-  listInstructors: publicProcedure.query(async () => {
+  listInstructors: publicProcedure
+    .input(z.object({ orgSlug: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    return db.select().from(lmsInstructors).where(eq(lmsInstructors.isActive, true)).orderBy(asc(lmsInstructors.name));
+    const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input?.orgSlug);
+    if (!publicScope) return [];
+    return db.select().from(lmsInstructors)
+      .where(and(eq(lmsInstructors.orgId, publicScope.id), eq(lmsInstructors.isActive, true)))
+      .orderBy(asc(lmsInstructors.name));
   }),
 
   /** List all published collections (with course count) */
