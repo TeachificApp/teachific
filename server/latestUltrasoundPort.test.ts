@@ -1346,7 +1346,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(routerSource).toContain("await requireQuizMakerAccess(ctx, input.quizId)");
     expect(routerSource).toContain("getPublishedQuiz: publicProcedure");
     expect(routerSource).toContain("eq(quizzes.isPublished, true)");
-    expect(routerSource).toContain('quizVis === "archived" || quizVis === "draft"');
+    expect(routerSource).toContain('!["draft", "private", "archived"].includes(quiz.visibility ?? "published")');
     expect(routerSource).toContain("getStaffPreviewQuiz: protectedProcedure");
     expect(routerSource).toContain("previewMode: \"staff\" as const");
     expect(shareDialogSource).toContain("unpublishMutation");
@@ -1404,7 +1404,8 @@ describe("latest Ultrasound-App learning feature port", () => {
   it("protects Quiz Creator authoring with organization ownership helpers", () => {
     const routerSource = readFileSync(new URL("./routers/quizRouter.ts", import.meta.url), "utf8");
     expect(routerSource).toContain("async function requireQuizAdmin");
-    expect(routerSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId)");
+    expect(routerSource).toContain("async function requireActiveQuizOrgAdmin");
+    expect(routerSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId)");
     expect(routerSource).toContain("await requireQuizAdmin(ctx, input.id)");
   });
 
@@ -1935,7 +1936,6 @@ describe("latest Ultrasound-App learning feature port", () => {
       "../client/src/components/GetAppBanner.tsx",
       "../client/src/hooks/useSubdomain.ts",
       "../client/src/lib/sitePageDomain.ts",
-      "../client/src/components/MetaPixel.tsx",
       "../client/src/pages/admin/GeneralFormBuilder.tsx",
       "../client/src/pages/admin/FulfillmentAdmin.tsx",
       "../client/src/pages/admin/AdminUserDetailPage.tsx",
@@ -5310,7 +5310,7 @@ describe("latest Ultrasound-App learning feature port", () => {
       lmsRouterSource.indexOf("When no type filter (All Types)") + 2_400,
     );
     expect(lmsRouterSource).toContain("The retired sonoQuizzes table is not present in the active database contract");
-    expect(librarySection).toContain("const sqMapped: any[] = [];");
+    expect(librarySection).not.toContain("sqMapped");
     expect(librarySection).not.toContain("from(sonoQuizzes)");
   });
 });
