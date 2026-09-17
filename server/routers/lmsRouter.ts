@@ -34,6 +34,7 @@ import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "../lib/orgUrl";
+import { getFreePreviewCourseUrl } from "../lib/freePreviewUrl";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getActiveEnrollment } from "../lib/enrollmentAccess";
 import {
@@ -102,7 +103,6 @@ import { couponIsRedeemableForCheckout, type CouponTargetContentType } from "../
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
-import { getOrgBaseUrl } from "../lib/orgUrl";
 import {
   evaluateStoredInlineLessonQuizSubmission,
   getRequiredCmeSurveyBlockIds,
@@ -539,13 +539,23 @@ export const lmsPublicRouter = router({
       });
       // Fetch course title for confirmation email
       const [course] = await db
-        .select({ title: lmsCourses.title, slug: lmsCourses.slug })
+        .select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId })
         .from(lmsCourses)
         .where(eq(lmsCourses.id, input.courseId))
         .limit(1);
       if (course) {
         try {
-          const previewUrl = `https://app.teachific.com/courses/${course.slug}?preview_token=${accessToken}`;
+          const [organization] = await db
+            .select({
+              slug: organizations.slug,
+              customDomain: organizations.customDomain,
+              domainVerificationStatus: organizations.domainVerificationStatus,
+            })
+            .from(organizations)
+            .where(eq(organizations.id, course.orgId))
+            .limit(1);
+          if (!organization) throw new Error("Course organization is unavailable");
+          const previewUrl = getFreePreviewCourseUrl(organization, course.slug, accessToken);
           const emailData = buildFreePreviewConfirmationEmail({
             firstName: input.firstName,
             courseTitle: course.title,

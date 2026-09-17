@@ -5408,6 +5408,7 @@
 - [x] Fix server: lmsRouter.ts discussion URL to use org subdomain or verified custom domain when course organization context is available
 - [x] Resolve membership welcome and access links through the membership organization subdomain or verified custom domain
 - [x] Resolve Dashboard learner preview navigation through the active organization subdomain or verified custom domain
+- [x] Resolve public free-preview confirmation email links from the previewed course owner’s verified organization domain rather than a platform domain
 
 ## Org Branding & CME Feature Flag
 
