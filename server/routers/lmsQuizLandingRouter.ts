@@ -796,17 +796,13 @@ Make ALL content specific and compelling based only on the course title, descrip
         console.error("[aiGenerateLandingPage] parse error:", err?.message);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI returned invalid JSON: ${err?.message ?? "unknown error"}. Please try again.` });
       }
-      // Save the generated blocks
-      const blocksJson = JSON.stringify(blocks);
-      const [existing] = await db.select({ id: lmsLandingPages.id })
-        .from(lmsLandingPages).where(eq(lmsLandingPages.courseId, input.courseId)).limit(1);
-      if (existing) {
-        await db.update(lmsLandingPages).set({ blocks: blocksJson, isCustom: true }).where(eq(lmsLandingPages.courseId, input.courseId));
-      } else {
-        await db.insert(lmsLandingPages).values({ courseId: input.courseId, blocks: blocksJson, isCustom: true });
+      const draftBlocks = blocks.filter((block) => block?.type !== "reviews");
+      if (draftBlocks.length === 0) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return a usable page draft. Please try again." });
       }
-
-      return { success: true, blockCount: blocks.length };
+      // The administrator must review the draft in the builder and explicitly
+      // choose Save Page before any persisted landing-page content changes.
+      return { success: true, blockCount: draftBlocks.length, blocks: draftBlocks };
     }),
 
   // ── Page Templates ──
