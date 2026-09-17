@@ -11,8 +11,37 @@ import { tmpdir } from "os";
 import { nanoid } from "nanoid";
 import { storagePutStream } from "./storage";
 import { authenticateRequest } from "./authHelper";
+import { getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
+import { unlink } from "node:fs/promises";
 
 const router = Router();
+const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/avif",
+]);
+const IMAGE_EXTENSION_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/avif": "avif",
+};
+
+export function isAllowedCourseImageMime(mimeType: string | undefined) {
+  return Boolean(mimeType && ALLOWED_IMAGE_MIME_TYPES.has(mimeType.toLowerCase()));
+}
+
+export function imageExtensionForMime(mimeType: string) {
+  return IMAGE_EXTENSION_BY_MIME[mimeType.toLowerCase()];
+}
+
+export function createCourseImageStorageKey(orgId: number, extension: string) {
+  return `course-images/org-${orgId}/${Date.now()}-${nanoid(8)}.${extension}`;
+}
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -22,7 +51,7 @@ const upload = multer({
       cb(null, `course-img-${nanoid(12)}.${ext}`);
     },
   }),
-  limits: { fileSize: 40 * 1024 * 1024 }, // 40 MB max
+  limits: { fileSize: MAX_IMAGE_UPLOAD_BYTES },
 });
 
 router.post("/", upload.single("file"), async (req: Request, res: Response) => {
@@ -32,17 +61,38 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
+    const orgId = await getOrgIdForUserWithFallback(user.id, user.role);
+    if (!orgId) {
+      res.status(403).json({ error: "Organization administrator access is required." });
+      return;
+    }
+    try {
+      await requireOrgAdmin(user.id, user.role, orgId);
+    } catch {
+      res.status(403).json({ error: "Organization administrator access is required." });
+      return;
+    }
     if (!req.file) {
       res.status(400).json({ error: "No file provided" });
       return;
     }
-    const ext = req.file.originalname.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "png";
-    const key = `course-images/${Date.now()}-${nanoid(8)}.${ext}`;
+    if (!isAllowedCourseImageMime(req.file.mimetype)) {
+      res.status(400).json({ error: "Upload a PNG, JPEG, GIF, WebP, or AVIF image." });
+      return;
+    }
+    const ext = imageExtensionForMime(req.file.mimetype);
+    if (!ext) {
+      res.status(400).json({ error: "Upload a supported image file." });
+      return;
+    }
+    const key = createCourseImageStorageKey(orgId, ext);
     const { url } = await storagePutStream(key, req.file.path, req.file.mimetype || "image/png");
     res.json({ url });
-  } catch (err: any) {
-    console.error("[upload-course-image]", err);
-    res.status(500).json({ error: err?.message ?? "Upload failed" });
+  } catch (error) {
+    console.error(`[upload-course-image] ${error instanceof Error ? error.name : "unknown error"}`);
+    res.status(500).json({ error: "Upload failed" });
+  } finally {
+    if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
   }
 });
 

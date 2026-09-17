@@ -245,6 +245,18 @@ const resolveManusApiUrl = () =>
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
     : "https://forge.manus.im/v1/chat/completions";
 
+const MAX_FORGE_RETRY_AFTER_MS = 5_000;
+
+function getForgeRetryDelayMs(response: Response) {
+  const retryAfterSeconds = Number(response.headers.get("retry-after"));
+  if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds < 0) return 500;
+  return Math.min(Math.round(retryAfterSeconds * 1_000), MAX_FORGE_RETRY_AFTER_MS);
+}
+
+function temporarilyUnavailableError() {
+  return new Error("AI generation is temporarily unavailable. Please try again.");
+}
+
 async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
   if (!ENV.forgeApiKey) {
     throw new Error(
@@ -271,21 +283,47 @@ async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
   const normalizedResponseFormat = normalizeResponseFormat({ responseFormat, response_format, outputSchema, output_schema });
   if (normalizedResponseFormat) payload.response_format = normalizedResponseFormat;
 
-  const response = await fetch(resolveManusApiUrl(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(resolveManusApiUrl(), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${ENV.forgeApiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.warn(`[LLM] Forge request failed (${error instanceof Error ? error.name : "unknown error"}).`);
+      throw temporarilyUnavailableError();
+    }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`);
+    if (response.ok) {
+      try {
+        return (await response.json()) as InvokeResult;
+      } catch {
+        console.warn("[LLM] Forge returned an invalid completion response.");
+        throw temporarilyUnavailableError();
+      }
+    }
+
+    if (response.status === 429 && attempt === 0) {
+      const retryDelayMs = getForgeRetryDelayMs(response);
+      console.warn("[LLM] Forge rate limit received; retrying once.");
+      if (retryDelayMs > 0) await new Promise<void>(resolve => setTimeout(resolve, retryDelayMs));
+      continue;
+    }
+
+    if (response.status === 429) {
+      throw new Error("AI generation is temporarily busy. Please try again shortly.");
+    }
+
+    console.warn(`[LLM] Forge request failed with status ${response.status}.`);
+    throw temporarilyUnavailableError();
   }
 
-  return (await response.json()) as InvokeResult;
+  throw new Error("AI generation is temporarily busy. Please try again shortly.");
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
