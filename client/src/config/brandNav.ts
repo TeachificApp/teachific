@@ -58,8 +58,8 @@ export function getBrandNavConfig(_brand?: Brand): BrandNavConfig {
   return {
     navGroups: PLATFORM_NAV_GROUPS,
     hiddenNavItems: PLATFORM_HIDDEN_NAV,
-    logoUrl: "/manus-storage/course360-logo_4b20a5ab.png",
-    logoAlt: "Course360™",
+    logoUrl: "/manus-storage/LOGO_d33d81b9.png",
+    logoAlt: "Course360™ — Create. Teach. Grow.",
     title: "Course360™",
     subtitle: "SCORM & LMS Hosting Platform",
     bgColor: "#0e1e2e",

@@ -610,8 +610,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(studentLayoutSource).toContain("const activeOrg = orgs.find((org: any) => org.id === orgId);");
     expect(studentLayoutSource).toContain("{activeOrg?.name ? (");
     expect(studentLayoutSource).toContain("{activeOrg.name}");
-    expect(studentLayoutSource).toContain('>Course</span>');
-    expect(studentLayoutSource).toContain('>360</span>');
+    expect(studentLayoutSource).toContain("COURSE360_PLATFORM_LOGO_URL");
     expect(studentLayoutSource).not.toContain("teach</span>");
     expect(studentLayoutSource).not.toContain("const orgSlug = orgs?.[0]?.slug;");
   });
@@ -821,7 +820,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(verifyEmailPage).not.toContain("Teachific™ is a");
     expect(dashboardLayout).toContain("a SoundMedia, Inc. brand");
     expect(dashboardLayout).toContain("https://soundmedianow.com/");
-    expect(dashboardLayout).toContain(">Course360™<");
+    expect(dashboardLayout).toContain("COURSE360_PLATFORM_LOGO_URL");
     expect(dashboardLayout).not.toContain('>teach</span>');
   });
 
@@ -1922,8 +1921,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(brandNavSource).toContain("navGroups: PLATFORM_NAV_GROUPS");
     expect(brandNavSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
     expect(brandNavSource).toContain('title: "Course360™"');
-    expect(brandNavSource).toContain('logoAlt: "Course360™"');
-    expect(lmsLayoutSource).toContain('const PLATFORM_LOGO_URL = "/manus-storage/course360-logo_4b20a5ab.png"');
+    expect(brandNavSource).toContain('logoAlt: "Course360™ — Create. Teach. Grow."');
+    expect(brandNavSource).toContain('logoUrl: "/manus-storage/LOGO_d33d81b9.png"');
+    expect(lmsLayoutSource).toContain('const PLATFORM_LOGO_URL = COURSE360_PLATFORM_LOGO_URL;');
     expect(lmsLayoutSource).not.toMatch(/all[ -]?about[ -]?ultrasound|iheart[ -]?echo|ultrasoundassist|echoassist/i);
     expect(brandNavSource).not.toContain("UltrasoundAssist");
     expect(brandNavSource).not.toContain("EchoAssist");

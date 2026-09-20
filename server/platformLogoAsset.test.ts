@@ -1,0 +1,24 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const assetSource = readFileSync(new URL("../client/src/config/platformBrand.ts", import.meta.url), "utf8");
+const landingSource = readFileSync(new URL("../client/src/pages/LandingPage.tsx", import.meta.url), "utf8");
+const dashboardSource = readFileSync(new URL("../client/src/components/DashboardLayout.tsx", import.meta.url), "utf8");
+const learnerSource = readFileSync(new URL("../client/src/components/StudentLayout.tsx", import.meta.url), "utf8");
+const loadingSource = readFileSync(new URL("../client/src/components/LoadingScreen.tsx", import.meta.url), "utf8");
+
+describe("Course360 platform logo asset", () => {
+  it("uses the supplied shared logo across platform fallback surfaces", () => {
+    expect(assetSource).toContain('"/manus-storage/LOGO_d33d81b9.png"');
+    expect(landingSource).toContain("COURSE360_PLATFORM_LOGO_URL");
+    expect(dashboardSource).toContain("COURSE360_PLATFORM_LOGO_URL");
+    expect(learnerSource).toContain("COURSE360_PLATFORM_LOGO_URL");
+    expect(loadingSource).toContain("COURSE360_PLATFORM_LOGO_URL");
+    expect(loadingSource).not.toContain('>teach<');
+  });
+
+  it("preserves organization logo precedence over the platform fallback in the dashboard", () => {
+    expect(dashboardSource).toContain("const activeOrgLogoUrl = (activeOrg as any)?.adminLogoUrl ?? (activeOrg as any)?.logoUrl;");
+    expect(dashboardSource).toContain("activeOrgLogoUrl || COURSE360_PLATFORM_LOGO_URL");
+  });
+});

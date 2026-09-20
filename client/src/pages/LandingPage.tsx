@@ -25,6 +25,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
 
 // ─── Brand colors ─────────────────────────────────────────────────────────────
 const TEAL = "#24abbc";
@@ -38,8 +39,8 @@ function LandingNav({ user }: { user?: { name?: string | null; email?: string | 
         {/* Logo */}
         <a href="/" className="flex items-center gap-1 select-none">
           <img
-            src="/manus-storage/course360-logo_4b20a5ab.png"
-            alt="Course360™"
+            src={COURSE360_PLATFORM_LOGO_URL}
+            alt={COURSE360_PLATFORM_LOGO_ALT}
             className="h-11 w-32 object-contain object-left"
           />
         </a>

@@ -1,4 +1,5 @@
 import { Clapperboard } from "lucide-react";
+import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
 
 /**
  * Full-page branded loading screen shown while auth state resolves.
@@ -20,12 +21,7 @@ export default function LoadingScreen() {
         </span>
       </div>
 
-      {/* Brand wordmark */}
-      <div className="flex items-baseline gap-0.5 select-none">
-        <span className="text-2xl font-black tracking-tight text-slate-800">teach</span>
-        <span className="text-2xl font-black tracking-tight text-teal-500">ific</span>
-        <span className="text-base font-black text-slate-800">™</span>
-      </div>
+      <img src={COURSE360_PLATFORM_LOGO_URL} alt={COURSE360_PLATFORM_LOGO_ALT} className="h-24 w-24 object-contain" />
 
       {/* Tagline */}
       <p

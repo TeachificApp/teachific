@@ -82,6 +82,7 @@ import { getOrgBaseUrl } from "@/lib/orgUrl";
 import { OrgThemeProvider } from "@/contexts/OrgThemeContext";
 import { ProductSwitcher } from "./ProductSwitcher";
 import { OrgSwitcher } from "./OrgSwitcher";
+import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
 
 // ─── Impersonation Banner ────────────────────────────────────────────────────
 function ImpersonationBanner({ userName }: { userName: string }) {
@@ -403,9 +404,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full bg-white/5 backdrop-blur rounded-2xl border border-white/10 shadow-2xl">
           <div className="flex flex-col items-center gap-4">
-            <span className="text-4xl font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.03em" }}>
-              <span className="text-white">Course360™</span>
-            </span>
+            <img
+              src={COURSE360_PLATFORM_LOGO_URL}
+              alt={COURSE360_PLATFORM_LOGO_ALT}
+              className="h-20 w-20 rounded-xl bg-white object-contain p-1 shadow-sm"
+            />
             {errorCode === "registration_closed" ? (
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3 text-sm text-amber-300 text-center">
                 <p className="font-semibold mb-1">Registration is currently closed</p>
@@ -467,6 +470,7 @@ function DashboardLayoutContent({
   // Resolve Preview and organization-home links from the active organization.
   const { orgId, orgs: activeOrgs } = useOrgScope();
   const activeOrg = activeOrgs.find((org: any) => org.id === orgId);
+  const activeOrgLogoUrl = (activeOrg as any)?.adminLogoUrl ?? (activeOrg as any)?.logoUrl;
   const orgSlug = activeOrg?.slug;
   const previewUrl = orgSlug
     ? `${getOrgBaseUrl(orgSlug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus)}?preview=1`
@@ -566,12 +570,18 @@ function DashboardLayoutContent({
                 <PanelLeft className="h-4 w-4 text-sidebar-foreground/50" />
               </button>
               {!isCollapsed && (
-                <span className="text-[21px] font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
-                  <span className="text-sidebar-foreground">Course360™</span>
-                </span>
+                <img
+                  src={activeOrgLogoUrl || COURSE360_PLATFORM_LOGO_URL}
+                  alt={activeOrg?.name || COURSE360_PLATFORM_LOGO_ALT}
+                  className="h-10 min-w-0 max-w-[11rem] flex-1 object-contain object-left"
+                />
               )}
               {isCollapsed && (
-                <span className="text-[21px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#24abbc" }}>C</span>
+                <img
+                  src={activeOrgLogoUrl || COURSE360_PLATFORM_LOGO_URL}
+                  alt={activeOrg?.name || COURSE360_PLATFORM_LOGO_ALT}
+                  className="h-8 w-8 rounded-md object-contain"
+                />
               )}
             </div>
           </SidebarHeader>

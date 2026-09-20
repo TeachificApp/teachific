@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { getOrgBaseUrl } from "@/lib/orgUrl";
+import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { Award, BookOpen, GraduationCap, LayoutDashboard, LogOut, Receipt, User } from "lucide-react";
 import { useLocation } from "wouter";
@@ -53,11 +54,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
                 {activeOrg.name}
               </span>
             ) : (
-              <span className="text-[20px] font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
-                <span className="text-foreground">Course</span>
-                <span style={{ color: "var(--org-primary)" }}>360</span>
-                <span className="text-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
-              </span>
+              <img src={COURSE360_PLATFORM_LOGO_URL} alt={COURSE360_PLATFORM_LOGO_ALT} className="h-10 w-28 object-contain object-left" />
             )}
           </button>
 

@@ -17,8 +17,9 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import NameCollectionModal from "@/components/NameCollectionModal";
+import { COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
 
-const PLATFORM_LOGO_URL = "/manus-storage/course360-logo_4b20a5ab.png";
+const PLATFORM_LOGO_URL = COURSE360_PLATFORM_LOGO_URL;
 const MEMBERS_URL = "/";
 import { getAdminUrl, APP_URL, getSubdomain } from "@/hooks/useSubdomain";
 import { useSiteNavMenu } from "@/hooks/useSiteNavMenu";
