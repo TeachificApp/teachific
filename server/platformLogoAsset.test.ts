@@ -21,4 +21,11 @@ describe("Course360 platform logo asset", () => {
     expect(dashboardSource).toContain("const activeOrgLogoUrl = (activeOrg as any)?.adminLogoUrl ?? (activeOrg as any)?.logoUrl;");
     expect(dashboardSource).toContain("activeOrgLogoUrl || COURSE360_PLATFORM_LOGO_URL");
   });
+
+  it("uses the supplied Course360 banner in the public home hero", () => {
+    expect(assetSource).toContain('"/manus-storage/ae44eebf-60e8-49dc-9668-bf7efff10b21_9b95b498.png"');
+    expect(landingSource).toContain("COURSE360_HOME_BANNER_URL");
+    expect(landingSource).toContain("COURSE360_HOME_BANNER_ALT");
+    expect(landingSource).not.toContain("Dashboard preview mockup");
+  });
 });

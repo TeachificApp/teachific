@@ -25,7 +25,12 @@ import {
   Wand2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
+import {
+  COURSE360_HOME_BANNER_ALT,
+  COURSE360_HOME_BANNER_URL,
+  COURSE360_PLATFORM_LOGO_ALT,
+  COURSE360_PLATFORM_LOGO_URL,
+} from "@/config/platformBrand";
 
 // ─── Brand colors ─────────────────────────────────────────────────────────────
 const TEAL = "#24abbc";
@@ -192,82 +197,13 @@ function HeroSection() {
           ))}
         </div>
 
-        {/* Dashboard preview mockup */}
+        {/* Supplied platform banner */}
         <div className="mt-16 relative max-w-5xl mx-auto">
-          <div className="rounded-2xl border border-gray-200 shadow-2xl overflow-hidden bg-gray-50">
-            {/* Browser chrome */}
-            <div className="h-8 bg-gray-100 border-b border-gray-200 flex items-center px-4 gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400" />
-              <div className="w-3 h-3 rounded-full bg-green-400" />
-              <div className="flex-1 mx-4 h-4 bg-gray-200 rounded-full max-w-xs" />
-            </div>
-            <div className="flex h-72 sm:h-96">
-              {/* Fake sidebar */}
-              <div className="w-48 bg-gray-900 p-4 hidden sm:flex flex-col gap-2">
-                <div className="h-6 w-24 rounded mb-2" style={{ background: `${TEAL}80` }} />
-                {["Dashboard", "Courses", "Members", "Analytics", "Marketing"].map((item) => (
-                  <div key={item} className="flex items-center gap-2 px-2 py-1.5 rounded">
-                    <div className="w-3 h-3 rounded-sm bg-gray-600" />
-                    <div
-                      className="h-3 rounded bg-gray-600"
-                      style={{ width: `${item.length * 6}px` }}
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* Fake content area */}
-              <div className="flex-1 p-6 bg-white">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                  {[
-                    { label: "Sales tracking", value: "Overview", color: TEAL },
-                    { label: "Enrollment tools", value: "Manage", color: AQUA },
-                    { label: "Member access", value: "Organize", color: "#6366f1" },
-                    { label: "Completion data", value: "Review", color: "#f59e0b" },
-                  ].map((stat) => (
-                    <div key={stat.label} className="rounded-lg border border-gray-100 p-3 bg-gray-50">
-                      <div className="text-xs text-gray-400 mb-1">{stat.label}</div>
-                      <div className="text-xl font-bold" style={{ color: stat.color }}>
-                        {stat.value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-gray-100 p-3 bg-gray-50 h-24">
-                    <div className="text-xs text-gray-400 mb-2">Activity overview</div>
-                    <div className="flex items-end gap-1 h-12">
-                      {[40, 65, 45, 80, 60, 90, 75].map((h, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 rounded-t"
-                          style={{ height: `${h}%`, background: `${TEAL}60` }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-gray-100 p-3 bg-gray-50 h-24">
-                    <div className="text-xs text-gray-400 mb-2">Course library</div>
-                    {["Course content", "Learner progress"].map((c) => (
-                      <div key={c} className="flex items-center gap-2 mb-1">
-                        <div className="w-2 h-2 rounded-full" style={{ background: TEAL }} />
-                        <div className="text-xs text-gray-600 truncate">{c}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* Floating badges */}
-          <div className="absolute -left-4 top-1/3 bg-white rounded-xl shadow-lg border border-gray-100 px-3 py-2 hidden lg:flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" style={{ color: TEAL }} />
-            <span className="text-xs font-semibold text-gray-700">Track sales performance</span>
-          </div>
-          <div className="absolute -right-4 top-1/2 bg-white rounded-xl shadow-lg border border-gray-100 px-3 py-2 hidden lg:flex items-center gap-2">
-            <Award className="w-4 h-4 text-yellow-500" />
-            <span className="text-xs font-semibold text-gray-700">Monitor learner enrollment</span>
-          </div>
+          <img
+            src={COURSE360_HOME_BANNER_URL}
+            alt={COURSE360_HOME_BANNER_ALT}
+            className="w-full rounded-2xl border border-teal-100 bg-white shadow-2xl"
+          />
         </div>
       </div>
     </section>

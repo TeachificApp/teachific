@@ -75,6 +75,7 @@
 - [x] Normalize every active platform footer to the linked “a SoundMedia, Inc. brand” attribution
 - [x] Audit every active platform and organization footer surface and add the linked SoundMedia attribution only where platform identity is appropriate
 - [x] Apply the supplied Course360™ Create. Teach. Grow. logo to shared platform fallback and marketing navigation surfaces while retaining organization-logo precedence
+- [x] Replace the public Course360 home-page dashboard mockup with the supplied Turn Your Knowledge Into Opportunity banner
 - [x] Replace legacy Course360 platform fallback text in the email block editor and verification footer while preserving organization-authored footer overrides
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
 - [x] Enforce organization-owned discount targeting during checkout validation and discount application

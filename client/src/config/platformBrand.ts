@@ -5,3 +5,5 @@
  */
 export const COURSE360_PLATFORM_LOGO_URL = "/manus-storage/LOGO_d33d81b9.png";
 export const COURSE360_PLATFORM_LOGO_ALT = "Course360™ — Create. Teach. Grow.";
+export const COURSE360_HOME_BANNER_URL = "/manus-storage/ae44eebf-60e8-49dc-9668-bf7efff10b21_9b95b498.png";
+export const COURSE360_HOME_BANNER_ALT = "Course360™ — Turn Your Knowledge Into Opportunity. Create courses. Teach the world. Grow what’s next.";
