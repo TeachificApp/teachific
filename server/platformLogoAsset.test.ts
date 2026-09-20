@@ -27,5 +27,6 @@ describe("Course360 platform logo asset", () => {
     expect(landingSource).toContain("COURSE360_HOME_BANNER_URL");
     expect(landingSource).toContain("COURSE360_HOME_BANNER_ALT");
     expect(landingSource).not.toContain("Dashboard preview mockup");
+    expect(landingSource.indexOf("src={COURSE360_HOME_BANNER_URL}")).toBeLessThan(landingSource.indexOf("Course tools for online educators"));
   });
 });

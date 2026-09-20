@@ -147,6 +147,13 @@ function HeroSection() {
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="mx-auto mb-10 max-w-5xl pt-1">
+          <img
+            src={COURSE360_HOME_BANNER_URL}
+            alt={COURSE360_HOME_BANNER_ALT}
+            className="w-full rounded-2xl border border-teal-100 bg-white shadow-2xl"
+          />
+        </div>
         <div
           className="mb-6 inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border"
           style={{ color: TEAL, borderColor: `${TEAL}40`, background: `${TEAL}10` }}
@@ -197,14 +204,6 @@ function HeroSection() {
           ))}
         </div>
 
-        {/* Supplied platform banner */}
-        <div className="mt-16 relative max-w-5xl mx-auto">
-          <img
-            src={COURSE360_HOME_BANNER_URL}
-            alt={COURSE360_HOME_BANNER_ALT}
-            className="w-full rounded-2xl border border-teal-100 bg-white shadow-2xl"
-          />
-        </div>
       </div>
     </section>
   );
