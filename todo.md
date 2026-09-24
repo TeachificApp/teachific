@@ -5403,6 +5403,7 @@
 - [x] Run database migrations for newsletter/campaign tables
 - [x] Port sendgridContacts.ts helper (org-scoped list naming)
 - [x] Build newsletterRouter (subscribe, unsubscribeByToken, listSubscribers, updateSubscriber)
+- [x] Reconcile newsletter opt-ins with an organization-scoped All Contacts campaign list, preserving prior campaign opt-outs except after a fresh explicit opt-in
 - [x] Build emailCampaignRouter (CRUD campaigns, sender profiles, lists, analytics, send)
 - [x] Register newsletter and emailCampaign routers in appRouter
 - [x] Build NewsletterSubscribe public page (org-branded, no hardcoded brand names)

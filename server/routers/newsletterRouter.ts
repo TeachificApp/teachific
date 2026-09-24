@@ -17,6 +17,7 @@ import {
   getOrCreateSendGridList,
   removeSendGridContactFromList,
 } from "../lib/sendgridContacts";
+import { addToAllContacts, unsubscribeFromAllContacts } from "../lib/emailListHelper";
 
 /** Generate a URL-safe 32-byte random token */
 function generateToken(): string {
@@ -90,6 +91,10 @@ export const newsletterRouter = router({
       if (existing.length > 0) {
         const row = existing[0];
         if (row.isActive) {
+          await addToAllContacts(email, [input.firstName, input.lastName].filter(Boolean).join(" ") || null, {
+            orgId: resolvedOrgId,
+            source: "newsletter",
+          });
           return { success: true, alreadySubscribed: true, unsubscribeToken: row.unsubscribeToken };
         }
         // Re-subscribe: reactivate and generate a fresh token
@@ -104,6 +109,11 @@ export const newsletterRouter = router({
             updatedAt: new Date(),
           })
           .where(eq(newsletterSubscribers.id, row.id));
+        await addToAllContacts(email, [input.firstName, input.lastName].filter(Boolean).join(" ") || null, {
+          orgId: resolvedOrgId,
+          source: "newsletter",
+          allowResubscribe: true,
+        });
         return { success: true, alreadySubscribed: false, unsubscribeToken: token };
       }
 
@@ -120,6 +130,11 @@ export const newsletterRouter = router({
         subscribedAt: now,
         isActive: 1,
         unsubscribeToken: token,
+      });
+      await addToAllContacts(email, [input.firstName, input.lastName].filter(Boolean).join(" ") || null, {
+        orgId: resolvedOrgId,
+        source: "newsletter",
+        allowResubscribe: true,
       });
 
       // Sync to SendGrid Marketing Contacts (fire-and-forget)
@@ -178,6 +193,7 @@ export const newsletterRouter = router({
         .update(newsletterSubscribers)
         .set({ isActive: 0, unsubscribedAt: Date.now(), updatedAt: new Date() })
         .where(eq(newsletterSubscribers.id, row.id));
+      await unsubscribeFromAllContacts(row.email, row.orgId);
 
       // Remove from SendGrid list (fire-and-forget)
       (async () => {
@@ -220,6 +236,7 @@ export const newsletterRouter = router({
         .update(newsletterSubscribers)
         .set({ isActive: 0, unsubscribedAt: Date.now(), updatedAt: new Date() })
         .where(whereClause);
+      await unsubscribeFromAllContacts(email, input.orgId ?? null);
       return { success: true };
     }),
 
@@ -266,7 +283,12 @@ export const newsletterRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const isSiteLevel = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
       const [subscriber] = await db
-        .select({ orgId: newsletterSubscribers.orgId })
+        .select({
+          orgId: newsletterSubscribers.orgId,
+          email: newsletterSubscribers.email,
+          firstName: newsletterSubscribers.firstName,
+          lastName: newsletterSubscribers.lastName,
+        })
         .from(newsletterSubscribers)
         .where(eq(newsletterSubscribers.id, input.id))
         .limit(1);
@@ -283,6 +305,16 @@ export const newsletterRouter = router({
           ...(input.isActive ? {} : { unsubscribedAt: Date.now() }),
         })
         .where(eq(newsletterSubscribers.id, input.id));
+      const name = [subscriber.firstName, subscriber.lastName].filter(Boolean).join(" ") || null;
+      if (input.isActive) {
+        await addToAllContacts(subscriber.email, name, {
+          orgId: subscriber.orgId,
+          source: "newsletter",
+          allowResubscribe: true,
+        });
+      } else {
+        await unsubscribeFromAllContacts(subscriber.email, subscriber.orgId);
+      }
       return { success: true };
     }),
 
@@ -294,7 +326,7 @@ export const newsletterRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const isSiteLevel = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
       const [subscriber] = await db
-        .select({ orgId: newsletterSubscribers.orgId })
+        .select({ orgId: newsletterSubscribers.orgId, email: newsletterSubscribers.email })
         .from(newsletterSubscribers)
         .where(eq(newsletterSubscribers.id, input.id))
         .limit(1);
@@ -306,6 +338,7 @@ export const newsletterRouter = router({
       await db
         .delete(newsletterSubscribers)
         .where(eq(newsletterSubscribers.id, input.id));
+      await unsubscribeFromAllContacts(subscriber.email, subscriber.orgId);
       return { success: true };
     }),
 

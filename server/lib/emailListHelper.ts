@@ -64,6 +64,8 @@ export interface AddToListOptions {
   source?: string;       // "registration" | "purchase" | "enrollment" | "form" | "content_block" | "manual" | "import"
   sourceId?: string;     // e.g. formId, productId
   metadata?: Record<string, unknown>;
+  /** A fresh, explicit newsletter opt-in may restore this list's prior opt-out. */
+  allowResubscribe?: boolean;
 }
 
 /**
@@ -110,8 +112,25 @@ export async function addToEmailList(
       .limit(1);
 
     if (existing[0]) {
-      // If they previously unsubscribed from this list, don't re-add
-      if (existing[0].status === "unsubscribed") return;
+      // Preserve opt-outs unless the subscriber has explicitly opted in again.
+      if (existing[0].status === "unsubscribed") {
+        if (!options.allowResubscribe) return;
+        await db
+          .update(emailListSubscribers)
+          .set({
+            status: "subscribed",
+            subscribedAt: new Date(),
+            unsubscribedAt: null,
+            ...(name ? { name } : {}),
+            ...(options.userId ? { userId: options.userId } : {}),
+          })
+          .where(eq(emailListSubscribers.id, existing[0].id));
+        await db
+          .update(emailLists)
+          .set({ subscriberCount: sql`subscriberCount + 1` })
+          .where(eq(emailLists.id, listId));
+        return;
+      }
       // Update name/userId if we have better info
       if (name || options.userId) {
         await db
@@ -164,6 +183,44 @@ export async function addToAllContacts(
   } catch (err) {
     // Never throw — this is a background operation
     console.error("[emailListHelper] addToAllContacts error:", err);
+  }
+}
+
+/** Mark an existing organization contact as unsubscribed without creating a list. */
+export async function unsubscribeFromAllContacts(
+  email: string,
+  orgId?: number | null,
+): Promise<void> {
+  if (!email || !email.trim()) return;
+  const db = await getDb();
+  if (!db) return;
+  const normalizedEmail = email.trim().toLowerCase();
+
+  try {
+    const [list] = await db
+      .select({ id: emailLists.id })
+      .from(emailLists)
+      .where(and(eq(emailLists.name, "All Contacts"), listOrgCondition(orgId)))
+      .limit(1);
+    if (!list) return;
+
+    const [subscriber] = await db
+      .select({ id: emailListSubscribers.id, status: emailListSubscribers.status })
+      .from(emailListSubscribers)
+      .where(and(eq(emailListSubscribers.listId, list.id), eq(emailListSubscribers.email, normalizedEmail)))
+      .limit(1);
+    if (!subscriber || subscriber.status === "unsubscribed") return;
+
+    await db
+      .update(emailListSubscribers)
+      .set({ status: "unsubscribed", unsubscribedAt: new Date() })
+      .where(eq(emailListSubscribers.id, subscriber.id));
+    await db
+      .update(emailLists)
+      .set({ subscriberCount: sql`GREATEST(subscriberCount - 1, 0)` })
+      .where(eq(emailLists.id, list.id));
+  } catch (err) {
+    console.error("[emailListHelper] unsubscribeFromAllContacts error:", err);
   }
 }
 

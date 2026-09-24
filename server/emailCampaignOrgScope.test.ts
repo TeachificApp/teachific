@@ -469,6 +469,38 @@ describe("organization-scoped email campaign delivery helpers", () => {
     expect(db.updates).toHaveLength(0);
   });
 
+  it("reactivates a scoped contact only after an explicit newsletter opt-in", async () => {
+    const db = createDbMock([
+      [{ orgId: 1 }],
+      [{ id: 21, status: "unsubscribed" }],
+    ]);
+    mocks.getDb.mockResolvedValue(db);
+
+    await addToEmailList(10, "lead@example.com", "Lead", {
+      orgId: 1,
+      source: "newsletter",
+      allowResubscribe: true,
+    });
+
+    expect(db.inserts).toHaveLength(0);
+    expect(db.updates).toHaveLength(2);
+    expect(db.updates[0]?.values).toMatchObject({ status: "subscribed", name: "Lead" });
+    expect(db.updates[1]?.values.subscriberCount).toBeDefined();
+  });
+
+  it("does not resurrect an opted-out contact without an explicit opt-in", async () => {
+    const db = createDbMock([
+      [{ orgId: 1 }],
+      [{ id: 21, status: "unsubscribed" }],
+    ]);
+    mocks.getDb.mockResolvedValue(db);
+
+    await addToEmailList(10, "lead@example.com", "Lead", { orgId: 1, source: "import" });
+
+    expect(db.inserts).toHaveLength(0);
+    expect(db.updates).toHaveLength(0);
+  });
+
   it("keeps resource-based audience filters isolated to active-organization owned records", async () => {
     const db = createResourceResolverDbMock();
     mocks.getDb.mockResolvedValue(db);
