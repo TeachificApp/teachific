@@ -5441,7 +5441,7 @@
 - [ ] Apply org branding (primaryColor, logo, font) to landing pages (LandingPageBuilder block renderer)
 - [x] Conditionally hide CME Management nav item in DashboardLayout when the active org has CME disabled
 - [ ] Conditionally hide CME tab in CourseBuilderPage when org.cmeEnabled is false
-- [ ] Expose cmeEnabled in myContext or a dedicated org features query for the client
+- [x] Expose cmeEnabled in myContext or a dedicated org features query for the client
 
 ## CME Activity Planning Form - Date Fields
 - [ ] Add originalReleaseDate, mostRecentReviewDate, expirationDate to cmeActivityForms schema
