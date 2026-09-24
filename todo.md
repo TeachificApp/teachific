@@ -5440,7 +5440,7 @@
 - [ ] Expand BrandingPage: add favicon upload, student logo, button color, page bg color, invoice/email branding JSON
 - [ ] Apply org branding (primaryColor, logo, font) to landing pages (LandingPageBuilder block renderer)
 - [x] Conditionally hide CME Management nav item in DashboardLayout when the active org has CME disabled
-- [ ] Conditionally hide CME tab in CourseBuilderPage when org.cmeEnabled is false
+- [x] Hide course-level CME credit and activity-form controls when the active organization has CME disabled
 - [x] Expose cmeEnabled in myContext or a dedicated org features query for the client
 
 ## CME Activity Planning Form - Date Fields

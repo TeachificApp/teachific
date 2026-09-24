@@ -1730,6 +1730,8 @@ function CertTemplateSelector({ value, onChange }: { value: number | null; onCha
 }
 
 function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }: { course: any; onSave: (data: any) => void; saving: boolean; onTypeChangedToWorkshop?: (newWorkshopId: number) => void }) {
+  const { orgId, orgs } = useOrgScope();
+  const cmeEnabled = !!orgs.find((org: any) => org.id === orgId)?.cmeEnabled;
   const { data: settingsPricingOptions = [] } = trpc.lmsGroup.listPricingOptions.useQuery({ courseId: course.id });
   const firstActivePricingOption = (settingsPricingOptions as any[]).find((o: any) => o.isActive);
   const copyHostedCheckoutLink = () => {
@@ -2186,7 +2188,7 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
             />
             <p className="text-xs text-muted-foreground mt-0.5">The course title printed on the certificate. Leave blank to use the main course title.</p>
           </div>
-          <div>
+          {cmeEnabled && <div>
             <Label className="text-xs text-muted-foreground">CME/CE Credit Hours (optional)</Label>
             <Input
               className="mt-1 h-8 text-sm w-32"
@@ -2195,15 +2197,15 @@ function CourseSettingsForm({ course, onSave, saving, onTypeChangedToWorkshop }:
               onChange={e => setCreditHours(e.target.value)}
             />
             <p className="text-xs text-muted-foreground mt-0.5">Shown on the issued certificate. Leave blank to omit.</p>
-          </div>
+          </div>}
         </div>
       )}
 
-      <SdmsCmeConfigPanel
+      {cmeEnabled && <SdmsCmeConfigPanel
         activityType={resolveLmsActivityType(courseType)}
         activityId={course.id}
         defaultTitle={title}
-      />
+      />}
 
       <div className="flex items-center gap-2">
         <Switch checked={isFeatured} onCheckedChange={setIsFeatured} id="featured-switch" />
