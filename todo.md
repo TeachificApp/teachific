@@ -81,6 +81,7 @@
 - [x] Remove Free-tier offers from platform pricing, registration, login, selectable billing plans, and default marketing signup copy while retaining legacy Free entitlements
 - [x] Add a 14-day Starter trial that collects a payment method in Stripe Checkout and automatically converts to a paid subscription unless cancelled before renewal
 - [x] Persist one-time Starter trial eligibility per organization and prevent passwordless sign-in links from bypassing paid school-owner registration
+- [x] Derive organization UI feature gates from a server-computed effective plan so only active and trialing Stripe subscriptions retain paid entitlements
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
 - [x] Enforce organization-owned discount targeting during checkout validation and discount application
 - [x] Provide organization-admin discount targeting controls with accessible multi-product selection

@@ -91,7 +91,9 @@ export function useOrgPlan(orgId: number | null | undefined) {
     };
   }
 
-  const plan = (sub?.plan ?? "free") as PlanTier;
+  // `effectivePlan` is resolved server-side from both Stripe status and tier.
+  // A past-due, unpaid, or cancelled paid subscription must not retain paid gates.
+  const plan = ((sub as { effectivePlan?: PlanTier } | undefined)?.effectivePlan ?? sub?.plan ?? "free") as PlanTier;
   const limits: TierLimits = getLimits(plan);
   const planLabel = PLAN_LABELS[plan];
 

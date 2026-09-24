@@ -68,6 +68,7 @@ const wysiwygPageBuilderSource = readFileSync(new URL("../client/src/components/
 const customAuthSource = readFileSync(new URL("./customAuthRouter.ts", import.meta.url), "utf8");
 const subscriptionSchemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
 const trialMigrationSource = readFileSync(new URL("../drizzle/0005_chemical_shape.sql", import.meta.url), "utf8");
+const stripeWebhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
 
 const originalStripeSecret = ENV.stripeSecretKey;
 
@@ -130,7 +131,8 @@ describe("Starter trial and legacy Free tier presentation", () => {
         metadata: { org_id: "41", plan: "starter" },
       },
     });
-    expect(subscriptionUpserts).toEqual([{ starterTrialClaimed: true }]);
+    expect(subscriptionUpserts).toEqual([]);
+    expect(stripeWebhookSource).toContain('...(plan === "starter" ? { starterTrialClaimed: true } : {})');
   });
 
   it("does not grant repeat trials or apply the Starter trial to higher paid plans", async () => {

@@ -40,7 +40,7 @@ export function CertificateSettingsTab({ orgId }: Props) {
   const utils = trpc.useUtils();
   const { data: templates, isLoading } = trpc.lms.certificates.templates.list.useQuery({ orgId });
   const { data: sub } = trpc.lms.subscription.get.useQuery({ orgId });
-  const plan = sub?.plan ?? "free";
+  const plan = sub?.effectivePlan ?? sub?.plan ?? "free";
   const canWhiteLabel = WHITE_LABEL_PLANS.includes(plan);
 
   const createMutation = trpc.lms.certificates.templates.create.useMutation({

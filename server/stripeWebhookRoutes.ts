@@ -693,6 +693,9 @@ router.post(
             currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
             currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            // A visitor has redeemed the introductory offer only after their
+            // Checkout session completes and the subscription exists in Stripe.
+            ...(plan === "starter" ? { starterTrialClaimed: true } : {}),
           });
 
           console.log(`[Stripe Webhook] Org ${orgId} upgraded to ${plan}`);

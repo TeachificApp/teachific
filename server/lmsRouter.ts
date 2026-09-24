@@ -205,6 +205,7 @@ import {
   createWorkshopRegistration,
   updateWorkshopRegistration,
 } from "./lmsDb";
+import { getEffectiveSubscriptionPlan } from "../shared/subscriptionEntitlement";
 import { downloadsAdminRouter } from "./routers/downloadsRouter";
 import { orderBumpsAdminRouter } from "./routers/orderBumpsRouter";
 import { emailCampaignsRouter } from "./emailCampaignsRouter";
@@ -641,7 +642,12 @@ export const lmsRouter = router({
       .query(async ({ ctx, input }) => {
         const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
         await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        return getOrgSubscription(orgId);
+        const subscription = await getOrgSubscription(orgId);
+        if (!subscription) return null;
+        return {
+          ...subscription,
+          effectivePlan: getEffectiveSubscriptionPlan(subscription.plan, subscription.status),
+        };
       }),
   }),
 

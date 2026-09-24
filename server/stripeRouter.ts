@@ -247,13 +247,6 @@ export const stripeRouter = router({
         cancel_url: `${returnOrigin}/billing?cancelled=1`,
       });
 
-      // Claim the introductory offer after Stripe has accepted the Checkout
-      // session. This remains true if Checkout is abandoned, preventing an
-      // organization from repeatedly opening new 14-day Starter trials.
-      if (isStarterTrial) {
-        await upsertOrgSubscription(orgCtx.orgId, { starterTrialClaimed: true });
-      }
-
       return { url: session.url };
     }),
 
