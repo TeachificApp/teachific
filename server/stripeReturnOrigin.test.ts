@@ -42,7 +42,7 @@ describe("Course360 protected Stripe return origins", () => {
     const portalSlice = source.slice(source.indexOf("createPortalSession: protectedProcedure"), source.indexOf("// ── Change plan"));
 
     expect(subscriptionSlice).toContain("const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);");
-    expect(subscriptionSlice).toContain("success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}&trial=1`");
+    expect(subscriptionSlice).toContain("success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}${isStarterTrial ? \"&trial=1\" : \"\"}`");
     expect(subscriptionSlice).toContain("cancel_url: `${returnOrigin}/billing?cancelled=1`");
     expect(portalSlice).toContain("const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);");
     expect(portalSlice).toContain("return_url: `${returnOrigin}/billing`");

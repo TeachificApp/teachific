@@ -269,7 +269,7 @@ export default function CreatorLandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/creator">
               <Button size="lg" className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-bold px-8 h-14 text-base">
-                Start Building for Free
+                Start 14-Day Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
@@ -284,7 +284,7 @@ export default function CreatorLandingPage() {
           </div>
 
           <p className="mt-5 text-sm text-white/40">
-            14-day free trial · No credit card required · Cancel anytime
+            14-day trial · Payment method collected securely · Cancel before renewal
           </p>
         </div>
 
@@ -455,7 +455,7 @@ export default function CreatorLandingPage() {
               Simple, Transparent Pricing
             </h2>
             <p className="text-lg text-white/60 mb-8">
-              One plan. All features. 14-day free trial. No credit card required.
+              One plan. All features. Start with a 14-day trial and a secure payment method.
             </p>
             {/* Billing toggle */}
             <div className="inline-flex items-center gap-3 bg-white/10 rounded-full p-1">

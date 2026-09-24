@@ -483,6 +483,9 @@ export const orgSubscriptions = mysqlTable("org_subscriptions", {
   currentPeriodStart: timestamp("currentPeriodStart"),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
   cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  // Keeps the introductory Starter offer one-time per organization even after
+  // a canceled Checkout session or later subscription cancellation.
+  starterTrialClaimed: boolean("starterTrialClaimed").default(false).notNull(),
   // Manual Enterprise pricing set by site admin/owner
   customPriceUsd: decimal("customPriceUsd", { precision: 10, scale: 2 }), // price in cents, null = use standard pricing
   customPriceLabel: varchar("customPriceLabel", { length: 100 }), // e.g. "$499/mo"

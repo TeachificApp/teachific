@@ -376,25 +376,29 @@ export const customAuthRouter = router({
       await db.delete(magicLinkTokens)
         .where(and(eq(magicLinkTokens.email, input.email.toLowerCase()), lt(magicLinkTokens.expiresAt, new Date())));
       const [user] = await db.select().from(users).where(eq(users.email, input.email.toLowerCase())).limit(1);
+      // Magic links are sign-in only. New school-owner registration must begin
+      // in the account-creation flow so it proceeds through Starter checkout.
+      // Preserve a generic success response to avoid account enumeration.
+      if (!user) {
+        return { success: true, message: "If an account exists for this address, a sign-in link has been sent." };
+      }
       const token = generateToken(48);
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
       await db.insert(magicLinkTokens).values({
         token,
         email: input.email.toLowerCase(),
-        userId: user?.id ?? null,
+        userId: user.id,
         redirectTo: input.redirectTo ?? null,
         expiresAt,
       });
       // Only preserve a requested origin when it belongs to an organization
       // the recipient belongs to; otherwise use the canonical platform URL.
-      const baseUrl = user
-        ? await resolveAccountAccessBaseUrl(db, user.id, input.origin ?? ctx.req.headers.origin ?? null)
-        : getSiteUrl();
+      const baseUrl = await resolveAccountAccessBaseUrl(db, user.id, input.origin ?? ctx.req.headers.origin ?? null);
       const magicUrl = `${baseUrl}/magic-link/verify?token=${token}`;
       await sendEmail({
         to: input.email,
         subject: "Your Course360 sign-in link",
-        html: magicLinkEmailHtml(user?.name ?? "", magicUrl, 15),
+        html: magicLinkEmailHtml(user.name ?? "", magicUrl, 15),
       });
       return { success: true, message: "Check your email for a sign-in link." };
     }),
@@ -418,28 +422,13 @@ export const customAuthRouter = router({
         user = u;
       }
       if (!user) {
-        // Find by email (handles case where userId was null or user was created after token)
+        // Find by email only for legacy tokens that predate the sign-in-only
+        // contract. New magic-link requests always carry a userId.
         const [u] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
         if (u) {
           user = u;
         } else {
-          // Auto-register new user via magic link
-          const openId = generateOpenId();
-          const name = record.email.split("@")[0];
-          await db.insert(users).values({ openId, email: record.email, name, emailVerified: true, loginMethod: "magic_link", role: "user", lastSignedIn: new Date() });
-          const [newUser] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
-          user = newUser;
-          // Create default org for new user
-          if (user) {
-            try {
-              const { generateUniqueOrgSlug } = await import("../shared/slugUtils");
-              const orgName = `${name}'s School`;
-              const slug = await generateUniqueOrgSlug(orgName, async (s) => !!(await dbHelpers.getOrgBySlug(s)));
-              await dbHelpers.createOrg({ name: orgName, slug, description: "Default workspace", ownerId: user.id });
-              const org = await dbHelpers.getOrgBySlug(slug);
-              if (org) await dbHelpers.addOrgMember(org.id, user.id, "org_admin");
-            } catch {}
-          }
+          throw new TRPCError({ code: "NOT_FOUND", message: "This sign-in link is no longer valid. Please create an account or request a new link." });
         }
       }
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User account not found." });

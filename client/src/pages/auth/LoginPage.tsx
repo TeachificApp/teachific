@@ -526,7 +526,7 @@ export default function LoginPage() {
                 className="font-semibold transition-colors hover:opacity-80"
                 style={{ color: isOrgSubdomain ? primary : TEAL }}
               >
-                {isOrgSubdomain ? "Create account" : "Start for free"}
+                {isOrgSubdomain ? "Create account" : "Start 14-day trial"}
               </Link>
             </p>
           </div>

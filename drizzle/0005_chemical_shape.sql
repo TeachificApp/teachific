@@ -1,0 +1,1 @@
+ALTER TABLE `org_subscriptions` ADD `starterTrialClaimed` boolean DEFAULT false NOT NULL;

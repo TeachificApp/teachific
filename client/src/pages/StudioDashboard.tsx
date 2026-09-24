@@ -123,7 +123,7 @@ export default function StudioDashboard() {
         <div className="max-w-lg w-full text-center">
           <div className="mb-8">
             <span className="text-3xl font-black tracking-tight">
-              <span className="text-white">Teachific</span>
+              <span className="text-white">Course360</span>
               <span className="text-[#24abbc]"> Studio</span>
             </span>
           </div>
@@ -132,8 +132,8 @@ export default function StudioDashboard() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-3">Activate Your Studio</h1>
           <p className="text-white/50 mb-8 leading-relaxed">
-            You need an active Teachific Studio subscription to access the course authoring tools.
-            Start free — no credit card required.
+            You need an active Course360 Studio subscription to access the course authoring tools.
+            Choose a paid Studio plan to continue.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button
@@ -405,7 +405,7 @@ export default function StudioDashboard() {
                     </p>
                     <p className="text-sm text-white/40">
                       {isPrivileged && "Full access — no limits"}
-                      {!isPrivileged && tier === "none" && "Free tier — upgrade to unlock more"}
+                      {!isPrivileged && tier === "none" && "No active subscription — choose a plan to unlock access"}
                       {!isPrivileged && tier === "web" && "Web app access · 5 GB storage"}
                       {!isPrivileged && tier === "desktop" && "Pro · 50 GB storage"}
                       {!isPrivileged && tier === "bundle" && "Team · Unlimited storage · 5 seats"}

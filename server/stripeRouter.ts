@@ -208,10 +208,27 @@ export const stripeRouter = router({
 
       const stripe = getStripe();
       const sub = await getOrgSubscription(orgCtx.orgId);
+      const isStarterTrial = input.plan === "starter"
+        && !sub?.stripeSubscriptionId
+        && !sub?.starterTrialClaimed;
+      const subscriptionData = {
+        ...(isStarterTrial
+          ? {
+              // 14-day Starter trial — Checkout still collects a payment method
+              // so Stripe can automatically convert the subscription to paid at trial end.
+              trial_period_days: 14,
+            }
+          : {}),
+        metadata: {
+          org_id: String(orgCtx.orgId),
+          plan: input.plan,
+        },
+      };
 
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
+        payment_method_collection: "always",
         line_items: [{ price: priceId, quantity: 1 }],
         allow_promotion_codes: true,
         customer: sub?.stripeCustomerId ?? undefined,
@@ -225,17 +242,17 @@ export const stripeRouter = router({
           customer_email: ctx.user.email ?? "",
           customer_name: ctx.user.name ?? "",
         },
-        subscription_data: {
-          // 14-day free trial — no charge until trial ends
-          trial_period_days: 14,
-          metadata: {
-            org_id: String(orgCtx.orgId),
-            plan: input.plan,
-          },
-        },
-        success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}&trial=1`,
+        subscription_data: subscriptionData,
+        success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}${isStarterTrial ? "&trial=1" : ""}`,
         cancel_url: `${returnOrigin}/billing?cancelled=1`,
       });
+
+      // Claim the introductory offer after Stripe has accepted the Checkout
+      // session. This remains true if Checkout is abandoned, preventing an
+      // organization from repeatedly opening new 14-day Starter trials.
+      if (isStarterTrial) {
+        await upsertOrgSubscription(orgCtx.orgId, { starterTrialClaimed: true });
+      }
 
       return { url: session.url };
     }),

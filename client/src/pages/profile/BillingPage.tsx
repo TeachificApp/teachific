@@ -58,6 +58,7 @@ const PLAN_META: Record<PlanTier, {
     annualPrice: 399,
     description: "Perfect for small teams getting started",
     features: [
+      "14-day trial, then automatically converts to paid",
       "1 admin, 3 members",
       "5 courses",
       "500 MB file storage",
@@ -156,8 +157,21 @@ export default function BillingPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "1") {
       const plan = params.get("plan");
-      toast.success(plan ? `Welcome to the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan! Your 14-day trial has started.` : "Subscription activated!");
+      const trialStarted = params.get("trial") === "1";
+      toast.success(plan
+        ? trialStarted
+          ? `Welcome to the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan! Your 14-day trial has started and will convert automatically after the trial.`
+          : `Welcome to the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan!`
+        : "Subscription activated!");
+      let postTrialPath: string | null = null;
+      try {
+        postTrialPath = localStorage.getItem("course360_post_trial_path");
+        localStorage.removeItem("course360_post_trial_path");
+      } catch {}
       window.history.replaceState({}, "", window.location.pathname);
+      if (postTrialPath?.startsWith("/")) {
+        window.setTimeout(() => window.location.assign(postTrialPath!), 500);
+      }
     } else if (params.get("cancelled") === "1") {
       toast.info("Checkout cancelled. You can upgrade anytime.");
       window.history.replaceState({}, "", window.location.pathname);
@@ -251,7 +265,9 @@ export default function BillingPage() {
   const statusInfo = STATUS_CONFIG[subscription?.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.active;
   const StatusIcon = statusInfo.icon;
 
-  const plans: PlanTier[] = ["free", "starter", "builder", "pro", "enterprise"];
+  // The Free tier remains a supported legacy entitlement, but is not an offer
+  // for new subscriptions or a selectable billing option.
+  const plans: PlanTier[] = ["starter", "builder", "pro", "enterprise"];
 
   return (
     <div className="p-6 space-y-8 max-w-6xl">
@@ -293,7 +309,7 @@ export default function BillingPage() {
                 })()}
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg">{PLAN_META[currentPlan].name} Plan</h3>
+                    <h3 className="font-semibold text-lg">{currentPlan === "free" ? "Legacy Access" : `${PLAN_META[currentPlan].name} Plan`}</h3>
                     <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.color}`}>
                       <StatusIcon className="h-3 w-3" />
                       {statusInfo.label}
@@ -307,7 +323,7 @@ export default function BillingPage() {
                     </p>
                   )}
                   {currentPlan === "free" && (
-                    <p className="text-sm text-muted-foreground">No active subscription — upgrade to unlock more features</p>
+                    <p className="text-sm text-muted-foreground">Legacy access is retained for this organization. Choose a paid plan to update your subscription.</p>
                   )}
                 </div>
               </div>
@@ -432,10 +448,6 @@ export default function BillingPage() {
                       Contact Sales
                       <ArrowUpRight className="h-3.5 w-3.5" />
                     </Button>
-                  ) : tier === "free" ? (
-                    <Button variant="ghost" size="sm" className="w-full" disabled>
-                      Always Free
-                    </Button>
                   ) : isDowngrade ? (
                     <Button
                       variant="ghost"
@@ -454,7 +466,7 @@ export default function BillingPage() {
                       onClick={() => handleUpgrade(tier as "starter" | "builder" | "pro")}
                       disabled={loadingPlan === tier || createCheckout.isPending || changePlan.isPending}
                     >
-                      {loadingPlan === tier ? "Loading..." : subscription?.stripeSubscriptionId ? "Switch to this plan" : "Upgrade"}
+                      {loadingPlan === tier ? "Loading..." : subscription?.stripeSubscriptionId ? "Switch to this plan" : tier === "starter" ? "Start 14-Day Trial" : "Choose this plan"}
                       {loadingPlan !== tier && <ArrowUpRight className="h-3.5 w-3.5" />}
                     </Button>
                   )}
@@ -553,7 +565,7 @@ export default function BillingPage() {
               Your subscription will remain active until the end of your current billing period
               {subscription?.currentPeriodEnd ? (
                 <strong> ({new Date(subscription.currentPeriodEnd).toLocaleDateString()})</strong>
-              ) : null}. After that, your account will revert to the Free plan.
+              ) : null}. After that, paid-plan access will end unless you reactivate your subscription.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1">

@@ -338,7 +338,7 @@ function HowItWorksSection() {
       number: "01",
       title: "Create Your School",
       description:
-        "Sign up free and let Course360™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
+        "Start your 14-day Starter trial and let Course360™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
       icon: Sparkles,
     },
     {
@@ -428,28 +428,11 @@ type PricingTier = {
 
 const PRICING_TIERS: PricingTier[] = [
   {
-    name: "Free",
-    price: "$0",
-    period: "per month",
-    description: "A starting plan for creating and publishing courses.",
-    cta: "Choose Plan",
-    highlighted: false,
-    features: [
-      "1 course",
-      "100 GB storage",
-      "Public school page",
-      "Video lessons",
-      "Quiz builder",
-      "Email support",
-      "Stripe payments — 0% platform fee",
-    ],
-  },
-  {
     name: "Starter",
     price: "$39",
     period: "per month",
-    description: "For creators building their course and membership catalog.",
-    cta: "Choose Plan",
+    description: "For creators building their course and membership catalog. Includes a 14-day trial.",
+    cta: "Start 14-Day Trial",
     highlighted: false,
     features: [
       "Up to 5 courses",
@@ -465,7 +448,7 @@ const PRICING_TIERS: PricingTier[] = [
     price: "$99",
     period: "per month",
     description: "For schools using courses, communities, and multiple instructors.",
-    cta: "Choose Plan",
+    cta: "Choose Builder",
     highlighted: true,
     features: [
       "Up to 20 courses",
@@ -483,7 +466,7 @@ const PRICING_TIERS: PricingTier[] = [
     price: "$199",
     period: "per month",
     description: "For schools using analytics, email marketing, and broader plan limits.",
-    cta: "Choose Plan",
+    cta: "Choose Pro",
     highlighted: false,
     features: [
       "Up to 50 courses",
@@ -516,28 +499,28 @@ const PRICING_TIERS: PricingTier[] = [
     ],
   },
 ];
-type ComparisonRow = { feature: string; free: boolean | string; starter: boolean | string; builder: boolean | string; pro: boolean | string; enterprise: boolean | string };
+type ComparisonRow = { feature: string; starter: boolean | string; builder: boolean | string; pro: boolean | string; enterprise: boolean | string };
 const COMPARISON_FEATURES: ComparisonRow[] = [
-  { feature: "Courses", free: "1", starter: "5", builder: "20", pro: "50", enterprise: "Unlimited" },
-  { feature: "Students", free: "10", starter: "1,000", builder: "5,000", pro: "15,000", enterprise: "Unlimited" },
-  { feature: "Storage", free: "100 GB", starter: "1 TB", builder: "2 TB", pro: "5 TB", enterprise: "Unlimited" },
-  { feature: "Video lessons", free: true, starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "Quiz builder", free: true, starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "Public school page", free: true, starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "SCORM support", free: false, starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "Course360 Studio™", free: false, starter: false, builder: true, pro: true, enterprise: true },
-  { feature: "Membership tiers", free: "0", starter: "1", builder: "3", pro: "10", enterprise: "Unlimited" },
-  { feature: "Community", free: false, starter: false, builder: true, pro: true, enterprise: true },
-  { feature: "Custom domain", free: false, starter: false, builder: true, pro: true, enterprise: true },
-  { feature: "White-label branding", free: false, starter: false, builder: true, pro: true, enterprise: true },
-  { feature: "Email campaigns", free: false, starter: false, builder: false, pro: true, enterprise: true },
-  { feature: "Deep analytics", free: false, starter: false, builder: false, pro: true, enterprise: true },
-  { feature: "Affiliate platform", free: false, starter: false, builder: false, pro: true, enterprise: true },
-  { feature: "SSO / SAML", free: false, starter: false, builder: false, pro: true, enterprise: true },
-  { feature: "Platform transaction fee", free: "0%", starter: "0%", builder: "0%", pro: "0%", enterprise: "0%" },
-  { feature: "Stripe payment gateway", free: true, starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "Group registrations", free: false, starter: false, builder: false, pro: true, enterprise: true },
-  { feature: "Dedicated support", free: false, starter: false, builder: false, pro: false, enterprise: true },
+  { feature: "Courses", starter: "5", builder: "20", pro: "50", enterprise: "Unlimited" },
+  { feature: "Students", starter: "1,000", builder: "5,000", pro: "15,000", enterprise: "Unlimited" },
+  { feature: "Storage", starter: "1 TB", builder: "2 TB", pro: "5 TB", enterprise: "Unlimited" },
+  { feature: "Video lessons", starter: true, builder: true, pro: true, enterprise: true },
+  { feature: "Quiz builder", starter: true, builder: true, pro: true, enterprise: true },
+  { feature: "Public school page", starter: true, builder: true, pro: true, enterprise: true },
+  { feature: "SCORM support", starter: true, builder: true, pro: true, enterprise: true },
+  { feature: "Course360 Studio™", starter: false, builder: true, pro: true, enterprise: true },
+  { feature: "Membership tiers", starter: "1", builder: "3", pro: "10", enterprise: "Unlimited" },
+  { feature: "Community", starter: false, builder: true, pro: true, enterprise: true },
+  { feature: "Custom domain", starter: false, builder: true, pro: true, enterprise: true },
+  { feature: "White-label branding", starter: false, builder: true, pro: true, enterprise: true },
+  { feature: "Email campaigns", starter: false, builder: false, pro: true, enterprise: true },
+  { feature: "Deep analytics", starter: false, builder: false, pro: true, enterprise: true },
+  { feature: "Affiliate platform", starter: false, builder: false, pro: true, enterprise: true },
+  { feature: "SSO / SAML", starter: false, builder: false, pro: true, enterprise: true },
+  { feature: "Platform transaction fee", starter: "0%", builder: "0%", pro: "0%", enterprise: "0%" },
+  { feature: "Stripe payment gateway", starter: true, builder: true, pro: true, enterprise: true },
+  { feature: "Group registrations", starter: false, builder: false, pro: true, enterprise: true },
+  { feature: "Dedicated support", starter: false, builder: false, pro: false, enterprise: true },
 ];
 
 function PricingSection() {
@@ -555,15 +538,15 @@ function PricingSection() {
             className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            Choose a plan for your organization.
+            Plans for every stage
           </h2>
-          <p className="max-w-xl mx-auto text-lg text-gray-500">
-            Review plan features and pricing before choosing an account configuration.
+          <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+            Every new school begins with a 14-day Starter trial, then continues as a paid subscription unless cancelled before renewal.
           </p>
         </div>
 
         {/* Pricing cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-20 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-20 items-start">
           {PRICING_TIERS.map((tier) => (
             <div
               key={tier.name}
@@ -654,7 +637,6 @@ function PricingSection() {
                   <th className="text-left px-6 py-3 font-semibold text-gray-600 w-1/3">
                     Feature
                   </th>
-                  <th className="text-center px-3 py-3 font-semibold text-gray-600">Free</th>
                   <th className="text-center px-3 py-3 font-semibold text-gray-600">Starter</th>
                   <th className="text-center px-3 py-3 font-bold" style={{ color: TEAL }}>Builder</th>
                   <th className="text-center px-3 py-3 font-semibold text-gray-600">Pro</th>
@@ -668,7 +650,7 @@ function PricingSection() {
                     className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
                   >
                     <td className="px-6 py-3 text-gray-700">{row.feature}</td>
-                    {(["free", "starter", "builder", "pro", "enterprise"] as const).map((tier) => (
+                    {(["starter", "builder", "pro", "enterprise"] as const).map((tier) => (
                       <td key={tier} className="px-4 py-3 text-center">
                         {typeof row[tier] === "boolean" ? (
                           row[tier] ? (

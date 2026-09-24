@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Shield, Zap, Globe, Layers } from "lucide-react";
 import { useOrgAuthBranding } from "@/hooks/useOrgAuthBranding";
+import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
 
 const NAVY = "#0b1d35";
 const NAVY_MID = "#0f2847";
@@ -14,10 +15,10 @@ const TEAL = "#24abbc";
 const TEAL_LIGHT = "#4ad9e0";
 
 const perks = [
-  { icon: Sparkles, text: "Free plan — no credit card required" },
+  { icon: Sparkles, text: "14-day Starter trial for new schools" },
   { icon: Zap, text: "Launch your school in under 10 minutes" },
   { icon: Globe, text: "Custom school page with your own branding" },
-  { icon: Shield, text: "SSL-secured, GDPR-ready platform" },
+  { icon: Shield, text: "Payment collected securely by Stripe" },
 ];
 
 // ── Blueprint install context ─────────────────────────────────────────────────
@@ -57,6 +58,31 @@ export default function RegisterPage() {
 
   const utils = trpc.useUtils();
   const claimInstall = trpc.blueprintReferrals.claimPendingInstall.useMutation();
+  const startStarterTrial = trpc.billing.createCheckoutSession.useMutation();
+
+  const beginStarterTrial = async (postTrialPath?: string) => {
+    // School owners register on the platform domain. Student sign-up inside an
+    // organization remains organization-scoped and must not create a platform plan.
+    if (isOrgSubdomain) return false;
+    try {
+      const checkout = await startStarterTrial.mutateAsync({
+        plan: "starter",
+        interval: "monthly",
+        origin: window.location.origin,
+      });
+      if (!checkout.url) throw new Error("Stripe checkout did not return a URL.");
+      if (postTrialPath) {
+        try { localStorage.setItem("course360_post_trial_path", postTrialPath); } catch {}
+      }
+      window.location.assign(checkout.url);
+      return true;
+    } catch (checkoutError) {
+      const message = checkoutError instanceof Error ? checkoutError.message : "Unable to start the Starter trial checkout.";
+      setError(`Your account was created, but ${message} Please sign in and choose the Starter plan to continue.`);
+      navigate("/billing");
+      return false;
+    }
+  };
 
   const register = trpc.customAuth.register.useMutation({
     onSuccess: async (data) => {
@@ -74,14 +100,13 @@ export default function RegisterPage() {
               localStorage.removeItem("blueprint_install_token");
               localStorage.removeItem("blueprint_install_name");
             } catch {}
-            // Redirect to blueprint install confirmation page
-            const isProduction = window.location.hostname.endsWith(".teachific.app") || window.location.hostname === "teachific.app";
-            const orgSlug = data.orgSlug;
-            if (isProduction && orgSlug) {
-              window.location.href = `https://${orgSlug}.teachific.app/blueprints/install-confirm?pending=${claimed.pendingInstallId}`;
-            } else {
-              navigate(`/blueprints/install-confirm?pending=${claimed.pendingInstallId}`);
+            // The paid-plan trial is opened before the school owner continues
+            // to the installed blueprint workspace.
+            if (!isOrgSubdomain) {
+              await beginStarterTrial(`/blueprints/install-confirm?pending=${claimed.pendingInstallId}`);
+              return;
             }
+            navigate(`/blueprints/install-confirm?pending=${claimed.pendingInstallId}`);
             return;
           } catch {
             // Non-fatal: if claim fails, just proceed to normal redirect
@@ -89,6 +114,10 @@ export default function RegisterPage() {
         }
 
         // Normal post-signup redirect
+        if (!isOrgSubdomain) {
+          await beginStarterTrial();
+          return;
+        }
         if (data.orgSlug) {
           const { protocol, port } = window.location;
           const portSuffix = port ? `:${port}` : "";
@@ -118,11 +147,7 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-8" style={{ background: `linear-gradient(145deg, ${NAVY} 0%, ${NAVY_MID} 60%, #0d3352 100%)` }}>
         <div className="w-full max-w-md text-center">
-          <div className="flex items-baseline gap-0.5 justify-center mb-8">
-            <span className="text-3xl font-bold text-white tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>teach</span>
-            <span className="text-3xl font-bold tracking-tight" style={{ color: TEAL_LIGHT, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>ific</span>
-            <span className="text-sm font-bold ml-0.5" style={{ color: TEAL_LIGHT, verticalAlign: "super", fontSize: "0.55em" }}>™</span>
-          </div>
+          <img src={COURSE360_PLATFORM_LOGO_URL} alt={COURSE360_PLATFORM_LOGO_ALT} className="mx-auto mb-8 h-20 w-auto rounded-xl bg-white p-1.5 object-contain" />
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
             <CheckCircle2 className="w-16 h-16 mx-auto mb-4" style={{ color: TEAL_LIGHT }} />
             <h2 className="text-2xl font-semibold text-white mb-3">Check your inbox</h2>
@@ -164,14 +189,7 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="relative z-10">
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-3xl font-bold text-white tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>teach</span>
-            <span className="text-3xl font-bold tracking-tight" style={{ color: TEAL_LIGHT, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>ific</span>
-            <span className="text-sm font-bold ml-0.5" style={{ color: TEAL_LIGHT, verticalAlign: "super", fontSize: "0.55em" }}>™</span>
-          </div>
-          <p className="text-xs font-semibold tracking-widest uppercase mt-1" style={{ color: `${TEAL_LIGHT}80` }}>
-            Learning Management Platform
-          </p>
+          <img src={COURSE360_PLATFORM_LOGO_URL} alt={COURSE360_PLATFORM_LOGO_ALT} className="h-20 w-auto rounded-xl bg-white p-1.5 object-contain" />
         </div>
 
         {/* Hero copy — blueprint context or default */}
@@ -189,7 +207,7 @@ export default function RegisterPage() {
                 <span style={{ color: TEAL_LIGHT }}>ready to build.</span>
               </h1>
               <p className="text-white/60 text-base leading-relaxed max-w-sm">
-                Create your free account and <strong className="text-white/80">{blueprintName}</strong> will be automatically installed in your new school.
+                Create your account and <strong className="text-white/80">{blueprintName}</strong> will be automatically installed in your new school.
               </p>
               <div className="mt-6 rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
                 <div className="flex items-center gap-2 mb-2">
@@ -197,7 +215,7 @@ export default function RegisterPage() {
                   <span className="text-white/80 text-sm font-medium">What happens next</span>
                 </div>
                 <ol className="space-y-1.5 text-white/60 text-sm">
-                  <li>1. Create your free account</li>
+                  <li>1. Create your account</li>
                   <li>2. Blueprint is installed automatically</li>
                   <li>3. Customize and launch in minutes</li>
                 </ol>
@@ -211,7 +229,7 @@ export default function RegisterPage() {
                 Start today.
               </h1>
               <p className="text-white/60 text-base leading-relaxed max-w-sm">
-                Everything you need to launch, grow, and monetize your online school — in one place.
+                Start with a 14-day Starter trial, then automatically continue on the paid plan unless you cancel before the trial ends.
               </p>
             </div>
           )}
@@ -246,7 +264,7 @@ export default function RegisterPage() {
 
       {/* ── Right panel: form ───────────────────────────────────────── */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12">
-        {/* Logo: org branding on subdomain, Teachific on root */}
+        {/* Logo: organization branding on a school domain, Course360 on root */}
         <div className="mb-8 text-center">
           {isOrgSubdomain ? (
             branding?.logoUrl ? (
@@ -255,11 +273,7 @@ export default function RegisterPage() {
               <h1 className="text-2xl font-bold" style={{ color: primary }}>{displayName}</h1>
             )
           ) : (
-            <div className="lg:hidden flex items-baseline gap-0.5 justify-center">
-              <span className="text-3xl font-bold tracking-tight" style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>teach</span>
-              <span className="text-3xl font-bold tracking-tight" style={{ color: TEAL, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>ific</span>
-              <span className="text-sm font-bold ml-0.5" style={{ color: TEAL, verticalAlign: "super", fontSize: "0.55em" }}>™</span>
-            </div>
+            <img src={COURSE360_PLATFORM_LOGO_URL} alt={COURSE360_PLATFORM_LOGO_ALT} className="mx-auto h-16 w-auto rounded-lg object-contain lg:hidden" />
           )}
         </div>
 
@@ -269,7 +283,7 @@ export default function RegisterPage() {
               {isOrgSubdomain ? `Join ${displayName}` : "Create your account"}
             </h2>
             <p className="text-sm text-slate-500">
-              {isOrgSubdomain ? `Create your student account` : "Free forever — upgrade when you're ready"}
+              {isOrgSubdomain ? `Create your student account` : "Start a 14-day Starter trial. Your subscription continues automatically after the trial."}
             </p>
           </div>
 
@@ -347,18 +361,18 @@ export default function RegisterPage() {
             </div>
             <Button
               type="submit"
-              disabled={register.isPending || claimInstall.isPending}
+              disabled={register.isPending || claimInstall.isPending || startStarterTrial.isPending}
               className="w-full h-11 font-semibold rounded-lg transition-all shadow-sm"
               style={{
                 background: isOrgSubdomain ? primary : `linear-gradient(135deg, ${TEAL} 0%, #15b8c0 100%)`,
                 color: buttonText,
               }}
             >
-              {register.isPending || claimInstall.isPending
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{claimInstall.isPending ? "Installing blueprint..." : "Creating account..."}</>
+              {register.isPending || claimInstall.isPending || startStarterTrial.isPending
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{claimInstall.isPending ? "Installing blueprint..." : startStarterTrial.isPending ? "Opening trial checkout..." : "Creating account..."}</>
                 : hasBlueprintInstall
                   ? "Create account & install blueprint"
-                  : isOrgSubdomain ? "Create account" : "Create free account"}
+                  : isOrgSubdomain ? "Create account" : "Create account & start trial"}
             </Button>
           </form>
 
@@ -376,9 +390,9 @@ export default function RegisterPage() {
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
             <p className="text-xs text-slate-400">
               By creating an account you agree to our{" "}
-              <a href="/policies/teachific" className="underline hover:text-slate-600 transition-colors">Terms of Service</a>
+              <a href="/policies" className="underline hover:text-slate-600 transition-colors">Terms of Service</a>
               {" "}and{" "}
-              <a href="/policies/teachific" className="underline hover:text-slate-600 transition-colors">Privacy Policy</a>
+              <a href="/policies" className="underline hover:text-slate-600 transition-colors">Privacy Policy</a>
             </p>
           </div>
         </div>

@@ -266,7 +266,7 @@ const BLOCK_DEFAULTS: Record<BlockType, Record<string, any>> = {
   numbered_steps: {
     headline: "How It Works",
     steps: [
-      { id: nanoid(4), title: "Sign Up", description: "Create your free account in seconds", mediaType: "none", mediaUrl: "", mediaPosition: "below" },
+      { id: nanoid(4), title: "Sign Up", description: "Create your account in seconds", mediaType: "none", mediaUrl: "", mediaPosition: "below" },
       { id: nanoid(4), title: "Choose a Course", description: "Browse our catalog and pick what interests you", mediaType: "none", mediaUrl: "", mediaPosition: "below" },
       { id: nanoid(4), title: "Start Learning", description: "Access your course materials immediately", mediaType: "none", mediaUrl: "", mediaPosition: "below" },
     ],

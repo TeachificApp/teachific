@@ -78,6 +78,9 @@
 - [x] Use the supplied square Course360™ logo for the platform favicon, Apple touch icon, and default social identity image while preserving organization favicon overrides
 - [x] Replace the public Course360 home-page dashboard mockup with the supplied Turn Your Knowledge Into Opportunity banner
 - [x] Replace legacy Course360 platform fallback text in the email block editor and verification footer while preserving organization-authored footer overrides
+- [x] Remove Free-tier offers from platform pricing, registration, login, selectable billing plans, and default marketing signup copy while retaining legacy Free entitlements
+- [x] Add a 14-day Starter trial that collects a payment method in Stripe Checkout and automatically converts to a paid subscription unless cancelled before renewal
+- [x] Persist one-time Starter trial eligibility per organization and prevent passwordless sign-in links from bypassing paid school-owner registration
 - [x] Add organization-scoped discount-code targeting for all products, selected content types, or selected individual products
 - [x] Enforce organization-owned discount targeting during checkout validation and discount application
 - [x] Provide organization-admin discount targeting controls with accessible multi-product selection
