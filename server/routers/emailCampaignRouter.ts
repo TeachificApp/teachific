@@ -294,6 +294,29 @@ async function validateAudienceListsForOrg(db: EmailMarketingDb, filter: Audienc
   }
 }
 
+async function validateAudienceCoursesForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  const courseIds = [...new Set([
+    ...(filter.enrolledInCourseIds ?? []),
+    ...(filter.completedCourseIds ?? []),
+    ...(filter.freePreviewCourseIds ?? []),
+    ...(filter.activeAccessCourseIds ?? []),
+    ...(filter.purchasedCourseIds ?? []),
+  ])];
+  if (courseIds.length === 0) return;
+  const rows = await db
+    .select({ id: lmsCourses.id })
+    .from(lmsCourses)
+    .where(and(inArray(lmsCourses.id, courseIds), eq(lmsCourses.orgId, orgId)));
+  if (rows.length !== courseIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected courses do not belong to the active organization." });
+  }
+}
+
+async function validateAudienceScopeForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  await validateAudienceListsForOrg(db, filter, orgId);
+  await validateAudienceCoursesForOrg(db, filter, orgId);
+}
+
 function campaignNameForSubject(subject: string): string {
   return subject.trim() || "Untitled campaign";
 }
@@ -715,7 +738,7 @@ export const emailCampaignRouter = router({
       const orgId = await requireActiveEmailMarketingOrg(ctx.user);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-      await validateAudienceListsForOrg(db, input, orgId);
+      await validateAudienceScopeForOrg(db, input, orgId);
       const recipients = await resolveRecipients(input, undefined, orgId);
       return {
         count: recipients.length,
@@ -744,7 +767,7 @@ export const emailCampaignRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
-      await validateAudienceListsForOrg(db, input.audienceFilter, orgId);
+      await validateAudienceScopeForOrg(db, input.audienceFilter, orgId);
 
       // Resolve recipients to validate audience
       const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
@@ -815,7 +838,7 @@ export const emailCampaignRouter = router({
       }
 
       // Estimate recipient count (dry-run)
-      await validateAudienceListsForOrg(db, input.audienceFilter, orgId);
+      await validateAudienceScopeForOrg(db, input.audienceFilter, orgId);
       const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
 
       const orgContext = await getEmailCampaignOrgContext(db, orgId);
@@ -1757,7 +1780,7 @@ export const emailCampaignRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
       const audienceFilter = AudienceFilterSchema.parse(input.audienceFilter ?? {});
-      await validateAudienceListsForOrg(db, audienceFilter, orgId);
+      await validateAudienceScopeForOrg(db, audienceFilter, orgId);
       await validateSenderProfileForOrg(db, input.senderProfileId, orgId);
       const orgContext = await getEmailCampaignOrgContext(db, orgId);
       const vals = {

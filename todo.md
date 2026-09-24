@@ -5410,6 +5410,7 @@
 - [x] Build NewsletterInlineWidget component (embeddable subscribe form)
 - [x] Build EmailCampaignDashboard page at /lms/email-campaigns
 - [x] Build EmailCampaignEditor page (compose, audience, send)
+- [x] Add an active-course-access audience filter and reject foreign course identifiers before campaign preview, draft, scheduling, or send operations
 - [x] Add Email Campaigns nav item to DashboardLayout sidebar
 - [x] Register /subscribe and /lms/email-campaigns routes in App.tsx
 - [ ] Register SendGrid webhook for open/click/unsubscribe tracking

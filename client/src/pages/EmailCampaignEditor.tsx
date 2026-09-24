@@ -759,6 +759,7 @@ interface AudienceFilter {
   inCohortGroupIds: number[];
   submittedFormIds: number[];
   completedCourseIds: number[];
+  activeAccessCourseIds: number[];
   logic: "and" | "or";
 }
 
@@ -766,7 +767,7 @@ const DEFAULT_FILTER: AudienceFilter = {
   interests: [], roles: [], subscriptionType: "all", userStatus: "active",
   specificEmails: [], enrolledInCourseIds: [], purchasedProductIds: [],
   downloadedProductIds: [], inGroupIds: [], inCohortGroupIds: [],
-  submittedFormIds: [], completedCourseIds: [], logic: "and",
+  submittedFormIds: [], completedCourseIds: [], activeAccessCourseIds: [], logic: "and",
 };
 
 function MultiSelect({ label, options, selected, onChange }: {
@@ -896,6 +897,9 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
           )}
           {options && (
             <MultiSelect label="Completed Course" options={options.courses} selected={filter.completedCourseIds} onChange={(v) => update({ completedCourseIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Active Course Access" options={options.courses} selected={filter.activeAccessCourseIds} onChange={(v) => update({ activeAccessCourseIds: v })} />
           )}
           {options && (
             <MultiSelect label="Purchased Product" options={options.products} selected={filter.purchasedProductIds} onChange={(v) => update({ purchasedProductIds: v })} />
