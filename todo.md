@@ -5444,10 +5444,10 @@
 - [x] Expose cmeEnabled in myContext or a dedicated org features query for the client
 
 ## CME Activity Planning Form - Date Fields
-- [ ] Add originalReleaseDate, mostRecentReviewDate, expirationDate to cmeActivityForms schema
-- [ ] Run migration for new CME date fields
-- [ ] Update cmeActivityFormRouter to read/write new date fields
-- [ ] Add date picker UI fields to CmeFormTab component
+- [x] Add originalReleaseDate, mostRecentReviewDate, expirationDate to cmeActivityForms schema
+- [x] Run migration for new CME date fields
+- [x] Update cmeActivityFormRouter to read/write new date fields
+- [x] Add date picker UI fields to CmeFormTab component
 ## Form Builder Updates (Ported from Ultrasound-App, Aug 4 2026)
 - [ ] DynamicFormRenderer: add DateField and TimeField components
 - [ ] DynamicFormRenderer: add date/time cases to item switch statement
