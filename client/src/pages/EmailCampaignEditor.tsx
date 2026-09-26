@@ -10,7 +10,7 @@
  *  - Save as template / load from template
  *  - Automatic unsubscribe footer injected on send
  */
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -1021,8 +1021,14 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   const [headerSubtext, setHeaderSubtext] = useState("");
   const [headerColor, setHeaderColor] = useState("");
   const [headerEnabled, setHeaderEnabled] = useState(true);
+  const [autosaveState, setAutosaveState] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
   const [emailPickerTab, setEmailPickerTab] = useState<"blocks" | "saved">("blocks");
   const [hydratedCampaignId, setHydratedCampaignId] = useState<number | undefined>();
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const autosaveScopeRef = useRef<string | undefined>(undefined);
+  const lastSavedFingerprintRef = useRef<string | undefined>(undefined);
+  const pendingSaveFingerprintRef = useRef<string | undefined>(undefined);
+  const saveModeRef = useRef<"manual" | "autosave">("manual");
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: senderProfiles } = trpc.emailCampaign.listSenderProfiles.useQuery(undefined, { enabled: !!user });
@@ -1052,8 +1058,24 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const saveDraftMutation = trpc.emailCampaign.saveDraft.useMutation({
-    onSuccess: (r) => { setDraftId(r.id); toast.success("Draft saved"); setIsSaving(false); },
-    onError: (e) => { toast.error(e.message); setIsSaving(false); },
+    onSuccess: (r) => {
+      const wasAutosave = saveModeRef.current === "autosave";
+      setDraftId(r.id);
+      lastSavedFingerprintRef.current = pendingSaveFingerprintRef.current;
+      pendingSaveFingerprintRef.current = undefined;
+      setAutosaveState("saved");
+      if (!wasAutosave) toast.success("Draft saved");
+      setIsSaving(false);
+    },
+    onError: (error) => {
+      const wasAutosave = saveModeRef.current === "autosave";
+      // Do not retry the unchanged failing payload indefinitely. A later edit schedules a new save.
+      lastSavedFingerprintRef.current = pendingSaveFingerprintRef.current;
+      pendingSaveFingerprintRef.current = undefined;
+      setAutosaveState("error");
+      if (!wasAutosave) toast.error(error.message);
+      setIsSaving(false);
+    },
   });
 
   const sendMutation = trpc.emailCampaign.sendCampaign.useMutation({
@@ -1101,19 +1123,64 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     ),
     [htmlBody, previewText, campaignBranding, headerTitle, headerSubtext, headerColor, headerEnabled],
   );
+  const draftPayload = useMemo(() => ({
+    id: draftId,
+    subject,
+    htmlBody,
+    blocksJson: JSON.stringify(blocks),
+    previewText,
+    audienceFilter: filter,
+    senderProfileId,
+    headerTitle: headerTitle || undefined,
+    headerSubtext: headerSubtext || undefined,
+    headerColor: headerColor || undefined,
+    headerEnabled,
+  }), [draftId, subject, htmlBody, blocks, previewText, filter, senderProfileId, headerTitle, headerSubtext, headerColor, headerEnabled]);
+  const draftFingerprint = useMemo(() => JSON.stringify(draftPayload), [draftPayload]);
+  const isExistingCampaignHydrated = !campaignId || hydratedCampaignId === campaignId;
+  const isAutosaveEligible = Boolean(
+    draftId && isExistingCampaignHydrated && (!campaignId || campaignQuery.data?.status === "draft"),
+  );
+
+  useEffect(() => {
+    if (!isAutosaveEligible) return;
+    const scope = `${campaignId ?? "draft"}:${draftId}`;
+    if (autosaveScopeRef.current !== scope) {
+      autosaveScopeRef.current = scope;
+      lastSavedFingerprintRef.current = draftFingerprint;
+      pendingSaveFingerprintRef.current = undefined;
+      setAutosaveState("idle");
+      return;
+    }
+    if (lastSavedFingerprintRef.current === draftFingerprint || pendingSaveFingerprintRef.current === draftFingerprint || saveDraftMutation.isPending) return;
+
+    setAutosaveState("pending");
+    autosaveTimerRef.current = setTimeout(() => {
+      pendingSaveFingerprintRef.current = draftFingerprint;
+      saveModeRef.current = "autosave";
+      setAutosaveState("saving");
+      saveDraftMutation.mutate(draftPayload);
+    }, 900);
+
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = undefined;
+    };
+  }, [campaignId, draftId, draftFingerprint, draftPayload, isAutosaveEligible, saveDraftMutation]);
+
+  useEffect(() => () => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+  }, []);
 
   function handleSaveDraft() {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = undefined;
+    }
     setIsSaving(true);
-    saveDraftMutation.mutate({
-      id: draftId,
-      subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
-      audienceFilter: filter,
-      senderProfileId,
-      headerTitle: headerTitle || undefined,
-      headerSubtext: headerSubtext || undefined,
-      headerColor: headerColor || undefined,
-      headerEnabled,
-    });
+    saveModeRef.current = "manual";
+    pendingSaveFingerprintRef.current = draftFingerprint;
+    saveDraftMutation.mutate(draftPayload);
   }
 
   function handleSend() {
@@ -1174,6 +1241,33 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   }
 
   const goBack = onClose ?? (() => navigate("/admin/email"));
+  const isWaitingForExistingCampaign = Boolean(
+    campaignId && user && !campaignQuery.isError && (!campaignQuery.data || hydratedCampaignId !== campaignId),
+  );
+
+  if (campaignId && campaignQuery.isError) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <Card className="mx-auto mt-16 max-w-lg border shadow-sm">
+          <CardContent className="space-y-4 p-6">
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">Campaign unavailable</h1>
+              <p className="mt-1 text-sm text-slate-600">This campaign could not be loaded for the active organization.</p>
+            </div>
+            <Button variant="outline" onClick={goBack}>Back to campaigns</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isWaitingForExistingCampaign) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-slate-500">
+        <RefreshCw className="mr-2 h-4 w-4 animate-spin text-[#189aa1]" /> Loading campaign draft…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1199,9 +1293,17 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
             {showPreview ? <EyeOff className="w-4 h-4 mr-1.5" /> : <Eye className="w-4 h-4 mr-1.5" />}
             {showPreview ? "Hide Preview" : "Preview"}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving}>
+          <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving || saveDraftMutation.isPending}>
             <Save className="w-4 h-4 mr-1.5" /> {isSaving ? "Saving…" : "Save Draft"}
           </Button>
+          {draftId && isAutosaveEligible && autosaveState !== "idle" && (
+            <span className={`text-xs ${autosaveState === "error" ? "text-red-600" : "text-slate-500"}`} aria-live="polite">
+              {autosaveState === "pending" && "Changes pending"}
+              {autosaveState === "saving" && "Saving changes…"}
+              {autosaveState === "saved" && "All changes saved"}
+              {autosaveState === "error" && "Autosave paused"}
+            </span>
+          )}
           <Button variant="outline" size="sm" onClick={handleSendTest} disabled={!user?.email}>
             <Mail className="w-4 h-4 mr-1.5" /> Send Test
           </Button>

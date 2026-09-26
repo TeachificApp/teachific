@@ -6142,3 +6142,4 @@
 - [x] Add and hydrate brand-safe campaign header detail controls (optional headline, subheading, safe color, and visibility) for drafts, sends, and schedules without allowing user-entered content to replace organization identity.
 - [x] Add a confirmed, organization-scoped campaign self-test send that delivers only to the authenticated author, validates selected sender ownership, renders server-derived organization branding, and does not create campaign/audience/tracking records.
 - [x] Add a low-volume campaign self-test rate limit using persisted delivery logs plus an in-process pre-provider claim, and communicate the limit in the confirmed self-test dialog.
+- [x] Add guarded 900 ms draft autosave after protected campaign hydration, with edit-route loading/error states, timer cleanup, save-fingerprint deduplication, overlapping-save prevention, and no autosend/autoschedule behavior.

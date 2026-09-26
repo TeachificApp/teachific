@@ -300,3 +300,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (self-test delivery limit)
 
 **Completed:** Campaign self-tests are now limited to **three attempts per authenticated administrator/email in ten minutes**. The guard combines recent persisted `[Test]` delivery-log rows with an in-process claim before provider delivery, so repeated requests cannot burst past the limit while logging is still catching up. The editor clearly communicates the limit. The limit is independent of campaign audiences and preserves the active-organization/sender-ownership checks.
+
+
+## Implementation update — Sep 26, 2026 (guarded draft autosave)
+
+**Completed:** Existing draft campaigns now autosave after a 900 ms quiet period only after the protected `getCampaign` hydration completes. The editor displays loading/error states for edit routes, keeps a fingerprinted last-saved state, cancels timers on new edits and unmount, and prevents overlapping manual/autosave requests. Autosave applies only to an existing or newly created **draft**—never sends, schedules, or silently changes campaign delivery state.
