@@ -6,6 +6,7 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { syncStripeProduct } from "../stripeSync";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
+import { resolvePublicOrganizationScope } from "../lib/publicOrgRequestScope";
 import {
   workshops,
   workshopInstances,
@@ -89,20 +90,40 @@ async function requireActiveWorkshopAdmin(userId: number, userRole: string, work
   return { db, workshop, organization };
 }
 
+/** Resolve a verified learner-domain organization before returning public workshop data. */
+async function resolvePublicWorkshopOrganization(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, req: unknown) {
+  const scope = await resolvePublicOrganizationScope(db as any, req as any);
+  if (!scope) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found." });
+  return scope.id;
+}
+
+/** Keep capacity, peer-enrollment counts, and learner meeting links server-side. */
+function toPublicWorkshopInstance<T extends { capacity?: unknown; enrolledCount?: unknown; meetingUrl?: unknown }>(instance: T) {
+  const {
+    capacity: _capacity,
+    enrolledCount: _enrolledCount,
+    meetingUrl: _meetingUrl,
+    ...publicInstance
+  } = instance;
+  return publicInstance;
+}
+
 // ─── Public Router ────────────────────────────────────────────────────────────
 export const workshopPublicRouter = router({
   /** Get a workshop landing page (slug-based, public) */
   getBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicOrganizationId = await resolvePublicWorkshopOrganization(db, ctx.req);
       const [workshop] = await db
         .select()
         .from(workshops)
         .where(
           and(
             eq(workshops.slug, input.slug),
+            eq(workshops.orgId, publicOrganizationId),
             or(
               eq(workshops.status, "public"),
               eq(workshops.status, "hidden")
@@ -156,9 +177,9 @@ export const workshopPublicRouter = router({
 
       return {
         workshop,
-        availableInstances,
-        soldOutInstances,
-        allInstances,
+        availableInstances: availableInstances.map(toPublicWorkshopInstance),
+        soldOutInstances: soldOutInstances.map(toPublicWorkshopInstance),
+        allInstances: allInstances.map(toPublicWorkshopInstance),
         pricingOptions,
         resources,
       };
@@ -174,10 +195,12 @@ export const workshopPublicRouter = router({
         offset: z.number().default(0),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicOrganizationId = await resolvePublicWorkshopOrganization(db, ctx.req);
       const conditions = [
+        eq(workshops.orgId, publicOrganizationId),
         eq(workshops.status, "public"),
         eq(workshops.showInLibrary, true),
       ];
@@ -226,10 +249,11 @@ export const workshopPublicRouter = router({
   /** Public: get workshop instances by their IDs — used by cohort_instance_cards_auto block on course landing pages */
   getInstancesByIds: publicProcedure
     .input(z.object({ ids: z.array(z.number()) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       if (input.ids.length === 0) return [];
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicOrganizationId = await resolvePublicWorkshopOrganization(db, ctx.req);
       const rows = await db
         .select({
           id: workshopInstances.id,
@@ -245,22 +269,25 @@ export const workshopPublicRouter = router({
           venueCity: workshopInstances.venueCity,
           venueState: workshopInstances.venueState,
           description: workshopInstances.description,
-          capacity: workshopInstances.capacity,
-          enrolledCount: workshopInstances.enrolledCount,
           workshopTitle: workshops.title,
         })
         .from(workshopInstances)
         .innerJoin(workshops, eq(workshopInstances.workshopId, workshops.id))
-        .where(sql`${workshopInstances.id} IN (${sql.join(input.ids.map(id => sql`${id}`), sql`, `)})`);
+        .where(and(
+          eq(workshops.orgId, publicOrganizationId),
+          eq(workshops.status, "public"),
+          sql`${workshopInstances.id} IN (${sql.join(input.ids.map(id => sql`${id}`), sql`, `)})`,
+        ));
       return rows;
     }),
 
   /** Public: get all upcoming published instances for a specific workshop (used by CICA block when no specific instances are selected) */
   getInstancesByWorkshopId: publicProcedure
     .input(z.object({ workshopId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicOrganizationId = await resolvePublicWorkshopOrganization(db, ctx.req);
       const rows = await db
         .select({
           id: workshopInstances.id,
@@ -276,14 +303,17 @@ export const workshopPublicRouter = router({
           venueCity: workshopInstances.venueCity,
           venueState: workshopInstances.venueState,
           description: workshopInstances.description,
-          capacity: workshopInstances.capacity,
-          enrolledCount: workshopInstances.enrolledCount,
           workshopTitle: workshops.title,
         })
         .from(workshopInstances)
         .innerJoin(workshops, eq(workshopInstances.workshopId, workshops.id))
         .where(
-          sql`${workshopInstances.workshopId} = ${input.workshopId} AND ${workshopInstances.status} IN ('published', 'open', 'active')`
+          and(
+            eq(workshopInstances.workshopId, input.workshopId),
+            eq(workshops.orgId, publicOrganizationId),
+            eq(workshops.status, "public"),
+            sql`${workshopInstances.status} IN ('published', 'open', 'active')`,
+          )
         )
         .orderBy(workshopInstances.startDate);
       return rows;
@@ -291,30 +321,37 @@ export const workshopPublicRouter = router({
   /** Public: get live seat availability for a workshop instance (no cache — real-time) */
   getSeatAvailability: publicProcedure
     .input(z.object({ instanceId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicOrganizationId = await resolvePublicWorkshopOrganization(db, ctx.req);
       const [instance] = await db
         .select({
           id: workshopInstances.id,
           title: workshopInstances.title,
           capacity: workshopInstances.capacity,
           enrolledCount: workshopInstances.enrolledCount,
+          status: workshopInstances.status,
+          availableForPurchase: workshopInstances.availableForPurchase,
+          salesOpenDate: workshopInstances.salesOpenDate,
+          salesCloseDate: workshopInstances.salesCloseDate,
+          startDate: workshopInstances.startDate,
         })
         .from(workshopInstances)
-        .where(eq(workshopInstances.id, input.instanceId))
+        .innerJoin(workshops, eq(workshopInstances.workshopId, workshops.id))
+        .where(and(
+          eq(workshopInstances.id, input.instanceId),
+          eq(workshops.orgId, publicOrganizationId),
+          eq(workshops.status, "public"),
+        ))
         .limit(1);
       if (!instance) throw new TRPCError({ code: "NOT_FOUND" });
-      const capacity = instance.capacity ?? null;
-      const enrolled = instance.enrolledCount ?? 0;
-      const remaining = capacity !== null ? Math.max(0, capacity - enrolled) : null;
+      const enrollmentOpen = isInstanceOnSale(instance);
       return {
         instanceId: instance.id,
         title: instance.title,
-        capacity,
-        enrolled,
-        remaining, // null = unlimited
-        isFull: capacity !== null && enrolled >= capacity,
+        enrollmentOpen,
+        hideEnrollmentPresentation: !enrollmentOpen,
       };
     }),
 
@@ -322,13 +359,25 @@ export const workshopPublicRouter = router({
   /** Public: get landing blocks + basic info for a specific workshop instance */
   getInstancePage: publicProcedure
     .input(z.object({ instanceId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicOrganizationId = await resolvePublicWorkshopOrganization(db, ctx.req);
+      const [workshop] = await db
+        .select({ id: workshops.id })
+        .from(workshops)
+        .innerJoin(workshopInstances, eq(workshopInstances.workshopId, workshops.id))
+        .where(and(
+          eq(workshopInstances.id, input.instanceId),
+          eq(workshops.orgId, publicOrganizationId),
+          eq(workshops.status, "public"),
+        ))
+        .limit(1);
+      if (!workshop) throw new TRPCError({ code: "NOT_FOUND" });
       const row = await db
         .select()
         .from(workshopInstances)
-        .where(eq(workshopInstances.id, input.instanceId))
+        .where(and(eq(workshopInstances.id, input.instanceId), eq(workshopInstances.workshopId, workshop.id)))
         .then(r => r[0] ?? null);
       if (!row) throw new TRPCError({ code: "NOT_FOUND" });
       // Count active enrollments for real-time seat availability
@@ -340,9 +389,7 @@ export const workshopPublicRouter = router({
           eq(workshopEnrollments.status, "active")
         ));
       const enrolledCount = Number(countRow?.count ?? row.enrolledCount ?? 0);
-      const capacity = row.capacity ?? null;
-      const seatsRemaining = capacity !== null ? Math.max(0, capacity - enrolledCount) : null;
-      const isSoldOut = capacity !== null && enrolledCount >= capacity;
+      const enrollmentOpen = isInstanceOnSale({ ...row, enrolledCount });
       return {
         id: row.id,
         title: row.title,
@@ -355,14 +402,11 @@ export const workshopPublicRouter = router({
         venueCity: row.venueCity,
         venueState: row.venueState,
         venueAddress: row.venueAddress,
-        meetingUrl: row.meetingUrl,
         description: row.description,
         instanceContent: row.instanceContent,
         landingBlocks: row.landingBlocks ? JSON.parse(row.landingBlocks) : [],
-        capacity,
-        enrolledCount,
-        seatsRemaining,
-        isSoldOut,
+        enrollmentOpen,
+        hideEnrollmentPresentation: !enrollmentOpen,
       };
     }),
 });

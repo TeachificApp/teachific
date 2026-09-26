@@ -56,6 +56,8 @@
 - [x] Resolve organization-admin generated course checkout links from the course’s verified organization domain rather than caller-provided origins
 - [x] Resolve Course Player course and lesson access exclusively from the server-resolved active organization, ignoring caller-controlled organization identifiers
 - [x] Retain section-owned published lessons and route linked SCORM, .quiz, and ZIP media through protected native playback in Course Player
+- [x] Harden Course360 course-participant CSV exports with active-organization ownership checks, nonfinancial profile fields, formula escaping, and payment/session exclusion
+- [x] Scope public workshop discovery to the verified learner organization and remove capacity, enrollment-count, remaining-seat, and meeting-link disclosure from learner responses
 - [x] Derive direct funnel-CTA checkout organization and success/cancellation URLs from the selected product record rather than caller-provided origins
 - [x] Derive upgrade-prompt course, download, and physical-product checkout return URLs from trusted product organization records rather than caller-provided origins
 - [x] Resolve digital-bundle checkout success and cancellation URLs from the selected bundle’s verified organization domain rather than request-header origins
