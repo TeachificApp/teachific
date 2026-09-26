@@ -61,7 +61,7 @@ import {
 import { sendEmail } from "../_core/email";
 import { randomBytes } from "crypto";
 import { addToSendGridGlobalUnsubscribes } from "../lib/sendgridSuppressions";
-import { normalizeCampaignEmailHtml } from "../../shared/emailCampaignLayout";
+import { normalizeCampaignEmailHtml, wrapInBrandedCampaignEmail } from "../../shared/emailCampaignLayout";
 import {
   injectTrackingPixel,
   wrapLinksForTracking,
@@ -405,9 +405,14 @@ function errorMessageForLog(error: unknown): string {
 }
 
 async function getEmailCampaignOrgContext(db: EmailMarketingDb, orgId: number) {
-  const [theme, org] = await Promise.all([
+  const [themeRows, organizationRows] = await Promise.all([
     db
-      .select({ primaryColor: orgThemes.primaryColor, buttonColor: orgThemes.buttonColor })
+      .select({
+        primaryColor: orgThemes.primaryColor,
+        buttonColor: orgThemes.buttonColor,
+        schoolName: orgThemes.schoolName,
+        adminLogoUrl: orgThemes.adminLogoUrl,
+      })
       .from(orgThemes)
       .where(eq(orgThemes.orgId, orgId))
       .limit(1),
@@ -417,19 +422,48 @@ async function getEmailCampaignOrgContext(db: EmailMarketingDb, orgId: number) {
         slug: organizations.slug,
         customDomain: organizations.customDomain,
         domainVerificationStatus: organizations.domainVerificationStatus,
+        logoUrl: organizations.logoUrl,
       })
       .from(organizations)
       .where(eq(organizations.id, orgId))
       .limit(1),
   ]);
-  const organization = org[0];
+  const theme = themeRows[0];
+  const organization = organizationRows[0];
+  const displayName = theme?.schoolName?.trim() || organization?.name || "Course360™";
+  const logoUrl = theme?.adminLogoUrl ?? organization?.logoUrl ?? null;
   return {
     accentColor: theme?.buttonColor ?? theme?.primaryColor ?? null,
-    displayName: organization?.name ?? "this organization",
+    displayName,
+    logoUrl,
     baseUrl: organization
       ? getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)
       : undefined,
   };
+}
+
+function buildCampaignHtmlForOrganization(
+  bodyHtml: string,
+  previewText: string | null | undefined,
+  orgContext: Awaited<ReturnType<typeof getEmailCampaignOrgContext>>,
+  header?: {
+    title?: string | null;
+    subtext?: string | null;
+    color?: string | null;
+    enabled?: boolean | null;
+  },
+): string {
+  return wrapInBrandedCampaignEmail(
+    normalizeCampaignEmailHtml(bodyHtml, orgContext.accentColor),
+    previewText ?? undefined,
+    header?.title,
+    header?.subtext,
+    header?.color,
+    header?.enabled,
+    orgContext.accentColor,
+    orgContext.displayName,
+    orgContext.logoUrl,
+  );
 }
 
 const EmailPromoProductSchema = z.object({
@@ -682,6 +716,19 @@ export async function handleScheduledEmailCampaignSend(req: Request, res: Respon
 export const emailCampaignRouter = router({
   // ── User: interest preferences ────────────────────────────────────────────
 
+  getCampaignBranding: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const branding = await getEmailCampaignOrgContext(db, orgId);
+    return {
+      displayName: branding.displayName,
+      accentColor: branding.accentColor ?? "#189aa1",
+      logoUrl: branding.logoUrl,
+      baseUrl: branding.baseUrl ?? null,
+    };
+  }),
+
   getInterestPrefs: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
@@ -850,7 +897,12 @@ export const emailCampaignRouter = router({
 
       // Create campaign record in "sending" state
       const orgContext = await getEmailCampaignOrgContext(db, orgId);
-      const htmlBody = normalizeCampaignEmailHtml(input.htmlBody, orgContext.accentColor);
+      const htmlBody = buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
+        title: input.headerTitle,
+        subtext: input.headerSubtext,
+        color: input.headerColor,
+        enabled: input.headerEnabled,
+      });
       const [result] = await db.insert(emailCampaigns).values({
         orgId,
         name: campaignNameForSubject(input.subject),
@@ -912,7 +964,12 @@ export const emailCampaignRouter = router({
       const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
 
       const orgContext = await getEmailCampaignOrgContext(db, orgId);
-      const htmlBodyScheduled = normalizeCampaignEmailHtml(input.htmlBody, orgContext.accentColor);
+      const htmlBodyScheduled = buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
+        title: input.headerTitle,
+        subtext: input.headerSubtext,
+        color: input.headerColor,
+        enabled: input.headerEnabled,
+      });
       const [result] = await db.insert(emailCampaigns).values({
         orgId,
         name: campaignNameForSubject(input.subject),
@@ -1856,7 +1913,12 @@ export const emailCampaignRouter = router({
       const vals = {
         name: campaignNameForSubject(input.subject),
         subject: input.subject,
-        htmlBody: input.htmlBody ? normalizeCampaignEmailHtml(input.htmlBody, orgContext.accentColor) : input.htmlBody,
+        htmlBody: input.htmlBody ? buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
+          title: input.headerTitle,
+          subtext: input.headerSubtext,
+          color: input.headerColor,
+          enabled: input.headerEnabled,
+        }) : input.htmlBody,
         blocksJson: input.blocksJson ?? null,
         previewText: input.previewText ?? null,
         audienceFilter: JSON.stringify(audienceFilter),

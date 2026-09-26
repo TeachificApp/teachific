@@ -6138,3 +6138,4 @@
 - [x] Display the selected workshop-instance audience in the Campaign composer using active-organization option data, while retaining server-side ownership validation as the authorization boundary.
 - [x] Hydrate existing campaign drafts in the editor through the active-organization getCampaign procedure, restore saved audience/sender/content state, and persist editable block JSON on every campaign write path.
 - [x] Expose membership-plan, bundle, workshop, and webinar audience controls from active-organization option data, and validate all corresponding resource IDs server-side before preview, draft, send, or scheduling.
+- [x] Make email campaign preview and delivery organization-first: resolve name, accent, and logo from the server-side active organization; preserve Course360™ only as the platform fallback; persist canonical block HTML through branded draft/send/schedule writes; and pass campaign IDs into editor routes for protected draft hydration.

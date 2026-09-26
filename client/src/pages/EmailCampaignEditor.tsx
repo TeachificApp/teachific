@@ -51,6 +51,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
 import type { ParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
+import { wrapInBrandedCampaignEmail } from "@shared/emailCampaignLayout";
 
 // ─── Block types ──────────────────────────────────────────────────────────────
 type BlockType = "heading1" | "heading2" | "text" | "image" | "button" | "divider" | "spacer" | "quote" | "html" | "lead_capture";
@@ -218,45 +219,24 @@ function parseCampaignBlocks(blocksJson: string | null, htmlBody: string): Block
 }
 
 // ─── Branded email wrapper ────────────────────────────────────────────────────
-function wrapInBrandedEmail(bodyHtml: string, previewText?: string): string {
-  const preview = previewText ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>` : "";
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Course360™</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f7f8;font-family:'Open Sans',Arial,sans-serif;">
-${preview}
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f8;padding:32px 0;">
-  <tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-      <tr>
-        <td style="background:linear-gradient(135deg,#0e1e2e 0%,#0e4a50 60%,#189aa1 100%);padding:28px 32px;">
-          <span style="font-family:Merriweather,Georgia,serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">Course360™</span>
-          <div style="font-size:11px;color:#4ad9e0;font-weight:600;margin-top:2px;letter-spacing:0.5px;">CREATE. TEACH. GROW.</div>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:32px;color:#1a2e3b;font-size:15px;line-height:1.7;">
-          ${bodyHtml}
-        </td>
-      </tr>
-      <tr>
-        <td style="background:#f4f7f8;padding:20px 32px;border-top:1px solid #e5eaec;">
-          <p style="margin:0;font-size:11px;color:#8a9bb0;text-align:center;line-height:1.6;">
-            © ${new Date().getFullYear()} Course360™ · <a href="https://soundmedianow.com/" style="color:#189aa1;text-decoration:none;">a SoundMedia, Inc. brand</a><br/>
-            You are receiving this email because you have an account on Course360™.<br/>
-            <a href="{{UNSUBSCRIBE_URL}}" style="color:#189aa1;text-decoration:none;">Unsubscribe</a> · <a href="https://course360.app/profile" style="color:#189aa1;text-decoration:none;">Manage preferences</a>
-          </p>
-        </td>
-      </tr>
-    </table>
-  </td></tr>
-</table>
-</body>
-</html>`;
+type CampaignBranding = {
+  displayName: string;
+  accentColor: string;
+  logoUrl: string | null;
+};
+
+function wrapInBrandedEmail(bodyHtml: string, previewText?: string, branding?: CampaignBranding): string {
+  return wrapInBrandedCampaignEmail(
+    bodyHtml,
+    previewText,
+    undefined,
+    undefined,
+    undefined,
+    true,
+    branding?.accentColor,
+    branding?.displayName,
+    branding?.logoUrl,
+  );
 }
 
 // ─── Audience filter types ────────────────────────────────────────────────────
@@ -1034,6 +1014,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: senderProfiles } = trpc.emailCampaign.listSenderProfiles.useQuery(undefined, { enabled: !!user });
   const { data: templates } = trpc.emailCampaign.listTemplates.useQuery(undefined, { enabled: !!user });
+  const { data: campaignBranding } = trpc.emailCampaign.getCampaignBranding.useQuery(undefined, { enabled: !!user });
   const campaignQuery = trpc.emailCampaign.getCampaign.useQuery(
     { id: campaignId ?? 0 },
     { enabled: !!user && !!campaignId, retry: false },
@@ -1083,13 +1064,16 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const htmlBody = useMemo(() => blocksToHtml(blocks), [blocks]);
-  const wrappedHtml = useMemo(() => wrapInBrandedEmail(htmlBody, previewText), [htmlBody, previewText]);
+  const wrappedHtml = useMemo(
+    () => wrapInBrandedEmail(htmlBody, previewText, campaignBranding),
+    [htmlBody, previewText, campaignBranding],
+  );
 
   function handleSaveDraft() {
     setIsSaving(true);
     saveDraftMutation.mutate({
       id: draftId,
-      subject, htmlBody: wrappedHtml, blocksJson: JSON.stringify(blocks), previewText,
+      subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
       senderProfileId,
     });
@@ -1103,7 +1087,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
 
   function confirmSend() {
     sendMutation.mutate({
-      subject, htmlBody: wrappedHtml, blocksJson: JSON.stringify(blocks), previewText,
+      subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
     });
   }
@@ -1111,7 +1095,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   function confirmSchedule() {
     if (!scheduledAt) { toast.error("Pick a date/time"); return; }
     scheduleMutation.mutate({
-      subject, htmlBody: wrappedHtml, blocksJson: JSON.stringify(blocks), previewText,
+      subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
       scheduledAt: new Date(scheduledAt),
     });
@@ -1120,8 +1104,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   function loadTemplate(t: any) {
     setSubject(t.subject || "");
     setPreviewText(t.previewText || "");
-    // Convert template HTML back to a single HTML block
-    setBlocks([{ id: uid(), type: "html", content: t.htmlBody || "" }]);
+    setBlocks(parseCampaignBlocks(t.blocksJson, t.htmlBody || ""));
     setLoadTemplateDialogOpen(false);
     toast.success(`Loaded: ${t.name}`);
   }
@@ -1295,7 +1278,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSaveTemplateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => saveTemplateMutation.mutate({ name: templateName, subject, htmlBody: wrappedHtml, previewText })} disabled={!templateName.trim() || saveTemplateMutation.isPending} style={{ background: "#189aa1" }} className="text-white">
+            <Button onClick={() => saveTemplateMutation.mutate({ name: templateName, subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText })} disabled={!templateName.trim() || saveTemplateMutation.isPending} style={{ background: "#189aa1" }} className="text-white">
               <Save className="w-4 h-4 mr-1.5" /> Save Template
             </Button>
           </DialogFooter>

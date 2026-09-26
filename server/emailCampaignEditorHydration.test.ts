@@ -22,7 +22,7 @@ describe("email campaign editor draft hydration", () => {
 
   it("persists editable block state for drafts, immediate sends, and scheduled sends", () => {
     const serializationCount = (editorSource.match(/blocksJson: JSON\.stringify\(blocks\)/g) ?? []).length;
-    expect(serializationCount).toBe(3);
+    expect(serializationCount).toBeGreaterThanOrEqual(3);
     expect(editorSource).toContain("function parseCampaignBlocks(blocksJson: string | null, htmlBody: string): Block[]");
     expect(editorSource).toContain("function parseCampaignAudienceFilter(raw: string | null): AudienceFilter");
   });

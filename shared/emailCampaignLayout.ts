@@ -28,6 +28,25 @@ export function renderCampaignImageHtml(opts: {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;"><tr><td align="${align}"><img src="${opts.src}" alt="${opts.alt || ""}" width="${width}" style="max-width:${width};width:${width};border-radius:${br}px;display:block;" /></td></tr></table>`;
 }
 
+function escapeEmailHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
+}
+
+function safeCampaignColor(value?: string | null): string | null {
+  const color = value?.trim() ?? "";
+  return /^#[0-9a-f]{3,8}$/i.test(color) ? color : null;
+}
+
+function safeCampaignLogoUrl(value?: string | null): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Branded wrapper for campaign emails (header, body slot, footer with unsubscribe placeholder). */
 export function wrapInBrandedCampaignEmail(
   bodyHtml: string,
@@ -37,23 +56,33 @@ export function wrapInBrandedCampaignEmail(
   headerColor?: string | null,
   headerEnabled?: boolean | null,
   accentColor?: string | null,
+  brandName?: string | null,
+  logoUrl?: string | null,
 ): string {
   const w = EMAIL_CAMPAIGN_CONTAINER_WIDTH_PX;
   const preview = previewText
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
     : "";
-  const title = headerTitle ?? "Course360™";
-  const subtext = headerSubtext ?? "";
-  const showHeader = headerEnabled !== false;
-  const bgColor = headerColor || null;
+  const rawTitle = brandName?.trim() || headerTitle?.trim() || "Course360™";
+  const title = escapeEmailHtml(rawTitle);
+  const subtext = escapeEmailHtml(headerSubtext?.trim() ?? "");
+  const showHeader = Boolean(brandName?.trim()) || headerEnabled !== false;
+  const resolvedAccentColor = safeCampaignColor(accentColor) ?? "#189aa1";
+  const bgColor = safeCampaignColor(headerColor);
+  const logo = safeCampaignLogoUrl(logoUrl);
   const headerBg = bgColor
     ? `background:${bgColor};`
-    : "background:linear-gradient(135deg,#0e1e2e 0%,#0e4a50 60%,#189aa1 100%);";
-  const resolvedAccentColor = accentColor ?? "#189aa1";
+    : `background:${resolvedAccentColor};`;
+  const logoMarkup = logo
+    ? `<img src="${logo}" alt="${title}" height="42" style="max-height:42px;max-width:180px;width:auto;vertical-align:middle;margin-right:12px;" />`
+    : "";
+  const platformAttribution = !brandName?.trim() && !headerTitle?.trim()
+    ? ` · <a href="https://soundmedianow.com/" style="color:${resolvedAccentColor};text-decoration:none;">a SoundMedia, Inc. brand</a>`
+    : "";
   const headerRow = showHeader ? `
       <tr>
         <td style="${headerBg}padding:28px 32px;">
-          <span style="font-family:Merriweather,Georgia,serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">${title}</span>
+          ${logoMarkup}<span style="font-family:Merriweather,Georgia,serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">${title}</span>
           <div style="font-size:11px;color:#4ad9e0;font-weight:600;margin-top:2px;letter-spacing:0.5px;">${subtext}</div>
         </td>
       </tr>` : "";
@@ -78,7 +107,7 @@ ${preview}
       <tr>
         <td style="background:#f4f7f8;padding:20px 32px;border-top:1px solid #e5eaec;">
           <p style="margin:0;font-size:11px;color:#8a9bb0;text-align:center;line-height:1.6;">
-            © ${new Date().getFullYear()} ${title}<br/>
+            © ${new Date().getFullYear()} ${title}${platformAttribution}<br/>
             You are receiving this email because you have an account with ${title}.<br/>
             <a href="{{UNSUBSCRIBE_URL}}" style="color:${resolvedAccentColor};text-decoration:none;">Unsubscribe</a>
           </p>

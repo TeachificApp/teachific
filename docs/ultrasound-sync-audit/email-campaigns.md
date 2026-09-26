@@ -280,3 +280,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (advanced audience controls)
 
 **Completed:** Course360’s campaign Audience panel now exposes membership-plan subscribers, bundle enrollments, workshop participants, and webinar registrants using only active-organization option lists. The server now validates selected membership plans, bundles, and webinars against the active organization before preview, draft save, immediate send, or scheduled send; existing workshop validation and active-enrollment resolution remain in force. This exposes compatible target capabilities without importing source branding or trusting browser organization/resource identifiers.
+
+
+## Implementation update — Sep 26, 2026 (organization-first campaign branding)
+
+**Completed:** Campaign previews and persisted draft, immediate-send, and scheduled-send HTML now receive their display name, accent color, and optional logo strictly from the server-resolved active organization. The branded layout prefers the organization’s school name and logo, falls back only to Course360™, safely validates color/logo inputs, and emits the required platform attribution only when the platform identity actually applies. The campaign editor consumes the same protected branding context for its preview while sending canonical block HTML to the server, preventing client-supplied brand identity from becoming delivery authority. Existing campaign edit routes now pass the campaign ID into the editor in both main and subdomain admin shells, so the protected campaign hydration path is reached.

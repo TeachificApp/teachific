@@ -369,7 +369,7 @@ function AdminRouter() {
           {/* ── Marketing ── */}
           <Route path="/marketing/website" component={WebsitePage} />
           <Route path="/marketing/email" component={EmailCampaignDashboard} />
-          <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
+          <Route path="/marketing/email/:campaignId/edit">{(params) => <EmailCampaignEditor campaignId={Number(params.campaignId)} />}</Route>
           <Route path="/marketing/newsletter" component={NewsletterSubscribersPage} />
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
           <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
@@ -648,7 +648,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/webinars/reports">{() => <DashboardLayout><WebinarReportsPage /></DashboardLayout>}</Route>
         <Route path="/lms/members">{() => { window.location.replace("/members/users"); return null; }}</Route>
         <Route path="/lms/email-marketing">{() => { window.location.replace("/marketing/email"); return null; }}</Route>
-        <Route path="/marketing/email/:campaignId/edit">{() => <EmailCampaignEditor />}</Route>
+        <Route path="/marketing/email/:campaignId/edit">{(params) => <EmailCampaignEditor campaignId={Number(params.campaignId)} />}</Route>
         <Route path="/marketing/social">{() => <DashboardLayout><SocialContentGeneratorPage /></DashboardLayout>}</Route>
         <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
         <Route path="/marketing/widgets">{() => <DashboardLayout><WidgetsPage /></DashboardLayout>}</Route>

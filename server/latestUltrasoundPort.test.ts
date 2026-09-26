@@ -3331,13 +3331,15 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(pasteTransformSource).toContain("mergeEmojiOnlyBlocks");
   });
 
-  it("uses one wrapped rich-text campaign HTML value for preview, draft save, and send", () => {
+  it("uses a shared organization-branded campaign layout for preview and server-persisted delivery", () => {
     const campaignEditorSource = readFileSync(new URL("../client/src/pages/EmailCampaignEditor.tsx", import.meta.url), "utf8");
     const emailLayoutSource = readFileSync(new URL("../shared/emailCampaignLayout.ts", import.meta.url), "utf8");
-    expect(campaignEditorSource).toContain("const wrappedHtml = useMemo(() => wrapInBrandedEmail(htmlBody, previewText)");
-    expect(campaignEditorSource).toContain("htmlBody: wrappedHtml");
+    const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
+    expect(campaignEditorSource).toContain("wrapInBrandedEmail(htmlBody, previewText, campaignBranding)");
+    expect(campaignEditorSource).toContain("htmlBody, blocksJson: JSON.stringify(blocks), previewText");
     expect(campaignEditorSource).toContain("srcDoc={wrappedHtml}");
-    expect(emailLayoutSource).toContain('const title = headerTitle ?? "Course360™"');
+    expect(emailLayoutSource).toContain('const rawTitle = brandName?.trim() || headerTitle?.trim() || "Course360™"');
+    expect(emailCampaignRouterSource).toContain("buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext");
   });
 
   it("shares the paste-safe rich-text editor across lesson and page authoring without a separate email TipTap handler", () => {
