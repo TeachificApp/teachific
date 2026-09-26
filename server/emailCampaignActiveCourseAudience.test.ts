@@ -6,7 +6,8 @@ const routerSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", im
 
 describe("active course participant campaign audiences", () => {
   it("offers an active-access course audience selector", () => {
-    expect(editorSource).toContain("activeAccessCourseIds: number[]");
+    expect(editorSource).toContain('type AudienceFilter } from "@shared/emailCampaignAudience"');
+    expect(editorSource).toContain("selected={filter.activeAccessCourseIds}");
     expect(editorSource).toContain('label="Active Course Access"');
   });
 

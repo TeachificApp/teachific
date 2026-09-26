@@ -315,3 +315,10 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (scheduled campaign lifecycle)
 
 **Completed:** organization-local campaign scheduling now has a complete safe edit lifecycle. New schedules retain the selected organization-scoped sender profile. Editing a scheduled campaign preloads its organization-local delivery time and uses an active-organization `rescheduleCampaign` mutation rather than creating a duplicate campaign. The server validates the campaign owner, scheduled status, audience resources, sender profile, and future time; creates the replacement task before recording its ID; then retires the superseded task. A scheduled campaign cannot be silently downgraded through draft save/autosave or sent immediately alongside its pending schedule. Dashboard users can cancel a schedule back to a draft, including schedule metadata/task cleanup. Delivery also fails closed if the organization becomes inactive before execution. The server remains the authority for organization context, branding, audience resolution, and UTC conversion.
+
+
+## Implementation update — Sep 26, 2026 (list and engagement audience controls)
+
+**Completed:** The campaign editor now consumes the canonical shared `AudienceFilter` rather than maintaining a reduced local copy. It exposes organization-provided interest and email-list selectors, explicit list-only/union/intersection behavior, and sent-campaign open/click engagement selectors. The option endpoint returns lists and only sent campaigns for the server-resolved active organization.
+
+Before preview, draft save, immediate send, schedule, or reschedule resolves recipients, the server now also validates every selected engagement campaign ID against the same active organization and requires it to be sent. Browser values remain untrusted UI input; cross-organization, draft, scheduled, or otherwise invalid campaign IDs are rejected before recipient resolution.

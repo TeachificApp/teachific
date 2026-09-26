@@ -52,6 +52,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
 import type { ParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
 import { wrapInBrandedCampaignEmail } from "@shared/emailCampaignLayout";
+import { DEFAULT_AUDIENCE_FILTER, type AudienceFilter } from "@shared/emailCampaignAudience";
 import {
   formatUtcForOrganizationDateTimeInput,
   formatUtcForOrganizationSchedule,
@@ -250,17 +251,6 @@ function wrapInBrandedEmail(
     branding?.logoUrl,
   );
 }
-
-// ─── Audience filter types ────────────────────────────────────────────────────
-type InterestKey = "acs" | "adultEcho" | "pediatricEcho" | "fetalEcho" | "pocus";
-
-const INTEREST_OPTIONS: { key: InterestKey; label: string }[] = [
-  { key: "acs", label: "ACS" },
-  { key: "adultEcho", label: "Adult Echo" },
-  { key: "pediatricEcho", label: "Pediatric Echo" },
-  { key: "fetalEcho", label: "Fetal Echo" },
-  { key: "pocus", label: "POCUS" },
-];
 
 // ─── Lead Capture List Selector ─────────────────────────────────────────────
 function LeadCaptureListSelector({ listId, onChange }: { listId: number | null; onChange: (id: number | null) => void }) {
@@ -755,34 +745,9 @@ function BlockEditor({ blocks, onChange }: { blocks: Block[]; onChange: (b: Bloc
 }
 
 // ─── Audience filter builder ──────────────────────────────────────────────────
-interface AudienceFilter {
-  interests: InterestKey[];
-  roles: string[];
-  subscriptionType: "all" | "premium" | "free";
-  userStatus: "all" | "active" | "pending";
-  specificEmails: string[];
-  enrolledInCourseIds: number[];
-  purchasedProductIds: number[];
-  downloadedProductIds: number[];
-  inGroupIds: number[];
-  inCohortGroupIds: number[];
-  membershipPlanIds: number[];
-  bundleIds: number[];
-  workshopIds: number[];
-  workshopInstanceIds: number[];
-  webinarIds: number[];
-  submittedFormIds: number[];
-  completedCourseIds: number[];
-  activeAccessCourseIds: number[];
-  logic: "and" | "or";
-}
-
 const DEFAULT_FILTER: AudienceFilter = {
-  interests: [], roles: [], subscriptionType: "all", userStatus: "active",
-  specificEmails: [], enrolledInCourseIds: [], purchasedProductIds: [],
-  downloadedProductIds: [], inGroupIds: [], inCohortGroupIds: [],
-  membershipPlanIds: [], bundleIds: [], workshopIds: [], workshopInstanceIds: [], webinarIds: [],
-  submittedFormIds: [], completedCourseIds: [], activeAccessCourseIds: [], logic: "and",
+  ...DEFAULT_AUDIENCE_FILTER,
+  userStatus: "active",
 };
 
 function parseCampaignAudienceFilter(raw: string | null): AudienceFilter {
@@ -844,11 +809,6 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
     onChange({ ...filter, ...patch });
   }
 
-  function toggleInterest(key: InterestKey) {
-    const arr = filter.interests.includes(key) ? filter.interests.filter((k) => k !== key) : [...filter.interests, key];
-    update({ interests: arr });
-  }
-
   return (
     <Card className="border shadow-sm">
       <CardHeader className="pb-2 pt-4 px-5 cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -908,16 +868,24 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
             </div>
           </div>
 
-          {/* Interests */}
+          {options && (
+            <MultiSelect label="Interests" options={options.interests} selected={filter.interestIds} onChange={(v) => update({ interestIds: v })} />
+          )}
+
+          {options && (
+            <MultiSelect label="Email Lists" options={options.lists} selected={filter.listIds} onChange={(v) => update({ listIds: v })} />
+          )}
           <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Interests</label>
-            <div className="flex flex-wrap gap-1.5">
-              {INTEREST_OPTIONS.map(({ key, label }) => (
-                <button key={key} onClick={() => toggleInterest(key)} className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${filter.interests.includes(key) ? "bg-[#189aa1] text-white border-[#189aa1]" : "bg-white text-gray-600 border-gray-200 hover:border-[#189aa1]"}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <label className="text-xs text-gray-500 mb-1 block">List matching</label>
+            <Select value={filter.listMode} onValueChange={(v: "only" | "union" | "intersect") => update({ listMode: v })} disabled={filter.listIds.length === 0}>
+              <SelectTrigger className="text-sm h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="only">Only selected lists</SelectItem>
+                <SelectItem value="union">Selected lists or other filters</SelectItem>
+                <SelectItem value="intersect">Selected lists and other filters</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-gray-400">Choose one or more lists to enable list matching. Subscribed contacts only.</p>
           </div>
 
           {/* Course enrollment */}
@@ -959,6 +927,12 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
           )}
           {options && (
             <MultiSelect label="Submitted Form" options={options.forms} selected={filter.submittedFormIds} onChange={(v) => update({ submittedFormIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Opened a Sent Campaign" options={options.sentCampaigns} selected={filter.openedCampaignIds} onChange={(v) => update({ openedCampaignIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Clicked a Link in a Sent Campaign" options={options.sentCampaigns} selected={filter.clickedCampaignIds} onChange={(v) => update({ clickedCampaignIds: v })} />
           )}
 
           {/* Specific emails */}
