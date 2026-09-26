@@ -2754,7 +2754,12 @@ export const lmsLessonProgress = mysqlTable("lms_lesson_progress", {
   quizScore: int("quiz_score"),
   quizPassed: boolean("quiz_passed"),
   attempts: int("attempts").default(0).notNull(),
-});
+}, (table) => ({
+  // A learner has exactly one progress row for a lesson in an enrollment.
+  // This is the database primitive used by all concurrent-safe completion and
+  // quiz-attempt writes below.
+  enrollmentLessonUnique: uniqueIndex("lms_lesson_progress_enrollment_lesson_unique").on(table.enrollmentId, table.lessonId),
+}));
 export type LmsLessonProgress = typeof lmsLessonProgress.$inferSelect;
 export type InsertLmsLessonProgress = typeof lmsLessonProgress.$inferInsert;
 

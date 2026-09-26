@@ -1,6 +1,7 @@
-import { describe, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, describe, beforeEach, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 import { lmsCourses, lmsEnrollments, lmsInlineQuizAttempts, lmsInlineQuizResponses, lmsLessons, organizations } from "../drizzle/schema";
+import { resetInlineLessonQuizSchemaAssuranceForTests } from "./lib/ensureInlineLessonQuizSchema";
 
 const mockState = vi.hoisted(() => ({
   db: null as any,
@@ -57,6 +58,7 @@ function createDb({
   const writes: Array<{ table: unknown; values: unknown }> = [];
   const recordWrite = (table: unknown, values: unknown) => { writes.push({ table, values }); };
   const db = {
+    execute: async () => [],
     select: () => ({
       from: (table: unknown) => ({
         where: () => ({
@@ -129,10 +131,16 @@ function createDb({
 }
 
 describe("Course360 inline CME survey learner procedures", () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     mockState.activeOrgId = 1;
     mockState.db = null;
+    resetInlineLessonQuizSchemaAssuranceForTests();
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
+
+  afterEach(() => consoleErrorSpy.mockRestore());
 
   it("rejects an inline survey submission when the authenticated learner's active organization differs from the course", async () => {
     const fixture = createDb();
@@ -159,6 +167,24 @@ describe("Course360 inline CME survey learner procedures", () => {
       expect.objectContaining({ table: lmsInlineQuizAttempts, values: expect.objectContaining({ orgId: 1, userId: 44, enrollmentId: 14, courseId: 7, lessonId: 21, quizBlockId: "feedback-block" }) }),
       expect.objectContaining({ table: lmsInlineQuizResponses, values: [expect.objectContaining({ orgId: 1, attemptId: 91, questionKey: "recommend", questionText: "Recommend this course?", questionType: "survey_choice", answerValue: "Yes" })] }),
     ]);
+  });
+
+  it("returns a safe retry message without writing an attempt when mixed-version schema assurance fails", async () => {
+    const fixture = createDb();
+    fixture.db.execute = vi.fn(async () => {
+      throw new Error("table is unavailable during migration");
+    });
+    mockState.db = fixture.db;
+    const caller = lmsLearnerRouter.createCaller(createContext());
+
+    await expect(caller.submitInlineLessonQuiz({
+      courseSlug: "course-a", lessonId: 21, quizBlockId: "feedback-block",
+      responses: [{ questionKey: "recommend", answerValue: "Yes" }],
+    })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "Lesson survey storage is temporarily unavailable. Please try again shortly.",
+    });
+    expect(fixture.writes).toEqual([]);
   });
 
   it("rejects direct lesson completion when an enabled CME survey has no completed authorized attempt", async () => {

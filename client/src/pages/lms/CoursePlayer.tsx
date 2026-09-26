@@ -988,6 +988,7 @@ export default function CoursePlayer() {
   );
 
   const [optimisticCompleted, setOptimisticCompleted] = useState<Set<number>>(new Set());
+  const [optimisticOpened, setOptimisticOpened] = useState<Set<number>>(new Set());
   const markComplete = trpc.lmsLearner.markLessonComplete.useMutation({
     onSuccess: () => {
       utils.lmsLearner.getCoursePlayer.invalidate({ slug: slug! });
@@ -997,6 +998,21 @@ export default function CoursePlayer() {
       // Roll back optimistic update on server error
       setOptimisticCompleted(prev => { const next = new Set(prev); next.delete(vars.lessonId); return next; });
       toast.error(`Could not save progress: ${e.message}`);
+    },
+  });
+  const recordLessonOpened = trpc.lmsLearner.recordLessonOpened.useMutation({
+    onMutate: (vars) => {
+      setOptimisticOpened((previous) => new Set([...previous, vars.lessonId]));
+    },
+    onSuccess: () => {
+      utils.lmsLearner.getCoursePlayer.invalidate({ slug: slug! });
+    },
+    onError: (_error, vars) => {
+      setOptimisticOpened((previous) => {
+        const next = new Set(previous);
+        next.delete(vars.lessonId);
+        return next;
+      });
     },
   });
   const saveNote = trpc.lmsLearner.saveNote.useMutation({
@@ -1062,6 +1078,14 @@ export default function CoursePlayer() {
       if (first) setSelectedLessonId(first.id);
     }
   }, [data]);
+
+  // Opening a non-preview lesson is enough to satisfy content-authored
+  // prerequisite gates that do not require explicit completion. Persist this
+  // through the server so opening a lesson in another session remains valid.
+  useEffect(() => {
+    if (!selectedLessonId || !slug || !data?.enrollment || data.isAdminPreview) return;
+    recordLessonOpened.mutate({ lessonId: selectedLessonId, courseSlug: slug });
+  }, [selectedLessonId, slug, data?.enrollment?.id, data?.isAdminPreview]); // mutation is stable across renders
 
   const prevProgressPct = useRef<number>(0);
   useEffect(() => {
@@ -1271,7 +1295,7 @@ export default function CoursePlayer() {
   //     the lesson must be in completedIds (i.e. explicitly marked complete).
   //   - Otherwise (no explicit completion mechanism): the gate is satisfied when
   //     the student has OPENED the lesson (i.e. it exists in progress, even without completedAt).
-  const openedIds = new Set(progress.map((p: any) => p.lessonId));
+  const openedIds = new Set([...progress.map((p: any) => p.lessonId), ...optimisticOpened]);
   // Drip bypass: must be declared BEFORE prereqLockedIds which uses it
   const showStudentView = adminPreviewStudent || !isAdmin;
   const dripBypassed = isAdmin && !showStudentView;

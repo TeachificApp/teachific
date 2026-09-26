@@ -36,6 +36,7 @@ import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { getFreePreviewCourseUrl } from "../lib/freePreviewUrl";
 import { resolvePublicOrganizationScope } from "../lib/publicOrgRequestScope";
+import { ensureInlineLessonQuizSchema } from "../lib/ensureInlineLessonQuizSchema";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getActiveEnrollment } from "../lib/enrollmentAccess";
 import {
@@ -948,6 +949,20 @@ export const lmsLearnerRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Please answer every required visible survey question before continuing" });
       }
 
+      // Migration 0088 normally creates these append-only tables. If a replica
+      // is temporarily behind during a mixed-version deployment, make a bounded
+      // post-authorization assurance attempt rather than exposing a raw SQL error
+      // or writing an unscoped learner record.
+      try {
+        await ensureInlineLessonQuizSchema(db);
+      } catch (error) {
+        console.error("[InlineLessonQuiz] Schema assurance failed", error);
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Lesson survey storage is temporarily unavailable. Please try again shortly.",
+        });
+      }
+
       const [attempt] = await db.transaction(async (tx) => {
         const [created] = await tx.insert(lmsInlineQuizAttempts).values({
           orgId: course.orgId,
@@ -1110,6 +1125,47 @@ export const lmsLearnerRouter = router({
     }),
 
   /** Mark a lesson complete */
+  recordLessonOpened: protectedProcedure
+    .input(z.object({ lessonId: z.number(), courseSlug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const lessonCourseId = lesson.courseId ?? (lesson.sectionId
+        ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+        : null);
+      if (lessonCourseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+      }
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment required" });
+
+      const openedAt = new Date();
+      await db.insert(lmsLessonProgress).values({
+        orgId: course.orgId,
+        enrollmentId: enrollment.id,
+        lessonId: input.lessonId,
+        status: "in_progress",
+        lastAccessedAt: openedAt,
+      }).onDuplicateKeyUpdate({
+        // Do not overwrite an authoritative completion during a concurrent open.
+        set: {
+          status: sql`IF(${lmsLessonProgress.status} = 'not_started', 'in_progress', ${lmsLessonProgress.status})`,
+          lastAccessedAt: openedAt,
+        },
+      });
+      return { success: true };
+    }),
+
+  /** Mark a lesson complete */
   markLessonComplete: protectedProcedure
     .input(z.object({ lessonId: z.number(), courseSlug: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -1133,9 +1189,8 @@ export const lmsLearnerRouter = router({
       if (lessonCourseId !== course.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
       }
-      const [enrollment] = await db.select().from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
-      if (!enrollment || enrollment.orgId !== course.orgId) throw new TRPCError({ code: "FORBIDDEN" });
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment required" });
 
       const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
         .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
@@ -1166,10 +1221,24 @@ export const lmsLearnerRouter = router({
       if (existing) {
         wasAlreadyComplete = !!existing.completedAt;
         if (!existing.completedAt) {
-          await db.update(lmsLessonProgress).set({ completedAt: new Date() }).where(eq(lmsLessonProgress.id, existing.id));
+          await db.update(lmsLessonProgress).set({ status: "completed", completedAt: new Date() }).where(eq(lmsLessonProgress.id, existing.id));
         }
       } else {
-        await db.insert(lmsLessonProgress).values({ enrollmentId: enrollment.id, lessonId: input.lessonId, completedAt: new Date() });
+        await db.insert(lmsLessonProgress).values({
+          orgId: course.orgId,
+          enrollmentId: enrollment.id,
+          lessonId: input.lessonId,
+          status: "completed",
+          completedAt: new Date(),
+          lastAccessedAt: new Date(),
+        }).onDuplicateKeyUpdate({
+          // A concurrent open or completion write must retain the first
+          // completion timestamp instead of creating a duplicate row.
+          set: {
+            status: "completed",
+            completedAt: sql`COALESCE(${lmsLessonProgress.completedAt}, VALUES(${lmsLessonProgress.completedAt}))`,
+          },
+        });
       }
       await recalcProgress(db, enrollment.id);
       // Log lesson completion to unified activity log (fire-and-forget)
@@ -1200,9 +1269,21 @@ export const lmsLearnerRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
-      const [enrollment] = await db.select().from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id))).limit(1);
-      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+      const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const lessonCourseId = lesson.courseId ?? (lesson.sectionId
+        ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+        : null);
+      if (lessonCourseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+      }
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment required" });
 
       const [quiz] = await db.select().from(lmsQuizzes).where(eq(lmsQuizzes.lessonId, input.lessonId)).limit(1);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
@@ -1218,22 +1299,30 @@ export const lmsLearnerRouter = router({
       const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
       const passed = score >= quiz.passingScore;
 
-      // Upsert progress
-      const [existing] = await db.select().from(lmsLessonProgress)
-        .where(and(eq(lmsLessonProgress.enrollmentId, enrollment.id), eq(lmsLessonProgress.lessonId, input.lessonId))).limit(1);
-      if (existing) {
-        await db.update(lmsLessonProgress).set({
-          quizScore: score, quizPassed: passed,
-          completedAt: passed ? new Date() : existing.completedAt,
-          attempts: (existing.attempts ?? 0) + 1,
-        }).where(eq(lmsLessonProgress.id, existing.id));
-      } else {
-        await db.insert(lmsLessonProgress).values({
-          enrollmentId: enrollment.id, lessonId: input.lessonId,
-          quizScore: score, quizPassed: passed,
-          completedAt: passed ? new Date() : null, attempts: 1,
-        });
-      }
+      // The unique enrollment/lesson key gives concurrent submissions one
+      // authoritative row while retaining the number of actual attempts.
+      await db.insert(lmsLessonProgress).values({
+        orgId: course.orgId,
+        enrollmentId: enrollment.id,
+        lessonId: input.lessonId,
+        status: passed ? "completed" : "in_progress",
+        lastAccessedAt: new Date(),
+        quizScore: score,
+        quizPassed: passed,
+        completedAt: passed ? new Date() : null,
+        attempts: 1,
+      }).onDuplicateKeyUpdate({
+        set: {
+          status: passed ? "completed" : sql`IF(${lmsLessonProgress.status} = 'not_started', 'in_progress', ${lmsLessonProgress.status})`,
+          lastAccessedAt: new Date(),
+          quizScore: score,
+          quizPassed: passed,
+          completedAt: passed
+            ? sql`COALESCE(${lmsLessonProgress.completedAt}, VALUES(${lmsLessonProgress.completedAt}))`
+            : lmsLessonProgress.completedAt,
+          attempts: sql`${lmsLessonProgress.attempts} + 1`,
+        },
+      });
       if (passed) await recalcProgress(db, enrollment.id);
       return { score, passed, passingScore: quiz.passingScore, results };
     }),

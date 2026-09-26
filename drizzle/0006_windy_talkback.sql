@@ -1,0 +1,1 @@
+ALTER TABLE `lms_lesson_progress` ADD CONSTRAINT `lms_lesson_progress_enrollment_lesson_unique` UNIQUE(`enrollment_id`,`lesson_id`);

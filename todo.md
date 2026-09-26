@@ -59,6 +59,7 @@
 - [x] Harden Course360 course-participant CSV exports with active-organization ownership checks, nonfinancial profile fields, formula escaping, and payment/session exclusion
 - [x] Scope public workshop discovery to the verified learner organization and remove capacity, enrollment-count, remaining-seat, and meeting-link disclosure from learner responses
 - [x] Remove past workshop instances, cohort groups, and live sessions from public enrollment choices while preserving staff history and excluding capacity and meeting-link disclosure
+- [x] Make course lesson-open, completion, and quiz-attempt progress writes race-safe with an enrollment-and-lesson unique key, active organization/enrollment authorization, and first-completion preservation
 - [x] Derive direct funnel-CTA checkout organization and success/cancellation URLs from the selected product record rather than caller-provided origins
 - [x] Derive upgrade-prompt course, download, and physical-product checkout return URLs from trusted product organization records rather than caller-provided origins
 - [x] Resolve digital-bundle checkout success and cancellation URLs from the selected bundle’s verified organization domain rather than request-header origins
@@ -189,6 +190,7 @@
 - [x] Distinguish non-scoring inline lesson survey mode from grading for all response-capable question types while preserving the separate CME required-completion gate
 - [x] Verify non-scoring survey submissions omit grading feedback across every supported legacy inline response type
 - [x] Restore authenticated learners’ latest authorized inline lesson survey answers and local in-progress drafts without weakening active-organization, enrollment, lesson, or block checks
+- [x] Add bounded mixed-version schema assurance for organization- and enrollment-owned inline lesson survey persistence, returning a safe retry error without creating learner records when storage is unavailable
 - [x] Scope reusable lesson templates to their owning organization and add a safe append-only saved-template picker to the active lesson editor
 - [x] Normalize remaining visible Quiz Creator platform-only Teachific references to Course360 without changing organization branding or persisted identifiers
 - [x] Audit Quiz Creator visible branding surfaces and document intentionally retained legacy identifiers separately from user-facing Course360 labels
