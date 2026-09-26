@@ -93,6 +93,11 @@ export type BlockType =
   | "conditional_text"
   | "sdms_cme_module"
   | "enrollment_counter"
+  | "lms_course_embed"
+  | "lms_quiz_embed"
+  | "lms_course_card"
+  | "countdown_enrollment"
+  | "social_proof_live"
   | "quiz_embed"
   | "remaining_seats"
   | "included_items_auto"
@@ -167,7 +172,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
         <div
           className="relative px-4 sm:px-8 py-10 sm:py-16 overflow-hidden w-full box-border"
           style={{ ...heroBg, ...heroTopBorderStyle, ...heroBottomBorderStyle, color: d.textColor ?? "#fff", textAlign: hasInlineMedia && isHorizontal ? "left" as const : (d.align ?? "left"), cursor: heroClickHandler ? "pointer" : undefined, minHeight: `${heroMinHeight}px`, ...(heroMaxHeight ? { maxHeight: heroMaxHeight, overflow: "hidden" } : {}) }}
-          onClick={e => { handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage); if (!( e.target as HTMLElement).closest('[data-cta-btn]')) heroClickHandler?.(); }}
+          onClick={e => { handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined); if (!( e.target as HTMLElement).closest('[data-cta-btn]')) heroClickHandler?.(); }}
         >
           {bgType === "video" && d.videoUrl && (
             <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-60"><source src={d.videoUrl} /></video>
@@ -228,7 +233,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
     case "text":
       return (
         <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff", color: d.textColor ?? "#1a1a1a" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}>
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}>
           <CC style={{ textAlign: d.align ?? "left" }}><div className="prose" dangerouslySetInnerHTML={{ __html: d.html ?? "" }} /></CC>
         </div>
       );
@@ -570,7 +575,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
         </button>
       );
       return (
-        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC className="text-center">
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#fff" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}><CC className="text-center">
           {d.headline && <h2 className="text-3xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {d.subtext && <p className="text-gray-600 mb-6 max-w-xl mx-auto" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {priceAbove && priceBlock}
@@ -584,7 +589,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
     case "cta_standalone": {
       const standaloneCtaBeh = d.ctaBehavior ?? (d.ctaLink && d.ctaLink.startsWith("http") ? "url" : "direct_checkout");
       return (
-        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC style={{ textAlign: d.align ?? "center" }}>
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}><CC style={{ textAlign: d.align ?? "center" }}>
           {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
@@ -636,7 +641,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
     case "cta_optin": {
       const optinCtaBeh = d.ctaBehavior ?? "direct_checkout";
       return (
-        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC style={{ textAlign: d.align ?? "center" }}>
+        <div className="py-8 sm:py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa" }} onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}><CC style={{ textAlign: d.align ?? "center" }}>
           {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
           {(d.showStrikethrough && d.strikethroughPrice) && (
@@ -948,7 +953,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       };
       return (
         <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC>
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}><CC>
           <div className="flex flex-col md:flex-row gap-8 items-center">
             <div className="min-w-0" style={{ flex: `${d.leftRatio ?? 50} 1 0%` }}>{renderCol("left")}</div>
             <div className="min-w-0" style={{ flex: `${100 - (d.leftRatio ?? 50)} 1 0%` }}>{renderCol("right")}</div>
@@ -960,7 +965,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       const cols = d.columns ?? [{ html: "" }, { html: "" }];
       return (
         <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC>
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}><CC>
           <div className="grid" style={{ gridTemplateColumns: `repeat(${cols.length}, 1fr)`, gap: `${d.gap ?? 32}px` }}>
             {cols.map((col: any, i: number) => (
               <div key={i} className="prose" dangerouslySetInnerHTML={{ __html: col.html ?? "" }} />
@@ -973,7 +978,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       const divStyle = d.showDividers ? { borderRightWidth: `${d.dividerWidth ?? 1}px`, borderRightStyle: d.dividerStyle ?? "solid", borderRightColor: d.dividerColor ?? "#e5e7eb", borderRadius: d.dividerRadius ? `${d.dividerRadius}px` : undefined } : {};
       return (
         <div className="py-6 sm:py-8" style={{ backgroundColor: d.bgColor ?? "#fff" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined, onCheckoutPage)}><CC>
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, undefined)}><CC>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch">
             <div className="prose prose-sm pr-4" style={divStyle} dangerouslySetInnerHTML={{ __html: d.col1Html ?? "" }} />
             <div className="prose prose-sm px-4" style={divStyle} dangerouslySetInnerHTML={{ __html: d.col2Html ?? "" }} />
@@ -1974,7 +1979,8 @@ function useCountUp(target: number, duration = 1800) {
 function EnrollmentCounterBlockPreview({ d }: { d: Record<string, any> }) {
   const countType = d.countType ?? "site_users";
   const entityId = d.entityId ? Number(d.entityId) : undefined;
-  const { data, isLoading } = trpc.funnel.getEnrollmentCount.useQuery(
+  const funnelRouter = trpc.funnel as any;
+  const { data, isLoading } = funnelRouter.getEnrollmentCount.useQuery(
     { countType, entityId },
     { staleTime: 60_000 }
   );
@@ -2038,11 +2044,11 @@ function InstructorBlockPreview({ d }: { d: Record<string, any> }) {
   const instructorId = d.instructorId ? Number(d.instructorId) : null;
   const { data: instructors } = trpc.lms.listInstructors.useQuery();
   const instructor = instructorId ? instructors?.find((i: any) => i.id === instructorId) : null;
-  const name = instructor?.name ?? d.name ?? "Instructor Name";
+  const name = instructor?.displayName ?? d.name ?? "Instructor Name";
   const title = instructor?.title ?? d.title ?? "";
   const bio = instructor?.bio ?? d.bio ?? "";
   const avatarUrl = instructor?.avatarUrl ?? d.avatarUrl ?? "";
-  const website = instructor?.website ?? d.website ?? "";
+  const website = d.website ?? "";
   const layout = d.layout ?? "horizontal";
   const showBio = d.showBio !== false;
   const showWebsite = d.showWebsite !== false;

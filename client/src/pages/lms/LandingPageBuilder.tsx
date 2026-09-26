@@ -1032,7 +1032,7 @@ function CTAActionPicker({
     { courseId: poCourseId! },
     { enabled: behavior === "pricing_option" && !!poCourseId }
   );
-  const poOptions = (poOptionsData ?? []) as Array<{ id: number; label: string; pricingType: string; price: number }>;
+  const poOptions = (poOptionsData ?? []) as unknown as Array<{ id: number; label: string; pricingType: string; price: number }>;
   return (
     <div className="space-y-2">
       <div>
@@ -2393,7 +2393,7 @@ function FormEmbedFormPicker({ d, set }: { d: Record<string, any>; set: (field: 
           const id = Number(e.target.value) || null;
           const form = forms.find((f: any) => f.id === id);
           set("formId", id);
-          set("formSlug", form?.publicSlug ?? "");
+          set("formSlug", form?.slug ?? "");
           set("formName", form?.name ?? "");
         }}
         className="w-full h-8 text-xs rounded border border-gray-200 px-2"
@@ -2435,7 +2435,14 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
   const [uploading, setUploading] = useState<string | null>(null);
   const uploadMedia = trpc.auth.uploadPageMedia.useMutation();
   const { data: productCatalog } = trpc.funnel.listAllProducts.useQuery({ orgSlug: getSubdomain() ?? undefined }, { staleTime: 60_000 });
-  const { data: orderBumpsList } = trpc.orderBumpsAdmin.list.useQuery(undefined, { staleTime: 60_000 });
+  const { data: orderBumpsData } = trpc.orderBumpsAdmin.list.useQuery(undefined, { staleTime: 60_000 });
+  const orderBumpsList = useMemo(() => (orderBumpsData ?? []).map((b: any) => ({
+    id: b.id,
+    headline: b.headline ?? b.name ?? null,
+    slug: b.slug ?? String(b.id),
+    bumpType: b.bumpType ?? b.bumpProductType ?? "course",
+    bumpProductId: b.bumpProductId,
+  })), [orderBumpsData]);
   const { data: funnelList } = trpc.funnel.list.useQuery(undefined, { staleTime: 60_000 });
   // Sensors for drag-and-drop (must be at top level, not inside switch)
   const reviewSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -2461,7 +2468,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
   const blockSpecific = (() => { switch (block.type) {
     case "hero": {
       const bgType = d.bgType ?? "color";
-      const buttons: Array<{ text: string; color: string; textColor: string; link: string; style: string; animation?: string; behavior?: string; leadCapture?: boolean; leadModalTitle?: string; leadModalSubtext?: string; leadTags?: string; campaignId?: number | null; showStrikethrough?: boolean; strikethroughPrice?: string; showOptOut?: boolean; optOutText?: string; optOutUrl?: string; checkoutProductType?: string; checkoutProductId?: number; checkoutPromoCode?: string }> =
+      const buttons: Array<Record<string, any>> =
         d.buttons?.length ? d.buttons : [{ text: d.ctaText ?? "Enroll Now", color: d.ctaColor ?? "#fff", textColor: d.ctaTextColor ?? "#179ca3", link: "", style: "filled" }];
       const setBtn = (idx: number, key: string, val: any) => { const next = buttons.map((b, i) => i === idx ? { ...b, [key]: val } : b); onChangeRef.current({ ...dataRef.current, buttons: next }); };
       const setBtnMulti = (idx: number, patch: Record<string, any>) => { const next = buttons.map((b, i) => i === idx ? { ...b, ...patch } : b); onChangeRef.current({ ...dataRef.current, buttons: next }); };
@@ -3329,7 +3336,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     }
     case "product_offer_stack": {
-      const products: Array<{ type: "digital" | "physical"; title: string; description: string; price: string; imageUrl?: string; ctaText: string; ctaLink?: string; fulfillment?: string }> = d.products ?? [];
+      const products = (d.products ?? []) as Array<Record<string, any>>;
       return (
         <div className="space-y-3">
           <BSTextField data={d} onSet={set} label="Headline" field="headline" />
@@ -4557,7 +4564,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     }
     case "pricing_cards": {
-      const pcTiers: Array<{ name: string; price: string; interval?: string; description?: string; badge?: string; features: string[]; ctaText: string; ctaLink?: string; ctaBehavior?: string; ctaEmailAddress?: string; ctaScrollAnchor?: string; ctaPopupUrl?: string; ctaDownloadUrl?: string; checkoutProductType?: string; checkoutProductId?: number | null; highlighted?: boolean }> = d.tiers ?? [];
+      const pcTiers = (d.tiers ?? []) as Array<Record<string, any>>;
       const setTier = (ti: number, patch: Record<string, any>) => set("tiers", pcTiers.map((t, j) => j === ti ? { ...t, ...patch } : t));
       return (
         <div className="space-y-3">
@@ -4598,10 +4605,10 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                       <button onClick={() => setTier(ti, { features: [...(tier.features ?? []), "New feature"] })} className="text-[10px] text-[var(--org-primary)] flex items-center gap-0.5"><Plus size={10} /> Add</button>
                     </div>
                     <div className="space-y-1">
-                      {(tier.features ?? []).map((feat, fi) => (
+                      {((tier.features ?? []) as string[]).map((feat: string, fi: number) => (
                         <div key={fi} className="flex items-center gap-1">
-                          <DebouncedInput value={feat} onChange={v => setTier(ti, { features: (tier.features ?? []).map((f, k) => k === fi ? v : f) })} className="h-6 text-[10px] flex-1" placeholder="Feature" />
-                          <button onClick={() => setTier(ti, { features: (tier.features ?? []).filter((_, k) => k !== fi) })} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={10} /></button>
+                          <DebouncedInput value={feat} onChange={v => setTier(ti, { features: (tier.features ?? []).map((f: string, k: number) => k === fi ? v : f) })} className="h-6 text-[10px] flex-1" placeholder="Feature" />
+                          <button onClick={() => setTier(ti, { features: (tier.features ?? []).filter((_: string, k: number) => k !== fi) })} className="text-red-400 hover:text-red-600 flex-shrink-0"><X size={10} /></button>
                         </div>
                       ))}
                     </div>
@@ -4807,7 +4814,8 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
         </div>
       );
     case "lms_course_embed": {
-      const { data: courses } = trpc.lmsAdmin.listCourses.useQuery();
+      const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 200 });
+      const courses = coursesData?.courses ?? [];
       return (
         <div className="space-y-3">
           <div>
@@ -4828,13 +4836,13 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     }
     case "lms_quiz_embed": {
-      const { data: quizzes } = trpc.quiz.list.useQuery();
+      const { data: quizzes } = trpc.quizMaker.listQuizzes.useQuery();
       return (
         <div className="space-y-3">
           <div>
             <label className="text-xs text-gray-500 block mb-1">Link to Quiz</label>
             <select value={d.quizId ?? ""} onChange={e => {
-              const q = (quizzes ?? []).find((x: any) => String(x.id) === e.target.value);
+              const q = (quizzes ?? []).find((x: any) => String(x.id) === e.target.value) as any;
               if (q) { set("quizId", q.id); set("quizTitle", q.title); set("questionCount", q.questionCount ?? 0); set("passingScore", q.passingScore ?? 70); }
               else set("quizId", e.target.value ? Number(e.target.value) : null);
             }} className="w-full h-8 text-xs rounded border border-gray-200 px-2">
@@ -4850,7 +4858,8 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     }
     case "lms_course_card": {
-      const { data: courses } = trpc.lmsAdmin.listCourses.useQuery();
+      const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 200 });
+      const courses = coursesData?.courses ?? [];
       const selectedIds: number[] = (d.cards ?? []).map((c: any) => c.id).filter(Boolean);
       return (
         <div className="space-y-3">
@@ -5497,7 +5506,7 @@ export default function LandingPageBuilder() {
   useEffect(() => {
     if (!lpData || hasLoaded) return;
     setHasLoaded(true);
-    setCourseInfo({ title: lpData.courseTitle, slug: lpData.courseSlug, price: lpData.coursePrice, orgSlug: (lpData as any).orgSlug, orgCustomDomain: (lpData as any).orgCustomDomain, orgDomainVerificationStatus: (lpData as any).orgDomainVerificationStatus });
+    setCourseInfo({ title: lpData.courseTitle, slug: lpData.courseSlug, price: lpData.coursePrice == null ? undefined : Number(lpData.coursePrice), orgSlug: (lpData as any).orgSlug, orgCustomDomain: (lpData as any).orgCustomDomain, orgDomainVerificationStatus: (lpData as any).orgDomainVerificationStatus });
     // Initialize SEO fields once per page load
     if (!seoInitialized.current) {
       seoInitialized.current = true;
@@ -5532,7 +5541,10 @@ export default function LandingPageBuilder() {
   }, [lpData]);
 
   const saveBlocks = trpc.lmsAdmin.saveLandingPageBlocks.useMutation({
-    onSuccess: () => toast.success("Landing page saved!"),
+    onSuccess: () => {
+      lpUtils.lmsAdmin.getLandingPageBlocks.invalidate({ courseId: numericCourseId });
+      toast.success("Landing page saved!");
+    },
     onError: (e: any) => toast.error(`Save failed: ${e.message}`),
   });
 
@@ -5828,8 +5840,8 @@ export default function LandingPageBuilder() {
   const catalogByCat = BLOCK_CATALOG.filter(c => c.category === activeCat);
 
   // Block picker: fetch courses with landing blocks (for "Copy from Other Pages" tab)
-  const { data: coursesWithBlocks } = trpc.lmsAdmin.getCoursesWithLandingBlocks.useQuery(
-    landingBlockOrgInput,
+  const { data: coursesWithBlocks } = (trpc.lmsAdmin.getCoursesWithLandingBlocks as any).useQuery(
+    orgId ? { orgId } : {},
     { enabled: addMenuOpen && pickerTab === "from_pages" && !!orgId }
   );
   const sourceCourseBlocks = useMemo<Block[]>(() => {
@@ -7647,8 +7659,9 @@ function LessonAssignmentBlockSettings({ d, set }: { d: Record<string, any>; set
 // ─── Upgrade Prompt Block Settings ────────────────────────────────────────────
 function UpgradePromptBlockSettings({ d, set }: { d: Record<string, any>; set: (key: string, value: any) => void }) {
   const { data: coursesData } = trpc.lms.listCourses.useQuery({ pageSize: 100 });
-  const { data: downloadsData } = trpc.downloads.list.useQuery({});
-  const { data: productsData } = trpc.products.list.useQuery({});
+  const { data: catalogData = [] } = trpc.funnel.listAllProducts.useQuery({});
+  const downloadsData = { products: (catalogData as any[]).filter(p => p.type === "download") };
+  const productsData = { products: (catalogData as any[]).filter(p => p.type !== "download") };
 
   const productType: string = d.productType ?? "course";
   const discountType: string = d.discountType ?? "none";

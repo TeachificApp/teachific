@@ -1,11 +1,12 @@
 import { z } from "zod";
-import { eq, asc, like, and, desc } from "drizzle-orm";
+import { eq, asc, like, and, desc, getTableColumns } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb, getOrgIdForUser, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
+import { lmsLandingPageRouter } from "./lmsQuizLandingRouter";
 import { assertCourseOwnership } from "./lmsHelpers";
 import {
   getLmsCertificateTemplatesByOrg,
@@ -273,12 +274,14 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       const [inserted] = await db.insert(blockTemplates).values({
         name: input.name,
         tags: input.tags ?? null,
-        blocks: input.blocks,
-        thumbnailUrl: input.thumbnailUrl ?? null,
-        templateType: "lesson",
+        description: input.thumbnailUrl ?? null,
+        blockType: "lesson",
+        blockData: input.blocks,
+        orgId,
         createdByUserId: ctx.user.id,
       });
       return { id: (inserted as any).insertId, success: true };
@@ -307,7 +310,7 @@ const _lmsAdminBaseRouter = router({
       if (input.search) conditions.push(like(lmsCourses.title, `%${input.search}%`));
       const offset = (input.page - 1) * input.pageSize;
       const rows = await db.select({
-        ...lmsCourses,
+        ...getTableColumns(lmsCourses),
         cmeStatus: cmeActivityForms.cmeStatus,
       })
         .from(lmsCourses)
@@ -350,6 +353,7 @@ const _lmsCertificateTemplatesRouter = router({
     .query(async ({ ctx, input }) => {
       const template = await getLmsCertificateTemplateById(input.id);
       if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      if (template.orgId == null) throw new TRPCError({ code: "FORBIDDEN", message: "Global templates are not editable here." });
       await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
       return template;
     }),
@@ -410,6 +414,7 @@ const _lmsCertificateTemplatesRouter = router({
       const { id, ...data } = input;
       const template = await getLmsCertificateTemplateById(id);
       if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      if (template.orgId == null) throw new TRPCError({ code: "FORBIDDEN", message: "Global templates are not editable here." });
       await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
       return updateLmsCertificateTemplate(id, data as any);
     }),
@@ -418,6 +423,7 @@ const _lmsCertificateTemplatesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const template = await getLmsCertificateTemplateById(input.id);
       if (!template) throw new TRPCError({ code: "NOT_FOUND" });
+      if (template.orgId == null) throw new TRPCError({ code: "FORBIDDEN", message: "Global templates are not deletable here." });
       await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
       await deleteLmsCertificateTemplate(input.id);
       return { ok: true };
@@ -462,8 +468,8 @@ const _lmsCertificateTemplatesRouter = router({
     .input(z.object({ filename: z.string(), contentType: z.string() }))
     .mutation(async ({ input }) => {
       const key = `certificate-assets/${Date.now()}-${input.filename}`;
-      const { url: uploadUrl } = await storagePresignedPut(key, input.contentType);
-      const publicUrl = uploadUrl.split("?")[0];
+      const { uploadUrl, fileUrl } = await storagePresignedPut(key, input.contentType);
+      const publicUrl = fileUrl;
       return { uploadUrl, publicUrl, key };
     }),
 });
@@ -474,5 +480,6 @@ export const lmsAdminRouter = router({
   ...lmsCourseBuilderRouter._def.procedures,
   ...lmsEnrollmentAdminRouter._def.procedures,
   ...lmsCohortAdminRouter._def.procedures,
+  ...lmsLandingPageRouter._def.procedures,
   ..._lmsCertificateTemplatesRouter._def.procedures,
 });

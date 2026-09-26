@@ -12,6 +12,8 @@ import { USER_PARAM_TAGS } from "@/lib/userUrlParams";
 interface UserParamTagsHelperProps {
   /** Optional extra className for the wrapper */
   className?: string;
+  /** Optional caller context retained for editor compatibility */
+  context?: string;
   /** If true, shows a compact single-line chip row instead of the full table */
   compact?: boolean;
 }

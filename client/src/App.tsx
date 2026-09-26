@@ -328,8 +328,8 @@ function AdminRouter() {
           <Route path="/admin">{() => { window.location.replace("/platform-admin"); return null; }}</Route>
 
           {/* ── Products ── */}
-          <Route path="/lms/manage/:tab" component={CourseBuilderPage} />
-          <Route path="/lms/manage" component={CourseBuilderPage} />
+          <Route path="/lms/manage/:tab">{({ tab }) => <CourseBuilderPage tab={tab} />}</Route>
+          <Route path="/lms/manage">{() => <CourseBuilderPage />}</Route>
           <Route path="/lms/courses">{() => <CoursesPage />}</Route>
           <Route path="/lms/courses/new" component={CourseEditorPage} />
           <Route path="/lms/courses/:id/curriculum" component={CourseEditorPage} />
@@ -352,7 +352,7 @@ function AdminRouter() {
           <Route path="/products/bundles" component={BundlesPage} />
           <Route path="/products/bundles/:id/edit">{() => <BundleEditorPage />}</Route>
           <Route path="/products/physical">{() => <PhysicalProductsAdmin />}</Route>
-          <Route path="/products/workshops" component={WorkshopsPage} />
+          <Route path="/products/workshops">{() => <WorkshopsPage />}</Route>
           <Route path="/lms/cme" component={CmeManagementPage} />
           <Route path="/lms/forms" component={FormsPage} />
           <Route path="/lms/forms/:id/responses" component={FormResponsesPage} />
@@ -762,6 +762,7 @@ function FullScreenEditorRouter() {
       <Route path="/lms/courses/:id/after_purchase" component={CourseEditorPage} />
       <Route path="/lms/courses/:id/thank-you-builder" component={PageBuilderPage} />
       <Route path="/lms/courses/:id/page-builder" component={PageBuilderPage} />
+      <Route path="/lms/courses/:courseId/landing-builder">{() => <LandingPageBuilder />}</Route>
       <Route path="/lms/courses/:id" component={CourseEditorPage} />
       <Route path="/admin/downloads/new">{() => <DigitalProductEditorPage />}</Route>
       <Route path="/admin/downloads/:id">{() => <DigitalProductEditorPage />}</Route>

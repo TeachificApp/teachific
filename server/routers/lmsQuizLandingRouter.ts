@@ -83,7 +83,7 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 
-async function requireLessonQuizOwnership(ctx: any, lessonId: number) {
+async function requireLessonQuizOwnership(ctx: any, lessonId: number): Promise<{ courseId: number }> {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   const [lesson] = await db.select({ courseId: lmsLessons.courseId })
@@ -91,8 +91,9 @@ async function requireLessonQuizOwnership(ctx: any, lessonId: number) {
     .where(eq(lmsLessons.id, lessonId))
     .limit(1);
   if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found." });
+  if (lesson.courseId == null) throw new TRPCError({ code: "BAD_REQUEST", message: "Lesson is not associated with a course." });
   await assertCourseOwnership(ctx, lesson.courseId);
-  return lesson;
+  return { courseId: lesson.courseId };
 }
 
 async function requireLegacyQuizOwnership(ctx: any, quizId: number) {
@@ -173,14 +174,18 @@ export const lmsQuizLandingRouter = router({
     .input(z.object({ lessonId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      await requireLessonQuizOwnership(ctx, input.lessonId);
+      const { courseId } = await requireLessonQuizOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
       let [quiz] = await db.select().from(lmsQuizzes).where(eq(lmsQuizzes.lessonId, input.lessonId)).limit(1);
       // Auto-create a quiz record if none exists for this lesson
       if (!quiz) {
         const [lesson] = await db.select({ title: lmsLessons.title }).from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
         const [result] = await db.insert(lmsQuizzes).values({
+          orgId: course.orgId,
+          courseId,
           lessonId: input.lessonId,
           title: lesson?.title ?? "Quiz",
           passingScore: 70,
@@ -527,6 +532,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, ...updates } = input;
@@ -545,6 +551,7 @@ Rules:
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lp] = await db.select({
@@ -606,9 +613,15 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const blocksJson = JSON.stringify(input.blocks);
+      const [owningCourse] = await db.select({ orgId: lmsCourses.orgId })
+        .from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!owningCourse?.orgId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      }
       const [existing] = await db.select({ id: lmsLandingPages.id })
         .from(lmsLandingPages).where(eq(lmsLandingPages.courseId, input.courseId)).limit(1);
       if (existing) {
@@ -646,10 +659,25 @@ Rules:
         }
       };
       collectGroupCourseIds(input.blocks);
-      for (const cid of courseIdsToEnableGroup) {
-        await db.update(lmsCourses).set({ allowGroupPurchase: true }).where(eq(lmsCourses.id, cid));
+      if (courseIdsToEnableGroup.size > 0) {
+        const referencedCourseIds = [...courseIdsToEnableGroup];
+        const ownedReferencedCourses = await db.select({ id: lmsCourses.id })
+          .from(lmsCourses)
+          .where(and(inArray(lmsCourses.id, referencedCourseIds), eq(lmsCourses.orgId, owningCourse.orgId)));
+        if (ownedReferencedCourses.length !== referencedCourseIds.length) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Landing-page checkout references must belong to the active organization." });
+        }
+        for (const cid of referencedCourseIds) {
+          await db.update(lmsCourses).set({ allowGroupPurchase: true })
+            .where(and(eq(lmsCourses.id, cid), eq(lmsCourses.orgId, owningCourse.orgId)));
+        }
       }
-      return { success: true };
+      const [saved] = await db.select({ blocks: lmsLandingPages.blocks, updatedAt: lmsLandingPages.updatedAt })
+        .from(lmsLandingPages).where(eq(lmsLandingPages.courseId, input.courseId)).limit(1);
+      if (!saved || saved.blocks !== blocksJson) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Landing page could not be verified after save." });
+      }
+      return { success: true, blocks: input.blocks, updatedAt: saved.updatedAt };
     }),
   // ── Save Landing Page SEO / Link Preview ──
   saveLandingPageSeo: protectedProcedure
@@ -661,6 +689,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, ...seoData } = input;
@@ -681,6 +710,7 @@ Rules:
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -1010,4 +1040,15 @@ Make ALL content specific and compelling based only on the course title, descrip
       return { success: true };
     }),
   // ── Enrollments ──
+});
+
+// The active `lmsAdmin` API intentionally imports only these landing procedures.
+// The rest of this extracted router is legacy quiz compatibility code and contains
+// procedure names that overlap newer, organization-scoped routers.
+export const lmsLandingPageRouter = router({
+  updateLandingPage: lmsQuizLandingRouter._def.procedures.updateLandingPage,
+  getLandingPageBlocks: lmsQuizLandingRouter._def.procedures.getLandingPageBlocks,
+  saveLandingPageBlocks: lmsQuizLandingRouter._def.procedures.saveLandingPageBlocks,
+  saveLandingPageSeo: lmsQuizLandingRouter._def.procedures.saveLandingPageSeo,
+  aiGenerateLandingPage: lmsQuizLandingRouter._def.procedures.aiGenerateLandingPage,
 });
