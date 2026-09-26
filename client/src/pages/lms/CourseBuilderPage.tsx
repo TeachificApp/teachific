@@ -69,6 +69,7 @@ import BundlesPage from "@/pages/products/BundlesPage";
 import CmeFormTab from "@/components/CmeFormTab";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { AiSourceFileReview, type AiSourceReviewFile } from "@/components/AiSourceFileReview";
+import { getCourseParticipantCampaignPath } from "@/lib/courseParticipantEmailHandoff";
 /** Convenience alias used in LandingPageEditor */
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
@@ -6623,11 +6624,11 @@ function EnrollmentExportTab() {
   };
 
   const handleExportToEmailCampaign = () => {
-    if (!exportData?.emails?.length) { toast.error("No emails to export"); return; }
-    const emailList = exportData.emails.join("\n");
-    // Navigate to email admin with pre-filled emails
-    const params = new URLSearchParams({ prefillEmails: emailList });
-    window.location.href = `/admin/email?${params.toString()}`;
+    if (!courseId) {
+      toast.error("Choose a course to email active participants.");
+      return;
+    }
+    window.location.assign(getCourseParticipantCampaignPath(courseId));
   };
 
   return (
@@ -6686,8 +6687,8 @@ function EnrollmentExportTab() {
                 <Download className="w-3.5 h-3.5 mr-1.5" /> Download CSV
               </Button>
               <Button size="sm" className=" hover: h-8" onClick={handleExportToEmailCampaign}
-                disabled={!exportData.emails.length}>
-                <Megaphone className="w-3.5 h-3.5 mr-1.5" /> Export to Email Campaign
+                disabled={!courseId}>
+                <Megaphone className="w-3.5 h-3.5 mr-1.5" /> Email Active Participants
               </Button>
             </div>
           </div>

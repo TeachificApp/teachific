@@ -6125,3 +6125,9 @@
 ## Active Organization Member Management (Aug 15, 2026)
 - [x] Scope MembersPage data and mutations to the active organization rather than the first membership
 - [x] Let authorized organization administrators create members with the org_super_admin role
+
+
+## Public Funnel Delivery Compatibility Prerequisite (Sep 26, 2026)
+
+- [ ] Rebuild public funnel delivery against the live `funnels` + `funnel_steps` + `page_builder_pages` model before enabling additional public funnel checkout, lead, branch, or SEO work. The existing `funnelPublicRouter` mixes a deprecated `funnel_pages` contract with the live schema; do not patch it with type assertions. See `docs/ultrasound-sync-audit/funnel-router-compatibility.md`.
+- [x] Add a course administration handoff to Campaigns that carries only a course ID, initializes an Active Course Access plus active-account audience, avoids participant-email URL leakage, and retains existing server-side organization ownership validation for preview, draft, schedule, and send.

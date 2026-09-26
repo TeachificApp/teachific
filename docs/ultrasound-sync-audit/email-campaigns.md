@@ -248,3 +248,10 @@ Also run the affected client/server build/typecheck command configured in `packa
 Proceed with a **target-native, four-stage port**, beginning with the active course/cohort/workshop participant email handoffs. The target already contains the difficult security and tenancy foundations; preserve them and wire the missing source UX into them. Next expose advanced target-supported audience capabilities, then repair editor hydration/autosave and brand-safe presentation, and only afterward introduce a tightly restricted test-send/timezone improvement.
 
 Do **not** cherry-pick source commits or replace target campaign infrastructure. The correct merge posture is: **adopt source user workflows, retain Course360 server authority and brand/domain behavior, and prove every path with cross-organization, inactive-organization, tier, CME, pricing, and unsubscribe regressions.**
+
+
+## Implementation update — Sep 26, 2026
+
+**Completed:** the course participant campaign handoff is now implemented as a Course360-native, UI-only prefill. Course administration links to `/marketing/email?courseId=<id>` without placing recipient emails or an organization identifier in the URL. The Campaign Dashboard parses only a positive integer course hint, opens a new composer with `activeAccessCourseIds: [courseId]` and `userStatus: "active"`, and does not reuse that prefill when opening a normal new or existing campaign.
+
+The existing `emailCampaignRouter` remains the enforcement point for every audience preview, draft save, schedule, and send. Its server-resolved active organization and course-ownership validation therefore continue to reject forged or cross-organization course IDs. The next email parity slice remains cohort-group and workshop-instance handoffs, followed by the broader audience-builder UX.

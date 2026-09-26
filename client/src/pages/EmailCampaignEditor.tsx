@@ -50,6 +50,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
+import type { CourseParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
 
 // ─── Block types ──────────────────────────────────────────────────────────────
 type BlockType = "heading1" | "heading2" | "text" | "image" | "button" | "divider" | "spacer" | "quote" | "html" | "lead_capture";
@@ -949,10 +950,11 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
 // ─── Main editor ──────────────────────────────────────────────────────────────
 interface EditorProps {
   campaignId?: number;
+  /** UI-only initial values; server-side campaign audience validation remains authoritative. */
+  initialAudienceFilter?: CourseParticipantAudienceHandoff;
   onClose?: () => void;
 }
-
-export default function EmailCampaignEditor({ campaignId, onClose }: EditorProps) {
+export default function EmailCampaignEditor({ campaignId, initialAudienceFilter, onClose }: EditorProps) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
 
@@ -960,7 +962,10 @@ export default function EmailCampaignEditor({ campaignId, onClose }: EditorProps
   const [subject, setSubject] = useState("");
   const [previewText, setPreviewText] = useState("");
   const [blocks, setBlocks] = useState<Block[]>([defaultBlock("heading1"), defaultBlock("text"), defaultBlock("button")]);
-  const [filter, setFilter] = useState<AudienceFilter>(DEFAULT_FILTER);
+  const [filter, setFilter] = useState<AudienceFilter>(() => ({
+    ...DEFAULT_FILTER,
+    ...initialAudienceFilter,
+  }));
   const [senderProfileId, setSenderProfileId] = useState<number | undefined>();
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [showPreview, setShowPreview] = useState(false);

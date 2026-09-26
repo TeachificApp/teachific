@@ -9,8 +9,8 @@
  *  - Sender profiles management tab
  *  - Unsubscribe list management
  */
-import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import {
   Mail, Plus, BarChart2, Users, Send, Clock, CheckCircle, XCircle,
   RefreshCw, Trash2, Copy, Eye, TrendingUp, MousePointer, UserMinus,
@@ -30,6 +30,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmailCampaignEditor from "../EmailCampaignEditor";
 import EmailListsTab from "./EmailListsTab";
+import {
+  getCourseParticipantAudienceHandoff,
+  type CourseParticipantAudienceHandoff,
+} from "@/lib/courseParticipantEmailHandoff";
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; color?: string }) {
@@ -875,19 +879,34 @@ function NewsletterSubscribersTab() {
 
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 export default function EmailCampaignDashboard() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const search = useSearch();
   const { user, isAuthenticated, loading } = useAuth();
   const utils = trpc.useUtils();
-
   const [activeTab, setActiveTab] = useState("campaigns");
   const [showEditor, setShowEditor] = useState(false);
   const [editCampaignId, setEditCampaignId] = useState<number | undefined>();
+  const [initialAudienceFilter, setInitialAudienceFilter] = useState<CourseParticipantAudienceHandoff | undefined>();
+  const [openedHandoffLocation, setOpenedHandoffLocation] = useState<string | null>(null);
   const [analyticsId, setAnalyticsId] = useState<number | null>(null);
   const [analyticsSubject, setAnalyticsSubject] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingWidget, setEditingWidget] = useState<any | null>(null);
   const [showWidgetForm, setShowWidgetForm] = useState(false);
+  const courseParticipantHandoff = useMemo(
+    () => getCourseParticipantAudienceHandoff(search),
+    [search],
+  );
+  const handoffLocation = `${location}${search}`;
+
+  useEffect(() => {
+    if (!courseParticipantHandoff || openedHandoffLocation === handoffLocation) return;
+    setOpenedHandoffLocation(handoffLocation);
+    setEditCampaignId(undefined);
+    setInitialAudienceFilter(courseParticipantHandoff);
+    setShowEditor(true);
+  }, [courseParticipantHandoff, handoffLocation, openedHandoffLocation]);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: campaigns, refetch: refetchCampaigns, isLoading: campaignsLoading } = trpc.emailCampaign.listCampaigns.useQuery(undefined, { enabled: !!user });
@@ -932,7 +951,7 @@ export default function EmailCampaignDashboard() {
 
   // If editor is open, show it full-page
   if (showEditor) {
-    return <EmailCampaignEditor campaignId={editCampaignId} onClose={() => { setShowEditor(false); setEditCampaignId(undefined); refetchCampaigns(); }} />;
+    return <EmailCampaignEditor campaignId={editCampaignId} initialAudienceFilter={initialAudienceFilter} onClose={() => { setShowEditor(false); setEditCampaignId(undefined); setInitialAudienceFilter(undefined); refetchCampaigns(); }} />;
   }
 
   // ── Derived stats ────────────────────────────────────────────────────────────
@@ -973,7 +992,7 @@ export default function EmailCampaignDashboard() {
               <p className="text-sm text-gray-500">Manage campaigns, templates, and sender profiles</p>
             </div>
           </div>
-          <Button onClick={() => { setEditCampaignId(undefined); setShowEditor(true); }} style={{ background: "#189aa1" }} className="text-white">
+          <Button onClick={() => { setEditCampaignId(undefined); setInitialAudienceFilter(undefined); setShowEditor(true); }} style={{ background: "#189aa1" }} className="text-white">
             <Plus className="w-4 h-4 mr-1.5" /> New Campaign
           </Button>
         </div>
