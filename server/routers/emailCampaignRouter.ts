@@ -348,11 +348,43 @@ async function validateAudienceWorkshopsForOrg(db: EmailMarketingDb, filter: Aud
   }
 }
 
+async function validateAudienceAdvancedResourcesForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  const membershipPlanIds = [...new Set(filter.membershipPlanIds ?? [])];
+  const bundleIds = [...new Set(filter.bundleIds ?? [])];
+  const webinarIds = [...new Set(filter.webinarIds ?? [])];
+
+  const [membershipRows, bundleRows, webinarRows] = await Promise.all([
+    membershipPlanIds.length > 0
+      ? db.select({ id: membershipPlans.id }).from(membershipPlans)
+        .where(and(inArray(membershipPlans.id, membershipPlanIds), eq(membershipPlans.orgId, orgId)))
+      : [],
+    bundleIds.length > 0
+      ? db.select({ id: bundles.id }).from(bundles)
+        .where(and(inArray(bundles.id, bundleIds), eq(bundles.orgId, orgId)))
+      : [],
+    webinarIds.length > 0
+      ? db.select({ id: webinars.id }).from(webinars)
+        .where(and(inArray(webinars.id, webinarIds), eq(webinars.orgId, orgId)))
+      : [],
+  ]);
+
+  if (membershipRows.length !== membershipPlanIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected membership plans do not belong to the active organization." });
+  }
+  if (bundleRows.length !== bundleIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected bundles do not belong to the active organization." });
+  }
+  if (webinarRows.length !== webinarIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected webinars do not belong to the active organization." });
+  }
+}
+
 async function validateAudienceScopeForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
   await validateAudienceListsForOrg(db, filter, orgId);
   await validateAudienceCoursesForOrg(db, filter, orgId);
   await validateAudienceCohortGroupsForOrg(db, filter, orgId);
   await validateAudienceWorkshopsForOrg(db, filter, orgId);
+  await validateAudienceAdvancedResourcesForOrg(db, filter, orgId);
 }
 
 function campaignNameForSubject(subject: string): string {

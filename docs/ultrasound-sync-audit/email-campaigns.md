@@ -275,3 +275,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (campaign draft hydration)
 
 **Completed:** editing an existing Course360 campaign now queries the campaign through the active-organization `getCampaign` boundary and restores its subject, preview text, saved audience filter, sender profile, and editable blocks. New saves, immediate sends, and scheduled sends persist the block JSON for deterministic subsequent editing. Legacy campaigns without block JSON retain their existing rendered HTML as a safe editable fallback; malformed saved JSON falls back without exposing another organization’s campaign data.
+
+
+## Implementation update — Sep 26, 2026 (advanced audience controls)
+
+**Completed:** Course360’s campaign Audience panel now exposes membership-plan subscribers, bundle enrollments, workshop participants, and webinar registrants using only active-organization option lists. The server now validates selected membership plans, bundles, and webinars against the active organization before preview, draft save, immediate send, or scheduled send; existing workshop validation and active-enrollment resolution remain in force. This exposes compatible target capabilities without importing source branding or trusting browser organization/resource identifiers.

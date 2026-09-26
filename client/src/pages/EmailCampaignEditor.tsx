@@ -774,7 +774,11 @@ interface AudienceFilter {
   downloadedProductIds: number[];
   inGroupIds: number[];
   inCohortGroupIds: number[];
+  membershipPlanIds: number[];
+  bundleIds: number[];
+  workshopIds: number[];
   workshopInstanceIds: number[];
+  webinarIds: number[];
   submittedFormIds: number[];
   completedCourseIds: number[];
   activeAccessCourseIds: number[];
@@ -785,7 +789,7 @@ const DEFAULT_FILTER: AudienceFilter = {
   interests: [], roles: [], subscriptionType: "all", userStatus: "active",
   specificEmails: [], enrolledInCourseIds: [], purchasedProductIds: [],
   downloadedProductIds: [], inGroupIds: [], inCohortGroupIds: [],
-  workshopInstanceIds: [],
+  membershipPlanIds: [], bundleIds: [], workshopIds: [], workshopInstanceIds: [], webinarIds: [],
   submittedFormIds: [], completedCourseIds: [], activeAccessCourseIds: [], logic: "and",
 };
 
@@ -947,7 +951,19 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
             <MultiSelect label="In Cohort Group" options={options.cohortGroups} selected={filter.inCohortGroupIds} onChange={(v) => update({ inCohortGroupIds: v })} />
           )}
           {options && (
+            <MultiSelect label="Membership Plan" options={options.membershipPlans} selected={filter.membershipPlanIds} onChange={(v) => update({ membershipPlanIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Bundle Enrollment" options={options.bundles} selected={filter.bundleIds} onChange={(v) => update({ bundleIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Workshop" options={options.workshops} selected={filter.workshopIds} onChange={(v) => update({ workshopIds: v })} />
+          )}
+          {options && (
             <MultiSelect label="Workshop Instance" options={options.workshopInstances} selected={filter.workshopInstanceIds} onChange={(v) => update({ workshopInstanceIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Webinar Registration" options={options.webinars} selected={filter.webinarIds} onChange={(v) => update({ webinarIds: v })} />
           )}
           {options && (
             <MultiSelect label="Submitted Form" options={options.forms} selected={filter.submittedFormIds} onChange={(v) => update({ submittedFormIds: v })} />
