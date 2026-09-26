@@ -31,6 +31,7 @@ import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { addToAllContacts } from "../lib/emailListHelper";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
+import { escapeCsvCell } from "../lib/csvSafety";
 import {
   lmsCourses,
   lmsSections,
@@ -96,6 +97,16 @@ async function requireActiveEnrollmentOrg(userId: number, role: string) {
   const orgId = await getOrgIdForUserWithFallback(userId, role);
   if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
   await requireOrgAdmin(userId, role, orgId);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [organization] = await db
+    .select({ id: organizations.id, isActive: organizations.isActive })
+    .from(organizations)
+    .where(eq(organizations.id, orgId))
+    .limit(1);
+  if (!organization?.isActive) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "The active organization is unavailable." });
+  }
   return orgId;
 }
 
@@ -2159,10 +2170,22 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+      const organizationCourses = await db
+        .select({ id: lmsCourses.id })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.orgId, orgId));
+      const activeCourseIds = organizationCourses.map((course) => course.id);
+      if (input.courseId && !activeCourseIds.includes(input.courseId)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in the active organization." });
+      }
+      if (activeCourseIds.length === 0) {
+        return { csv: "", count: 0, emails: [], preview: [] };
+      }
+      const exportCourseIds = input.courseId ? [input.courseId] : activeCourseIds;
 
       // Active enrollments
-      const enrollConds: any[] = [];
-      if (input.courseId) enrollConds.push(eq(lmsEnrollments.courseId, input.courseId));
+      const enrollConds: any[] = [inArray(lmsEnrollments.courseId, exportCourseIds)];
       if (input.dateFrom) enrollConds.push(sql`${lmsEnrollments.enrolledAt} >= ${new Date(input.dateFrom)}`);
       if (input.dateTo) enrollConds.push(sql`${lmsEnrollments.enrolledAt} <= ${new Date(input.dateTo)}`);
 
@@ -2172,21 +2195,19 @@ CRITICAL REQUIREMENTS:
           userId: lmsEnrollments.userId,
           courseId: lmsEnrollments.courseId,
           rowDate: lmsEnrollments.enrolledAt,
-          orderId: lmsEnrollments.orderId,
           progressPct: lmsEnrollments.progressPercent,
           email: users.email,
           displayName: users.displayName,
           name: users.name,
+          credentials: users.credentials,
+          specialty: users.specialty,
+          location: users.location,
           courseTitle: lmsCourses.title,
           courseSlug: lmsCourses.slug,
-          orderAmount: lmsOrders.amount,
-          orderStatus: lmsOrders.status,
-          stripeSessionId: lmsOrders.stripeSessionId,
         })
         .from(lmsEnrollments)
         .leftJoin(users, eq(lmsEnrollments.userId, users.id))
         .leftJoin(lmsCourses, eq(lmsEnrollments.courseId, lmsCourses.id))
-        .leftJoin(lmsOrders, eq(lmsEnrollments.orderId, lmsOrders.id))
         .where(enrollConds.length > 0 ? and(...enrollConds) : undefined)
         .orderBy(desc(lmsEnrollments.enrolledAt));
 
@@ -2194,8 +2215,11 @@ CRITICAL REQUIREMENTS:
       type ExportRow = typeof enrollmentRows[0];
       let pendingRows: ExportRow[] = [];
       if (input.includePending) {
-        const pendConds: any[] = [eq(lmsOrders.status, "pending")];
-        if (input.courseId) pendConds.push(eq(lmsOrders.courseId, input.courseId));
+        const pendConds: any[] = [
+          eq(lmsOrders.orgId, orgId),
+          eq(lmsOrders.status, "pending"),
+          inArray(lmsOrders.courseId, exportCourseIds),
+        ];
         if (input.dateFrom) pendConds.push(sql`${lmsOrders.createdAt} >= ${new Date(input.dateFrom)}`);
         if (input.dateTo) pendConds.push(sql`${lmsOrders.createdAt} <= ${new Date(input.dateTo)}`);
         const pending = await db
@@ -2204,16 +2228,15 @@ CRITICAL REQUIREMENTS:
             userId: lmsOrders.userId,
             courseId: lmsOrders.courseId,
             rowDate: lmsOrders.createdAt,
-            orderId: lmsOrders.id,
             progressPct: sql<number>`0`,
             email: users.email,
             displayName: users.displayName,
             name: users.name,
+            credentials: users.credentials,
+            specialty: users.specialty,
+            location: users.location,
             courseTitle: lmsCourses.title,
             courseSlug: lmsCourses.slug,
-            orderAmount: lmsOrders.amount,
-            orderStatus: lmsOrders.status,
-            stripeSessionId: lmsOrders.stripeSessionId,
           })
           .from(lmsOrders)
           .leftJoin(users, eq(lmsOrders.userId, users.id))
@@ -2224,26 +2247,36 @@ CRITICAL REQUIREMENTS:
       }
 
       const allRows = [...enrollmentRows, ...pendingRows];
-      const esc = (v: string | null | undefined | number) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-      const headers = ["Type", "Email", "Name", "Course", "Course Slug", "Date", "Progress %", "Order Amount ($)", "Order Status", "Stripe Session ID"];
+      const headers = ["Type", "Email", "Name", "Credentials", "Specialty", "Location", "Course", "Course Slug", "Enrollment Date", "Progress %"];
       const csvLines = [
         headers.join(","),
         ...allRows.map(r => [
-          esc(r.rowType),
-          esc(r.email),
-          esc(r.displayName ?? r.name),
-          esc(r.courseTitle),
-          esc(r.courseSlug),
+          escapeCsvCell(r.rowType),
+          escapeCsvCell(r.email),
+          escapeCsvCell(r.displayName ?? r.name),
+          escapeCsvCell(r.credentials),
+          escapeCsvCell(r.specialty),
+          escapeCsvCell(r.location),
+          escapeCsvCell(r.courseTitle),
+          escapeCsvCell(r.courseSlug),
           r.rowDate ? new Date(r.rowDate).toISOString() : "",
           r.progressPct ?? 0,
-          r.orderAmount != null ? Number(r.orderAmount).toFixed(2) : "",
-          esc(r.orderStatus),
-          esc(r.stripeSessionId),
         ].join(",")),
       ];
 
       const emails = [...new Set(allRows.map(r => r.email).filter(Boolean))] as string[];
-      return { csv: csvLines.join("\n"), count: allRows.length, emails };
+      const preview = allRows.slice(0, 10).map((row) => ({
+        type: row.rowType,
+        email: row.email,
+        name: row.displayName ?? row.name,
+        credentials: row.credentials,
+        specialty: row.specialty,
+        location: row.location,
+        course: row.courseTitle,
+        enrolledAt: row.rowDate ? new Date(row.rowDate).toISOString() : "",
+        progressPct: row.progressPct ?? 0,
+      }));
+      return { csv: csvLines.join("\n"), count: allRows.length, emails, preview };
     }),
 
   // ─── Affiliate Course Settings ────────────────────────────────────────────────────

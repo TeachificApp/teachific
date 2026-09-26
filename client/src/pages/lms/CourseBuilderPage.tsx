@@ -6697,22 +6697,19 @@ function EnrollmentExportTab() {
             <table className="w-full text-xs">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {["Type", "Email", "Name", "Course", "Date", "Progress", "Amount", "Status"].map(h => (
+                  {["Type", "Email", "Name", "Credentials", "Specialty", "Location", "Course", "Date", "Progress"].map(h => (
                     <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {exportData.csv.split("\n").slice(1, 11).map((row, i) => {
-                  const cols = row.split(",").map(c => c.replace(/^"|"$/g, ""));
-                  return (
-                    <tr key={i} className="hover:bg-gray-50">
-                      {cols.slice(0, 8).map((c, j) => (
-                        <td key={j} className="px-3 py-2 text-gray-700 max-w-[120px] truncate">{c}</td>
-                      ))}
-                    </tr>
-                  );
-                })}
+                {(exportData.preview ?? []).map((row, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    {[row.type, row.email, row.name, row.credentials, row.specialty, row.location, row.course, row.enrolledAt, row.progressPct].map((value, j) => (
+                      <td key={j} className="px-3 py-2 text-gray-700 max-w-[120px] truncate">{value ?? "—"}</td>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
             {exportData.count > 10 && (

@@ -4949,7 +4949,7 @@
 - [ ] LandingPageBuilder (admin): remove all item.price/100 display hacks; remove *100 catalog assignments; remove /100 in price input value; remove *100 in price input onChange; fix "Price (cents)" labels to "Price ($)"
 - [ ] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
 - [x] embeddedCheckoutRouter: preserve dollar-denominated pending purchase storage while converting to cents only for Stripe payment intents
-- [x] Confirm LMS enrollment CSV export already formats stored order amounts directly as dollars
+- [x] Harden LMS enrollment CSV export: scope it to the active organization, remove payment/session metadata, add approved profile fields, and neutralize spreadsheet formulas
 - [x] Digital Downloads administration: display stored purchase amounts as dollars without legacy cents conversion
 - [x] Download Analytics: display stored order amounts as dollars without legacy cents conversion
 - [x] Course Builder orders: display stored purchase amounts as dollars without legacy cents conversion
@@ -5437,7 +5437,7 @@
 
 ## Org Branding & CME Feature Flag
 
-- [ ] Expand BrandingPage: add favicon upload, student logo, button color, page bg color, invoice/email branding JSON
+- [x] Expand BrandingPage: add favicon upload, student logo, button color, page bg color, invoice/email branding JSON
 - [ ] Apply org branding (primaryColor, logo, font) to landing pages (LandingPageBuilder block renderer)
 - [x] Conditionally hide CME Management nav item in DashboardLayout when the active org has CME disabled
 - [x] Hide course-level CME credit and activity-form controls when the active organization has CME disabled
