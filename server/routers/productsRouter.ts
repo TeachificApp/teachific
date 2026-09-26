@@ -8,6 +8,8 @@ import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getOrgBaseUrl } from "../lib/orgUrl";
+import { resolvePublicOrganizationScope } from "../lib/publicOrgRequestScope";
+import { dollarsToStripeCents } from "../lib/checkoutPricing";
 import {
   getTitleByIsbn,
   isBookvaultConfigured,
@@ -33,6 +35,7 @@ import {
   physicalProductPricingOptions,
   physicalProductOrders,
   organizations,
+  orgThemes,
   coupons,
   users,
 } from "../../drizzle/schema";
@@ -119,14 +122,20 @@ export const productsPublicRouter = router({
       page: z.number().min(1).default(1),
       limit: z.number().min(1).max(50).default(12),
       search: z.string().optional(),
+      orgSlug: z.string().min(1).max(100).optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return { products: [], total: 0 };
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input?.orgSlug);
+      if (!publicScope) return { products: [], total: 0 };
       const page = input?.page ?? 1;
       const limit = input?.limit ?? 12;
       const offset = (page - 1) * limit;
-      const conditions = [eq(physicalProducts.status, "published")];
+      const conditions = [
+        eq(physicalProducts.status, "published"),
+        eq(physicalProducts.orgId, publicScope.id),
+      ];
       if (input?.search) {
         conditions.push(sql`${physicalProducts.title} LIKE ${"%" + input.search + "%"}`);
       }
@@ -143,16 +152,35 @@ export const productsPublicRouter = router({
 
   /** Get single product by slug (public sales page) */
   getBySlug: publicProcedure
-    .input(z.object({ slug: z.string(), preview: z.boolean().optional() }))
+    .input(z.object({
+      slug: z.string(),
+      preview: z.boolean().optional(),
+      orgSlug: z.string().min(1).max(100).optional(),
+    }))
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+      if (!publicScope) throw new TRPCError({ code: "NOT_FOUND" });
       const [product] = await db.select().from(physicalProducts)
-        .where(eq(physicalProducts.slug, input.slug)).limit(1);
+        .where(and(
+          eq(physicalProducts.slug, input.slug),
+          eq(physicalProducts.orgId, publicScope.id),
+        )).limit(1);
       if (!product) throw new TRPCError({ code: "NOT_FOUND" });
-      // Allow preview for admins
-      const isAdmin = (ctx.user as any)?.role === "admin" || (ctx.user as any)?.role === "platform_admin";
-      if (product.status !== "published" && !input.preview && !isAdmin) {
+      let canPreview = false;
+      if (input.preview && ctx.user) {
+        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+        if (activeOrgId === publicScope.id) {
+          try {
+            await requireOrgAdmin(ctx.user.id, ctx.user.role, publicScope.id);
+            canPreview = true;
+          } catch {
+            canPreview = false;
+          }
+        }
+      }
+      if (product.status !== "published" && !canPreview) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
       // Fetch active pricing options
@@ -162,17 +190,32 @@ export const productsPublicRouter = router({
           eq(physicalProductPricingOptions.isActive, true),
         ))
         .orderBy(asc(physicalProductPricingOptions.sortOrder));
-      return { product, pricingOptions };
+      const [organization] = await db.select({
+        name: organizations.name,
+        logoUrl: organizations.logoUrl,
+        primaryColor: orgThemes.studentPrimaryColor,
+        accentColor: orgThemes.studentAccentColor,
+        buttonColor: orgThemes.buttonColor,
+      }).from(organizations)
+        .leftJoin(orgThemes, eq(orgThemes.orgId, organizations.id))
+        .where(eq(organizations.id, publicScope.id))
+        .limit(1);
+      return { product, pricingOptions, organization: organization ?? null };
     }),
 
   /** Get slug by product ID (for building links) */
   getSlugById: publicProcedure
-    .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .input(z.object({ id: z.number(), orgSlug: z.string().min(1).max(100).optional() }))
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return null;
+      const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+      if (!publicScope) return null;
       const [row] = await db.select({ slug: physicalProducts.slug })
-        .from(physicalProducts).where(eq(physicalProducts.id, input.id)).limit(1);
+        .from(physicalProducts).where(and(
+          eq(physicalProducts.id, input.id),
+          eq(physicalProducts.orgId, publicScope.id),
+        )).limit(1);
       return row?.slug ?? null;
     }),
 });
@@ -218,7 +261,10 @@ export const productsLearnerRouter = router({
         slug: organizations.slug,
         customDomain: organizations.customDomain,
         domainVerificationStatus: organizations.domainVerificationStatus,
-      }).from(organizations).where(eq(organizations.id, product.orgId)).limit(1);
+      }).from(organizations).where(and(
+        eq(organizations.id, product.orgId),
+        eq(organizations.isActive, true),
+      )).limit(1);
       if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
       const organizationBaseUrl = getOrgBaseUrl(
         organization.slug,
@@ -261,7 +307,7 @@ export const productsLearnerRouter = router({
               description: product.subtitle ?? undefined,
               images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined,
             },
-            unit_amount: Math.round(Number(product.price) * 100),
+            unit_amount: dollarsToStripeCents(product.price),
           },
           quantity: 1,
         }],
@@ -340,7 +386,10 @@ export const productsLearnerRouter = router({
         slug: organizations.slug,
         customDomain: organizations.customDomain,
         domainVerificationStatus: organizations.domainVerificationStatus,
-      }).from(organizations).where(eq(organizations.id, product.orgId)).limit(1);
+      }).from(organizations).where(and(
+        eq(organizations.id, product.orgId),
+        eq(organizations.isActive, true),
+      )).limit(1);
       if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Product organization not found" });
       const organizationBaseUrl = getOrgBaseUrl(
         organization.slug,
@@ -404,7 +453,7 @@ export const productsLearnerRouter = router({
         const stripeCoupon = await stripe.coupons.create({
           ...(coupon.discountType === "percentage"
             ? { percent_off: Number(coupon.discountValue) }
-            : { amount_off: Math.round(Number(coupon.discountValue) * 100), currency: product.currency }),
+            : { amount_off: dollarsToStripeCents(coupon.discountValue), currency: product.currency }),
           duration: "once",
           name: `Course360 ${normalizedCode}`,
         });
@@ -429,7 +478,7 @@ export const productsLearnerRouter = router({
               description: product.subtitle ?? undefined,
               images: product.thumbnailUrl ? [product.thumbnailUrl] : undefined,
             },
-            unit_amount: Math.round(Number(unitAmount) * 100),
+            unit_amount: dollarsToStripeCents(unitAmount),
           },
           quantity: 1,
         }],

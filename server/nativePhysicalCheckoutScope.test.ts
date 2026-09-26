@@ -83,11 +83,12 @@ describe("Course360 native physical-product checkout", () => {
     const procedure = source.slice(start, source.indexOf("});\n\n// ─── Admin Router", start));
 
     expect(procedure).toContain("const organizationBaseUrl = getOrgBaseUrl(");
-    expect(procedure).toContain("where(eq(organizations.id, product.orgId))");
+    expect(procedure).toContain("eq(organizations.id, product.orgId),");
+    expect(procedure).toContain("eq(organizations.isActive, true),");
     expect(procedure).toContain("eq(coupons.orgId, product.orgId)");
     expect(procedure).toContain('contentType: "physical_product",');
     expect(procedure).toContain("couponIsRedeemableForCheckout(coupon, {");
-    expect(procedure).toContain("Math.round(Number(unitAmount) * 100)");
+    expect(procedure).toContain("dollarsToStripeCents(unitAmount)");
     expect(procedure).not.toContain("const priceCents =");
     expect(procedure).toContain("name: `Course360 ${normalizedCode}`");
     expect(procedure).toContain("internal_coupon_id");

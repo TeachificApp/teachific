@@ -59,6 +59,7 @@ import CoursePlayerPage from "./pages/lms/CoursePlayerPage";
 import CourseLanding from "./pages/lms/CourseLanding";
 import CoursePlayer from "./pages/lms/CoursePlayer";
 import CourseOverviewPage from "./pages/lms/CourseOverviewPage";
+import PublicPhysicalProductSalesPage from "./pages/lms/PublicPhysicalProductSalesPage";
 import TeachGamesPage from "./pages/lms/TeachGamesPage";
 import TeachGameHostPage from "./pages/lms/TeachGameHostPage";
 import TeachGamePlayPage from "./pages/TeachGamePlayPage";
@@ -227,6 +228,8 @@ function BareRouter() {
         <Route path="/p/:slug" component={PublicPagePage} />
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />
         <Route path="/webinar/:slug/watch" component={WebinarWatchPage} />
+        <Route path="/product/:slug" component={PublicPhysicalProductSalesPage} />
+        <Route path="/products/:slug" component={PublicPhysicalProductSalesPage} />
         <Route path="/shop/:slug" component={DigitalProductSalesPage} />
         <Route path="/checkout/complete" component={CheckoutCompletePage} />
         <Route path="/checkout/:contentType/:slug" component={HostedCheckoutPage} />
@@ -723,6 +726,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/embed/:id" component={EmbedPage} />
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />
         <Route path="/webinar/:slug/watch" component={WebinarWatchPage} />
+        <Route path="/product/:slug" component={PublicPhysicalProductSalesPage} />
+        <Route path="/products/:slug" component={PublicPhysicalProductSalesPage} />
         <Route path="/shop/:slug" component={DigitalProductSalesPage} />
         <Route path="/checkout/complete" component={CheckoutCompletePage} />
         <Route path="/forms/:orgSlug/:slug" component={FormPlayerPage} />
