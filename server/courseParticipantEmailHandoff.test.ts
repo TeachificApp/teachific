@@ -46,9 +46,9 @@ describe("course participant email campaign handoff", () => {
     }
     expect(dashboardSource).toContain("useLocation, useSearch");
     expect(dashboardSource).toContain("const search = useSearch()");
-    expect(dashboardSource).toContain("getCourseParticipantAudienceHandoff");
+    expect(dashboardSource).toContain("getParticipantAudienceHandoff");
     expect(dashboardSource).toContain("initialAudienceFilter={initialAudienceFilter}");
-    expect(editorSource).toContain("initialAudienceFilter?: CourseParticipantAudienceHandoff");
+    expect(editorSource).toContain("initialAudienceFilter?: ParticipantAudienceHandoff");
     expect(editorSource).toContain("...initialAudienceFilter");
   });
 });

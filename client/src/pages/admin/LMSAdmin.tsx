@@ -77,7 +77,10 @@ import { CourseWaitlistTab } from "@/components/CourseWaitlistTab";
 import { ContentEmbedTab } from "@/components/admin/ContentEmbedTab";
 import TeachAdminPanel from "@/pages/admin/TeachAdminPanel";
 import { QuizQuestionGroups } from "@/components/QuizQuestionGroups";
-import { getCourseParticipantCampaignPath } from "@/lib/courseParticipantEmailHandoff";
+import {
+  getCohortGroupParticipantCampaignPath,
+  getCourseParticipantCampaignPath,
+} from "@/lib/courseParticipantEmailHandoff";
 /** Convenience alias used in LandingPageEditor */
 function useOpenLearnLink() {
   const { openLearnLink } = useLearnLink();
@@ -12124,6 +12127,9 @@ function CohortTab({ courseId }: { courseId: number }) {
                       <Button size="sm" variant="outline" className="text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
                         onClick={() => window.open(`/admin/lms/${courseId}/cohorts/${group.id}/page-builder`, "_blank")}>
                         Edit Page
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => window.location.assign(getCohortGroupParticipantCampaignPath(group.id))} className="text-xs text-[var(--org-primary)] border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
+                        <Megaphone className="w-3.5 h-3.5 mr-1" /> Email Active Participants
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => { setSelectedGroupId(selectedGroupId === group.id ? null : group.id); }} className="text-xs">
                         {selectedGroupId === group.id ? "Hide Students" : "Manage Students"}

@@ -433,10 +433,15 @@ async function emailsMatchingDimension(
         .select({ userId: lmsCohortGroupEnrollments.userId })
         .from(lmsCohortGroupEnrollments)
         .innerJoin(lmsCohortGroups, eq(lmsCohortGroups.id, lmsCohortGroupEnrollments.cohortGroupId))
+        .innerJoin(lmsEnrollments, and(
+          eq(lmsEnrollments.id, lmsCohortGroupEnrollments.enrollmentId),
+          eq(lmsEnrollments.orgId, orgId),
+        ))
         .where(and(
           eq(lmsCohortGroupEnrollments.cohortGroupId, cohortGroupId),
           eq(lmsCohortGroupEnrollments.orgId, orgId),
           eq(lmsCohortGroups.orgId, orgId),
+          eq(lmsEnrollments.status, "active"),
         ));
       const allUsers = await loadAllUsers();
       const idSet = new Set(rows.map((r) => r.userId));

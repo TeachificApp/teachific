@@ -6131,3 +6131,5 @@
 
 - [ ] Rebuild public funnel delivery against the live `funnels` + `funnel_steps` + `page_builder_pages` model before enabling additional public funnel checkout, lead, branch, or SEO work. The existing `funnelPublicRouter` mixes a deprecated `funnel_pages` contract with the live schema; do not patch it with type assertions. See `docs/ultrasound-sync-audit/funnel-router-compatibility.md`.
 - [x] Add a course administration handoff to Campaigns that carries only a course ID, initializes an Active Course Access plus active-account audience, avoids participant-email URL leakage, and retains existing server-side organization ownership validation for preview, draft, schedule, and send.
+
+- [x] Add a cohort-group administration handoff to Campaigns that carries only a cohort group ID, initializes a cohort plus active-account audience, rejects cross-organization group IDs server-side, and does not expose participant emails in browser URLs.

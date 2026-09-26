@@ -255,3 +255,8 @@ Do **not** cherry-pick source commits or replace target campaign infrastructure.
 **Completed:** the course participant campaign handoff is now implemented as a Course360-native, UI-only prefill. Course administration links to `/marketing/email?courseId=<id>` without placing recipient emails or an organization identifier in the URL. The Campaign Dashboard parses only a positive integer course hint, opens a new composer with `activeAccessCourseIds: [courseId]` and `userStatus: "active"`, and does not reuse that prefill when opening a normal new or existing campaign.
 
 The existing `emailCampaignRouter` remains the enforcement point for every audience preview, draft save, schedule, and send. Its server-resolved active organization and course-ownership validation therefore continue to reject forged or cross-organization course IDs. The next email parity slice remains cohort-group and workshop-instance handoffs, followed by the broader audience-builder UX.
+
+
+## Implementation update — Sep 26, 2026 (cohort participant handoff)
+
+**Completed:** cohort-group administration now opens the Course360 campaign composer with a narrow `cohortGroupId` route hint. The composer preselects only that group and active accounts; no participant email addresses appear in the URL. The server validates every selected cohort group against the active organization before audience preview, draft save, scheduling, or delivery, and the recipient resolver requires an active linked course enrollment. Both current Course Builder and legacy LMS Administration cohort surfaces use the same helper.

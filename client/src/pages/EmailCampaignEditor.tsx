@@ -50,7 +50,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
-import type { CourseParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
+import type { ParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
 
 // ─── Block types ──────────────────────────────────────────────────────────────
 type BlockType = "heading1" | "heading2" | "text" | "image" | "button" | "divider" | "spacer" | "quote" | "html" | "lead_capture";
@@ -951,7 +951,7 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
 interface EditorProps {
   campaignId?: number;
   /** UI-only initial values; server-side campaign audience validation remains authoritative. */
-  initialAudienceFilter?: CourseParticipantAudienceHandoff;
+  initialAudienceFilter?: ParticipantAudienceHandoff;
   onClose?: () => void;
 }
 export default function EmailCampaignEditor({ campaignId, initialAudienceFilter, onClose }: EditorProps) {

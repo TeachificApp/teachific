@@ -312,9 +312,22 @@ async function validateAudienceCoursesForOrg(db: EmailMarketingDb, filter: Audie
   }
 }
 
+async function validateAudienceCohortGroupsForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  const cohortGroupIds = [...new Set(filter.inCohortGroupIds ?? [])];
+  if (cohortGroupIds.length === 0) return;
+  const rows = await db
+    .select({ id: lmsCohortGroups.id })
+    .from(lmsCohortGroups)
+    .where(and(inArray(lmsCohortGroups.id, cohortGroupIds), eq(lmsCohortGroups.orgId, orgId)));
+  if (rows.length !== cohortGroupIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected cohort groups do not belong to the active organization." });
+  }
+}
+
 async function validateAudienceScopeForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
   await validateAudienceListsForOrg(db, filter, orgId);
   await validateAudienceCoursesForOrg(db, filter, orgId);
+  await validateAudienceCohortGroupsForOrg(db, filter, orgId);
 }
 
 function campaignNameForSubject(subject: string): string {

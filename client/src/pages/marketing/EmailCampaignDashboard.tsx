@@ -31,8 +31,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmailCampaignEditor from "../EmailCampaignEditor";
 import EmailListsTab from "./EmailListsTab";
 import {
-  getCourseParticipantAudienceHandoff,
-  type CourseParticipantAudienceHandoff,
+  getParticipantAudienceHandoff,
+  type ParticipantAudienceHandoff,
 } from "@/lib/courseParticipantEmailHandoff";
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
@@ -886,7 +886,7 @@ export default function EmailCampaignDashboard() {
   const [activeTab, setActiveTab] = useState("campaigns");
   const [showEditor, setShowEditor] = useState(false);
   const [editCampaignId, setEditCampaignId] = useState<number | undefined>();
-  const [initialAudienceFilter, setInitialAudienceFilter] = useState<CourseParticipantAudienceHandoff | undefined>();
+  const [initialAudienceFilter, setInitialAudienceFilter] = useState<ParticipantAudienceHandoff | undefined>();
   const [openedHandoffLocation, setOpenedHandoffLocation] = useState<string | null>(null);
   const [analyticsId, setAnalyticsId] = useState<number | null>(null);
   const [analyticsSubject, setAnalyticsSubject] = useState("");
@@ -894,19 +894,19 @@ export default function EmailCampaignDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingWidget, setEditingWidget] = useState<any | null>(null);
   const [showWidgetForm, setShowWidgetForm] = useState(false);
-  const courseParticipantHandoff = useMemo(
-    () => getCourseParticipantAudienceHandoff(search),
+  const participantHandoff = useMemo(
+    () => getParticipantAudienceHandoff(search),
     [search],
   );
   const handoffLocation = `${location}${search}`;
 
   useEffect(() => {
-    if (!courseParticipantHandoff || openedHandoffLocation === handoffLocation) return;
+    if (!participantHandoff || openedHandoffLocation === handoffLocation) return;
     setOpenedHandoffLocation(handoffLocation);
     setEditCampaignId(undefined);
-    setInitialAudienceFilter(courseParticipantHandoff);
+    setInitialAudienceFilter(participantHandoff);
     setShowEditor(true);
-  }, [courseParticipantHandoff, handoffLocation, openedHandoffLocation]);
+  }, [participantHandoff, handoffLocation, openedHandoffLocation]);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: campaigns, refetch: refetchCampaigns, isLoading: campaignsLoading } = trpc.emailCampaign.listCampaigns.useQuery(undefined, { enabled: !!user });
