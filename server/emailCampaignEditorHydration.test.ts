@@ -17,12 +17,18 @@ describe("email campaign editor draft hydration", () => {
     expect(editorSource).toContain("enabled: !!user && !!campaignId");
     expect(editorSource).toContain("setBlocks(parseCampaignBlocks(campaign.blocksJson, campaign.htmlBody ?? \"\"))");
     expect(editorSource).toContain("setFilter(parseCampaignAudienceFilter(campaign.audienceFilter))");
+    expect(editorSource).toContain("setHeaderTitle(campaign.headerTitle ?? \"\")");
+    expect(editorSource).toContain("setHeaderSubtext(campaign.headerSubtext ?? \"\")");
+    expect(editorSource).toContain("setHeaderColor(campaign.headerColor ?? \"\")");
+    expect(editorSource).toContain("setHeaderEnabled(campaign.headerEnabled ?? true)");
     expect(routerSource).toContain("return requireCampaignForOrg(db, input.id, orgId);");
   });
 
   it("persists editable block state for drafts, immediate sends, and scheduled sends", () => {
     const serializationCount = (editorSource.match(/blocksJson: JSON\.stringify\(blocks\)/g) ?? []).length;
     expect(serializationCount).toBeGreaterThanOrEqual(3);
+    const headerEnabledCount = (editorSource.match(/headerEnabled,/g) ?? []).length;
+    expect(headerEnabledCount).toBeGreaterThanOrEqual(4);
     expect(editorSource).toContain("function parseCampaignBlocks(blocksJson: string | null, htmlBody: string): Block[]");
     expect(editorSource).toContain("function parseCampaignAudienceFilter(raw: string | null): AudienceFilter");
   });

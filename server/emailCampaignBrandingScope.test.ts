@@ -34,7 +34,10 @@ describe("email campaign organization branding", () => {
 
   it("uses the same server-derived branding for the editor preview while retaining Course360 only before branding is available", () => {
     expect(editorSource).toContain("trpc.emailCampaign.getCampaignBranding.useQuery");
-    expect(editorSource).toContain("wrapInBrandedEmail(htmlBody, previewText, campaignBranding)");
+    expect(editorSource).toContain("wrapInBrandedEmail(\n      htmlBody,\n      previewText,\n      campaignBranding,");
+    expect(editorSource).toContain("Your organization name and logo remain the primary identity; this controls the optional campaign copy.");
+    expect(editorSource).toContain("headerTitle: headerTitle || undefined");
+    expect(editorSource).toContain("headerEnabled,");
     expect(editorSource).toContain("wrapInBrandedCampaignEmail");
     expect(editorSource).not.toContain("CREATE. TEACH. GROW.");
   });

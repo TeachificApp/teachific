@@ -225,14 +225,22 @@ type CampaignBranding = {
   logoUrl: string | null;
 };
 
-function wrapInBrandedEmail(bodyHtml: string, previewText?: string, branding?: CampaignBranding): string {
+function wrapInBrandedEmail(
+  bodyHtml: string,
+  previewText?: string,
+  branding?: CampaignBranding,
+  headerTitle?: string,
+  headerSubtext?: string,
+  headerColor?: string,
+  headerEnabled?: boolean,
+): string {
   return wrapInBrandedCampaignEmail(
     bodyHtml,
     previewText,
-    undefined,
-    undefined,
-    undefined,
-    true,
+    headerTitle,
+    headerSubtext,
+    headerColor,
+    headerEnabled,
     branding?.accentColor,
     branding?.displayName,
     branding?.logoUrl,
@@ -1008,6 +1016,10 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   const [loadTemplateDialogOpen, setLoadTemplateDialogOpen] = useState(false);
   const [draftId, setDraftId] = useState<number | undefined>(campaignId);
   const [isSaving, setIsSaving] = useState(false);
+  const [headerTitle, setHeaderTitle] = useState("");
+  const [headerSubtext, setHeaderSubtext] = useState("");
+  const [headerColor, setHeaderColor] = useState("");
+  const [headerEnabled, setHeaderEnabled] = useState(true);
   const [emailPickerTab, setEmailPickerTab] = useState<"blocks" | "saved">("blocks");
   const [hydratedCampaignId, setHydratedCampaignId] = useState<number | undefined>();
 
@@ -1029,6 +1041,10 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     setBlocks(parseCampaignBlocks(campaign.blocksJson, campaign.htmlBody ?? ""));
     setFilter(parseCampaignAudienceFilter(campaign.audienceFilter));
     setSenderProfileId(campaign.senderProfileId ?? undefined);
+    setHeaderTitle(campaign.headerTitle ?? "");
+    setHeaderSubtext(campaign.headerSubtext ?? "");
+    setHeaderColor(campaign.headerColor ?? "");
+    setHeaderEnabled(campaign.headerEnabled ?? true);
     setDraftId(campaign.id);
     setHydratedCampaignId(campaignId);
   }, [campaignId, campaignQuery.data, hydratedCampaignId]);
@@ -1065,8 +1081,16 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const htmlBody = useMemo(() => blocksToHtml(blocks), [blocks]);
   const wrappedHtml = useMemo(
-    () => wrapInBrandedEmail(htmlBody, previewText, campaignBranding),
-    [htmlBody, previewText, campaignBranding],
+    () => wrapInBrandedEmail(
+      htmlBody,
+      previewText,
+      campaignBranding,
+      headerTitle,
+      headerSubtext,
+      headerColor || undefined,
+      headerEnabled,
+    ),
+    [htmlBody, previewText, campaignBranding, headerTitle, headerSubtext, headerColor, headerEnabled],
   );
 
   function handleSaveDraft() {
@@ -1076,6 +1100,10 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
       subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
       senderProfileId,
+      headerTitle: headerTitle || undefined,
+      headerSubtext: headerSubtext || undefined,
+      headerColor: headerColor || undefined,
+      headerEnabled,
     });
   }
 
@@ -1089,6 +1117,10 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     sendMutation.mutate({
       subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
+      headerTitle: headerTitle || undefined,
+      headerSubtext: headerSubtext || undefined,
+      headerColor: headerColor || undefined,
+      headerEnabled,
     });
   }
 
@@ -1098,6 +1130,10 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
       subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
       scheduledAt: new Date(scheduledAt),
+      headerTitle: headerTitle || undefined,
+      headerSubtext: headerSubtext || undefined,
+      headerColor: headerColor || undefined,
+      headerEnabled,
     });
   }
 
@@ -1177,6 +1213,34 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Label htmlFor="campaign-header-enabled" className="text-xs font-semibold text-slate-700">Campaign header details</Label>
+                    <p className="mt-0.5 text-xs text-slate-500">Your organization name and logo remain the primary identity; this controls the optional campaign copy.</p>
+                  </div>
+                  <Switch id="campaign-header-enabled" checked={headerEnabled} onCheckedChange={setHeaderEnabled} />
+                </div>
+                {headerEnabled && (
+                  <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="campaign-header-title" className="text-xs font-medium text-slate-600">Campaign headline <span className="font-normal text-slate-400">(optional)</span></Label>
+                        <Input id="campaign-header-title" value={headerTitle} onChange={(event) => setHeaderTitle(event.target.value)} maxLength={300} placeholder="Appears below your organization name" className="mt-1 h-9 text-sm" />
+                      </div>
+                      <div>
+                        <Label htmlFor="campaign-header-subtext" className="text-xs font-medium text-slate-600">Header subheading <span className="font-normal text-slate-400">(optional)</span></Label>
+                        <Input id="campaign-header-subtext" value={headerSubtext} onChange={(event) => setHeaderSubtext(event.target.value)} maxLength={500} placeholder="A short supporting message" className="mt-1 h-9 text-sm" />
+                      </div>
+                    </div>
+                    <div className="min-w-28">
+                      <Label htmlFor="campaign-header-color" className="text-xs font-medium text-slate-600">Header color</Label>
+                      <Input id="campaign-header-color" type="color" value={headerColor || campaignBranding?.accentColor || "#189aa1"} onChange={(event) => setHeaderColor(event.target.value)} className="mt-1 h-9 w-full cursor-pointer p-1" />
+                      <button type="button" onClick={() => setHeaderColor("")} className="mt-1 text-xs font-medium text-[#189aa1] hover:underline">Use organization accent</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

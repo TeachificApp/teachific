@@ -285,3 +285,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (organization-first campaign branding)
 
 **Completed:** Campaign previews and persisted draft, immediate-send, and scheduled-send HTML now receive their display name, accent color, and optional logo strictly from the server-resolved active organization. The branded layout prefers the organization’s school name and logo, falls back only to Course360™, safely validates color/logo inputs, and emits the required platform attribution only when the platform identity actually applies. The campaign editor consumes the same protected branding context for its preview while sending canonical block HTML to the server, preventing client-supplied brand identity from becoming delivery authority. Existing campaign edit routes now pass the campaign ID into the editor in both main and subdomain admin shells, so the protected campaign hydration path is reached.
+
+
+## Implementation update — Sep 26, 2026 (brand-safe campaign header controls)
+
+**Completed:** The campaign editor now hydrates and persists optional headline, subheading, safe color, and enabled-state controls for draft, immediate-send, and scheduled-send flows. Organization identity remains non-negotiable: the organization name/logo stay first in the email header, optional campaign copy appears only beneath it, and turning off header details never hides the organization identity. Header color is validated by the shared delivery renderer, with an explicit return-to-organization-accent control in the editor.

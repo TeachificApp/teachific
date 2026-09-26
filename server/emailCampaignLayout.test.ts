@@ -18,7 +18,7 @@ describe("Course360 campaign email layout", () => {
       "Ignored campaign title",
       "School updates",
       "#0f766e",
-      false,
+      true,
       "#0f766e",
       "Northwind Learning",
       "https://cdn.example.test/northwind-logo.png",
@@ -26,9 +26,26 @@ describe("Course360 campaign email layout", () => {
     expect(organizationEmail).toContain("Northwind Learning");
     expect(organizationEmail).toContain('src="https://cdn.example.test/northwind-logo.png"');
     expect(organizationEmail).toContain("background:#0f766e;");
-    expect(organizationEmail).not.toContain("Ignored campaign title");
+    expect(organizationEmail).toContain("Ignored campaign title");
+    expect(organizationEmail.indexOf("Northwind Learning")).toBeLessThan(organizationEmail.indexOf("Ignored campaign title"));
     expect(organizationEmail).not.toContain("Course360™");
     expect(organizationEmail).not.toContain("a SoundMedia, Inc. brand");
+  });
+
+  it("can hide optional campaign copy without hiding the organization identity", () => {
+    const organizationEmail = wrapInBrandedCampaignEmail(
+      "<p>Hello</p>",
+      undefined,
+      "Campaign headline",
+      "Campaign subheading",
+      undefined,
+      false,
+      "#0f766e",
+      "Northwind Learning",
+    );
+    expect(organizationEmail).toContain("Northwind Learning");
+    expect(organizationEmail).not.toContain("Campaign headline");
+    expect(organizationEmail).not.toContain("Campaign subheading");
   });
 
   it("escapes organization presentation text and omits unsafe logo URLs", () => {

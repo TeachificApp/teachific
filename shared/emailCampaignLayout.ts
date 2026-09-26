@@ -63,9 +63,13 @@ export function wrapInBrandedCampaignEmail(
   const preview = previewText
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${previewText}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>`
     : "";
-  const rawTitle = brandName?.trim() || headerTitle?.trim() || "Course360™";
+  const rawBrandName = brandName?.trim() ?? "";
+  const rawHeaderTitle = headerTitle?.trim() ?? "";
+  const rawTitle = rawBrandName || rawHeaderTitle || "Course360™";
   const title = escapeEmailHtml(rawTitle);
-  const subtext = escapeEmailHtml(headerSubtext?.trim() ?? "");
+  const showCampaignHeaderDetails = headerEnabled !== false;
+  const campaignHeadline = rawBrandName && rawHeaderTitle && showCampaignHeaderDetails ? escapeEmailHtml(rawHeaderTitle) : "";
+  const subtext = showCampaignHeaderDetails ? escapeEmailHtml(headerSubtext?.trim() ?? "") : "";
   const showHeader = Boolean(brandName?.trim()) || headerEnabled !== false;
   const resolvedAccentColor = safeCampaignColor(accentColor) ?? "#189aa1";
   const bgColor = safeCampaignColor(headerColor);
@@ -83,6 +87,7 @@ export function wrapInBrandedCampaignEmail(
       <tr>
         <td style="${headerBg}padding:28px 32px;">
           ${logoMarkup}<span style="font-family:Merriweather,Georgia,serif;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">${title}</span>
+          ${campaignHeadline ? `<div style="font-size:14px;color:#ffffff;font-weight:700;margin-top:8px;">${campaignHeadline}</div>` : ""}
           <div style="font-size:11px;color:#4ad9e0;font-weight:600;margin-top:2px;letter-spacing:0.5px;">${subtext}</div>
         </td>
       </tr>` : "";

@@ -3335,10 +3335,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     const campaignEditorSource = readFileSync(new URL("../client/src/pages/EmailCampaignEditor.tsx", import.meta.url), "utf8");
     const emailLayoutSource = readFileSync(new URL("../shared/emailCampaignLayout.ts", import.meta.url), "utf8");
     const emailCampaignRouterSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", import.meta.url), "utf8");
-    expect(campaignEditorSource).toContain("wrapInBrandedEmail(htmlBody, previewText, campaignBranding)");
+    expect(campaignEditorSource).toContain("wrapInBrandedEmail(\n      htmlBody,\n      previewText,\n      campaignBranding,");
     expect(campaignEditorSource).toContain("htmlBody, blocksJson: JSON.stringify(blocks), previewText");
     expect(campaignEditorSource).toContain("srcDoc={wrappedHtml}");
-    expect(emailLayoutSource).toContain('const rawTitle = brandName?.trim() || headerTitle?.trim() || "Course360™"');
+    expect(emailLayoutSource).toContain('const rawTitle = rawBrandName || rawHeaderTitle || "Course360™"');
     expect(emailCampaignRouterSource).toContain("buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext");
   });
 
