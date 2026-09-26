@@ -614,6 +614,18 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
       .where(eq(emailCampaigns.id, campaignId));
     return;
   }
+  const [organization] = await db
+    .select({ isActive: organizations.isActive })
+    .from(organizations)
+    .where(eq(organizations.id, campaign.orgId))
+    .limit(1);
+  if (!organization?.isActive) {
+    await db
+      .update(emailCampaigns)
+      .set({ status: "failed", errorMessage: "Campaign organization is inactive." })
+      .where(eq(emailCampaigns.id, campaignId));
+    return;
+  }
   const orgContext = await getEmailCampaignOrgContext(db, campaign.orgId);
 
   let filter: AudienceFilter;
@@ -1041,6 +1053,9 @@ export const emailCampaignRouter = router({
         blocksJson: z.string().optional(),
         previewText: z.string().max(300).optional(),
         audienceFilter: AudienceFilterSchema,
+        senderProfileId: z.number().optional(),
+        fromName: z.string().max(200).optional(),
+        fromEmail: z.string().max(300).optional(),
         scheduledLocalTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
         headerTitle: z.string().max(300).optional(),
         headerSubtext: z.string().max(500).optional(),
@@ -1072,6 +1087,7 @@ export const emailCampaignRouter = router({
 
       // Estimate recipient count (dry-run)
       await validateAudienceScopeForOrg(db, input.audienceFilter, orgId);
+      await validateSenderProfileForOrg(db, input.senderProfileId, orgId);
       const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
 
       const htmlBodyScheduled = buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
@@ -1092,6 +1108,9 @@ export const emailCampaignRouter = router({
         audienceFilter: JSON.stringify(input.audienceFilter),
         recipientCount: recipients.length,
         status: "scheduled",
+        senderProfileId: input.senderProfileId ?? null,
+        fromName: input.fromName ?? null,
+        fromEmail: input.fromEmail ?? null,
         scheduledAt,
         scheduledTimezone: orgContext.timezone,
         headerTitle: input.headerTitle ?? null,
@@ -1125,6 +1144,116 @@ export const emailCampaignRouter = router({
       return { campaignId, recipientCount: recipients.length, scheduledAt, scheduledTimezone: orgContext.timezone };
     }),
 
+  // ── Admin: update and reschedule an existing future campaign ───────────────
+
+  rescheduleCampaign: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        subject: z.string().min(1).max(500),
+        htmlBody: z.string().min(1),
+        blocksJson: z.string().optional(),
+        previewText: z.string().max(300).optional(),
+        audienceFilter: AudienceFilterSchema,
+        senderProfileId: z.number().optional(),
+        fromName: z.string().max(200).optional(),
+        fromEmail: z.string().max(300).optional(),
+        scheduledLocalTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+        headerTitle: z.string().max(300).optional(),
+        headerSubtext: z.string().max(500).optional(),
+        headerColor: z.string().max(20).optional(),
+        headerEnabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const campaign = await requireCampaignForOrg(db, input.id, orgId);
+      if (campaign.status !== "scheduled") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only a scheduled campaign can be rescheduled." });
+      }
+
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
+      let scheduledAt: Date;
+      try {
+        scheduledAt = organizationLocalScheduleToUtc(input.scheduledLocalTime, orgContext.timezone);
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Choose a valid scheduled time.",
+        });
+      }
+      if (scheduledAt <= new Date()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Scheduled time must be in the future." });
+      }
+
+      await validateAudienceScopeForOrg(db, input.audienceFilter, orgId);
+      await validateSenderProfileForOrg(db, input.senderProfileId, orgId);
+      const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
+      const htmlBodyScheduled = buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
+        title: input.headerTitle,
+        subtext: input.headerSubtext,
+        color: input.headerColor,
+        enabled: input.headerEnabled,
+      });
+
+      const sessionToken = getSessionTokenFromCookieHeader(ctx.req.headers.cookie);
+      const job = await createHeartbeatJob({
+        name: `email-campaign-${campaign.id}`,
+        cron: cronExpressionForDate(scheduledAt),
+        path: "/api/scheduled/send-email-campaign",
+        payload: { campaignId: campaign.id },
+        description: `Reschedule email campaign #${campaign.id}`,
+      }, sessionToken);
+
+      try {
+        await db
+          .update(emailCampaigns)
+          .set({
+            name: campaignNameForSubject(input.subject),
+            subject: input.subject,
+            htmlBody: htmlBodyScheduled,
+            blocksJson: input.blocksJson ?? null,
+            previewText: input.previewText ?? null,
+            audienceFilter: JSON.stringify(input.audienceFilter),
+            recipientCount: recipients.length,
+            senderProfileId: input.senderProfileId ?? null,
+            fromName: input.fromName ?? null,
+            fromEmail: input.fromEmail ?? null,
+            scheduledAt,
+            scheduledTimezone: orgContext.timezone,
+            scheduleCronTaskUid: job.taskUid,
+            errorMessage: null,
+            headerTitle: input.headerTitle ?? null,
+            headerSubtext: input.headerSubtext ?? null,
+            headerColor: input.headerColor ?? null,
+            headerEnabled: input.headerEnabled ?? true,
+          })
+          .where(and(eq(emailCampaigns.id, campaign.id), eq(emailCampaigns.orgId, orgId), eq(emailCampaigns.status, "scheduled")));
+      } catch (error) {
+        try { await deleteHeartbeatJob(job.taskUid, sessionToken); } catch { /* orphan prevention is best effort */ }
+        throw error;
+      }
+
+      if (campaign.scheduleCronTaskUid && campaign.scheduleCronTaskUid !== job.taskUid) {
+        try {
+          await deleteHeartbeatJob(campaign.scheduleCronTaskUid, sessionToken);
+        } catch (error) {
+          if (!(error instanceof TRPCError && error.code === "NOT_FOUND")) {
+            console.warn(`[EmailCampaign] unable to remove superseded schedule task for campaign #${campaign.id}:`, errorMessageForLog(error));
+          }
+        }
+      }
+
+      return {
+        campaignId: campaign.id,
+        recipientCount: recipients.length,
+        scheduledAt,
+        scheduledTimezone: orgContext.timezone,
+      };
+    }),
+
   // ── Admin: cancel a scheduled campaign ───────────────────────────────────
 
   cancelScheduled: protectedProcedure
@@ -1144,7 +1273,7 @@ export const emailCampaignRouter = router({
       }
       await db
         .update(emailCampaigns)
-        .set({ status: "draft", scheduleCronTaskUid: null })
+        .set({ status: "draft", scheduleCronTaskUid: null, scheduledAt: null, scheduledTimezone: null })
         .where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.orgId, orgId), eq(emailCampaigns.status, "scheduled")));
       return { success: true };
     }),
@@ -1214,6 +1343,14 @@ export const emailCampaignRouter = router({
       const campaign = await requireCampaignForOrg(db, input.id, orgId);
       if (!campaign) throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
       if (campaign.status === "sending") throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete a campaign that is currently sending" });
+      if (campaign.scheduleCronTaskUid) {
+        const sessionToken = getSessionTokenFromCookieHeader(ctx.req.headers.cookie);
+        try {
+          await deleteHeartbeatJob(campaign.scheduleCronTaskUid, sessionToken);
+        } catch (error) {
+          if (!(error instanceof TRPCError && error.code === "NOT_FOUND")) throw error;
+        }
+      }
       await db.delete(emailCampaigns).where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.orgId, orgId)));
       return { success: true };
     }),
@@ -2043,7 +2180,15 @@ export const emailCampaignRouter = router({
         headerEnabled: input.headerEnabled ?? true,
       };
       if (input.id) {
-        await requireCampaignForOrg(db, input.id, orgId);
+        const existingCampaign = await requireCampaignForOrg(db, input.id, orgId);
+        if (existingCampaign.status !== "draft") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: existingCampaign.status === "scheduled"
+              ? "Use the reschedule action or cancel the scheduled campaign before saving it as a draft."
+              : "Only draft campaigns can be updated.",
+          });
+        }
         await db.update(emailCampaigns).set(vals).where(and(eq(emailCampaigns.id, input.id), eq(emailCampaigns.orgId, orgId)));
         return { id: input.id };
       } else {

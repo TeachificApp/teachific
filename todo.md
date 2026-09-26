@@ -6144,3 +6144,5 @@
 - [x] Add a low-volume campaign self-test rate limit using persisted delivery logs plus an in-process pre-provider claim, and communicate the limit in the confirmed self-test dialog.
 - [x] Add guarded 900 ms draft autosave after protected campaign hydration, with edit-route loading/error states, timer cleanup, save-fingerprint deduplication, overlapping-save prevention, and no autosend/autoschedule behavior.
 - [x] Store an active organization IANA timezone and use it for campaign scheduling: authorize settings updates through the canonical active org, interpret local campaign schedule input server-side, reject daylight-saving gap/fold ambiguity, persist the UTC delivery instant plus source timezone, and schedule the managed one-shot delivery task from UTC.
+
+- [x] Complete the organization-local scheduled campaign lifecycle: preserve scoped sender profiles, reschedule the existing active-organization campaign without duplicates, retire old tasks after replacement, prevent scheduled-to-draft/send-now bypasses, provide dashboard cancellation, and fail delivery when the organization becomes inactive.

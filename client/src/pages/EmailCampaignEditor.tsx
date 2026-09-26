@@ -1056,6 +1056,12 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     setHeaderSubtext(campaign.headerSubtext ?? "");
     setHeaderColor(campaign.headerColor ?? "");
     setHeaderEnabled(campaign.headerEnabled ?? true);
+    if (campaign.status === "scheduled" && campaign.scheduledAt) {
+      setScheduledAt(formatUtcForOrganizationDateTimeInput(
+        new Date(campaign.scheduledAt),
+        campaign.scheduledTimezone ?? "UTC",
+      ));
+    }
     setDraftId(campaign.id);
     setHydratedCampaignId(campaignId);
   }, [campaignId, campaignQuery.data, hydratedCampaignId]);
@@ -1108,6 +1114,15 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     onError: (e) => toast.error(e.message),
   });
 
+  const rescheduleMutation = trpc.emailCampaign.rescheduleCampaign.useMutation({
+    onSuccess: (r) => {
+      toast.success(`Rescheduled for ${formatUtcForOrganizationSchedule(new Date(r.scheduledAt), r.scheduledTimezone)}`);
+      setScheduleDialogOpen(false);
+      if (onClose) onClose(); else navigate("/admin/email");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const saveTemplateMutation = trpc.emailCampaign.saveTemplate.useMutation({
     onSuccess: () => { toast.success("Template saved"); setSaveTemplateDialogOpen(false); setTemplateName(""); },
     onError: (e) => toast.error(e.message),
@@ -1150,6 +1165,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   const isAutosaveEligible = Boolean(
     draftId && isExistingCampaignHydrated && (!campaignId || campaignQuery.data?.status === "draft"),
   );
+  const isScheduledCampaign = Boolean(campaignId && campaignQuery.data?.status === "scheduled");
 
   useEffect(() => {
     if (!isAutosaveEligible) return;
@@ -1182,6 +1198,10 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   }, []);
 
   function handleSaveDraft() {
+    if (isScheduledCampaign) {
+      toast.error("Use Reschedule to save changes to a scheduled campaign.");
+      return;
+    }
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = undefined;
@@ -1193,6 +1213,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   }
 
   function handleSend() {
+    if (isScheduledCampaign) { toast.error("Reschedule or cancel this scheduled campaign before sending it now."); return; }
     if (!subject.trim()) { toast.error("Subject is required"); return; }
     if (blocks.length === 0) { toast.error("Add at least one content block"); return; }
     setSendDialogOpen(true);
@@ -1230,15 +1251,21 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
 
   function confirmSchedule() {
     if (!scheduledAt) { toast.error("Pick a date/time"); return; }
-    scheduleMutation.mutate({
+    const schedulePayload = {
       subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
+      senderProfileId,
       scheduledLocalTime: scheduledAt,
       headerTitle: headerTitle || undefined,
       headerSubtext: headerSubtext || undefined,
       headerColor: headerColor || undefined,
       headerEnabled,
-    });
+    };
+    if (isScheduledCampaign && campaignId) {
+      rescheduleMutation.mutate({ id: campaignId, ...schedulePayload });
+    } else {
+      scheduleMutation.mutate(schedulePayload);
+    }
   }
 
   function loadTemplate(t: any) {
@@ -1302,8 +1329,8 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
             {showPreview ? <EyeOff className="w-4 h-4 mr-1.5" /> : <Eye className="w-4 h-4 mr-1.5" />}
             {showPreview ? "Hide Preview" : "Preview"}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving || saveDraftMutation.isPending}>
-            <Save className="w-4 h-4 mr-1.5" /> {isSaving ? "Saving…" : "Save Draft"}
+          <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isScheduledCampaign || isSaving || saveDraftMutation.isPending} title={isScheduledCampaign ? "Use Reschedule to keep this campaign scheduled" : undefined}>
+            <Save className="w-4 h-4 mr-1.5" /> {isScheduledCampaign ? "Scheduled" : isSaving ? "Saving…" : "Save Draft"}
           </Button>
           {draftId && isAutosaveEligible && autosaveState !== "idle" && (
             <span className={`text-xs ${autosaveState === "error" ? "text-red-600" : "text-slate-500"}`} aria-live="polite">
@@ -1317,9 +1344,9 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
             <Mail className="w-4 h-4 mr-1.5" /> Send Test
           </Button>
           <Button variant="outline" size="sm" onClick={() => setScheduleDialogOpen(true)}>
-            <Clock className="w-4 h-4 mr-1.5" /> Schedule
+            <Clock className="w-4 h-4 mr-1.5" /> {isScheduledCampaign ? "Reschedule" : "Schedule"}
           </Button>
-          <Button size="sm" onClick={handleSend} style={{ background: "#189aa1" }} className="text-white hover:opacity-90">
+          <Button size="sm" onClick={handleSend} disabled={isScheduledCampaign} title={isScheduledCampaign ? "Reschedule or cancel before sending now" : undefined} style={{ background: "#189aa1" }} className="text-white hover:opacity-90">
             <Send className="w-4 h-4 mr-1.5" /> Send Now
           </Button>
         </div>
@@ -1480,7 +1507,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
       {/* Schedule dialog */}
       <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Schedule Campaign</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{isScheduledCampaign ? "Reschedule Campaign" : "Schedule Campaign"}</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <label className="text-sm font-medium text-gray-700">Send at</label>
             <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} min={earliestOrganizationScheduleTime} />
@@ -1488,8 +1515,8 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>
-            <Button onClick={confirmSchedule} disabled={scheduleMutation.isPending} style={{ background: "#189aa1" }} className="text-white">
-              <Clock className="w-4 h-4 mr-1.5" /> Schedule
+            <Button onClick={confirmSchedule} disabled={scheduleMutation.isPending || rescheduleMutation.isPending} style={{ background: "#189aa1" }} className="text-white">
+              <Clock className="w-4 h-4 mr-1.5" /> {isScheduledCampaign ? "Reschedule" : "Schedule"}
             </Button>
           </DialogFooter>
         </DialogContent>

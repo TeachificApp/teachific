@@ -52,7 +52,7 @@ describe("email campaign editor draft hydration", () => {
     expect(editorSource).toContain("saveDraftMutation.mutate(draftPayload);");
     expect(editorSource).toContain("}, 900);");
     expect(editorSource).toContain("if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);");
-    expect(editorSource).toContain("disabled={isSaving || saveDraftMutation.isPending}");
+    expect(editorSource).toContain("disabled={isScheduledCampaign || isSaving || saveDraftMutation.isPending}");
     expect(editorSource).toContain("const isWaitingForExistingCampaign = Boolean(");
     expect(editorSource).toContain("Loading campaign draft…");
     expect(editorSource).not.toContain("sendMutation.mutate(draftPayload)");

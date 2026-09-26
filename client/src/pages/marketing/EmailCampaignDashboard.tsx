@@ -942,6 +942,10 @@ export default function EmailCampaignDashboard() {
     onSuccess: () => { toast.success("Campaign deleted"); setDeleteConfirmId(null); refetchCampaigns(); },
     onError: (e) => { toast.error(e.message); setDeleteConfirmId(null); },
   });
+  const cancelScheduledMutation = trpc.emailCampaign.cancelScheduled.useMutation({
+    onSuccess: () => { toast.success("Schedule canceled; campaign is now a draft."); refetchCampaigns(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   // ── Auth guards ─────────────────────────────────────────────────────────────
   if (loading) return <DashboardLayout><div className="container py-12 flex justify-center"><RefreshCw className="w-6 h-6 animate-spin text-[#189aa1]" /></div></DashboardLayout>;
@@ -1113,6 +1117,11 @@ export default function EmailCampaignDashboard() {
                             {(c.status === "draft" || c.status === "scheduled") && (
                               <button onClick={() => { setEditCampaignId(c.id); setShowEditor(true); }} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[#189aa1]" title="Edit">
                                 <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                            {c.status === "scheduled" && (
+                              <button onClick={() => cancelScheduledMutation.mutate({ id: c.id })} disabled={cancelScheduledMutation.isPending} className="p-1.5 rounded hover:bg-amber-50 text-gray-500 hover:text-amber-700 disabled:opacity-50" title="Cancel schedule and return to draft">
+                                <XCircle className="w-4 h-4" />
                               </button>
                             )}
                             <button onClick={() => duplicateMutation.mutate({ id: c.id })} className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-[#189aa1]" title="Duplicate">

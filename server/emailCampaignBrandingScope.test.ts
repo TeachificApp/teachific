@@ -26,7 +26,8 @@ describe("email campaign organization branding", () => {
 
   it("wraps every server-delivered campaign and self-test form with organization branding", () => {
     const brandedWriteCount = (routerSource.match(/buildCampaignHtmlForOrganization\(input\.htmlBody, input\.previewText, orgContext/g) ?? []).length;
-    expect(brandedWriteCount).toBe(4);
+    expect(brandedWriteCount).toBe(5);
+    expect(routerSource).toContain("rescheduleCampaign: protectedProcedure");
     expect(routerSource).toContain("wrapInBrandedCampaignEmail(");
     expect(routerSource).toContain("orgContext.displayName");
     expect(routerSource).toContain("orgContext.logoUrl");
