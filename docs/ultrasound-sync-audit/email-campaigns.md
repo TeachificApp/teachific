@@ -327,3 +327,8 @@ Before preview, draft save, immediate send, schedule, or reschedule resolves rec
 ## Implementation update — Sep 26, 2026 (organization-gated campaign A/B tests)
 
 **Completed:** Course360 campaign A/B testing is now a server-enforced **Pro/Enterprise** capability for active or trialing organization subscriptions. The editor receives only a server-computed availability flag, supports two branded variants with a coupled 100% split, and preserves organization-controlled sender, audience, unsubscribe, and tracking behavior. Variant content is wrapped with the same organization-first email layout as the base campaign. Enabled configurations require exactly two unique, non-empty variants totaling 100%; validation runs for preview, drafts, immediate sends, schedules, reschedules, and again immediately before scheduled delivery. Organizations that later lose access can still disable a saved A/B test, but cannot enable a new one.
+
+
+## Implementation update — Sep 26, 2026 (extended audience resource safeguards)
+
+**Completed:** Course360 now validates the remaining persisted campaign audience resource IDs before recipient resolution, including groups, submitted forms, digital products, digital bundles, physical products, communities, and quiz-specific course records. Quiz IDs must both belong to the active organization and be typed as quizzes. The editor now exposes existing active-organization option sets for course preview/purchase and quiz enrollment/completion/access/preview/purchase segments, plus physical-product and digital-bundle purchasers. Browser IDs remain untrusted; every preview, draft, immediate send, schedule, reschedule, and scheduled delivery uses the server-derived organization boundary.

@@ -910,10 +910,37 @@ function AudienceFilterBuilder({ filter, onChange, preview }: {
             <MultiSelect label="Active Course Access" options={options.courses} selected={filter.activeAccessCourseIds} onChange={(v) => update({ activeAccessCourseIds: v })} />
           )}
           {options && (
+            <MultiSelect label="Free Course Preview" options={options.courses} selected={filter.freePreviewCourseIds} onChange={(v) => update({ freePreviewCourseIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Purchased Course" options={options.courses} selected={filter.purchasedCourseIds} onChange={(v) => update({ purchasedCourseIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Enrolled in Quiz" options={options.quizzes} selected={filter.enrolledInQuizIds} onChange={(v) => update({ enrolledInQuizIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Completed Quiz" options={options.quizzes} selected={filter.completedQuizIds} onChange={(v) => update({ completedQuizIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Active Quiz Access" options={options.quizzes} selected={filter.activeAccessQuizIds} onChange={(v) => update({ activeAccessQuizIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Free Quiz Preview" options={options.quizzes} selected={filter.freePreviewQuizIds} onChange={(v) => update({ freePreviewQuizIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Purchased Quiz" options={options.quizzes} selected={filter.purchasedQuizIds} onChange={(v) => update({ purchasedQuizIds: v })} />
+          )}
+          {options && (
             <MultiSelect label="Purchased Product" options={options.products} selected={filter.purchasedProductIds} onChange={(v) => update({ purchasedProductIds: v })} />
           )}
           {options && (
             <MultiSelect label="Downloaded Product" options={options.products} selected={filter.downloadedProductIds} onChange={(v) => update({ downloadedProductIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Purchased Physical Product" options={options.physicalProducts} selected={filter.purchasedPhysicalProductIds} onChange={(v) => update({ purchasedPhysicalProductIds: v })} />
+          )}
+          {options && (
+            <MultiSelect label="Purchased Digital Bundle" options={options.digitalBundles} selected={filter.purchasedDigitalBundleIds} onChange={(v) => update({ purchasedDigitalBundleIds: v })} />
           )}
           {options && (
             <MultiSelect label="In Team/Group" options={options.groups} selected={filter.inGroupIds} onChange={(v) => update({ inGroupIds: v })} />

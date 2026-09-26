@@ -39,10 +39,15 @@ import {
   membershipPlans,
   lmsCohortGroups,
   lmsCourses,
+  lmsGroups,
   workshopInstances,
   workshops,
   bundles,
   digitalProducts,
+  digitalBundles,
+  physicalProducts,
+  generalFormTemplates,
+  communitySpaces,
   digitalProductPrices,
   webinars,
   orgThemes,
@@ -323,13 +328,28 @@ async function validateAudienceCoursesForOrg(db: EmailMarketingDb, filter: Audie
     ...(filter.activeAccessCourseIds ?? []),
     ...(filter.purchasedCourseIds ?? []),
   ])];
-  if (courseIds.length === 0) return;
-  const rows = await db
-    .select({ id: lmsCourses.id })
-    .from(lmsCourses)
-    .where(and(inArray(lmsCourses.id, courseIds), eq(lmsCourses.orgId, orgId)));
-  if (rows.length !== courseIds.length) {
+  const quizIds = [...new Set([
+    ...(filter.enrolledInQuizIds ?? []),
+    ...(filter.completedQuizIds ?? []),
+    ...(filter.freePreviewQuizIds ?? []),
+    ...(filter.activeAccessQuizIds ?? []),
+    ...(filter.purchasedQuizIds ?? []),
+  ])];
+  const [courseRows, quizRows] = await Promise.all([
+    courseIds.length > 0
+      ? db.select({ id: lmsCourses.id }).from(lmsCourses)
+        .where(and(inArray(lmsCourses.id, courseIds), eq(lmsCourses.orgId, orgId)))
+      : [],
+    quizIds.length > 0
+      ? db.select({ id: lmsCourses.id }).from(lmsCourses)
+        .where(and(inArray(lmsCourses.id, quizIds), eq(lmsCourses.orgId, orgId), eq(lmsCourses.type, "quiz")))
+      : [],
+  ]);
+  if (courseRows.length !== courseIds.length) {
     throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected courses do not belong to the active organization." });
+  }
+  if (quizRows.length !== quizIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected quizzes do not belong to the active organization." });
   }
 }
 
@@ -400,6 +420,64 @@ async function validateAudienceAdvancedResourcesForOrg(db: EmailMarketingDb, fil
   }
 }
 
+async function validateAudienceAdditionalResourcesForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  const groupIds = [...new Set(filter.inGroupIds ?? [])];
+  const formIds = [...new Set(filter.submittedFormIds ?? [])];
+  const digitalProductIds = [...new Set([
+    ...(filter.purchasedProductIds ?? []),
+    ...(filter.downloadedProductIds ?? []),
+  ])];
+  const digitalBundleIds = [...new Set(filter.purchasedDigitalBundleIds ?? [])];
+  const physicalProductIds = [...new Set(filter.purchasedPhysicalProductIds ?? [])];
+  const communityIds = [...new Set(filter.communityIds ?? [])];
+
+  const [groupRows, formRows, digitalProductRows, digitalBundleRows, physicalProductRows, communityRows] = await Promise.all([
+    groupIds.length > 0
+      ? db.select({ id: lmsGroups.id }).from(lmsGroups)
+        .where(and(inArray(lmsGroups.id, groupIds), eq(lmsGroups.orgId, orgId)))
+      : [],
+    formIds.length > 0
+      ? db.select({ id: generalFormTemplates.id }).from(generalFormTemplates)
+        .where(and(inArray(generalFormTemplates.id, formIds), eq(generalFormTemplates.orgId, orgId)))
+      : [],
+    digitalProductIds.length > 0
+      ? db.select({ id: digitalProducts.id }).from(digitalProducts)
+        .where(and(inArray(digitalProducts.id, digitalProductIds), eq(digitalProducts.orgId, orgId)))
+      : [],
+    digitalBundleIds.length > 0
+      ? db.select({ id: digitalBundles.id }).from(digitalBundles)
+        .where(and(inArray(digitalBundles.id, digitalBundleIds), eq(digitalBundles.orgId, orgId)))
+      : [],
+    physicalProductIds.length > 0
+      ? db.select({ id: physicalProducts.id }).from(physicalProducts)
+        .where(and(inArray(physicalProducts.id, physicalProductIds), eq(physicalProducts.orgId, orgId)))
+      : [],
+    communityIds.length > 0
+      ? db.select({ id: communitySpaces.id }).from(communitySpaces)
+        .where(and(inArray(communitySpaces.id, communityIds), eq(communitySpaces.orgId, orgId)))
+      : [],
+  ]);
+
+  if (groupRows.length !== groupIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected groups do not belong to the active organization." });
+  }
+  if (formRows.length !== formIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected forms do not belong to the active organization." });
+  }
+  if (digitalProductRows.length !== digitalProductIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected digital products do not belong to the active organization." });
+  }
+  if (digitalBundleRows.length !== digitalBundleIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected digital bundles do not belong to the active organization." });
+  }
+  if (physicalProductRows.length !== physicalProductIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected physical products do not belong to the active organization." });
+  }
+  if (communityRows.length !== communityIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected communities do not belong to the active organization." });
+  }
+}
+
 async function validateAudienceEngagementCampaignsForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
   const campaignIds = [...new Set([
     ...(filter.openedCampaignIds ?? []),
@@ -425,6 +503,7 @@ async function validateAudienceScopeForOrg(db: EmailMarketingDb, filter: Audienc
   await validateAudienceCohortGroupsForOrg(db, filter, orgId);
   await validateAudienceWorkshopsForOrg(db, filter, orgId);
   await validateAudienceAdvancedResourcesForOrg(db, filter, orgId);
+  await validateAudienceAdditionalResourcesForOrg(db, filter, orgId);
   await validateAudienceEngagementCampaignsForOrg(db, filter, orgId);
   await assertCampaignAbTestEntitlement(db, filter, orgId);
 }
