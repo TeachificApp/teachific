@@ -322,3 +322,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 **Completed:** The campaign editor now consumes the canonical shared `AudienceFilter` rather than maintaining a reduced local copy. It exposes organization-provided interest and email-list selectors, explicit list-only/union/intersection behavior, and sent-campaign open/click engagement selectors. The option endpoint returns lists and only sent campaigns for the server-resolved active organization.
 
 Before preview, draft save, immediate send, schedule, or reschedule resolves recipients, the server now also validates every selected engagement campaign ID against the same active organization and requires it to be sent. Browser values remain untrusted UI input; cross-organization, draft, scheduled, or otherwise invalid campaign IDs are rejected before recipient resolution.
+
+
+## Implementation update — Sep 26, 2026 (organization-gated campaign A/B tests)
+
+**Completed:** Course360 campaign A/B testing is now a server-enforced **Pro/Enterprise** capability for active or trialing organization subscriptions. The editor receives only a server-computed availability flag, supports two branded variants with a coupled 100% split, and preserves organization-controlled sender, audience, unsubscribe, and tracking behavior. Variant content is wrapped with the same organization-first email layout as the base campaign. Enabled configurations require exactly two unique, non-empty variants totaling 100%; validation runs for preview, drafts, immediate sends, schedules, reschedules, and again immediately before scheduled delivery. Organizations that later lose access can still disable a saved A/B test, but cannot enable a new one.

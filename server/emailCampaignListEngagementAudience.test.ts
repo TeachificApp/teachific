@@ -7,7 +7,9 @@ const routerSource = readFileSync(new URL("./routers/emailCampaignRouter.ts", im
 
 describe("organization-scoped list and engagement campaign audiences", () => {
   it("uses the canonical shared audience contract instead of a reduced editor-local filter", () => {
-    expect(editorSource).toContain('import { DEFAULT_AUDIENCE_FILTER, type AudienceFilter } from "@shared/emailCampaignAudience";');
+    expect(editorSource).toContain('from "@shared/emailCampaignAudience"');
+    expect(editorSource).toContain("DEFAULT_AUDIENCE_FILTER");
+    expect(editorSource).toContain("type AudienceFilter");
     expect(editorSource).not.toContain("interface AudienceFilter {");
     expect(editorSource).toContain("...DEFAULT_AUDIENCE_FILTER");
 

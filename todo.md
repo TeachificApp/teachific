@@ -6147,3 +6147,5 @@
 
 - [x] Complete the organization-local scheduled campaign lifecycle: preserve scoped sender profiles, reschedule the existing active-organization campaign without duplicates, retire old tasks after replacement, prevent scheduled-to-draft/send-now bypasses, provide dashboard cancellation, and fail delivery when the organization becomes inactive.
 - [x] Replace the reduced campaign-editor audience type with the shared canonical contract; expose active-organization email-list modes, normalized interest selectors, and sent-campaign opened/clicked selectors; validate engagement campaign ownership and sent status before recipient resolution for preview, draft, send, schedule, and reschedule.
+
+- [x] Add a two-variant Course360 campaign A/B editor with a coupled 100% audience split and organization-branded variant delivery; enforce active Pro/Enterprise entitlement from the server for preview, draft, send, schedule, reschedule, and scheduled execution, and preserve an exit path for downgraded organizations to disable a saved test.

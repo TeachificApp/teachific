@@ -21,7 +21,42 @@ export const AbTestVariantSchema = z.object({
 
 export const AbTestConfigSchema = z.object({
   enabled: z.boolean().default(false),
-  variants: z.array(AbTestVariantSchema).default([]),
+  variants: z.array(AbTestVariantSchema).max(2).default([]),
+}).superRefine((config, context) => {
+  if (!config.enabled) return;
+  if (config.variants.length !== 2) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["variants"],
+      message: "Enabled A/B tests require exactly two variants.",
+    });
+    return;
+  }
+  const keys = new Set(config.variants.map((variant) => variant.key.trim().toLowerCase()));
+  if (keys.size !== config.variants.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["variants"],
+      message: "A/B test variant keys must be unique.",
+    });
+  }
+  const totalWeight = config.variants.reduce((sum, variant) => sum + variant.weight, 0);
+  if (totalWeight !== 100) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["variants"],
+      message: "A/B test variant weights must total 100.",
+    });
+  }
+  config.variants.forEach((variant, index) => {
+    if (!variant.subject?.trim() && !variant.htmlBody?.trim()) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["variants", index],
+        message: "Each enabled A/B variant needs a subject or email body.",
+      });
+    }
+  });
 });
 
 export const AudienceFilterSchema = z.object({

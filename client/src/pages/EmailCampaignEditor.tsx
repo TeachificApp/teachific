@@ -52,7 +52,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
 import type { ParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
 import { wrapInBrandedCampaignEmail } from "@shared/emailCampaignLayout";
-import { DEFAULT_AUDIENCE_FILTER, type AudienceFilter } from "@shared/emailCampaignAudience";
+import { DEFAULT_AUDIENCE_FILTER, type AbTestConfig, type AudienceFilter } from "@shared/emailCampaignAudience";
 import {
   formatUtcForOrganizationDateTimeInput,
   formatUtcForOrganizationSchedule,
@@ -750,6 +750,17 @@ const DEFAULT_FILTER: AudienceFilter = {
   userStatus: "active",
 };
 
+function createAbTestConfig(subject: string): AbTestConfig {
+  const baselineSubject = subject.trim() || "Campaign subject";
+  return {
+    enabled: true,
+    variants: [
+      { key: "a", name: "Variant A", weight: 50, subject: baselineSubject },
+      { key: "b", name: "Variant B", weight: 50, subject: baselineSubject },
+    ],
+  };
+}
+
 function parseCampaignAudienceFilter(raw: string | null): AudienceFilter {
   if (!raw) return DEFAULT_FILTER;
   try {
@@ -1140,6 +1151,8 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     draftId && isExistingCampaignHydrated && (!campaignId || campaignQuery.data?.status === "draft"),
   );
   const isScheduledCampaign = Boolean(campaignId && campaignQuery.data?.status === "scheduled");
+  const canUseAbTesting = Boolean(campaignBranding?.canUseAbTesting);
+  const abTest = filter.abTest?.enabled ? filter.abTest : null;
 
   useEffect(() => {
     if (!isAutosaveEligible) return;
@@ -1197,6 +1210,32 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     if (!subject.trim()) { toast.error("Add a subject before sending a test."); return; }
     if (blocks.length === 0) { toast.error("Add at least one content block before sending a test."); return; }
     setTestDialogOpen(true);
+  }
+
+  function setAbTesting(enabled: boolean) {
+    setFilter((current) => ({
+      ...current,
+      abTest: enabled
+        ? current.abTest?.variants.length === 2
+          ? { ...current.abTest, enabled: true }
+          : createAbTestConfig(subject)
+        : { enabled: false, variants: current.abTest?.variants ?? [] },
+    }));
+  }
+
+  function updateAbVariant(index: number, patch: Partial<AbTestConfig["variants"][number]>) {
+    setFilter((current) => {
+      const abTest = current.abTest?.enabled ? current.abTest : createAbTestConfig(subject);
+      return {
+        ...current,
+        abTest: {
+          ...abTest,
+          variants: abTest.variants.map((variant, variantIndex) => (
+            variantIndex === index ? { ...variant, ...patch } : variant
+          )),
+        },
+      };
+    });
   }
 
   function confirmSendTest() {
@@ -1382,6 +1421,69 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
                       <Input id="campaign-header-color" type="color" value={headerColor || campaignBranding?.accentColor || "#189aa1"} onChange={(event) => setHeaderColor(event.target.value)} className="mt-1 h-9 w-full cursor-pointer p-1" />
                       <button type="button" onClick={() => setHeaderColor("")} className="mt-1 text-xs font-medium text-[#189aa1] hover:underline">Use organization accent</button>
                     </div>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Label htmlFor="campaign-ab-testing" className="text-xs font-semibold text-slate-700">A/B subject and body test</Label>
+                    <p className="mt-0.5 text-xs text-slate-500">Split the campaign evenly between two branded variants. Sender, audience, unsubscribe, and tracking remain organization-controlled.</p>
+                  </div>
+                  <Switch
+                    id="campaign-ab-testing"
+                    checked={Boolean(abTest)}
+                    disabled={!canUseAbTesting && !abTest}
+                    onCheckedChange={setAbTesting}
+                  />
+                </div>
+                {!canUseAbTesting && (
+                  <p className="text-xs text-slate-500">A/B campaign testing requires an active Pro or Enterprise organization subscription.</p>
+                )}
+                {abTest && canUseAbTesting && (
+                  <div className="grid gap-3 border-t border-slate-100 pt-3 md:grid-cols-2">
+                    {abTest.variants.map((variant, index) => (
+                      <div key={variant.key} className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor={`campaign-ab-${variant.key}-subject`} className="text-xs font-semibold text-slate-700">{variant.name || `Variant ${index === 0 ? "A" : "B"}`}</Label>
+                          <Badge variant="secondary" className="text-xs">{variant.weight}% audience</Badge>
+                        </div>
+                        <Input
+                          id={`campaign-ab-${variant.key}-subject`}
+                          value={variant.subject ?? ""}
+                          onChange={(event) => updateAbVariant(index, { subject: event.target.value })}
+                          placeholder="Variant subject"
+                          maxLength={500}
+                          className="h-9 text-sm"
+                        />
+                        <Textarea
+                          value={variant.htmlBody ?? ""}
+                          onChange={(event) => updateAbVariant(index, { htmlBody: event.target.value })}
+                          placeholder="Optional variant body HTML. Leave empty to use the primary email body."
+                          rows={3}
+                          className="text-sm"
+                        />
+                        {index === 0 && (
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="campaign-ab-weight" className="text-xs text-slate-500">Variant A split</Label>
+                            <Input
+                              id="campaign-ab-weight"
+                              type="number"
+                              min={1}
+                              max={99}
+                              value={variant.weight}
+                              onChange={(event) => {
+                                const nextWeight = Math.max(1, Math.min(99, Number(event.target.value) || 50));
+                                updateAbVariant(0, { weight: nextWeight });
+                                updateAbVariant(1, { weight: 100 - nextWeight });
+                              }}
+                              className="h-8 w-20 text-sm"
+                            />
+                            <span className="text-xs text-slate-400">Variant B updates automatically.</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

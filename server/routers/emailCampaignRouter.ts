@@ -47,6 +47,7 @@ import {
   webinars,
   orgThemes,
   organizations,
+  orgSubscriptions,
   orgMembers,
 } from "../../drizzle/schema";
 import { addToEmailList, ensureAllContactsList } from "../lib/emailListHelper";
@@ -78,6 +79,7 @@ import {
   normalizeOrganizationTimeZone,
   organizationLocalScheduleToUtc,
 } from "../../shared/emailCampaignSchedule";
+import { canUseEmailCampaignAbTests } from "../lib/emailCampaignAbTestEntitlement";
 
 // ─── Campaign metrics helper ──────────────────────────────────────────────────
 
@@ -229,6 +231,21 @@ async function requireActiveEmailMarketingOrg(user: EmailMarketingActor): Promis
     throw new TRPCError({ code: "FORBIDDEN", message: "No active organization is available for email campaigns." });
   }
   return requireOrgAdmin(user.id, user.role, orgId);
+}
+
+async function assertCampaignAbTestEntitlement(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  if (!filter.abTest?.enabled) return;
+  const [subscription] = await db
+    .select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
+    .from(orgSubscriptions)
+    .where(eq(orgSubscriptions.orgId, orgId))
+    .limit(1);
+  if (!canUseEmailCampaignAbTests(subscription?.plan, subscription?.status)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Campaign A/B testing is available on active Pro and Enterprise plans.",
+    });
+  }
 }
 
 async function requireCampaignForOrg(db: EmailMarketingDb, campaignId: number, orgId: number) {
@@ -409,6 +426,7 @@ async function validateAudienceScopeForOrg(db: EmailMarketingDb, filter: Audienc
   await validateAudienceWorkshopsForOrg(db, filter, orgId);
   await validateAudienceAdvancedResourcesForOrg(db, filter, orgId);
   await validateAudienceEngagementCampaignsForOrg(db, filter, orgId);
+  await assertCampaignAbTestEntitlement(db, filter, orgId);
 }
 
 function campaignNameForSubject(subject: string): string {
@@ -658,6 +676,15 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
       .where(eq(emailCampaigns.id, campaignId));
     return;
   }
+  try {
+    await assertCampaignAbTestEntitlement(db, filter, campaign.orgId);
+  } catch (error) {
+    await db
+      .update(emailCampaigns)
+      .set({ status: "failed", errorMessage: errorMessageForLog(error) })
+      .where(eq(emailCampaigns.id, campaignId));
+    return;
+  }
 
   // Load sender profile if set
   let senderName: string | undefined;
@@ -683,7 +710,14 @@ export async function executeCampaignSend(campaignId: number): Promise<void> {
   for (const recipient of recipients) {
     const variant = pickAbVariant(recipient.email, filter.abTest, campaignId);
     const subject = variant?.subject?.trim() || campaign.subject;
-    let html = normalizeCampaignEmailHtml(variant?.htmlBody?.trim() || campaign.htmlBody, orgContext.accentColor);
+    let html = variant?.htmlBody?.trim()
+      ? buildCampaignHtmlForOrganization(variant.htmlBody, campaign.previewText, orgContext, {
+          title: campaign.headerTitle,
+          subtext: campaign.headerSubtext,
+          color: campaign.headerColor,
+          enabled: campaign.headerEnabled,
+        })
+      : normalizeCampaignEmailHtml(campaign.htmlBody, orgContext.accentColor);
     const recipientKey = buildRecipientTrackingKey(recipient);
 
     let unsubscribePageUrl: string | undefined;
@@ -795,13 +829,22 @@ export const emailCampaignRouter = router({
     const orgId = await requireActiveEmailMarketingOrg(ctx.user);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    const branding = await getEmailCampaignOrgContext(db, orgId);
+    const [branding, subscriptionRows] = await Promise.all([
+      getEmailCampaignOrgContext(db, orgId),
+      db
+        .select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
+        .from(orgSubscriptions)
+        .where(eq(orgSubscriptions.orgId, orgId))
+        .limit(1),
+    ]);
+    const subscription = subscriptionRows[0];
     return {
       displayName: branding.displayName,
       accentColor: branding.accentColor ?? "#189aa1",
       logoUrl: branding.logoUrl,
       baseUrl: branding.baseUrl ?? null,
       timezone: branding.timezone,
+      canUseAbTesting: canUseEmailCampaignAbTests(subscription?.plan, subscription?.status),
     };
   }),
 
