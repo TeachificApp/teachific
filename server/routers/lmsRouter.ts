@@ -323,7 +323,7 @@ export const lmsPublicRouter = router({
 
       // Sections + preview lessons
       // Batch all sub-queries in parallel to avoid sequential round-trips
-      const [sections, allLessonsRaw, cis, landingPageRow, pricingOptions, cohortSessions] = await Promise.all([
+      const [sections, allLessonsRaw, cis, landingPageRow, pricingOptions, cohortSessions, cohortGroupsRaw] = await Promise.all([
         db.select().from(lmsSections).where(eq(lmsSections.courseId, course.id)).orderBy(asc(lmsSections.position)),
         db.select({
           id: lmsLessons.id, title: lmsLessons.title, type: lmsLessons.type,
@@ -347,11 +347,29 @@ export const lmsPublicRouter = router({
           sessionDate: lmsCohortSessions.sessionDate,
           durationMinutes: lmsCohortSessions.durationMinutes,
           timezone: lmsCohortSessions.timezone,
-          meetingUrl: lmsCohortSessions.meetingUrl,
           status: lmsCohortSessions.status,
         }).from(lmsCohortSessions)
           .where(and(eq(lmsCohortSessions.courseId, course.id), eq(lmsCohortSessions.status, "published")))
           .orderBy(asc(lmsCohortSessions.sessionDate)),
+        // Enrollment choices are derived from the course-owned groups. Counts and
+        // capacity remain server-only so public learners never see peer data.
+        db.select({
+          id: lmsCohortGroups.id,
+          name: lmsCohortGroups.name,
+          description: lmsCohortGroups.description,
+          startDate: lmsCohortGroups.startDate,
+          endDate: lmsCohortGroups.endDate,
+          status: lmsCohortGroups.status,
+          isFeaturedOnLanding: lmsCohortGroups.isFeaturedOnLanding,
+          enrollmentCloseDate: lmsCohortGroups.enrollmentCloseDate,
+          maxStudents: lmsCohortGroups.maxStudents,
+          enrollmentCount: sql<number>`(SELECT COUNT(*) FROM lms_cohort_group_enrollments WHERE cohort_group_id = ${lmsCohortGroups.id})`,
+        }).from(lmsCohortGroups)
+          .where(and(
+            eq(lmsCohortGroups.courseId, course.id),
+            eq(lmsCohortGroups.orgId, publicScope.id),
+            sql`${lmsCohortGroups.status} NOT IN ('archived', 'draft')`,
+          )),
       ]);
 
       // Group lessons by sectionId
@@ -382,7 +400,49 @@ export const lmsPublicRouter = router({
 
       const landingPage = landingPageRow[0] ?? null;
 
-      return { ...course, sections: sectionsWithLessons, instructors: instructors.filter(Boolean), landingPage, pricingOptions, cohortSessions };
+      // Course groups and sessions are historical records after their end time,
+      // but must disappear from public enrollment choices. Keep their capacity
+      // calculations server-only and expose only the public lifecycle state.
+      const now = new Date();
+      const visibleCohortGroups = cohortGroupsRaw.filter((group) => {
+        const end = group.endDate ?? group.startDate;
+        return !end || new Date(end) >= now;
+      });
+      const isCohortGroupOnSale = (group: typeof cohortGroupsRaw[0]) => {
+        if (group.status !== "open") return false;
+        if (group.enrollmentCloseDate && new Date(group.enrollmentCloseDate) < now) return false;
+        return group.maxStudents == null || Number(group.enrollmentCount ?? 0) < group.maxStudents;
+      };
+      const isCohortGroupSoldOut = (group: typeof cohortGroupsRaw[0]) =>
+        group.status === "open"
+        && (!group.enrollmentCloseDate || new Date(group.enrollmentCloseDate) >= now)
+        && group.maxStudents != null
+        && Number(group.enrollmentCount ?? 0) >= group.maxStudents;
+      const nextUpcomingOpen = visibleCohortGroups
+        .filter((group) => group.status === "open" && group.startDate && new Date(group.startDate) > now)
+        .sort((a, b) => new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime())[0] ?? null;
+      const featuredGroup = visibleCohortGroups.find((group) => Boolean(group.isFeaturedOnLanding))
+        ?? nextUpcomingOpen
+        ?? visibleCohortGroups[0]
+        ?? null;
+      const toPublicCohortGroup = <T extends { maxStudents?: unknown; enrollmentCount?: unknown }>(group: T) => {
+        const { maxStudents: _maxStudents, enrollmentCount: _enrollmentCount, ...publicGroup } = group;
+        return publicGroup;
+      };
+      const visibleCohortSessions = cohortSessions.filter((session) => !session.sessionDate || new Date(session.sessionDate) >= now);
+
+      return {
+        ...course,
+        sections: sectionsWithLessons,
+        instructors: instructors.filter(Boolean),
+        landingPage,
+        pricingOptions,
+        cohortSessions: visibleCohortSessions,
+        featuredGroup: featuredGroup ? toPublicCohortGroup(featuredGroup) : null,
+        hasOpenGroup: visibleCohortGroups.some(isCohortGroupOnSale),
+        soldOutGroups: visibleCohortGroups.filter(isCohortGroupSoldOut).map(toPublicCohortGroup),
+        cohortGroups: visibleCohortGroups.map(toPublicCohortGroup),
+      };
     }),
 
   /** Get instructor public profile */

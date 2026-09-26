@@ -145,10 +145,17 @@ export const workshopPublicRouter = router({
         )
         .orderBy(asc(workshopInstances.startDate));
 
-      // Filter to those currently on sale (not full)
-      const availableInstances = allInstances.filter(isInstanceOnSale);
-      // Instances that are date-valid but sold out (at capacity)
-      const soldOutInstances = allInstances.filter(isInstanceSoldOut);
+      // Ended instances stay available to administrators for reporting, but must
+      // not remain a learner enrollment or waitlist choice on the public page.
+      const now = new Date();
+      const visibleInstances = allInstances.filter((instance) => {
+        const end = instance.endDate ?? instance.startDate;
+        return !end || new Date(end) >= now;
+      });
+      // Filter visible instances to those currently on sale (not full).
+      const availableInstances = visibleInstances.filter(isInstanceOnSale);
+      // Visible instances that are date-valid but sold out remain distinguishable.
+      const soldOutInstances = visibleInstances.filter(isInstanceSoldOut);
 
       // Get pricing options
       const pricingOptions = await db
@@ -179,7 +186,7 @@ export const workshopPublicRouter = router({
         workshop,
         availableInstances: availableInstances.map(toPublicWorkshopInstance),
         soldOutInstances: soldOutInstances.map(toPublicWorkshopInstance),
-        allInstances: allInstances.map(toPublicWorkshopInstance),
+        allInstances: visibleInstances.map(toPublicWorkshopInstance),
         pricingOptions,
         resources,
       };
