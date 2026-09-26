@@ -6136,3 +6136,4 @@
 
 - [x] Add a workshop-instance admin handoff to Campaigns that carries only a workshop instance ID, starts with active participants, validates workshop and instance ownership against the active organization for every campaign operation, and excludes cancelled/refunded enrollments from workshop audiences.
 - [x] Display the selected workshop-instance audience in the Campaign composer using active-organization option data, while retaining server-side ownership validation as the authorization boundary.
+- [x] Hydrate existing campaign drafts in the editor through the active-organization getCampaign procedure, restore saved audience/sender/content state, and persist editable block JSON on every campaign write path.

@@ -270,3 +270,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (visible workshop audience)
 
 **Completed:** the Course360 campaign Audience panel now renders a **Workshop Instance** multi-select from the active organization’s server-provided audience options. This makes a workshop handoff’s restricted instance selection visible and editable while retaining the existing server authorization on every preview, draft, schedule, and send operation.
+
+
+## Implementation update — Sep 26, 2026 (campaign draft hydration)
+
+**Completed:** editing an existing Course360 campaign now queries the campaign through the active-organization `getCampaign` boundary and restores its subject, preview text, saved audience filter, sender profile, and editable blocks. New saves, immediate sends, and scheduled sends persist the block JSON for deterministic subsequent editing. Legacy campaigns without block JSON retain their existing rendered HTML as a safe editable fallback; malformed saved JSON falls back without exposing another organization’s campaign data.

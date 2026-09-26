@@ -10,7 +10,7 @@
  *  - Save as template / load from template
  *  - Automatic unsubscribe footer injected on send
  */
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -199,6 +199,22 @@ function blockToHtml(block: Block): string {
 
 function blocksToHtml(blocks: Block[]): string {
   return blocks.map(blockToHtml).join("\n");
+}
+
+function parseCampaignBlocks(blocksJson: string | null, htmlBody: string): Block[] {
+  if (blocksJson) {
+    try {
+      const parsed: unknown = JSON.parse(blocksJson);
+      if (Array.isArray(parsed) && parsed.every((block) => (
+        block && typeof block === "object" && typeof (block as Block).type === "string" && typeof (block as Block).content === "string"
+      ))) {
+        return parsed.map((block) => ({ ...(block as Block), id: (block as Block).id || uid() }));
+      }
+    } catch {
+      // Older campaigns did not persist editable blocks; retain their rendered HTML below.
+    }
+  }
+  return htmlBody ? [{ id: uid(), type: "html", content: htmlBody }] : [defaultBlock("heading1"), defaultBlock("text"), defaultBlock("button")];
 }
 
 // ─── Branded email wrapper ────────────────────────────────────────────────────
@@ -773,6 +789,20 @@ const DEFAULT_FILTER: AudienceFilter = {
   submittedFormIds: [], completedCourseIds: [], activeAccessCourseIds: [], logic: "and",
 };
 
+function parseCampaignAudienceFilter(raw: string | null): AudienceFilter {
+  if (!raw) return DEFAULT_FILTER;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return DEFAULT_FILTER;
+    // Saved filters have already passed server-side zod validation. Preserve
+    // unrendered target-supported dimensions while the server remains the
+    // authority when the hydrated filter is previewed, saved, or delivered.
+    return { ...DEFAULT_FILTER, ...(parsed as Partial<AudienceFilter>) };
+  } catch {
+    return DEFAULT_FILTER;
+  }
+}
+
 function MultiSelect({ label, options, selected, onChange }: {
   label: string;
   options: { id: number; label: string }[];
@@ -983,11 +1013,28 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   const [draftId, setDraftId] = useState<number | undefined>(campaignId);
   const [isSaving, setIsSaving] = useState(false);
   const [emailPickerTab, setEmailPickerTab] = useState<"blocks" | "saved">("blocks");
+  const [hydratedCampaignId, setHydratedCampaignId] = useState<number | undefined>();
 
   // ── Queries ─────────────────────────────────────────────────────────────────
   const { data: senderProfiles } = trpc.emailCampaign.listSenderProfiles.useQuery(undefined, { enabled: !!user });
   const { data: templates } = trpc.emailCampaign.listTemplates.useQuery(undefined, { enabled: !!user });
+  const campaignQuery = trpc.emailCampaign.getCampaign.useQuery(
+    { id: campaignId ?? 0 },
+    { enabled: !!user && !!campaignId, retry: false },
+  );
   const { data: audiencePreview } = trpc.emailCampaign.previewAudience.useQuery(filter, { enabled: !!user });
+
+  useEffect(() => {
+    if (!campaignId || !campaignQuery.data || hydratedCampaignId === campaignId) return;
+    const campaign = campaignQuery.data;
+    setSubject(campaign.subject ?? "");
+    setPreviewText(campaign.previewText ?? "");
+    setBlocks(parseCampaignBlocks(campaign.blocksJson, campaign.htmlBody ?? ""));
+    setFilter(parseCampaignAudienceFilter(campaign.audienceFilter));
+    setSenderProfileId(campaign.senderProfileId ?? undefined);
+    setDraftId(campaign.id);
+    setHydratedCampaignId(campaignId);
+  }, [campaignId, campaignQuery.data, hydratedCampaignId]);
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const saveDraftMutation = trpc.emailCampaign.saveDraft.useMutation({
@@ -1026,7 +1073,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     setIsSaving(true);
     saveDraftMutation.mutate({
       id: draftId,
-      subject, htmlBody: wrappedHtml, previewText,
+      subject, htmlBody: wrappedHtml, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
       senderProfileId,
     });
@@ -1040,7 +1087,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
 
   function confirmSend() {
     sendMutation.mutate({
-      subject, htmlBody: wrappedHtml, previewText,
+      subject, htmlBody: wrappedHtml, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
     });
   }
@@ -1048,7 +1095,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   function confirmSchedule() {
     if (!scheduledAt) { toast.error("Pick a date/time"); return; }
     scheduleMutation.mutate({
-      subject, htmlBody: wrappedHtml, previewText,
+      subject, htmlBody: wrappedHtml, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
       scheduledAt: new Date(scheduledAt),
     });
