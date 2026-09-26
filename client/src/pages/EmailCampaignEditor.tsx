@@ -52,6 +52,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
 import type { ParticipantAudienceHandoff } from "@/lib/courseParticipantEmailHandoff";
 import { wrapInBrandedCampaignEmail } from "@shared/emailCampaignLayout";
+import {
+  formatUtcForOrganizationDateTimeInput,
+  formatUtcForOrganizationSchedule,
+} from "@shared/emailCampaignSchedule";
 
 // ─── Block types ──────────────────────────────────────────────────────────────
 type BlockType = "heading1" | "heading2" | "text" | "image" | "button" | "divider" | "spacer" | "quote" | "html" | "lead_capture";
@@ -1097,7 +1101,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
 
   const scheduleMutation = trpc.emailCampaign.scheduleCampaign.useMutation({
     onSuccess: (r) => {
-      toast.success(`Scheduled for ${new Date(r.scheduledAt).toLocaleString()}`);
+      toast.success(`Scheduled for ${formatUtcForOrganizationSchedule(new Date(r.scheduledAt), r.scheduledTimezone)}`);
       setScheduleDialogOpen(false);
       if (onClose) onClose(); else navigate("/admin/email");
     },
@@ -1110,6 +1114,11 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   });
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
+  const organizationTimeZone = campaignBranding?.timezone ?? "UTC";
+  const earliestOrganizationScheduleTime = useMemo(
+    () => formatUtcForOrganizationDateTimeInput(new Date(), organizationTimeZone),
+    [organizationTimeZone],
+  );
   const htmlBody = useMemo(() => blocksToHtml(blocks), [blocks]);
   const wrappedHtml = useMemo(
     () => wrapInBrandedEmail(
@@ -1224,7 +1233,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     scheduleMutation.mutate({
       subject, htmlBody, blocksJson: JSON.stringify(blocks), previewText,
       audienceFilter: filter,
-      scheduledAt: new Date(scheduledAt),
+      scheduledLocalTime: scheduledAt,
       headerTitle: headerTitle || undefined,
       headerSubtext: headerSubtext || undefined,
       headerColor: headerColor || undefined,
@@ -1474,8 +1483,8 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
           <DialogHeader><DialogTitle>Schedule Campaign</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <label className="text-sm font-medium text-gray-700">Send at</label>
-            <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} min={new Date().toISOString().slice(0, 16)} />
-            <p className="text-xs text-gray-400">Campaign will be sent to {audiencePreview?.count ?? 0} recipients at the scheduled time.</p>
+            <Input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} min={earliestOrganizationScheduleTime} />
+            <p className="text-xs text-gray-400">Times use your organization timezone ({organizationTimeZone}). The UTC delivery instant is set server-side. Campaign will be sent to {audiencePreview?.count ?? 0} recipients at the scheduled time.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>Cancel</Button>

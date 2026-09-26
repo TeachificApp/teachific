@@ -74,6 +74,10 @@ import {
   ensureEmailCampaignEventsTable,
   processCampaignUnsubscribe,
 } from "../lib/campaignUnsubscribe";
+import {
+  normalizeOrganizationTimeZone,
+  organizationLocalScheduleToUtc,
+} from "../../shared/emailCampaignSchedule";
 
 // ─── Campaign metrics helper ──────────────────────────────────────────────────
 
@@ -457,6 +461,7 @@ async function getEmailCampaignOrgContext(db: EmailMarketingDb, orgId: number) {
       .select({
         name: organizations.name,
         slug: organizations.slug,
+        timezone: organizations.timezone,
         customDomain: organizations.customDomain,
         domainVerificationStatus: organizations.domainVerificationStatus,
         logoUrl: organizations.logoUrl,
@@ -473,6 +478,7 @@ async function getEmailCampaignOrgContext(db: EmailMarketingDb, orgId: number) {
     accentColor: theme?.buttonColor ?? theme?.primaryColor ?? null,
     displayName,
     logoUrl,
+    timezone: normalizeOrganizationTimeZone(organization?.timezone),
     baseUrl: organization
       ? getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)
       : undefined,
@@ -763,6 +769,7 @@ export const emailCampaignRouter = router({
       accentColor: branding.accentColor ?? "#189aa1",
       logoUrl: branding.logoUrl,
       baseUrl: branding.baseUrl ?? null,
+      timezone: branding.timezone,
     };
   }),
 
@@ -1034,7 +1041,7 @@ export const emailCampaignRouter = router({
         blocksJson: z.string().optional(),
         previewText: z.string().max(300).optional(),
         audienceFilter: AudienceFilterSchema,
-        scheduledAt: z.date(),
+        scheduledLocalTime: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
         headerTitle: z.string().max(300).optional(),
         headerSubtext: z.string().max(500).optional(),
         headerColor: z.string().max(20).optional(),
@@ -1046,7 +1053,17 @@ export const emailCampaignRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
-      if (input.scheduledAt <= new Date()) {
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
+      let scheduledAt: Date;
+      try {
+        scheduledAt = organizationLocalScheduleToUtc(input.scheduledLocalTime, orgContext.timezone);
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Choose a valid scheduled time.",
+        });
+      }
+      if (scheduledAt <= new Date()) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Scheduled time must be in the future.",
@@ -1057,7 +1074,6 @@ export const emailCampaignRouter = router({
       await validateAudienceScopeForOrg(db, input.audienceFilter, orgId);
       const recipients = await resolveRecipients(input.audienceFilter, undefined, orgId);
 
-      const orgContext = await getEmailCampaignOrgContext(db, orgId);
       const htmlBodyScheduled = buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
         title: input.headerTitle,
         subtext: input.headerSubtext,
@@ -1076,7 +1092,8 @@ export const emailCampaignRouter = router({
         audienceFilter: JSON.stringify(input.audienceFilter),
         recipientCount: recipients.length,
         status: "scheduled",
-        scheduledAt: input.scheduledAt,
+        scheduledAt,
+        scheduledTimezone: orgContext.timezone,
         headerTitle: input.headerTitle ?? null,
         headerSubtext: input.headerSubtext ?? null,
         headerColor: input.headerColor ?? null,
@@ -1087,7 +1104,7 @@ export const emailCampaignRouter = router({
       try {
         const job = await createHeartbeatJob({
           name: `email-campaign-${campaignId}`,
-          cron: cronExpressionForDate(input.scheduledAt),
+          cron: cronExpressionForDate(scheduledAt),
           path: "/api/scheduled/send-email-campaign",
           payload: { campaignId },
           description: `Send scheduled email campaign #${campaignId}`,
@@ -1105,7 +1122,7 @@ export const emailCampaignRouter = router({
           ? error
           : new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to create scheduled send task: ${errorMessageForLog(error)}` });
       }
-      return { campaignId, recipientCount: recipients.length, scheduledAt: input.scheduledAt };
+      return { campaignId, recipientCount: recipients.length, scheduledAt, scheduledTimezone: orgContext.timezone };
     }),
 
   // ── Admin: cancel a scheduled campaign ───────────────────────────────────

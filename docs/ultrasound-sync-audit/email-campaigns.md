@@ -305,3 +305,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (guarded draft autosave)
 
 **Completed:** Existing draft campaigns now autosave after a 900 ms quiet period only after the protected `getCampaign` hydration completes. The editor displays loading/error states for edit routes, keeps a fingerprinted last-saved state, cancels timers on new edits and unmount, and prevents overlapping manual/autosave requests. Autosave applies only to an existing or newly created **draft**—never sends, schedules, or silently changes campaign delivery state.
+
+
+## Implementation update — Sep 26, 2026 (organization-local campaign scheduling)
+
+**Completed:** Campaign schedules now use the active organization’s stored IANA timezone. Authors enter a local wall-clock time; the server validates the organization setting, rejects daylight-saving gap/fold times rather than guessing, converts the selection to an exact UTC instant, creates the existing one-shot managed delivery task from that UTC instant, and retains the timezone used for the scheduled campaign. Organization Settings now exposes the timezone selector. Legacy or invalid stored timezone values fall back safely to UTC for display, while a new schedule requires a valid organization timezone.

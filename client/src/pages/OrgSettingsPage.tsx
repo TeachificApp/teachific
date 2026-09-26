@@ -31,6 +31,7 @@ import type { Block } from "@/components/WysiwygPageBuilder";
 import { CertificateSettingsTab } from "./lms/CertificateSettingsTab";
 import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { UserDetailPanel, type UserRow as DetailUserRow } from "@/components/UserDetailPanel";
+import { ORGANIZATION_TIME_ZONES } from "@shared/emailCampaignSchedule";
 
 export default function OrgSettingsPage() {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ export default function OrgSettingsPage() {
   const [siteLogoUrl, setSiteLogoUrl] = useState<string | null>(null);
   const [siteLogoUploading, setSiteLogoUploading] = useState(false);
   const [customDomain, setCustomDomain] = useState("");
+  const [orgTimezone, setOrgTimezone] = useState("UTC");
   const [initialized, setInitialized] = useState(false);
 
   // Branding / theme state
@@ -109,6 +111,7 @@ export default function OrgSettingsPage() {
       setLogoUrl(orgCtx.org.logoUrl || "");
       setLogoPreview(orgCtx.org.logoUrl || null);
       setCustomDomain(orgCtx.org.customDomain || "");
+      setOrgTimezone((orgCtx.org as any).timezone || "UTC");
       // SEO fields
       setSeoTitle((orgCtx.org as any).seoTitle || "");
       setSeoDescription((orgCtx.org as any).seoDescription || "");
@@ -526,8 +529,20 @@ export default function OrgSettingsPage() {
                   </a>
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="org-timezone">Organization timezone</Label>
+                <Select value={orgTimezone} onValueChange={setOrgTimezone}>
+                  <SelectTrigger id="org-timezone"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ORGANIZATION_TIME_ZONES.map((timeZone) => (
+                      <SelectItem key={timeZone} value={timeZone}>{timeZone.replace(/_/g, " ")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Campaign schedules are entered in this timezone and stored as an exact UTC delivery time.</p>
+              </div>
               <Button
-                onClick={() => updateSettings.mutate({ name: orgName, slug: orgSlug })}
+                onClick={() => updateSettings.mutate({ name: orgName, slug: orgSlug, timezone: orgTimezone })}
                 disabled={updateSettings.isPending || (subdomainChanged && !subdomainAvailable)}
                 className="gap-2"
               >

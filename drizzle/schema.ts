@@ -84,6 +84,8 @@ export const organizations = mysqlTable("organizations", {
   customSubdomain: varchar("customSubdomain", { length: 100 }),
   // Custom domain for Pro+ orgs
   customDomain: varchar("customDomain", { length: 255 }),
+  // Organization-local schedule display and conversion zone. Delivery instants remain UTC.
+  timezone: varchar("timezone", { length: 64 }).default("UTC").notNull(),
   // Custom sender email for Builder+ orgs
   customSenderEmail: varchar("customSenderEmail", { length: 320 }),
   customSenderName: varchar("customSenderName", { length: 255 }),
@@ -920,6 +922,8 @@ export const emailCampaigns = mysqlTable("email_campaigns", {
   scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
   status: mysqlEnum("status", ["draft", "scheduled", "sending", "sent", "failed"]).default("draft").notNull(),
   scheduledAt: timestamp("scheduledAt"),
+  // The organization timezone used to interpret the saved local schedule input.
+  scheduledTimezone: varchar("scheduledTimezone", { length: 64 }),
   sentAt: timestamp("sentAt"),
   recipientCount: int("recipientCount").default(0).notNull(),
   sentCount: int("sentCount").default(0).notNull(),
