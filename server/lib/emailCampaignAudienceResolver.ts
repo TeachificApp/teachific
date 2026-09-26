@@ -517,6 +517,7 @@ async function emailsMatchingDimension(
       .where(and(
         inArray(workshopEnrollments.workshopId, filter.workshopIds),
         eq(workshops.orgId, orgId),
+        eq(workshopEnrollments.status, "active"),
       ));
     const idSet = new Set(rows.map((r) => r.userId));
     const allUsers = await loadAllUsers();
@@ -703,6 +704,7 @@ async function emailsMatchingDimension(
       .where(and(
         inArray(workshopEnrollments.instanceId, filter.workshopInstanceIds!),
         eq(workshops.orgId, orgId),
+        eq(workshopEnrollments.status, "active"),
       ));
     const idSet = new Set(rows.map((r) => r.userId));
     const allUsers = await loadAllUsers();

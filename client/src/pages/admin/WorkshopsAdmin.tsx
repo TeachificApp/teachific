@@ -33,6 +33,7 @@ import { ContentEmbedTab } from "@/components/admin/ContentEmbedTab";
 import { AfterPurchaseWorkflowEditor } from "@/components/AfterPurchaseWorkflowEditor";
 import { HidePricingOptionsToggle } from "@/components/HidePricingOptionsToggle";
 import CmeFormTab from "@/components/CmeFormTab";
+import { getWorkshopInstanceParticipantCampaignPath } from "@/lib/courseParticipantEmailHandoff";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function fmtDate(ts: number | Date | null | undefined) {
@@ -841,6 +842,10 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                         <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-[color-mix(in_srgb,var(--org-primary)_35%,transparent)] text-[var(--org-primary)] hover:bg-[color-mix(in_srgb,var(--org-primary)_10%,transparent)]"
                           onClick={() => window.open(`/admin/workshops/${workshopId}/instances/${inst.id}/page-builder`, "_blank")}>
                           Edit Page
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]"
+                          onClick={() => window.location.assign(getWorkshopInstanceParticipantCampaignPath(inst.id))}>
+                          <Mail className="w-3.5 h-3.5 mr-1" /> Email Active Participants
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditInstance(inst)}>
                           <Edit2 className="w-3.5 h-3.5" />

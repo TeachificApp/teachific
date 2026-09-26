@@ -7,7 +7,7 @@ import type { AudienceFilter } from "@shared/emailCampaignAudience";
  */
 export type ParticipantAudienceHandoff = Pick<
   AudienceFilter,
-  "activeAccessCourseIds" | "inCohortGroupIds" | "userStatus"
+  "activeAccessCourseIds" | "inCohortGroupIds" | "workshopInstanceIds" | "userStatus"
 >;
 
 /** @deprecated Use ParticipantAudienceHandoff for new participant handoffs. */
@@ -26,14 +26,20 @@ export function getParticipantAudienceHandoff(search: string): ParticipantAudien
   const params = new URLSearchParams(search);
   const courseId = parsePositiveId(params.get("courseId"));
   const cohortGroupId = parsePositiveId(params.get("cohortGroupId"));
+  const workshopInstanceId = parsePositiveId(params.get("workshopInstanceId"));
 
   // A composer can begin with one explicit participant source. Reject conflicting
   // route hints rather than silently widening the audience in the browser.
-  if (Boolean(courseId) === Boolean(cohortGroupId)) return null;
+  const sourceCount = Number(Boolean(courseId)) + Number(Boolean(cohortGroupId)) + Number(Boolean(workshopInstanceId));
+  if (sourceCount !== 1) return null;
 
-  return courseId
-    ? { activeAccessCourseIds: [courseId], inCohortGroupIds: [], userStatus: "active" }
-    : { activeAccessCourseIds: [], inCohortGroupIds: [cohortGroupId!], userStatus: "active" };
+  if (courseId) {
+    return { activeAccessCourseIds: [courseId], inCohortGroupIds: [], workshopInstanceIds: [], userStatus: "active" };
+  }
+  if (cohortGroupId) {
+    return { activeAccessCourseIds: [], inCohortGroupIds: [cohortGroupId], workshopInstanceIds: [], userStatus: "active" };
+  }
+  return { activeAccessCourseIds: [], inCohortGroupIds: [], workshopInstanceIds: [workshopInstanceId!], userStatus: "active" };
 }
 
 export function getCourseParticipantAudienceHandoff(search: string): CourseParticipantAudienceHandoff | null {
@@ -55,4 +61,11 @@ export function getCohortGroupParticipantCampaignPath(cohortGroupId: number): st
     throw new Error("A valid cohort group is required to email active participants.");
   }
   return `/marketing/email?${new URLSearchParams({ cohortGroupId: String(cohortGroupId) }).toString()}`;
+}
+
+export function getWorkshopInstanceParticipantCampaignPath(workshopInstanceId: number): string {
+  if (!Number.isSafeInteger(workshopInstanceId) || workshopInstanceId < 1) {
+    throw new Error("A valid workshop instance is required to email active participants.");
+  }
+  return `/marketing/email?${new URLSearchParams({ workshopInstanceId: String(workshopInstanceId) }).toString()}`;
 }

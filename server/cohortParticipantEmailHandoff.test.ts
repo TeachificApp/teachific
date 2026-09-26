@@ -36,6 +36,7 @@ describe("cohort participant email campaign handoff", () => {
     expect(getParticipantAudienceHandoff("?cohortGroupId=456")).toEqual({
       activeAccessCourseIds: [],
       inCohortGroupIds: [456],
+      workshopInstanceIds: [],
       userStatus: "active",
     });
   });
@@ -49,6 +50,7 @@ describe("cohort participant email campaign handoff", () => {
       "?cohortGroupId=abc",
       "?cohortGroupId=9007199254740992",
       "?courseId=42&cohortGroupId=456",
+      "?cohortGroupId=456&workshopInstanceId=789",
     ]) {
       expect(getParticipantAudienceHandoff(search)).toBeNull();
     }

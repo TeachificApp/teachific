@@ -260,3 +260,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (cohort participant handoff)
 
 **Completed:** cohort-group administration now opens the Course360 campaign composer with a narrow `cohortGroupId` route hint. The composer preselects only that group and active accounts; no participant email addresses appear in the URL. The server validates every selected cohort group against the active organization before audience preview, draft save, scheduling, or delivery, and the recipient resolver requires an active linked course enrollment. Both current Course Builder and legacy LMS Administration cohort surfaces use the same helper.
+
+
+## Implementation update — Sep 26, 2026 (workshop participant handoff)
+
+**Completed:** workshop-instance administration now opens the Campaign composer with a narrow `workshopInstanceId` route hint and an **active-account** audience default. No participant emails are placed in the browser URL. Campaign preview, draft save, scheduling, and send validate both workshop and scheduled-instance ownership against the server-resolved active organization. Workshop and instance audience resolution now excludes cancelled and refunded enrollments by requiring `workshop_enrollments.status = 'active'`.

@@ -324,10 +324,35 @@ async function validateAudienceCohortGroupsForOrg(db: EmailMarketingDb, filter: 
   }
 }
 
+async function validateAudienceWorkshopsForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
+  const workshopIds = [...new Set(filter.workshopIds ?? [])];
+  if (workshopIds.length > 0) {
+    const workshopRows = await db
+      .select({ id: workshops.id })
+      .from(workshops)
+      .where(and(inArray(workshops.id, workshopIds), eq(workshops.orgId, orgId)));
+    if (workshopRows.length !== workshopIds.length) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected workshops do not belong to the active organization." });
+    }
+  }
+
+  const instanceIds = [...new Set(filter.workshopInstanceIds ?? [])];
+  if (instanceIds.length === 0) return;
+  const rows = await db
+    .select({ id: workshopInstances.id })
+    .from(workshopInstances)
+    .innerJoin(workshops, eq(workshops.id, workshopInstances.workshopId))
+    .where(and(inArray(workshopInstances.id, instanceIds), eq(workshops.orgId, orgId)));
+  if (rows.length !== instanceIds.length) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "One or more selected workshop instances do not belong to the active organization." });
+  }
+}
+
 async function validateAudienceScopeForOrg(db: EmailMarketingDb, filter: AudienceFilter, orgId: number) {
   await validateAudienceListsForOrg(db, filter, orgId);
   await validateAudienceCoursesForOrg(db, filter, orgId);
   await validateAudienceCohortGroupsForOrg(db, filter, orgId);
+  await validateAudienceWorkshopsForOrg(db, filter, orgId);
 }
 
 function campaignNameForSubject(subject: string): string {
