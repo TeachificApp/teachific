@@ -52,6 +52,14 @@ describe("Course360 public catalog request scope", () => {
     }, "NorthWind")).resolves.toEqual({ id: 9, slug: "northwind", source: "legacy_hint" });
   });
 
+  it("requires every public resolution path to select an active organization", () => {
+    const scopeSource = readFileSync(new URL("./lib/publicOrgRequestScope.ts", import.meta.url), "utf8");
+    const resolverSource = scopeSource.slice(
+      scopeSource.indexOf("export async function resolvePublicOrganizationScope"),
+    );
+    expect((resolverSource.match(/eq\(organizations\.isActive, true\)/g) ?? []).length).toBeGreaterThanOrEqual(5);
+  });
+
   it("applies server request scope to catalog, featured, and direct course paths", () => {
     const routerSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
     const publicSource = routerSource.slice(

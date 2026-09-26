@@ -269,28 +269,14 @@ export async function getOrgsByUserId(userId: number) {
 export async function getOrgIdForUser(userId: number): Promise<number | null> {
   const db = await getDb();
   if (!db) return null;
-  // Check if user has an explicitly selected active org (from org switcher)
-  const [activeRow] = await db
-    .select({ orgId: userActiveOrg.orgId })
-    .from(userActiveOrg)
-    .where(eq(userActiveOrg.userId, userId))
-    .limit(1);
-  if (activeRow?.orgId) {
-    // Verify the user still has membership in this org
-    const [membership] = await db
-      .select({ orgId: orgMembers.orgId })
-      .from(orgMembers)
-      .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, activeRow.orgId)))
-      .limit(1);
-    if (membership) return membership.orgId;
-    // Active org no longer valid — fall through to membership-based resolution
-  }
-  // Get all memberships ordered by role priority
+  // Members cannot choose an organization context. Only the active-resolver
+  // below may honor a persisted choice, and then only for administrator roles.
+  // Canonical membership resolution also excludes deactivated organizations.
   const allMemberships = await db
     .select({ orgId: orgMembers.orgId, role: orgMembers.role, isPrimary: organizations.isPrimary })
     .from(orgMembers)
     .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
-    .where(eq(orgMembers.userId, userId));
+    .where(and(eq(orgMembers.userId, userId), eq(organizations.isActive, true)));
   if (allMemberships.length === 0) return null;
   // Role priority: org_super_admin > org_admin > sub_admin > instructor > member/user
   const ROLE_PRIORITY: Record<string, number> = {
@@ -326,7 +312,7 @@ export async function getPrimaryOrgId(): Promise<number | null> {
   const result = await db
     .select({ id: organizations.id })
     .from(organizations)
-    .where(eq(organizations.isPrimary, true))
+    .where(and(eq(organizations.isPrimary, true), eq(organizations.isActive, true)))
     .limit(1);
   return result[0]?.id ?? null;
 }
@@ -346,7 +332,8 @@ export async function getOrgIdForUserWithFallback(
       const [activeRow] = await db
         .select({ orgId: userActiveOrg.orgId })
         .from(userActiveOrg)
-        .where(eq(userActiveOrg.userId, userId))
+        .innerJoin(organizations, eq(userActiveOrg.orgId, organizations.id))
+        .where(and(eq(userActiveOrg.userId, userId), eq(organizations.isActive, true)))
         .limit(1);
       if (activeRow?.orgId) return activeRow.orgId;
     }
@@ -366,7 +353,12 @@ export async function getOrgIdForUserWithFallback(
       const [membership] = await db
         .select({ role: orgMembers.role })
         .from(orgMembers)
-        .where(and(eq(orgMembers.userId, userId), eq(orgMembers.orgId, activeRow.orgId)))
+        .innerJoin(organizations, eq(orgMembers.orgId, organizations.id))
+        .where(and(
+          eq(orgMembers.userId, userId),
+          eq(orgMembers.orgId, activeRow.orgId),
+          eq(organizations.isActive, true),
+        ))
         .limit(1);
       if (["org_super_admin", "org_admin", "sub_admin"].includes(membership?.role ?? "")) {
         return activeRow.orgId;

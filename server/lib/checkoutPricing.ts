@@ -9,6 +9,24 @@ import {
   physicalProducts,
 } from "../../drizzle/schema";
 
+/**
+ * Course360 persists catalog prices as decimal dollars. Convert once—only at
+ * a payment/price-validation boundary—to Stripe's integer-cent representation.
+ */
+export function dollarsToStripeCents(value: number | string | null | undefined): number {
+  const normalized = String(value ?? "").trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid decimal dollar price" });
+  }
+  const [dollars, decimal = ""] = normalized.split(".");
+  const cents = `${decimal}00`.slice(0, 2);
+  const result = Number(dollars) * 100 + Number(cents);
+  if (!Number.isSafeInteger(result)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid decimal dollar price" });
+  }
+  return result;
+}
+
 export function assertClientPriceMatches(clientCents: number, serverCents: number, label = "price") {
   if (Math.round(clientCents) !== Math.round(serverCents)) {
     throw new TRPCError({
@@ -52,11 +70,11 @@ export function computeFunnelCheckoutTotalCents(
     throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid product selection" });
   }
 
-  let totalCents = Math.round(Number(selectedProduct.price ?? 0) * 100);
+  let totalCents = dollarsToStripeCents(selectedProduct.price ?? 0);
   for (const idx of selection.addedBumpIndexes) {
     const bump = orderBumps[idx];
     if (bump && Number(bump.price) > 0) {
-      totalCents += Math.round(Number(bump.price) * 100);
+      totalCents += dollarsToStripeCents(bump.price);
     }
   }
 
@@ -76,7 +94,7 @@ async function resolveCatalogPriceCents(
       .limit(1);
     if (!course) return null;
     if (course.isFree || course.pricingType === "free") return 0;
-    return Math.round(Number(course.price ?? 0));
+    return dollarsToStripeCents(course.price ?? 0);
   }
 
   if (productType === "download") {
@@ -85,7 +103,7 @@ async function resolveCatalogPriceCents(
       .from(digitalProducts)
       .where(eq(digitalProducts.id, productId))
       .limit(1);
-    return prod ? Math.round(Number(prod.price ?? 0)) : null;
+    return prod ? dollarsToStripeCents(prod.price ?? 0) : null;
   }
 
   if (productType === "bundle") {
@@ -96,7 +114,7 @@ async function resolveCatalogPriceCents(
       .limit(1);
     if (!bundle) return null;
     const price = bundle.discountPrice || bundle.originalPrice;
-    return price ? Math.round(Number(price)) : 0;
+    return price ? dollarsToStripeCents(price) : 0;
   }
 
   if (productType === "physical" || productType === "product") {
@@ -105,7 +123,7 @@ async function resolveCatalogPriceCents(
       .from(physicalProducts)
       .where(eq(physicalProducts.id, productId))
       .limit(1);
-    return prod?.price != null ? Math.round(Number(prod.price)) : null;
+    return prod?.price != null ? dollarsToStripeCents(prod.price) : null;
   }
 
   return null;
@@ -121,7 +139,7 @@ function findBlockProductPriceCents(
     if (productId != null && p.productId != null && Number(p.productId) === productId) return true;
     return p.name === productName;
   });
-  return match ? Math.round(Number(match.price ?? 0) * 100) : null;
+  return match ? dollarsToStripeCents(match.price ?? 0) : null;
 }
 
 function validateSelectedBumps(
@@ -133,7 +151,7 @@ function validateSelectedBumps(
     if (!serverBump) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid order bump selection" });
     }
-    assertClientPriceMatches(Math.round(bump.price * 100), Math.round(Number(serverBump.price ?? 0) * 100), "order bump price");
+    assertClientPriceMatches(dollarsToStripeCents(bump.price), dollarsToStripeCents(serverBump.price ?? 0), "order bump price");
   }
 }
 
@@ -163,7 +181,7 @@ export async function resolveEmbeddedCheckoutExpectedCents(
       throw new TRPCError({ code: "BAD_REQUEST", message: "Course not found" });
     }
     baseCents =
-      course.isFree || course.pricingType === "free" ? 0 : Math.round(Number(course.price ?? 0));
+      course.isFree || course.pricingType === "free" ? 0 : dollarsToStripeCents(course.price ?? 0);
   } else if (input.productId) {
     baseCents = await resolveCatalogPriceCents(db, input.productType, input.productId);
     if (baseCents == null) {
@@ -195,14 +213,14 @@ export async function resolveEmbeddedCheckoutExpectedCents(
     });
   }
 
-  assertClientPriceMatches(Math.round(input.productPrice * 100), baseCents, "product price");
+  assertClientPriceMatches(dollarsToStripeCents(input.productPrice), baseCents, "product price");
   if (blockOrderBumps.length > 0) {
     validateSelectedBumps(blockOrderBumps, input.selectedBumps);
   }
 
   let totalCents = baseCents;
   for (const bump of input.selectedBumps) {
-    if (bump.price > 0) totalCents += Math.round(Number(bump.price) * 100);
+    if (bump.price > 0) totalCents += dollarsToStripeCents(bump.price);
   }
   return totalCents;
 }
@@ -229,7 +247,7 @@ export async function assertFreeOrderEligible(
       throw new TRPCError({ code: "BAD_REQUEST", message: "Course not found" });
     }
     const isFree =
-      course.isFree || course.pricingType === "free" || Math.round(Number(course.price ?? 0)) === 0;
+      course.isFree || course.pricingType === "free" || dollarsToStripeCents(course.price ?? 0) === 0;
     if (!isFree) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "This product is not free" });
     }

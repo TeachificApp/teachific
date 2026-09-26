@@ -68,7 +68,7 @@ export async function resolvePublicOrganizationScope(
     const slug = hostname.slice(0, -".course360.app".length);
     const [org] = await db.select({ id: organizations.id, slug: organizations.slug })
       .from(organizations)
-      .where(eq(organizations.slug, slug))
+      .where(and(eq(organizations.slug, slug), eq(organizations.isActive, true)))
       .limit(1);
     return org ? { ...org, source: "course360_subdomain" } : null;
   }
@@ -80,6 +80,7 @@ export async function resolvePublicOrganizationScope(
       .where(and(
         eq(organizations.domainVerificationStatus, "verified"),
         eq(organizations.customDomain, candidates[0]),
+        eq(organizations.isActive, true),
       ))
       .limit(1);
     if (org) return { ...org, source: "custom_domain" };
@@ -92,6 +93,7 @@ export async function resolvePublicOrganizationScope(
       .where(and(
         eq(organizations.domainVerificationStatus, "verified"),
         eq(organizations.customDomain, candidates[1]),
+        eq(organizations.isActive, true),
       ))
       .limit(1);
     return legacyOrg ? { ...legacyOrg, source: "custom_domain" } : null;
@@ -100,14 +102,17 @@ export async function resolvePublicOrganizationScope(
   if (legacyOrgSlug?.trim()) {
     const [org] = await db.select({ id: organizations.id, slug: organizations.slug })
       .from(organizations)
-      .where(eq(organizations.slug, legacyOrgSlug.trim().toLowerCase()))
+      .where(and(
+        eq(organizations.slug, legacyOrgSlug.trim().toLowerCase()),
+        eq(organizations.isActive, true),
+      ))
       .limit(1);
     return org ? { ...org, source: "legacy_hint" } : null;
   }
 
   const [primary] = await db.select({ id: organizations.id, slug: organizations.slug })
     .from(organizations)
-    .where(eq(organizations.isPrimary, true))
+    .where(and(eq(organizations.isPrimary, true), eq(organizations.isActive, true)))
     .limit(1);
   return primary ? { ...primary, source: "platform" } : null;
 }

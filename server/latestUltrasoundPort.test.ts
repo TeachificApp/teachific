@@ -28,7 +28,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     const completionEnd = lmsRouterSource.indexOf("submitQuiz:", completionStart);
     const completionSource = lmsRouterSource.slice(completionStart, completionEnd);
     expect(completionSource).toContain('message: "Lesson does not belong to this course"');
-    expect(completionSource).toContain("enrollment.orgId !== course.orgId");
+    expect(completionSource).toContain("const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)");
+    expect(completionSource).toContain("activeOrgId !== course.orgId");
     expect(completionSource).toContain("getRequiredCmeSurveyBlockIds(lesson.contentBlocks)");
     expect(completionSource).toContain("eq(lmsInlineQuizAttempts.orgId, course.orgId)");
     expect(completionSource).toContain("Please complete the required survey before marking this lesson complete");
@@ -714,7 +715,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingPageSource).toContain("Course tools for online educators");
     expect(landingPageSource).toContain("Build Your Knowledge");
     expect(landingPageSource).toContain("Organization workspaces");
-    expect(landingPageSource).toContain("Choose a plan for your organization.");
+    expect(landingPageSource).toContain("Every new school begins with a 14-day Starter trial");
     expect(landingPageSource).toContain("hello@course360.app");
     expect(landingPageSource).toContain('<span className="text-white">Course</span>');
     expect(quizCreatorLandingSource).not.toContain("TESTIMONIALS");

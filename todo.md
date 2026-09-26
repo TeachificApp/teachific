@@ -60,6 +60,8 @@
 - [x] Scope public workshop discovery to the verified learner organization and remove capacity, enrollment-count, remaining-seat, and meeting-link disclosure from learner responses
 - [x] Remove past workshop instances, cohort groups, and live sessions from public enrollment choices while preserving staff history and excluding capacity and meeting-link disclosure
 - [x] Make course lesson-open, completion, and quiz-attempt progress writes race-safe with an enrollment-and-lesson unique key, active organization/enrollment authorization, and first-completion preservation
+- [x] Resolve canonical member and public learner contexts only through active organizations, preserving administrator-only selected organization context
+- [x] Normalize catalog decimal-dollar prices through one strict Stripe-cent converter for embedded/funnel checkout, order bumps, and free-order validation
 - [x] Derive direct funnel-CTA checkout organization and success/cancellation URLs from the selected product record rather than caller-provided origins
 - [x] Derive upgrade-prompt course, download, and physical-product checkout return URLs from trusted product organization records rather than caller-provided origins
 - [x] Resolve digital-bundle checkout success and cancellation URLs from the selected bundle’s verified organization domain rather than request-header origins
