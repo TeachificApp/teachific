@@ -13,6 +13,10 @@ const dashboardSource = readFileSync(
   new URL("../client/src/pages/marketing/EmailCampaignDashboard.tsx", import.meta.url),
   "utf8",
 );
+const editorSource = readFileSync(
+  new URL("../client/src/pages/EmailCampaignEditor.tsx", import.meta.url),
+  "utf8",
+);
 const routerSource = readFileSync(
   new URL("./routers/emailCampaignRouter.ts", import.meta.url),
   "utf8",
@@ -52,6 +56,9 @@ describe("workshop participant email campaign handoff", () => {
     expect(workshopAdminSource).toContain("Email Active Participants");
     expect(workshopAdminSource).not.toContain("prefillEmails");
     expect(dashboardSource).toContain("getParticipantAudienceHandoff");
+    expect(editorSource).toContain("workshopInstanceIds: number[];");
+    expect(editorSource).toContain('MultiSelect label="Workshop Instance"');
+    expect(editorSource).toContain("options.workshopInstances");
     expect(routerSource).toContain("async function validateAudienceWorkshopsForOrg");
     expect(routerSource).toContain("One or more selected workshop instances do not belong to the active organization.");
     expect(routerSource).toContain("await validateAudienceWorkshopsForOrg(db, filter, orgId);");

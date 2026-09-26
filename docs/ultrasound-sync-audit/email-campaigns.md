@@ -265,3 +265,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (workshop participant handoff)
 
 **Completed:** workshop-instance administration now opens the Campaign composer with a narrow `workshopInstanceId` route hint and an **active-account** audience default. No participant emails are placed in the browser URL. Campaign preview, draft save, scheduling, and send validate both workshop and scheduled-instance ownership against the server-resolved active organization. Workshop and instance audience resolution now excludes cancelled and refunded enrollments by requiring `workshop_enrollments.status = 'active'`.
+
+
+## Implementation update — Sep 26, 2026 (visible workshop audience)
+
+**Completed:** the Course360 campaign Audience panel now renders a **Workshop Instance** multi-select from the active organization’s server-provided audience options. This makes a workshop handoff’s restricted instance selection visible and editable while retaining the existing server authorization on every preview, draft, schedule, and send operation.

@@ -6135,3 +6135,4 @@
 - [x] Add a cohort-group administration handoff to Campaigns that carries only a cohort group ID, initializes a cohort plus active-account audience, rejects cross-organization group IDs server-side, and does not expose participant emails in browser URLs.
 
 - [x] Add a workshop-instance admin handoff to Campaigns that carries only a workshop instance ID, starts with active participants, validates workshop and instance ownership against the active organization for every campaign operation, and excludes cancelled/refunded enrollments from workshop audiences.
+- [x] Display the selected workshop-instance audience in the Campaign composer using active-organization option data, while retaining server-side ownership validation as the authorization boundary.
