@@ -1009,6 +1009,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [showPreview, setShowPreview] = useState(false);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
@@ -1064,6 +1065,14 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     onError: (e) => toast.error(e.message),
   });
 
+  const sendTestMutation = trpc.emailCampaign.sendTestEmail.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Test email sent to ${result.sentTo}`);
+      setTestDialogOpen(false);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const scheduleMutation = trpc.emailCampaign.scheduleCampaign.useMutation({
     onSuccess: (r) => {
       toast.success(`Scheduled for ${new Date(r.scheduledAt).toLocaleString()}`);
@@ -1111,6 +1120,25 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
     if (!subject.trim()) { toast.error("Subject is required"); return; }
     if (blocks.length === 0) { toast.error("Add at least one content block"); return; }
     setSendDialogOpen(true);
+  }
+
+  function handleSendTest() {
+    if (!subject.trim()) { toast.error("Add a subject before sending a test."); return; }
+    if (blocks.length === 0) { toast.error("Add at least one content block before sending a test."); return; }
+    setTestDialogOpen(true);
+  }
+
+  function confirmSendTest() {
+    sendTestMutation.mutate({
+      subject,
+      htmlBody,
+      previewText,
+      senderProfileId,
+      headerTitle: headerTitle || undefined,
+      headerSubtext: headerSubtext || undefined,
+      headerColor: headerColor || undefined,
+      headerEnabled,
+    });
   }
 
   function confirmSend() {
@@ -1173,6 +1201,9 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
           </Button>
           <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={isSaving}>
             <Save className="w-4 h-4 mr-1.5" /> {isSaving ? "Saving…" : "Save Draft"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSendTest} disabled={!user?.email}>
+            <Mail className="w-4 h-4 mr-1.5" /> Send Test
           </Button>
           <Button variant="outline" size="sm" onClick={() => setScheduleDialogOpen(true)}>
             <Clock className="w-4 h-4 mr-1.5" /> Schedule
@@ -1291,6 +1322,27 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
           </div>
         )}
       </div>
+
+      {/* Self-test confirmation dialog */}
+      <Dialog open={testDialogOpen} onOpenChange={setTestDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Send a Test Email</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-gray-600">A test of <strong>“{subject}”</strong> will be sent only to your signed-in account.</p>
+            <div className="rounded-lg border border-[#189aa1]/20 bg-[#f0fbfc] px-3 py-2 text-sm font-medium text-slate-700">
+              {user?.email ?? "No account email is available"}
+            </div>
+            <p className="text-xs text-gray-400">This does not create a campaign, notify the selected audience, or record campaign tracking.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestDialogOpen(false)}>Cancel</Button>
+            <Button onClick={confirmSendTest} disabled={sendTestMutation.isPending || !user?.email} style={{ background: "#189aa1" }} className="text-white">
+              {sendTestMutation.isPending ? <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" /> : <Mail className="mr-1.5 h-4 w-4" />}
+              Send Test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Send confirmation dialog */}
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>

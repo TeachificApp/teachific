@@ -290,3 +290,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (brand-safe campaign header controls)
 
 **Completed:** The campaign editor now hydrates and persists optional headline, subheading, safe color, and enabled-state controls for draft, immediate-send, and scheduled-send flows. Organization identity remains non-negotiable: the organization name/logo stay first in the email header, optional campaign copy appears only beneath it, and turning off header details never hides the organization identity. Header color is validated by the shared delivery renderer, with an explicit return-to-organization-accent control in the editor.
+
+
+## Implementation update — Sep 26, 2026 (organization-scoped self-test send)
+
+**Completed:** The campaign editor now offers a confirmed self-test send that delivers only to the authenticated organization administrator’s own account email. It reuses server-owned organization branding and verifies any selected sender profile belongs to the active organization. A self-test never creates a campaign, resolves a marketing audience, or adds recipient tracking/unsubscribe actions; it is visibly labelled as a test.

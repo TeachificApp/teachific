@@ -863,6 +863,54 @@ export const emailCampaignRouter = router({
       };
     }),
 
+  // ── Admin: send a non-campaign self-test ──────────────────────────────────
+
+  sendTestEmail: protectedProcedure
+    .input(
+      z.object({
+        subject: z.string().min(1).max(500),
+        htmlBody: z.string().min(1),
+        previewText: z.string().max(300).optional(),
+        senderProfileId: z.number().int().positive().optional(),
+        headerTitle: z.string().max(300).optional(),
+        headerSubtext: z.string().max(500).optional(),
+        headerColor: z.string().max(20).optional(),
+        headerEnabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await requireActiveEmailMarketingOrg(ctx.user);
+      if (!ctx.user.email) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Add an email address to the signed-in account before sending a test." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const senderProfile = await validateSenderProfileForOrg(db, input.senderProfileId, orgId);
+      const orgContext = await getEmailCampaignOrgContext(db, orgId);
+      let htmlBody = buildCampaignHtmlForOrganization(input.htmlBody, input.previewText, orgContext, {
+        title: input.headerTitle,
+        subtext: input.headerSubtext,
+        color: input.headerColor,
+        enabled: input.headerEnabled,
+      });
+
+      // Tests are not campaign sends: do not create recipient tracking or a functional unsubscribe action.
+      htmlBody = htmlBody.replaceAll("{{UNSUBSCRIBE_URL}}", `${orgContext.baseUrl ?? "https://course360.app"}/help`);
+      const sent = await sendEmail({
+        to: { name: ctx.user.name ?? ctx.user.email, email: ctx.user.email },
+        subject: `[Test] ${input.subject}`,
+        htmlBody,
+        previewText: input.previewText,
+        fromName: senderProfile?.name,
+        fromEmail: senderProfile?.email,
+      });
+      if (!sent) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to send the test email. Check the configured sender and try again." });
+      }
+      return { success: true, sentTo: ctx.user.email };
+    }),
+
   // ── Admin: send campaign immediately ─────────────────────────────────────
 
   sendCampaign: protectedProcedure
