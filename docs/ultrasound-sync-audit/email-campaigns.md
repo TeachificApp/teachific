@@ -295,3 +295,8 @@ The existing `emailCampaignRouter` remains the enforcement point for every audie
 ## Implementation update — Sep 26, 2026 (organization-scoped self-test send)
 
 **Completed:** The campaign editor now offers a confirmed self-test send that delivers only to the authenticated organization administrator’s own account email. It reuses server-owned organization branding and verifies any selected sender profile belongs to the active organization. A self-test never creates a campaign, resolves a marketing audience, or adds recipient tracking/unsubscribe actions; it is visibly labelled as a test.
+
+
+## Implementation update — Sep 26, 2026 (self-test delivery limit)
+
+**Completed:** Campaign self-tests are now limited to **three attempts per authenticated administrator/email in ten minutes**. The guard combines recent persisted `[Test]` delivery-log rows with an in-process claim before provider delivery, so repeated requests cannot burst past the limit while logging is still catching up. The editor clearly communicates the limit. The limit is independent of campaign audiences and preserves the active-organization/sender-ownership checks.

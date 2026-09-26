@@ -404,6 +404,43 @@ function errorMessageForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+const CAMPAIGN_TEST_SEND_WINDOW_MS = 10 * 60 * 1000;
+const CAMPAIGN_TEST_SEND_LIMIT = 3;
+const campaignTestSendAttempts = new Map<string, number[]>();
+
+async function countRecentCampaignTestSends(db: EmailMarketingDb, userId: number, email: string): Promise<number> {
+  try {
+    const [rawRows] = await db.execute(sql`
+      SELECT COUNT(*) AS count
+      FROM email_send_log
+      WHERE user_id = ${userId}
+        AND recipient_email = ${email}
+        AND campaign_id IS NULL
+        AND subject LIKE '[Test] %'
+        AND sent_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+    `);
+    const rows = Array.isArray(rawRows) ? rawRows as Array<{ count?: number | string }> : [];
+    return Number(rows[0]?.count ?? 0);
+  } catch (error) {
+    // The in-memory guard still prevents bursts if historical logging is temporarily unavailable.
+    console.error("[EmailCampaign] Unable to read campaign self-test rate limit log:", error);
+    return 0;
+  }
+}
+
+function claimCampaignTestSendAttempt(key: string, persistedAttemptCount: number): boolean {
+  const now = Date.now();
+  const activeAttempts = (campaignTestSendAttempts.get(key) ?? []).filter(
+    (timestamp) => now - timestamp < CAMPAIGN_TEST_SEND_WINDOW_MS,
+  );
+  if (Math.max(activeAttempts.length, persistedAttemptCount) >= CAMPAIGN_TEST_SEND_LIMIT) {
+    campaignTestSendAttempts.set(key, activeAttempts);
+    return false;
+  }
+  campaignTestSendAttempts.set(key, [...activeAttempts, now]);
+  return true;
+}
+
 async function getEmailCampaignOrgContext(db: EmailMarketingDb, orgId: number) {
   const [themeRows, organizationRows] = await Promise.all([
     db
@@ -885,6 +922,15 @@ export const emailCampaignRouter = router({
       }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const persistedAttemptCount = await countRecentCampaignTestSends(db, ctx.user.id, ctx.user.email);
+      const attemptKey = `${orgId}:${ctx.user.id}:${ctx.user.email.toLowerCase()}`;
+      if (!claimCampaignTestSendAttempt(attemptKey, persistedAttemptCount)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "You can send up to 3 campaign tests every 10 minutes. Please try again shortly.",
+        });
+      }
 
       const senderProfile = await validateSenderProfileForOrg(db, input.senderProfileId, orgId);
       const orgContext = await getEmailCampaignOrgContext(db, orgId);

@@ -1332,7 +1332,7 @@ export default function EmailCampaignEditor({ campaignId, initialAudienceFilter,
             <div className="rounded-lg border border-[#189aa1]/20 bg-[#f0fbfc] px-3 py-2 text-sm font-medium text-slate-700">
               {user?.email ?? "No account email is available"}
             </div>
-            <p className="text-xs text-gray-400">This does not create a campaign, notify the selected audience, or record campaign tracking.</p>
+            <p className="text-xs text-gray-400">This does not create a campaign, notify the selected audience, or record campaign tracking. Up to 3 tests can be sent every 10 minutes.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTestDialogOpen(false)}>Cancel</Button>

@@ -43,11 +43,20 @@ describe("campaign self-test email", () => {
     expect(slice).not.toContain("wrapLinksForTracking");
   });
 
+  it("enforces a low-volume rate limit before calling the delivery provider", () => {
+    const slice = procedureSlice("sendTestEmail", "sendCampaign");
+    expect(routerSource).toContain("const CAMPAIGN_TEST_SEND_LIMIT = 3;");
+    expect(routerSource).toContain("const CAMPAIGN_TEST_SEND_WINDOW_MS = 10 * 60 * 1000;");
+    expect(slice).toContain("countRecentCampaignTestSends(db, ctx.user.id, ctx.user.email)");
+    expect(slice).toContain("claimCampaignTestSendAttempt(attemptKey, persistedAttemptCount)");
+    expect(slice.indexOf("claimCampaignTestSendAttempt")).toBeLessThan(slice.indexOf("const sent = await sendEmail"));
+  });
+
   it("requires an explicit confirmation in the editor and keeps the destination read-only", () => {
     expect(editorSource).toContain("trpc.emailCampaign.sendTestEmail.useMutation");
     expect(editorSource).toContain("function confirmSendTest()");
     expect(editorSource).toContain("A test of <strong>“{subject}”</strong> will be sent only to your signed-in account.");
-    expect(editorSource).toContain("This does not create a campaign, notify the selected audience, or record campaign tracking.");
+    expect(editorSource).toContain("This does not create a campaign, notify the selected audience, or record campaign tracking. Up to 3 tests can be sent every 10 minutes.");
     expect(editorSource).toContain("{user?.email ?? \"No account email is available\"}");
     expect(editorSource).not.toContain("Test recipient email");
   });
