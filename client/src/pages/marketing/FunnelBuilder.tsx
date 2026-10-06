@@ -1536,12 +1536,19 @@ function GlobalContactsTab({ funnelList }: { funnelList: Funnel[] }) {
                 <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-400">No contacts found</td></tr>
               ) : (
                 data.contacts.map(c => (
-                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{c.name || <span className="text-gray-400 italic">Unknown</span>}</div>
-                      <div className="text-xs text-gray-500">{c.email}</div>
-                      {c.phone && <div className="text-xs text-gray-400">{c.phone}</div>}
-                    </td>
+	                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+	                    <td className="px-4 py-3">
+	                      <button
+	                        type="button"
+	                        onClick={() => window.location.assign(`/admin/contacts?email=${encodeURIComponent(c.email)}`)}
+	                        className="text-left group"
+	                        title="Open organization contact profile"
+	                      >
+	                        <div className="font-medium text-gray-900 group-hover:text-[var(--org-primary)]">{c.name || <span className="text-gray-400 italic">Unknown</span>}</div>
+	                        <div className="text-xs text-gray-500 group-hover:text-[var(--org-primary)]">{c.email}</div>
+	                      </button>
+	                      {c.phone && <div className="text-xs text-gray-400">{c.phone}</div>}
+	                    </td>
                     <td className="px-4 py-3 text-gray-600 text-xs">{c.funnelName ?? "-"}</td>
                     <td className="px-4 py-3">{statusBadge(c.conversionStatus)}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{c.source ?? "-"}</td>

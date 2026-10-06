@@ -5457,12 +5457,19 @@ function EnrollmentsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(data?.enrollments ?? []).map((e: any) => (
-                <tr key={e.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2.5">
-                    <p className="font-medium text-gray-900">{e.user?.displayName ?? "Unknown"}</p>
-                    <p className="text-xs text-gray-400">{e.user?.email}</p>
-                  </td>
+	              {(data?.enrollments ?? []).map((e: any) => (
+	                <tr key={e.id} className="hover:bg-gray-50">
+	                  <td className="px-4 py-2.5">
+	                    <button
+	                      type="button"
+	                      onClick={() => window.location.assign(`/admin/contacts?userId=${encodeURIComponent(String(e.userId ?? e.user?.id ?? ""))}`)}
+	                      className="text-left group"
+	                      title="Open organization contact profile"
+	                    >
+	                      <p className="font-medium text-gray-900 group-hover:text-[var(--org-primary)]">{e.user?.displayName ?? "Unknown"}</p>
+	                      <p className="text-xs text-gray-400 group-hover:text-[var(--org-primary)]">{e.user?.email}</p>
+	                    </button>
+	                  </td>
                   <td className="px-4 py-2.5 text-gray-700">{e.course?.title ?? "—"}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">

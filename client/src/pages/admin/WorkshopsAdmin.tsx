@@ -1078,12 +1078,19 @@ function WorkshopEditor({ workshopId, onBack, onTypeChangedFromWorkshop }: { wor
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {enrollments.map((row: any) => (
-                    <TableRow key={row.enrollment.id}>
-                      <TableCell>
-                        <div className="font-medium text-sm">{row.user?.name ?? "—"}</div>
-                        <div className="text-xs text-gray-400">{row.user?.email ?? "—"}</div>
-                      </TableCell>
+	                  {enrollments.map((row: any) => (
+	                    <TableRow key={row.enrollment.id}>
+	                      <TableCell>
+	                        <button
+	                          type="button"
+	                          onClick={() => window.location.assign(`/admin/contacts?userId=${encodeURIComponent(String(row.enrollment.userId ?? row.user?.id ?? ""))}`)}
+	                          className="text-left group"
+	                          title="Open organization contact profile"
+	                        >
+	                          <div className="font-medium text-sm group-hover:text-[var(--org-primary)]">{row.user?.name ?? "—"}</div>
+	                          <div className="text-xs text-gray-400 group-hover:text-[var(--org-primary)]">{row.user?.email ?? "—"}</div>
+	                        </button>
+	                      </TableCell>
                       <TableCell>
                         <div className="text-xs text-gray-600">{row.instance?.title ?? "—"}</div>
                         <div className="text-xs text-gray-400">{fmtDateShort(row.instance?.startDate)}</div>

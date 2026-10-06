@@ -149,6 +149,7 @@ const navGroups: NavGroup[] = [
         label: "Members",
         path: "/members",
         subItems: [
+          { label: "Contacts", path: "/admin/contacts" },
           { label: "All Users", path: "/members/users" },
           { label: "Groups", path: "/members/groups" },
           { label: "Certificates", path: "/members/certificates" },
@@ -442,7 +443,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       } : undefined}
     >
       <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
-        <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+        <DashboardLayoutContent setSidebarWidth={setSidebarWidth} cmeEnabled={Boolean(orgCtx?.cmeEnabled)}>
           {children}
         </DashboardLayoutContent>
       </SidebarProvider>
@@ -453,9 +454,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
+  cmeEnabled,
 }: {
   children: React.ReactNode;
   setSidebarWidth: (w: number) => void;
+  cmeEnabled: boolean;
 }) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
@@ -672,7 +675,7 @@ function DashboardLayoutContent({
                                 )}
                                 {item.subItems!.filter((sub) => {
                                   // Hide CME Management unless org has CME enabled (platform admins always see it)
-                                  if (sub.path === "/lms/cme" && !isAdmin && !orgCtx?.cmeEnabled) return false;
+                                  if (sub.path === "/lms/cme" && !isAdmin && !cmeEnabled) return false;
                                   return true;
                                 }).map((sub) => {
                                   const subActive = isSubItemActive(sub);

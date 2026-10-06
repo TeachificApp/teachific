@@ -3972,6 +3972,133 @@ export const emailListSubscribers = mysqlTable("emailListSubscribers", {
 export type EmailListSubscriber = typeof emailListSubscribers.$inferSelect;
 export type InsertEmailListSubscriber = typeof emailListSubscribers.$inferInsert;
 
+// ─── Organization Contacts ──────────────────────────────────────────────────
+// Contacts are intentionally organization-owned. A shared email address may
+// legitimately represent separate contacts at separate schools, so every
+// identity lookup is constrained by orgId before any record is returned.
+export const contacts = mysqlTable("contacts", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  userId: int("user_id"),
+  firstName: varchar("first_name", { length: 128 }),
+  lastName: varchar("last_name", { length: 128 }),
+  displayName: varchar("display_name", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  emailNormalized: varchar("email_normalized", { length: 320 }),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  phoneNormalized: varchar("phone_normalized", { length: 32 }),
+  phoneVerified: boolean("phone_verified").default(false).notNull(),
+  lifecycleStage: mysqlEnum("lifecycle_stage", ["lead", "subscriber", "learner", "customer", "inactive"]).default("lead").notNull(),
+  source: varchar("source", { length: 100 }).default("manual").notNull(),
+  sourceDetail: varchar("source_detail", { length: 255 }),
+  attribution: json("attribution"),
+  customFields: json("custom_fields"),
+  deletedAt: timestamp("deleted_at"),
+  anonymizedAt: timestamp("anonymized_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  orgEmailUnique: uniqueIndex("contacts_org_email_normalized_unique").on(table.orgId, table.emailNormalized),
+  orgPhoneUnique: uniqueIndex("contacts_org_phone_normalized_unique").on(table.orgId, table.phoneNormalized),
+  orgLifecycleIndex: index("contacts_org_lifecycle_idx").on(table.orgId, table.lifecycleStage, table.deletedAt),
+  orgUserIndex: index("contacts_org_user_idx").on(table.orgId, table.userId),
+}));
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = typeof contacts.$inferInsert;
+
+export const contactTags = mysqlTable("contact_tags", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  color: varchar("color", { length: 20 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgNameUnique: uniqueIndex("contact_tags_org_name_unique").on(table.orgId, table.name),
+}));
+export type ContactTag = typeof contactTags.$inferSelect;
+export type InsertContactTag = typeof contactTags.$inferInsert;
+
+export const contactTagAssignments = mysqlTable("contact_tag_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  contactId: int("contact_id").notNull(),
+  tagId: int("tag_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  contactTagUnique: uniqueIndex("contact_tag_assignments_contact_tag_unique").on(table.contactId, table.tagId),
+  orgContactIndex: index("contact_tag_assignments_org_contact_idx").on(table.orgId, table.contactId),
+}));
+export type ContactTagAssignment = typeof contactTagAssignments.$inferSelect;
+export type InsertContactTagAssignment = typeof contactTagAssignments.$inferInsert;
+
+export const contactCustomFieldDefinitions = mysqlTable("contact_custom_field_definitions", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  key: varchar("field_key", { length: 100 }).notNull(),
+  label: varchar("label", { length: 150 }).notNull(),
+  fieldType: mysqlEnum("field_type", ["text", "number", "date", "boolean", "select", "url"]).default("text").notNull(),
+  options: json("options"),
+  isRequired: boolean("is_required").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  orgKeyUnique: uniqueIndex("contact_custom_field_definitions_org_key_unique").on(table.orgId, table.key),
+}));
+export type ContactCustomFieldDefinition = typeof contactCustomFieldDefinitions.$inferSelect;
+export type InsertContactCustomFieldDefinition = typeof contactCustomFieldDefinitions.$inferInsert;
+
+export const contactConsents = mysqlTable("contact_consents", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  contactId: int("contact_id").notNull(),
+  consentType: mysqlEnum("consent_type", ["marketing_email", "marketing_sms", "terms", "privacy", "data_processing"]).notNull(),
+  status: mysqlEnum("status", ["granted", "withdrawn", "pending"]).default("pending").notNull(),
+  source: varchar("source", { length: 100 }).default("manual").notNull(),
+  evidence: json("evidence"),
+  grantedAt: timestamp("granted_at"),
+  withdrawnAt: timestamp("withdrawn_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  orgContactConsentUnique: uniqueIndex("contact_consents_org_contact_type_unique").on(table.orgId, table.contactId, table.consentType),
+  orgContactIndex: index("contact_consents_org_contact_idx").on(table.orgId, table.contactId),
+}));
+export type ContactConsent = typeof contactConsents.$inferSelect;
+export type InsertContactConsent = typeof contactConsents.$inferInsert;
+
+export const contactActivities = mysqlTable("contact_activities", {
+  id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  contactId: int("contact_id").notNull(),
+  actorUserId: int("actor_user_id"),
+  activityType: varchar("activity_type", { length: 100 }).notNull(),
+  summary: varchar("summary", { length: 500 }).notNull(),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgContactCreatedIndex: index("contact_activities_org_contact_created_idx").on(table.orgId, table.contactId, table.createdAt),
+}));
+export type ContactActivity = typeof contactActivities.$inferSelect;
+export type InsertContactActivity = typeof contactActivities.$inferInsert;
+
+export const contactAuditEvents = mysqlTable("contact_audit_events", {
+  id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  contactId: int("contact_id").notNull(),
+  actorUserId: int("actor_user_id"),
+  action: varchar("action", { length: 100 }).notNull(),
+  fieldName: varchar("field_name", { length: 100 }),
+  previousValue: json("previous_value"),
+  nextValue: json("next_value"),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgContactCreatedIndex: index("contact_audit_events_org_contact_created_idx").on(table.orgId, table.contactId, table.createdAt),
+}));
+export type ContactAuditEvent = typeof contactAuditEvents.$inferSelect;
+export type InsertContactAuditEvent = typeof contactAuditEvents.$inferInsert;
+
 // ─── Digital Product Files ────────────────────────────────────────────────────
 export const digitalProductFiles = mysqlTable("digital_product_files", {
   id: int("id").autoincrement().primaryKey(),

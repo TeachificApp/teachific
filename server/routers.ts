@@ -167,6 +167,7 @@ import { widgetAdminRouter } from "./routers/widgetAdminRouter";
 import { adminUserRouter } from "./routers/adminUserRouter";
 import { cmeActivityFormRouter } from "./routers/cmeActivityFormRouter";
 import { newsletterRouter } from "./routers/newsletterRouter";
+import { contactsRouter } from "./routers/contactsRouter";
 import { cmeDisclosureRouter } from "./routers/cmeDisclosureRouter";
 import { webinarAdminRouter } from "./routers/webinarAdminRouter";
 import { contentAvailabilityRouter } from "./routers/contentAvailabilityRouter";
@@ -296,6 +297,7 @@ export const appRouter = router({
   adminUser: adminUserRouter,
   cme: cmeActivityFormRouter,
   newsletter: newsletterRouter,
+  contacts: contactsRouter,
   cmeDisclosure: cmeDisclosureRouter,
   webinarAdmin: webinarAdminRouter,
   contentAvailability: contentAvailabilityRouter,

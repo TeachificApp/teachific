@@ -700,10 +700,28 @@ function WebinarEditor({ webinarId, onBack }: { webinarId: number; onBack: () =>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {registrations.map(r => (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-sm">{(r.userName ?? `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim()) || "—"}</TableCell>
-                      <TableCell className="text-sm text-gray-600">{r.userEmail ?? r.email ?? "—"}</TableCell>
+	                  {registrations.map(r => (
+	                    <TableRow key={r.id}>
+	                      <TableCell className="text-sm">
+	                        <button
+	                          type="button"
+	                          className="text-left hover:text-[var(--org-primary)]"
+	                          onClick={() => window.location.assign(`/admin/contacts?email=${encodeURIComponent(r.userEmail ?? r.email ?? "")}`)}
+	                          title="Open organization contact profile"
+	                        >
+	                          {(r.userName ?? `${r.firstName ?? ""} ${r.lastName ?? ""}`.trim()) || "—"}
+	                        </button>
+	                      </TableCell>
+	                      <TableCell className="text-sm text-gray-600">
+	                        <button
+	                          type="button"
+	                          className="hover:text-[var(--org-primary)] hover:underline"
+	                          onClick={() => window.location.assign(`/admin/contacts?email=${encodeURIComponent(r.userEmail ?? r.email ?? "")}`)}
+	                          title="Open organization contact profile"
+	                        >
+	                          {r.userEmail ?? r.email ?? "—"}
+	                        </button>
+	                      </TableCell>
                       <TableCell className="text-xs text-gray-500">{r.registeredAt ? new Date(r.registeredAt).toLocaleDateString() : "—"}</TableCell>
                       <TableCell>
                         {r.attended ? <CheckCircle className="w-4 h-4 text-green-500" /> : <span className="text-xs text-gray-400">No</span>}
