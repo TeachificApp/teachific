@@ -31,6 +31,8 @@ import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { buildAiSourceMessage } from "../lib/aiSourceFile";
+import { canUseAiCourseGenerator } from "../lib/aiCourseGeneratorEntitlement";
+import { selectCuratedUnsplashCourseVisual } from "../lib/aiCourseVisuals";
 import {
   buildFullLessonExpansionPrompt,
   cleanGeneratedLessonContent,
@@ -85,6 +87,7 @@ import {
   lmsCheckoutTemplates,
   curriculumEmbedVisibility,
   organizations,
+  orgSubscriptions,
   quizzes,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
@@ -100,6 +103,40 @@ async function assertStandaloneQuizForCourse(db: any, courseId: number, standalo
     ? await db.select({ id: quizzes.id }).from(quizzes).where(and(eq(quizzes.id, standaloneQuizId), eq(quizzes.orgId, course.orgId))).limit(1)
     : [];
   if (!quiz) throw new TRPCError({ code: "FORBIDDEN", message: "The selected quiz belongs to another organisation." });
+}
+
+function isPlatformAdministrator(role: string) {
+  return role === "site_owner" || role === "site_admin";
+}
+
+function aiCourseBlockId(prefix: string) {
+  return `${prefix}-${Date.now()}-${randomBytes(4).toString("hex")}`;
+}
+
+function escapeGeneratedInlineText(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function assertAiCourseGeneratorAccess(ctx: { user: { id: number; role: string } }, orgId: number) {
+  if (isPlatformAdministrator(ctx.user.role)) return;
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [subscription] = await db
+    .select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
+    .from(orgSubscriptions)
+    .where(eq(orgSubscriptions.orgId, orgId))
+    .limit(1);
+  if (!canUseAiCourseGenerator(subscription?.plan, subscription?.status)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "AI Course Generator is available on active Starter, Builder, Pro, and Enterprise organization plans.",
+    });
+  }
 }
 
 export function cloneLessonTemplateBlocks(blocksJson: string | null | undefined): Record<string, unknown>[] {
@@ -1528,8 +1565,11 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({
       courseId: z.number(),
       prompt: z.string().min(5).max(2000),
-      numSections: z.number().int().min(1).max(20).default(4),
-      numLessonsPerSection: z.number().int().min(1).max(15).default(3),
+      courseDescription: z.string().max(4000).optional(),
+      numSections: z.number().int().min(1).max(6).default(4),
+      numLessonsPerSection: z.number().int().min(1).max(5).default(3),
+      includeUnsplashImages: z.boolean().default(true),
+      includeAiImages: z.boolean().default(true),
       sourceFiles: z.array(z.object({ url: z.string().url(), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "image/webp"]), name: z.string().min(1).max(255) })).min(1).max(3).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -1537,20 +1577,34 @@ export const lmsCourseBuilderRouter = router({
       await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      const [course] = await db.select({
+        orgId: lmsCourses.orgId,
+        title: lmsCourses.title,
+        description: lmsCourses.description,
+        subtitle: lmsCourses.subtitle,
+        primaryColor: lmsCourses.primaryColor,
+      }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      await assertAiCourseGeneratorAccess(ctx, course.orgId);
       const sourceFiles = input.sourceFiles ?? [];
-      if (sourceFiles.some(source => !source.url.includes(`/ai-generation-sources/${course?.orgId}/${ctx.user.id}/`))) throw new TRPCError({ code: "FORBIDDEN", message: "Source files must belong to your active organization." });
+      if (sourceFiles.some(source => !source.url.includes(`/ai-generation-sources/${course.orgId}/${ctx.user.id}/`))) throw new TRPCError({ code: "FORBIDDEN", message: "Source files must belong to your active organization." });
 
-      const systemPrompt = `You are an expert instructional designer and course creator. You produce well-structured, educationally sound course outlines in United States English. Always respond with valid JSON matching the requested schema exactly.`;
+      const systemPrompt = `You are an expert instructional designer for Course360. Produce accurate, original, inclusive learner-facing course material in United States English. Follow the organization's course context and author-supplied details. Do not invent endorsements, outcomes, credentials, legal claims, citations, patient details, statistics, or product features. Return only valid JSON matching the requested schema exactly.`;
 
-      const userPrompt = `Create a complete course outline based on this description:
-"${input.prompt}"
+      const courseDescription = input.courseDescription?.trim() || course.description || course.subtitle || "No saved course description yet.";
+      const userPrompt = `Build the curriculum for this existing Course360 course:
+
+Course title: "${course.title}"
+Course description: "${courseDescription}"
+Author's notes and required details: "${input.prompt}"
 
 Requirements:
 - Exactly ${input.numSections} sections (modules)
 - Exactly ${input.numLessonsPerSection} lessons per section
-- Each lesson must have a clear title and 2-4 paragraphs of instructional HTML content using <h2>, <p>, <ul>, <li>, <strong> tags
-- Content should be educational, detailed, and ready to use as lesson material
+- Each lesson must have a clear title and 3-5 substantial paragraphs of original instructional HTML content using <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, and <em> tags
+- Each lesson's body should be approximately 350-550 words, with a clear introduction, practical explanation, at least one application or example, and a concise conclusion
+- Provide exactly 3 concise key takeaways, one learner reflection question, and one safe practice activity for every lesson
+- Content must be ready to edit and publish as learner-facing lesson material
 - Use United States English spelling throughout
 
 Return JSON with this exact shape:
@@ -1560,16 +1614,33 @@ Return JSON with this exact shape:
     {
       "title": "string",
       "lessons": [
-        { "title": "string", "content": "string (HTML)" }
+        {
+          "title": "string",
+          "content": "string (HTML)",
+          "takeaways": ["string", "string", "string"],
+          "reflectionQuestion": "string",
+          "practiceActivity": "string"
+        }
       ]
     }
   ]
 }`;
 
-      let outline: { courseTitle: string; sections: Array<{ title: string; lessons: Array<{ title: string; content: string }> }> };
+      let outline: {
+        courseTitle: string;
+        sections: Array<{
+          title: string;
+          lessons: Array<{
+            title: string;
+            content: string;
+            takeaways: string[];
+            reflectionQuestion: string;
+            practiceActivity: string;
+          }>;
+        }>;
+      };
       try {
         const response = await invokeLLM({
-          model: sourceFiles.length ? "gemini-3-flash-preview" : undefined,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: buildAiSourceMessage(userPrompt, sourceFiles) as any },
@@ -1596,8 +1667,11 @@ Return JSON with this exact shape:
                             properties: {
                               title: { type: "string" },
                               content: { type: "string" },
+                              takeaways: { type: "array", items: { type: "string" } },
+                              reflectionQuestion: { type: "string" },
+                              practiceActivity: { type: "string" },
                             },
-                            required: ["title", "content"],
+                            required: ["title", "content", "takeaways", "reflectionQuestion", "practiceActivity"],
                             additionalProperties: false,
                           },
                         },
@@ -1622,6 +1696,36 @@ Return JSON with this exact shape:
       if (!outline?.sections?.length) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an empty outline. Please try again with a more detailed prompt." });
       }
+      if (outline.sections.length !== input.numSections || outline.sections.some(section => section.lessons?.length !== input.numLessonsPerSection)) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "AI did not return the requested number of modules and lessons. Please try again.",
+        });
+      }
+
+      // Image creation is deliberately non-blocking for the curriculum itself. A
+      // failed image request falls back to the reviewed Unsplash visual below,
+      // so a transient provider failure never loses the generated lesson work.
+      const aiModuleVisuals = new Map<number, string>();
+      if (input.includeAiImages) {
+        for (const [sectionIndex, section] of outline.sections.entries()) {
+          const firstLesson = section.lessons[0];
+          const imagePrompt = [
+            "Create an original, polished editorial course illustration.",
+            `Course: ${course.title}.`,
+            `Module: ${section.title}.`,
+            `Lesson focus: ${firstLesson?.title ?? section.title}.`,
+            "Use a respectful, inclusive educational scene. Do not include text, lettering, logos, watermarks, trademarks, patient-identifying details, or inaccurate clinical claims.",
+            "Use a clean 16:9 horizontal composition with room for surrounding lesson content.",
+          ].join(" ").slice(0, 1000);
+          try {
+            const generated = await generateImage({ prompt: imagePrompt });
+            if (generated.url) aiModuleVisuals.set(sectionIndex, generated.url);
+          } catch {
+            // The curated Unsplash visual remains available for this lesson.
+          }
+        }
+      }
 
       const posResult = await db
         .select({ maxPos: max(lmsSections.position) })
@@ -1631,36 +1735,93 @@ Return JSON with this exact shape:
 
       const createdSections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }> = [];
 
-      for (const sectionData of outline.sections) {
+      let curatedVisualCount = 0;
+      for (const [sectionIndex, sectionData] of outline.sections.entries()) {
         const [sectionResult] = await db
           .insert(lmsSections)
-          .values({ courseId: input.courseId, title: sectionData.title, position: sectionPosition++ })
+          .values({ orgId: course.orgId, courseId: input.courseId, title: sectionData.title, position: sectionPosition++ })
           .$returningId();
         const sectionId = sectionResult.id;
         const createdLessons: Array<{ id: number; title: string }> = [];
         let lessonPosition = 0;
 
-        for (const lessonData of sectionData.lessons) {
-          const heroBlock = JSON.stringify([{
-            id: `hero-auto-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        for (const [lessonIndex, lessonData] of sectionData.lessons.entries()) {
+          const content = cleanGeneratedLessonContent(lessonData.content);
+          const takeaways = Array.isArray(lessonData.takeaways)
+            ? lessonData.takeaways.filter(item => typeof item === "string" && item.trim()).slice(0, 3)
+            : [];
+          const blocks: Array<{ id: string; type: string; data: Record<string, unknown> }> = [{
+            id: aiCourseBlockId("hero-auto"),
             type: "hero",
-            data: { headline: lessonData.title, headline2: "", subheadline: "", hideButtons: true, buttons: [], bgType: "color", bgColor: "#149096", textColor: "#ffffff", align: "left", heroMinHeight: 150 },
-          }, {
-            id: `text-auto-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            data: { headline: lessonData.title, headline2: "", subheadline: sectionData.title, hideButtons: true, buttons: [], bgType: "color", bgColor: course.primaryColor || "#179ca3", textColor: "#ffffff", align: "left", heroMinHeight: 150 },
+          }];
+
+          const aiVisualUrl = lessonIndex === 0 ? aiModuleVisuals.get(sectionIndex) : undefined;
+          if (aiVisualUrl) {
+            blocks.push({
+              id: aiCourseBlockId("ai-image-auto"),
+              type: "ai_image",
+              data: { url: aiVisualUrl, alt: `AI-generated course visual for ${lessonData.title}`, caption: "", align: "center", maxWidth: "100%", showShadow: true, source: "ai" },
+            });
+          }
+
+          blocks.push({
+            id: aiCourseBlockId("text-auto"),
             type: "text",
-            data: { html: lessonData.content, align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" },
-          }]);
+            data: { html: content, align: "left", bgColor: "#ffffff", textColor: "#1a1a1a" },
+          });
+
+          if (input.includeUnsplashImages) {
+            const visual = selectCuratedUnsplashCourseVisual(`${course.title} ${sectionData.title} ${lessonData.title} ${input.prompt}`);
+            blocks.push({
+              id: aiCourseBlockId("unsplash-image-auto"),
+              type: "image",
+              data: { url: visual.url, alt: `${lessonData.title} — ${visual.alt}`, caption: "", align: "center", maxWidth: "100%", showShadow: true, source: "unsplash" },
+            });
+            curatedVisualCount += 1;
+          }
+
+          if (takeaways.length > 0) {
+            blocks.push({
+              id: aiCourseBlockId("takeaways-auto"),
+              type: "checklist",
+              data: { headline: "Key Takeaways", items: takeaways, accentColor: course.primaryColor || "#179ca3", bgColor: "#ffffff" },
+            });
+          }
+
+          blocks.push({
+            id: aiCourseBlockId("apply-auto"),
+            type: "faq",
+            data: {
+              headline: "Reflect & Apply",
+              accentColor: course.primaryColor || "#179ca3",
+              items: [
+                { q: "Reflection question", a: `<p>${escapeGeneratedInlineText(lessonData.reflectionQuestion)}</p>` },
+                { q: "Practice activity", a: `<p>${escapeGeneratedInlineText(lessonData.practiceActivity)}</p>` },
+              ],
+            },
+          });
+
+          const contentBlocks = JSON.stringify(blocks);
 
           const [lessonResult] = await db
             .insert(lmsLessons)
-            .values({ courseId: input.courseId, sectionId, title: lessonData.title, type: "text", position: lessonPosition++, content: lessonData.content, contentBlocks: heroBlock })
+            .values({ orgId: course.orgId, courseId: input.courseId, sectionId, title: lessonData.title, type: "text", position: lessonPosition++, content, contentBlocks })
             .$returningId();
           createdLessons.push({ id: lessonResult.id, title: lessonData.title });
         }
         createdSections.push({ id: sectionId, title: sectionData.title, lessons: createdLessons });
       }
 
-      return { success: true, courseTitle: outline.courseTitle, sections: createdSections };
+      return {
+        success: true,
+        courseTitle: outline.courseTitle,
+        sections: createdSections,
+        visuals: {
+          curatedUnsplashImages: curatedVisualCount,
+          generatedAiImages: aiModuleVisuals.size,
+        },
+      };
     }),
 
   // ─── AI: Generate Lesson Content ─────────────────────────────────────────────

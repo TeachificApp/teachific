@@ -1516,6 +1516,8 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
       {aiCourseGenOpen && (
         <AICourseGeneratorDialog
           courseId={courseId}
+          courseTitle={course.title}
+          initialCourseDescription={course.description ?? course.subtitle ?? ""}
           onClose={() => setAiCourseGenOpen(false)}
           onGenerated={() => { setAiCourseGenOpen(false); refetch(); }}
         />
@@ -3736,18 +3738,27 @@ function MediaPickerDialog({ open, onClose, onSelect }: { open: boolean; onClose
 
 
 // ─── AI Course Generator Dialog ───────────────────────────────────────────────
-function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
+function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescription, onClose, onGenerated }: {
   courseId: number;
+  courseTitle: string;
+  initialCourseDescription: string;
   onClose: () => void;
   onGenerated: () => void;
 }) {
   const { orgId } = useOrgScope();
   const [prompt, setPrompt] = useState("");
+  const [courseDescription, setCourseDescription] = useState(initialCourseDescription);
   const [numSections, setNumSections] = useState(4);
   const [numLessonsPerSection, setNumLessonsPerSection] = useState(3);
+  const [includeUnsplashImages, setIncludeUnsplashImages] = useState(true);
+  const [includeAiImages, setIncludeAiImages] = useState(true);
   const [sourceFiles, setSourceFiles] = useState<AiSourceReviewFile[]>([]);
   const [isUploadingSources, setIsUploadingSources] = useState(false);
-  const [preview, setPreview] = useState<null | { courseTitle: string; sections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }> }>(null);
+  const [preview, setPreview] = useState<null | {
+    courseTitle: string;
+    sections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }>;
+    visuals?: { curatedUnsplashImages: number; generatedAiImages: number };
+  }>(null);
   const [step, setStep] = useState<"prompt" | "generating" | "done">("prompt");
 
   const generate = trpc.lmsAdmin.generateCourseOutline.useMutation({
@@ -3762,9 +3773,22 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
   });
 
   const handleGenerate = () => {
-    if (!prompt.trim()) { toast.error("Please enter a course description."); return; }
+    if (!prompt.trim()) { toast.error("Please enter the topics, notes, and required details."); return; }
     setStep("generating");
-    generate.mutate({ courseId, prompt: prompt.trim(), numSections, numLessonsPerSection, sourceFiles: sourceFiles.map(({ url, mimeType }) => ({ url, mimeType })) });
+    generate.mutate({
+      courseId,
+      prompt: prompt.trim(),
+      courseDescription: courseDescription.trim() || undefined,
+      numSections,
+      numLessonsPerSection,
+      includeUnsplashImages,
+      includeAiImages,
+      sourceFiles: sourceFiles.map(({ url, mimeType, name }) => ({
+        url,
+        mimeType: mimeType as "application/pdf" | "image/jpeg" | "image/png" | "image/webp",
+        name,
+      })),
+    });
   };
 
   const uploadSourceFiles = async (files: File[]) => {
@@ -3804,15 +3828,30 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
 
         {step === "prompt" && (
           <div className="space-y-5 py-2">
+            <div className="rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--org-primary)]">Generating for this course</p>
+              <p className="mt-1 text-base font-semibold text-gray-900">{courseTitle}</p>
+              <p className="mt-1 text-xs text-gray-600">The course title, description, and your details below are used together to create the curriculum.</p>
+            </div>
             <div>
-              <Label className="text-sm font-medium">Course Description *</Label>
+              <Label className="text-sm font-medium">Course Description</Label>
+              <Textarea
+                value={courseDescription}
+                onChange={e => setCourseDescription(e.target.value)}
+                placeholder="Describe the promise, audience, and outcomes for this course."
+                className="mt-1.5 min-h-24 resize-y text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">This starts with the saved course description. Edit it here to give this generation more context; changes here do not overwrite your course settings.</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Topics, Notes & Required Details *</Label>
               <textarea
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
-                placeholder="e.g. A beginner's guide to digital marketing covering SEO, social media, email campaigns, and paid advertising. Designed for small business owners with no prior marketing experience."
+                placeholder="e.g. Cover SEO, social media, email campaigns, and paid advertising for small-business owners. Include a practical planning exercise in every module and use a supportive, beginner-friendly tone."
                 className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm resize-none h-28 focus:outline-none focus:ring-2 focus:ring-[var(--org-primary)]"
               />
-              <p className="text-xs text-gray-400 mt-1">Be specific — include the target audience, skill level, and key topics to cover.</p>
+              <p className="text-xs text-gray-400 mt-1">Be specific — include topics, audience, skill level, voice, examples, required modules, and anything the course must avoid.</p>
             </div>
             <AiSourceFileReview
               sourceFiles={sourceFiles}
@@ -3826,7 +3865,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                 <Label className="text-sm font-medium">Number of Modules</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   <input
-                    type="range" min={1} max={12} value={numSections}
+                    type="range" min={1} max={6} value={numSections}
                     onChange={e => setNumSections(Number(e.target.value))}
                     className="flex-1 accent-[var(--org-primary)]"
                   />
@@ -3837,7 +3876,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                 <Label className="text-sm font-medium">Lessons per Module</Label>
                 <div className="flex items-center gap-3 mt-1.5">
                   <input
-                    type="range" min={1} max={10} value={numLessonsPerSection}
+                    type="range" min={1} max={5} value={numLessonsPerSection}
                     onChange={e => setNumLessonsPerSection(Number(e.target.value))}
                     className="flex-1 accent-[var(--org-primary)]"
                   />
@@ -3846,7 +3885,33 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
               </div>
             </div>
             <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] rounded-lg px-4 py-3 text-xs text-[var(--org-primary)]">
-              <strong>This will generate:</strong> {numSections} modules × {numLessonsPerSection} lessons = <strong>{numSections * numLessonsPerSection} lessons</strong> with full text content, ready to edit.
+              <strong>This will generate:</strong> {numSections} modules × {numLessonsPerSection} lessons = <strong>{numSections * numLessonsPerSection} lessons</strong> with rich instructional content, takeaways, reflection prompts, and practice activities — all ready to edit.
+            </div>
+            <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
+              <label className="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeUnsplashImages}
+                  onChange={e => setIncludeUnsplashImages(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[var(--org-primary)]"
+                />
+                <span>
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800"><ImageIcon className="h-4 w-4 text-[var(--org-primary)]" /> Add curated Unsplash images</span>
+                  <span className="mt-0.5 block text-xs text-gray-500">Adds a topic-matched visual block to each lesson. Every image remains editable or replaceable.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 px-4 py-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeAiImages}
+                  onChange={e => setIncludeAiImages(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[var(--org-primary)]"
+                />
+                <span>
+                  <span className="flex items-center gap-1.5 text-sm font-medium text-gray-800"><Sparkles className="h-4 w-4 text-[var(--org-primary)]" /> Generate original AI module visuals</span>
+                  <span className="mt-0.5 block text-xs text-gray-500">Creates one original, text-free 16:9 visual per module. If a visual cannot be generated, the lesson content and selected Unsplash images are still created.</span>
+                </span>
+              </label>
             </div>
           </div>
         )}
@@ -3860,7 +3925,7 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
             </div>
             <div className="text-center">
               <p className="font-semibold text-gray-800">Generating your course...</p>
-              <p className="text-sm text-gray-500 mt-1">AI is creating {numSections * numLessonsPerSection} lessons with full content. This may take 30–60 seconds.</p>
+              <p className="text-sm text-gray-500 mt-1">AI is creating {numSections * numLessonsPerSection} lessons with rich content, dynamic learning blocks, and your selected visuals. This may take 45–120 seconds.</p>
             </div>
             <Loader2 className="w-5 h-5 animate-spin text-[var(--org-primary)]" />
           </div>
@@ -3874,8 +3939,17 @@ function AICourseGeneratorDialog({ courseId, onClose, onGenerated }: {
                 <strong>{preview.sections.length} modules</strong> and <strong>{preview.sections.reduce((a, s) => a + s.lessons.length, 0)} lessons</strong> have been added to your course curriculum.
               </p>
             </div>
-            {preview.courseTitle && (
-              <p className="text-xs text-gray-500">Suggested course title: <strong className="text-gray-700">{preview.courseTitle}</strong></p>
+            {preview.visuals && (preview.visuals.curatedUnsplashImages > 0 || preview.visuals.generatedAiImages > 0) && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <p className="text-xs text-gray-500">Curated Unsplash visuals</p>
+                  <p className="text-lg font-semibold text-gray-900">{preview.visuals.curatedUnsplashImages}</p>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <p className="text-xs text-gray-500">Original AI visuals</p>
+                  <p className="text-lg font-semibold text-gray-900">{preview.visuals.generatedAiImages}</p>
+                </div>
+              </div>
             )}
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {preview.sections.map((section, si) => (
