@@ -45,6 +45,7 @@ const PLAN_FEATURES = [
   "Role-Play scenario builder",
   "PowerPoint import & export",
   "Custom themes & brand kit",
+  "White-label player",
   "50 GB media storage",
   "Priority email & chat support",
 ];
@@ -90,7 +91,6 @@ const TIERS = [
       "On-premise deployment option",
       "Service-level planning",
       "Unlimited storage",
-      "White-label player",
       "Dedicated onboarding & training",
     ],
     cta: "Contact Sales",

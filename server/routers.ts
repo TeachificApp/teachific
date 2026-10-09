@@ -6,6 +6,8 @@ import { sendEmailViaOrg } from "./_core/email";
 import { resetPasswordHtml } from "./emailTemplates";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 import { isValidOrganizationTimeZone } from "../shared/emailCampaignSchedule";
+import { getEffectiveSubscriptionPlan } from "../shared/subscriptionEntitlement";
+import { getLimits } from "../shared/tierLimits";
 import https from "node:https";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
@@ -1028,7 +1030,9 @@ export const appRouter = router({
           return {
             org: match.org,
             role: match.role as "org_super_admin" | "org_admin" | "site_owner" | "site_admin" | "sub_admin" | "instructor" | "member" | "user",
-            subscription: subscription ?? null,
+            subscription: subscription
+              ? { ...subscription, effectivePlan: getEffectiveSubscriptionPlan(subscription.plan, subscription.status) }
+              : null,
           };
         }
         // Not a direct member — check if the user's org has an accepted link to this subdomain org
@@ -1067,7 +1071,9 @@ export const appRouter = router({
               return {
                 org: subdomainOrgData,
                 role: userRole as "org_super_admin" | "org_admin" | "site_owner" | "site_admin" | "sub_admin" | "instructor" | "member" | "user",
-                subscription: subscription ?? null,
+                subscription: subscription
+                  ? { ...subscription, effectivePlan: getEffectiveSubscriptionPlan(subscription.plan, subscription.status) }
+                  : null,
               };
             }
           }
@@ -1092,7 +1098,9 @@ export const appRouter = router({
       return {
         org: best.org,
         role: best.role as "org_super_admin" | "org_admin" | "site_owner" | "site_admin" | "sub_admin" | "instructor" | "member" | "user",
-        subscription: subscription ?? null,
+        subscription: subscription
+          ? { ...subscription, effectivePlan: getEffectiveSubscriptionPlan(subscription.plan, subscription.status) }
+          : null,
       };
     }),
     // Org admin can update their own org settings
@@ -2081,11 +2089,15 @@ export const appRouter = router({
           .limit(1);
         if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND" });
         const org = rows[0].org;
+        const subscription = await getOrgSubscription(org.id);
+        const canWhiteLabel = getLimits(
+          subscription ? getEffectiveSubscriptionPlan(subscription.plan, subscription.status) : "free",
+        ).whiteLabel;
         return {
           allowedDomains: org.embedAllowedDomains ? (JSON.parse(org.embedAllowedDomains) as string[]) : [],
           defaultTheme: org.embedDefaultTheme ?? "auto",
           analyticsEnabled: org.embedAnalyticsEnabled ?? true,
-          hideTeachificBranding: org.embedHideTeachificBranding ?? false,
+          hideTeachificBranding: canWhiteLabel && (org.embedHideTeachificBranding ?? false),
         };
       }),
 
@@ -2110,11 +2122,23 @@ export const appRouter = router({
         if (role !== "org_admin" && role !== "org_super_admin" && ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        const subscription = await getOrgSubscription(input.orgId);
+        const canWhiteLabel = getLimits(
+          subscription ? getEffectiveSubscriptionPlan(subscription.plan, subscription.status) : "free",
+        ).whiteLabel;
+        if (input.hideTeachificBranding === true && !canWhiteLabel) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "White-label branding requires an active Pro or Enterprise subscription.",
+          });
+        }
         const updates: Record<string, any> = {};
         if (input.allowedDomains !== undefined) updates.embedAllowedDomains = JSON.stringify(input.allowedDomains);
         if (input.defaultTheme !== undefined) updates.embedDefaultTheme = input.defaultTheme;
         if (input.analyticsEnabled !== undefined) updates.embedAnalyticsEnabled = input.analyticsEnabled;
-        if (input.hideTeachificBranding !== undefined) updates.embedHideTeachificBranding = input.hideTeachificBranding;
+        if (input.hideTeachificBranding !== undefined || !canWhiteLabel) {
+          updates.embedHideTeachificBranding = canWhiteLabel ? input.hideTeachificBranding : false;
+        }
         if (Object.keys(updates).length > 0) {
           await db.update(organizations).set(updates).where(eq(organizations.id, input.orgId));
         }

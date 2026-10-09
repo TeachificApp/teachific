@@ -39,6 +39,7 @@ const PLAN_FEATURES = [
   "Auto-save recordings to Media Library",
   "Snap-to-corner draggable camera bubble",
   "Publish directly to Course360 LMS™",
+  "White-label player",
   "50 GB media storage",
   "Priority email & chat support",
 ];
@@ -68,7 +69,6 @@ const PLANS = [
       "SSO / SAML integration",
       "Unlimited storage",
       "Service-level planning",
-      "White-label player",
       "Dedicated onboarding & training",
     ],
     cta: "Contact Sales",

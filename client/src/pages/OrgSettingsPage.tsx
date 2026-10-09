@@ -403,7 +403,7 @@ export default function OrgSettingsPage() {
   }
 
   const org = orgCtx.org;
-  const plan = orgCtx.subscription?.plan ?? "free";
+  const plan = orgCtx.subscription?.effectivePlan ?? orgCtx.subscription?.plan ?? "free";
   const isProPlus = ["pro", "enterprise"].includes(plan);
 
   const tierConfig = {
@@ -3461,7 +3461,7 @@ function OrgEmailSettingsTab({ orgId, plan = "free" }: { orgId?: number; plan?: 
 
 // ─── Embed Settings Panel ─────────────────────────────────────────────────────
 function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; orgSlug: string; plan?: string }) {
-  const isWhitelabel = ["whitelabel", "enterprise"].includes(plan);
+  const canWhiteLabel = ["pro", "enterprise"].includes(plan);
   const utils = trpc.useUtils();
   const { data: config, isLoading } = trpc.orgs.getEmbedConfig.useQuery({ orgId });
   const saveMutation = trpc.orgs.saveEmbedConfig.useMutation({
@@ -3494,7 +3494,7 @@ function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; 
   const removeDomain = (d: string) => setDomains(domains.filter((x) => x !== d));
 
   const handleSave = () => {
-    saveMutation.mutate({ orgId, allowedDomains: domains, defaultTheme, analyticsEnabled, hideTeachificBranding: hideBranding });
+    saveMutation.mutate({ orgId, allowedDomains: domains, defaultTheme, analyticsEnabled, hideTeachificBranding: canWhiteLabel ? hideBranding : false });
   };
 
   if (isLoading) return <div className="py-8 text-center text-muted-foreground">Loading embed settings…</div>;
@@ -3508,7 +3508,7 @@ function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; 
             <Code2 className="h-4 w-4" /> Platform-Wide Embed
           </CardTitle>
           <CardDescription>
-            Embed your entire Teachific school (homepage + catalog) on any external website.
+            Embed your entire Course360 school (homepage + catalog) on any external website.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -3581,23 +3581,23 @@ function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; 
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label className={`font-medium ${!isWhitelabel ? "text-muted-foreground" : ""}`}>Hide Teachific Branding</Label>
+              <Label className={`font-medium ${!canWhiteLabel ? "text-muted-foreground" : ""}`}>Hide Course360 Branding</Label>
               <p className="text-xs text-muted-foreground">
-                {isWhitelabel
-                  ? 'Remove the "Powered by Teachific" footer in embeds.'
-                  : 'Remove the "Powered by Teachific" footer in embeds. Available on Whitelabel plans only.'}
+                {canWhiteLabel
+                  ? 'Remove the "Powered by Course360™" footer in embeds.'
+                  : 'Remove the "Powered by Course360™" footer in embeds. Available on Pro and Enterprise plans.'}
               </p>
-              {!isWhitelabel && (
+              {!canWhiteLabel && (
                 <Badge variant="outline" className="mt-1 text-xs text-amber-600 border-amber-500/40 bg-amber-500/10">
-                  <Crown className="h-3 w-3 mr-1" /> Whitelabel plan required
+                  <Crown className="h-3 w-3 mr-1" /> Pro plan or higher required
                 </Badge>
               )}
             </div>
             <Switch
-              checked={isWhitelabel ? hideBranding : false}
-              onCheckedChange={isWhitelabel ? setHideBranding : undefined}
-              disabled={!isWhitelabel}
-              title={!isWhitelabel ? "Upgrade to a Whitelabel plan to hide Teachific branding" : undefined}
+              checked={canWhiteLabel ? hideBranding : false}
+              onCheckedChange={canWhiteLabel ? setHideBranding : undefined}
+              disabled={!canWhiteLabel}
+              title={!canWhiteLabel ? "Upgrade to Pro or Enterprise to hide Course360 branding" : undefined}
             />
           </div>
           <div className="flex items-center justify-between">

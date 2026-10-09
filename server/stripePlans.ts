@@ -118,7 +118,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxInstructors: 3,
     maxStorageBytes: 2 * 1024 * 1024 * 1024 * 1024, // 2 TB
     maxMembershipTiers: 3,
-    whiteLabel: true,
+    whiteLabel: false,
     emailMarketing: false,
     transactionFeePercent: 1,
     teachificPayFeePercent: 0.5, // 0.5% TeachificPay fee (internal test mode only)
