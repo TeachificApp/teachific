@@ -87,8 +87,10 @@ import {
   affiliateOrgAccess,
   userRoles,
   organizations,
+  orgSubscriptions,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
+import { canUseAiCourseGenerator } from "../lib/aiCourseGeneratorEntitlement";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -106,6 +108,25 @@ async function requireActiveEnrollmentOrg(userId: number, role: string) {
     .limit(1);
   if (!organization?.isActive) {
     throw new TRPCError({ code: "FORBIDDEN", message: "The active organization is unavailable." });
+  }
+  return orgId;
+}
+
+async function requireAiCourseGeneratorPlan(ctx: { user: { id: number; role: string } }) {
+  const orgId = await requireActiveEnrollmentOrg(ctx.user.id, ctx.user.role);
+  if (isPlatformAdmin(ctx.user.role)) return orgId;
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [subscription] = await db
+    .select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
+    .from(orgSubscriptions)
+    .where(eq(orgSubscriptions.orgId, orgId))
+    .limit(1);
+  if (!canUseAiCourseGenerator(subscription?.plan, subscription?.status)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "AI Course Generator is available on active Starter, Builder, Pro, and Enterprise organization plans.",
+    });
   }
   return orgId;
 }
@@ -750,21 +771,22 @@ export const lmsEnrollmentAdminRouter = router({
       difficultyLevel: z.enum(["beginner", "intermediate", "advanced"]).optional(),
       estimatedDurationMinutes: z.number().int().min(5).max(600).optional(),
       // New: configurable structure
-      moduleCount: z.number().int().min(3).max(20).default(5),
-      lessonsPerModule: z.number().int().min(3).max(10).default(4),
+      moduleCount: z.number().int().min(3).max(6).default(5),
+      lessonsPerModule: z.number().int().min(3).max(5).default(4),
       starterContent: z.string().max(20000).optional(), // optional outline / existing content
       generateQuizzes: z.boolean().default(true), // generate 5-question quiz per lesson
       generateCourseQuiz: z.boolean().default(false), // generate a final 5-question course assessment
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await requireAiCourseGeneratorPlan(ctx);
 
-      const systemPrompt = `You are an expert medical education curriculum designer specializing in ultrasound and echocardiography for Teachific™ and Teachific™.
-You create structured, clinically accurate, and pedagogically sound course content.
+      const systemPrompt = `You are an expert instructional designer for Course360.
+You create structured, accurate, original, and pedagogically sound course content for the subject supplied by the author.
 Always use United States English spelling.
 Return ONLY valid JSON — no markdown, no code fences, no extra text.
-IMPORTANT: Each lesson content must be comprehensive — minimum 300 words of rich HTML with clinical context, key concepts, step-by-step techniques, and practical tips.
-IMPORTANT: Each lesson must include exactly 5 MCQ quiz questions with 4 options each.
+IMPORTANT: Each lesson content must be comprehensive — minimum 300 words of rich HTML with clear context, key concepts, practical examples, and useful tips.
+IMPORTANT: Each requested lesson quiz must include exactly 5 MCQ questions with 4 options each.
 IMPORTANT: The landing page must have fully written, publication-ready content — not placeholders.`;
 
       const isQuiz = input.productType === "quiz";
@@ -775,7 +797,7 @@ IMPORTANT: The landing page must have fully written, publication-ready content �
         : "";
 
       const userPrompt = isQuiz
-        ? `Create a standalone quiz on the following ultrasound/echocardiography topics:
+        ? `Create a standalone quiz on the following topics:
 "${input.topics}"
 ${input.targetAudience ? `Target audience: ${input.targetAudience}` : ""}
 ${input.difficultyLevel ? `Difficulty: ${input.difficultyLevel}` : ""}${starterSection}
@@ -803,7 +825,7 @@ Return a JSON object with this exact structure:
   }
 }
 Generate 10-20 high-quality MCQ questions. Each question must have exactly 4 options.`
-        : `Create a comprehensive course on the following ultrasound/echocardiography topics:
+        : `Create a comprehensive course on the following topics:
 "${input.topics}"
 ${input.targetAudience ? `Target audience: ${input.targetAudience}` : ""}
 ${input.difficultyLevel ? `Difficulty: ${input.difficultyLevel}` : ""}
@@ -813,7 +835,7 @@ Generate EXACTLY ${moduleCount} modules (sections) with EXACTLY ${lessonsPerModu
 
 Return a JSON object with this exact structure:
 {
-  "title": "Course title (concise, clinical)",
+  "title": "Course title (concise and specific)",
   "subtitle": "One-line subtitle",
   "sections": [
     {
@@ -824,15 +846,15 @@ Return a JSON object with this exact structure:
           "type": "text",
           "durationMinutes": 15,
           "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
-          "content": "<h2>Introduction</h2><p>Detailed lesson content in HTML — minimum 300 words. Include clinical context, anatomy, scanning technique, key concepts, clinical pearls, and practical tips. Use <h2>, <h3>, <ul>, <ol>, <strong>, <em> tags for structure.</p>",
-          "imageSearchQuery": "ultrasound [specific anatomy/technique] clinical image",
+          "content": "<h2>Introduction</h2><p>Detailed lesson content in HTML — minimum 300 words. Include useful context, key concepts, practical examples, and concrete tips. Use <h2>, <h3>, <ul>, <ol>, <strong>, <em> tags for structure.</p>",
+          "imageSearchQuery": "specific educational image topic",
           ${generateQuizzes ? `"quiz": {
             "questions": [
               {
-                "question": "Clinical question text?",
+                "question": "Assessment question text?",
                 "options": ["Option A", "Option B", "Option C", "Option D"],
                 "correctAnswer": "Option A",
-                "explanation": "Clinical explanation of why this is correct"
+                "explanation": "Explanation of why this is correct"
               }
             ]
           }` : '"quiz": null'}
@@ -853,7 +875,7 @@ Return a JSON object with this exact structure:
     "whatYouLearn": "<ul><li>Specific learning outcome 1</li><li>Specific learning outcome 2</li><li>Specific learning outcome 3</li><li>Specific learning outcome 4</li><li>Specific learning outcome 5</li><li>Specific learning outcome 6</li></ul>",
     "bodyContent": "<h2>About This Course</h2><p>3-4 paragraph fully written HTML description. First paragraph: what the course covers and why it matters clinically. Second paragraph: who will benefit most. Third paragraph: what makes this course unique. Fourth paragraph: what students will be able to do after completing it.</p>",
     "requirements": "<h3>Who This Course Is For</h3><ul><li>Specific audience type 1</li><li>Specific audience type 2</li></ul><h3>Prerequisites</h3><p>Any required background knowledge or equipment.</p>",
-    "heroImageSearchQuery": "ultrasound ${input.topics.split(' ').slice(0,3).join(' ')} clinical professional"
+    "heroImageSearchQuery": "${input.topics.split(' ').slice(0,3).join(' ')} professional educational visual"
   }
 }
 
@@ -863,7 +885,7 @@ CRITICAL REQUIREMENTS:
 - Each lesson content must be minimum 300 words of rich HTML
 - Each requested lesson quiz and optional course-wide assessment must have EXACTLY 5 questions with 4 options each
 - All landing page fields must be fully written — NO placeholders like "[Topic]" or "[Description]"
-- imageSearchQuery should be a specific, descriptive search query for a relevant medical/ultrasound image`;
+- imageSearchQuery should be a specific, descriptive search query for a relevant course image`;
 
       const response = await invokeLLM({
         messages: [
@@ -898,7 +920,10 @@ CRITICAL REQUIREMENTS:
       const { courseId, generated, productType } = input;
       const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
+      const activeOrgId = await requireAiCourseGeneratorPlan(ctx);
+      if (course.orgId !== activeOrgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the course organization before applying an AI draft." });
+      }
 
       // Upsert landing page
       if (generated.landingPage) {
@@ -928,7 +953,7 @@ CRITICAL REQUIREMENTS:
         // Insert sections and lessons
         for (let si = 0; si < generated.sections.length; si++) {
           const sec = generated.sections[si];
-          const [secResult] = await db.insert(lmsSections).values({ courseId, title: sec.title, position: si }).$returningId();
+          const [secResult] = await db.insert(lmsSections).values({ orgId: course.orgId, courseId, title: sec.title, position: si }).$returningId();
           const sectionId = secResult.id;
           if (Array.isArray(sec.lessons)) {
             for (let li = 0; li < sec.lessons.length; li++) {
@@ -936,6 +961,7 @@ CRITICAL REQUIREMENTS:
               // Always use "text" type for AI-generated lessons (quiz is attached separately)
               const lesType = ["video", "download", "embed", "video_text"].includes(les.type) ? les.type : "text";
               const [lesResult] = await db.insert(lmsLessons).values({
+                orgId: course.orgId,
                 courseId,
                 sectionId,
                 title: les.title,
@@ -951,6 +977,7 @@ CRITICAL REQUIREMENTS:
               if (les.quiz && Array.isArray(les.quiz.questions) && les.quiz.questions.length > 0) {
                 const quizLessonTitle = `${les.title} — Quiz`;
                 const [quizLesResult] = await db.insert(lmsLessons).values({
+                  orgId: course.orgId,
                   courseId,
                   sectionId,
                   title: quizLessonTitle,
@@ -988,11 +1015,13 @@ CRITICAL REQUIREMENTS:
           const [{ lastPosition }] = await db.select({ lastPosition: max(lmsSections.position) }).from(lmsSections).where(eq(lmsSections.courseId, courseId));
           const assessmentTitle = generated.courseQuiz.title ?? "Course Assessment";
           const [assessmentSection] = await db.insert(lmsSections).values({
+            orgId: course.orgId,
             courseId,
             title: "Course Assessment",
             position: Number(lastPosition ?? -1) + 1,
           }).$returningId();
           const [assessmentLesson] = await db.insert(lmsLessons).values({
+            orgId: course.orgId,
             courseId,
             sectionId: assessmentSection.id,
             title: assessmentTitle,
@@ -1018,8 +1047,9 @@ CRITICAL REQUIREMENTS:
         }
       } else if (productType === "quiz" && Array.isArray(generated.questions)) {
         // For standalone quiz: create a single section + quiz lesson + questions
-        const [secResult] = await db.insert(lmsSections).values({ courseId, title: "Quiz Questions", position: 0 }).$returningId();
+        const [secResult] = await db.insert(lmsSections).values({ orgId: course.orgId, courseId, title: "Quiz Questions", position: 0 }).$returningId();
         const [lesResult] = await db.insert(lmsLessons).values({
+          orgId: course.orgId,
           courseId,
           sectionId: secResult.id,
           title: generated.title ?? "Quiz",

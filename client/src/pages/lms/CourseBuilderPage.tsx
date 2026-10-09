@@ -391,7 +391,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
               Manual
             </Button>
             <Button size="sm" variant={mode === "ai" ? "default" : "outline"} onClick={() => setMode("ai")} className={mode === "ai" ? " hover:" : ""}>
-              <Sparkles className="w-4 h-4 mr-1" /> AI Generate
+              <Sparkles className="w-4 h-4 mr-1" /> Quick AI Draft
             </Button>
           </div>
         </DialogHeader>
@@ -508,9 +508,9 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
               {aiStep === "input" ? (
                 <div className="space-y-4">
                   <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_10%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] rounded-lg p-3">
-                    <p className="text-sm text-[var(--org-primary)] flex items-center gap-2">
+                    <p className="text-sm text-[var(--org-primary)] flex items-start gap-2">
                       <Sparkles className="w-4 h-4" />
-                      AI will generate a complete {type === "quiz" ? "quiz with questions" : "course curriculum with sections and lessons"} plus a full landing page based on your topics.
+                      <span>Generate a {type === "quiz" ? "quiz with questions" : "course shell with curriculum, lesson drafts, quizzes, and landing-page copy"}. After creating a course, use <strong>Curriculum → AI Generate Course</strong> for rich editable lesson blocks and automatic visuals.</span>
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -530,15 +530,15 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                     <textarea
                       value={aiTopics}
                       onChange={e => setAiTopics(e.target.value)}
-                      placeholder={type === "quiz" ? "e.g. Mitral valve anatomy, regurgitation grading, Doppler assessment, PISA method" : "e.g. Left ventricular systolic function assessment, EF calculation methods, wall motion abnormalities, clinical interpretation"}
+                      placeholder={type === "quiz" ? "e.g. Project management fundamentals, work planning, risk assessment, and stakeholder communication" : "e.g. Digital marketing foundations, customer research, content planning, and campaign measurement"}
                       className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[100px] resize-none"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Be specific — include clinical concepts, procedures, or anatomy you want covered.</p>
+                    <p className="text-xs text-gray-500 mt-1">Be specific — include the concepts, skills, examples, and outcomes you want covered.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-sm">Target Audience (optional)</Label>
-                      <Input value={aiAudience} onChange={e => setAiAudience(e.target.value)} placeholder="e.g. Sonography students" className="mt-1" />
+                      <Input value={aiAudience} onChange={e => setAiAudience(e.target.value)} placeholder="e.g. New managers" className="mt-1" />
                     </div>
                     <div>
                       <Label className="text-sm">Difficulty</Label>
@@ -558,22 +558,22 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                         <div>
                           <Label className="text-sm">Number of Modules: <span className="font-bold text-[var(--org-primary)]">{aiModuleCount}</span></Label>
                           <input
-                            type="range" min={3} max={20} step={1}
+                            type="range" min={3} max={6} step={1}
                             value={aiModuleCount}
                             onChange={e => setAiModuleCount(Number(e.target.value))}
                             className="mt-2 w-full accent-[var(--org-primary)]"
                           />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>20</span></div>
+                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>6</span></div>
                         </div>
                         <div>
                           <Label className="text-sm">Lessons per Module: <span className="font-bold text-[var(--org-primary)]">{aiLessonsPerModule}</span></Label>
                           <input
-                            type="range" min={3} max={10} step={1}
+                            type="range" min={3} max={5} step={1}
                             value={aiLessonsPerModule}
                             onChange={e => setAiLessonsPerModule(Number(e.target.value))}
                             className="mt-2 w-full accent-[var(--org-primary)]"
                           />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>10</span></div>
+                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>5</span></div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border">
@@ -711,7 +711,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">You can edit all content after creation in the course editor. Click "Create with AI Content" to proceed.</p>
+                  <p className="text-xs text-gray-500">You can edit all content after creation. For full editable lesson blocks and automatic visuals, open the course and select Curriculum → AI Generate Course.</p>
                 </div>
               )}
             </div>
@@ -755,7 +755,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                 generateCourseQuiz: type === "course" && aiGenerateCourseQuiz,
               })}
             >
-              {aiGenerate.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Generate Preview</>}
+              {aiGenerate.isPending ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Generate Draft Preview</>}
             </Button>
           ) : (
             <Button
@@ -763,7 +763,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
               disabled={create.isPending || aiCommit.isPending}
               onClick={handleAiCreate}
             >
-              {(create.isPending || aiCommit.isPending) ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Creating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Create with AI Content</>}
+              {(create.isPending || aiCommit.isPending) ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Creating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Create Quick AI Draft</>}
             </Button>
           )}
         </DialogFooter>
