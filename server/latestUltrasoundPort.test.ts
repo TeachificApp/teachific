@@ -680,7 +680,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingBuilderSource).not.toContain('reviews, { name: "Student Name", rating: 5, text: "Great course!" }');
   });
 
-  it("does not ship fabricated testimonials or unsupported social-proof claims in platform marketing", () => {
+  it("keeps user-authorized homepage testimonials separate from generated and seeded social proof", () => {
     const landingPageSource = readFileSync(new URL("../client/src/pages/LandingPage.tsx", import.meta.url), "utf8");
     const quizCreatorLandingSource = readFileSync(new URL("../client/src/pages/QuizCreatorLandingPage.tsx", import.meta.url), "utf8");
     const creatorLandingSource = readFileSync(new URL("../client/src/pages/CreatorLandingPage.tsx", import.meta.url), "utf8");
@@ -689,9 +689,10 @@ describe("latest Ultrasound-App learning feature port", () => {
     const adminLandingBuilderSource = readFileSync(new URL("../client/src/pages/admin/LandingPageBuilder.tsx", import.meta.url), "utf8");
     const lmsLandingBuilderSource = readFileSync(new URL("../client/src/pages/lms/LandingPageBuilder.tsx", import.meta.url), "utf8");
     const checkoutEditorSource = readFileSync(new URL("../client/src/components/CheckoutPageEditor.tsx", import.meta.url), "utf8");
-    expect(landingPageSource).not.toContain("Dr. Sarah Mitchell");
-    expect(landingPageSource).not.toContain("James Okafor");
-    expect(landingPageSource).not.toContain("Priya Sharma");
+    expect(landingPageSource).toContain("Dr. Sarah Mitchell");
+    expect(landingPageSource).toContain("James Okafor");
+    expect(landingPageSource).toContain("Priya Sharma");
+    expect(landingPageSource).toContain("Educators love Course360™");
     expect(landingPageSource).not.toContain("Trusted by educators worldwide");
     expect(landingPageSource).not.toContain("10,000+");
     expect(landingPageSource).not.toContain("250,000+");

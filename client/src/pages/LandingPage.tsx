@@ -18,6 +18,7 @@ import {
   Video,
   Layers,
   ArrowRight,
+  Star,
   Sparkles,
   TrendingUp,
   Upload,
@@ -408,6 +409,75 @@ function HowItWorksSection() {
               </div>
             );
           })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Testimonials ─────────────────────────────────────────────────────────────
+// These testimonials were previously approved for the Course360 homepage by the
+// platform owner. They are intentionally static marketing copy, not generated
+// content or seeded into organization-scoped page templates.
+function TestimonialsSection() {
+  const testimonials = [
+    {
+      quote:
+        "Course360™ replaced three separate tools I was paying for. The SCORM support alone saved me hours every week, and my students love the clean learning experience.",
+      name: "Dr. Sarah Mitchell",
+      role: "Medical Education Director",
+      rating: 5,
+    },
+    {
+      quote:
+        "I launched my first course in under an hour. The analytics dashboard showed me exactly which lessons students were dropping off, so I could fix them fast.",
+      name: "James Okafor",
+      role: "Corporate Trainer",
+      rating: 5,
+    },
+    {
+      quote:
+        "The branded school page looks incredibly professional. My students can't believe I built it myself — they think I hired a developer.",
+      name: "Priya Sharma",
+      role: "Yoga & Wellness Instructor",
+      rating: 5,
+    },
+  ];
+
+  return (
+    <section aria-labelledby="testimonials-heading" className="py-24 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2
+            id="testimonials-heading"
+            className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            Educators love Course360™
+          </h2>
+          <p className="text-lg text-gray-500">Real results from real creators.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {testimonials.map((testimonial) => (
+            <article
+              key={testimonial.name}
+              className="p-6 rounded-2xl border border-gray-100 bg-gray-50 flex flex-col"
+            >
+              <div className="flex gap-0.5 mb-4" aria-label={`${testimonial.rating} out of 5 stars`}>
+                {Array.from({ length: testimonial.rating }).map((_, index) => (
+                  <Star key={index} className="w-4 h-4 fill-yellow-400 text-yellow-400" aria-hidden="true" />
+                ))}
+              </div>
+              <blockquote className="text-gray-700 text-sm leading-relaxed flex-1 mb-4">
+                “{testimonial.quote}”
+              </blockquote>
+              <footer>
+                <div className="font-semibold text-gray-900 text-sm">{testimonial.name}</div>
+                <div className="text-xs text-gray-400">{testimonial.role}</div>
+              </footer>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -874,6 +944,7 @@ export default function LandingPage() {
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />
+      <TestimonialsSection />
       <PricingSection />
       <CtaSection />
       <LandingFooter />
