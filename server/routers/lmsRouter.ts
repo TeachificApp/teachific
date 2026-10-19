@@ -114,6 +114,10 @@ import {
   serializeInlineLessonSurveyAnswer,
 } from "../lib/inlineLessonCmeSurvey";
 import {
+  getStoredInlineLessonFlashcardBlock,
+  normalizeInlineLessonFlashcardOutcomes,
+} from "../lib/inlineLessonFlashcards";
+import {
   cohortLearnerContentWhere,
   selectCurrentCohortGroupId,
 } from "../lib/cohortGroupScope";
@@ -1114,6 +1118,151 @@ export const lmsLearnerRouter = router({
       ));
       return { attempt, responses };
     }),
+
+  /** Record a completed embedded flashcard deck using the learner's private Got It/Missed outcomes. */
+  submitInlineLessonFlashcards: protectedProcedure
+    .input(z.object({
+      lessonId: z.number().int().positive(),
+      courseSlug: z.string().min(1).max(255),
+      flashcardBlockId: z.string().min(1).max(128),
+      outcomes: z.array(z.object({
+        cardKey: z.string().regex(/^\d+$/).max(16),
+        gotIt: z.boolean(),
+      })).min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId })
+        .from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== course.orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+      }
+
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "An active enrollment is required" });
+
+      const [lesson] = await db.select({ id: lmsLessons.id, courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, contentBlocks: lmsLessons.contentBlocks })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const lessonCourseId = lesson.courseId ?? (lesson.sectionId
+        ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+        : null);
+      if (lessonCourseId !== course.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+      }
+
+      const deck = getStoredInlineLessonFlashcardBlock(lesson.contentBlocks, input.flashcardBlockId);
+      if (!deck) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This lesson does not contain the selected flashcard deck" });
+      }
+      const studyResult = normalizeInlineLessonFlashcardOutcomes(deck.cards, input.outcomes);
+      if (!studyResult) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Mark every flashcard Got It or Missed before saving this deck result" });
+      }
+
+      try {
+        await ensureInlineLessonQuizSchema(db);
+      } catch (error) {
+        console.error("[InlineLessonFlashcards] Schema assurance failed", error);
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Flashcard study storage is temporarily unavailable. Please try again shortly.",
+        });
+      }
+
+      const [attempt] = await db.transaction(async (tx) => {
+        const [created] = await tx.insert(lmsInlineQuizAttempts).values({
+          orgId: course.orgId,
+          userId: ctx.user.id,
+          enrollmentId: enrollment.id,
+          courseId: course.id,
+          lessonId: lesson.id,
+          quizBlockId: deck.id,
+          score: studyResult.score,
+          // This is completion of a self-reported study activity, not a graded pass.
+          passed: true,
+        }).$returningId();
+        await tx.insert(lmsInlineQuizResponses).values(studyResult.outcomes.map((outcome) => ({
+          orgId: course.orgId,
+          attemptId: created.id,
+          questionKey: outcome.cardKey,
+          questionText: outcome.questionText,
+          questionType: "flashcard",
+          answerValue: outcome.gotIt ? "got_it" : "missed",
+        })));
+        return [created];
+      });
+
+      return {
+        attemptId: attempt.id,
+        score: studyResult.score,
+        gotItCount: studyResult.gotItCount,
+        cardCount: studyResult.cardCount,
+      };
+    }),
+
+  /** Return the signed-in learner's own embedded quiz and flashcard attempts for the active organization only. */
+  getMyInlineModuleAttempts: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+    if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+
+    const rows = await db.select({
+      id: lmsInlineQuizAttempts.id,
+      score: lmsInlineQuizAttempts.score,
+      passed: lmsInlineQuizAttempts.passed,
+      submittedAt: lmsInlineQuizAttempts.submittedAt,
+      quizBlockId: lmsInlineQuizAttempts.quizBlockId,
+      lessonId: lmsLessons.id,
+      lessonTitle: lmsLessons.title,
+      contentBlocks: lmsLessons.contentBlocks,
+      courseSlug: lmsCourses.slug,
+      courseTitle: lmsCourses.title,
+    }).from(lmsInlineQuizAttempts)
+      .innerJoin(lmsLessons, eq(lmsInlineQuizAttempts.lessonId, lmsLessons.id))
+      .innerJoin(lmsCourses, and(eq(lmsInlineQuizAttempts.courseId, lmsCourses.id), eq(lmsCourses.orgId, activeOrgId)))
+      .where(and(eq(lmsInlineQuizAttempts.orgId, activeOrgId), eq(lmsInlineQuizAttempts.userId, ctx.user.id)))
+      .orderBy(desc(lmsInlineQuizAttempts.submittedAt));
+
+    return rows.flatMap((row): Array<{
+      attempt: { id: number; score: number; passed: boolean; completedAt: Date };
+      quizTitle: string;
+      quizType: "quiz" | "flashcards";
+      courseSlug: string;
+      courseTitle: string;
+      lessonId: number;
+      isLessonModule: boolean;
+    }> => {
+      const deck = getStoredInlineLessonFlashcardBlock(row.contentBlocks, row.quizBlockId);
+      if (deck) {
+        return [{
+          attempt: { id: row.id, score: row.score, passed: row.passed, completedAt: row.submittedAt },
+          quizTitle: deck.title || `${row.lessonTitle} Flashcards`,
+          quizType: "flashcards" as const,
+          courseSlug: row.courseSlug,
+          courseTitle: row.courseTitle,
+          lessonId: row.lessonId,
+          isLessonModule: true,
+        }];
+      }
+      const quizBlock = getStoredInlineLessonQuizBlock(row.contentBlocks, row.quizBlockId);
+      if (!quizBlock || quizBlock.data.isSurvey === true || quizBlock.data.requireSurveyCompletion === true) return [];
+      return [{
+        attempt: { id: row.id, score: row.score, passed: row.passed, completedAt: row.submittedAt },
+        quizTitle: `${row.lessonTitle} Quiz`,
+        quizType: "quiz" as const,
+        courseSlug: row.courseSlug,
+        courseTitle: row.courseTitle,
+        lessonId: row.lessonId,
+        isLessonModule: true,
+      }];
+    });
+  }),
 
   /** Revalidate required graded quiz and CME survey attempts before lesson completion. */
   getRequiredInlineLessonSurveyCompletion: protectedProcedure
