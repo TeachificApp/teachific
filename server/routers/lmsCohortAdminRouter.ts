@@ -80,6 +80,8 @@ import {
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 import { getOrgBaseUrl } from "../lib/orgUrl";
+import { activeEnrollmentCondition } from "../lib/enrollmentAccess";
+import { cohortAdminContentWhere } from "../lib/cohortGroupScope";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -163,6 +165,34 @@ async function getCohortEmailBranding(orgId: number) {
   return { org, accentColor };
 }
 
+/** Return active learners entitled to a course-wide or group-specific notice. */
+async function getCohortNotificationRecipients(courseId: number, cohortGroupId?: number | null) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const activeCourseEnrollment = and(
+    eq(lmsEnrollments.courseId, courseId),
+    inArray(lmsEnrollments.status, ["active", "completed"]),
+    activeEnrollmentCondition(),
+  );
+  if (cohortGroupId == null) {
+    return db
+      .select({ email: users.email, name: users.name })
+      .from(lmsEnrollments)
+      .innerJoin(users, eq(users.id, lmsEnrollments.userId))
+      .where(activeCourseEnrollment);
+  }
+  return db
+    .select({ email: users.email, name: users.name })
+    .from(lmsEnrollments)
+    .innerJoin(users, eq(users.id, lmsEnrollments.userId))
+    .innerJoin(lmsCohortGroupEnrollments, and(
+      eq(lmsCohortGroupEnrollments.userId, lmsEnrollments.userId),
+      eq(lmsCohortGroupEnrollments.courseId, lmsEnrollments.courseId),
+      eq(lmsCohortGroupEnrollments.cohortGroupId, cohortGroupId),
+    ))
+    .where(activeCourseEnrollment);
+}
+
 export const lmsCohortAdminRouter = router({
   // ── Cohort Sessions ──
   listCohortSessions: protectedProcedure
@@ -170,13 +200,16 @@ export const lmsCohortAdminRouter = router({
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId != null) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const whereClause = input.cohortGroupId
-        ? and(eq(lmsCohortSessions.courseId, input.courseId), eq(lmsCohortSessions.cohortGroupId, input.cohortGroupId))
-        : eq(lmsCohortSessions.courseId, input.courseId);
       const sessions = await db.select().from(lmsCohortSessions)
-        .where(whereClause)
+        .where(cohortAdminContentWhere(
+          lmsCohortSessions.courseId,
+          lmsCohortSessions.cohortGroupId,
+          input.courseId,
+          input.cohortGroupId,
+        ))
         .orderBy(asc(lmsCohortSessions.sessionDate));
       return sessions;
     }),
@@ -204,6 +237,7 @@ export const lmsCohortAdminRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId != null) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(lmsCohortSessions).values({
@@ -230,11 +264,7 @@ export const lmsCohortAdminRouter = router({
           const emailBranding = course?.orgId ? await getCohortEmailBranding(course.orgId) : null;
           const org = emailBranding?.org ?? null;
           const learnerUrl = org ? `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/cohort/${input.courseId}` : null;
-          const enrolledUsers = await db
-            .select({ email: users.email, name: users.name })
-            .from(lmsEnrollments)
-            .innerJoin(users, eq(users.id, lmsEnrollments.userId))
-            .where(eq(lmsEnrollments.courseId, input.courseId));
+          const enrolledUsers = await getCohortNotificationRecipients(input.courseId, input.cohortGroupId);
           const sessionDateStr = new Date(input.sessionDate).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: "America/New_York" });
           for (const u of enrolledUsers) {
             if (!u.email) continue;
@@ -313,13 +343,16 @@ export const lmsCohortAdminRouter = router({
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId != null) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const whereClause = input.cohortGroupId
-        ? and(eq(lmsCohortAssignments.courseId, input.courseId), eq(lmsCohortAssignments.cohortGroupId, input.cohortGroupId))
-        : eq(lmsCohortAssignments.courseId, input.courseId);
       const assignments = await db.select().from(lmsCohortAssignments)
-        .where(whereClause)
+        .where(cohortAdminContentWhere(
+          lmsCohortAssignments.courseId,
+          lmsCohortAssignments.cohortGroupId,
+          input.courseId,
+          input.cohortGroupId,
+        ))
         .orderBy(asc(lmsCohortAssignments.position), asc(lmsCohortAssignments.createdAt));
       return assignments;
     }),
@@ -340,6 +373,7 @@ export const lmsCohortAdminRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
+      if (input.cohortGroupId != null) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [{ maxPos }] = await db.select({ maxPos: sql<number>`COALESCE(MAX(position),0)` })
@@ -364,11 +398,7 @@ export const lmsCohortAdminRouter = router({
           const emailBranding = course?.orgId ? await getCohortEmailBranding(course.orgId) : null;
           const org = emailBranding?.org ?? null;
           const learnerUrl = org ? `${getOrgBaseUrl(org.slug, org.customDomain, org.domainVerificationStatus)}/cohort/${input.courseId}` : null;
-          const enrolledUsers = await db
-            .select({ email: users.email, name: users.name })
-            .from(lmsEnrollments)
-            .innerJoin(users, eq(users.id, lmsEnrollments.userId))
-            .where(eq(lmsEnrollments.courseId, input.courseId));
+          const enrolledUsers = await getCohortNotificationRecipients(input.courseId, input.cohortGroupId);
           const dueDateStr = input.dueDate ? new Date(input.dueDate).toLocaleDateString("en-US", { dateStyle: "full", timeZone: "America/New_York" }) : "No due date";
           for (const u of enrolledUsers) {
             if (!u.email) continue;
@@ -441,14 +471,16 @@ export const lmsCohortAdminRouter = router({
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
-      if (input.cohortGroupId) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
+      if (input.cohortGroupId != null) await assertCohortGroupOwnership(ctx, input.cohortGroupId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const whereClause = input.cohortGroupId
-        ? and(eq(lmsCohortRecordings.courseId, input.courseId), eq(lmsCohortRecordings.cohortGroupId, input.cohortGroupId))
-        : eq(lmsCohortRecordings.courseId, input.courseId);
       return db.select().from(lmsCohortRecordings)
-        .where(whereClause)
+        .where(cohortAdminContentWhere(
+          lmsCohortRecordings.courseId,
+          lmsCohortRecordings.cohortGroupId,
+          input.courseId,
+          input.cohortGroupId,
+        ))
         .orderBy(asc(lmsCohortRecordings.position), asc(lmsCohortRecordings.createdAt));
     }),
 

@@ -112,6 +112,10 @@ import {
   normalizeInlineLessonSurveyResponses,
   serializeInlineLessonSurveyAnswer,
 } from "../lib/inlineLessonCmeSurvey";
+import {
+  cohortLearnerContentWhere,
+  selectCurrentCohortGroupId,
+} from "../lib/cohortGroupScope";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsQuizLandingRouter } from "./lmsQuizLandingRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
@@ -654,6 +658,52 @@ export const lmsPublicRouter = router({
 });
 
 // ─── Learner Router ───────────────────────────────────────────────────────────
+
+async function requireLearnerCohortAssignmentAccess(
+  ctx: { user: { id: number; role: string } },
+  assignment: { courseId: number | null; cohortGroupId: number | null },
+) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  if (!assignment.courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment course not found" });
+
+  const enrollment = await requireActiveCohortEnrollment(ctx, assignment.courseId);
+
+  if (assignment.cohortGroupId != null) {
+    const [groupEnrollment] = await db
+      .select({ id: lmsCohortGroupEnrollments.id })
+      .from(lmsCohortGroupEnrollments)
+      .where(and(
+        eq(lmsCohortGroupEnrollments.userId, ctx.user.id),
+        eq(lmsCohortGroupEnrollments.courseId, assignment.courseId),
+        eq(lmsCohortGroupEnrollments.cohortGroupId, assignment.cohortGroupId),
+      ))
+      .limit(1);
+    if (!groupEnrollment) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "This assignment belongs to a different cohort group" });
+    }
+  }
+  return enrollment;
+}
+
+async function requireActiveCohortEnrollment(
+  ctx: { user: { id: number; role: string } },
+  courseId: number,
+) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+  const [course] = await db
+    .select({ id: lmsCourses.id })
+    .from(lmsCourses)
+    .where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, activeOrgId)))
+    .limit(1);
+  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Cohort course not found in the active organization" });
+  const enrollment = await getActiveEnrollment(db, ctx.user.id, courseId);
+  if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Not enrolled in this cohort" });
+  return enrollment;
+}
 
 // ─── Learner Router ───────────────────────────────────────────────────────────
 
@@ -2278,7 +2328,12 @@ export const lmsLearnerRouter = router({
 
   /** Get cohort schedule (sessions + assignments) for an enrolled student */
   getCohortSchedule: protectedProcedure
-    .input(z.object({ courseId: z.number().int().positive() }))
+    .input(z.object({
+      courseId: z.number().int().positive(),
+      // This supports an administrator's student preview. A learner's group
+      // remains derived solely from that learner's stored enrollment.
+      cohortGroupId: z.number().int().positive().optional(),
+    }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -2287,11 +2342,7 @@ export const lmsLearnerRouter = router({
       if (isAdmin) {
         await assertCourseOwnership(ctx, input.courseId);
       } else {
-        const [enrollment] = await db.select({ id: lmsEnrollments.id })
-          .from(lmsEnrollments)
-          .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, input.courseId)))
-          .limit(1);
-        if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "You are not enrolled in this cohort" });
+        await requireActiveCohortEnrollment(ctx, input.courseId);
       }
       const [course] = await db.select({
         id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug,
@@ -2306,32 +2357,86 @@ export const lmsLearnerRouter = router({
         .from(lmsCohortGroupEnrollments)
         .where(and(eq(lmsCohortGroupEnrollments.userId, ctx.user.id), eq(lmsCohortGroupEnrollments.courseId, input.courseId)))
         .limit(1);
+
+      if (!isAdmin && input.cohortGroupId != null && input.cohortGroupId !== myGroupEnrollment?.cohortGroupId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not enrolled in this cohort group" });
+      }
+
+      let selectedGroupId = isAdmin
+        ? input.cohortGroupId
+        : myGroupEnrollment?.cohortGroupId;
+
+      if (isAdmin && selectedGroupId != null) {
+        const [selectedGroup] = await db
+          .select({ id: lmsCohortGroups.id })
+          .from(lmsCohortGroups)
+          .where(and(eq(lmsCohortGroups.id, selectedGroupId), eq(lmsCohortGroups.courseId, input.courseId)))
+          .limit(1);
+        if (!selectedGroup) throw new TRPCError({ code: "NOT_FOUND", message: "Cohort group not found for this course" });
+      }
+
+      // An administrator preview without a group should emulate a single
+      // cohort, not combine every private group under the course.
+      if (isAdmin && course.multiCohortMode && selectedGroupId == null) {
+        const groups = await db
+          .select({
+            id: lmsCohortGroups.id,
+            startDate: lmsCohortGroups.startDate,
+            endDate: lmsCohortGroups.endDate,
+            status: lmsCohortGroups.status,
+          })
+          .from(lmsCohortGroups)
+          .where(eq(lmsCohortGroups.courseId, input.courseId));
+        selectedGroupId = selectCurrentCohortGroupId(groups);
+      }
+
       let myGroup = null;
-      if (myGroupEnrollment) {
-        const [g] = await db.select().from(lmsCohortGroups).where(eq(lmsCohortGroups.id, myGroupEnrollment.cohortGroupId)).limit(1);
+      if (selectedGroupId != null) {
+        const [g] = await db.select().from(lmsCohortGroups)
+          .where(and(eq(lmsCohortGroups.id, selectedGroupId), eq(lmsCohortGroups.courseId, input.courseId)))
+          .limit(1);
         myGroup = g ?? null;
       }
-      // When multi-cohort mode is on, filter content by the student's group
-      const groupId = course.multiCohortMode && myGroup ? myGroup.id : null;
-      const [sessions, assignments, recordings, mySubmissions] = await Promise.all([
+      // A learner sees shared content plus the group's own content. An
+      // unassigned learner can see only shared content — never all groups.
+      const groupId = myGroup?.id ?? null;
+      const [sessions, assignments, recordings] = await Promise.all([
         db.select().from(lmsCohortSessions)
-          .where(groupId
-            ? and(eq(lmsCohortSessions.courseId, input.courseId), eq(lmsCohortSessions.cohortGroupId, groupId))
-            : eq(lmsCohortSessions.courseId, input.courseId))
+          .where(cohortLearnerContentWhere(
+            lmsCohortSessions.courseId,
+            lmsCohortSessions.cohortGroupId,
+            input.courseId,
+            groupId,
+            eq(lmsCohortSessions.status, "published"),
+          ))
           .orderBy(asc(lmsCohortSessions.sessionDate)),
         db.select().from(lmsCohortAssignments)
-          .where(groupId
-            ? and(eq(lmsCohortAssignments.courseId, input.courseId), eq(lmsCohortAssignments.status, "published"), eq(lmsCohortAssignments.cohortGroupId, groupId))
-            : and(eq(lmsCohortAssignments.courseId, input.courseId), eq(lmsCohortAssignments.status, "published")))
+          .where(cohortLearnerContentWhere(
+            lmsCohortAssignments.courseId,
+            lmsCohortAssignments.cohortGroupId,
+            input.courseId,
+            groupId,
+            eq(lmsCohortAssignments.status, "published"),
+          ))
           .orderBy(asc(lmsCohortAssignments.position), asc(lmsCohortAssignments.dueDate)),
         db.select().from(lmsCohortRecordings)
-          .where(groupId
-            ? and(eq(lmsCohortRecordings.courseId, input.courseId), eq(lmsCohortRecordings.status, "published"), eq(lmsCohortRecordings.cohortGroupId, groupId))
-            : and(eq(lmsCohortRecordings.courseId, input.courseId), eq(lmsCohortRecordings.status, "published")))
+          .where(cohortLearnerContentWhere(
+            lmsCohortRecordings.courseId,
+            lmsCohortRecordings.cohortGroupId,
+            input.courseId,
+            groupId,
+            eq(lmsCohortRecordings.status, "published"),
+          ))
           .orderBy(asc(lmsCohortRecordings.position), asc(lmsCohortRecordings.createdAt)),
-        db.select().from(lmsCohortSubmissions)
-          .where(eq(lmsCohortSubmissions.userId, ctx.user.id)),
       ]);
+      const assignmentIds = assignments.map((assignment) => assignment.id);
+      const mySubmissions = assignmentIds.length > 0
+        ? await db.select().from(lmsCohortSubmissions)
+            .where(and(
+              eq(lmsCohortSubmissions.userId, ctx.user.id),
+              inArray(lmsCohortSubmissions.assignmentId, assignmentIds),
+            ))
+        : [];
       return { course, sessions, assignments, recordings, mySubmissions, myGroup };
     }),
 
@@ -2341,6 +2446,7 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return null;
+      await requireActiveCohortEnrollment(ctx, input.courseId);
       const [groupEnrollment] = await db
         .select({ cohortGroupId: lmsCohortGroupEnrollments.cohortGroupId })
         .from(lmsCohortGroupEnrollments)
@@ -2368,12 +2474,7 @@ export const lmsLearnerRouter = router({
         .where(and(eq(lmsCohortAssignments.id, input.assignmentId), eq(lmsCohortAssignments.status, "published")))
         .limit(1);
       if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
-      // Verify user is enrolled
-      const [enrollment] = await db.select({ id: lmsEnrollments.id })
-        .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, assignment.courseId)))
-        .limit(1);
-      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Not enrolled in this cohort" });
+      await requireLearnerCohortAssignmentAccess(ctx, assignment);
       // Upsert submission
       const existing = await db.select({ id: lmsCohortSubmissions.id })
         .from(lmsCohortSubmissions)
@@ -2414,15 +2515,16 @@ export const lmsLearnerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Verify assignment exists and user is enrolled
-      const [assignment] = await db.select({ courseId: lmsCohortAssignments.courseId })
+      // Verify the assignment is visible to this learner's cohort group before
+      // accepting an upload for it.
+      const [assignment] = await db.select({
+        courseId: lmsCohortAssignments.courseId,
+        cohortGroupId: lmsCohortAssignments.cohortGroupId,
+        status: lmsCohortAssignments.status,
+      })
         .from(lmsCohortAssignments).where(eq(lmsCohortAssignments.id, input.assignmentId)).limit(1);
-      if (!assignment) throw new TRPCError({ code: "NOT_FOUND" });
-      const [enrollment] = await db.select({ id: lmsEnrollments.id })
-        .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, assignment.courseId)))
-        .limit(1);
-      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Not enrolled in this cohort" });
+      if (!assignment || assignment.status !== "published") throw new TRPCError({ code: "NOT_FOUND" });
+      await requireLearnerCohortAssignmentAccess(ctx, assignment);
       // Decode and upload
       const b64Marker = ";base64,";
       const b64Idx = input.dataUri.indexOf(b64Marker);
@@ -2446,13 +2548,14 @@ export const lmsLearnerRouter = router({
       const [assignment] = await db.select().from(lmsCohortAssignments)
         .where(eq(lmsCohortAssignments.id, input.assignmentId)).limit(1);
       if (!assignment) throw new TRPCError({ code: "NOT_FOUND" });
-      // Verify enrollment
-      const [enrollment] = await db.select({ id: lmsEnrollments.id })
-        .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, assignment.courseId)))
-        .limit(1);
-      if (!enrollment && !["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Not enrolled in this cohort" });
-      if (assignment.status !== "published" && !["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role)) throw new TRPCError({ code: "NOT_FOUND" });
+      const isAdmin = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin", "sub_admin"].includes(ctx.user.role);
+      if (isAdmin) {
+        if (!assignment.courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment course not found" });
+        await assertCourseOwnership(ctx, assignment.courseId);
+      } else {
+        if (assignment.status !== "published") throw new TRPCError({ code: "NOT_FOUND" });
+        await requireLearnerCohortAssignmentAccess(ctx, assignment);
+      }
       const [mySubmission] = await db.select().from(lmsCohortSubmissions)
         .where(and(eq(lmsCohortSubmissions.assignmentId, input.assignmentId), eq(lmsCohortSubmissions.userId, ctx.user.id)))
         .limit(1);
@@ -2467,6 +2570,7 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireActiveCohortEnrollment(ctx, input.courseId);
       // Find the student's cohort group for this course
       const [groupEnrollment] = await db.select({ cohortGroupId: lmsCohortGroupEnrollments.cohortGroupId })
         .from(lmsCohortGroupEnrollments)
@@ -2513,6 +2617,7 @@ export const lmsLearnerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireActiveCohortEnrollment(ctx, input.courseId);
       const [groupEnrollment] = await db.select({ cohortGroupId: lmsCohortGroupEnrollments.cohortGroupId })
         .from(lmsCohortGroupEnrollments)
         .where(and(
