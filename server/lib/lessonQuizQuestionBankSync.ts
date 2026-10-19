@@ -67,6 +67,43 @@ async function ensureLessonQuizFolder(db: any, orgId: number, courseId: number, 
   return courseFolder.id;
 }
 
+async function ensureLessonFlashcardFolder(db: any, orgId: number, courseId: number, userId: number) {
+  const [course] = await db.select({ title: lmsCourses.title }).from(lmsCourses)
+    .where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, orgId))).limit(1);
+  const courseFolderName = course?.title?.trim() || `Course ${courseId}`;
+  let [root] = await db.select({ id: questionBankFolders.id }).from(questionBankFolders).where(and(
+    eq(questionBankFolders.orgId, orgId),
+    eq(questionBankFolders.name, "Lesson Flashcards"),
+    isNull(questionBankFolders.parentId),
+  )).limit(1);
+  if (!root) {
+    const [created] = await db.insert(questionBankFolders).values({
+      orgId,
+      parentId: null,
+      name: "Lesson Flashcards",
+      description: "Flashcards synchronized from lesson decks.",
+      createdBy: userId,
+    }).$returningId();
+    root = { id: created.id };
+  }
+  let [courseFolder] = await db.select({ id: questionBankFolders.id }).from(questionBankFolders).where(and(
+    eq(questionBankFolders.orgId, orgId),
+    eq(questionBankFolders.name, courseFolderName),
+    eq(questionBankFolders.parentId, root.id),
+  )).limit(1);
+  if (!courseFolder) {
+    const [created] = await db.insert(questionBankFolders).values({
+      orgId,
+      parentId: root.id,
+      name: courseFolderName,
+      description: `Flashcards synchronized from lesson decks in ${courseFolderName}.`,
+      createdBy: userId,
+    }).$returningId();
+    courseFolder = { id: created.id };
+  }
+  return courseFolder.id;
+}
+
 export function parseBlocks(contentBlocks: string | null | undefined): any[] {
   if (!contentBlocks) return [];
   try {
@@ -77,7 +114,30 @@ export function parseBlocks(contentBlocks: string | null | undefined): any[] {
   }
 }
 
-/** Synchronize page-builder lesson quiz blocks into the active org's Question Bank. */
+export function normalizeLessonFlashcardForBank(rawCard: unknown) {
+  if (!rawCard || typeof rawCard !== "object") return null;
+  const card = rawCard as Record<string, unknown>;
+  const boundedText = (value: unknown, maxLength: number) => {
+    const text = typeof value === "string" ? value.trim() : "";
+    return text.length > 0 && text.length <= maxLength ? text : null;
+  };
+  const boundedUrl = (value: unknown) => {
+    const url = typeof value === "string" ? value.trim() : "";
+    return url.length > 0 && url.length <= 2_048 ? url : null;
+  };
+  const front = boundedText(card.front, 20_000);
+  const back = boundedText(card.back, 20_000);
+  if (!front || !back) return null;
+  return {
+    front,
+    back,
+    hint: boundedText(card.hint, 5_000),
+    imageUrl: boundedUrl(card.imageUrl),
+    backImageUrl: boundedUrl(card.backImageUrl),
+  };
+}
+
+/** Synchronize page-builder lesson quiz and flashcard blocks into the active org's Question Bank. */
 export async function syncLessonQuizBlocksToQuestionBank(db: any, lessonId: number, contentBlocks: string | null | undefined, userId: number) {
   const blocks = parseBlocks(contentBlocks);
   if (!blocks.length) return { created: 0, updated: 0 };
@@ -85,48 +145,106 @@ export async function syncLessonQuizBlocksToQuestionBank(db: any, lessonId: numb
   if (!lesson?.courseId) return { created: 0, updated: 0 };
   const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, lesson.courseId)).limit(1);
   if (!course) return { created: 0, updated: 0 };
-  const folderId = await ensureLessonQuizFolder(db, course.orgId, lesson.courseId, userId);
   let created = 0;
   let updated = 0;
+  let lessonQuizFolderId: number | null = null;
+  let lessonFlashcardFolderId: number | null = null;
   for (const block of blocks) {
-    if (block?.type !== "lesson_quiz" || !Array.isArray(block?.data?.questions)) continue;
-    const sourceBlockId = String(block.id ?? "lesson-quiz");
-    for (const [sourceQuestionIndex, raw] of block.data.questions.entries()) {
-      // CME feedback and survey prompts are append-only lesson activity data.
-      // They intentionally do not become standalone Question Bank questions.
-      if (INLINE_SURVEY_QUESTION_TYPES.has(String(raw?.type))) continue;
-      const stem = String(raw?.question ?? raw?.stem ?? "").trim();
-      if (!stem) continue;
-      const questionType = mapQuestionType(raw?.type);
-      const values = {
-        orgId: course.orgId,
-        folderId,
-        questionType,
-        stem,
-        dataJson: JSON.stringify({ ...raw, source: "lesson_quiz", sourceLessonId: lessonId, sourceBlockId, sourceQuestionIndex }),
-        points: Number(raw?.points ?? 1) || 1,
-        difficulty: raw?.difficulty === "easy" || raw?.difficulty === "hard" ? raw.difficulty : "medium",
-        tags: JSON.stringify(["Lesson Quiz", course.orgId ? `Course:${lesson.courseId}` : ""] .filter(Boolean)),
-        explanation: raw?.explanation ?? null,
-        createdBy: userId,
-        sourceLessonId: lessonId,
-        sourceBlockId,
-        sourceQuestionIndex,
-        sourceQuizId: null,
-        sourceQuizQuestionId: null,
-      };
-      const [existing] = await db.select({ id: questionBankItems.id }).from(questionBankItems).where(and(
-        eq(questionBankItems.orgId, course.orgId),
-        eq(questionBankItems.sourceLessonId, lessonId),
-        eq(questionBankItems.sourceBlockId, sourceBlockId),
-        eq(questionBankItems.sourceQuestionIndex, sourceQuestionIndex),
-      )).limit(1);
-      if (existing) {
-        await db.update(questionBankItems).set(values).where(eq(questionBankItems.id, existing.id));
-        updated++;
-      } else {
-        await db.insert(questionBankItems).values(values);
-        created++;
+    if (block?.type === "lesson_quiz" && Array.isArray(block?.data?.questions)) {
+      const sourceBlockId = String(block.id ?? "lesson-quiz");
+      for (const [sourceQuestionIndex, raw] of block.data.questions.entries()) {
+        // CME feedback and survey prompts are append-only lesson activity data.
+        // They intentionally do not become standalone Question Bank questions.
+        if (INLINE_SURVEY_QUESTION_TYPES.has(String(raw?.type))) continue;
+        const stem = String(raw?.question ?? raw?.stem ?? "").trim();
+        if (!stem) continue;
+        lessonQuizFolderId ??= await ensureLessonQuizFolder(db, course.orgId, lesson.courseId, userId);
+        const questionType = mapQuestionType(raw?.type);
+        const values = {
+          orgId: course.orgId,
+          folderId: lessonQuizFolderId,
+          questionType,
+          stem,
+          dataJson: JSON.stringify({ ...raw, source: "lesson_quiz", sourceLessonId: lessonId, sourceBlockId, sourceQuestionIndex }),
+          points: Number(raw?.points ?? 1) || 1,
+          difficulty: raw?.difficulty === "easy" || raw?.difficulty === "hard" ? raw.difficulty : "medium",
+          tags: JSON.stringify(["Lesson Quiz", course.orgId ? `Course:${lesson.courseId}` : ""] .filter(Boolean)),
+          explanation: raw?.explanation ?? null,
+          createdBy: userId,
+          sourceLessonId: lessonId,
+          sourceBlockId,
+          sourceQuestionIndex,
+          sourceQuizId: null,
+          sourceQuizQuestionId: null,
+        };
+        const [existing] = await db.select({ id: questionBankItems.id }).from(questionBankItems).where(and(
+          eq(questionBankItems.orgId, course.orgId),
+          eq(questionBankItems.sourceLessonId, lessonId),
+          eq(questionBankItems.sourceBlockId, sourceBlockId),
+          eq(questionBankItems.sourceQuestionIndex, sourceQuestionIndex),
+        )).limit(1);
+        if (existing) {
+          await db.update(questionBankItems).set(values).where(eq(questionBankItems.id, existing.id));
+          updated++;
+        } else {
+          await db.insert(questionBankItems).values(values);
+          created++;
+        }
+      }
+    }
+
+    if (block?.type === "lesson_flashcard" && Array.isArray(block?.data?.cards)) {
+      const sourceBlockId = String(block.id ?? "lesson-flashcards");
+      for (const [sourceCardIndex, rawCard] of block.data.cards.entries()) {
+        const card = normalizeLessonFlashcardForBank(rawCard);
+        if (!card) continue;
+        lessonFlashcardFolderId ??= await ensureLessonFlashcardFolder(db, course.orgId, lesson.courseId, userId);
+        const values = {
+          orgId: course.orgId,
+          questionType: "flashcard" as const,
+          stem: card.front,
+          dataJson: JSON.stringify({
+            type: "flashcard",
+            front: card.front,
+            back: card.back,
+            hint: card.hint,
+            imageUrl: card.imageUrl,
+            backImageUrl: card.backImageUrl,
+            source: "lesson_flashcard",
+            sourceLessonId: lessonId,
+            sourceBlockId,
+            sourceCardIndex,
+          }),
+          flashcardFront: card.front,
+          flashcardBack: card.back,
+          flashcardHint: card.hint,
+          flashcardBackImageUrl: card.backImageUrl,
+          points: 1,
+          difficulty: "medium" as const,
+          tags: JSON.stringify(["Lesson Flashcards", `Course:${lesson.courseId}`]),
+          explanation: null,
+          createdBy: userId,
+          sourceLessonId: lessonId,
+          sourceBlockId,
+          sourceQuestionIndex: null,
+          sourceCardIndex,
+          sourceQuizId: null,
+          sourceQuizQuestionId: null,
+          folderId: lessonFlashcardFolderId,
+        };
+        const [existing] = await db.select({ id: questionBankItems.id }).from(questionBankItems).where(and(
+          eq(questionBankItems.orgId, course.orgId),
+          eq(questionBankItems.sourceLessonId, lessonId),
+          eq(questionBankItems.sourceBlockId, sourceBlockId),
+          eq(questionBankItems.sourceCardIndex, sourceCardIndex),
+        )).limit(1);
+        if (existing) {
+          await db.update(questionBankItems).set(values).where(and(eq(questionBankItems.id, existing.id), eq(questionBankItems.orgId, course.orgId)));
+          updated++;
+        } else {
+          await db.insert(questionBankItems).values(values);
+          created++;
+        }
       }
     }
   }

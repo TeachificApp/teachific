@@ -187,6 +187,185 @@ export const lmsCourseBuilderRouter = router({
       if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
       return lesson;
     }),
+
+  /** A lightweight, protected curriculum tree for LMS block editors. */
+  getCurriculumById: protectedProcedure
+    .input(z.object({ courseId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db
+        .select({ id: lmsCourses.id, title: lmsCourses.title })
+        .from(lmsCourses)
+        .where(eq(lmsCourses.id, input.courseId))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      const [sections, lessons] = await Promise.all([
+        db.select({ id: lmsSections.id, title: lmsSections.title, position: lmsSections.position })
+          .from(lmsSections)
+          .where(eq(lmsSections.courseId, course.id))
+          .orderBy(asc(lmsSections.position)),
+        db.select({
+          id: lmsLessons.id,
+          sectionId: lmsLessons.sectionId,
+          title: lmsLessons.title,
+          position: lmsLessons.position,
+        })
+          .from(lmsLessons)
+          .where(eq(lmsLessons.courseId, course.id))
+          .orderBy(asc(lmsLessons.position)),
+      ]);
+      return {
+        id: course.id,
+        title: course.title,
+        sections: sections.map(section => ({
+          ...section,
+          lessons: lessons.filter(lesson => lesson.sectionId === section.id),
+        })),
+        topLevelLessons: lessons.filter(lesson => !lesson.sectionId),
+      };
+    }),
+
+  /** Generate editable flashcards from active-organization lesson content or a topic. */
+  generateFlashcardsFromLesson: protectedProcedure
+    .input(z.object({
+      lessonId: z.number().int().positive().optional(),
+      courseId: z.number().int().positive().optional(),
+      lessonIds: z.array(z.number().int().positive()).min(1).max(20).optional(),
+      topic: z.string().trim().min(3).max(2_000).optional(),
+      count: z.number().int().min(1).max(30).default(10),
+      cardStyle: z.enum(["understanding", "thinking", "compliance", "thought_provoking", "reflection", "custom"]).default("understanding"),
+      customPrompt: z.string().trim().max(500).optional(),
+    }).refine(
+      value => Boolean(value.lessonId || value.courseId || value.lessonIds?.length || value.topic),
+      "Choose a lesson, course, lesson selection, or topic."
+    ))
+    .mutation(async ({ ctx, input }) => {
+      await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization found" });
+      await assertAiCourseGeneratorAccess(ctx, orgId);
+
+      const selectedLessonIds = new Set<number>();
+      if (input.lessonId) selectedLessonIds.add(input.lessonId);
+      for (const lessonId of input.lessonIds ?? []) selectedLessonIds.add(lessonId);
+
+      if (input.courseId) {
+        await assertCourseOwnership(ctx, input.courseId);
+        const courseLessons = await db
+          .select({ id: lmsLessons.id })
+          .from(lmsLessons)
+          .where(eq(lmsLessons.courseId, input.courseId));
+        for (const lesson of courseLessons) selectedLessonIds.add(lesson.id);
+      }
+
+      const lessonSources: Array<{ title: string; content: string | null; contentBlocks: string | null }> = [];
+      for (const lessonId of selectedLessonIds) {
+        await assertLessonOwnership(ctx, lessonId);
+        const [lesson] = await db
+          .select({
+            title: lmsLessons.title,
+            content: lmsLessons.content,
+            contentBlocks: lmsLessons.contentBlocks,
+          })
+          .from(lmsLessons)
+          .where(eq(lmsLessons.id, lessonId))
+          .limit(1);
+        if (lesson) lessonSources.push(lesson);
+      }
+
+      const sourceText = lessonSources.map((lesson) => {
+        const parts = [lesson.title, lesson.content ?? ""];
+        if (lesson.contentBlocks) {
+          try {
+            const blocks = JSON.parse(lesson.contentBlocks) as Array<{ data?: Record<string, unknown> }>;
+            for (const block of Array.isArray(blocks) ? blocks : []) {
+              const data = block?.data ?? {};
+              for (const key of ["text", "content", "title", "body", "caption"]) {
+                if (typeof data[key] === "string") parts.push(data[key] as string);
+              }
+            }
+          } catch {
+            // Older malformed block data is ignored rather than sent to the model.
+          }
+        }
+        return parts.join("\n");
+      }).join("\n\n").trim();
+
+      const userContext = input.topic?.trim() || sourceText;
+      if (userContext.length < 3) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Add a topic or lesson content before generating flashcards." });
+      }
+
+      const styleInstructions: Record<typeof input.cardStyle, string> = {
+        understanding: "Use clear knowledge-recall prompts and concise explanations.",
+        thinking: "Use application-focused questions that encourage reasoning.",
+        compliance: "Focus on safe, accurate procedures, requirements, or checklists when relevant.",
+        thought_provoking: "Use nuanced scenarios or questions that encourage careful analysis.",
+        reflection: "Use reflective prompts with useful self-assessment guidance.",
+        custom: input.customPrompt || "Create useful study flashcards for the supplied material.",
+      };
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a Course360 instructional designer. Create accurate, inclusive study flashcards using only supplied context. ${styleInstructions[input.cardStyle]} Do not invent claims, sources, credentials, statistics, or personal data.`,
+          },
+          { role: "user", content: `Create ${input.count} flashcards from this context:\n\n${userContext.slice(0, 18_000)}` },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "course360_flashcards",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                cards: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      front: { type: "string" },
+                      back: { type: "string" },
+                      hint: { type: "string" },
+                    },
+                    required: ["front", "back", "hint"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["cards"],
+              additionalProperties: false,
+            },
+          },
+        },
+      });
+      const raw = response.choices?.[0]?.message?.content;
+      let parsed: { cards?: unknown } = {};
+      try {
+        parsed = JSON.parse(typeof raw === "string" ? raw : "{}") as { cards?: unknown };
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an invalid flashcard response. Please try again." });
+      }
+      const cards = Array.isArray(parsed.cards)
+        ? parsed.cards
+          .filter((card): card is { front: unknown; back: unknown; hint: unknown } => Boolean(card) && typeof card === "object")
+          .map(card => ({
+            front: String(card.front ?? "").trim().slice(0, 2_000),
+            back: String(card.back ?? "").trim().slice(0, 4_000),
+            hint: String(card.hint ?? "").trim().slice(0, 1_000),
+          }))
+          .filter(card => card.front.length > 0 && card.back.length > 0)
+          .slice(0, input.count)
+        : [];
+      if (cards.length === 0) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI did not return usable flashcards. Please try again." });
+      return { cards };
+    }),
   // ── Courses ──
   listCourses: protectedProcedure
     .input(z.object({
@@ -517,6 +696,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.id)).limit(1);
@@ -1057,7 +1237,7 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
-  /** Backfill page-builder lesson quiz blocks into this course's org-scoped Question Bank folders. */
+  /** Backfill page-builder lesson quiz and flashcard blocks into this course's org-scoped Question Bank folders. */
   backfillLessonQuizBlocksToQuestionBank: protectedProcedure
     .input(z.object({ courseId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {

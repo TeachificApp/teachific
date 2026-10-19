@@ -2449,11 +2449,16 @@ export const questionBankItems = mysqlTable("question_bank_items", {
   questionType: mysqlEnum("questionType", [
     "mcq", "tf", "short_answer", "long_answer", "matching",
     "multiple_select", "image_choice", "hotspot", "ordering",
-    "fill_blank", "numeric", "rating_scale",
+    "fill_blank", "numeric", "rating_scale", "flashcard",
   ]).default("mcq").notNull(),
   stem: text("stem").notNull(), // question text (HTML)
   // Full question data as JSON (choices, correct answers, media, etc.)
   dataJson: longtext("dataJson").notNull(),
+  // Structured card fields support reuse in lesson flashcard modules.
+  flashcardFront: longtext("flashcard_front"),
+  flashcardBack: longtext("flashcard_back"),
+  flashcardHint: longtext("flashcard_hint"),
+  flashcardBackImageUrl: text("flashcard_back_image_url"),
   points: float("points").default(1).notNull(),
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).default("medium"),
   tags: text("tags"), // JSON array of tag strings
@@ -2464,6 +2469,7 @@ export const questionBankItems = mysqlTable("question_bank_items", {
   sourceLessonId: int("source_lesson_id"),
   sourceBlockId: varchar("source_block_id", { length: 128 }),
   sourceQuestionIndex: int("source_question_index"),
+  sourceCardIndex: int("source_card_index"),
   sourceQuizId: int("source_quiz_id"),
   sourceQuizQuestionId: int("source_quiz_question_id"),
   usageCount: int("usageCount").default(0).notNull(), // how many quizzes use this question
@@ -2471,6 +2477,7 @@ export const questionBankItems = mysqlTable("question_bank_items", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   lessonSourceIndex: index("question_bank_items_lesson_source_idx").on(table.orgId, table.sourceLessonId, table.sourceBlockId, table.sourceQuestionIndex),
+  flashcardSourceIndex: index("question_bank_items_flashcard_source_idx").on(table.orgId, table.sourceLessonId, table.sourceBlockId, table.sourceCardIndex),
   quizSourceIndex: index("question_bank_items_quiz_source_idx").on(table.orgId, table.sourceQuizQuestionId),
 }));
 export type QuestionBankItem = typeof questionBankItems.$inferSelect;
@@ -5435,7 +5442,7 @@ export const questionBank = mysqlTable("question_bank", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("org_id").notNull(),
   question: longtext("question").notNull(),
-  type: mysqlEnum("type", ["mcq", "truefalse", "multiselect", "hotspot", "matching"]).default("mcq").notNull(),
+  type: mysqlEnum("type", ["mcq", "truefalse", "multiselect", "hotspot", "matching", "flashcard"]).default("mcq").notNull(),
   options: longtext("options"),
   correctAnswer: varchar("correct_answer", { length: 500 }).notNull(),
   correctAnswers: text("correct_answers"),
@@ -5444,14 +5451,28 @@ export const questionBank = mysqlTable("question_bank", {
   questionVideoUrl: text("question_video_url"),
   hotspotMarkers: text("hotspot_markers"),
   matchingPairs: text("matching_pairs"),
+  // Flashcard data remains separate from scored question answers while allowing
+  // lesson decks to reuse canonical records in the active organization.
+  flashcardFront: longtext("flashcard_front"),
+  flashcardBack: longtext("flashcard_back"),
+  flashcardHint: longtext("flashcard_hint"),
+  flashcardBackImageUrl: text("flashcard_back_image_url"),
   feedbackImageUrl: text("feedback_image_url"),
   feedbackVideoUrl: text("feedback_video_url"),
   sourceQuizId: int("source_quiz_id"),
   sourceQuizQuestionId: int("source_quiz_question_id"),
+  // These source keys let an explicit lesson save update its own card rather
+  // than creating a duplicate. Lookups must always also constrain orgId.
+  sourceLessonId: int("source_lesson_id"),
+  sourceBlockId: varchar("source_block_id", { length: 128 }),
+  sourceCardIndex: int("source_card_index"),
   folderId: int("folder_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  lessonFlashcardSourceIndex: index("question_bank_lesson_flashcard_source_idx")
+    .on(table.orgId, table.sourceLessonId, table.sourceBlockId, table.sourceCardIndex),
+}));
 export type QuestionBank = typeof questionBank.$inferSelect;
 
 export const lmsQuizQuestionGroups = mysqlTable("lms_quiz_question_groups", {

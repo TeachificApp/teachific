@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, asc, inArray } from "drizzle-orm";
+import { and, eq, asc, inArray } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
-import { getDb } from "./db";
-import { questionBankTags, questionBankTagMap } from "../drizzle/schema";
+import { getDb, getOrgIdForUserWithFallback } from "./db";
+import { questionBankItems, questionBankTags, questionBankTagMap } from "../drizzle/schema";
 import {
   getFoldersByOrg,
   getFolderById,
@@ -23,9 +23,19 @@ import {
 } from "./questionBankDb";
 
 // Require org admin access
-async function requireOrgAdmin(userId: number, orgId: number, userRole: string) {
+async function requireOrgAdmin(userId: number, requestedOrgId: number | undefined, userRole: string) {
   if (["site_owner", "site_admin", "org_super_admin", "org_admin"].includes(userRole)) return;
   throw new TRPCError({ code: "FORBIDDEN", message: "Organization admin access required" });
+}
+
+async function requireActiveOrgAdmin(userId: number, requestedOrgId: number | undefined, userRole: string) {
+  await requireOrgAdmin(userId, requestedOrgId, userRole);
+  const activeOrgId = await getOrgIdForUserWithFallback(userId, userRole);
+  if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Question Bank access is limited to the active organization" });
+  }
+  return activeOrgId;
 }
 
 function normalizeTags(tags: string | undefined): string | null {
@@ -46,24 +56,24 @@ function normalizeTags(tags: string | undefined): string | null {
 export const questionBankRouter = router({
   // ── Folders ─────────────────────────────────────────────────────────────────
   listFolders: protectedProcedure
-    .input(z.object({ orgId: z.number() }))
+    .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      return getFoldersByOrg(input.orgId);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input?.orgId, ctx.user.role);
+      return getFoldersByOrg(orgId);
     }),
 
   createFolder: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       name: z.string().min(1).max(255),
       parentId: z.number().nullable().optional(),
       description: z.string().optional(),
       color: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
       return createFolder({
-        orgId: input.orgId,
+        orgId,
         name: input.name,
         parentId: input.parentId ?? null,
         description: input.description ?? null,
@@ -83,7 +93,7 @@ export const questionBankRouter = router({
     .mutation(async ({ ctx, input }) => {
       const folder = await getFolderById(input.id);
       if (!folder) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireOrgAdmin(ctx.user.id, folder.orgId, ctx.user.role);
+      await requireActiveOrgAdmin(ctx.user.id, folder.orgId, ctx.user.role);
       const { id, ...updates } = input;
       await updateFolder(id, updates as any);
       return { success: true };
@@ -94,7 +104,7 @@ export const questionBankRouter = router({
     .mutation(async ({ ctx, input }) => {
       const folder = await getFolderById(input.id);
       if (!folder) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireOrgAdmin(ctx.user.id, folder.orgId, ctx.user.role);
+      await requireActiveOrgAdmin(ctx.user.id, folder.orgId, ctx.user.role);
       await deleteFolder(input.id);
       return { success: true };
     }),
@@ -102,7 +112,7 @@ export const questionBankRouter = router({
   // ── Questions ───────────────────────────────────────────────────────────────
   listQuestions: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       folderId: z.number().nullable().optional(),
       questionType: z.string().optional(),
       difficulty: z.string().optional(),
@@ -111,8 +121,8 @@ export const questionBankRouter = router({
       offset: z.number().min(0).optional(),
     }))
     .query(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      const questions = await getQuestionsByOrg(input.orgId, {
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const questions = await getQuestionsByOrg(orgId, {
         folderId: input.folderId,
         questionType: input.questionType,
         difficulty: input.difficulty,
@@ -120,7 +130,7 @@ export const questionBankRouter = router({
         limit: input.limit,
         offset: input.offset,
       });
-      const total = await getQuestionCountByOrg(input.orgId, input.folderId);
+      const total = await getQuestionCountByOrg(orgId, input.folderId);
       return { questions, total };
     }),
 
@@ -129,30 +139,41 @@ export const questionBankRouter = router({
     .query(async ({ ctx, input }) => {
       const q = await getQuestionById(input.id);
       if (!q) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
+      await requireActiveOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
       return q;
     }),
 
   createQuestion: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       folderId: z.number().nullable().optional(),
       questionType: z.string(),
       stem: z.string().min(1),
       dataJson: z.string(),
+      flashcardFront: z.string().max(20_000).optional(),
+      flashcardBack: z.string().max(20_000).optional(),
+      flashcardHint: z.string().max(5_000).optional(),
+      flashcardBackImageUrl: z.string().max(2_048).optional(),
       points: z.number().optional(),
       difficulty: z.enum(["easy", "medium", "hard"]).optional(),
       tags: z.string().optional(),
       explanation: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      if (input.questionType === "flashcard" && (!input.flashcardFront?.trim() || !input.flashcardBack?.trim())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Flashcards need both a front and back before they can be saved" });
+      }
       return createQuestion({
-        orgId: input.orgId,
+        orgId,
         folderId: input.folderId ?? null,
         questionType: input.questionType as any,
         stem: input.stem,
         dataJson: input.dataJson,
+        flashcardFront: input.flashcardFront?.trim() ?? null,
+        flashcardBack: input.flashcardBack?.trim() ?? null,
+        flashcardHint: input.flashcardHint?.trim() || null,
+        flashcardBackImageUrl: input.flashcardBackImageUrl?.trim() || null,
         points: input.points ?? 1,
         difficulty: (input.difficulty ?? "medium") as any,
         tags: input.tags ?? null,
@@ -168,6 +189,10 @@ export const questionBankRouter = router({
       questionType: z.string().optional(),
       stem: z.string().optional(),
       dataJson: z.string().optional(),
+      flashcardFront: z.string().max(20_000).nullable().optional(),
+      flashcardBack: z.string().max(20_000).nullable().optional(),
+      flashcardHint: z.string().max(5_000).nullable().optional(),
+      flashcardBackImageUrl: z.string().max(2_048).nullable().optional(),
       points: z.number().optional(),
       difficulty: z.enum(["easy", "medium", "hard"]).optional(),
       tags: z.string().optional(),
@@ -176,7 +201,13 @@ export const questionBankRouter = router({
     .mutation(async ({ ctx, input }) => {
       const q = await getQuestionById(input.id);
       if (!q) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
+      await requireActiveOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
+      const resultingType = input.questionType ?? q.questionType;
+      const resultingFront = input.flashcardFront ?? q.flashcardFront;
+      const resultingBack = input.flashcardBack ?? q.flashcardBack;
+      if (resultingType === "flashcard" && (!resultingFront?.trim() || !resultingBack?.trim())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Flashcards need both a front and back before they can be saved" });
+      }
       const { id, ...updates } = input;
       await updateQuestion(id, updates as any);
       return { success: true };
@@ -187,47 +218,47 @@ export const questionBankRouter = router({
     .mutation(async ({ ctx, input }) => {
       const q = await getQuestionById(input.id);
       if (!q) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
+      await requireActiveOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
       await deleteQuestion(input.id);
       return { success: true };
     }),
 
   bulkDelete: protectedProcedure
-    .input(z.object({ orgId: z.number(), ids: z.array(z.number()) }))
+    .input(z.object({ orgId: z.number().optional(), ids: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      await bulkDeleteQuestions(input.orgId, input.ids);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await bulkDeleteQuestions(orgId, input.ids);
       return { success: true };
     }),
 
   moveToFolder: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       ids: z.array(z.number()),
       folderId: z.number().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      await moveQuestionsToFolder(input.orgId, input.ids, input.folderId);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await moveQuestionsToFolder(orgId, input.ids, input.folderId);
       return { success: true };
     }),
 
   copyToFolder: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       ids: z.array(z.number()),
       folderId: z.number().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
-      const copied = await copyQuestionsToFolder(input.orgId, input.ids, input.folderId, ctx.user.id);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const copied = await copyQuestionsToFolder(orgId, input.ids, input.folderId, ctx.user.id);
       return { success: true, copied };
     }),
 
   // ── Bulk Import (from CSV/SCORM parse) ────────────────────────────────────
   bulkImport: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       folderId: z.number().nullable().optional(),
       questions: z.array(z.object({
         questionType: z.string(),
@@ -240,13 +271,13 @@ export const questionBankRouter = router({
       })),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
       let imported = 0;
       const errors: string[] = [];
       for (const q of input.questions) {
         try {
           await createQuestion({
-            orgId: input.orgId,
+            orgId,
             folderId: input.folderId ?? null,
             questionType: q.questionType as any,
             stem: q.stem,
@@ -268,15 +299,15 @@ export const questionBankRouter = router({
   // Import questions from bank into a quiz (returns question data for the quiz creator to use)
   exportForQuiz: protectedProcedure
     .input(z.object({
-      orgId: z.number(),
+      orgId: z.number().optional(),
       questionIds: z.array(z.number()),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
       const questions = [];
       for (const id of input.questionIds) {
         const q = await getQuestionById(id);
-        if (q && q.orgId === input.orgId) {
+        if (q && q.orgId === orgId) {
           questions.push({
             bankItemId: q.id,
             questionType: q.questionType,
@@ -295,18 +326,21 @@ export const questionBankRouter = router({
 
   // ─── Tags ──────────────────────────────────────────────────────────────────
 
-  listTags: protectedProcedure.query(async () => {
+  listTags: protectedProcedure.input(z.object({ orgId: z.number().optional() }).optional()).query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    return db.select().from(questionBankTags).orderBy(asc(questionBankTags.name));
+    const orgId = await requireActiveOrgAdmin(ctx.user.id, input?.orgId, ctx.user.role);
+    return db.select().from(questionBankTags).where(eq(questionBankTags.orgId, orgId)).orderBy(asc(questionBankTags.name));
   }),
 
   createTag: protectedProcedure
-    .input(z.object({ name: z.string().min(1).max(100), color: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .input(z.object({ orgId: z.number().optional(), name: z.string().min(1).max(100), color: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
       const [result] = await db.insert(questionBankTags).values({
+        orgId,
         name: input.name.trim(),
         color: input.color ?? "#179ca3",
       }).$returningId();
@@ -315,9 +349,12 @@ export const questionBankRouter = router({
 
   updateTag: protectedProcedure
     .input(z.object({ id: z.number(), name: z.string().min(1).max(100).optional(), color: z.string().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [tag] = await db.select({ orgId: questionBankTags.orgId }).from(questionBankTags).where(eq(questionBankTags.id, input.id)).limit(1);
+      if (!tag) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveOrgAdmin(ctx.user.id, tag.orgId, ctx.user.role);
       const { id, ...updates } = input;
       const filtered = Object.fromEntries(Object.entries(updates).filter(([, v]) => v !== undefined));
       if (Object.keys(filtered).length > 0) {
@@ -328,9 +365,12 @@ export const questionBankRouter = router({
 
   deleteTag: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [tag] = await db.select({ orgId: questionBankTags.orgId }).from(questionBankTags).where(eq(questionBankTags.id, input.id)).limit(1);
+      if (!tag) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveOrgAdmin(ctx.user.id, tag.orgId, ctx.user.role);
       await db.delete(questionBankTagMap).where(eq(questionBankTagMap.tagId, input.id));
       await db.delete(questionBankTags).where(eq(questionBankTags.id, input.id));
       return { success: true };
@@ -338,9 +378,14 @@ export const questionBankRouter = router({
 
   addTagToQuestion: protectedProcedure
     .input(z.object({ questionId: z.number(), tagId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [question] = await db.select({ orgId: questionBankItems.orgId }).from(questionBankItems).where(eq(questionBankItems.id, input.questionId)).limit(1);
+      const [tag] = await db.select({ orgId: questionBankTags.orgId }).from(questionBankTags).where(eq(questionBankTags.id, input.tagId)).limit(1);
+      if (!question || !tag) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveOrgAdmin(ctx.user.id, question.orgId, ctx.user.role);
+      if (tag.orgId !== question.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Tags must belong to the active organization" });
       // Upsert: ignore if already exists
       const existing = await db.select().from(questionBankTagMap)
         .where(eq(questionBankTagMap.questionId, input.questionId))
@@ -353,19 +398,25 @@ export const questionBankRouter = router({
 
   removeTagFromQuestion: protectedProcedure
     .input(z.object({ questionId: z.number(), tagId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [question] = await db.select({ orgId: questionBankItems.orgId }).from(questionBankItems).where(eq(questionBankItems.id, input.questionId)).limit(1);
+      if (!question) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveOrgAdmin(ctx.user.id, question.orgId, ctx.user.role);
       await db.delete(questionBankTagMap)
-        .where(eq(questionBankTagMap.questionId, input.questionId));
+        .where(and(eq(questionBankTagMap.questionId, input.questionId), eq(questionBankTagMap.tagId, input.tagId)));
       return { success: true };
     }),
 
   getTagsForQuestion: protectedProcedure
     .input(z.object({ questionId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [question] = await db.select({ orgId: questionBankItems.orgId }).from(questionBankItems).where(eq(questionBankItems.id, input.questionId)).limit(1);
+      if (!question) throw new TRPCError({ code: "NOT_FOUND" });
+      await requireActiveOrgAdmin(ctx.user.id, question.orgId, ctx.user.role);
       const rows = await db
         .select({ tag: questionBankTags })
         .from(questionBankTagMap)

@@ -402,7 +402,7 @@ function InlineLessonFlashcardDeck({
   flashcardBlockId,
   isAdminPreview = false,
 }: {
-  data: { title?: string; cards?: any[]; shuffleCards?: boolean; showHints?: boolean; gotItColor?: string; gotItTextColor?: string; stillLearningColor?: string; stillLearningTextColor?: string };
+  data: { title?: string; cards?: any[]; questionBankGroupDraws?: any[]; shuffleCards?: boolean; showHints?: boolean; gotItColor?: string; gotItTextColor?: string; stillLearningColor?: string; stillLearningTextColor?: string };
   lessonId: number;
   courseSlug: string;
   flashcardBlockId: string;
@@ -412,16 +412,33 @@ function InlineLessonFlashcardDeck({
   const gotItText = data.gotItTextColor ?? "#ffffff";
   const stillBg = data.stillLearningColor ?? "#f0fdfa";
   const stillText = data.stillLearningTextColor ?? "#189593";
-  const cards = data.cards ?? [];
+  const { data: resolvedDeck } = trpc.lmsLearner.getInlineLessonFlashcardDeck.useQuery({
+    lessonId,
+    courseSlug,
+    flashcardBlockId,
+    isAdminPreview,
+  }, {
+    enabled: Boolean(lessonId && courseSlug && flashcardBlockId),
+    retry: false,
+  });
+  const hasQuestionBankGroupDraws = Array.isArray(data.questionBankGroupDraws) && data.questionBankGroupDraws.length > 0;
+  const cards = resolvedDeck?.cards ?? (hasQuestionBankGroupDraws ? [] : data.cards ?? []);
   const deck = useMemo(() => {
-    const indexed = cards.map((card, sourceIndex) => ({ card, sourceIndex }));
+    const indexed = cards.map((card, sourceIndex) => ({ card, sourceKey: String(card?.sourceKey ?? sourceIndex) }));
     return data.shuffleCards ? indexed.sort(() => Math.random() - 0.5) : indexed;
   }, [cards, data.shuffleCards]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [outcomes, setOutcomes] = useState<Record<number, boolean>>({});
+  const [outcomes, setOutcomes] = useState<Record<string, boolean>>({});
   const [showHint, setShowHint] = useState(false);
   const recordedAttemptRef = useRef(false);
+  useEffect(() => {
+    setCurrentIndex(0);
+    setFlipped(false);
+    setShowHint(false);
+    setOutcomes({});
+    recordedAttemptRef.current = false;
+  }, [resolvedDeck?.cards]);
   const recordAttempt = trpc.lmsLearner.submitInlineLessonFlashcards.useMutation({
     onSuccess: (result) => toast.success(`Flashcard result saved: ${result.score}% Got It.`),
     onError: (error) => {
@@ -432,7 +449,7 @@ function InlineLessonFlashcardDeck({
 
   if (deck.length === 0) return null;
 
-  const { card, sourceIndex } = deck[currentIndex];
+  const { card, sourceKey } = deck[currentIndex];
   const gotItCount = Object.values(outcomes).filter(Boolean).length;
   const answeredCount = Object.keys(outcomes).length;
   const progress = Math.round((answeredCount / deck.length) * 100);
@@ -440,7 +457,7 @@ function InlineLessonFlashcardDeck({
   const goNext = () => { setFlipped(false); setShowHint(false); setCurrentIndex(i => Math.min(i + 1, deck.length - 1)); };
   const goPrev = () => { setFlipped(false); setShowHint(false); setCurrentIndex(i => Math.max(i - 1, 0)); };
   const markCard = (gotIt: boolean) => {
-    const nextOutcomes = { ...outcomes, [sourceIndex]: gotIt };
+    const nextOutcomes = { ...outcomes, [sourceKey]: gotIt };
     setOutcomes(nextOutcomes);
     if (Object.keys(nextOutcomes).length === deck.length && !isAdminPreview && !recordedAttemptRef.current) {
       recordedAttemptRef.current = true;
@@ -448,7 +465,7 @@ function InlineLessonFlashcardDeck({
         lessonId,
         courseSlug,
         flashcardBlockId,
-        outcomes: deck.map(({ sourceIndex: cardIndex }) => ({ cardKey: String(cardIndex), gotIt: Boolean(nextOutcomes[cardIndex]) })),
+        outcomes: deck.map(({ sourceKey: deckCardKey }) => ({ cardKey: deckCardKey, gotIt: Boolean(nextOutcomes[deckCardKey]) })),
       });
     }
     goNext();

@@ -35,6 +35,7 @@ const QUESTION_TYPES: Record<string, string> = {
   fill_blank: "Fill in Blank",
   numeric: "Numeric",
   rating_scale: "Rating Scale",
+  flashcard: "Flashcard",
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -627,32 +628,44 @@ function QuestionFormDialog({ mode, orgId, folders, question, selectedFolderId, 
   const [tagsStr, setTagsStr] = useState(question?.tags ? JSON.parse(question.tags).join(", ") : "");
   const [explanation, setExplanation] = useState(question?.explanation || "");
   const [dataJson, setDataJson] = useState(question?.dataJson || '{"choices":[]}');
+  const [flashcardFront, setFlashcardFront] = useState(question?.flashcardFront || question?.stem || "");
+  const [flashcardBack, setFlashcardBack] = useState(question?.flashcardBack || "");
+  const [flashcardHint, setFlashcardHint] = useState(question?.flashcardHint || "");
 
   const handleSubmit = () => {
     const tags = tagsStr.split(",").map((t: string) => t.trim()).filter(Boolean);
+    const isFlashcard = questionType === "flashcard";
+    const questionText = isFlashcard ? flashcardFront.trim() : stem.trim();
+    const flashcardFields = isFlashcard ? {
+      flashcardFront: flashcardFront.trim(),
+      flashcardBack: flashcardBack.trim(),
+      flashcardHint: flashcardHint.trim() || undefined,
+    } : {};
     if (mode === "create") {
       onSubmit({
         orgId,
         folderId: folderId === "none" ? null : Number(folderId),
         questionType,
-        stem: stem.trim(),
+        stem: questionText,
         dataJson,
         points: Number(points) || 1,
         difficulty,
         tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
         explanation: explanation || undefined,
+        ...flashcardFields,
       });
     } else {
       onSubmit({
         id: question.id,
         folderId: folderId === "none" ? null : Number(folderId),
         questionType,
-        stem: stem.trim(),
+        stem: questionText,
         dataJson,
         points: Number(points) || 1,
         difficulty,
         tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
         explanation: explanation || null,
+        ...flashcardFields,
       });
     }
   };
@@ -686,15 +699,24 @@ function QuestionFormDialog({ mode, orgId, folders, question, selectedFolderId, 
             </div>
           </div>
           <div>
-            <Label>Question Text (stem)</Label>
-            <Textarea value={stem} onChange={e => setStem(e.target.value)} rows={3} placeholder="Enter the question text..." />
+            <Label>{questionType === "flashcard" ? "Flashcard Front" : "Question Text (stem)"}</Label>
+            <Textarea value={questionType === "flashcard" ? flashcardFront : stem} onChange={e => questionType === "flashcard" ? setFlashcardFront(e.target.value) : setStem(e.target.value)} rows={3} placeholder={questionType === "flashcard" ? "Enter the prompt or term..." : "Enter the question text..."} />
           </div>
-          <div>
+          {questionType === "flashcard" ? <>
+            <div>
+              <Label>Flashcard Back</Label>
+              <Textarea value={flashcardBack} onChange={e => setFlashcardBack(e.target.value)} rows={4} placeholder="Enter the answer or explanation..." />
+            </div>
+            <div>
+              <Label>Hint (optional)</Label>
+              <Input value={flashcardHint} onChange={e => setFlashcardHint(e.target.value)} placeholder="A helpful cue before the card is flipped" />
+            </div>
+          </> : <div>
             <Label>Question Data (JSON)</Label>
             <Textarea value={dataJson} onChange={e => setDataJson(e.target.value)} rows={4} className="font-mono text-xs"
               placeholder='{"choices": [{"id": "a", "text": "Option A", "correct": true}]}' />
             <p className="text-xs text-muted-foreground mt-1">JSON data for choices, correct answers, etc.</p>
-          </div>
+          </div>}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label>Points</Label>
@@ -723,7 +745,7 @@ function QuestionFormDialog({ mode, orgId, folders, question, selectedFolderId, 
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={!stem.trim() || isLoading} onClick={handleSubmit}>
+          <Button disabled={isLoading || (questionType === "flashcard" ? !flashcardFront.trim() || !flashcardBack.trim() : !stem.trim())} onClick={handleSubmit}>
             {mode === "create" ? "Create" : "Save"}
           </Button>
         </DialogFooter>

@@ -12,6 +12,8 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 export interface FlashcardItem {
+  /** Existing active-organization Question Bank row selected into this lesson deck. */
+  questionBankId?: number;
   front: string;
   back: string;
   hint?: string;
@@ -19,9 +21,17 @@ export interface FlashcardItem {
   backImageUrl?: string;
 }
 
+export interface FlashcardGroupDraw {
+  folderId: number;
+  folderName: string;
+  count: number;
+}
+
 export interface LessonFlashcardData {
   title?: string;
   cards: FlashcardItem[];
+  /** Per-learner random draws from active-organization Question Bank folders. */
+  questionBankGroupDraws?: FlashcardGroupDraw[];
   shuffleCards?: boolean;
   showHints?: boolean;
   /** Theme colors for the player buttons */
@@ -46,8 +56,18 @@ const DEFAULT_STILL_LEARNING_COLOR = "#f0fdfa";
 const DEFAULT_GOT_IT_TEXT = "#ffffff";
 const DEFAULT_STILL_LEARNING_TEXT = "#189593";
 
+function getBankFlashcardImageUrl(dataJson: unknown): string | undefined {
+  try {
+    const data = typeof dataJson === "string" ? JSON.parse(dataJson) : dataJson;
+    const imageUrl = (data as { imageUrl?: unknown } | null)?.imageUrl;
+    return typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export default function LessonFlashcardBlockEditor({ data, onChange, handleFileUpload, lessonId, courseId }: Props) {
-  const [activeTab, setActiveTab] = useState<"ai" | "manual" | "style">("manual");
+  const [activeTab, setActiveTab] = useState<"ai" | "manual" | "bank" | "style">("manual");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingCard, setEditingCard] = useState<FlashcardItem | null>(null);
   const [aiCount, setAiCount] = useState(10);
@@ -187,9 +207,37 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
         <TabsList className="h-8">
           <TabsTrigger value="manual" className="text-xs h-7">Manual Entry</TabsTrigger>
+          <TabsTrigger value="bank" className="text-xs h-7">From Bank</TabsTrigger>
           <TabsTrigger value="ai" className="text-xs h-7">AI Generate</TabsTrigger>
           <TabsTrigger value="style" className="text-xs h-7">Button Style</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="bank" className="mt-3">
+          <FlashcardBankPicker
+            groupDraws={data.questionBankGroupDraws ?? []}
+            onGroupDrawsChange={(questionBankGroupDraws) => set("questionBankGroupDraws", questionBankGroupDraws)}
+            onAdd={(bankCard) => {
+              const next: FlashcardItem = {
+                questionBankId: bankCard.id,
+                front: bankCard.flashcardFront || bankCard.stem,
+                back: bankCard.flashcardBack || "",
+                hint: bankCard.flashcardHint || undefined,
+                imageUrl: getBankFlashcardImageUrl(bankCard.dataJson),
+                backImageUrl: bankCard.flashcardBackImageUrl || undefined,
+              };
+              if (!next.front.trim() || !next.back.trim()) {
+                toast.error("This Question Bank flashcard is missing a front or back.");
+                return;
+              }
+              if ((data.cards ?? []).some(card => card.questionBankId === next.questionBankId)) {
+                toast.message("That flashcard is already in this lesson deck.");
+                return;
+              }
+              set("cards", [...(data.cards ?? []), next]);
+              toast.success("Flashcard added from Question Bank.");
+            }}
+          />
+        </TabsContent>
 
         {/* ── AI Generate ── */}
         <TabsContent value="ai" className="mt-3 space-y-3">
@@ -501,6 +549,104 @@ export default function LessonFlashcardBlockEditor({ data, onChange, handleFileU
           </div>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function FlashcardBankPicker({
+  onAdd,
+  groupDraws,
+  onGroupDrawsChange,
+}: {
+  onAdd: (card: any) => void;
+  groupDraws: FlashcardGroupDraw[];
+  onGroupDrawsChange: (groups: FlashcardGroupDraw[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [folderValue, setFolderValue] = useState("all");
+  const [groupValue, setGroupValue] = useState("none");
+  const { data: foldersData = [] } = trpc.questionBank.listFolders.useQuery({});
+  const { data, isLoading } = trpc.questionBank.listQuestions.useQuery({
+    questionType: "flashcard",
+    search: search.trim() || undefined,
+    folderId: folderValue === "all" ? undefined : Number(folderValue),
+    limit: 50,
+    offset: 0,
+  });
+  const cards = data?.questions ?? [];
+  const usedFolderIds = new Set(groupDraws.map((group) => group.folderId));
+  const selectableFolders = foldersData.filter((folder: any) => !usedFolderIds.has(folder.id));
+
+  const addGroupDraw = (value: string) => {
+    setGroupValue("none");
+    const folder = foldersData.find((candidate: any) => String(candidate.id) === value);
+    if (!folder) return;
+    onGroupDrawsChange([
+      ...groupDraws,
+      { folderId: folder.id, folderName: folder.name, count: 10 },
+    ]);
+  };
+
+  const updateGroupCount = (folderId: number, count: number) => {
+    onGroupDrawsChange(groupDraws.map((group) => group.folderId === folderId
+      ? { ...group, count: Math.max(1, Math.min(200, Number.isFinite(count) ? Math.floor(count) : 1)) }
+      : group,
+    ));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border border-[color:color-mix(in_srgb,var(--org-primary)_20%,transparent)] bg-[color:color-mix(in_srgb,var(--org-primary)_6%,white)] p-2.5 space-y-2">
+        <div>
+          <p className="text-xs font-medium text-gray-800">Draw from a Question Bank folder</p>
+          <p className="mt-0.5 text-xs leading-4 text-gray-600">Each learner receives a fresh draw from the selected flashcard folder. Individual cards below remain fixed in the lesson deck.</p>
+        </div>
+        {groupDraws.map((group) => (
+          <div key={group.folderId} className="flex items-center gap-2 rounded border border-gray-200 bg-white p-2">
+            <p className="min-w-0 flex-1 truncate text-xs font-medium text-gray-700">{group.folderName}</p>
+            <Label className="shrink-0 text-xs text-gray-500">Draw</Label>
+            <Input aria-label={`Cards to draw from ${group.folderName}`} className="h-7 w-16 text-xs" type="number" min={1} max={200} value={group.count} onChange={(event) => updateGroupCount(group.folderId, Number(event.target.value))} />
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-1.5 text-xs text-red-500 hover:text-red-700" onClick={() => onGroupDrawsChange(groupDraws.filter((candidate) => candidate.folderId !== group.folderId))}>
+              Remove
+            </Button>
+          </div>
+        ))}
+        <Select value={groupValue} onValueChange={addGroupDraw}>
+          <SelectTrigger className="h-8 text-xs border-dashed border-[color:color-mix(in_srgb,var(--org-primary)_45%,transparent)] bg-white text-[var(--org-primary)]">
+            <SelectValue placeholder="+ Add a flashcard Question Bank folder" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none" disabled className="text-xs">+ Add a flashcard Question Bank folder</SelectItem>
+            {selectableFolders.map((folder: any) => <SelectItem key={folder.id} value={String(folder.id)} className="text-xs">{folder.name}</SelectItem>)}
+            {selectableFolders.length === 0 && <SelectItem value="no-folders" disabled className="text-xs">All folders are already selected</SelectItem>}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex gap-2">
+        <Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search flashcard Question Bank…" className="h-8 text-xs flex-1" />
+        <Select value={folderValue} onValueChange={setFolderValue}>
+          <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="All folders" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All folders</SelectItem>
+            {foldersData.map((folder: any) => <SelectItem key={folder.id} value={String(folder.id)} className="text-xs">{folder.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      {isLoading ? <p className="py-3 text-center text-xs text-gray-400">Loading flashcards…</p> : cards.length === 0 ? (
+        <p className="rounded-md border border-dashed border-gray-200 py-4 text-center text-xs text-gray-400">No flashcards match this search.</p>
+      ) : (
+        <div className="max-h-60 space-y-1 overflow-y-auto">
+          {cards.map((card: any) => (
+            <div key={card.id} className="flex items-start gap-2 rounded border border-gray-100 bg-gray-50 p-2 text-xs hover:border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_6%,white)]">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-gray-700">Front: {card.flashcardFront || card.stem}</p>
+                <p className="truncate text-gray-500">Back: {card.flashcardBack || "No back saved"}</p>
+              </div>
+              <Button type="button" size="sm" className="h-6 bg-[var(--org-primary)] px-2 text-xs hover:brightness-90" onClick={() => onAdd(card)}>Add</Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

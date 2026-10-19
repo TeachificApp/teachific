@@ -78,7 +78,7 @@ async function requireTagAccess(db: NonNullable<Awaited<ReturnType<typeof getDb>
 // ─── Shared question input schema ─────────────────────────────────────────────
 const questionInput = z.object({
   question: z.string().min(1),
-  type: z.enum(["mcq", "truefalse", "multiselect", "hotspot", "matching"]).default("mcq"),
+  type: z.enum(["mcq", "truefalse", "multiselect", "hotspot", "matching", "flashcard"]).default("mcq"),
   options: z.array(z.object({
     text: z.string(),
     imageUrl: z.string().optional(),
@@ -88,6 +88,10 @@ const questionInput = z.object({
   correctAnswers: z.array(z.number().int()).optional(),
   hotspotMarkers: z.string().optional(), // JSON string
   matchingPairs: z.string().optional(),  // JSON string
+  flashcardFront: z.string().max(20_000).optional(),
+  flashcardBack: z.string().max(20_000).optional(),
+  flashcardHint: z.string().max(5_000).optional(),
+  flashcardBackImageUrl: z.string().max(2_048).optional(),
   explanation: z.string().optional(),
   questionImageUrl: z.string().optional(),
   questionVideoUrl: z.string().optional(),
@@ -153,7 +157,7 @@ export const questionBankRouter = router({
     .input(z.object({
       search: z.string().optional(),
       tagIds: z.array(z.number().int()).optional(),
-      type: z.enum(["mcq", "truefalse", "multiselect", "hotspot", "matching"]).optional(),
+      type: z.enum(["mcq", "truefalse", "multiselect", "hotspot", "matching", "flashcard"]).optional(),
       folderId: z.number().int().nullable().optional(),
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(100).default(25),
@@ -260,6 +264,9 @@ export const questionBankRouter = router({
       const orgId = await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.type === "flashcard" && (!input.flashcardFront?.trim() || !input.flashcardBack?.trim())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Flashcards need both a front and back before they can be saved." });
+      }
       const { tagIds, options, correctAnswers, hotspotMarkers, matchingPairs, ...rest } = input;
       if (rest.folderId) await requireFolderAccess(db, orgId, rest.folderId);
       await requireTagAccess(db, orgId, tagIds ?? []);
@@ -282,12 +289,16 @@ export const questionBankRouter = router({
     .input(z.object({
       id: z.number(),
       question: z.string().min(1).optional(),
-      type: z.enum(["mcq", "truefalse", "multiselect", "hotspot", "matching"]).optional(),
+      type: z.enum(["mcq", "truefalse", "multiselect", "hotspot", "matching", "flashcard"]).optional(),
       options: z.array(z.object({ text: z.string(), imageUrl: z.string().optional(), videoUrl: z.string().optional() })).optional(),
       correctAnswer: z.string().nullable().optional(),
       correctAnswers: z.array(z.number().int()).nullable().optional(),
       hotspotMarkers: z.string().nullable().optional(),
       matchingPairs: z.string().nullable().optional(),
+      flashcardFront: z.string().max(20_000).nullable().optional(),
+      flashcardBack: z.string().max(20_000).nullable().optional(),
+      flashcardHint: z.string().max(5_000).nullable().optional(),
+      flashcardBackImageUrl: z.string().max(2_048).nullable().optional(),
       explanation: z.string().nullable().optional(),
       questionImageUrl: z.string().nullable().optional(),
       questionVideoUrl: z.string().nullable().optional(),

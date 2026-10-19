@@ -114,9 +114,16 @@ import {
   serializeInlineLessonSurveyAnswer,
 } from "../lib/inlineLessonCmeSurvey";
 import {
-  getStoredInlineLessonFlashcardBlock,
   normalizeInlineLessonFlashcardOutcomes,
 } from "../lib/inlineLessonFlashcards";
+import {
+  getAllowedLessonFlashcardBankCards,
+  getStoredLessonFlashcardDeckConfig,
+  resolveLessonFlashcardDeck,
+} from "../lib/resolveLessonFlashcardDeck";
+import {
+  parseLessonFlashcardSourceKey,
+} from "../lib/lessonFlashcardGroupDraws";
 import {
   cohortLearnerContentWhere,
   selectCurrentCohortGroupId,
@@ -713,6 +720,43 @@ async function requireActiveCohortEnrollment(
 // ─── Learner Router ───────────────────────────────────────────────────────────
 
 export const lmsLearnerRouter = router({
+  /** Resolve a lesson flashcard deck's authored cards and active-org Question Bank folder draws. */
+  getInlineLessonFlashcardDeck: protectedProcedure
+    .input(z.object({
+      lessonId: z.number().int().positive(),
+      courseSlug: z.string().min(1).max(255),
+      flashcardBlockId: z.string().min(1).max(128),
+      isAdminPreview: z.boolean().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+      const [course] = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId })
+        .from(lmsCourses)
+        .where(and(eq(lmsCourses.slug, input.courseSlug), eq(lmsCourses.orgId, activeOrgId)))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in the active organization" });
+      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
+      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      if (!enrollment && !(input.isAdminPreview && isPlatformAdmin)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "An active enrollment is required" });
+      }
+
+      const [lesson] = await db.select({ id: lmsLessons.id, courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, contentBlocks: lmsLessons.contentBlocks })
+        .from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const lessonCourseId = lesson.courseId ?? (lesson.sectionId
+        ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+        : null);
+      if (lessonCourseId !== course.id) throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+
+      const deck = getStoredLessonFlashcardDeckConfig(lesson.contentBlocks, input.flashcardBlockId);
+      if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "This lesson does not contain the selected flashcard deck" });
+      return { cards: await resolveLessonFlashcardDeck(db, course.orgId, deck) };
+    }),
+
   /** Get all enrollments for the current user */
   getMyCourses: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
@@ -1126,7 +1170,7 @@ export const lmsLearnerRouter = router({
       courseSlug: z.string().min(1).max(255),
       flashcardBlockId: z.string().min(1).max(128),
       outcomes: z.array(z.object({
-        cardKey: z.string().regex(/^\d+$/).max(16),
+        cardKey: z.string().regex(/^(\d+|(manual|bank):\d+)$/).max(32),
         gotIt: z.boolean(),
       })).min(1).max(200),
     }))
@@ -1155,14 +1199,32 @@ export const lmsLearnerRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
       }
 
-      const deck = getStoredInlineLessonFlashcardBlock(lesson.contentBlocks, input.flashcardBlockId);
-      if (!deck) {
+      const deckConfig = getStoredLessonFlashcardDeckConfig(lesson.contentBlocks, input.flashcardBlockId);
+      if (!deckConfig) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This lesson does not contain the selected flashcard deck" });
       }
-      const studyResult = normalizeInlineLessonFlashcardOutcomes(deck.cards, input.outcomes);
-      if (!studyResult) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Mark every flashcard Got It or Missed before saving this deck result" });
-      }
+      const usesResolvedCardKeys = deckConfig.groupDraws.length > 0 || input.outcomes.some((outcome) => outcome.cardKey.includes(":"));
+      const studyResult = usesResolvedCardKeys
+        ? await (async () => {
+          const resolvedCards = await resolveLessonFlashcardDeck(db, course.orgId, deckConfig);
+          const dynamicCardsById = await getAllowedLessonFlashcardBankCards(db, course.orgId, deckConfig);
+          const manualCardsByKey = new Map(deckConfig.cards.map((card) => [card.sourceKey, card]));
+          const received = new Map<string, boolean>();
+          const normalized: Array<{ cardKey: string; questionText: string; gotIt: boolean }> = [];
+          for (const outcome of input.outcomes) {
+            const source = parseLessonFlashcardSourceKey(outcome.cardKey);
+            const manualCard = source?.kind === "manual" ? manualCardsByKey.get(`manual:${source.index}`) : undefined;
+            const dynamicFront = source?.kind === "bank" ? dynamicCardsById.get(source.questionBankId) : undefined;
+            if (!source || received.has(outcome.cardKey) || (!manualCard && !dynamicFront)) return null;
+            received.set(outcome.cardKey, outcome.gotIt);
+            normalized.push({ cardKey: outcome.cardKey, questionText: manualCard?.front ?? dynamicFront!, gotIt: outcome.gotIt });
+          }
+          if (resolvedCards.length === 0 || received.size !== resolvedCards.length) return null;
+          const gotItCount = normalized.filter((outcome) => outcome.gotIt).length;
+          return { outcomes: normalized, gotItCount, score: Math.round((gotItCount / resolvedCards.length) * 100), cardCount: resolvedCards.length };
+        })()
+        : normalizeInlineLessonFlashcardOutcomes(deckConfig.cards, input.outcomes);
+      if (!studyResult) throw new TRPCError({ code: "BAD_REQUEST", message: "Mark every flashcard Got It or Missed before saving this deck result" });
 
       try {
         await ensureInlineLessonQuizSchema(db);
@@ -1181,7 +1243,7 @@ export const lmsLearnerRouter = router({
           enrollmentId: enrollment.id,
           courseId: course.id,
           lessonId: lesson.id,
-          quizBlockId: deck.id,
+          quizBlockId: deckConfig.id,
           score: studyResult.score,
           // This is completion of a self-reported study activity, not a graded pass.
           passed: true,
@@ -1238,7 +1300,7 @@ export const lmsLearnerRouter = router({
       lessonId: number;
       isLessonModule: boolean;
     }> => {
-      const deck = getStoredInlineLessonFlashcardBlock(row.contentBlocks, row.quizBlockId);
+      const deck = getStoredLessonFlashcardDeckConfig(row.contentBlocks, row.quizBlockId);
       if (deck) {
         return [{
           attempt: { id: row.id, score: row.score, passed: row.passed, completedAt: row.submittedAt },
