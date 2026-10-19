@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, BookOpen, RotateCcw, Trophy, BarChart3 } from "lucide-react";
+import { Loader2, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, BookOpen, RotateCcw, Trophy, BarChart3, Flag, ListChecks } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
@@ -111,12 +111,14 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
   const [qStartTime, setQStartTime] = useState(Date.now());
   const [quizData, setQuizData] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
+  const [flaggedQuestionIds, setFlaggedQuestionIds] = useState<Set<number>>(new Set());
+  const [showReview, setShowReview] = useState(false);
 
   const limitSeconds = quizInfo?.timeLimitMinutes ? quizInfo.timeLimitMinutes * 60 : null;
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (allowIncomplete = false) => {
     if (!attemptId) return;
-    if (Object.keys(answers).length < questions.length) {
+    if (!allowIncomplete && Object.keys(answers).length < questions.length) {
       toast.error("Please answer every question before submitting.");
       return;
     }
@@ -141,7 +143,7 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
   }, [accessInput, answers, attemptId, checkMutation, onComplete, questionTimes, questions.length, refetchPriorAttempts, submitMutation]);
 
   const handleExpire = useCallback(() => {
-    if (phase === "started") handleSubmit();
+    if (phase === "started") handleSubmit(true);
   }, [phase, handleSubmit]);
 
   const { display: timerDisplay } = useTimer(phase === "started" ? limitSeconds : null, handleExpire);
@@ -156,6 +158,8 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
           setQuizData(res.quiz);
           setPhase("started");
           setCurrentIdx(0);
+          setFlaggedQuestionIds(new Set());
+          setShowReview(false);
           setQStartTime(Date.now());
         },
         onError: (e) => toast.error(e.message),
@@ -196,6 +200,22 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
     setQuestionTimes({});
     setResult(null);
     setQuizData(null);
+    setFlaggedQuestionIds(new Set());
+    setShowReview(false);
+  }
+
+  function selectQuestion(index: number) {
+    setCurrentIdx(index);
+    setQStartTime(Date.now());
+  }
+
+  function toggleQuestionFlag(questionId: number) {
+    setFlaggedQuestionIds((current) => {
+      const next = new Set(current);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
   }
 
   function openCourseResult(resultAttemptId: number) {
@@ -393,6 +413,15 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
   const isRevealed = Boolean(feedback);
   const selectedAnswer = answers[q.id];
   const progress = ((currentIdx + 1) / questions.length) * 100;
+  const unansweredQuestionIndexes = questions.reduce<number[]>((indexes, question, index) => {
+    if (answers[question.id] === undefined) indexes.push(index);
+    return indexes;
+  }, []);
+  const flaggedQuestionIndexes = questions.reduce<number[]>((indexes, question, index) => {
+    if (flaggedQuestionIds.has(question.id)) indexes.push(index);
+    return indexes;
+  }, []);
+  const allAnswered = unansweredQuestionIndexes.length === 0;
 
   const options = q.choices ?? [];
 
@@ -418,6 +447,62 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
       </div>
 
       <div className="px-5 py-5">
+        {showReview && isMockExam && (
+          <div className="mb-5 rounded-xl border border-[color:color-mix(in_srgb,var(--org-primary)_35%,white)] bg-[color:color-mix(in_srgb,var(--org-primary)_7%,white)] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-900"><ListChecks className="h-4 w-4 text-[var(--org-primary)]" /> Review your exam</p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {allAnswered
+                    ? (flaggedQuestionIndexes.length ? `${flaggedQuestionIndexes.length} flagged question${flaggedQuestionIndexes.length === 1 ? "" : "s"} remaining.` : "All questions are answered.")
+                    : `${unansweredQuestionIndexes.length} unanswered question${unansweredQuestionIndexes.length === 1 ? "" : "s"} remaining.`}
+                </p>
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowReview(false)}>Close</Button>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {questions.map((question, index) => {
+                const unanswered = answers[question.id] === undefined;
+                const flagged = flaggedQuestionIds.has(question.id);
+                return <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => { selectQuestion(index); setShowReview(false); }}
+                  aria-label={`Go to question ${index + 1}${unanswered ? ", unanswered" : ""}${flagged ? ", flagged" : ""}`}
+                  className={`h-8 min-w-8 rounded-md border px-2 text-xs font-semibold transition-colors ${
+                    unanswered ? "border-amber-300 bg-amber-50 text-amber-800" : flagged ? "border-sky-300 bg-sky-50 text-sky-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  }`}
+                >{index + 1}</button>;
+              })}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={() => setShowReview(false)}>Continue review</Button>
+              <Button type="button" size="sm" disabled={!allAnswered || submitMutation.isPending || checkMutation.isPending} onClick={() => handleSubmit()} className="bg-[var(--org-primary)] text-white hover:brightness-90">
+                {submitMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null} Submit exam
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-4 flex flex-wrap gap-1.5" aria-label="Question navigation">
+          {questions.map((question, index) => {
+            const answered = answers[question.id] !== undefined;
+            const flagged = flaggedQuestionIds.has(question.id);
+            return <button
+              key={question.id}
+              type="button"
+              onClick={() => selectQuestion(index)}
+              aria-current={index === currentIdx ? "step" : undefined}
+              aria-label={`Go to question ${index + 1}${answered ? ", answered" : ", unanswered"}${flagged ? ", flagged" : ""}`}
+              className={`relative h-7 min-w-7 rounded-md border px-1 text-xs font-semibold transition-colors ${
+                index === currentIdx ? "border-[var(--org-primary)] bg-[var(--org-primary)] text-white" : answered ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600 hover:border-[var(--org-primary)]"
+              }`}
+            >
+              {index + 1}{flagged && <Flag className="absolute -right-1 -top-1 h-3 w-3 fill-amber-400 text-amber-500" />}
+            </button>;
+          })}
+        </div>
+
         {/* Question image */}
         {q.imageUrl && (
           <img src={q.imageUrl} alt="Question" className="w-full max-h-48 object-contain rounded-lg mb-3 border border-gray-100" />
@@ -472,7 +557,19 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
             Prev
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {isMockExam && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => toggleQuestionFlag(q.id)}
+                className={flaggedQuestionIds.has(q.id) ? "border-amber-300 bg-amber-50 text-amber-800" : ""}
+              >
+                <Flag className={`mr-1 h-3.5 w-3.5 ${flaggedQuestionIds.has(q.id) ? "fill-amber-400" : ""}`} />
+                {flaggedQuestionIds.has(q.id) ? "Flagged" : "Flag"}
+              </Button>
+            )}
             {/* Quiz mode: Check Answer */}
             {!isMockExam && !isRevealed && selectedAnswer !== undefined && (
               <Button
@@ -499,12 +596,12 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
             ) : (
               <Button
                 size="sm"
-                onClick={handleSubmit}
-                disabled={submitMutation.isPending || checkMutation.isPending || (!isMockExam && !isRevealed) || (isMockExam && Object.keys(answers).length < questions.length)}
+                onClick={() => isMockExam ? setShowReview(true) : handleSubmit()}
+                disabled={submitMutation.isPending || checkMutation.isPending || (!isMockExam && !isRevealed) || (isMockExam && !allAnswered)}
                 className="bg-[var(--org-primary)] hover:brightness-90 text-white gap-1"
               >
                 {submitMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                {!isMockExam && isRevealed ? "Finish Quiz" : "Submit Quiz"}
+                {!isMockExam && isRevealed ? "Finish Quiz" : isMockExam ? "Review & Submit" : "Submit Quiz"}
               </Button>
             )}
           </div>

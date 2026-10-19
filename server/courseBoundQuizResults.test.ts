@@ -43,4 +43,13 @@ describe("Course-bound learner quiz results", () => {
     expect(resultsPageSource).toContain("sourceLessonId: lessonIdNumber");
     expect(appSource).toContain('path="/courses/:slug/player/quiz/:quizId/attempt/:attemptId/lesson/:lessonId" component={CourseQuizResultsPage}');
   });
+
+  it("keeps question navigation and flags in the course player while the server retains scoring authority", () => {
+    expect(embeddedPlayerSource).toContain("const [flaggedQuestionIds, setFlaggedQuestionIds]");
+    expect(embeddedPlayerSource).toContain("const [showReview, setShowReview]");
+    expect(embeddedPlayerSource).toContain("Review & Submit");
+    expect(embeddedPlayerSource).toContain("toggleQuestionFlag(q.id)");
+    expect(embeddedPlayerSource).toContain("handleSubmit(true)");
+    expect(embeddedPlayerSource).toContain("trpc.quiz.completeLearnerAttempt.useMutation");
+  });
 });

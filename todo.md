@@ -130,9 +130,9 @@
 - [x] Add end-to-end organization-owned image-comparison behavior and regression coverage while preserving the standalone Quiz Creator and Question Bank boundary
 - [x] Add server-authoritative conditional Quiz Creator question visibility with save-time same-quiz/earlier-parent validation, author controls, learner filtering, and hidden-question scoring exclusion
 - [x] Audit and enforce organization scope for learner standalone quiz listings, and correct the StudentLayout organization-brand fallback without adding read-aloud controls
-- [ ] Design and implement an explicit organization-scoped learner quiz navigation surface and matching native quiz-results route before exposing quiz-results navigation
+- [x] Design and implement an explicit organization-scoped learner quiz navigation surface and matching native quiz-results route before exposing quiz-results navigation
 - [x] Add protected active-organization learner native quiz-attempt summaries and a completed-attempt results route without exposing other organizations’ attempts
-- [ ] Show learner quiz navigation and native quiz-results links only when the active organization has relevant available or completed quiz attempts
+- [x] Show learner quiz navigation and native quiz-results links only when the active organization has relevant available or completed quiz attempts
 - [x] Audit learner native quiz-results feasibility; defer learner-facing results until public Quiz Creator attempts have authenticated ownership and server-owned scoring rather than client-supplied scores
 - [x] Derive public Quiz Creator attempt score, pass/fail status, and persisted analytics values from the saved server quiz definition rather than client-reported totals
 - [x] Require an email identity and enforce configured maximum attempts for public Quiz Creator share-link delivery while retaining authenticated widget identity checks
