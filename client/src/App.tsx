@@ -58,6 +58,7 @@ import CourseSalesPage from "./pages/lms/CourseSalesPage";
 import CoursePlayerPage from "./pages/lms/CoursePlayerPage";
 import CourseLanding from "./pages/lms/CourseLanding";
 import CoursePlayer from "./pages/lms/CoursePlayer";
+import CourseQuizResultsPage from "./pages/lms/CourseQuizResultsPage";
 import CourseOverviewPage from "./pages/lms/CourseOverviewPage";
 import PublicPhysicalProductSalesPage from "./pages/lms/PublicPhysicalProductSalesPage";
 import TeachGamesPage from "./pages/lms/TeachGamesPage";
@@ -225,6 +226,8 @@ function BareRouter() {
         <Route path="/learn/:courseId/overview" component={CourseOverviewPage} />
         <Route path="/learn/:courseId" component={CoursePlayerPage} />
         <Route path="/learn/:courseId/lesson/:lessonId" component={CoursePlayerPage} />
+        <Route path="/courses/:slug/player/quiz/:quizId/attempt/:attemptId/lesson/:lessonId" component={CourseQuizResultsPage} />
+        <Route path="/courses/:slug/player" component={CoursePlayer} />
         <Route path="/p/:slug" component={PublicPagePage} />
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />
         <Route path="/webinar/:slug/watch" component={WebinarWatchPage} />
@@ -720,6 +723,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>
         <Route path="/my-receipts">{() => <DashboardLayout><MyReceiptsPage /></DashboardLayout>}</Route>
         <Route path="/courses/:courseId/thank-you" component={ThankYouPage} />
+        <Route path="/courses/:slug/player/quiz/:quizId/attempt/:attemptId/lesson/:lessonId" component={CourseQuizResultsPage} />
         <Route path="/courses/:slug/player" component={CoursePlayer} />
         <Route path="/courses/:slug" component={CourseLanding} />
         <Route path="/community/:hubId" component={CommunityLearnerPage} />
@@ -838,6 +842,7 @@ function Router() {
     path === "/privacy" ||
     path === "/help" ||
     path.startsWith("/community/") ||
+    path.startsWith("/courses/") ||
     path.startsWith("/cme-disclosure/") ||
     path.startsWith("/quiz/");
   return isBare ? <BareRouter /> : <AdminRouter />;

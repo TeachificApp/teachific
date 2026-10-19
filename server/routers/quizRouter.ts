@@ -96,6 +96,7 @@ export async function resolveEmbeddedLearnerQuizAccess(
     maxAttempts: quizzes.maxAttempts,
     passScorePercent: quizzes.passScorePercent,
     quizType: quizzes.quizType,
+    feedbackMode: quizzes.feedbackMode,
     showExplanations: quizzes.showExplanations,
     showCorrectAnswers: quizzes.showCorrectAnswers,
     isPublished: quizzes.isPublished,
@@ -261,6 +262,26 @@ export const quizRouter = router({
       };
     }),
 
+  /** Completed attempts visible only through the verified course lesson context. */
+  listLearnerAttempts: protectedProcedure
+    .input(embeddedLearnerQuizInput)
+    .query(async ({ input, ctx }) => {
+      const access = await resolveEmbeddedLearnerQuizAccess(ctx, input);
+      if (access.isStaffPreview) return [];
+      return (await db()).select({
+        id: quizAttempts.id,
+        attemptNumber: quizAttempts.attemptNumber,
+        scorePercent: quizAttempts.scorePercent,
+        passed: quizAttempts.passed,
+        completedAt: quizAttempts.completedAt,
+      }).from(quizAttempts).where(and(
+        eq(quizAttempts.quizId, access.quiz.id),
+        eq(quizAttempts.userId, ctx.user.id),
+        eq(quizAttempts.sourceLessonId, input.sourceLessonId!),
+        eq(quizAttempts.status, "completed"),
+      )).orderBy(desc(quizAttempts.completedAt));
+    }),
+
   startLearnerAttempt: protectedProcedure
     .input(embeddedLearnerQuizInput)
     .mutation(async ({ input, ctx }) => {
@@ -416,6 +437,7 @@ export const quizRouter = router({
 
       const responsesByQuestionId = new Map(responses.map((response) => [response.questionId, response]));
       return {
+        attemptId: attempt.id,
         score,
         passed,
         correctAnswers: responses.filter((response) => response.isCorrect).length,
@@ -426,6 +448,95 @@ export const quizRouter = router({
           isCorrect: responsesByQuestionId.get(question.id)?.isCorrect ?? false,
           explanation: question.explanationText ?? null,
         })) : null,
+      };
+    }),
+
+  /**
+   * Return one completed course-lesson quiz attempt for its learner only.
+   * The course slug and source lesson are required so a bare attempt URL cannot
+   * become a cross-course or cross-organization results endpoint.
+   */
+  getLearnerAttemptResult: protectedProcedure
+    .input(z.object({
+      quizId: z.number().int().positive(),
+      courseSlug: z.string().min(1).max(255),
+      sourceLessonId: z.number().int().positive(),
+      attemptId: z.number().int().positive(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const access = await resolveEmbeddedLearnerQuizAccess(ctx, {
+        quizId: input.quizId,
+        courseSlug: input.courseSlug,
+        sourceLessonId: input.sourceLessonId,
+        authorPreview: false,
+      });
+      const connection = await db();
+      const [attempt] = await connection.select().from(quizAttempts).where(and(
+        eq(quizAttempts.id, input.attemptId),
+        eq(quizAttempts.userId, ctx.user.id),
+        eq(quizAttempts.quizId, access.quiz.id),
+        eq(quizAttempts.sourceLessonId, input.sourceLessonId),
+        eq(quizAttempts.status, "completed"),
+      )).limit(1);
+      if (!attempt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Quiz result not found." });
+      }
+
+      const responses = await connection.select({
+        questionId: quizAttemptResponses.questionId,
+        selectedChoiceIds: quizAttemptResponses.selectedChoiceIds,
+        isCorrect: quizAttemptResponses.isCorrect,
+        isPartiallyCorrect: quizAttemptResponses.isPartiallyCorrect,
+        pointsEarned: quizAttemptResponses.pointsEarned,
+      }).from(quizAttemptResponses).where(eq(quizAttemptResponses.attemptId, attempt.id));
+
+      const canReviewAnswers = access.quiz.showCorrectAnswers || access.quiz.showExplanations;
+      const responsesByQuestionId = new Map(responses.map(response => [response.questionId, response]));
+      const snapshot = Array.isArray(attempt.questionSnapshot) ? attempt.questionSnapshot as Array<Record<string, unknown>> : [];
+      const review = canReviewAnswers ? snapshot.map((question) => {
+        const questionId = Number(question.id);
+        const storedChoices = Array.isArray(question.choices) ? question.choices as Array<Record<string, unknown>> : [];
+        const response = responsesByQuestionId.get(questionId);
+        return {
+          questionId,
+          question: typeof question.questionText === "string" ? question.questionText : "Question",
+          selectedChoiceIds: response?.selectedChoiceIds ?? [],
+          isCorrect: response?.isCorrect ?? false,
+          isPartiallyCorrect: response?.isPartiallyCorrect ?? false,
+          pointsEarned: response?.pointsEarned ?? 0,
+          choices: access.quiz.showCorrectAnswers
+            ? storedChoices.map(choice => ({
+              id: Number(choice.id),
+              text: typeof choice.choiceText === "string" ? choice.choiceText : "",
+              isCorrect: Boolean(choice.isCorrect),
+            }))
+            : [],
+          explanation: access.quiz.showExplanations && typeof question.explanationText === "string"
+            ? question.explanationText
+            : null,
+        };
+      }) : null;
+
+      return {
+        attempt: {
+          id: attempt.id,
+          attemptNumber: attempt.attemptNumber,
+          scorePercent: attempt.scorePercent,
+          passed: attempt.passed,
+          earnedPoints: attempt.earnedPoints,
+          totalPoints: attempt.totalPoints,
+          timeSpentSeconds: attempt.timeSpentSeconds,
+          completedAt: attempt.completedAt,
+        },
+        quiz: {
+          id: access.quiz.id,
+          title: access.quiz.title,
+          passScorePercent: access.quiz.passScorePercent,
+          maxAttempts: access.quiz.maxAttempts,
+          showCorrectAnswers: access.quiz.showCorrectAnswers,
+          showExplanations: access.quiz.showExplanations,
+        },
+        review,
       };
     }),
 
@@ -480,7 +591,8 @@ export const quizRouter = router({
         themeConfig: settings.themeConfig,
         priceAmount: settings.priceAmount.toFixed(2),
         currency: settings.currency,
-        status: "draft",
+        visibility: "draft",
+        isPublished: false,
       });
       return { id: result.insertId };
     }),
@@ -489,15 +601,21 @@ export const quizRouter = router({
     .input(z.object({ id: z.number(), ...quizSettingsSchema.partial().shape }))
     .mutation(async ({ input, ctx }) => {
       await requireQuizAdmin(ctx, input.id);
-      const { id, ...updates } = input;
-      await (await db()).update(quizzes).set(updates).where(eq(quizzes.id, id));
+      const { id, priceAmount, ...updates } = input;
+      await (await db()).update(quizzes).set({
+        ...updates,
+        ...(priceAmount === undefined ? {} : { priceAmount: priceAmount.toFixed(2) }),
+      }).where(eq(quizzes.id, id));
     }),
 
   publishQuiz: protectedProcedure
     .input(z.object({ id: z.number(), publish: z.boolean() }))
     .mutation(async ({ input, ctx }) => {
       await requireQuizAdmin(ctx, input.id);
-      await (await db()).update(quizzes).set({ status: input.publish ? "published" : "draft" }).where(eq(quizzes.id, input.id));
+      await (await db()).update(quizzes).set({
+        isPublished: input.publish,
+        visibility: input.publish ? "published" : "draft",
+      }).where(eq(quizzes.id, input.id));
     }),
 
   deleteQuiz: protectedProcedure
@@ -520,7 +638,8 @@ export const quizRouter = router({
         ...original,
         id: undefined as any,
         title: `${original.title} (Copy)`,
-        status: "draft",
+        visibility: "draft",
+        isPublished: false,
         createdAt: undefined as any,
         updatedAt: undefined as any,
       });

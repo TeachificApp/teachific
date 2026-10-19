@@ -12,9 +12,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, BookOpen, RotateCcw, Trophy } from "lucide-react";
+import { Loader2, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, BookOpen, RotateCcw, Trophy, BarChart3 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+import { useLocation } from "wouter";
 
 // ─── Timer hook ───────────────────────────────────────────────────────────────
 function useTimer(limitSeconds: number | null, onExpire: () => void) {
@@ -77,7 +78,8 @@ interface EmbeddedQuizPlayerProps {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug, authorPreview = false, showHeader = true, onComplete }: EmbeddedQuizPlayerProps) {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [, navigate] = useLocation();
   const hasCourseContext = Boolean(courseSlug && sourceLessonId);
   const accessInput = useMemo(() => ({
     quizId,
@@ -89,6 +91,10 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
   const { data: quizInfo, isLoading: infoLoading } = trpc.quiz.getLearnerQuizInfo.useQuery(
     accessInput,
     { enabled: !!user && !isNaN(quizId) && (hasCourseContext || authorPreview) }
+  );
+  const { data: priorAttempts, refetch: refetchPriorAttempts } = trpc.quiz.listLearnerAttempts.useQuery(
+    accessInput,
+    { enabled: !!user && hasCourseContext && !authorPreview && !isNaN(quizId) }
   );
 
   const startMutation = trpc.quiz.startLearnerAttempt.useMutation();
@@ -127,11 +133,12 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
       const res = await submitMutation.mutateAsync({ ...accessInput, attemptId });
       setResult(res);
       setPhase("submitted");
+      void refetchPriorAttempts();
       onComplete?.(res.score, res.passed);
     } catch (error: any) {
       toast.error(error?.message ?? "Unable to submit this quiz.");
     }
-  }, [accessInput, answers, attemptId, checkMutation, onComplete, questionTimes, questions.length, submitMutation]);
+  }, [accessInput, answers, attemptId, checkMutation, onComplete, questionTimes, questions.length, refetchPriorAttempts, submitMutation]);
 
   const handleExpire = useCallback(() => {
     if (phase === "started") handleSubmit();
@@ -189,6 +196,11 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
     setQuestionTimes({});
     setResult(null);
     setQuizData(null);
+  }
+
+  function openCourseResult(resultAttemptId: number) {
+    if (!courseSlug || !sourceLessonId || authorPreview) return;
+    navigate(`/courses/${encodeURIComponent(courseSlug)}/player/quiz/${quizId}/attempt/${resultAttemptId}/lesson/${sourceLessonId}`);
   }
 
   // ── Loading / auth states ──────────────────────────────────────────────────
@@ -264,6 +276,18 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
               </span>
             )}
           </div>
+          {!authorPreview && priorAttempts && priorAttempts.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mb-4 gap-1.5"
+              onClick={() => openCourseResult(priorAttempts[0].id)}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              View latest result
+            </Button>
+          )}
           {canAttempt ? (
             <Button
               onClick={handleStart}
@@ -347,6 +371,12 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
             <Button variant="outline" size="sm" onClick={handleRetake} className="gap-1.5">
               <RotateCcw className="w-3.5 h-3.5" />
               Retake Quiz
+            </Button>
+          )}
+          {!authorPreview && result.attemptId && (
+            <Button variant="outline" size="sm" onClick={() => openCourseResult(result.attemptId)} className="ml-2 gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" />
+              View result
             </Button>
           )}
         </div>
