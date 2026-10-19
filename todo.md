@@ -1680,7 +1680,7 @@
 - [ ] InvoicesPage: real list from backend
 - [ ] RevenuePartnersPage: real CRUD wired to backend
 - [ ] AffiliatesPage: real CRUD wired to backend
-- [ ] Course player: respect showProgressBar and showProgressPercent flags
+- [x] Course player: respect showProgressBar and showProgressPercent flags
 - [ ] Course settings: toggle for showProgressBar and showProgressPercent
 - [x] Dashboard enrollment chart: real Recharts bar chart with enrollment data (LmsDashboardPage)
 - [ ] Analytics pages: real data with Recharts visualizations

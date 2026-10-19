@@ -1651,6 +1651,7 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
   const [isFeatured, setIsFeatured] = useState(course.isFeatured ?? false);
   const [isDrip, setIsDrip] = useState(course.isDrip ?? false);
   const [hideProgress, setHideProgress] = useState(course.hideProgress ?? false);
+  const [showProgressPercent, setShowProgressPercent] = useState((course as any).showProgressPercent ?? true);
   const [showInstructor, setShowInstructor] = useState(course.showInstructor ?? false);
   const [showInLibrary, setShowInLibrary] = useState(course.showInLibrary ?? true);
   const [sendEnrollmentEmail, setSendEnrollmentEmail] = useState(course.sendEnrollmentEmail ?? true);
@@ -1774,6 +1775,7 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
             isFeatured,
             isDrip,
             hideProgress,
+            showProgressPercent,
             showInstructor,
             showInLibrary,
             price: pricingType === "free" ? 0 : parseFloat(price || "0"),
@@ -2213,6 +2215,13 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
         <div>
           <Label htmlFor="hide-progress-switch" className="text-sm">Hide course progress</Label>
           <p className="text-xs text-gray-400 mt-0.5">When enabled, the progress bar and completion percentage will not be shown to students in the course player or overview page.</p>
+        </div>
+      </div>
+      <div className="flex items-start gap-2">
+        <Switch checked={showProgressPercent} onCheckedChange={setShowProgressPercent} id="show-progress-percent-switch" className="mt-0.5" disabled={hideProgress} />
+        <div>
+          <Label htmlFor="show-progress-percent-switch" className="text-sm">Show completion percentage</Label>
+          <p className="text-xs text-gray-400 mt-0.5">Display the learner’s numeric completion percentage beside the progress bar. The progress bar remains visible when this is disabled.</p>
         </div>
       </div>
       <div className="flex items-start gap-2">

@@ -1612,7 +1612,7 @@ export default function CoursePlayer() {
           }
         </div>
         <div className="flex items-center gap-2 sm:gap-5 flex-shrink-0">
-          {/* Progress bar — hidden when course.hideProgress is enabled */}
+          {/* Progress bar and numeric completion can be controlled independently per course. */}
           {!course.hideProgress && (
             <div className="flex items-center gap-1.5 sm:gap-2.5">
               <span className="text-gray-500 text-xs hidden sm:block">Your Progress</span>
@@ -1622,7 +1622,7 @@ export default function CoursePlayer() {
                   style={{ width: `${data.enrollment?.progressPct ?? 0}%`, ...gradientStyle }}
                 />
               </div>
-              <span className="font-bold text-xs" style={primaryText}>{data.enrollment?.progressPct ?? 0}%</span>
+              {course.showProgressPercent !== false && <span className="font-bold text-xs" style={primaryText}>{data.enrollment?.progressPct ?? 0}%</span>}
             </div>
           )}
 

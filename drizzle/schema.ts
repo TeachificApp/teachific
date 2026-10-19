@@ -2583,6 +2583,7 @@ export const lmsCourses = mysqlTable("lms_courses", {
   isDrip: boolean("is_drip").default(false).notNull(),
   showInstructor: boolean("show_instructor").default(false).notNull(),
   hideProgress: boolean("hide_progress").default(false).notNull(),
+  showProgressPercent: boolean("show_progress_percent").default(true).notNull(),
   showInLibrary: boolean("show_in_library").default(true).notNull(),
   courseOverviewTopBlocks: longtext("course_overview_top_blocks"),
   courseOverviewBlocks: longtext("course_overview_blocks"),

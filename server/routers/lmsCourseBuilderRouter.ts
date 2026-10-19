@@ -470,6 +470,7 @@ export const lmsCourseBuilderRouter = router({
       isDrip: z.boolean().optional(),
       showInstructor: z.boolean().optional(),
       hideProgress: z.boolean().optional(),
+      showProgressPercent: z.boolean().optional(),
       courseOverviewBlocks: z.string().nullable().optional(), // JSON array of Block objects
       courseOverviewTopBlocks: z.string().nullable().optional(), // JSON array — above progress bar
       courseOverviewBottomBlocks: z.string().nullable().optional(), // JSON array — below curriculum
