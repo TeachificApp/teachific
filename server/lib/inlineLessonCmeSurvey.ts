@@ -129,6 +129,30 @@ export function getRequiredCmeSurveyBlockIds(contentBlocks: string | null | unde
   });
 }
 
+/**
+ * A graded inline quiz controls lesson completion unless its author explicitly
+ * turns that requirement off. Empty or malformed saved blocks never become an
+ * impossible learner gate; authoring and content audits can surface those
+ * separately.
+ */
+export function getRequiredGradedInlineQuizBlockIds(contentBlocks: string | null | undefined) {
+  if (!contentBlocks) return [] as string[];
+  let blocks: unknown;
+  try {
+    blocks = JSON.parse(contentBlocks);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(blocks)) return [];
+  return blocks.flatMap((block) => {
+    if (!isRecord(block) || block.type !== "lesson_quiz" || !isRecord(block.data)) return [];
+    if (block.data.isSurvey === true || block.data.requireSurveyCompletion === true || block.data.requirePassToComplete === false) return [];
+    if (!Array.isArray(block.data.questions) || block.data.questions.length === 0) return [];
+    const id = boundedText(block.id, 128);
+    return id ? [id] : [];
+  });
+}
+
 /** Detect settings that are available only to CME-enabled organizations. */
 export function hasCmeOnlyInlineSurveyConfiguration(contentBlocks: string | null | undefined) {
   if (!contentBlocks) return false;

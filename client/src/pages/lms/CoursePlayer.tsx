@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getSubdomain } from "@/hooks/useSubdomain";
 import { shouldAutoCompleteCmeLessonOnAdvance } from "@shared/cmeLessonCompletion";
+import { lessonHasRequiredGradedInlineQuiz } from "@shared/inlineLessonQuizCompletion";
 import { getVisibleInlineLessonQuizQuestionIndexes, inlineLessonQuizQuestionKey } from "@shared/inlineLessonQuizFlow";
 import LessonEffectPlayer, { fireLessonCompleteEffect } from "@/components/LessonEffectPlayer";
 import { BlockPreview, type Block } from "@/components/BlockPreview";
@@ -982,7 +983,7 @@ export default function CoursePlayer() {
     { courseSlug: slug! },
     { enabled: !!slug && !!user }
   );
-  const { refetch: refetchRequiredInlineSurveyCompletion } = trpc.lmsLearner.getRequiredInlineLessonSurveyCompletion.useQuery(
+  const { data: inlineCompletion, refetch: refetchRequiredInlineSurveyCompletion } = trpc.lmsLearner.getRequiredInlineLessonSurveyCompletion.useQuery(
     { lessonId: selectedLessonId!, courseSlug: slug! },
     { enabled: !!selectedLessonId && !!slug && !!user && !data?.isAdminPreview }
   );
@@ -1108,6 +1109,10 @@ export default function CoursePlayer() {
 
   const handleMarkComplete = async () => {
     if (!selectedLessonId) return;
+    if (!data?.isAdminPreview && hasRequiredGradedInlineQuiz && !inlineCompletion?.requiredQuizComplete) {
+      toast.error("Pass each required lesson quiz before marking this lesson complete.");
+      return;
+    }
     // In admin preview mode the enrollment is synthetic (id: -1) — skip the server call
     // to avoid a FORBIDDEN error. Progress is not persisted in preview mode.
     if (!data?.isAdminPreview) {
@@ -1380,6 +1385,7 @@ export default function CoursePlayer() {
     try { return lessonData?.contentBlocks ? JSON.parse(lessonData.contentBlocks) : []; }
     catch { return []; }
   })();
+  const hasRequiredGradedInlineQuiz = lessonHasRequiredGradedInlineQuiz(contentBlocks);
   const lessonMediaRepoScormSrc = resolveLessonMediaScormUrl(
     { type: lessonData?.type, embedUrl: lessonData?.embedUrl, content: lessonData?.content },
     (lessonData as { linkedMediaAsset?: { slug: string; mediaType: string | null; fileName: string | null } | null } | undefined)?.linkedMediaAsset ?? null,
@@ -1995,7 +2001,7 @@ export default function CoursePlayer() {
                 {contentFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
               {/* ── Top Mark Complete button ── */}
-              {lessonData && lessonData.type !== "quiz" && !isCompleted && requireManualComplete && (
+              {lessonData && lessonData.type !== "quiz" && !isCompleted && requireManualComplete && (!hasRequiredGradedInlineQuiz || inlineCompletion?.requiredQuizComplete === true) && (
                 <Button
                   size="sm"
                   className="h-7 text-xs text-white font-semibold px-3 rounded-full gap-1 shadow-sm"
@@ -2166,7 +2172,10 @@ export default function CoursePlayer() {
                             lessonId={lessonData.id}
                             quizBlockId={String(block.id)}
                             isAdminPreview={!!data?.isAdminPreview}
-                            onSubmitted={() => { void refetchRequiredInlineSurveyCompletion(); }}
+                            onSubmitted={() => {
+                              void refetchRequiredInlineSurveyCompletion();
+                              void utils.lmsLearner.getCoursePlayer.invalidate({ slug: slug! });
+                            }}
                             registerSurveySubmission={registerInlineSurveySubmission}
                           />
                         ) : block.type === "lesson_flashcard" ? (
@@ -2199,7 +2208,7 @@ export default function CoursePlayer() {
                         <div className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full" style={{ color: primaryColor, backgroundColor: `${primaryColor}18` }}>
                           <CheckCircle className="w-4 h-4" /> {lbl.completed}
                         </div>
-                      ) : requireManualComplete ? (
+                      ) : requireManualComplete && (!hasRequiredGradedInlineQuiz || inlineCompletion?.requiredQuizComplete === true) ? (
                         <Button
                           className="text-white font-bold px-6 py-2.5 rounded-full uppercase tracking-wide text-sm"
                           style={{ backgroundColor: primaryColor }}
@@ -2210,6 +2219,10 @@ export default function CoursePlayer() {
                           {markComplete.isPending ? "Saving..." : lbl.markComplete}
                           <CheckCircle className="w-4 h-4 ml-2" />
                         </Button>
+                      ) : hasRequiredGradedInlineQuiz ? (
+                        <p className="text-sm font-medium rounded-lg border px-4 py-2" style={{ color: primaryColor, borderColor: `${primaryColor}33`, backgroundColor: `${primaryColor}0d` }}>
+                          Pass each required lesson quiz to complete this lesson.
+                        </p>
                       ) : null}
                     </div>
                   )}

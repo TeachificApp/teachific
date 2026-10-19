@@ -107,6 +107,7 @@ import { couponIsRedeemableForCheckout, type CouponTargetContentType } from "../
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 import {
   evaluateStoredInlineLessonQuizSubmission,
+  getRequiredGradedInlineQuizBlockIds,
   getRequiredCmeSurveyBlockIds,
   getStoredInlineLessonQuizBlock,
   normalizeInlineLessonSurveyResponses,
@@ -1114,7 +1115,7 @@ export const lmsLearnerRouter = router({
       return { attempt, responses };
     }),
 
-  /** Revalidate required CME survey attempts for the authenticated learner before lesson completion. */
+  /** Revalidate required graded quiz and CME survey attempts before lesson completion. */
   getRequiredInlineLessonSurveyCompletion: protectedProcedure
     .input(z.object({
       lessonId: z.number().int().positive(),
@@ -1132,7 +1133,6 @@ export const lmsLearnerRouter = router({
       }
       const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
         .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
-      if (!organization?.cmeEnabled) return { required: false, complete: true, completedBlockIds: [] as string[], requiredBlockIds: [] as string[] };
 
       const [enrollment] = await db.select({ id: lmsEnrollments.id, orgId: lmsEnrollments.orgId, courseId: lmsEnrollments.courseId })
         .from(lmsEnrollments)
@@ -1152,8 +1152,23 @@ export const lmsLearnerRouter = router({
       }
       if (lessonCourseId !== course.id) throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
 
-      const requiredBlockIds = getRequiredCmeSurveyBlockIds(lesson.contentBlocks);
-      if (requiredBlockIds.length === 0) return { required: false, complete: true, completedBlockIds: [] as string[], requiredBlockIds: [] as string[] };
+      const requiredQuizBlockIds = getRequiredGradedInlineQuizBlockIds(lesson.contentBlocks);
+      const requiredSurveyBlockIds = organization?.cmeEnabled
+        ? getRequiredCmeSurveyBlockIds(lesson.contentBlocks)
+        : [];
+      const requiredBlockIds = [...new Set([...requiredQuizBlockIds, ...requiredSurveyBlockIds])];
+      if (requiredBlockIds.length === 0) {
+        return {
+          required: false,
+          complete: true,
+          completedBlockIds: [] as string[],
+          requiredBlockIds: [] as string[],
+          requiredQuizBlockIds,
+          requiredSurveyBlockIds,
+          requiredQuizComplete: true,
+          requiredSurveyComplete: true,
+        };
+      }
       const completedAttempts = await db.select({ quizBlockId: lmsInlineQuizAttempts.quizBlockId })
         .from(lmsInlineQuizAttempts)
         .where(and(
@@ -1171,6 +1186,10 @@ export const lmsLearnerRouter = router({
         complete: requiredBlockIds.every((blockId) => completedBlockIds.includes(blockId)),
         completedBlockIds,
         requiredBlockIds,
+        requiredQuizBlockIds,
+        requiredSurveyBlockIds,
+        requiredQuizComplete: requiredQuizBlockIds.every((blockId) => completedBlockIds.includes(blockId)),
+        requiredSurveyComplete: requiredSurveyBlockIds.every((blockId) => completedBlockIds.includes(blockId)),
       };
     }),
 
@@ -1244,6 +1263,27 @@ export const lmsLearnerRouter = router({
 
       const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
         .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
+      const requiredQuizBlockIds = getRequiredGradedInlineQuizBlockIds(lesson.contentBlocks);
+      if (requiredQuizBlockIds.length > 0) {
+        const passedQuizAttempts = await db.select({ quizBlockId: lmsInlineQuizAttempts.quizBlockId })
+          .from(lmsInlineQuizAttempts)
+          .where(and(
+            eq(lmsInlineQuizAttempts.orgId, course.orgId),
+            eq(lmsInlineQuizAttempts.userId, ctx.user.id),
+            eq(lmsInlineQuizAttempts.enrollmentId, enrollment.id),
+            eq(lmsInlineQuizAttempts.courseId, course.id),
+            eq(lmsInlineQuizAttempts.lessonId, input.lessonId),
+            eq(lmsInlineQuizAttempts.passed, true),
+            inArray(lmsInlineQuizAttempts.quizBlockId, requiredQuizBlockIds),
+          ));
+        const passedQuizBlockIds = new Set(passedQuizAttempts.map((attempt) => attempt.quizBlockId));
+        if (requiredQuizBlockIds.some((blockId) => !passedQuizBlockIds.has(blockId))) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Pass each required lesson quiz before marking this lesson complete.",
+          });
+        }
+      }
       const requiredSurveyBlockIds = organization?.cmeEnabled
         ? getRequiredCmeSurveyBlockIds(lesson.contentBlocks)
         : [];

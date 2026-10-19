@@ -48,10 +48,23 @@ function lessonSurveyBlocks() {
   }]);
 }
 
+function lessonGradedQuizBlocks() {
+  return JSON.stringify([{
+    id: "knowledge-check",
+    type: "lesson_quiz",
+    data: {
+      requirePassToComplete: true,
+      passingScore: 70,
+      questions: [{ id: "q1", type: "mcq", question: "Which answer is correct?", options: ["Correct", "Incorrect"], correctAnswer: 0 }],
+    },
+  }]);
+}
+
 function createDb({
   activeOrg = 1,
   cmeEnabled = true,
   completedAttempts = [] as string[],
+  contentBlocks = lessonSurveyBlocks(),
   savedAttempt = null as { id: number; passed: boolean; score: number; submittedAt?: Date } | null,
   savedResponses = [] as Array<{ questionKey: string; questionType: string; answerValue: string | null }>,
 } = {}) {
@@ -66,7 +79,7 @@ function createDb({
             if (table === lmsCourses) return [{ id: 7, orgId: 1 }];
             if (table === organizations) return [{ cmeEnabled }];
             if (table === lmsEnrollments) return [{ id: 14, orgId: 1, courseId: 7 }];
-            if (table === lmsLessons) return [{ id: 21, courseId: 7, sectionId: null, contentBlocks: lessonSurveyBlocks() }];
+            if (table === lmsLessons) return [{ id: 21, courseId: 7, sectionId: null, contentBlocks }];
             return [];
           },
         }),
@@ -92,7 +105,7 @@ function createDb({
           if (table === lmsCourses) return [{ id: 7, orgId: 1 }];
           if (table === organizations) return [{ cmeEnabled }];
           if (table === lmsEnrollments) return [{ id: 14, orgId: 1, courseId: 7 }];
-          if (table === lmsLessons) return [{ id: 21, courseId: 7, sectionId: null, contentBlocks: lessonSurveyBlocks() }];
+          if (table === lmsLessons) return [{ id: 21, courseId: 7, sectionId: null, contentBlocks }];
           return [];
         },
         then: undefined,
@@ -109,7 +122,7 @@ function createDb({
             if (table === lmsCourses) return [{ id: 7, orgId: 1 }];
             if (table === organizations) return [{ cmeEnabled }];
             if (table === lmsEnrollments) return [{ id: 14, orgId: 1, courseId: 7 }];
-            if (table === lmsLessons) return [{ id: 21, courseId: 7, sectionId: null, contentBlocks: lessonSurveyBlocks() }];
+            if (table === lmsLessons) return [{ id: 21, courseId: 7, sectionId: null, contentBlocks }];
             return [];
           },
         };
@@ -193,6 +206,17 @@ describe("Course360 inline CME survey learner procedures", () => {
     const caller = lmsLearnerRouter.createCaller(createContext());
     await expect(caller.markLessonComplete({ courseSlug: "course-a", lessonId: 21 }))
       .rejects.toMatchObject({ message: "Please complete the required survey before marking this lesson complete" });
+  });
+
+  it("rejects direct lesson completion when an active-organization graded inline quiz has not passed", async () => {
+    const fixture = createDb({ cmeEnabled: false, contentBlocks: lessonGradedQuizBlocks() });
+    mockState.db = fixture.db;
+    const caller = lmsLearnerRouter.createCaller(createContext());
+    await expect(caller.markLessonComplete({ courseSlug: "course-a", lessonId: 21 }))
+      .rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: "Pass each required lesson quiz before marking this lesson complete.",
+      });
   });
 
   it("restores only the current learner's active-organization answers for the exact inline quiz block", async () => {
