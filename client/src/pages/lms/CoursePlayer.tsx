@@ -146,7 +146,7 @@ function InlineLessonQuiz({
   lessonId: number;
   quizBlockId: string;
   isAdminPreview: boolean;
-  onSubmitted: () => void;
+  onSubmitted: (submission: { passed: boolean; requiresSurveyCompletion: boolean; surveyCompleted: boolean; nonScoringSurvey: boolean }) => void;
   registerSurveySubmission: (quizBlockId: string, submit: (() => Promise<void>) | null) => void;
 }) {
   const questions = data.questions ?? [];
@@ -164,7 +164,7 @@ function InlineLessonQuiz({
       setResult(submission);
       setSubmitted(true);
       sessionStorage.removeItem(answerDraftKey);
-      onSubmitted();
+      onSubmitted(submission);
       if (submission.passed) toast.success(submission.nonScoringSurvey ? "Survey saved." : `Score: ${submission.score}%`);
       else toast.error(submission.requiresSurveyCompletion ? "Please answer every required visible survey question." : `Score: ${submission.score}% — ${submission.passingScore}% required to pass.`);
     },
@@ -2172,9 +2172,18 @@ export default function CoursePlayer() {
                             lessonId={lessonData.id}
                             quizBlockId={String(block.id)}
                             isAdminPreview={!!data?.isAdminPreview}
-                            onSubmitted={() => {
-                              void refetchRequiredInlineSurveyCompletion();
+                            onSubmitted={async (submission) => {
+                              const completion = await refetchRequiredInlineSurveyCompletion();
                               void utils.lmsLearner.getCoursePlayer.invalidate({ slug: slug! });
+                              if (
+                                submission.passed &&
+                                completion.data?.complete === true &&
+                                !data?.isAdminPreview &&
+                                !completedIds.has(lessonData.id) &&
+                                !markComplete.isPending
+                              ) {
+                                markComplete.mutate({ lessonId: lessonData.id, courseSlug: slug! });
+                              }
                             }}
                             registerSurveySubmission={registerInlineSurveySubmission}
                           />

@@ -38,6 +38,8 @@ describe("required inline lesson quiz completion", () => {
     expect(playerSource).toContain("lessonHasRequiredGradedInlineQuiz(contentBlocks)");
     expect(playerSource).toContain("inlineCompletion?.requiredQuizComplete === true");
     expect(playerSource).toContain("Pass each required lesson quiz to complete this lesson.");
-    expect(playerSource).toContain("void refetchRequiredInlineSurveyCompletion()");
+    expect(playerSource).toContain("const completion = await refetchRequiredInlineSurveyCompletion()");
+    expect(playerSource).toContain("completion.data?.complete === true");
+    expect(playerSource).toContain("markComplete.mutate({ lessonId: lessonData.id, courseSlug: slug! })");
   });
 });
