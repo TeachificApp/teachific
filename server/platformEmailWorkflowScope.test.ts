@@ -17,4 +17,12 @@ describe("platform email workflow scope", () => {
     expect(engine).toContain("workflow.managedByPlatform");
     expect(engine).toContain("execution.orgId");
   });
+  it("supports platform-wide activity rules while preserving the event organization for delivery", () => {
+    expect(source).toContain("listPlatformWide");
+    expect(source).toContain("savePlatformWide");
+    expect(source).toContain("isPlatformWide: true");
+    expect(source).toContain("orgId: 0");
+    expect(engine).toContain("eq(emailWorkflows.isPlatformWide, true)");
+    expect(engine).toContain("const stepScopeOrgId = workflow.isPlatformWide ? 0 : input.orgId");
+  });
 });

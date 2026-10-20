@@ -153,7 +153,7 @@ CREATE TABLE `accreditationFormTemplates` (
 	`formType` varchar(100) NOT NULL,
 	`version` int NOT NULL DEFAULT 1,
 	`isActive` boolean NOT NULL DEFAULT true,
-	`hostDomain` varchar(255) DEFAULT 'app.allaboutultrasound.com',
+	`hostDomain` varchar(255) DEFAULT 'teachific.app',
 	`themeSettings` longtext,
 	`importedFromUrl` varchar(1000),
 	`successMessage` longtext,
@@ -272,6 +272,16 @@ CREATE TABLE `affiliate_links` (
 	`is_active` boolean NOT NULL DEFAULT true,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `affiliate_links_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `affiliate_org_access` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`affiliate_id` int NOT NULL,
+	`org_id` int NOT NULL,
+	`granted_by_admin_id` int,
+	`granted_at` timestamp NOT NULL DEFAULT (now()),
+	`revoked_at` timestamp,
+	CONSTRAINT `affiliate_org_access_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `affiliates` (
@@ -640,7 +650,7 @@ CREATE TABLE `bundle_pricing_options` (
 	`label` varchar(255) NOT NULL,
 	`sublabel` varchar(500),
 	`pricing_type` enum('one_time','subscription','payment_plan','free') NOT NULL DEFAULT 'one_time',
-	`price` int NOT NULL DEFAULT 0,
+	`price` decimal(10,2) NOT NULL DEFAULT '0',
 	`stripe_price_id` varchar(255),
 	`subscription_interval` enum('monthly','quarterly','annual'),
 	`down_payment` int DEFAULT 0,
@@ -665,6 +675,7 @@ CREATE TABLE `bundles` (
 	`salePrice` float,
 	`courseIds` text NOT NULL,
 	`isActive` boolean NOT NULL DEFAULT true,
+	`enrollment_closed` boolean NOT NULL DEFAULT false,
 	`totalEnrollments` int NOT NULL DEFAULT 0,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `bundles_id` PRIMARY KEY(`id`)
@@ -715,6 +726,84 @@ CREATE TABLE `certificates` (
 	`verificationCode` varchar(64),
 	CONSTRAINT `certificates_id` PRIMARY KEY(`id`),
 	CONSTRAINT `certificates_verificationCode_unique` UNIQUE(`verificationCode`)
+);
+--> statement-breakpoint
+CREATE TABLE `cme_activity_forms` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`courseId` int NOT NULL,
+	`productType` varchar(32) NOT NULL DEFAULT 'lms_course',
+	`activityTitle` varchar(512),
+	`activityType` varchar(64),
+	`proposedDate` varchar(128),
+	`activityLengthHours` varchar(32),
+	`cmeCreditsRequested` varchar(32),
+	`offerMocCredit` varchar(32),
+	`offeredMoreThanOnce` varchar(32),
+	`activityStructure` varchar(64),
+	`targetAudience` varchar(64),
+	`estimatedLearners` varchar(64),
+	`practiceGapDescription` text,
+	`practiceGapReasons` text,
+	`improvementTypes` text,
+	`improvementKnowledgeText` text,
+	`improvementCompetenceText` text,
+	`improvementPerformanceText` text,
+	`learnerOutcomes` text,
+	`learningObjectives` text,
+	`deliveryDescription` text,
+	`activityIncludes` text,
+	`assessmentMethods` text,
+	`facultyJson` text,
+	`contentStatus` varchar(64),
+	`contentAvailableDate` varchar(128),
+	`marketingChannels` text,
+	`marketingMentionsCme` varchar(32),
+	`registrationFee` varchar(32),
+	`originalReleaseDate` varchar(64),
+	`mostRecentReviewDate` varchar(64),
+	`expirationDate` varchar(64),
+	`attestationName` varchar(256),
+	`attestationDate` varchar(64),
+	`attestationTitle` varchar(256),
+	`signatureDataUrl` longtext,
+	`cmeStatus` varchar(32) NOT NULL DEFAULT 'draft',
+	`approvedAt` bigint,
+	`lastSentAt` bigint,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `cme_activity_forms_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `cme_financial_disclosures` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`courseId` int NOT NULL,
+	`facultyName` varchar(255) NOT NULL,
+	`facultyEmail` varchar(255) NOT NULL,
+	`token` varchar(128) NOT NULL,
+	`status` varchar(32) NOT NULL DEFAULT 'pending',
+	`rolesJson` text,
+	`relationshipsJson` text,
+	`hasRelationships` varchar(8),
+	`attestationName` varchar(255),
+	`attestationDate` varchar(32),
+	`submittedAt` bigint,
+	`pdfUrl` varchar(1024),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `cme_financial_disclosures_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `cme_send_history` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`courseId` int NOT NULL,
+	`sentAt` bigint NOT NULL,
+	`subject` varchar(512) NOT NULL,
+	`sentBy` varchar(255),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `cme_send_history_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `communities` (
@@ -899,6 +988,126 @@ CREATE TABLE `community_workflow_rules` (
 	CONSTRAINT `community_workflow_rules_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `contact_activities` (
+	`id` bigint AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`contact_id` int NOT NULL,
+	`actor_user_id` int,
+	`activity_type` varchar(100) NOT NULL,
+	`summary` varchar(500) NOT NULL,
+	`metadata` json,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `contact_activities_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `contact_audit_events` (
+	`id` bigint AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`contact_id` int NOT NULL,
+	`actor_user_id` int,
+	`action` varchar(100) NOT NULL,
+	`field_name` varchar(100),
+	`previous_value` json,
+	`next_value` json,
+	`metadata` json,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `contact_audit_events_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `contact_consents` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`contact_id` int NOT NULL,
+	`consent_type` enum('marketing_email','marketing_sms','terms','privacy','data_processing') NOT NULL,
+	`status` enum('granted','withdrawn','pending') NOT NULL DEFAULT 'pending',
+	`source` varchar(100) NOT NULL DEFAULT 'manual',
+	`evidence` json,
+	`granted_at` timestamp,
+	`withdrawn_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `contact_consents_id` PRIMARY KEY(`id`),
+	CONSTRAINT `contact_consents_org_contact_type_unique` UNIQUE(`org_id`,`contact_id`,`consent_type`)
+);
+--> statement-breakpoint
+CREATE TABLE `contact_custom_field_definitions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`field_key` varchar(100) NOT NULL,
+	`label` varchar(150) NOT NULL,
+	`field_type` enum('text','number','date','boolean','select','url') NOT NULL DEFAULT 'text',
+	`options` json,
+	`is_required` boolean NOT NULL DEFAULT false,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `contact_custom_field_definitions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `contact_custom_field_definitions_org_key_unique` UNIQUE(`org_id`,`field_key`)
+);
+--> statement-breakpoint
+CREATE TABLE `contact_tag_assignments` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`contact_id` int NOT NULL,
+	`tag_id` int NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `contact_tag_assignments_id` PRIMARY KEY(`id`),
+	CONSTRAINT `contact_tag_assignments_contact_tag_unique` UNIQUE(`contact_id`,`tag_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `contact_tags` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`name` varchar(100) NOT NULL,
+	`color` varchar(20),
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `contact_tags_id` PRIMARY KEY(`id`),
+	CONSTRAINT `contact_tags_org_name_unique` UNIQUE(`org_id`,`name`)
+);
+--> statement-breakpoint
+CREATE TABLE `contacts` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`user_id` int,
+	`first_name` varchar(128),
+	`last_name` varchar(128),
+	`display_name` varchar(255),
+	`email` varchar(320),
+	`email_normalized` varchar(320),
+	`email_verified` boolean NOT NULL DEFAULT false,
+	`phone` varchar(32),
+	`phone_normalized` varchar(32),
+	`phone_verified` boolean NOT NULL DEFAULT false,
+	`lifecycle_stage` enum('lead','subscriber','learner','customer','inactive') NOT NULL DEFAULT 'lead',
+	`source` varchar(100) NOT NULL DEFAULT 'manual',
+	`source_detail` varchar(255),
+	`attribution` json,
+	`custom_fields` json,
+	`deleted_at` timestamp,
+	`anonymized_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `contacts_id` PRIMARY KEY(`id`),
+	CONSTRAINT `contacts_org_email_normalized_unique` UNIQUE(`org_id`,`email_normalized`),
+	CONSTRAINT `contacts_org_phone_normalized_unique` UNIQUE(`org_id`,`phone_normalized`)
+);
+--> statement-breakpoint
+CREATE TABLE `content_availability` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`product_type` varchar(64) NOT NULL,
+	`product_id` int NOT NULL,
+	`status` enum('open','waitlist','presale','enrollment_closed') NOT NULL DEFAULT 'open',
+	`presale_heading` varchar(255),
+	`presale_body` text,
+	`presale_media_url` text,
+	`presale_cta_label` varchar(255),
+	`presale_cta_url` text,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `content_availability_id` PRIMARY KEY(`id`),
+	CONSTRAINT `content_availability_org_product_unique` UNIQUE(`org_id`,`product_type`,`product_id`)
+);
+--> statement-breakpoint
 CREATE TABLE `content_folders` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
@@ -964,6 +1173,34 @@ CREATE TABLE `content_versions` (
 	CONSTRAINT `content_versions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `content_waitlist_entries` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`product_type` varchar(64) NOT NULL,
+	`product_id` int NOT NULL,
+	`parent_product_id` int,
+	`user_id` int,
+	`name` varchar(255) NOT NULL,
+	`email` varchar(320) NOT NULL,
+	`notified_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `content_waitlist_entries_id` PRIMARY KEY(`id`),
+	CONSTRAINT `content_waitlist_org_product_email_unique` UNIQUE(`org_id`,`product_type`,`product_id`,`email`)
+);
+--> statement-breakpoint
+CREATE TABLE `coupon_redemptions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`couponId` int NOT NULL,
+	`stripeCheckoutSessionId` varchar(255) NOT NULL,
+	`userId` int,
+	`contentType` varchar(64) NOT NULL,
+	`contentId` int NOT NULL,
+	`redeemedAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `coupon_redemptions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `coupon_redemptions_session_unique` UNIQUE(`stripeCheckoutSessionId`)
+);
+--> statement-breakpoint
 CREATE TABLE `coupons` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
@@ -974,6 +1211,9 @@ CREATE TABLE `coupons` (
 	`usedCount` int NOT NULL DEFAULT 0,
 	`expiresAt` timestamp,
 	`appliesToCourseIds` text,
+	`targetScope` enum('all','content_types','products') NOT NULL DEFAULT 'all',
+	`targetContentTypes` text,
+	`targetProducts` text,
 	`isActive` boolean NOT NULL DEFAULT true,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `coupons_id` PRIMARY KEY(`id`)
@@ -1069,6 +1309,7 @@ CREATE TABLE `course_lessons` (
 	`dripDays` int,
 	`dripDate` timestamp,
 	`dripType` enum('immediate','days_after_enrollment','specific_date') NOT NULL DEFAULT 'immediate',
+	`dripOutDays` int,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `course_lessons_id` PRIMARY KEY(`id`)
@@ -1360,6 +1601,12 @@ CREATE TABLE `digital_products` (
 	`member_page_blocks_above` longtext,
 	`member_page_blocks_below` longtext,
 	`hide_pricing_options` boolean NOT NULL DEFAULT false,
+	`purchase_terms_agreement` varchar(2048),
+	`purchase_terms_link1_label` varchar(255),
+	`purchase_terms_link1_url` varchar(1024),
+	`purchase_terms_link2_label` varchar(255),
+	`purchase_terms_link2_url` varchar(1024),
+	`enrollment_closed` boolean NOT NULL DEFAULT false,
 	`createdAt` timestamp DEFAULT (now()),
 	`updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `digital_products_id` PRIMARY KEY(`id`)
@@ -1459,8 +1706,22 @@ CREATE TABLE `email_campaigns` (
 	`subject` varchar(255) NOT NULL,
 	`htmlBody` text NOT NULL,
 	`textBody` text,
+	`blocksJson` longtext,
+	`previewText` varchar(300),
+	`audienceFilter` longtext,
+	`senderProfileId` int,
+	`fromName` varchar(200),
+	`fromEmail` varchar(300),
+	`headerTitle` varchar(300),
+	`headerSubtext` varchar(500),
+	`headerColor` varchar(20),
+	`headerEnabled` boolean NOT NULL DEFAULT true,
+	`errorMessage` text,
+	`sentByUserId` int,
+	`scheduleCronTaskUid` varchar(65),
 	`status` enum('draft','scheduled','sending','sent','failed') NOT NULL DEFAULT 'draft',
 	`scheduledAt` timestamp,
+	`scheduledTimezone` varchar(64),
 	`sentAt` timestamp,
 	`recipientCount` int NOT NULL DEFAULT 0,
 	`sentCount` int NOT NULL DEFAULT 0,
@@ -1518,6 +1779,7 @@ CREATE TABLE `email_send_log` (
 --> statement-breakpoint
 CREATE TABLE `emailSenderProfiles` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int,
 	`name` varchar(200) NOT NULL,
 	`email` varchar(300) NOT NULL,
 	`replyTo` varchar(300),
@@ -1530,10 +1792,13 @@ CREATE TABLE `emailSenderProfiles` (
 CREATE TABLE `email_templates` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int,
+	`createdByUserId` int,
 	`name` varchar(255) NOT NULL,
 	`subject` varchar(255) NOT NULL,
 	`htmlBody` text NOT NULL,
 	`textBody` text,
+	`blocksJson` longtext,
+	`previewText` varchar(300),
 	`isDefault` boolean NOT NULL DEFAULT false,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
@@ -1548,6 +1813,106 @@ CREATE TABLE `email_unsubscribes` (
 	`unsubscribedAt` timestamp NOT NULL DEFAULT (now()),
 	`reason` text,
 	CONSTRAINT `email_unsubscribes_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_workflow_events` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`event_type` varchar(64) NOT NULL,
+	`source_type` varchar(64) NOT NULL,
+	`source_id` int NOT NULL,
+	`recipient_email` varchar(320) NOT NULL,
+	`recipient_name` varchar(255),
+	`recipient_user_id` int,
+	`payload` json,
+	`idempotency_key` varchar(255) NOT NULL,
+	`occurred_at` timestamp NOT NULL DEFAULT (now()),
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `email_workflow_events_id` PRIMARY KEY(`id`),
+	CONSTRAINT `email_workflow_events_org_key_unique` UNIQUE(`org_id`,`idempotency_key`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_workflow_executions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`workflow_id` int NOT NULL,
+	`workflow_step_id` int NOT NULL,
+	`event_id` int NOT NULL,
+	`recipient_email` varchar(320) NOT NULL,
+	`recipient_name` varchar(255),
+	`recipient_user_id` int,
+	`status` enum('pending','scheduled','sending','sent','skipped','failed','cancelled') NOT NULL DEFAULT 'pending',
+	`due_at` timestamp NOT NULL,
+	`schedule_cron_task_uid` varchar(65),
+	`attempts` int NOT NULL DEFAULT 0,
+	`error_message` text,
+	`sent_at` timestamp,
+	`completed_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `email_workflow_executions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `email_workflow_executions_event_step_unique` UNIQUE(`event_id`,`workflow_step_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_workflow_steps` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`workflow_id` int NOT NULL,
+	`org_id` int NOT NULL,
+	`position` int NOT NULL,
+	`delay_minutes` int NOT NULL DEFAULT 0,
+	`subject` varchar(500) NOT NULL,
+	`html_body` longtext NOT NULL,
+	`preview_text` varchar(300),
+	`sender_profile_id` int,
+	`is_active` boolean NOT NULL DEFAULT true,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `email_workflow_steps_id` PRIMARY KEY(`id`),
+	CONSTRAINT `email_workflow_steps_workflow_position_unique` UNIQUE(`workflow_id`,`position`)
+);
+--> statement-breakpoint
+CREATE TABLE `email_workflows` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`managed_by_platform` boolean NOT NULL DEFAULT false,
+	`is_platform_wide` boolean NOT NULL DEFAULT false,
+	`name` varchar(255) NOT NULL,
+	`description` varchar(1000),
+	`trigger_type` enum('form_submitted','lesson_completed','course_completed','course_enrolled','purchase_completed','campaign_opened','campaign_clicked') NOT NULL,
+	`trigger_resource_id` int,
+	`condition_field` varchar(128),
+	`condition_operator` enum('equals','not_equals','contains','is_set'),
+	`condition_value` varchar(1000),
+	`is_active` boolean NOT NULL DEFAULT false,
+	`created_by_user_id` int NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `email_workflows_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `embed_widgets` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`token` varchar(64) NOT NULL,
+	`name` varchar(200) NOT NULL,
+	`title` varchar(200) NOT NULL DEFAULT '',
+	`subtitle` text,
+	`layout` enum('grid','carousel','list') NOT NULL DEFAULT 'grid',
+	`theme` enum('light','dark','brand') NOT NULL DEFAULT 'light',
+	`card_style` enum('standard','compact','minimal') NOT NULL DEFAULT 'standard',
+	`show_price` boolean NOT NULL DEFAULT true,
+	`show_enroll_button` boolean NOT NULL DEFAULT true,
+	`show_course_details` boolean NOT NULL DEFAULT false,
+	`button_text` varchar(100) NOT NULL DEFAULT 'Enroll Now',
+	`button_url` varchar(500) NOT NULL DEFAULT '',
+	`max_cards` int NOT NULL DEFAULT 6,
+	`items_json` text NOT NULL DEFAULT ('[]'),
+	`is_active` boolean NOT NULL DEFAULT true,
+	`view_count` int NOT NULL DEFAULT 0,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `embed_widgets_id` PRIMARY KEY(`id`),
+	CONSTRAINT `embed_widgets_token_unique` UNIQUE(`token`)
 );
 --> statement-breakpoint
 CREATE TABLE `file_assets` (
@@ -2245,6 +2610,7 @@ CREATE TABLE `labSubscriptions` (
 --> statement-breakpoint
 CREATE TABLE `leadCaptureWidgets` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int,
 	`name` varchar(255) NOT NULL,
 	`headline` varchar(500) NOT NULL DEFAULT 'Stay in the loop',
 	`subtext` varchar(1000),
@@ -2320,6 +2686,7 @@ CREATE TABLE `lesson_progress` (
 --> statement-breakpoint
 CREATE TABLE `lesson_templates` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
 	`title` varchar(255) NOT NULL,
 	`lesson_type` varchar(64) NOT NULL DEFAULT 'video',
 	`blocks` longtext,
@@ -2659,6 +3026,7 @@ CREATE TABLE `lms_courses` (
 	`is_drip` boolean NOT NULL DEFAULT false,
 	`show_instructor` boolean NOT NULL DEFAULT false,
 	`hide_progress` boolean NOT NULL DEFAULT false,
+	`show_progress_percent` boolean NOT NULL DEFAULT true,
 	`show_in_library` boolean NOT NULL DEFAULT true,
 	`course_overview_top_blocks` longtext,
 	`course_overview_blocks` longtext,
@@ -2710,6 +3078,12 @@ CREATE TABLE `lms_courses` (
 	`player_sidebar_blocks` longtext,
 	`brand` varchar(128),
 	`checkout_page_config` longtext,
+	`purchase_terms_agreement` varchar(1024),
+	`purchase_terms_link1_label` varchar(255),
+	`purchase_terms_link1_url` varchar(1024),
+	`purchase_terms_link2_label` varchar(255),
+	`purchase_terms_link2_url` varchar(1024),
+	`enrollment_closed` boolean NOT NULL DEFAULT false,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `lms_courses_id` PRIMARY KEY(`id`)
@@ -2720,7 +3094,7 @@ CREATE TABLE `lms_enrollments` (
 	`orgId` int NOT NULL,
 	`user_id` int NOT NULL,
 	`course_id` int NOT NULL,
-	`status` enum('active','completed','cancelled','expired') NOT NULL DEFAULT 'active',
+	`status` enum('active','completed','cancelled','expired','suspended') NOT NULL DEFAULT 'active',
 	`enrolled_at` timestamp NOT NULL DEFAULT (now()),
 	`completed_at` timestamp,
 	`expires_at` timestamp,
@@ -2769,6 +3143,32 @@ CREATE TABLE `lms_groups` (
 	CONSTRAINT `lms_groups_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `lms_inline_quiz_attempts` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`user_id` int NOT NULL,
+	`enrollment_id` int NOT NULL,
+	`course_id` int NOT NULL,
+	`lesson_id` int NOT NULL,
+	`quiz_block_id` varchar(128) NOT NULL,
+	`score` int NOT NULL,
+	`passed` boolean NOT NULL,
+	`submitted_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `lms_inline_quiz_attempts_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `lms_inline_quiz_responses` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`attempt_id` int NOT NULL,
+	`question_key` varchar(128) NOT NULL,
+	`question_text` text NOT NULL,
+	`question_type` varchar(32) NOT NULL,
+	`answer_value` text,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `lms_inline_quiz_responses_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
 CREATE TABLE `lms_instructors` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
@@ -2776,6 +3176,13 @@ CREATE TABLE `lms_instructors` (
 	`bio` longtext,
 	`profile_image_url` text,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`display_name` varchar(255),
+	`title` varchar(255),
+	`social_links` text,
+	`is_active` boolean NOT NULL DEFAULT true,
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`requires_lesson_approval` boolean NOT NULL DEFAULT true,
+	`linked_user_id` int,
 	CONSTRAINT `lms_instructors_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -2845,7 +3252,8 @@ CREATE TABLE `lms_lesson_progress` (
 	`quiz_score` int,
 	`quiz_passed` boolean,
 	`attempts` int NOT NULL DEFAULT 0,
-	CONSTRAINT `lms_lesson_progress_id` PRIMARY KEY(`id`)
+	CONSTRAINT `lms_lesson_progress_id` PRIMARY KEY(`id`),
+	CONSTRAINT `lms_lesson_progress_enrollment_lesson_unique` UNIQUE(`enrollment_id`,`lesson_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `lms_lessons` (
@@ -2858,6 +3266,7 @@ CREATE TABLE `lms_lessons` (
 	`content` longtext,
 	`video_content` longtext,
 	`embed_url` varchar(500),
+	`standalone_quiz_id` int,
 	`media_asset_id` int,
 	`position` int NOT NULL DEFAULT 0,
 	`is_preview` boolean NOT NULL DEFAULT false,
@@ -3020,11 +3429,13 @@ CREATE TABLE `lms_quiz_questions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
 	`quiz_id` int NOT NULL,
-	`type` enum('multiple_choice','true_false','short_answer','matching','hotspot') NOT NULL DEFAULT 'multiple_choice',
+	`type` enum('multiple_choice','true_false','short_answer','matching','hotspot','image_comparison','drag_sort','branching','fill_blank','annotation','flashcard') NOT NULL DEFAULT 'multiple_choice',
 	`question` longtext NOT NULL,
 	`explanation` longtext,
 	`position` int NOT NULL DEFAULT 0,
 	`points` int NOT NULL DEFAULT 1,
+	`shuffle_answer_options` boolean,
+	`lock_answer_order` boolean NOT NULL DEFAULT false,
 	`options` longtext,
 	`correct_answer` text,
 	`correct_answers` longtext,
@@ -3034,6 +3445,18 @@ CREATE TABLE `lms_quiz_questions` (
 	`feedback_video_url` varchar(1024),
 	`hotspot_markers` longtext,
 	`matching_pairs` longtext,
+	`comparison_image_a` varchar(1024),
+	`comparison_image_b` varchar(1024),
+	`comparison_label_a` varchar(255),
+	`comparison_label_b` varchar(255),
+	`drag_items` longtext,
+	`branching_config` longtext,
+	`fill_blank_template` longtext,
+	`fill_blank_answers` longtext,
+	`annotation_image_url` varchar(1024),
+	`annotation_target_zones` longtext,
+	`flashcard_front` longtext,
+	`flashcard_back` longtext,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `lms_quiz_questions_id` PRIMARY KEY(`id`)
 );
@@ -3158,15 +3581,26 @@ CREATE TABLE `media_access_rules` (
 CREATE TABLE `media_assets` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
-	`folder_id` int,
+	`folderId` int,
 	`filename` varchar(255) NOT NULL,
-	`mime_type` varchar(100) NOT NULL,
+	`mimeType` varchar(100) NOT NULL,
 	`size` bigint NOT NULL,
-	`s3_key` varchar(500) NOT NULL,
-	`s3_url` text NOT NULL,
-	`uploaded_by` int NOT NULL,
+	`s3Key` varchar(500) NOT NULL,
+	`s3Url` text NOT NULL,
+	`uploadedBy` int NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
-	CONSTRAINT `media_assets_id` PRIMARY KEY(`id`)
+	`slug` varchar(255),
+	`title` varchar(255),
+	`mediaType` varchar(50),
+	`description` text,
+	`access` enum('public','private') NOT NULL DEFAULT 'private',
+	`tags` text,
+	`createdByUserId` int,
+	`thumbnailUrl` text,
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`deletedAt` timestamp,
+	CONSTRAINT `media_assets_id` PRIMARY KEY(`id`),
+	CONSTRAINT `media_assets_slug_unique` UNIQUE(`slug`)
 );
 --> statement-breakpoint
 CREATE TABLE `media_folders` (
@@ -3180,6 +3614,7 @@ CREATE TABLE `media_folders` (
 --> statement-breakpoint
 CREATE TABLE `media_upload_folders` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int,
 	`name` varchar(255) NOT NULL,
 	`description` text,
 	`created_by` int,
@@ -3189,6 +3624,7 @@ CREATE TABLE `media_upload_folders` (
 --> statement-breakpoint
 CREATE TABLE `media_upload_responses` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int,
 	`user_id` int NOT NULL,
 	`block_id` varchar(128),
 	`page_id` varchar(128),
@@ -3216,19 +3652,32 @@ CREATE TABLE `media_upload_sessions` (
 CREATE TABLE `media_versions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
-	`asset_id` int NOT NULL,
-	`version_number` int NOT NULL,
-	`s3_key` varchar(500) NOT NULL,
+	`assetId` int NOT NULL,
+	`versionNumber` int NOT NULL,
+	`s3Key` varchar(500) NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`s3Url` text,
+	`fileName` varchar(255),
+	`fileSize` bigint,
+	`mimeType` varchar(100),
+	`notes` text,
+	`uploadedByUserId` int,
+	`scormExtractionStatus` varchar(32),
+	`scormExtractedPrefix` text,
+	`scormLaunchFile` text,
+	`scormExtractionError` text,
 	CONSTRAINT `media_versions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `media_view_events` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
-	`asset_id` int NOT NULL,
-	`viewed_by` int,
-	`viewed_at` timestamp NOT NULL DEFAULT (now()),
+	`assetId` int NOT NULL,
+	`viewedBy` int,
+	`viewedAt` timestamp NOT NULL DEFAULT (now()),
+	`ipHash` varchar(128),
+	`viewType` enum('embed','direct') NOT NULL DEFAULT 'direct',
+	`referer` text,
 	CONSTRAINT `media_view_events_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -3337,8 +3786,27 @@ CREATE TABLE `memberships` (
 	`stripe_price_id` varchar(255),
 	`stripe_product_id` varchar(255),
 	`stripe_payment_link_url` varchar(2048),
+	`enrollment_closed` boolean NOT NULL DEFAULT false,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `memberships_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `newsletter_subscribers` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int,
+	`email` varchar(320) NOT NULL,
+	`firstName` varchar(100),
+	`lastName` varchar(100),
+	`profession` varchar(200),
+	`interests` text,
+	`source` varchar(100) NOT NULL DEFAULT 'subscribe_page',
+	`isActive` tinyint NOT NULL DEFAULT 1,
+	`unsubscribeToken` varchar(64),
+	`subscribedAt` bigint,
+	`unsubscribedAt` bigint,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `newsletter_subscribers_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `order_bump_conversions` (
@@ -3436,6 +3904,21 @@ CREATE TABLE `org_limit_overrides` (
 	CONSTRAINT `org_limit_overrides_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `org_links` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`primaryOrgId` int NOT NULL,
+	`linkedOrgId` int NOT NULL,
+	`initiatedByUserId` int NOT NULL,
+	`acceptedByUserId` int,
+	`inviteToken` varchar(128) NOT NULL,
+	`inviteTokenExpiry` timestamp NOT NULL,
+	`status` enum('pending','accepted','rejected','revoked') NOT NULL DEFAULT 'pending',
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `org_links_id` PRIMARY KEY(`id`),
+	CONSTRAINT `org_links_inviteToken_unique` UNIQUE(`inviteToken`)
+);
+--> statement-breakpoint
 CREATE TABLE `org_media_folders` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
@@ -3510,6 +3993,11 @@ CREATE TABLE `org_payment_settings` (
 	`invoicePrefix` varchar(20),
 	`nextInvoiceNumber` int NOT NULL DEFAULT 1,
 	`purchaseDescriptionTemplate` varchar(255),
+	`purchase_terms_agreement` varchar(1024),
+	`purchase_terms_link1_label` varchar(255),
+	`purchase_terms_link1_url` varchar(1024),
+	`purchase_terms_link2_label` varchar(255),
+	`purchase_terms_link2_url` varchar(1024),
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `org_payment_settings_id` PRIMARY KEY(`id`),
@@ -3540,6 +4028,7 @@ CREATE TABLE `org_subscriptions` (
 	`currentPeriodStart` timestamp,
 	`currentPeriodEnd` timestamp,
 	`cancelAtPeriodEnd` boolean NOT NULL DEFAULT false,
+	`starterTrialClaimed` boolean NOT NULL DEFAULT false,
 	`customPriceUsd` decimal(10,2),
 	`customPriceLabel` varchar(100),
 	`adminNotes` text,
@@ -3604,6 +4093,7 @@ CREATE TABLE `organizations` (
 	`subdomainEnabled` boolean NOT NULL DEFAULT false,
 	`customSubdomain` varchar(100),
 	`customDomain` varchar(255),
+	`timezone` varchar(64) NOT NULL DEFAULT 'UTC',
 	`customSenderEmail` varchar(320),
 	`customSenderName` varchar(255),
 	`senderDomainVerified` boolean NOT NULL DEFAULT false,
@@ -3629,6 +4119,20 @@ CREATE TABLE `organizations` (
 	`seoRobotsIndex` boolean NOT NULL DEFAULT true,
 	`customCss` longtext,
 	`ownSendGridKeyEncrypted` text,
+	`printifyApiKey` text,
+	`printfulApiKey` text,
+	`bookvaultApiKey` text,
+	`cmeEnabled` boolean NOT NULL DEFAULT false,
+	`cmeOrgName` varchar(255),
+	`cmeContactEmail` varchar(320),
+	`cmeDriveClientId` varchar(512),
+	`cmeDriveClientSecret` varchar(512),
+	`cmeDriveRefreshToken` text,
+	`cmeDriveAccessToken` text,
+	`cmeDriveTokenExpiresAt` bigint,
+	`cmeDriveFolderId` varchar(255),
+	`cmeDriveFolderName` varchar(255),
+	`cmeDriveEnabled` boolean NOT NULL DEFAULT false,
 	`embedAllowedDomains` text,
 	`embedDefaultTheme` enum('light','dark','auto') NOT NULL DEFAULT 'auto',
 	`embedAnalyticsEnabled` boolean NOT NULL DEFAULT true,
@@ -3660,6 +4164,7 @@ CREATE TABLE `page_builder_pages` (
 --> statement-breakpoint
 CREATE TABLE `payout_requests` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int,
 	`requestor_type` enum('affiliate','instructor') NOT NULL,
 	`affiliate_id` int,
 	`instructor_user_id` int,
@@ -3717,6 +4222,19 @@ CREATE TABLE `physical_product_orders` (
 	`tracking_number` varchar(255),
 	`tracking_carrier` varchar(100),
 	`notes` text,
+	`bookvault_doc_ref` varchar(64),
+	`bookvault_pod_ref` varchar(64),
+	`bookvault_status` varchar(64),
+	`bookvault_error` text,
+	`bookvault_submitted_at` timestamp,
+	`printify_order_id` varchar(64),
+	`printify_status` varchar(64),
+	`printify_submitted_at` timestamp,
+	`printify_error` text,
+	`printful_order_id` varchar(64),
+	`printful_status` varchar(64),
+	`printful_submitted_at` timestamp,
+	`printful_error` text,
 	`ordered_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `physical_product_orders_id` PRIMARY KEY(`id`)
@@ -3767,6 +4285,19 @@ CREATE TABLE `physical_products` (
 	`landing_features` longtext,
 	`landing_blocks` longtext,
 	`org_id` int,
+	`printify_shop_id` int,
+	`printify_product_id` varchar(128),
+	`printify_variant_id` int,
+	`printify_enabled` boolean NOT NULL DEFAULT false,
+	`printful_store_id` int,
+	`printful_sync_product_id` int,
+	`printful_sync_variant_id` int,
+	`printful_enabled` boolean NOT NULL DEFAULT false,
+	`bookvault_enabled` boolean NOT NULL DEFAULT false,
+	`bookvault_isbn` varchar(32),
+	`meta_title` varchar(255),
+	`meta_description` text,
+	`meta_image` text,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `physical_products_id` PRIMARY KEY(`id`),
@@ -3891,8 +4422,9 @@ CREATE TABLE `product_addon_items` (
 --> statement-breakpoint
 CREATE TABLE `question_bank` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
 	`question` longtext NOT NULL,
-	`type` enum('mcq','truefalse','multiselect','hotspot','matching') NOT NULL DEFAULT 'mcq',
+	`type` enum('mcq','truefalse','multiselect','hotspot','matching','flashcard') NOT NULL DEFAULT 'mcq',
 	`options` longtext,
 	`correct_answer` varchar(500) NOT NULL,
 	`correct_answers` text,
@@ -3901,10 +4433,17 @@ CREATE TABLE `question_bank` (
 	`question_video_url` text,
 	`hotspot_markers` text,
 	`matching_pairs` text,
+	`flashcard_front` longtext,
+	`flashcard_back` longtext,
+	`flashcard_hint` longtext,
+	`flashcard_back_image_url` text,
 	`feedback_image_url` text,
 	`feedback_video_url` text,
 	`source_quiz_id` int,
 	`source_quiz_question_id` int,
+	`source_lesson_id` int,
+	`source_block_id` varchar(128),
+	`source_card_index` int,
 	`folder_id` int,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
@@ -3919,6 +4458,7 @@ CREATE TABLE `question_bank_folders` (
 	`description` text,
 	`color` varchar(32),
 	`sortOrder` int NOT NULL DEFAULT 0,
+	`sharedInQuizCreator` boolean NOT NULL DEFAULT false,
 	`createdBy` int NOT NULL,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
@@ -3929,14 +4469,24 @@ CREATE TABLE `question_bank_items` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`orgId` int NOT NULL,
 	`folderId` int,
-	`questionType` enum('mcq','tf','short_answer','long_answer','matching','multiple_select','image_choice','hotspot','ordering','fill_blank','numeric','rating_scale') NOT NULL DEFAULT 'mcq',
+	`questionType` enum('mcq','tf','short_answer','long_answer','matching','multiple_select','image_choice','hotspot','ordering','fill_blank','numeric','rating_scale','flashcard') NOT NULL DEFAULT 'mcq',
 	`stem` text NOT NULL,
 	`dataJson` longtext NOT NULL,
+	`flashcard_front` longtext,
+	`flashcard_back` longtext,
+	`flashcard_hint` longtext,
+	`flashcard_back_image_url` text,
 	`points` float NOT NULL DEFAULT 1,
 	`difficulty` enum('easy','medium','hard') DEFAULT 'medium',
 	`tags` text,
 	`explanation` text,
 	`createdBy` int NOT NULL,
+	`source_lesson_id` int,
+	`source_block_id` varchar(128),
+	`source_question_index` int,
+	`source_card_index` int,
+	`source_quiz_id` int,
+	`source_quiz_question_id` int,
 	`usageCount` int NOT NULL DEFAULT 0,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
@@ -3952,11 +4502,12 @@ CREATE TABLE `question_bank_tag_map` (
 --> statement-breakpoint
 CREATE TABLE `question_bank_tags` (
 	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
 	`name` varchar(100) NOT NULL,
 	`color` varchar(32) NOT NULL DEFAULT '#179ca3',
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `question_bank_tags_id` PRIMARY KEY(`id`),
-	CONSTRAINT `question_bank_tags_name_unique` UNIQUE(`name`)
+	CONSTRAINT `question_bank_tags_org_name_unique` UNIQUE(`org_id`,`name`)
 );
 --> statement-breakpoint
 CREATE TABLE `quiz_access_grants` (
@@ -4023,13 +4574,49 @@ CREATE TABLE `quiz_attempts` (
 	`source_type` enum('standalone','lesson','funnel','landing_page') DEFAULT 'standalone',
 	`source_lesson_id` int,
 	`source_funnel_page_id` int,
+	`quizId` int,
+	`packageId` int,
+	`userId` int,
+	`sessionId` int,
+	`orgId` int,
+	`attemptNumber` int,
+	`startedAt` timestamp,
+	`submittedAt` timestamp,
+	`scoreRaw` float,
+	`scorePct` float,
+	`isPassed` boolean,
+	`isCompleted` boolean,
+	`timeTakenSeconds` int,
+	`takerName` varchar(255),
+	`takerEmail` varchar(320),
+	`answersJson` longtext,
+	`shareToken` varchar(32),
+	`totalPoints` float,
 	CONSTRAINT `quiz_attempts_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `quiz_bank_folders` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`bank_id` int NOT NULL,
+	`parent_id` int,
+	`name` varchar(255) NOT NULL,
+	`description` text,
+	`color` varchar(32) DEFAULT '#24abbc',
+	`sort_order` int NOT NULL DEFAULT 0,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `quiz_bank_folders_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `quiz_bank_questions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`org_id` int NOT NULL,
 	`bank_id` int NOT NULL,
+	`folder_id` int,
+	`source_quiz_id` int,
+	`source_question_id` varchar(64),
+	`source_quiz_payload` json,
 	`question_type` enum('mc','tf','ms','hotspot','puzzle','matching','sequence','numeric','short_answer','info_slide') NOT NULL DEFAULT 'mc',
 	`question_text` text NOT NULL,
 	`question_html` text,
@@ -4044,6 +4631,8 @@ CREATE TABLE `quiz_bank_questions` (
 	`partial_credit` boolean DEFAULT false,
 	`penalty_points` int DEFAULT 0,
 	`difficulty` enum('easy','medium','hard') DEFAULT 'medium',
+	`shuffle_answer_options` boolean,
+	`lock_answer_order` boolean NOT NULL DEFAULT false,
 	`explanation_text` text,
 	`explanation_html` text,
 	`exp_media_type` enum('none','image','video') DEFAULT 'none',
@@ -4053,7 +4642,8 @@ CREATE TABLE `quiz_bank_questions` (
 	`is_archived` boolean DEFAULT false,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-	CONSTRAINT `quiz_bank_questions_id` PRIMARY KEY(`id`)
+	CONSTRAINT `quiz_bank_questions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `quiz_bank_questions_source_unique` UNIQUE(`org_id`,`bank_id`,`source_quiz_id`,`source_question_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `quiz_bank_tags` (
@@ -4163,31 +4753,63 @@ CREATE TABLE `quiz_responses` (
 	CONSTRAINT `quiz_responses_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `quizzes` (
+CREATE TABLE `quiz_widget_launches` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`org_id` int NOT NULL,
-	`title` varchar(255) NOT NULL,
+	`quiz_id` int NOT NULL,
+	`token_hash` varchar(64) NOT NULL,
+	`label` varchar(120),
+	`created_by_user_id` int NOT NULL,
+	`is_active` boolean NOT NULL DEFAULT true,
+	`expires_at` timestamp NOT NULL,
+	`revoked_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `quiz_widget_launches_id` PRIMARY KEY(`id`),
+	CONSTRAINT `quiz_widget_launches_token_hash_unique` UNIQUE(`token_hash`)
+);
+--> statement-breakpoint
+CREATE TABLE `quizzes` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orgId` int NOT NULL,
+	`packageId` int,
+	`createdBy` int,
+	`title` varchar(500) NOT NULL,
 	`description` text,
 	`cover_image_url` varchar(1024),
-	`time_limit_seconds` int,
-	`max_attempts` int,
+	`instructions` text,
+	`timeLimit` int,
+	`passingScore` float,
+	`maxAttempts` int,
 	`pass_score_percent` int NOT NULL DEFAULT 70,
+	`shuffleQuestions` boolean,
+	`shuffleAnswers` boolean,
+	`showFeedbackImmediately` boolean,
 	`randomize_questions` boolean NOT NULL DEFAULT false,
 	`randomize_answers` boolean NOT NULL DEFAULT false,
 	`feedback_mode` enum('immediate','end','never') NOT NULL DEFAULT 'end',
-	`show_correct_answers` boolean NOT NULL DEFAULT true,
+	`showCorrectAnswers` boolean NOT NULL DEFAULT true,
 	`show_explanations` boolean NOT NULL DEFAULT true,
 	`allow_partial_credit` boolean NOT NULL DEFAULT true,
 	`penalty_for_wrong` boolean NOT NULL DEFAULT false,
-	`quiz_status` enum('draft','published','archived') NOT NULL DEFAULT 'draft',
-	`visibility` enum('public','private','org_only') NOT NULL DEFAULT 'private',
+	`mock_exam_enabled` boolean NOT NULL DEFAULT false,
+	`isPublished` boolean NOT NULL DEFAULT false,
+	`visibility` enum('draft','published','hidden','private','archived') NOT NULL DEFAULT 'private',
+	`quiz_type` varchar(32) NOT NULL DEFAULT 'assessment',
 	`theme_config` json,
 	`price_amount` decimal(10,2) DEFAULT '0',
 	`currency` varchar(8) DEFAULT 'usd',
 	`stripe_product_id` varchar(255),
 	`stripe_price_id` varchar(255),
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`userId` int,
+	`shareToken` varchar(32),
+	`publishedAt` timestamp,
+	`brandPrimaryColor` varchar(32),
+	`brandBgColor` varchar(32),
+	`brandLogoUrl` text,
+	`brandFontFamily` varchar(128),
+	`completionMessage` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `quizzes_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -4340,6 +4962,88 @@ CREATE TABLE `support_tickets` (
 	CONSTRAINT `support_tickets_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `teach_game_answers` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`session_id` int NOT NULL,
+	`participant_id` int NOT NULL,
+	`question_id` int NOT NULL,
+	`selected_answer` int NOT NULL DEFAULT -1,
+	`is_correct` boolean NOT NULL DEFAULT false,
+	`points_earned` int NOT NULL DEFAULT 0,
+	`response_time_ms` int,
+	`answered_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `teach_game_answers_id` PRIMARY KEY(`id`),
+	CONSTRAINT `teach_game_answers_response_idx` UNIQUE(`session_id`,`participant_id`,`question_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `teach_game_participants` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`session_id` int NOT NULL,
+	`user_id` int,
+	`display_name` varchar(100) NOT NULL,
+	`avatar_seed` varchar(50),
+	`total_score` int NOT NULL DEFAULT 0,
+	`final_rank` int,
+	`is_active` boolean NOT NULL DEFAULT true,
+	`joined_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `teach_game_participants_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `teach_game_questions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`game_id` int NOT NULL,
+	`question` longtext NOT NULL,
+	`options` text NOT NULL,
+	`correct_answer` int NOT NULL,
+	`explanation` longtext,
+	`media_url` text,
+	`teach_game_media_type` enum('image','video','gif'),
+	`time_limit_seconds` int,
+	`points` int NOT NULL DEFAULT 100,
+	`sort_order` int NOT NULL DEFAULT 0,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `teach_game_questions_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `teach_game_sessions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`game_id` int NOT NULL,
+	`host_user_id` int NOT NULL,
+	`join_code` varchar(10) NOT NULL,
+	`teach_game_session_status` enum('lobby','active','paused','ended') NOT NULL DEFAULT 'lobby',
+	`current_question_index` int,
+	`question_started_at` timestamp,
+	`allow_anonymous` boolean NOT NULL DEFAULT true,
+	`show_leaderboard` boolean NOT NULL DEFAULT true,
+	`game_snapshot` longtext NOT NULL,
+	`participant_count` int NOT NULL DEFAULT 0,
+	`started_at` timestamp,
+	`ended_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `teach_game_sessions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `teach_game_sessions_join_code_unique` UNIQUE(`join_code`)
+);
+--> statement-breakpoint
+CREATE TABLE `teach_games` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`org_id` int NOT NULL,
+	`created_by_user_id` int NOT NULL,
+	`title` varchar(300) NOT NULL,
+	`description` text,
+	`time_limit_seconds` int NOT NULL DEFAULT 20,
+	`music_track` varchar(100),
+	`theme` varchar(50) NOT NULL DEFAULT 'org',
+	`cover_image_url` text,
+	`category` varchar(120) NOT NULL DEFAULT 'General',
+	`question_count` int NOT NULL DEFAULT 0,
+	`teach_game_status` enum('draft','published','archived') NOT NULL DEFAULT 'draft',
+	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `teach_games_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
 CREATE TABLE `teachable_integrations` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`org_id` int NOT NULL,
@@ -4414,6 +5118,13 @@ CREATE TABLE `thinkific_integrations` (
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `thinkific_integrations_id` PRIMARY KEY(`id`),
 	CONSTRAINT `thinkific_integrations_org_id_unique` UNIQUE(`org_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `user_active_org` (
+	`userId` int NOT NULL,
+	`orgId` int NOT NULL,
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `user_active_org_userId` PRIMARY KEY(`userId`)
 );
 --> statement-breakpoint
 CREATE TABLE `user_activity_logs` (
@@ -4617,6 +5328,7 @@ CREATE TABLE `webinars` (
 	`postWebinarUrl` text,
 	`postWebinarMessage` text,
 	`postWebinarDelaySeconds` int DEFAULT 0,
+	`linked_course_id` int,
 	`price` decimal(10,2) DEFAULT '0',
 	`currency` varchar(8) DEFAULT 'usd',
 	`pricing_type` enum('free','one_time','subscription') DEFAULT 'free',
@@ -4624,6 +5336,12 @@ CREATE TABLE `webinars` (
 	`stripe_product_id` varchar(255),
 	`stripe_payment_link_url` varchar(2048),
 	`isPublished` boolean DEFAULT false,
+	`purchase_terms_agreement` varchar(2048),
+	`purchase_terms_link1_label` varchar(255),
+	`purchase_terms_link1_url` varchar(1024),
+	`purchase_terms_link2_label` varchar(255),
+	`purchase_terms_link2_url` varchar(1024),
+	`enrollment_closed` boolean NOT NULL DEFAULT false,
 	`createdAt` timestamp NOT NULL DEFAULT (now()),
 	`updatedAt` timestamp DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `webinars_id` PRIMARY KEY(`id`)
@@ -4666,8 +5384,8 @@ CREATE TABLE `workshop_instances` (
 	`meeting_url` text,
 	`capacity` int,
 	`enrolled_count` int NOT NULL DEFAULT 0,
-	`price` int,
-	`compare_at_price` int,
+	`price` decimal(10,2),
+	`compare_at_price` decimal(10,2),
 	`stripe_price_id` varchar(255),
 	`enrollment_close_date` timestamp,
 	`available_for_purchase` boolean NOT NULL DEFAULT false,
@@ -4688,8 +5406,8 @@ CREATE TABLE `workshop_pricing_options` (
 	`label` varchar(255) NOT NULL,
 	`sublabel` varchar(500),
 	`pricing_type` enum('one_time','free') NOT NULL DEFAULT 'one_time',
-	`price` int NOT NULL DEFAULT 0,
-	`compare_at_price` int,
+	`price` decimal(10,2) NOT NULL DEFAULT '0',
+	`compare_at_price` decimal(10,2),
 	`stripe_price_id` varchar(255),
 	`cta_label` varchar(100),
 	`sort_order` int NOT NULL DEFAULT 0,
@@ -4778,6 +5496,12 @@ CREATE TABLE `workshops` (
 	`instructor_bio` text,
 	`instructor_image_url` varchar(1024),
 	`tags` json,
+	`purchase_terms_agreement` varchar(2048),
+	`purchase_terms_link1_label` varchar(255),
+	`purchase_terms_link1_url` varchar(1024),
+	`purchase_terms_link2_label` varchar(255),
+	`purchase_terms_link2_url` varchar(1024),
+	`enrollment_closed` boolean NOT NULL DEFAULT false,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `workshops_id` PRIMARY KEY(`id`)
@@ -4814,4 +5538,33 @@ CREATE TABLE `zapier_webhooks` (
 --> statement-breakpoint
 CREATE INDEX `analytics_package_idx` ON `analytics_events` (`packageId`);--> statement-breakpoint
 CREATE INDEX `analytics_org_idx` ON `analytics_events` (`orgId`);--> statement-breakpoint
-CREATE INDEX `analytics_event_type_idx` ON `analytics_events` (`eventType`);
+CREATE INDEX `analytics_event_type_idx` ON `analytics_events` (`eventType`);--> statement-breakpoint
+CREATE INDEX `contact_activities_org_contact_created_idx` ON `contact_activities` (`org_id`,`contact_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `contact_audit_events_org_contact_created_idx` ON `contact_audit_events` (`org_id`,`contact_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `contact_consents_org_contact_idx` ON `contact_consents` (`org_id`,`contact_id`);--> statement-breakpoint
+CREATE INDEX `contact_tag_assignments_org_contact_idx` ON `contact_tag_assignments` (`org_id`,`contact_id`);--> statement-breakpoint
+CREATE INDEX `contacts_org_lifecycle_idx` ON `contacts` (`org_id`,`lifecycle_stage`,`deleted_at`);--> statement-breakpoint
+CREATE INDEX `contacts_org_user_idx` ON `contacts` (`org_id`,`user_id`);--> statement-breakpoint
+CREATE INDEX `content_availability_org_status_idx` ON `content_availability` (`org_id`,`status`);--> statement-breakpoint
+CREATE INDEX `content_waitlist_org_product_idx` ON `content_waitlist_entries` (`org_id`,`product_type`,`product_id`);--> statement-breakpoint
+CREATE INDEX `coupon_redemptions_coupon_idx` ON `coupon_redemptions` (`orgId`,`couponId`);--> statement-breakpoint
+CREATE INDEX `email_workflow_events_org_type_idx` ON `email_workflow_events` (`org_id`,`event_type`,`created_at`);--> statement-breakpoint
+CREATE INDEX `email_workflow_executions_org_status_idx` ON `email_workflow_executions` (`org_id`,`workflow_id`,`status`,`due_at`);--> statement-breakpoint
+CREATE INDEX `email_workflow_executions_cron_task_idx` ON `email_workflow_executions` (`schedule_cron_task_uid`);--> statement-breakpoint
+CREATE INDEX `email_workflow_steps_org_workflow_idx` ON `email_workflow_steps` (`org_id`,`workflow_id`);--> statement-breakpoint
+CREATE INDEX `email_workflows_org_trigger_idx` ON `email_workflows` (`org_id`,`trigger_type`,`is_active`);--> statement-breakpoint
+CREATE INDEX `lesson_templates_org_created_idx` ON `lesson_templates` (`orgId`,`created_at`);--> statement-breakpoint
+CREATE INDEX `lms_inline_quiz_attempts_org_course_lesson_idx` ON `lms_inline_quiz_attempts` (`orgId`,`course_id`,`lesson_id`);--> statement-breakpoint
+CREATE INDEX `lms_inline_quiz_attempts_enrollment_block_idx` ON `lms_inline_quiz_attempts` (`enrollment_id`,`quiz_block_id`);--> statement-breakpoint
+CREATE INDEX `lms_inline_quiz_responses_org_attempt_idx` ON `lms_inline_quiz_responses` (`orgId`,`attempt_id`);--> statement-breakpoint
+CREATE INDEX `question_bank_lesson_flashcard_source_idx` ON `question_bank` (`org_id`,`source_lesson_id`,`source_block_id`,`source_card_index`);--> statement-breakpoint
+CREATE INDEX `question_bank_items_lesson_source_idx` ON `question_bank_items` (`orgId`,`source_lesson_id`,`source_block_id`,`source_question_index`);--> statement-breakpoint
+CREATE INDEX `question_bank_items_flashcard_source_idx` ON `question_bank_items` (`orgId`,`source_lesson_id`,`source_block_id`,`source_card_index`);--> statement-breakpoint
+CREATE INDEX `question_bank_items_quiz_source_idx` ON `question_bank_items` (`orgId`,`source_quiz_question_id`);--> statement-breakpoint
+CREATE INDEX `quiz_widget_launches_org_quiz_active_idx` ON `quiz_widget_launches` (`org_id`,`quiz_id`,`is_active`,`expires_at`);--> statement-breakpoint
+CREATE INDEX `teach_game_participants_session_score_idx` ON `teach_game_participants` (`session_id`,`total_score`);--> statement-breakpoint
+CREATE INDEX `teach_game_questions_game_sort_idx` ON `teach_game_questions` (`game_id`,`sort_order`);--> statement-breakpoint
+CREATE INDEX `teach_game_sessions_org_status_idx` ON `teach_game_sessions` (`org_id`,`teach_game_session_status`);--> statement-breakpoint
+CREATE INDEX `teach_game_sessions_game_idx` ON `teach_game_sessions` (`game_id`);--> statement-breakpoint
+CREATE INDEX `teach_games_org_updated_idx` ON `teach_games` (`org_id`,`updated_at`);--> statement-breakpoint
+CREATE INDEX `teach_games_org_status_idx` ON `teach_games` (`org_id`,`teach_game_status`);

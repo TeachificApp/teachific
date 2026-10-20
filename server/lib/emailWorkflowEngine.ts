@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   contactConsents,
@@ -87,13 +87,14 @@ export async function emitEmailWorkflowEvent(input: {
     const [created] = await db.insert(emailWorkflowEvents).values({ orgId: input.orgId, eventType: input.eventType, sourceType: input.sourceType, sourceId: input.sourceId, recipientEmail: email, recipientName: input.recipientName ?? null, recipientUserId: input.recipientUserId ?? null, payload: input.payload ?? {}, idempotencyKey: input.idempotencyKey });
     eventId = Number((created as any).insertId);
   } catch { return { accepted: false, reason: "duplicate" as const }; }
-  const workflows = await db.select().from(emailWorkflows).where(and(eq(emailWorkflows.orgId, input.orgId), eq(emailWorkflows.triggerType, input.eventType), eq(emailWorkflows.isActive, true)));
+  const workflows = await db.select().from(emailWorkflows).where(and(or(eq(emailWorkflows.orgId, input.orgId), eq(emailWorkflows.isPlatformWide, true)), eq(emailWorkflows.triggerType, input.eventType), eq(emailWorkflows.isActive, true)));
   let queued = 0;
   for (const workflow of workflows) {
     if (!workflow.managedByPlatform && !canUseEmailAutomations(subscription[0]?.plan, subscription[0]?.status)) continue;
     if (workflow.triggerResourceId && workflow.triggerResourceId !== input.sourceId) continue;
     if (!evaluateCondition(workflow, input.payload ?? {})) continue;
-    const steps = await db.select().from(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.orgId, input.orgId), eq(emailWorkflowSteps.workflowId, workflow.id), eq(emailWorkflowSteps.isActive, true))).orderBy(asc(emailWorkflowSteps.position));
+    const stepScopeOrgId = workflow.isPlatformWide ? 0 : input.orgId;
+    const steps = await db.select().from(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.orgId, stepScopeOrgId), eq(emailWorkflowSteps.workflowId, workflow.id), eq(emailWorkflowSteps.isActive, true))).orderBy(asc(emailWorkflowSteps.position));
     let cumulativeMinutes = 0;
     for (const step of steps) {
       cumulativeMinutes += Math.max(0, step.delayMinutes ?? 0);
@@ -122,8 +123,8 @@ export async function executeEmailWorkflowExecution(executionId: number) {
   const [execution] = await db.select().from(emailWorkflowExecutions).where(eq(emailWorkflowExecutions.id, executionId)).limit(1);
   if (!execution || !["pending", "scheduled"].includes(execution.status)) return { ok: true, skipped: true };
   const [workflow, step, org, subscription] = await Promise.all([
-    db.select().from(emailWorkflows).where(and(eq(emailWorkflows.id, execution.workflowId), eq(emailWorkflows.orgId, execution.orgId))).limit(1),
-    db.select().from(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.id, execution.workflowStepId), eq(emailWorkflowSteps.orgId, execution.orgId))).limit(1),
+    db.select().from(emailWorkflows).where(eq(emailWorkflows.id, execution.workflowId)).limit(1),
+    db.select().from(emailWorkflowSteps).where(eq(emailWorkflowSteps.id, execution.workflowStepId)).limit(1),
     db.select({ name: organizations.name, slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus, isActive: organizations.isActive }).from(organizations).where(eq(organizations.id, execution.orgId)).limit(1),
     db.select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status }).from(orgSubscriptions).where(eq(orgSubscriptions.orgId, execution.orgId)).limit(1),
   ]);
