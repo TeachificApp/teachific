@@ -938,6 +938,92 @@ export const emailCampaigns = mysqlTable("email_campaigns", {
 export type EmailCampaign = typeof emailCampaigns.$inferSelect;
 export type InsertEmailCampaign = typeof emailCampaigns.$inferInsert;
 
+// ─── Email Automations ───────────────────────────────────────────────────────
+// Workflows are deliberately distinct from broadcast campaigns. Every event and
+// execution carries the owning organization, so the same address in two schools
+// can never be enrolled, inspected, or messaged across a tenant boundary.
+export const emailWorkflows = mysqlTable("email_workflows", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: varchar("description", { length: 1000 }),
+  triggerType: mysqlEnum("trigger_type", ["form_submitted", "lesson_completed", "course_completed", "course_enrolled", "purchase_completed", "campaign_opened", "campaign_clicked"]).notNull(),
+  triggerResourceId: int("trigger_resource_id"),
+  conditionField: varchar("condition_field", { length: 128 }),
+  conditionOperator: mysqlEnum("condition_operator", ["equals", "not_equals", "contains", "is_set"]),
+  conditionValue: varchar("condition_value", { length: 1000 }),
+  isActive: boolean("is_active").default(false).notNull(),
+  createdByUserId: int("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  orgTriggerIndex: index("email_workflows_org_trigger_idx").on(table.orgId, table.triggerType, table.isActive),
+}));
+export type EmailWorkflow = typeof emailWorkflows.$inferSelect;
+
+export const emailWorkflowSteps = mysqlTable("email_workflow_steps", {
+  id: int("id").autoincrement().primaryKey(),
+  workflowId: int("workflow_id").notNull(),
+  orgId: int("org_id").notNull(),
+  position: int("position").notNull(),
+  delayMinutes: int("delay_minutes").default(0).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  htmlBody: longtext("html_body").notNull(),
+  previewText: varchar("preview_text", { length: 300 }),
+  senderProfileId: int("sender_profile_id"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  workflowPositionUnique: uniqueIndex("email_workflow_steps_workflow_position_unique").on(table.workflowId, table.position),
+  orgWorkflowIndex: index("email_workflow_steps_org_workflow_idx").on(table.orgId, table.workflowId),
+}));
+export type EmailWorkflowStep = typeof emailWorkflowSteps.$inferSelect;
+
+export const emailWorkflowEvents = mysqlTable("email_workflow_events", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  sourceType: varchar("source_type", { length: 64 }).notNull(),
+  sourceId: int("source_id").notNull(),
+  recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
+  recipientName: varchar("recipient_name", { length: 255 }),
+  recipientUserId: int("recipient_user_id"),
+  payload: json("payload"),
+  idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull(),
+  occurredAt: timestamp("occurred_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  orgEventKeyUnique: uniqueIndex("email_workflow_events_org_key_unique").on(table.orgId, table.idempotencyKey),
+  orgEventIndex: index("email_workflow_events_org_type_idx").on(table.orgId, table.eventType, table.createdAt),
+}));
+export type EmailWorkflowEvent = typeof emailWorkflowEvents.$inferSelect;
+
+export const emailWorkflowExecutions = mysqlTable("email_workflow_executions", {
+  id: int("id").autoincrement().primaryKey(),
+  orgId: int("org_id").notNull(),
+  workflowId: int("workflow_id").notNull(),
+  workflowStepId: int("workflow_step_id").notNull(),
+  eventId: int("event_id").notNull(),
+  recipientEmail: varchar("recipient_email", { length: 320 }).notNull(),
+  recipientName: varchar("recipient_name", { length: 255 }),
+  recipientUserId: int("recipient_user_id"),
+  status: mysqlEnum("status", ["pending", "scheduled", "sending", "sent", "skipped", "failed", "cancelled"]).default("pending").notNull(),
+  dueAt: timestamp("due_at").notNull(),
+  scheduleCronTaskUid: varchar("schedule_cron_task_uid", { length: 65 }),
+  attempts: int("attempts").default(0).notNull(),
+  errorMessage: text("error_message"),
+  sentAt: timestamp("sent_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  eventStepUnique: uniqueIndex("email_workflow_executions_event_step_unique").on(table.eventId, table.workflowStepId),
+  orgWorkflowStatusIndex: index("email_workflow_executions_org_status_idx").on(table.orgId, table.workflowId, table.status, table.dueAt),
+  cronTaskIndex: index("email_workflow_executions_cron_task_idx").on(table.scheduleCronTaskUid),
+}));
+export type EmailWorkflowExecution = typeof emailWorkflowExecutions.$inferSelect;
+
 // ─── Email Marketing: Campaign Recipients ─────────────────────────────────────
 export const emailCampaignRecipients = mysqlTable("email_campaign_recipients", {
   id: int("id").autoincrement().primaryKey(),

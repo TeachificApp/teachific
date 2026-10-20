@@ -25,6 +25,7 @@ import { users, emailCampaignRecipients, emailUnsubscribes } from "../../drizzle
 import { eq, and, isNull } from "drizzle-orm";
 import { addToSendGridGlobalUnsubscribes } from "../lib/sendgridSuppressions";
 import { processCampaignUnsubscribe } from "../lib/campaignUnsubscribe";
+import { processEmailWorkflowUnsubscribe } from "../lib/emailWorkflowUnsubscribe";
 import { decryptOrgKey } from "../sendgrid";
 import { organizations, orgMembers } from "../../drizzle/schema";
 
@@ -185,6 +186,14 @@ export function registerEmailTrackingRoutes(app: Express): void {
 
   app.get("/api/email/campaign-unsubscribe", handleCampaignUnsubscribe);
   app.post("/api/email/campaign-unsubscribe", handleCampaignUnsubscribe);
+
+  app.get("/api/email/workflow-unsubscribe", async (req, res) => {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    const result = token ? await processEmailWorkflowUnsubscribe(token) : { ok: false };
+    const params = new URLSearchParams({ status: result.ok ? "success" : "invalid" });
+    if (result.ok && result.email) params.set("email", result.email);
+    return res.redirect(302, `/unsubscribe?${params.toString()}`);
+  });
 
   // ── One-click unsubscribe (RFC 8058 + email client GET) ─────────────────────
   app.get("/api/unsubscribe", async (req, res) => {

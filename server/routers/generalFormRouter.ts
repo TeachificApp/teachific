@@ -91,6 +91,7 @@ import {
   fireConfiguredFormActions,
   sendFormNotifyEmail,
 } from "../lib/generalFormActions";
+import { emitEmailWorkflowEvent } from "../lib/emailWorkflowEngine";
 import { createFormStripeCheckout } from "../lib/formStripeCheckout";
 import { applyAccessGrantActions } from "../lib/formAccessGrant";
 
@@ -2236,6 +2237,25 @@ ${pageText}`;
           }
         } catch (e: any) {
           console.error('[EmailList] Form subscription failed for form', input.templateId, e.message);
+        }
+      })();
+      ;(async () => {
+        try {
+          const parsedResponses: Record<string, unknown> = JSON.parse(sanitizedResponses);
+          const submitter = extractSubmitterInfo(parsedResponses);
+          await emitEmailWorkflowEvent({
+            orgId: template.orgId,
+            eventType: "form_submitted",
+            sourceType: "general_form_submission",
+            sourceId: input.templateId,
+            idempotencyKey: `general-form-submission:${submissionId}`,
+            recipientEmail: input.email ?? submitter.email,
+            recipientName: submitter.name,
+            recipientUserId: input.userId ?? null,
+            payload: { responses: parsedResponses, score, maxScore },
+          });
+        } catch (e: any) {
+          console.error("[EmailWorkflow] Form submission event failed", e.message);
         }
       })();
       // Fire-and-forget Webhook delivery (non-blocking)

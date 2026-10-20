@@ -27,6 +27,7 @@ import reconstructMathRouter from "../reconstructMathRoute";
 import uploadCourseImageRouter from "../uploadCourseImageRoute";
 import uploadAiGenerationSourceRouter from "../routes/uploadAiGenerationSource";
 import { handleScheduledEmailCampaignSend } from "../routers/emailCampaignRouter";
+import { handleScheduledEmailWorkflowSend } from "../lib/emailWorkflowEngine";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -202,6 +203,7 @@ async function startServer() {
 
   // Scheduled email campaign delivery. The platform scheduler posts here; do not use in-process timers.
   app.post("/api/scheduled/send-email-campaign", handleScheduledEmailCampaignSend);
+  app.post("/api/scheduled/send-email-workflow", handleScheduledEmailWorkflowSend);
 
   // Rich-text HTML processing — uploads embedded base64 images to S3
   app.use("/api/process-rich-text-html", processRichTextHtmlRouter);

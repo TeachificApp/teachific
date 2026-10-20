@@ -162,6 +162,7 @@ import { printifyAdminRouter } from "./routers/printifyRouter";
 import { bookvaultAdminRouter } from "./routers/bookvaultAdminRouter";
 import { analyticsTrackRouter, analyticsAdminRouter } from "./routers/analyticsRouter";
 import { emailCampaignRouter } from "./routers/emailCampaignRouter";
+import { emailWorkflowRouter } from "./routers/emailWorkflowRouter";
 import { formBuilderRouter } from "./routers/formBuilderRouter";
 import { sitePagesAdminRouter, sitePagesPublicRouter } from "./routers/sitePagesRouter";
 import { siteSettingsRouter } from "./routers/siteSettingsRouter";
@@ -305,6 +306,7 @@ export const appRouter = router({
   contentAvailability: contentAvailabilityRouter,
   teachGames: teachGamesRouter,
   socialContent: socialContentRouter,
+  emailWorkflow: emailWorkflowRouter,
   productAnalytics: router({
     getProductPurchasers: protectedProcedure
       .input(z.object({ productId: z.number(), productType: z.string(), page: z.number().optional(), pageSize: z.number().optional(), search: z.string().optional() }))
