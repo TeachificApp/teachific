@@ -945,6 +945,9 @@ export type InsertEmailCampaign = typeof emailCampaigns.$inferInsert;
 export const emailWorkflows = mysqlTable("email_workflows", {
   id: int("id").autoincrement().primaryKey(),
   orgId: int("org_id").notNull(),
+  // Only site_owner/site_admin may create or administer platform-managed workflows.
+  // The target organization remains explicit for every recipient and execution.
+  managedByPlatform: boolean("managed_by_platform").default(false).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: varchar("description", { length: 1000 }),
   triggerType: mysqlEnum("trigger_type", ["form_submitted", "lesson_completed", "course_completed", "course_enrolled", "purchase_completed", "campaign_opened", "campaign_clicked"]).notNull(),

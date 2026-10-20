@@ -79,7 +79,7 @@ export async function emitEmailWorkflowEvent(input: {
     db.select({ isActive: organizations.isActive }).from(organizations).where(eq(organizations.id, input.orgId)).limit(1),
     db.select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status }).from(orgSubscriptions).where(eq(orgSubscriptions.orgId, input.orgId)).limit(1),
   ]);
-  if (!org[0]?.isActive || !canUseEmailAutomations(subscription[0]?.plan, subscription[0]?.status)) return { accepted: false, reason: "not_entitled" as const };
+  if (!org[0]?.isActive) return { accepted: false, reason: "not_entitled" as const };
   const [existing] = await db.select({ id: emailWorkflowEvents.id }).from(emailWorkflowEvents).where(and(eq(emailWorkflowEvents.orgId, input.orgId), eq(emailWorkflowEvents.idempotencyKey, input.idempotencyKey))).limit(1);
   if (existing) return { accepted: false, reason: "duplicate" as const };
   let eventId: number;
@@ -90,6 +90,7 @@ export async function emitEmailWorkflowEvent(input: {
   const workflows = await db.select().from(emailWorkflows).where(and(eq(emailWorkflows.orgId, input.orgId), eq(emailWorkflows.triggerType, input.eventType), eq(emailWorkflows.isActive, true)));
   let queued = 0;
   for (const workflow of workflows) {
+    if (!workflow.managedByPlatform && !canUseEmailAutomations(subscription[0]?.plan, subscription[0]?.status)) continue;
     if (workflow.triggerResourceId && workflow.triggerResourceId !== input.sourceId) continue;
     if (!evaluateCondition(workflow, input.payload ?? {})) continue;
     const steps = await db.select().from(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.orgId, input.orgId), eq(emailWorkflowSteps.workflowId, workflow.id), eq(emailWorkflowSteps.isActive, true))).orderBy(asc(emailWorkflowSteps.position));
@@ -126,7 +127,7 @@ export async function executeEmailWorkflowExecution(executionId: number) {
     db.select({ name: organizations.name, slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus, isActive: organizations.isActive }).from(organizations).where(eq(organizations.id, execution.orgId)).limit(1),
     db.select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status }).from(orgSubscriptions).where(eq(orgSubscriptions.orgId, execution.orgId)).limit(1),
   ]);
-  if (!workflow[0]?.isActive || !step[0]?.isActive || !org[0]?.isActive || !canUseEmailAutomations(subscription[0]?.plan, subscription[0]?.status)) {
+  if (!workflow[0]?.isActive || !step[0]?.isActive || !org[0]?.isActive || (!workflow[0]?.managedByPlatform && !canUseEmailAutomations(subscription[0]?.plan, subscription[0]?.status))) {
     await db.update(emailWorkflowExecutions).set({ status: "cancelled", completedAt: new Date(), errorMessage: "Workflow, organization, or subscription is inactive." }).where(eq(emailWorkflowExecutions.id, executionId));
     return { ok: true, skipped: true };
   }

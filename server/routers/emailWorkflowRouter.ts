@@ -38,7 +38,7 @@ export const emailWorkflowRouter = router({
   }),
   listWorkflows: protectedProcedure.query(async ({ ctx }) => {
     const orgId = await requireWorkflowOrg(ctx.user); const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const workflows = await db.select().from(emailWorkflows).where(eq(emailWorkflows.orgId, orgId)).orderBy(asc(emailWorkflows.name));
+    const workflows = await db.select().from(emailWorkflows).where(and(eq(emailWorkflows.orgId, orgId), eq(emailWorkflows.managedByPlatform, false))).orderBy(asc(emailWorkflows.name));
     return Promise.all(workflows.map(async (workflow) => ({ ...workflow, steps: await db.select().from(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.orgId, orgId), eq(emailWorkflowSteps.workflowId, workflow.id))).orderBy(asc(emailWorkflowSteps.position)) })));
   }),
   listExecutions: protectedProcedure.input(z.object({ workflowId: z.number().int().positive(), limit: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
@@ -51,7 +51,7 @@ export const emailWorkflowRouter = router({
     const orgId = await requireWorkflowOrg(ctx.user); const db = await assertEmailAutomationEntitlement(orgId);
     await validateWorkflowResources(db, orgId, input.triggerType, input.triggerResourceId, input.steps);
     if (input.id) {
-      const [existing] = await db.select({ id: emailWorkflows.id }).from(emailWorkflows).where(and(eq(emailWorkflows.id, input.id), eq(emailWorkflows.orgId, orgId))).limit(1);
+      const [existing] = await db.select({ id: emailWorkflows.id }).from(emailWorkflows).where(and(eq(emailWorkflows.id, input.id), eq(emailWorkflows.orgId, orgId), eq(emailWorkflows.managedByPlatform, false))).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow not found in the active organization." });
       await db.update(emailWorkflows).set({ name: input.name, description: input.description ?? null, triggerType: input.triggerType, triggerResourceId: input.triggerResourceId ?? null, conditionField: input.conditionField ?? null, conditionOperator: input.conditionOperator ?? null, conditionValue: input.conditionValue ?? null, isActive: input.isActive }).where(and(eq(emailWorkflows.id, input.id), eq(emailWorkflows.orgId, orgId)));
       await db.delete(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.workflowId, input.id), eq(emailWorkflowSteps.orgId, orgId)));
