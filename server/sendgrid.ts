@@ -1,4 +1,4 @@
-import sgMail from "@sendgrid/mail";
+import sgMail, { MailService } from "@sendgrid/mail";
 import { createCipheriv, createDecipheriv, scryptSync, randomBytes } from "crypto";
 
 const PLATFORM_SENDGRID_KEY = process.env.SENDGRID_API_KEY ?? "";
@@ -44,13 +44,14 @@ export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
     console.warn("[SendGrid] No API key configured — email not sent:", opts.subject);
     return false;
   }
-  // When using a custom per-org key, set it on the global instance temporarily
-  // (sgMail is stateless per-call once key is set)
-  if (opts.apiKey) {
-    sgMail.setApiKey(opts.apiKey);
-  }
+  // Never mutate the shared platform client for a tenant-specific send. Email
+  // delivery can run concurrently in webhook and scheduled-workflow handlers;
+  // a per-send client keeps one organization’s API key from crossing into
+  // another organization’s delivery request.
+  const mailer = opts.apiKey ? new MailService() : sgMail;
+  if (opts.apiKey) mailer.setApiKey(apiKey);
   try {
-    await sgMail.send({
+    await mailer.send({
       to: opts.to,
       from: {
         email: opts.fromEmail ?? FROM_EMAIL,
@@ -70,11 +71,6 @@ export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {
   } catch (err: any) {
     console.error("[SendGrid] Send failed:", err?.response?.body ?? err);
     return false;
-  } finally {
-    // Restore platform key after per-org send
-    if (opts.apiKey && PLATFORM_SENDGRID_KEY) {
-      sgMail.setApiKey(PLATFORM_SENDGRID_KEY);
-    }
   }
 }
 

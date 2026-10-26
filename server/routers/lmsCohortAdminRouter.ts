@@ -78,7 +78,7 @@ import {
   lmsCohortStaff,
   orgThemes,
 } from "../../drizzle/schema";
-import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
+import { sendEmailViaOrg } from "../_core/email";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { activeEnrollmentCondition } from "../lib/enrollmentAccess";
 import { cohortAdminContentWhere } from "../lib/cohortGroupScope";
@@ -268,10 +268,10 @@ export const lmsCohortAdminRouter = router({
           const sessionDateStr = new Date(input.sessionDate).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short", timeZone: "America/New_York" });
           for (const u of enrolledUsers) {
             if (!u.email) continue;
-            await sendEmail({
-              to: u.email,
+            await sendEmailViaOrg({
+              to: { name: u.name ?? u.email, email: u.email },
               subject: `New Live Session: ${input.title} — ${course?.title ?? "Your Course"}`,
-              html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+              htmlBody: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
                 <h2 style="color:#0e4a50;">New Live Session Added</h2>
                 <p>Hi ${u.name ?? "there"},</p>
                 <p>A new live session has been scheduled for <strong>${course?.title ?? "your cohort course"}</strong>:</p>
@@ -285,7 +285,7 @@ export const lmsCohortAdminRouter = router({
                 ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:${emailBranding?.accentColor ?? "#0d9488"};color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>` : ""}
                 <p style="color:#94a3b8;font-size:12px;">${org?.name ?? "Your learning organization"}</p>
               </div>`,
-            });
+            }, course?.orgId);
           }
         } catch (e) {
           console.error("[cohortSession] Failed to send student notifications:", e);
@@ -402,10 +402,10 @@ export const lmsCohortAdminRouter = router({
           const dueDateStr = input.dueDate ? new Date(input.dueDate).toLocaleDateString("en-US", { dateStyle: "full", timeZone: "America/New_York" }) : "No due date";
           for (const u of enrolledUsers) {
             if (!u.email) continue;
-            await sendEmail({
-              to: u.email,
+            await sendEmailViaOrg({
+              to: { name: u.name ?? u.email, email: u.email },
               subject: `New Assignment: ${input.title} — ${course?.title ?? "Your Course"}`,
-              html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+              htmlBody: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
                 <h2 style="color:#0e4a50;">New Assignment Posted</h2>
                 <p>Hi ${u.name ?? "there"},</p>
                 <p>A new assignment has been posted for <strong>${course?.title ?? "your cohort course"}</strong>:</p>
@@ -419,7 +419,7 @@ export const lmsCohortAdminRouter = router({
                 ${learnerUrl ? `<p><a href="${learnerUrl}" style="display:inline-block;padding:10px 20px;background:${emailBranding?.accentColor ?? "#0d9488"};color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>` : ""}
                 <p style="color:#94a3b8;font-size:12px;">${org?.name ?? "Your learning organization"}</p>
               </div>`,
-            });
+            }, course?.orgId);
           }
         } catch (e) {
           console.error("[cohortAssignment] Failed to send student notifications:", e);

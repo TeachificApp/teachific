@@ -97,7 +97,7 @@ import {
   lmsInlineQuizAttempts,
   lmsInlineQuizResponses,
 } from "../../drizzle/schema";
-import { sendEmail, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
+import { sendEmailViaOrg, buildFreePreviewConfirmationEmail, emailWrapper } from "../_core/email";
 import { notifyOwner } from "../_core/notification";
 import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripePaymentLinks";
 import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
@@ -636,12 +636,12 @@ export const lmsPublicRouter = router({
           previewUrl,
           accessExpiresAt,
         });
-        await sendEmail({
+        await sendEmailViaOrg({
           to: { name: input.firstName + (input.lastName ? ` ${input.lastName}` : ""), email: input.email.toLowerCase() },
           subject: emailData.subject,
           htmlBody: emailData.htmlBody,
           previewText: emailData.previewText,
-        });
+        }, course.orgId);
       } catch (emailErr) {
         // Non-fatal — log but don't fail the registration
         console.error("[FreePreview] Failed to send confirmation email:", emailErr);
@@ -2890,7 +2890,7 @@ export const lmsLearnerRouter = router({
       (async () => {
         try {
           // Get course + group name for notification context
-          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug })
+          const [course] = await db.select({ title: lmsCourses.title, slug: lmsCourses.slug, orgId: lmsCourses.orgId })
             .from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
           const [group] = await db.select({ name: lmsCohortGroups.name })
             .from(lmsCohortGroups).where(eq(lmsCohortGroups.id, groupEnrollment.cohortGroupId)).limit(1);
@@ -2903,10 +2903,9 @@ export const lmsLearnerRouter = router({
           // Resolve org base URL for org-scoped discussion link
           let discussionOrgBase: string | null = null;
           try {
-            const [courseOrg] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, input.courseId)).limit(1);
-            if (courseOrg?.orgId) {
+            if (course?.orgId) {
               const [orgInfo] = await db.select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
-                .from(organizations).where(eq(organizations.id, courseOrg.orgId)).limit(1);
+                .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);
               if (orgInfo?.slug) discussionOrgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
             }
           } catch { /* Skip notifications when the owning organization domain cannot be resolved. */ }
@@ -2947,11 +2946,11 @@ export const lmsLearnerRouter = router({
           // Send emails
           for (const r of recipients) {
             if (r.email) {
-              await sendEmail({
-                to: r.email,
+              await sendEmailViaOrg({
+                to: { name: r.displayName || r.name || r.email, email: r.email },
                 subject: `New discussion post in ${courseName}`,
-                html: emailHtml,
-              }).catch(() => {});
+                htmlBody: emailHtml,
+              }, course?.orgId).catch(() => {});
             }
           }
           // Platform notification to owner

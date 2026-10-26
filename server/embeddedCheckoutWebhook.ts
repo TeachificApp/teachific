@@ -19,7 +19,7 @@ import { getStripe } from "./stripePlans";
 import { getDb, getUserByEmail, upsertUser } from "./db";
 import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions, digitalBundlePurchases, digitalBundleItems, digitalPurchases, orgMembers, users, organizations } from "../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { sendEmail, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
+import { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 
@@ -347,12 +347,12 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
           });
         for (const admin of adminMembers) {
           if (admin.email) {
-            await sendEmail({
+            await sendEmailViaOrg({
               to: { name: admin.name ?? admin.email, email: admin.email },
               subject: adminSubject,
               htmlBody: adminHtml,
               previewText: adminPreview,
-            }).catch(() => {});
+            }, purchase.orgId).catch(() => {});
           }
         }
         console.log(`[Embedded Checkout Webhook] Notified ${adminMembers.length} org admin(s) of purchase`);

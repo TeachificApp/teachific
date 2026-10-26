@@ -10,7 +10,7 @@ import { getStripe, PLAN_LIMITS, type PlanTier } from "./stripePlans";
 import { upsertOrgSubscription, createEnrollment, getEnrollment } from "./lmsDb";
 import { getUserByEmail, getOrCreateUserByEmail, getDb } from "./db";
 import { sendEmail } from "./sendgrid";
-import { buildOrgAdminNewPurchaseEmail, sendEmail as sendEmailCore, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
+import { buildOrgAdminNewPurchaseEmail, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { courseEnrollmentHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
 import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments, coupons, couponRedemptions, physicalProducts, physicalProductOrders } from "../drizzle/schema";
@@ -251,12 +251,12 @@ async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
     });
     for (const admin of adminMembers) {
       if (admin.email) {
-        await sendEmailCore({
+        await sendEmailViaOrg({
           to: { name: admin.name ?? admin.email, email: admin.email },
           subject,
           htmlBody,
           previewText,
-        }).catch(() => {});
+        }, orgId).catch(() => {});
       }
     }
     console.log(`[Stripe Webhook] Notified ${adminMembers.length} org admin(s) of purchase for org ${orgId}`);
