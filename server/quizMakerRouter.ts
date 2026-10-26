@@ -9,7 +9,8 @@ import { fetchPublicSourceText } from "./lib/publicSourceUrl";
 import { canUseMockExamSubscription } from "./lib/mockExamEntitlement";
 import { validateImageLabelingQuestions } from "./lib/imageLabelingQuestion";
 import { validateImageComparisonQuestions } from "./lib/imageComparisonQuestion";
-import { getOrgBaseUrl } from "./lib/orgUrl";
+import { getOrgBaseUrl, getOrgQuizUrl } from "./lib/orgUrl";
+import { assertPublicQuizDeliveryHost } from "./lib/publicQuizDeliveryScope";
 import { scorePublicQuizAttempt } from "../shared/quizScoring";
 import { validateQuizQuestionDependencies } from "../shared/quizQuestionDependency";
 import {
@@ -46,6 +47,29 @@ async function getMockExamAvailability(
 
 async function resolveQuizMakerOrg(ctx: QuizMakerContext) {
   return requireOrgAdmin(ctx.user.id, ctx.user.role);
+}
+
+/** Resolve the active organization that owns a public QuizMaker delivery. */
+async function getPublicQuizOrganization(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  orgId: number | null | undefined,
+) {
+  if (!orgId || orgId < 1) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found or not published" });
+  }
+  const [organization] = await db.select({
+    id: organizations.id,
+    slug: organizations.slug,
+    customDomain: organizations.customDomain,
+    domainVerificationStatus: organizations.domainVerificationStatus,
+  }).from(organizations).where(and(
+    eq(organizations.id, orgId),
+    eq(organizations.isActive, true),
+  )).limit(1);
+  if (!organization) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found or not published" });
+  }
+  return organization;
 }
 
 async function requireMockExamPlan(ctx: QuizMakerContext, quizOrgId: number) {
@@ -940,38 +964,26 @@ export const quizMakerRouter = router({
         token = generateShareToken();
       }
 
-      // Use the quiz's authorised organization for its learner-facing subdomain.
-      let orgSlug: string | null = null;
-      if (quiz.orgId) {
-        const [org] = await db
-          .select({ slug: organizations.slug })
-          .from(organizations)
-          .where(eq(organizations.id, quiz.orgId));
-        if (org) {
-          orgSlug = org.slug;
-          // Store the orgId on the quiz so it's associated with the subdomain
-          await db.update(quizzes).set({
-            isPublished: true,
-            shareToken: token,
-            publishedAt: new Date(),
-            orgId: quiz.orgId,
-          }).where(eq(quizzes.id, input.quizId));
-        } else {
-          await db.update(quizzes).set({
-            isPublished: true,
-            shareToken: token,
-            publishedAt: new Date(),
-          }).where(eq(quizzes.id, input.quizId));
-        }
-      } else {
-        await db.update(quizzes).set({
-          isPublished: true,
-          shareToken: token,
-          publishedAt: new Date(),
-        }).where(eq(quizzes.id, input.quizId));
-      }
+      // Generated learner URLs must always use the active organization that owns
+      // the quiz. Publishing cannot fall back to a platform-wide share link.
+      const organization = await getPublicQuizOrganization(db, quiz.orgId);
+      await db.update(quizzes).set({
+        isPublished: true,
+        shareToken: token,
+        publishedAt: new Date(),
+        orgId: quiz.orgId,
+      }).where(eq(quizzes.id, input.quizId));
 
-      return { shareToken: token, orgSlug };
+      return {
+        shareToken: token,
+        orgSlug: organization.slug,
+        shareUrl: getOrgQuizUrl(
+          organization.slug,
+          token,
+          organization.customDomain,
+          organization.domainVerificationStatus,
+        ),
+      };
     }),
 
   /** Unpublish a quiz (keep the share token for re-publishing) */
@@ -1113,7 +1125,7 @@ export const quizMakerRouter = router({
   /** Get a published quiz by share token (public, no auth required) */
   getPublishedQuiz: publicProcedure
     .input(z.object({ shareToken: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const [quiz] = await db
         .select()
@@ -1122,6 +1134,8 @@ export const quizMakerRouter = router({
        if (!quiz) throw new Error("Quiz not found or not published");
       // A share credential does not override private, draft, or archived visibility.
       if (!isPublicQuizDeliveryVisible(quiz)) throw new Error("Quiz not found or not published");
+      const organization = await getPublicQuizOrganization(db, quiz.orgId);
+      assertPublicQuizDeliveryHost(ctx.req, organization);
       // Parse questions from the instructions JSON field
       const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
       const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
@@ -1189,6 +1203,10 @@ export const quizMakerRouter = router({
       if (!quiz) throw new Error("Quiz not found or not published");
       // A share credential does not override private, draft, or archived visibility.
       if (!isPublicQuizDeliveryVisible(quiz)) throw new Error("Quiz not found or not published");
+      if (!input.widgetToken) {
+        const organization = await getPublicQuizOrganization(db, quiz.orgId);
+        assertPublicQuizDeliveryHost(ctx.req, organization);
+      }
       const maxAttempts = Number(quiz.maxAttempts ?? 0);
       const normalizedTakerEmail = input.takerEmail?.trim().toLowerCase();
       if (maxAttempts > 0) {
@@ -1442,12 +1460,22 @@ export const quizMakerRouter = router({
           brandFontFamily: quizzes.brandFontFamily,
           completionMessage: quizzes.completionMessage,
           visibility: quizzes.visibility,
+          orgId: quizzes.orgId,
         })
         .from(quizzes)
         .where(and(eq(quizzes.shareToken, input.shareToken!), eq(quizzes.isPublished, true)));
       const quiz = widgetQuiz ?? shareQuiz;
       if (!quiz) return null;
       if (!widgetQuiz && !isPublicQuizDeliveryVisible(quiz)) return null;
+      if (!widgetQuiz) {
+        try {
+          const organization = await getPublicQuizOrganization(db, shareQuiz?.orgId);
+          assertPublicQuizDeliveryHost(ctx.req, organization);
+        } catch (error) {
+          if (error instanceof TRPCError && error.code === "NOT_FOUND") return null;
+          throw error;
+        }
+      }
       return {
         brandPrimaryColor: quiz.brandPrimaryColor,
         brandBgColor: quiz.brandBgColor,
@@ -1759,22 +1787,21 @@ export const quizMakerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
-
-      // Look up org slug for share URL generation
-      let orgSlug: string | null = null;
-      if (quiz.orgId && quiz.orgId > 0) {
-        const [org] = await db
-          .select({ slug: organizations.slug })
-          .from(organizations)
-          .where(eq(organizations.id, quiz.orgId));
-        if (org) orgSlug = org.slug;
-      }
+      const organization = await getPublicQuizOrganization(db, quiz.orgId);
 
       return {
         isPublished: quiz.isPublished,
         shareToken: quiz.shareToken,
         publishedAt: quiz.publishedAt,
-        orgSlug,
+        orgSlug: organization.slug,
+        shareUrl: quiz.shareToken
+          ? getOrgQuizUrl(
+            organization.slug,
+            quiz.shareToken,
+            organization.customDomain,
+            organization.domainVerificationStatus,
+          )
+          : null,
       };
     }),
 });

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { X, Copy, Check, Globe, GlobeLock, Code, Link2, ExternalLink, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useQuizStore } from "../store/quizStore";
-import { getOrgSubdomainUrl } from "@/hooks/useSubdomain";
 
 interface Props {
   open: boolean;
@@ -37,18 +36,11 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
   const isPublished = publishStatus?.isPublished ?? false;
   const shareToken = publishStatus?.shareToken ?? null;
   const orgSlug = publishStatus?.orgSlug ?? null;
-
-  // Build the share URL using the org's subdomain
-  const buildShareUrl = (token: string, slug: string | null) => {
-    if (slug) {
-      return getOrgSubdomainUrl(slug, `/quiz/${token}`);
-    }
-    // Fallback: use current origin (for dev/preview environments)
-    return `${window.location.origin}/quiz/${token}`;
-  };
-
-  const shareUrl = shareToken ? buildShareUrl(shareToken, orgSlug) : "";
-  const embedCode = shareToken
+  // The server resolves this URL from the quiz's active owning organization,
+  // including a verified custom learner domain when one is configured.
+  const shareUrl = publishStatus?.shareUrl ?? "";
+  const hasShareUrl = Boolean(shareToken && shareUrl);
+  const embedCode = hasShareUrl
     ? `<iframe src="${shareUrl}" width="100%" height="600" frameborder="0" style="border:none;border-radius:12px;" allow="fullscreen"></iframe>`
     : "";
 
@@ -187,31 +179,33 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                   <input
                     type="text"
                     readOnly
-                    value={shareUrl}
+                    value={shareUrl || "Share link unavailable"}
                     className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 font-mono"
                   />
                   <button
                     onClick={() => copyToClipboard(shareUrl, "link")}
-                    className="shrink-0 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+                    disabled={!hasShareUrl}
+                    className="shrink-0 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     title="Copy link"
                   >
                     {copied === "link" ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-500" />}
                   </button>
-                  <a
-                    href={shareUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-                    title="Open in new tab"
-                  >
-                    <ExternalLink className="w-4 h-4 text-gray-500" />
-                  </a>
+                  {hasShareUrl && <a
+                      href={shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+                      title="Open in new tab"
+                    >
+                      <ExternalLink className="w-4 h-4 text-gray-500" />
+                    </a>}
                 </div>
                 {orgSlug && (
                   <p className="text-xs text-gray-400">
-                    Quiz will be served on your school's subdomain: <span className="font-mono text-teal-600">{orgSlug}.course360.app</span>
+                    This quiz is served from its organization’s learner domain.
                   </p>
                 )}
+                {!hasShareUrl && <p className="text-xs text-amber-700">This quiz needs an active owning organization before Course360 can issue a learner-safe share link.</p>}
               </div>
 
               {/* Embed Code */}
@@ -222,13 +216,14 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                 <div className="relative">
                   <textarea
                     readOnly
-                    value={embedCode}
+                    value={embedCode || "A learner-safe embed code will be available after Course360 resolves this quiz's owning organization."}
                     rows={3}
                     className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 font-mono resize-none"
                   />
                   <button
                     onClick={() => copyToClipboard(embedCode, "embed")}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                    disabled={!hasShareUrl}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                     title="Copy embed code"
                   >
                     {copied === "embed" ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5 text-gray-500" />}

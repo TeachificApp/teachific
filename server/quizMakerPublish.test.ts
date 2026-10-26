@@ -97,6 +97,10 @@ describe("quizMaker publish procedures", () => {
       id: 1,
       userId: 1,
       orgId: 1,
+      slug: "northwind",
+      isActive: true,
+      customDomain: null,
+      domainVerificationStatus: null,
       createdBy: 1,
       title: "Test Quiz",
       description: "A test",
@@ -128,6 +132,7 @@ describe("quizMaker publish procedures", () => {
       expect(result).toHaveProperty("shareToken");
       expect(typeof result.shareToken).toBe("string");
       expect(result.shareToken.length).toBe(16);
+      expect(result.shareUrl).toBe(`https://northwind.course360.app/quiz/${result.shareToken}`);
     });
 
     it("sets isPublished to true on the quiz", async () => {
@@ -188,6 +193,17 @@ describe("quizMaker publish procedures", () => {
       expect(result).toHaveProperty("passingScore", 70);
       expect(result).toHaveProperty("shuffleQuestions", false);
       expect(result).toHaveProperty("showCorrectAnswers", true);
+    });
+
+    it("does not deliver a published quiz through another organization's learner domain", async () => {
+      const ctx = createAnonContext();
+      ctx.req = { hostname: "other-school.course360.app", headers: {} } as TrpcContext["req"];
+      const caller = appRouter.createCaller(ctx);
+      quizzesStore[0].isPublished = true;
+      quizzesStore[0].shareToken = "testtoken12345678";
+
+      await expect(caller.quizMaker.getPublishedQuiz({ shareToken: "testtoken12345678" }))
+        .rejects.toThrow("Quiz not found or not published");
     });
 
     it("rejects empty shareToken", async () => {

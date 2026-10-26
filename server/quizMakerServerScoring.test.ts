@@ -6,6 +6,10 @@ const fixture = vi.hoisted(() => ({
   quiz: {
     id: 44,
     orgId: 9,
+    slug: "northwind",
+    isActive: true,
+    customDomain: null,
+    domainVerificationStatus: null,
     shareToken: "published-quiz-token",
     isPublished: true,
     visibility: "published",
@@ -32,9 +36,15 @@ vi.mock("./db", () => ({
   getDb: async () => ({
     select: (selection?: Record<string, unknown>) => ({
       from: () => ({
-        where: async () => Object.prototype.hasOwnProperty.call(selection ?? {}, "count")
-          ? [{ count: fixture.completedAttempts }]
-          : [fixture.quiz],
+        where: () => {
+          const rows = Object.prototype.hasOwnProperty.call(selection ?? {}, "count")
+            ? [{ count: fixture.completedAttempts }]
+            : [fixture.quiz];
+          return {
+            limit: async () => rows,
+            then: (resolve: (value: typeof rows) => unknown) => resolve(rows),
+          };
+        },
       }),
     }),
     insert: () => ({

@@ -46,6 +46,16 @@ export function getOrgCoursePlayerUrl(
   return `${getOrgBaseUrl(slug, customDomain, domainVerificationStatus)}/learn/${courseSlug}`;
 }
 
+/** Returns the full URL for a QuizMaker public share link on the owning organization domain. */
+export function getOrgQuizUrl(
+  slug: string,
+  shareToken: string,
+  customDomain?: string | null,
+  domainVerificationStatus?: string | null,
+): string {
+  return `${getOrgBaseUrl(slug, customDomain, domainVerificationStatus)}/quiz/${encodeURIComponent(shareToken)}`;
+}
+
 /** Returns the full URL for the my-courses dashboard on the org's subdomain. */
 export function getOrgMyCoursesUrl(
   slug: string,
