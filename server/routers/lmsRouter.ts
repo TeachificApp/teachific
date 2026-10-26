@@ -102,7 +102,7 @@ import { notifyOwner } from "../_core/notification";
 import { createStripePaymentLink, deactivateStripePaymentLink } from "../stripePaymentLinks";
 import { getOrCreateOrgPaymentSettings } from "../stripeRouter";
 import { couponIsRedeemableForCheckout, type CouponTargetContentType } from "../lib/couponTargeting";
-
+import { emitEmailWorkflowEvent } from "../lib/emailWorkflowEngine";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
 import {
@@ -1554,6 +1554,36 @@ export const lmsLearnerRouter = router({
           contentTitle: lesson?.title ?? null,
           metadata: { courseSlug: input.courseSlug, courseTitle: course.title },
         }).catch(() => {});
+        // Workflow evaluation always receives the server-resolved course organization
+        // and authenticated learner identity. The engine's idempotency key makes this
+        // safe even if two completion writes arrive concurrently.
+        void emitEmailWorkflowEvent({
+          orgId: course.orgId,
+          eventType: "lesson_completed",
+          sourceType: "lms_lesson",
+          sourceId: input.lessonId,
+          idempotencyKey: `lesson_completed:${course.orgId}:${enrollment.id}:${input.lessonId}`,
+          recipientEmail: ctx.user.email,
+          recipientName: ctx.user.name,
+          recipientUserId: ctx.user.id,
+          payload: { courseId: course.id, courseSlug: course.slug, lessonId: input.lessonId, lessonTitle: lesson?.title ?? null },
+        }).catch(() => {});
+
+        const [completedEnrollment] = await db.select({ completedAt: lmsEnrollments.completedAt })
+          .from(lmsEnrollments).where(eq(lmsEnrollments.id, enrollment.id)).limit(1);
+        if (completedEnrollment?.completedAt) {
+          void emitEmailWorkflowEvent({
+            orgId: course.orgId,
+            eventType: "course_completed",
+            sourceType: "lms_enrollment",
+            sourceId: enrollment.id,
+            idempotencyKey: `course_completed:${course.orgId}:${enrollment.id}`,
+            recipientEmail: ctx.user.email,
+            recipientName: ctx.user.name,
+            recipientUserId: ctx.user.id,
+            payload: { courseId: course.id, courseSlug: course.slug, courseTitle: course.title, enrollmentId: enrollment.id },
+          }).catch(() => {});
+        }
       }
       return { success: true };
     }),
@@ -1624,7 +1654,35 @@ export const lmsLearnerRouter = router({
           attempts: sql`${lmsLessonProgress.attempts} + 1`,
         },
       });
-      if (passed) await recalcProgress(db, enrollment.id);
+      if (passed) {
+        await recalcProgress(db, enrollment.id);
+        void emitEmailWorkflowEvent({
+          orgId: course.orgId,
+          eventType: "lesson_completed",
+          sourceType: "lms_lesson_quiz",
+          sourceId: input.lessonId,
+          idempotencyKey: `lesson_completed:${course.orgId}:${enrollment.id}:${input.lessonId}`,
+          recipientEmail: ctx.user.email,
+          recipientName: ctx.user.name,
+          recipientUserId: ctx.user.id,
+          payload: { courseId: course.id, courseSlug: course.slug, lessonId: input.lessonId, quizId: quiz.id, quizScore: score },
+        }).catch(() => {});
+        const [completedEnrollment] = await db.select({ completedAt: lmsEnrollments.completedAt })
+          .from(lmsEnrollments).where(eq(lmsEnrollments.id, enrollment.id)).limit(1);
+        if (completedEnrollment?.completedAt) {
+          void emitEmailWorkflowEvent({
+            orgId: course.orgId,
+            eventType: "course_completed",
+            sourceType: "lms_enrollment",
+            sourceId: enrollment.id,
+            idempotencyKey: `course_completed:${course.orgId}:${enrollment.id}`,
+            recipientEmail: ctx.user.email,
+            recipientName: ctx.user.name,
+            recipientUserId: ctx.user.id,
+            payload: { courseId: course.id, courseSlug: course.slug, courseTitle: course.title, enrollmentId: enrollment.id },
+          }).catch(() => {});
+        }
+      }
       return { score, passed, passingScore: quiz.passingScore, results };
     }),
 
@@ -1644,7 +1702,7 @@ export const lmsLearnerRouter = router({
       if (existing) return { enrollmentId: existing.id, alreadyEnrolled: true };
 
       const [result] = await db.insert(lmsEnrollments).values({
-        userId: ctx.user.id, courseId: course.id,
+        orgId: course.orgId, userId: ctx.user.id, courseId: course.id,
         affiliateCode: input.affiliateCode ?? null,
       }).$returningId();
       // Log free enrollment to unified activity log (fire-and-forget)
@@ -1655,6 +1713,17 @@ export const lmsLearnerRouter = router({
         courseId: course.id,
         contentTitle: course.title,
         metadata: { courseSlug: input.courseSlug, enrollmentType: 'free', affiliateCode: input.affiliateCode ?? null },
+      }).catch(() => {});
+      void emitEmailWorkflowEvent({
+        orgId: course.orgId,
+        eventType: "course_enrolled",
+        sourceType: "lms_enrollment",
+        sourceId: result.id,
+        idempotencyKey: `course_enrolled:${course.orgId}:${result.id}`,
+        recipientEmail: ctx.user.email,
+        recipientName: ctx.user.name,
+        recipientUserId: ctx.user.id,
+        payload: { courseId: course.id, courseSlug: course.slug, courseTitle: course.title, enrollmentType: "free" },
       }).catch(() => {});
       return { enrollmentId: result.id, alreadyEnrolled: false };
     }),

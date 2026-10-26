@@ -23,6 +23,7 @@ import { getCourse360PlatformAppUrl } from "../shared/brands";
 import { fulfillBookvaultOrder } from "./lib/fulfillBookvaultOrder";
 import { fulfillPrintfulOrder } from "./lib/fulfillPrintfulOrder";
 import { fulfillPrintifyOrder } from "./lib/fulfillPrintifyOrder";
+import { emitEmailWorkflowEvent } from "./lib/emailWorkflowEngine";
 
 export function getOrgAdminPurchaseDashboardUrl(org: {
   slug: string;
@@ -340,6 +341,37 @@ router.post(
                     await createEnrollment({ courseId, userId: user.id, orgId, amountPaid });
                     console.log(`[Stripe Webhook] User ${user.id} enrolled in course ${courseId}`);
                     const course = await getCourseById(courseId).catch(() => null);
+                    const workflowPayload = {
+                      courseId,
+                      courseTitle: course?.title ?? null,
+                      amountPaid,
+                      currency: session.currency ?? "usd",
+                      stripeCheckoutSessionId: session.id,
+                    };
+                    // The session key is durable across webhook retries; delivery is
+                    // asynchronous so it cannot delay Stripe acknowledgement.
+                    void emitEmailWorkflowEvent({
+                      orgId,
+                      eventType: "purchase_completed",
+                      sourceType: "stripe_course_checkout",
+                      sourceId: courseId,
+                      idempotencyKey: `purchase_completed:${orgId}:${session.id}`,
+                      recipientEmail: buyerEmail,
+                      recipientName: user.name ?? null,
+                      recipientUserId: user.id,
+                      payload: workflowPayload,
+                    }).catch(() => {});
+                    void emitEmailWorkflowEvent({
+                      orgId,
+                      eventType: "course_enrolled",
+                      sourceType: "course_enrollment",
+                      sourceId: courseId,
+                      idempotencyKey: `course_enrolled:${orgId}:${user.id}:${courseId}`,
+                      recipientEmail: buyerEmail,
+                      recipientName: user.name ?? null,
+                      recipientUserId: user.id,
+                      payload: workflowPayload,
+                    }).catch(() => {});
                     // Resolve org base URL for org-scoped link
                     let courseOrgBase: string | null = null;
                     try {
@@ -456,6 +488,31 @@ router.post(
                     await sendPurchaseConfirmationEmail(userId, productId).catch((e: any) =>
                       console.error("[Stripe Webhook] Digital download confirmation email failed:", e.message)
                     );
+                    const [download] = await db.select({ title: digitalProducts.title, orgId: digitalProducts.orgId })
+                      .from(digitalProducts).where(eq(digitalProducts.id, productId)).limit(1);
+                    if (download?.orgId) {
+                      const buyerEmail = session.customer_details?.email ?? session.customer_email ?? null;
+                      if (buyerEmail) {
+                        void emitEmailWorkflowEvent({
+                          orgId: download.orgId,
+                          eventType: "purchase_completed",
+                          sourceType: "stripe_download_checkout",
+                          sourceId: productId,
+                          idempotencyKey: `purchase_completed:${download.orgId}:${session.id}`,
+                          recipientEmail: buyerEmail,
+                          recipientName: session.customer_details?.name ?? null,
+                          recipientUserId: userId,
+                          payload: {
+                            productId,
+                            productType: "download",
+                            productTitle: download.title ?? null,
+                            amountPaid: ((session.amount_total as number) ?? 0) / 100,
+                            currency: session.currency ?? "usd",
+                            stripeCheckoutSessionId: session.id,
+                          },
+                        }).catch(() => {});
+                      }
+                    }
                     console.log(`[Stripe Webhook] Digital download purchase recorded: user ${userId}, product ${productId}`);
                   }
                   // Create invoice row for download

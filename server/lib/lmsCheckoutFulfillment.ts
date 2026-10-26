@@ -22,6 +22,7 @@ import { sendEnrollmentEmail, sendQuizAccessEmail } from "./enrollmentEmail";
 import { getOrgBaseUrl } from "./orgUrl";
 import { notifyOwner } from "../_core/notification";
 import { isEnrollmentAccessActive } from "./enrollmentAccess";
+import { emitEmailWorkflowEvent } from "./emailWorkflowEngine";
 
 export type LmsCheckoutFulfillmentResult = {
   success: boolean;
@@ -726,6 +727,52 @@ export async function reconcileLmsCheckoutFromStripeSession(
     } catch (cohortErr) {
       console.error("[LmsCheckoutFulfillment] Cohort group assignment failed:", cohortErr);
       notes.push("Cohort group assignment failed (non-fatal)");
+    }
+  }
+
+  // Emit after durable order/enrollment persistence only. Stripe can retry a
+  // completed session, so session-bound idempotency keys keep each workflow
+  // event unique without coupling checkout success to optional email delivery.
+  if (customerEmail && course && (shouldRenew || !existingEnrollment)) {
+    const recipientName = customerName || customerEmail.split("@")[0] || null;
+    const workflowPayload = {
+      courseId,
+      courseSlug: course.slug,
+      courseTitle: course.title,
+      orderId,
+      enrollmentType: "full",
+      amountPaid: amountTotal / 100,
+      currency: String(session.currency ?? stripeDetails?.currency ?? "usd").toLowerCase(),
+      stripeCheckoutSessionId: sessionId,
+    };
+    void emitEmailWorkflowEvent({
+      orgId: course.orgId,
+      eventType: "purchase_completed",
+      sourceType: "lms_checkout",
+      sourceId: orderId ?? courseId,
+      idempotencyKey: `purchase_completed:${course.orgId}:${sessionId}`,
+      recipientEmail: customerEmail,
+      recipientName,
+      recipientUserId: userId,
+      payload: workflowPayload,
+    }).catch(() => {});
+
+    const [enrollment] = await db.select({ id: lmsEnrollments.id })
+      .from(lmsEnrollments)
+      .where(and(eq(lmsEnrollments.userId, userId), eq(lmsEnrollments.courseId, courseId)))
+      .limit(1);
+    if (enrollment) {
+      void emitEmailWorkflowEvent({
+        orgId: course.orgId,
+        eventType: "course_enrolled",
+        sourceType: "lms_enrollment",
+        sourceId: enrollment.id,
+        idempotencyKey: `course_enrolled:${course.orgId}:${enrollment.id}`,
+        recipientEmail: customerEmail,
+        recipientName,
+        recipientUserId: userId,
+        payload: workflowPayload,
+      }).catch(() => {});
     }
   }
 

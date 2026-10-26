@@ -21,13 +21,14 @@
 import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { getDb } from "../db";
-import { users, emailCampaignRecipients, emailUnsubscribes } from "../../drizzle/schema";
+import { users, emailCampaignRecipients, emailCampaigns, emailUnsubscribes } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { addToSendGridGlobalUnsubscribes } from "../lib/sendgridSuppressions";
 import { processCampaignUnsubscribe } from "../lib/campaignUnsubscribe";
 import { processEmailWorkflowUnsubscribe } from "../lib/emailWorkflowUnsubscribe";
 import { decryptOrgKey } from "../sendgrid";
 import { organizations, orgMembers } from "../../drizzle/schema";
+import { emitEmailWorkflowEvent } from "../lib/emailWorkflowEngine";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -93,26 +94,45 @@ export function registerEmailTrackingRoutes(app: Express): void {
     });
     res.end(TRACKING_PIXEL);
 
-    // Record open asynchronously (fire and forget)
+    // Record the first open and trigger optional organization-scoped workflows
+    // asynchronously. The pixel response remains immediate and never exposes
+    // any cross-organization recipient data.
     const campaignId = parseInt(req.query.c as string, 10);
     const recipientId = parseInt(req.query.r as string, 10);
     if (!isNaN(campaignId) && !isNaN(recipientId)) {
-      getDb()
-        .then((db) => {
-          if (!db) return;
-          return db
-            .update(emailCampaignRecipients)
-            .set({ openedAt: new Date() })
-            .where(
-              and(
-                eq(emailCampaignRecipients.id, recipientId),
-                eq(emailCampaignRecipients.campaignId, campaignId),
-                // Only set once — don't overwrite first open time
-                // (MySQL: openedAt IS NULL)
-              ),
-            );
-        })
-        .catch((err) => console.error("[EmailTracking] open pixel DB error:", err));
+      void (async () => {
+        const db = await getDb();
+        if (!db) return;
+        const [recipient] = await db.select({
+          id: emailCampaignRecipients.id,
+          email: emailCampaignRecipients.email,
+          userId: emailCampaignRecipients.userId,
+          openedAt: emailCampaignRecipients.openedAt,
+          orgId: emailCampaigns.orgId,
+          name: users.name,
+          displayName: users.displayName,
+        }).from(emailCampaignRecipients)
+          .innerJoin(emailCampaigns, eq(emailCampaigns.id, emailCampaignRecipients.campaignId))
+          .leftJoin(users, eq(users.id, emailCampaignRecipients.userId))
+          .where(and(eq(emailCampaignRecipients.id, recipientId), eq(emailCampaignRecipients.campaignId, campaignId)))
+          .limit(1);
+        if (!recipient) return;
+        await db.update(emailCampaignRecipients).set({ openedAt: recipient.openedAt ?? new Date() })
+          .where(and(eq(emailCampaignRecipients.id, recipientId), eq(emailCampaignRecipients.campaignId, campaignId)));
+        if (!recipient.openedAt && recipient.orgId) {
+          await emitEmailWorkflowEvent({
+            orgId: recipient.orgId,
+            eventType: "campaign_opened",
+            sourceType: "email_campaign_recipient",
+            sourceId: recipient.id,
+            idempotencyKey: `campaign_opened:${recipient.orgId}:${campaignId}:${recipient.id}`,
+            recipientEmail: recipient.email,
+            recipientName: recipient.displayName ?? recipient.name ?? null,
+            recipientUserId: recipient.userId,
+            payload: { campaignId, recipientId: recipient.id },
+          });
+        }
+      })().catch((err) => console.error("[EmailTracking] open pixel DB error:", err));
     }
   });
 
@@ -136,22 +156,42 @@ export function registerEmailTrackingRoutes(app: Express): void {
       }
     }
 
-    // Record click asynchronously (fire and forget)
+    // Record the first click and enqueue optional engagement automation without
+    // delaying the user's redirect.
     if (!isNaN(campaignId) && !isNaN(recipientId)) {
-      getDb()
-        .then((db) => {
-          if (!db) return;
-          return db
-            .update(emailCampaignRecipients)
-            .set({ clickedAt: new Date() })
-            .where(
-              and(
-                eq(emailCampaignRecipients.id, recipientId),
-                eq(emailCampaignRecipients.campaignId, campaignId),
-              ),
-            );
-        })
-        .catch((err) => console.error("[EmailTracking] click DB error:", err));
+      void (async () => {
+        const db = await getDb();
+        if (!db) return;
+        const [recipient] = await db.select({
+          id: emailCampaignRecipients.id,
+          email: emailCampaignRecipients.email,
+          userId: emailCampaignRecipients.userId,
+          clickedAt: emailCampaignRecipients.clickedAt,
+          orgId: emailCampaigns.orgId,
+          name: users.name,
+          displayName: users.displayName,
+        }).from(emailCampaignRecipients)
+          .innerJoin(emailCampaigns, eq(emailCampaigns.id, emailCampaignRecipients.campaignId))
+          .leftJoin(users, eq(users.id, emailCampaignRecipients.userId))
+          .where(and(eq(emailCampaignRecipients.id, recipientId), eq(emailCampaignRecipients.campaignId, campaignId)))
+          .limit(1);
+        if (!recipient) return;
+        await db.update(emailCampaignRecipients).set({ clickedAt: recipient.clickedAt ?? new Date() })
+          .where(and(eq(emailCampaignRecipients.id, recipientId), eq(emailCampaignRecipients.campaignId, campaignId)));
+        if (!recipient.clickedAt && recipient.orgId) {
+          await emitEmailWorkflowEvent({
+            orgId: recipient.orgId,
+            eventType: "campaign_clicked",
+            sourceType: "email_campaign_recipient",
+            sourceId: recipient.id,
+            idempotencyKey: `campaign_clicked:${recipient.orgId}:${campaignId}:${recipient.id}`,
+            recipientEmail: recipient.email,
+            recipientName: recipient.displayName ?? recipient.name ?? null,
+            recipientUserId: recipient.userId,
+            payload: { campaignId, recipientId: recipient.id, targetUrl },
+          });
+        }
+      })().catch((err) => console.error("[EmailTracking] click DB error:", err));
     }
 
     return res.redirect(302, targetUrl);

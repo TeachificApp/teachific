@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PageBuilder, Block } from "@/components/PageBuilder";
+import { PlatformEmailWorkflowManager } from "@/pages/marketing/EmailWorkflowPage";
 import { toast } from "sonner";
 import {
   Shield,
@@ -111,6 +112,7 @@ import {
   Filter,
   ChevronLeft,
   FileSearch,
+  Workflow,
 } from "lucide-react"
 import { cn } from "@/lib/utils";
 
@@ -2055,6 +2057,9 @@ export default function PlatformAdminPage() {
           <TabsTrigger value="forms" className="data-[state=active]:bg-teal-600 data-[state=active]:text-slate-900 text-slate-700 gap-1.5">
             <ClipboardList className="w-3.5 h-3.5" /> Platform Forms
           </TabsTrigger>
+          <TabsTrigger value="email-automations" className="data-[state=active]:bg-teal-600 data-[state=active]:text-slate-900 text-slate-700 gap-1.5">
+            <Workflow className="w-3.5 h-3.5" /> Email Automations
+          </TabsTrigger>
           <TabsTrigger value="plans" className="data-[state=active]:bg-teal-600 data-[state=active]:text-slate-900 text-slate-700 gap-1.5">
             <CreditCard className="w-3.5 h-3.5" /> Subscription Plans
           </TabsTrigger>
@@ -2103,6 +2108,9 @@ export default function PlatformAdminPage() {
         </TabsContent>
         <TabsContent value="forms">
           <PlatformFormsTab />
+        </TabsContent>
+        <TabsContent value="email-automations">
+          <PlatformEmailWorkflowManager />
         </TabsContent>
         <TabsContent value="plans">
           <SubscriptionPlansTab />

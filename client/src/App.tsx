@@ -106,6 +106,7 @@ import RecordPage from "./pages/RecordPage";
 import WebsitePage from "./pages/marketing/WebsitePage";
 import EmailCampaignsPage from "./pages/marketing/EmailCampaignsPage";
 import EmailCampaignDashboard from "./pages/marketing/EmailCampaignDashboard";
+import EmailWorkflowPage, { OrganizationWorkflowWorkspace } from "./pages/marketing/EmailWorkflowPage";
 import SocialContentGeneratorPage from "./pages/marketing/SocialContentGeneratorPage";
 import NewsletterSubscribe from "./pages/marketing/NewsletterSubscribe";
 import NewsletterSubscribersPage from "./pages/marketing/NewsletterSubscribersPage";
@@ -372,6 +373,7 @@ function AdminRouter() {
           {/* ── Marketing ── */}
           <Route path="/marketing/website" component={WebsitePage} />
           <Route path="/marketing/email" component={EmailCampaignDashboard} />
+          <Route path="/marketing/email-automations" component={OrganizationWorkflowWorkspace} />
           <Route path="/marketing/email/:campaignId/edit">{(params) => <EmailCampaignEditor campaignId={Number(params.campaignId)} />}</Route>
           <Route path="/marketing/newsletter" component={NewsletterSubscribersPage} />
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
@@ -595,6 +597,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/media-library">{() => <DashboardLayout><MediaLibraryPage /></DashboardLayout>}</Route>
         <Route path="/marketing/website">{() => <DashboardLayout><WebsitePage /></DashboardLayout>}</Route>
         <Route path="/marketing/email">{() => <EmailCampaignDashboard />}</Route>
+        <Route path="/marketing/email-automations" component={EmailWorkflowPage} />
         <Route path="/marketing/newsletter">{() => <NewsletterSubscribersPage />}</Route>
         <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
         <Route path="/marketing/funnels">{() => <DashboardLayout><FunnelsPage /></DashboardLayout>}</Route>
