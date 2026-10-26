@@ -27,7 +27,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgIdForUserWithFallback } from "../db";
+import { getDb, getOrCreateAccessToken, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
 import { sendCertificateEmail } from "../lib/certificateEmail";
@@ -36,6 +36,8 @@ import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { getFreePreviewCourseUrl } from "../lib/freePreviewUrl";
 import { resolvePublicOrganizationScope } from "../lib/publicOrgRequestScope";
+import { canPreviewNonPublicCourseInActiveOrg } from "../lib/courseVisibility";
+import { canUseHiddenPrivateCourseVisibility } from "../lib/courseVisibilityEntitlement";
 import { ensureInlineLessonQuizSchema } from "../lib/ensureInlineLessonQuizSchema";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getActiveEnrollment } from "../lib/enrollmentAccess";
@@ -92,6 +94,7 @@ import {
   userRoles,
   userActivityLogs,
   organizations,
+  orgSubscriptions,
   coupons,
   lmsQuizAttempts,
   lmsInlineQuizAttempts,
@@ -331,11 +334,24 @@ export const lmsPublicRouter = router({
       const [course] = await db.select().from(lmsCourses)
         .where(and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, publicScope.id))).limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
-      // draft, archived, and private are not publicly accessible; hidden is accessible by direct URL
-      // Admins can always see any course regardless of status or preview flag
-      const isAdmin = ["site_owner","site_admin","admin","org_super_admin","org_admin","sub_admin"].includes(ctx.user?.role ?? "");
-      if (!isAdmin) {
-        if (course.status === "draft" || course.status === "archived" || course.status === "private") throw new TRPCError({ code: "NOT_FOUND" });
+      // Draft, archived, and private courses are never exposed publicly. An
+      // administrator may preview one only from the active organization that
+      // owns it; a platform role does not bypass the selected-org boundary.
+      // Hidden courses intentionally remain available by their direct URL.
+      const isNonPublicCourse = course.status === "draft"
+        || course.status === "archived"
+        || course.status === "private";
+      if (isNonPublicCourse) {
+        const activeOrgId = ctx.user
+          ? await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role)
+          : null;
+        if (!canPreviewNonPublicCourseInActiveOrg({
+          role: ctx.user?.role,
+          activeOrgId,
+          courseOrgId: course.orgId,
+        })) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
       }
 
       // Sections + preview lessons
@@ -3379,10 +3395,17 @@ export const lmsGroupRouter = router({
       sendEnrollmentEmail: z.boolean(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(lmsCourses).set({ sendEnrollmentEmail: input.sendEnrollmentEmail }).where(eq(lmsCourses.id, input.courseId));
+      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses)
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, orgId)))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in the active organization" });
+      await db.update(lmsCourses).set({ sendEnrollmentEmail: input.sendEnrollmentEmail })
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, orgId)));
       return { success: true };
     }),
 
@@ -3402,15 +3425,36 @@ export const lmsGroupRouter = router({
       publishDomain: z.string().max(255).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const _orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role);
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "An active organization is required" });
+      const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [course] = await db.select({ id: lmsCourses.id, status: lmsCourses.status }).from(lmsCourses)
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, orgId)))
+        .limit(1);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in the active organization" });
+      if ((input.status === "hidden" || input.status === "private")
+        && course.status !== input.status
+        && !["site_owner", "site_admin"].includes(ctx.user.role)) {
+        const [subscription] = await db.select({
+          plan: orgSubscriptions.plan,
+          status: orgSubscriptions.status,
+        }).from(orgSubscriptions).where(eq(orgSubscriptions.orgId, orgId)).limit(1);
+        if (!canUseHiddenPrivateCourseVisibility(subscription?.plan, subscription?.status)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Hidden and private course visibility requires an active Pro or Enterprise organization plan.",
+          });
+        }
+      }
       // Check slug uniqueness (excluding current course)
       const [existing] = await db.select({ id: lmsCourses.id }).from(lmsCourses)
         .where(and(eq(lmsCourses.slug, input.slug), sql`${lmsCourses.id} != ${input.courseId}`)).limit(1);
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "A course with this slug already exists" });
       const { courseId, ...fields } = input;
-      await db.update(lmsCourses).set(fields).where(eq(lmsCourses.id, courseId));
+      await db.update(lmsCourses).set(fields)
+        .where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, orgId)));
       return { success: true };
     }),
   // ── Certificate Templates ──────────────────────────────────────────────────

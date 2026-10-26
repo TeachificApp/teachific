@@ -33,6 +33,7 @@ import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { buildAiSourceMessage } from "../lib/aiSourceFile";
 import { canUseAiCourseGenerator } from "../lib/aiCourseGeneratorEntitlement";
 import { selectCuratedUnsplashCourseVisual } from "../lib/aiCourseVisuals";
+import { canUseHiddenPrivateCourseVisibility } from "../lib/courseVisibilityEntitlement";
 import {
   buildFullLessonExpansionPrompt,
   cleanGeneratedLessonContent,
@@ -506,6 +507,30 @@ export const lmsCourseBuilderRouter = router({
       await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.status === "hidden" || input.status === "private") {
+        const [existingCourse] = await db.select({
+          orgId: lmsCourses.orgId,
+          status: lmsCourses.status,
+        }).from(lmsCourses).where(eq(lmsCourses.id, input.id)).limit(1);
+        if (!existingCourse) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+
+        // Retain pre-existing restricted courses after a downgrade, while
+        // preventing a lower-tier organization from newly enabling or
+        // changing hidden/private visibility through direct API calls.
+        const changingRestrictedVisibility = existingCourse.status !== input.status;
+        if (changingRestrictedVisibility && !isPlatformAdministrator(ctx.user.role)) {
+          const [subscription] = await db.select({
+            plan: orgSubscriptions.plan,
+            status: orgSubscriptions.status,
+          }).from(orgSubscriptions).where(eq(orgSubscriptions.orgId, existingCourse.orgId)).limit(1);
+          if (!canUseHiddenPrivateCourseVisibility(subscription?.plan, subscription?.status)) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Hidden and private course visibility requires an active Pro or Enterprise organization plan.",
+            });
+          }
+        }
+      }
       const { id, pricingType, defaultMarkComplete: dmc, enrollmentCloseDate, ...updates } = input;
       // Handle enrollmentCloseDate: convert ISO string to Date or null
       if (enrollmentCloseDate !== undefined) {

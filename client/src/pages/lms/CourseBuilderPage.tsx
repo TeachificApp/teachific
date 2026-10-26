@@ -68,6 +68,8 @@ import MembershipsPage from "@/pages/products/MembershipsPage";
 import BundlesPage from "@/pages/products/BundlesPage";
 import CmeFormTab from "@/components/CmeFormTab";
 import { useOrgScope } from "@/hooks/useOrgScope";
+import { useOrgPlan } from "@/hooks/useOrgPlan";
+import UpgradePromptDialog from "@/components/UpgradePromptDialog";
 import { AiSourceFileReview, type AiSourceReviewFile } from "@/components/AiSourceFileReview";
 import {
   getCohortGroupParticipantCampaignPath,
@@ -1602,6 +1604,9 @@ function CertTemplateSelector({ value, onChange }: { value: number | null; onCha
 
 function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: any; activeOrgId: number | null; onSave: (data: any) => void; saving: boolean }) {
   const courseBaseUrl = getOrgBaseUrl(course.orgSlug, course.orgCustomDomain, course.orgDomainVerificationStatus);
+  const { can: canUsePlanFeature, isLoading: isPlanLoading } = useOrgPlan(activeOrgId);
+  const canUseRestrictedVisibility = canUsePlanFeature("hiddenPrivateCourses");
+  const [showRestrictedVisibilityUpgrade, setShowRestrictedVisibilityUpgrade] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1631,6 +1636,13 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
   const [subtitle, setSubtitle] = useState(course.subtitle ?? "");
   const [description, setDescription] = useState(course.description ?? "");
   const [status, setStatus] = useState(course.status);
+  const handleStatusChange = (nextStatus: string) => {
+    if ((nextStatus === "hidden" || nextStatus === "private") && !canUseRestrictedVisibility) {
+      setShowRestrictedVisibilityUpgrade(true);
+      return;
+    }
+    setStatus(nextStatus);
+  };
   const [courseType, setCourseType] = useState<"course" | "quiz" | "download" | "cohort">(course.type ?? "course");
   const [enrollmentCloseDate, setEnrollmentCloseDate] = useState<string>(
     course.enrollmentCloseDate ? new Date(course.enrollmentCloseDate).toISOString().split("T")[0] : ""
@@ -1816,16 +1828,25 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
         </div>
         <div>
           <Label className="text-sm">Status</Label>
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="public">Public</SelectItem>
-              <SelectItem value="hidden">Hidden</SelectItem>
-              <SelectItem value="private">Private (invite only)</SelectItem>
+              <SelectItem value="hidden" disabled={!isPlanLoading && !canUseRestrictedVisibility && status !== "hidden"}>Hidden — Pro+</SelectItem>
+              <SelectItem value="private" disabled={!isPlanLoading && !canUseRestrictedVisibility && status !== "private"}>Private (invite only) — Pro+</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
+          {!isPlanLoading && !canUseRestrictedVisibility && (
+            <button
+              type="button"
+              onClick={() => setShowRestrictedVisibilityUpgrade(true)}
+              className="mt-1 text-xs font-medium text-[var(--org-primary)] hover:underline"
+            >
+              Hidden and private visibility is available on Pro and Enterprise.
+            </button>
+          )}
         </div>
         <div>
           <Label className="text-sm">Content Type</Label>
@@ -2569,6 +2590,13 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
       >
         {saving ? "Saving..." : "Save Settings"}
       </Button>
+      <UpgradePromptDialog
+        open={showRestrictedVisibilityUpgrade}
+        onClose={() => setShowRestrictedVisibilityUpgrade(false)}
+        requiredPlan="pro"
+        featureName="Hidden & Private Course Visibility"
+        featureDescription="Keep a course available only through its direct link or limit access to invited learners. Existing restricted courses are never changed by this upgrade prompt."
+      />
     </div>
   );
 }

@@ -961,7 +961,7 @@
 - [ ] Export student data as CSV
 
 ## LMS Course Player Enhancements
-- [ ] Course player: toggle to show/hide lesson type icons in sidebar (per-course setting, admin/instructor controlled, stored in course settings)
+- [x] Course player: toggle to show/hide lesson type icons in sidebar (per-course setting, admin/instructor controlled, stored in course settings)
 - [ ] Course publishing: three visibility states — Published (in catalog), Hidden (direct link only, not in catalog), Private (admin-only manual enrollment, no self-enrollment)
 - [ ] Update course status enum to include hidden/private visibility alongside draft/published/archived
 - [ ] Course builder: show visibility selector with descriptions for each option
