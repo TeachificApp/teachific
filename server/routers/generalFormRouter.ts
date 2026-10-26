@@ -20,7 +20,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import {
   generalFormTemplates,
   generalFormSections,
@@ -30,18 +30,20 @@ import {
   generalFormSubmissions,
   globalFormTheme,
   googleFormIntegrations,
-    generalFormWebhooks,
+  generalFormWebhooks,
+  orgMembers,
   users,
   generalFormSuccessModules,
   generalFormSuccessRoutingRules,
   generalFormEmbedWidgets,
   generalFormEmbedAnalytics,
   generalFormProgressEvents,
+  emailUnsubscribes,
 } from "../../drizzle/schema";
-import { eq, desc, asc, and, sql, like, count, inArray } from "drizzle-orm";
+import { eq, desc, asc, and, or, isNull, sql, like, count, inArray } from "drizzle-orm";
 import { invokeLLM } from "../_core/llm";
 import { addToEmailList, addToAllContacts } from "../lib/emailListHelper";
-import { sendEmail } from "../_core/email";
+import { sendEmailViaOrg } from "../_core/email";
 import {
   ensureLegacySuccessModules,
   fetchSuccessModules,
@@ -118,6 +120,18 @@ async function requireAdmin(ctx: any) {
   if (ctx.user?.role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
   }
+}
+
+/** Resolve the form owner and require management permission for that exact organization. */
+async function requireFormAdminForTemplate(ctx: any, db: any, templateId: number): Promise<number> {
+  const [template] = await db
+    .select({ orgId: generalFormTemplates.orgId })
+    .from(generalFormTemplates)
+    .where(eq(generalFormTemplates.id, templateId))
+    .limit(1);
+  if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Form not found" });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+  return template.orgId;
 }
 
 // ─── Slug generator ───────────────────────────────────────────────────────────
@@ -1822,6 +1836,7 @@ ${pageText}`;
 
       const resultsSettings = parseResultsSettings(template.themeSettings);
       await fireConfiguredFormActions(db, sub.templateId, "on_update", resultsSettings.actions, {
+        orgId: template.orgId,
         formName: template.name,
         submissionId: input.id,
         responses,
@@ -1845,6 +1860,7 @@ ${pageText}`;
             template.notifyEmail,
             `Submission updated: ${template.name} #${input.id}`,
             `Submission #${input.id} was updated.\nChanged fields: ${changedFields.join(", ")}`,
+            template.orgId,
           );
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -1898,6 +1914,7 @@ ${pageText}`;
 
         if (template) {
           await fireConfiguredFormActions(db, templateId, "on_update", resultsSettings.actions, {
+            orgId: template.orgId,
             formName: template.name,
             submissionId: sub.id,
             responses,
@@ -2277,6 +2294,7 @@ ${pageText}`;
           const parsedResponses: Record<string, any> = JSON.parse(sanitizedResponses);
           const resultsSettings = parseResultsSettings(template.themeSettings);
           await fireConfiguredFormActions(db, input.templateId, "on_submit", resultsSettings.actions, {
+            orgId: template.orgId,
             formName: template.name,
             submissionId,
             responses: parsedResponses,
@@ -2286,6 +2304,7 @@ ${pageText}`;
               template.notifyEmail,
               `New submission: ${template.name}`,
               `A new submission (#${submissionId}) was received for ${template.name}.`,
+              template.orgId,
             );
           }
         } catch (e: any) {
@@ -2908,9 +2927,9 @@ ${pageText}`;
   getDropOffAnalytics: protectedProcedure
     .input(z.object({ templateId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
-      await requireAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await requireFormAdminForTemplate(ctx, db, input.templateId);
       const [sessionsRows] = await db.execute(
         sql`SELECT COUNT(DISTINCT session_id) as total FROM general_form_progress_events WHERE template_id = ${input.templateId} AND event_type = 'session_start'`
       ) as any;
@@ -2959,9 +2978,9 @@ ${pageText}`;
       minFieldAnswers: z.number().int().min(0).default(1),
     }))
     .query(async ({ ctx, input }) => {
-      await requireAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireFormAdminForTemplate(ctx, db, input.templateId);
 
       // Step 1: Find all sessions that started but never submitted
       const [abandonedRows] = await db.execute(
@@ -3017,6 +3036,9 @@ ${pageText}`;
             WHERE id IN (${sql.raw(userIdList)})
               AND email IS NOT NULL AND email != ''
               AND unsubscribedAt IS NULL
+              AND id IN (
+                SELECT userId FROM org_members WHERE orgId = ${orgId}
+              )
           `
         ) as any;
         identifiedUsers = (userRows as any[]).map((r: any) => ({
@@ -3045,29 +3067,32 @@ ${pageText}`;
       subject: z.string().min(1).max(200),
       htmlBody: z.string().min(1),
       recipientUserIds: z.array(z.number().int().positive()).min(1).max(500),
-      brandMode: z.enum(["aaus", "ihe"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await requireAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireFormAdminForTemplate(ctx, db, input.templateId);
 
-      // Fetch recipient details
+      // A cross-organization user ID must never cause delivery from this form.
       const recipients = await db
         .select({ id: users.id, email: users.email, name: users.name })
         .from(users)
-        .where(inArray(users.id, input.recipientUserIds));
+        .innerJoin(orgMembers, and(eq(orgMembers.userId, users.id), eq(orgMembers.orgId, orgId)))
+        .leftJoin(emailUnsubscribes, and(
+          eq(emailUnsubscribes.email, users.email),
+          or(isNull(emailUnsubscribes.orgId), eq(emailUnsubscribes.orgId, orgId)),
+        ))
+        .where(and(inArray(users.id, input.recipientUserIds), isNull(emailUnsubscribes.id)));
 
       let sent = 0;
       let failed = 0;
       for (const recipient of recipients) {
         if (!recipient.email) { failed++; continue; }
-        const ok = await sendEmail({
+        const ok = await sendEmailViaOrg({
           to: { email: recipient.email, name: recipient.name ?? "" },
           subject: input.subject,
           htmlBody: input.htmlBody,
-          brandMode: (input.brandMode as any) ?? "aaus",
-        });
+        }, orgId);
         if (ok) sent++; else failed++;
       }
 

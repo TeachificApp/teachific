@@ -57,7 +57,7 @@ import {
   bundles,
   workshops,
 } from "../../drizzle/schema";
-import { sendEmail, buildPasswordResetEmail } from "../_core/email";
+import { sendEmail, sendEmailViaOrg, buildPasswordResetEmail } from "../_core/email";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 
@@ -496,7 +496,11 @@ export const adminUserRouter = router({
         firstName: user.firstName || user.name || "there",
         resetUrl,
       });
-      await sendEmail({ to: { name: user.firstName || user.name || "User", email: user.email }, subject, htmlBody });
+      await sendEmailViaOrg({
+        to: { name: user.firstName || user.name || "User", email: user.email },
+        subject,
+        htmlBody,
+      }, orgId);
       return { success: true, email: user.email };
     }),
 
@@ -648,14 +652,14 @@ export const adminUserRouter = router({
     .input(z.object({ userId: z.number(), brand: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
       const [user] = await db.select().from(users).where(eq(users.id, input.userId)).limit(1);
       if (!user || !user.email) throw new TRPCError({ code: "NOT_FOUND" });
-      await sendEmail({
+      await sendEmailViaOrg({
         to: { name: user.firstName || user.name || "Member", email: user.email },
-        subject: "Your Teachific membership is active",
+        subject: "Your membership is active",
         htmlBody: `<p>Hi ${user.firstName || user.name || "there"},</p><p>Your membership is active. You can access your content by logging in.</p>`,
-      });
+      }, orgId);
       return { success: true };
     }),
 
@@ -1424,12 +1428,11 @@ export const adminUserRouter = router({
       const [purchase] = await db.select().from(funnelPurchases).where(eq(funnelPurchases.id, input.purchaseId)).limit(1);
       if (!purchase) throw new TRPCError({ code: "NOT_FOUND", message: "Purchase not found" });
       if (purchase.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Purchase does not belong to the active organization." });
-      const { sendEmail } = await import("../sendgrid");
-      await sendEmail({
-        to: [{ email: purchase.email, name: purchase.name ?? undefined }],
+      await sendEmailViaOrg({
+        to: { email: purchase.email, name: purchase.name ?? "Customer" },
         subject: `Your access to ${purchase.productName}`,
         htmlBody: `<p>Hi ${purchase.name ?? 'there'},</p><p>Here is your access to <strong>${purchase.productName}</strong>. Please log in to your account to access your purchase.</p>`,
-      });
+      }, orgId);
       return { success: true };
     }),
 });

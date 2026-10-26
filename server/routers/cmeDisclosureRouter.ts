@@ -23,7 +23,7 @@ import {
   orgThemes,
 } from "../../drizzle/schema";
 import { storagePut } from "../storage";
-import { sendEmail } from "../_core/email";
+import { sendEmailViaOrg } from "../_core/email";
 import { generateDisclosurePdf } from "../lib/disclosurePdf";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { randomBytes } from "crypto";
@@ -201,11 +201,11 @@ export const cmeDisclosureRouter = router({
         </div>
       `;
 
-      await sendEmail({
+      await sendEmailViaOrg({
         to: { name: (disclosure as any).facultyName, email: (disclosure as any).facultyEmail },
         subject: `Financial Disclosure Required — ${courseTitle}`,
         htmlBody,
-      });
+      }, orgId);
 
       return { success: true, disclosureUrl };
     }),

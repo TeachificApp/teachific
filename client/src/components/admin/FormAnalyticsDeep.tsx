@@ -509,7 +509,6 @@ function DropOffEmailPanel({ formId }: { formId: number }) {
   const [minAnswers, setMinAnswers] = useState(1);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [brand, setBrand] = useState<"aaus" | "ihe">("aaus");
   const [showComposer, setShowComposer] = useState(false);
 
   const { data: abandoners, isLoading } = trpc.generalForm.getDropOffAbandonerEmails.useQuery(
@@ -538,7 +537,6 @@ function DropOffEmailPanel({ formId }: { formId: number }) {
       subject,
       htmlBody: body.replace(/\n/g, "<br />"),
       recipientUserIds: prevSubmitters.map(r => r.userId),
-      brandMode: brand,
     });
   };
 
@@ -593,16 +591,7 @@ function DropOffEmailPanel({ formId }: { formId: number }) {
               )}
             </div>
           )}
-          <div className="flex items-center gap-3">
-            <label className="text-xs text-gray-600">Send as:</label>
-            <select
-              value={brand} onChange={e => setBrand(e.target.value as "aaus" | "ihe")}
-              className="h-7 text-xs border border-gray-200 rounded px-2"
-            >
-              <option value="aaus">Teachific</option>
-              <option value="ihe">Platform</option>
-            </select>
-          </div>
+          <p className="text-xs text-gray-500">This follow-up is sent using this form’s organization email settings.</p>
           <div className="space-y-1">
             <label className="text-xs font-medium text-gray-700">Subject</label>
             <input

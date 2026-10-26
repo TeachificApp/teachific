@@ -58,9 +58,14 @@ export async function sendFormNotifyEmail(
   to: string,
   subject: string,
   body: string,
+  orgId: number,
 ): Promise<void> {
-  const { sendEmail } = await import("../_core/email");
-  await sendEmail({ to, subject, html: body.replace(/\n/g, "<br>"), text: body });
+  const { sendEmailViaOrg } = await import("../_core/email");
+  await sendEmailViaOrg({
+    to: { email: to, name: "Form notifications" },
+    subject,
+    htmlBody: body.replace(/\n/g, "<br>"),
+  }, orgId);
 }
 
 export async function fireConfiguredFormActions(
@@ -69,6 +74,7 @@ export async function fireConfiguredFormActions(
   event: "on_submit" | "on_update",
   actions: FormActionConfig[],
   context: {
+    orgId: number;
     formName: string;
     submissionId: number;
     responses: Record<string, unknown>;
@@ -97,7 +103,7 @@ export async function fireConfiguredFormActions(
             return `  ${k}: ${val}`;
           }),
         ].filter(Boolean);
-        await sendFormNotifyEmail(action.emailTo, subject, lines.join("\n"));
+        await sendFormNotifyEmail(action.emailTo, subject, lines.join("\n"), context.orgId);
       }
       if (action.type === "webhook") {
         await fireFormWebhook(db, formId, event === "on_submit" ? "submission" : "update", {
