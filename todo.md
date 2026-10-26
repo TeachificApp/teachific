@@ -1009,11 +1009,11 @@
 - [ ] CoursesPage: Archive course action
 - [ ] CoursesPage: Status filter tabs (All/Draft/Published/Hidden/Private/Archived)
 - [ ] CoursesPage: AI Course Generator modal
-- [ ] CoursePlayerPage: Lesson icon toggle (respect course.playerShowLessonIcons)
-- [ ] CoursePlayerPage: Sidebar search filter
-- [ ] CoursePlayerPage: Notes panel (when playerAllowNotes is true)
+- [x] CoursePlayerPage: Lesson icon toggle (respect course.playerShowLessonIcons)
+- [x] CoursePlayerPage: Sidebar search filter
+- [x] CoursePlayerPage: Notes panel (when playerAllowNotes is true)
 - [ ] CoursePlayerPage: Completion screen with certificate download
-- [ ] CoursePlayerPage: showCompleteButton respect course setting
+- [x] CoursePlayerPage: showCompleteButton respect course setting
 - [ ] CoursePlayerPage: requireSequential lock future lessons
 - [x] Student My Courses dashboard (/school/my-courses and /school/:orgSlug/my-courses)
 - [ ] Enrollment flow: enroll button, confirm, redirect to player

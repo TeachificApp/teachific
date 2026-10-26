@@ -136,6 +136,72 @@ import { lmsQuizLandingRouter } from "./lmsQuizLandingRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
 
+type LmsDatabase = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+
+/**
+ * Learner-private data (notes, bookmarks, certificate availability, and quiz
+ * status) must follow the same active-organization boundary as player
+ * delivery. Course slugs are not globally unique enough to be an authority on
+ * their own, so every procedure resolves the course and then validates its
+ * organization against the server-side active organization.
+ */
+async function requireActiveOrganizationCourse(
+  db: LmsDatabase,
+  userId: number,
+  role: string,
+  courseSlug: string,
+) {
+  const [course] = await db
+    .select({ id: lmsCourses.id, orgId: lmsCourses.orgId, slug: lmsCourses.slug })
+    .from(lmsCourses)
+    .where(eq(lmsCourses.slug, courseSlug))
+    .limit(1);
+  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+
+  const activeOrgId = await getOrgIdForUserWithFallback(userId, role);
+  if (!activeOrgId || course.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+  }
+  return course;
+}
+
+async function requireActiveOrganizationCourseById(
+  db: LmsDatabase,
+  userId: number,
+  role: string,
+  courseId: number,
+) {
+  const [course] = await db
+    .select({ id: lmsCourses.id, orgId: lmsCourses.orgId, slug: lmsCourses.slug })
+    .from(lmsCourses)
+    .where(eq(lmsCourses.id, courseId))
+    .limit(1);
+  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+
+  const activeOrgId = await getOrgIdForUserWithFallback(userId, role);
+  if (!activeOrgId || course.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This course is not available in the active organization" });
+  }
+  return course;
+}
+
+/** A section-owned lesson is valid only when its section belongs to the same course. */
+async function requireLessonBelongsToCourse(db: LmsDatabase, lessonId: number, courseId: number) {
+  const [lesson] = await db
+    .select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
+    .from(lmsLessons)
+    .where(eq(lmsLessons.id, lessonId))
+    .limit(1);
+  if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+
+  const lessonCourseId = lesson.courseId ?? (lesson.sectionId
+    ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+    : null);
+  if (lessonCourseId !== courseId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course" });
+  }
+}
+
 // ─── Admin Router (merged from sub-routers) ───────────────────────────────────
 export const lmsAdminRouter = router({
   ...lmsCourseBuilderRouter._def.procedures,
@@ -2431,6 +2497,8 @@ export const lmsLearnerRouter = router({
   getMyCertificates: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+    if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization selected" });
     const certs = await db.select({
       id: lmsCertificates.id,
       courseId: lmsCertificates.courseId,
@@ -2441,7 +2509,11 @@ export const lmsLearnerRouter = router({
     })
       .from(lmsCertificates)
       .innerJoin(lmsCourses, eq(lmsCertificates.courseId, lmsCourses.id))
-      .where(eq(lmsCertificates.userId, ctx.user.id))
+      .where(and(
+        eq(lmsCertificates.userId, ctx.user.id),
+        eq(lmsCertificates.orgId, activeOrgId),
+        eq(lmsCourses.orgId, activeOrgId),
+      ))
       .orderBy(desc(lmsCertificates.issuedAt));
     return certs;
   }),
@@ -2452,10 +2524,13 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
-      if (!course) return null;
+      const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
       const [cert] = await db.select().from(lmsCertificates)
-        .where(and(eq(lmsCertificates.userId, ctx.user.id), eq(lmsCertificates.courseId, course.id))).limit(1);
+        .where(and(
+          eq(lmsCertificates.userId, ctx.user.id),
+          eq(lmsCertificates.courseId, course.id),
+          eq(lmsCertificates.orgId, course.orgId),
+        )).limit(1);
       return cert ?? null;
     }),
 
@@ -2465,13 +2540,10 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
-      if (!course) return { passed: false, score: null, attempts: 0 };
-      const [enrollment] = await db.select({ id: lmsEnrollments.id })
-        .from(lmsEnrollments)
-        .where(and(eq(lmsEnrollments.userId, ctx.user.id), eq(lmsEnrollments.courseId, course.id)))
-        .limit(1);
-      if (!enrollment) return { passed: false, score: null, attempts: 0 };
+      const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
+      await requireLessonBelongsToCourse(db, input.lessonId, course.id);
+      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       const [progress] = await db.select({
         quizPassed: lmsLessonProgress.quizPassed,
         quizScore: lmsLessonProgress.quizScore,
@@ -2499,8 +2571,9 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
-      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
+      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       const notes = await db.select({
         id: lmsLessonNotes.id,
         lessonId: lmsLessonNotes.lessonId,
@@ -2526,10 +2599,16 @@ export const lmsLearnerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
-      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
+      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
+      await requireLessonBelongsToCourse(db, input.lessonId, course.id);
       const [existing] = await db.select({ id: lmsLessonNotes.id }).from(lmsLessonNotes)
-        .where(and(eq(lmsLessonNotes.userId, ctx.user.id), eq(lmsLessonNotes.lessonId, input.lessonId))).limit(1);
+        .where(and(
+          eq(lmsLessonNotes.userId, ctx.user.id),
+          eq(lmsLessonNotes.lessonId, input.lessonId),
+          eq(lmsLessonNotes.courseId, course.id),
+        )).limit(1);
       if (existing) {
         await db.update(lmsLessonNotes).set({ note: input.note }).where(eq(lmsLessonNotes.id, existing.id));
         return { id: existing.id };
@@ -2549,8 +2628,10 @@ export const lmsLearnerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [note] = await db.select({ userId: lmsLessonNotes.userId }).from(lmsLessonNotes).where(eq(lmsLessonNotes.id, input.noteId)).limit(1);
+      const [note] = await db.select({ userId: lmsLessonNotes.userId, courseId: lmsLessonNotes.courseId })
+        .from(lmsLessonNotes).where(eq(lmsLessonNotes.id, input.noteId)).limit(1);
       if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await requireActiveOrganizationCourseById(db, ctx.user.id, ctx.user.role, note.courseId);
       await db.delete(lmsLessonNotes).where(eq(lmsLessonNotes.id, input.noteId));
       return { success: true };
     }),
@@ -2563,8 +2644,9 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
-      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
+      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       const bookmarks = await db.select({
         id: lmsLessonBookmarks.id,
         lessonId: lmsLessonBookmarks.lessonId,
@@ -2585,10 +2667,16 @@ export const lmsLearnerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(eq(lmsCourses.slug, input.courseSlug)).limit(1);
-      if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
+      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
+      await requireLessonBelongsToCourse(db, input.lessonId, course.id);
       const [existing] = await db.select({ id: lmsLessonBookmarks.id }).from(lmsLessonBookmarks)
-        .where(and(eq(lmsLessonBookmarks.userId, ctx.user.id), eq(lmsLessonBookmarks.lessonId, input.lessonId))).limit(1);
+        .where(and(
+          eq(lmsLessonBookmarks.userId, ctx.user.id),
+          eq(lmsLessonBookmarks.lessonId, input.lessonId),
+          eq(lmsLessonBookmarks.courseId, course.id),
+        )).limit(1);
       if (existing) {
         await db.delete(lmsLessonBookmarks).where(eq(lmsLessonBookmarks.id, existing.id));
         return { bookmarked: false };
