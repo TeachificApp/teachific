@@ -1652,6 +1652,7 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
   const [isDrip, setIsDrip] = useState(course.isDrip ?? false);
   const [hideProgress, setHideProgress] = useState(course.hideProgress ?? false);
   const [showProgressPercent, setShowProgressPercent] = useState((course as any).showProgressPercent ?? true);
+  const [showLessonIcons, setShowLessonIcons] = useState((course as any).showLessonIcons ?? true);
   const [showInstructor, setShowInstructor] = useState(course.showInstructor ?? false);
   const [showInLibrary, setShowInLibrary] = useState(course.showInLibrary ?? true);
   const [sendEnrollmentEmail, setSendEnrollmentEmail] = useState(course.sendEnrollmentEmail ?? true);
@@ -1776,6 +1777,7 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
             isDrip,
             hideProgress,
             showProgressPercent,
+            showLessonIcons,
             showInstructor,
             showInLibrary,
             price: pricingType === "free" ? 0 : parseFloat(price || "0"),
@@ -2225,6 +2227,13 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
         </div>
       </div>
       <div className="flex items-start gap-2">
+        <Switch checked={showLessonIcons} onCheckedChange={setShowLessonIcons} id="show-lesson-icons-switch" className="mt-0.5" />
+        <div>
+          <Label htmlFor="show-lesson-icons-switch" className="text-sm">Show lesson status icons</Label>
+          <p className="text-xs text-gray-400 mt-0.5">Show lesson numbers, completion checks, and lesson-type icons in the student course sidebar. Turn off for a text-forward navigation style.</p>
+        </div>
+      </div>
+      <div className="flex items-start gap-2">
         <Switch checked={showInstructor} onCheckedChange={setShowInstructor} id="show-instructor-switch" className="mt-0.5" />
         <div>
           <Label htmlFor="show-instructor-switch" className="text-sm">Show instructor profile in lesson sidebar</Label>
@@ -2530,6 +2539,8 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
           isFeatured,
           isDrip,
           hideProgress,
+          showProgressPercent,
+          showLessonIcons,
           showInstructor,
           showInLibrary,
           price: pricingType === "free" ? 0 : parseFloat(price || "0"),

@@ -471,6 +471,7 @@ export const lmsCourseBuilderRouter = router({
       showInstructor: z.boolean().optional(),
       hideProgress: z.boolean().optional(),
       showProgressPercent: z.boolean().optional(),
+      showLessonIcons: z.boolean().optional(),
       courseOverviewBlocks: z.string().nullable().optional(), // JSON array of Block objects
       courseOverviewTopBlocks: z.string().nullable().optional(), // JSON array — above progress bar
       courseOverviewBottomBlocks: z.string().nullable().optional(), // JSON array — below curriculum
@@ -502,6 +503,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, pricingType, defaultMarkComplete: dmc, enrollmentCloseDate, ...updates } = input;
