@@ -210,7 +210,6 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     addedBumps.forEach(i => { if (orderBumps[i]) t += orderBumps[i].price; });
     return t;
   }, [selectedIdx, addedBumps, products, orderBumps]);
-  const totalCents = Math.round(totalAmount * 100); // convert dollars to cents for Stripe (unused here, prices sent as dollars to server)
 
   const fmt = (dollars: number) => `$${Number(dollars).toFixed(2)}`;
 

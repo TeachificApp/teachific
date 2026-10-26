@@ -159,7 +159,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     } },
   { type: "ticker", label: "Running Ticker / Marquee", icon: <Radio size={14} />, category: "Content",
     defaultData: {
-      items: ["Welcome to Teachific!", "New courses available now!", "Expand your clinical skills today!"],
+      items: ["Welcome to Course360™!", "New courses available now!", "Expand your skills today!"],
       separator: "•",
       direction: "left", speed: 40,
       pauseOnHover: true,
@@ -226,9 +226,9 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     } },
   { type: "urgency_offer", label: "Urgency Offer", icon: <Timer size={14} />, category: "Funnel",
     defaultData: {
-      headline: "Take What You Learn...\nand Actually Scan",
-      description: "Upgrade your experience with an exclusive hands-on workshop",
-      bodyHtml: "<p>You can understand ultrasound...</p><p>But confidence comes from putting your hands on the probe. <strong>This is where everything clicks.</strong></p>",
+      headline: "Take What You Learn...\nand Put It Into Practice",
+      description: "Upgrade your experience with an exclusive live workshop",
+      bodyHtml: "<p>You can understand the material...</p><p>But confidence comes from applying it in practice. <strong>This is where everything clicks.</strong></p>",
       ctaText: "Add on now for $2497", ctaEmoji: "\uD83D\uDC4D", ctaLink: "",
       optOutEnabled: false, optOutText: "No thanks, I don't want this upgrade", optOutLinkType: "custom", optOutCourseId: null, optOutDownloadId: null, optOutCustomUrl: "",
       countdownMode: "on_load", countdownMinutes: 90, countdownTargetDate: "",
@@ -247,7 +247,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       collectShipping: false,
       showProductSelect: true,
       products: [
-        { name: "Product Name", description: "Full online access", price: 99700, imageUrl: "", type: "course" }
+        { name: "Product Name", description: "Full online access", price: 997, imageUrl: "", type: "course" }
       ],
       orderBumps: [],
       submitText: "Submit",
@@ -255,7 +255,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       successRedirect: "",
       termsText: "I attest that I meet the pre-requisites for this course and I agree to the",
       termsLinkText: "TERMS OF SERVICE",
-      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
+      termsLinkUrl: "https://course360.app/terms",
       sourceType: "landing_page",
     } },
   { type: "embedded_checkout", label: "Embedded Checkout (Legacy)", icon: <CreditCard size={14} />, category: "Funnel",
@@ -269,7 +269,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       collectShipping: false,
       collectBilling: false,
       products: [
-        { name: "Product Name", description: "Product description", price: 9700, imageUrl: "", type: "other" }
+        { name: "Product Name", description: "Product description", price: 97, imageUrl: "", type: "other" }
       ],
       orderBumps: [],
       submitText: "Complete Purchase",
@@ -278,7 +278,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       successMessage: "Thank you for your purchase! You'll receive a confirmation email shortly.",
       termsText: "",
       termsLinkText: "Terms of Service",
-      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
+      termsLinkUrl: "https://course360.app/terms",
     } },
   { type: "checkout_form", label: "Checkout Form (Legacy)", icon: <CreditCard size={14} />, category: "Funnel",
     defaultData: {
@@ -292,14 +292,14 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       showBillingInfo: true,
       showProductSelect: true,
       products: [
-        { name: "Main Course", description: "Full access to the course", price: 199700, imageUrl: "", type: "course" }
+        { name: "Main Course", description: "Full access to the course", price: 1997, imageUrl: "", type: "course" }
       ],
       orderBumps: [
-        { title: "Workbook", headline: "Workbooks will arrive approximately 1 week prior to the start of the course.", description: "Your step-by-step companion to actually understand, retain, and apply everything you learn.", price: 29997, imageUrl: "", ctaText: "+ Add", ctaEmoji: "\uD83D\uDC4D", externalUrl: "" }
+        { title: "Workbook", headline: "Workbooks will arrive approximately 1 week prior to the start of the course.", description: "Your step-by-step companion to actually understand, retain, and apply everything you learn.", price: 299.97, imageUrl: "", ctaText: "+ Add", ctaEmoji: "👍", externalUrl: "" }
       ],
       termsText: "I attest that I meet the pre-requisites for this course and I agree to the",
       termsLinkText: "TERMS OF SERVICE",
-      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
+      termsLinkUrl: "https://course360.app/terms",
       submitText: "Submit",
       submitIcon: "none",
       successRedirect: "",
@@ -310,8 +310,8 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
   { type: "footer", label: "Footer", icon: <Columns size={14} />, category: "Layout",
     defaultData: {
       bgColor: "#0e1e2e", textColor: "#ffffff", align: "center",
-      copyrightText: `© ${new Date().getFullYear()} Teachific. All rights reserved.`,
-      links: [{ text: "Privacy Policy", url: "https://www.teachific.com/privacy-policy.html" }, { text: "Terms of Service", url: "https://www.teachific.com/terms-of-service.html" }, { text: "Contact", url: "https://www.teachific.com/contact.html" }],
+      copyrightText: `© ${new Date().getFullYear()} Course360™. All rights reserved.`,
+      links: [{ text: "Privacy Policy", url: "https://course360.app/privacy" }, { text: "Terms of Service", url: "https://course360.app/terms" }, { text: "Contact", url: "https://course360.app/contact" }],
       showSocial: true, socialLinks: { facebook: "", instagram: "", youtube: "", linkedin: "" },
       logoUrl: "", logoMaxWidth: "120px",
     } },
@@ -1210,7 +1210,7 @@ function PricingCtaSettings({ d, set, setMany }: { d: Record<string, any>; set: 
   // The item that drives the displayed price
   const activeItem = priceSource === "linked" ? linkedFromUrl : selectedItem;
 
-    // Format price for display (price is stored in cents)
+    // Format price for display (price is stored in dollars)
   const formatItemPrice = (item: typeof allItems[0]) => {
     if (item.isFree) return "Free";
     const priceStr = `$${Number(item.price).toFixed(2)}`;
@@ -1966,7 +1966,7 @@ function CheckoutFormBlockSettings({
           <label className="text-xs text-gray-500 font-medium">Order Bumps</label>
           <div className="flex gap-1">
             <button onClick={() => setBumpMode(m => m === "catalog" ? "manual" : "catalog")} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5">{bumpMode === "catalog" ? "Manual" : "Catalog"}</button>
-            <button onClick={() => set("orderBumps", [...cfBumps, { title: "Add-on Offer", headline: "❖ Special Add-On!", description: "", price: 2700, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", externalUrl: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
+            <button onClick={() => set("orderBumps", [...cfBumps, { title: "Add-on Offer", headline: "❖ Special Add-On!", description: "", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", externalUrl: "" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button>
           </div>
         </div>
         {bumpMode === "catalog" && catalog && catalog.length > 0 && (
@@ -2005,7 +2005,7 @@ function CheckoutFormBlockSettings({
       <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" multiline />
       <div className="grid grid-cols-2 gap-2">
         <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="TERMS OF SERVICE" />
-        <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
+        <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://course360.app/terms" />
       </div>
       <BSTextField data={d} onSet={set} label="Submit Button Text" field="submitText" placeholder="Submit" />
       <BSSelectField data={d} onSet={set} label="Submit Button Icon" field="submitIcon" options={SUBMIT_ICON_OPTIONS} />
@@ -3728,7 +3728,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Products */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({icProds.length})</span><button onClick={() => set("products", [...icProds, { name: "New Product", description: "", price: 9700, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({icProds.length})</span><button onClick={() => set("products", [...icProds, { name: "New Product", description: "", price: 97, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
             {icCatalog && icCatalog.length > 0 && (
               <div className="bg-gray-50 rounded p-2 space-y-1">
                 <p className="text-xs text-gray-400 mb-1">Click to add from catalog:</p>
@@ -3780,7 +3780,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Order Bumps */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({icBumps.length})</span><button onClick={() => set("orderBumps", [...icBumps, { title: "Add-on Offer", headline: "✦ Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 2700, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({icBumps.length})</span><button onClick={() => set("orderBumps", [...icBumps, { title: "Add-on Offer", headline: "✦ Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add", ctaEmoji: "", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
             {icBumps.map((bump: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded p-2 space-y-1">
                 <div className="flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Bump {i + 1}</span><button onClick={() => set("orderBumps", icBumps.filter((_: any, j: number) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div>
@@ -3810,7 +3810,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" placeholder="I agree to the" />
             <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="Terms of Service" />
           </div>
-          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
+          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://course360.app/terms" />
           {/* Colors */}
           <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
           <BSColorField data={d} onSet={set} label="Background" field="bgColor" />
@@ -3846,7 +3846,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           </div>
           {/* Products */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({ecProds.length})</span><button onClick={() => set("products", [...ecProds, { name: "New Product", description: "", price: 9700, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Products ({ecProds.length})</span><button onClick={() => set("products", [...ecProds, { name: "New Product", description: "", price: 97, imageUrl: "", type: "other" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add</button></div>
             {ecCatalog && ecCatalog.length > 0 && (
               <div className="bg-gray-50 rounded p-2 space-y-1">
                 <p className="text-xs text-gray-400 mb-1">Click to add from catalog:</p>
@@ -3900,7 +3900,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
           <AdditionalAccessEditor data={d} onSet={set} catalog={ecCatalog} />
           {/* Order Bumps */}
           <div className="border border-gray-200 rounded p-3 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({ecBumps.length})</span><button onClick={() => set("orderBumps", [...ecBumps, { title: "Add-on Offer", headline: "Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 2700, imageUrl: "", ctaText: "+ Add to my order", highlightColor: "#f59e0b", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
+            <div className="flex items-center justify-between"><span className="text-xs font-semibold text-gray-700">Order Bumps ({ecBumps.length})</span><button onClick={() => set("orderBumps", [...ecBumps, { title: "Add-on Offer", headline: "Special one-time offer!", description: "Enhance your purchase with this exclusive add-on.", price: 27, imageUrl: "", ctaText: "+ Add to my order", highlightColor: "#f59e0b", animation: "pulse" }])} className="text-xs text-teal-600 flex items-center gap-1"><Plus size={12} /> Add Bump</button></div>
             {ecBumps.map((bump: any, i: number) => (
               <div key={i} className="border border-gray-100 rounded p-2 space-y-1">
                 <div className="flex justify-between items-center"><span className="text-xs font-semibold text-gray-600">Bump {i + 1}</span><button onClick={() => set("orderBumps", ecBumps.filter((_: any, j: number) => j !== i))} className="text-red-400 hover:text-red-600"><X size={10} /></button></div>
@@ -3929,7 +3929,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" placeholder="I agree to the" />
             <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="Terms of Service" />
           </div>
-          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
+          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://course360.app/terms" />
           {/* Colors */}
           <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
           <BSColorField data={d} onSet={set} label="Background" field="bgColor" />
@@ -6126,7 +6126,7 @@ export default function LandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || courseInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
+                      <p className="text-[9px] text-teal-600 mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'course360.app'}</p>
                     </div>
                   </div>
                 )}
@@ -7106,7 +7106,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       <div className="border border-gray-100 rounded p-2 space-y-2">
         <p className="text-xs font-semibold text-gray-600 mb-1">Player Theme</p>
         <BSColorField data={d} onSet={set} label="Accent Color (play button &amp; progress bar)" field="accentColor" />
-        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to Teachific teal (#189aa1).</p>
+        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to Course360 teal (#189aa1).</p>
       </div>
     </div>
   );

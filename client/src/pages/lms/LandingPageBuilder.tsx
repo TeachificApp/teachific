@@ -219,9 +219,9 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
     } },
   { type: "urgency_offer", label: "Urgency Offer", icon: <Timer size={14} />, category: "Funnel",
     defaultData: {
-      headline: "Take What You Learn...\nand Actually Scan",
-      description: "Upgrade your experience with an exclusive hands-on workshop",
-      bodyHtml: "<p>You can understand ultrasound...</p><p>But confidence comes from putting your hands on the probe. <strong>This is where everything clicks.</strong></p>",
+      headline: "Take What You Learn...\nand Put It Into Practice",
+      description: "Upgrade your experience with an exclusive live workshop",
+      bodyHtml: "<p>You can understand the material...</p><p>But confidence comes from applying it in practice. <strong>This is where everything clicks.</strong></p>",
       ctaText: "Add on now for $2497", ctaEmoji: "\uD83D\uDC4D", ctaLink: "",
       optOutEnabled: false, optOutText: "No thanks, I don't want this upgrade", optOutLinkType: "custom", optOutCourseId: null, optOutDownloadId: null, optOutCustomUrl: "",
       countdownMode: "on_load", countdownMinutes: 90, countdownTargetDate: "",
@@ -240,7 +240,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       collectShipping: false,
       showProductSelect: true,
       products: [
-        { name: "Product Name", description: "Full online access", price: 99700, imageUrl: "", type: "course" }
+        { name: "Product Name", description: "Full online access", price: 997, imageUrl: "", type: "course" }
       ],
       orderBumps: [],
       submitText: "Submit",
@@ -248,7 +248,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       successRedirect: "",
       termsText: "I attest that I meet the pre-requisites for this course and I agree to the",
       termsLinkText: "TERMS OF SERVICE",
-      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
+      termsLinkUrl: "https://course360.app/terms",
       sourceType: "landing_page",
     } },
   { type: "embedded_checkout", label: "Embedded Checkout (Legacy)", icon: <CreditCard size={14} />, category: "Funnel",
@@ -271,7 +271,7 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       successMessage: "Thank you for your purchase! You'll receive a confirmation email shortly.",
       termsText: "",
       termsLinkText: "Terms of Service",
-      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
+      termsLinkUrl: "https://course360.app/terms",
     } },
   { type: "checkout_form", label: "Checkout Form (Legacy)", icon: <CreditCard size={14} />, category: "Funnel",
     defaultData: {
@@ -285,14 +285,14 @@ export const BLOCK_CATALOG: { type: BlockType; label: string; icon: React.ReactN
       showBillingInfo: true,
       showProductSelect: true,
       products: [
-        { name: "Main Course", description: "Full access to the course", price: 199700, imageUrl: "", type: "course" }
+        { name: "Main Course", description: "Full access to the course", price: 1997, imageUrl: "", type: "course" }
       ],
       orderBumps: [
-        { title: "Workbook", headline: "Workbooks will arrive approximately 1 week prior to the start of the course.", description: "Your step-by-step companion to actually understand, retain, and apply everything you learn.", price: 29997, imageUrl: "", ctaText: "+ Add", ctaEmoji: "\uD83D\uDC4D", externalUrl: "" }
+        { title: "Workbook", headline: "Workbooks will arrive approximately 1 week prior to the start of the course.", description: "Your step-by-step companion to actually understand, retain, and apply everything you learn.", price: 299.97, imageUrl: "", ctaText: "+ Add", ctaEmoji: "👍", externalUrl: "" }
       ],
       termsText: "I attest that I meet the pre-requisites for this course and I agree to the",
       termsLinkText: "TERMS OF SERVICE",
-      termsLinkUrl: "https://www.teachific.com/terms-of-service.html",
+      termsLinkUrl: "https://course360.app/terms",
       submitText: "Submit",
       submitIcon: "none",
       successRedirect: "",
@@ -1265,7 +1265,7 @@ function PricingCtaSettings({ d, set, setMany }: { d: Record<string, any>; set: 
   // The item that drives the displayed price
   const activeItem = priceSource === "linked" ? linkedFromUrl : selectedItem;
 
-    // Format price for display (price is stored in cents)
+    // Format price for display (price is stored in dollars)
   const formatItemPrice = (item: typeof allItems[0]) => {
     if (item.isFree) return "Free";
     const priceStr = `$${Number(item.price).toFixed(2)}`;
@@ -2060,7 +2060,7 @@ function CheckoutFormBlockSettings({
       <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" multiline />
       <div className="grid grid-cols-2 gap-2">
         <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="TERMS OF SERVICE" />
-        <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
+        <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://course360.app/terms" />
       </div>
       <BSTextField data={d} onSet={set} label="Submit Button Text" field="submitText" placeholder="Submit" />
       <BSSelectField data={d} onSet={set} label="Submit Button Icon" field="submitIcon" options={SUBMIT_ICON_OPTIONS} />
@@ -3675,7 +3675,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" placeholder="I agree to the" />
             <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="Terms of Service" />
           </div>
-          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
+          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://course360.app/terms" />
           {/* Colors */}
           <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
           <BSColorField data={d} onSet={set} label="Background" field="bgColor" />
@@ -3794,7 +3794,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <BSTextField data={d} onSet={set} label="Terms Text" field="termsText" placeholder="I agree to the" />
             <BSTextField data={d} onSet={set} label="Terms Link Text" field="termsLinkText" placeholder="Terms of Service" />
           </div>
-          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://www.teachific.com/terms-of-service.html" />
+          <BSTextField data={d} onSet={set} label="Terms Link URL" field="termsLinkUrl" placeholder="https://course360.app/terms" />
           {/* Colors */}
           <BSColorField data={d} onSet={set} label="Accent Color" field="accentColor" />
           <BSColorField data={d} onSet={set} label="Background" field="bgColor" />
@@ -6170,7 +6170,7 @@ export default function LandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || courseInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
+                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'course360.app'}</p>
                     </div>
                   </div>
                 )}

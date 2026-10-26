@@ -4951,10 +4951,10 @@
 
 ## Pricing Standardization (dollars everywhere, cents only at Stripe API boundary)
 
-- [ ] EmbeddedCheckoutBlock: change price type from cents to dollars; remove all /100 display divisions; update totalAmount calc; pass dollars to embeddedCheckoutRouter
-- [ ] InlineCheckoutBlock: same — dollars throughout, remove fmt(cents/100) pattern
-- [ ] LandingPageBuilder (admin): remove all item.price/100 display hacks; remove *100 catalog assignments; remove /100 in price input value; remove *100 in price input onChange; fix "Price (cents)" labels to "Price ($)"
-- [ ] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
+- [x] EmbeddedCheckoutBlock: change price type from cents to dollars; remove all /100 display divisions; update totalAmount calc; pass dollars to embeddedCheckoutRouter
+- [x] InlineCheckoutBlock: same — dollars throughout, remove fmt(cents/100) pattern
+- [x] LandingPageBuilder (admin): remove all item.price/100 display hacks; remove *100 catalog assignments; remove /100 in price input value; remove *100 in price input onChange; fix "Price (cents)" labels to "Price ($)"
+- [x] LandingPageBuilder (lms): same fixes as admin LandingPageBuilder
 - [x] embeddedCheckoutRouter: preserve dollar-denominated pending purchase storage while converting to cents only for Stripe payment intents
 - [x] Harden LMS enrollment CSV export: scope it to the active organization, remove payment/session metadata, add approved profile fields, and neutralize spreadsheet formulas
 - [x] Digital Downloads administration: display stored purchase amounts as dollars without legacy cents conversion
