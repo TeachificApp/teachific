@@ -50,6 +50,18 @@ function evaluateCondition(workflow: typeof emailWorkflows.$inferSelect, payload
   }
 }
 
+function matchesWorkflowResource(
+  workflow: typeof emailWorkflows.$inferSelect,
+  sourceId: number,
+  payload: Record<string, unknown>,
+) {
+  if (!workflow.triggerResourceId) return true;
+  if (["course_enrolled", "lesson_completed", "course_completed", "purchase_completed"].includes(workflow.triggerType)) {
+    return Number(payload.courseId) === workflow.triggerResourceId;
+  }
+  return workflow.triggerResourceId === sourceId;
+}
+
 export async function assertEmailAutomationEntitlement(orgId: number) {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
@@ -91,7 +103,7 @@ export async function emitEmailWorkflowEvent(input: {
   let queued = 0;
   for (const workflow of workflows) {
     if (!workflow.managedByPlatform && !canUseEmailAutomations(subscription[0]?.plan, subscription[0]?.status)) continue;
-    if (workflow.triggerResourceId && workflow.triggerResourceId !== input.sourceId) continue;
+    if (!matchesWorkflowResource(workflow, input.sourceId, input.payload ?? {})) continue;
     if (!evaluateCondition(workflow, input.payload ?? {})) continue;
     const stepScopeOrgId = workflow.isPlatformWide ? 0 : input.orgId;
     const steps = await db.select().from(emailWorkflowSteps).where(and(eq(emailWorkflowSteps.orgId, stepScopeOrgId), eq(emailWorkflowSteps.workflowId, workflow.id), eq(emailWorkflowSteps.isActive, true))).orderBy(asc(emailWorkflowSteps.position));
@@ -173,6 +185,6 @@ export async function handleScheduledEmailWorkflowSend(req: Request, res: any) {
     const [execution] = await db.select({ id: emailWorkflowExecutions.id }).from(emailWorkflowExecutions).where(eq(emailWorkflowExecutions.scheduleCronTaskUid, cronUser.taskUid)).limit(1);
     if (!execution) return res.json({ ok: true, skipped: "orphaned" });
     const result = await executeEmailWorkflowExecution(execution.id);
-    return res.json({ ok: true, executionId: execution.id, ...result });
+    return res.json({ ...result, executionId: execution.id });
   } catch (error) { return res.status(500).json({ error: error instanceof Error ? error.message : "Workflow delivery failed" }); }
 }

@@ -1581,7 +1581,7 @@
 
 ### Phase 4 - Marketing Section
 - [ ] Website page: home page settings, landing pages, custom pages, tracking codes (GA, FB Pixel, GSV)
-- [ ] Email Campaigns page: send, templates, automation workflows
+- [x] Email Campaigns page: send, templates, automation workflows
 - [ ] Funnels page: funnel page builder
 - [ ] Affiliates page: affiliate management
 

@@ -3,7 +3,7 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
-import { emailSenderProfiles, emailWorkflowExecutions, emailWorkflows, emailWorkflowSteps, generalFormTemplates } from "../../drizzle/schema";
+import { emailCampaigns, emailSenderProfiles, emailWorkflowExecutions, emailWorkflows, emailWorkflowSteps, generalFormTemplates, lmsCourses } from "../../drizzle/schema";
 import { assertEmailAutomationEntitlement, EMAIL_WORKFLOW_TRIGGER_TYPES } from "../lib/emailWorkflowEngine";
 
 const triggerSchema = z.enum(EMAIL_WORKFLOW_TRIGGER_TYPES);
@@ -15,9 +15,17 @@ async function requireWorkflowOrg(user: { id: number; role: string }) {
   return orgId;
 }
 async function validateWorkflowResources(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, triggerType: string, triggerResourceId: number | undefined, steps: Array<z.infer<typeof stepSchema>>) {
-  if (triggerType === "form_submitted" && triggerResourceId) {
+  if (triggerResourceId && triggerType === "form_submitted") {
     const [form] = await db.select({ id: generalFormTemplates.id }).from(generalFormTemplates).where(and(eq(generalFormTemplates.id, triggerResourceId), eq(generalFormTemplates.orgId, orgId))).limit(1);
     if (!form) throw new TRPCError({ code: "FORBIDDEN", message: "Selected form does not belong to the active organization." });
+  }
+  if (triggerResourceId && ["course_enrolled", "lesson_completed", "course_completed", "purchase_completed"].includes(triggerType)) {
+    const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses).where(and(eq(lmsCourses.id, triggerResourceId), eq(lmsCourses.orgId, orgId))).limit(1);
+    if (!course) throw new TRPCError({ code: "FORBIDDEN", message: "Selected course does not belong to the active organization." });
+  }
+  if (triggerResourceId && ["campaign_opened", "campaign_clicked"].includes(triggerType)) {
+    const [campaign] = await db.select({ id: emailCampaigns.id }).from(emailCampaigns).where(and(eq(emailCampaigns.id, triggerResourceId), eq(emailCampaigns.orgId, orgId))).limit(1);
+    if (!campaign) throw new TRPCError({ code: "FORBIDDEN", message: "Selected campaign does not belong to the active organization." });
   }
   const senderIds = [...new Set(steps.flatMap((step) => step.senderProfileId ? [step.senderProfileId] : []))];
   if (senderIds.length) {
@@ -35,6 +43,20 @@ export const emailWorkflowRouter = router({
     const orgId = await requireWorkflowOrg(ctx.user);
     const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     return db.select({ id: generalFormTemplates.id, name: generalFormTemplates.name, slug: generalFormTemplates.slug }).from(generalFormTemplates).where(eq(generalFormTemplates.orgId, orgId)).orderBy(asc(generalFormTemplates.name));
+  }),
+  listTriggerResources: protectedProcedure.input(z.object({ triggerType: triggerSchema })).query(async ({ ctx, input }) => {
+    const orgId = await requireWorkflowOrg(ctx.user);
+    const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    if (input.triggerType === "form_submitted") {
+      return db.select({ id: generalFormTemplates.id, name: generalFormTemplates.name, detail: generalFormTemplates.slug }).from(generalFormTemplates).where(eq(generalFormTemplates.orgId, orgId)).orderBy(asc(generalFormTemplates.name));
+    }
+    if (["course_enrolled", "lesson_completed", "course_completed", "purchase_completed"].includes(input.triggerType)) {
+      return db.select({ id: lmsCourses.id, name: lmsCourses.title, detail: lmsCourses.slug }).from(lmsCourses).where(eq(lmsCourses.orgId, orgId)).orderBy(asc(lmsCourses.title));
+    }
+    if (["campaign_opened", "campaign_clicked"].includes(input.triggerType)) {
+      return db.select({ id: emailCampaigns.id, name: emailCampaigns.name, detail: emailCampaigns.subject }).from(emailCampaigns).where(and(eq(emailCampaigns.orgId, orgId), eq(emailCampaigns.status, "sent"))).orderBy(asc(emailCampaigns.name));
+    }
+    return [];
   }),
   listWorkflows: protectedProcedure.query(async ({ ctx }) => {
     const orgId = await requireWorkflowOrg(ctx.user); const db = await getDb(); if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });

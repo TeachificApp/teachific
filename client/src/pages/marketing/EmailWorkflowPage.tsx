@@ -128,6 +128,16 @@ function triggerLabel(value: string) {
   return TRIGGERS.find((trigger) => trigger.value === value)?.label ?? value.replaceAll("_", " ");
 }
 
+function resourceSelectorDetails(triggerType: TriggerType) {
+  if (triggerType === "form_submitted") {
+    return { label: "form", allLabel: "Any form in this organization" };
+  }
+  if (["course_enrolled", "lesson_completed", "course_completed", "purchase_completed"].includes(triggerType)) {
+    return { label: "course", allLabel: "Any course in this organization" };
+  }
+  return { label: "campaign", allLabel: "Any sent campaign in this organization" };
+}
+
 function executionBadge(status: string) {
   const details: Record<string, { label: string; className: string }> = {
     pending: { label: "Sending", className: "bg-amber-100 text-amber-800" },
@@ -252,19 +262,19 @@ function WorkflowStepEditor({
 
 function OrganizationWorkflowDialog({
   value,
-  forms,
   isSaving,
   onSave,
   onClose,
 }: {
   value: OrganizationWorkflowDraft;
-  forms: Array<{ id: number; name: string; slug: string }>;
   isSaving: boolean;
   onSave: (value: OrganizationWorkflowDraft) => void;
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState<OrganizationWorkflowDraft>(value);
-  const formTargeted = draft.triggerType === "form_submitted";
+  const resourceTargeted = ["form_submitted", "course_enrolled", "lesson_completed", "course_completed", "purchase_completed", "campaign_opened", "campaign_clicked"].includes(draft.triggerType);
+  const selector = resourceSelectorDetails(draft.triggerType);
+  const { data: triggerResources = [], isLoading: resourcesLoading } = trpc.emailWorkflow.listTriggerResources.useQuery({ triggerType: draft.triggerType });
   const conditionEnabled = Boolean(draft.conditionField && draft.conditionOperator);
 
   useEffect(() => setDraft(value), [value]);
@@ -291,7 +301,7 @@ function OrganizationWorkflowDialog({
             </div>
             <div>
               <Label>When this happens</Label>
-              <Select value={draft.triggerType} onValueChange={(triggerType) => setDraft((current) => ({ ...current, triggerType: triggerType as TriggerType, triggerResourceId: triggerType === "form_submitted" ? current.triggerResourceId : undefined }))}>
+              <Select value={draft.triggerType} onValueChange={(triggerType) => setDraft((current) => ({ ...current, triggerType: triggerType as TriggerType, triggerResourceId: undefined }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>{TRIGGERS.map((trigger) => <SelectItem key={trigger.value} value={trigger.value}>{trigger.label}</SelectItem>)}</SelectContent>
               </Select>
@@ -305,17 +315,17 @@ function OrganizationWorkflowDialog({
             </div>
           </div>
 
-          {formTargeted && (
+          {resourceTargeted && (
             <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-4">
-              <Label>Limit to one form <span className="font-normal text-slate-500">(optional)</span></Label>
-              <Select value={draft.triggerResourceId ? String(draft.triggerResourceId) : "all-forms"} onValueChange={(selection) => setDraft((current) => ({ ...current, triggerResourceId: selection === "all-forms" ? undefined : Number(selection) }))}>
+              <Label>Limit to one {selector.label} <span className="font-normal text-slate-500">(optional)</span></Label>
+              <Select value={draft.triggerResourceId ? String(draft.triggerResourceId) : "all-resources"} onValueChange={(selection) => setDraft((current) => ({ ...current, triggerResourceId: selection === "all-resources" ? undefined : Number(selection) }))}>
                 <SelectTrigger className="mt-1 bg-white"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all-forms">Any form in this organization</SelectItem>
-                  {forms.map((form) => <SelectItem key={form.id} value={String(form.id)}>{form.name || form.slug}</SelectItem>)}
+                  <SelectItem value="all-resources">{selector.allLabel}</SelectItem>
+                  {triggerResources.map((resource) => <SelectItem key={resource.id} value={String(resource.id)}>{resource.name || resource.detail || `${selector.label} #${resource.id}`}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p className="mt-1 text-xs text-slate-500">Only forms belonging to the current organization are listed. The server rechecks the selected form when saving.</p>
+              <p className="mt-1 text-xs text-slate-500">{resourcesLoading ? "Loading active-organization options…" : `Only ${selector.label}s belonging to the current organization are listed. The server rechecks the selected ${selector.label} when saving.`}</p>
             </div>
           )}
 
@@ -383,7 +393,7 @@ function WorkflowList({
                 {workflow.description && <p className="mt-1 truncate text-sm text-slate-500">{workflow.description}</p>}
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
                   <span className="inline-flex items-center gap-1.5"><Activity className="h-3.5 w-3.5 text-teal-600" />{triggerLabel(workflow.triggerType)}</span>
-                  {workflow.triggerResourceId && <span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-teal-600" />Specific organization form</span>}
+                  {workflow.triggerResourceId && <span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-teal-600" />Specific {triggerLabel(workflow.triggerType).toLowerCase()}</span>}
                   {workflow.conditionField && <span className="inline-flex items-center gap-1.5"><Settings2 className="h-3.5 w-3.5 text-teal-600" />Condition: {workflow.conditionField}</span>}
                   <span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-teal-600" />{workflow.steps?.length ?? 0} email{workflow.steps?.length === 1 ? "" : "s"}</span>
                 </div>
@@ -418,7 +428,6 @@ export function OrganizationWorkflowWorkspace() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: availability, isLoading: availabilityLoading } = trpc.emailWorkflow.getAvailability.useQuery();
-  const { data: forms = [] } = trpc.emailWorkflow.listForms.useQuery();
   const { data: workflows = [], isLoading } = trpc.emailWorkflow.listWorkflows.useQuery();
   const [draft, setDraft] = useState<OrganizationWorkflowDraft | null>(null);
   const [activityWorkflow, setActivityWorkflow] = useState<any | null>(null);
@@ -470,7 +479,7 @@ export function OrganizationWorkflowWorkspace() {
         <WorkflowList workflows={workflows} onEdit={(workflow) => setDraft(toDraft(workflow))} onDelete={setDeleteWorkflow} onViewActivity={setActivityWorkflow} />
       </>}
 
-      {draft && <OrganizationWorkflowDialog value={draft} forms={forms} isSaving={saveMutation.isPending} onClose={() => setDraft(null)} onSave={(value) => saveMutation.mutate(value)} />}
+      {draft && <OrganizationWorkflowDialog value={draft} isSaving={saveMutation.isPending} onClose={() => setDraft(null)} onSave={(value) => saveMutation.mutate(value)} />}
       {activityWorkflow && <ExecutionDialog workflow={activityWorkflow} onClose={() => setActivityWorkflow(null)} />}
       <Dialog open={Boolean(deleteWorkflow)} onOpenChange={(open) => !open && setDeleteWorkflow(null)}><DialogContent><DialogHeader><DialogTitle>Delete email automation?</DialogTitle><DialogDescription>This stops the rule and cancels its scheduled email executions. Historical activity remains auditable.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" onClick={() => setDeleteWorkflow(null)}>Keep automation</Button><Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteWorkflow && deleteMutation.mutate({ id: deleteWorkflow.id })}>{deleteMutation.isPending ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}Delete automation</Button></DialogFooter></DialogContent></Dialog>
     </div>

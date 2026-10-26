@@ -13,9 +13,11 @@ describe("email workflow workspace scope", () => {
   it("exposes organization automation authoring only through server-scoped procedures", () => {
     expect(workspace).toContain("trpc.emailWorkflow.getAvailability.useQuery");
     expect(workspace).toContain("trpc.emailWorkflow.listWorkflows.useQuery");
+    expect(workspace).toContain("trpc.emailWorkflow.listTriggerResources.useQuery");
     expect(workspace).toContain("trpc.emailWorkflow.saveWorkflow.useMutation");
     expect(workspace).toContain("trpc.emailWorkflow.deleteWorkflow.useMutation");
-    expect(workspace).toContain("Only forms belonging to the current organization are listed");
+    expect(workspace).toContain("Limit to one {selector.label}");
+    expect(workspace).toContain("Only ${selector.label}s belonging to the current organization are listed");
     expect(workspace).toContain("Email Automations requires Pro or Enterprise");
   });
 
