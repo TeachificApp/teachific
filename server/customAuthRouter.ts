@@ -23,6 +23,11 @@ import { getCourse360PlatformAppUrl } from "../shared/brands";
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const BCRYPT_ROUNDS = 12;
+const SESSION_COOKIE_VARIANTS = [
+  COOKIE_NAME,
+  `${COOKIE_NAME}_lax`,
+  `${COOKIE_NAME}_host`,
+] as const;
 function getSiteUrl() {
   return getCourse360PlatformAppUrl().replace(/\/$/, "");
 }
@@ -51,6 +56,38 @@ export function serializeCookie(
   return str;
 }
 
+/**
+ * Issue direct-auth cookies that survive an email-client handoff and an
+ * organization-subdomain redirect. Host-only copies take precedence on the
+ * host that completed sign-in, while domain copies preserve Course360 SSO.
+ * Clear the old host-only variants first so a stale same-named cookie cannot
+ * win due to browser cookie header ordering.
+ */
+export function serializeAuthSessionCookies(
+  sessionToken: string,
+  req: Parameters<typeof getSessionCookieOptions>[0],
+): string[] {
+  const clearHostOnly = SESSION_COOKIE_VARIANTS.map((name) =>
+    serializeCookie(name, "", 0, req, "lax", false),
+  );
+
+  return [
+    ...clearHostOnly,
+    serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE, req),
+    serializeCookie(`${COOKIE_NAME}_lax`, sessionToken, COOKIE_MAX_AGE, req, "lax"),
+    serializeCookie(`${COOKIE_NAME}_host`, sessionToken, COOKIE_MAX_AGE, req, "lax", false),
+  ];
+}
+
+export function serializeAuthSessionCookieClears(
+  req: Parameters<typeof getSessionCookieOptions>[0],
+): string[] {
+  return [
+    ...SESSION_COOKIE_VARIANTS.map((name) => serializeCookie(name, "", 0, req, "lax", false)),
+    ...SESSION_COOKIE_VARIANTS.map((name) => serializeCookie(name, "", 0, req, "lax", true)),
+  ];
+}
+
 function normalizeAccountAccessOrigin(origin?: string | null): string | null {
   if (!origin) return null;
   try {
@@ -72,6 +109,18 @@ async function resolveAccountAccessBaseUrl(
   userId: number,
   requestedOrigin?: string | null,
 ): Promise<string> {
+  // Platform administrators manage Course360 itself. Always issue their
+  // account-access links on the canonical platform domain so an org custom
+  // domain cannot create a host-only session then strand them at sign-in.
+  const [account] = await db
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (account?.role === "site_owner" || account?.role === "site_admin") {
+    return getSiteUrl();
+  }
+
   const normalizedOrigin = normalizeAccountAccessOrigin(requestedOrigin);
   if (!normalizedOrigin) return getSiteUrl();
 
@@ -175,7 +224,7 @@ export const customAuthRouter = router({
 
         // Auto sign-in: issue session cookie immediately
         const sessionToken = signSessionToken({ userId: newUser.id, ts: Date.now() });
-        ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE, ctx.req));
+        ctx.res.setHeader("Set-Cookie", serializeAuthSessionCookies(sessionToken, ctx.req));
       }
 
       return {
@@ -223,7 +272,7 @@ export const customAuthRouter = router({
       }
 
       const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
-      ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, sessionToken, COOKIE_MAX_AGE, ctx.req));
+      ctx.res.setHeader("Set-Cookie", serializeAuthSessionCookies(sessionToken, ctx.req));
 
       // Resolve the user's primary org slug for immediate subdomain redirect
       const ROLE_PRIORITY: Record<string, number> = {
@@ -249,25 +298,17 @@ export const customAuthRouter = router({
 
   /** Logout */
   logout: publicProcedure.mutation(async ({ ctx }) => {
-    ctx.res.setHeader("Set-Cookie", serializeCookie(COOKIE_NAME, "", 0, ctx.req));
+    ctx.res.setHeader("Set-Cookie", serializeAuthSessionCookieClears(ctx.req));
     return { success: true };
   }),
 
   /** Get current user from custom session cookie */
   me: publicProcedure.query(async ({ ctx }) => {
     try {
-      const cookieHeader = ctx.req.headers.cookie ?? "";
-      const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-      if (!match) return null;
-
-      const { verifySessionToken } = await import("./_core/context");
-      const payload = verifySessionToken(decodeURIComponent(match[1]));
-      if (!payload?.userId) return null;
-
-      const db = await getDb();
-      if (!db) return null;
-
-      const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
+      // The shared context validates every direct-auth cookie variant. Keeping
+      // this endpoint on that resolver prevents a valid Lax/host-only magic
+      // link session being reported as logged out by older callers.
+      const user = ctx.user;
       if (!user) return null;
 
       return { id: user.id, name: user.name, email: user.email, role: user.role, emailVerified: user.emailVerified, openId: user.openId };
@@ -438,14 +479,7 @@ export const customAuthRouter = router({
         await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
       }
       const sessionToken = signSessionToken({ userId: user.id, ts: Date.now() });
-      // Set the primary cookie using the same serializer as login/register for consistency.
-      // Also set _lax and host-only variants for email-client compatibility.
-      const cookieMaxAgeSeconds = COOKIE_MAX_AGE;
-      ctx.res.setHeader("Set-Cookie", [
-        serializeCookie(COOKIE_NAME, sessionToken, cookieMaxAgeSeconds, ctx.req),
-        serializeCookie(`${COOKIE_NAME}_lax`, sessionToken, cookieMaxAgeSeconds, ctx.req, "lax"),
-        serializeCookie(`${COOKIE_NAME}_host`, sessionToken, cookieMaxAgeSeconds, ctx.req, "lax", false),
-      ]);
+      ctx.res.setHeader("Set-Cookie", serializeAuthSessionCookies(sessionToken, ctx.req));
       const ROLE_PRIORITY: Record<string, number> = {
         org_super_admin: 100, org_admin: 90, sub_admin: 70,
         instructor: 60, group_manager: 50, group_member: 40, member: 20, user: 10,

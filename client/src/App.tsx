@@ -830,7 +830,10 @@ function Router() {
     path.startsWith("/webinar/") ||
     path.startsWith("/shop/") ||
     path.startsWith("/forms/") ||
-    AUTH_PATHS.some((p) => path === p || path.startsWith(p + "?")) ||
+    // window.location.pathname omits the query string. Nested auth routes such
+    // as /magic-link/verify must remain outside DashboardLayout so they can
+    // redeem a session before any authenticated route evaluates.
+    AUTH_PATHS.some((p) => path === p || path.startsWith(`${p}/`)) ||
     path.startsWith("/quiz-creator") ||
     path.startsWith("/quiz-creator-app") ||
     path.startsWith("/quiz-creator-pro") ||

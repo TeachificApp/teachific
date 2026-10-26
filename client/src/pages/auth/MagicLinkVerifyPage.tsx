@@ -7,10 +7,15 @@ import { Loader2, CheckCircle2, XCircle, Mail } from "lucide-react";
 import { CACHE_KEY } from "@/lib/authCache";
 import { getOrgSubdomainUrl, getSubdomain } from "@/hooks/useSubdomain";
 import { useOrgAuthBranding } from "@/hooks/useOrgAuthBranding";
+import { getCanonicalMagicLinkVerificationUrl } from "@/lib/magicLinkRouting";
 
 const NAVY = "#0b1d35";
 const TEAL = "#24abbc";
 const TEAL_LIGHT = "#4ad9e0";
+
+function safeInternalPath(value: string | null): string | null {
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : null;
+}
 
 export default function MagicLinkVerifyPage() {
   const search = useSearch();
@@ -34,8 +39,14 @@ export default function MagicLinkVerifyPage() {
       }
       const isAtRoot = !getSubdomain();
       const orgSlug = (data as any).orgSlug as string | null;
-      const redirectTo = (data as any).redirectTo as string | null;
+      const redirectTo = safeInternalPath((data as any).redirectTo as string | null);
       setTimeout(() => {
+        // Keep platform administrators on the canonical platform shell rather
+        // than routing them through a member organization selected by role.
+        if (data.user?.role === "site_owner" || data.user?.role === "site_admin") {
+          window.location.href = redirectTo ?? "/platform-admin";
+          return;
+        }
         if (isAtRoot && orgSlug) {
           try { localStorage.setItem("teachific_org_slug", orgSlug); } catch {}
           window.location.href = getOrgSubdomainUrl(orgSlug, redirectTo || "/lms");
@@ -54,6 +65,18 @@ export default function MagicLinkVerifyPage() {
     if (!token) {
       setStatus("error");
       setMessage("No sign-in token found. Please request a new magic link.");
+      return;
+    }
+
+    // Redeem old teachific.app links at the canonical Course360 origin. This
+    // must happen before verification because browser cookies cannot move
+    // across those two registrable domains after the session is issued.
+    const canonicalUrl = getCanonicalMagicLinkVerificationUrl(
+      window.location.hostname,
+      token,
+    );
+    if (canonicalUrl) {
+      window.location.replace(canonicalUrl);
       return;
     }
     verify.mutate({ token });

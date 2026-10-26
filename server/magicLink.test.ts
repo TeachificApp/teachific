@@ -69,7 +69,7 @@ describe("Magic link email template", () => {
   it("includes a sign-in CTA button", async () => {
     const { magicLinkEmailHtml } = await import("./emailTemplates");
     const html = magicLinkEmailHtml("Dave", "https://teachific.app/magic-link/verify?token=xyz", 15);
-    expect(html).toContain("Sign in to Teachific");
+    expect(html).toContain("Sign in to Course360");
   });
 });
 
