@@ -62,7 +62,7 @@ export const blueprintReferralRouter = router({
         isActive: true,
       }).$returningId();
 
-      return { id: link.id, slug: input.slug, url: `https://${input.slug}.teachific.app?ref=1` };
+      return { id: link.id, slug: input.slug, url: `https://${input.slug}.course360.app?ref=1` };
     }),
 
   // ── Creator: list their referral links ────────────────────────────────────
@@ -101,7 +101,7 @@ export const blueprintReferralRouter = router({
 
       return rows.map((r) => ({
         ...r,
-        url: `https://${r.slug}.teachific.app?ref=1`,
+        url: `https://${r.slug}.course360.app?ref=1`,
         commissionRate: Number(r.commissionRate),
       }));
     }),

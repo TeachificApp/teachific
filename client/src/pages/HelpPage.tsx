@@ -22,7 +22,7 @@ const FAQS = [
       },
       {
         q: "Can I get a refund?",
-        a: "Refund requests are handled on a case-by-case basis. Contact us at support@teachific.net with your account email and order details and we'll review your request within 2 business days.",
+        a: "Refund requests are handled on a case-by-case basis. Contact us at support@course360.app with your account email and order details and we'll review your request within 2 business days.",
       },
     ],
   },

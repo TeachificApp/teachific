@@ -745,7 +745,7 @@ export const appRouter = router({
   }),
 
   // ── Subdomain Resolution (public) ──────────────────────────────────────────
-  // Resolves org info from a subdomain slug (e.g. "myorg" from myorg.teachific.app)
+  // Resolves org info from a subdomain slug (e.g. "myorg" from myorg.course360.app)
   resolveBySubdomain: publicProcedure
     .input(z.object({ subdomain: z.string().min(1) }))
     .query(async ({ input }) => {
@@ -1154,7 +1154,7 @@ export const appRouter = router({
           if (newDomain) {
             const orgId = rows[0].org.id;
             const slug = rows[0].org.slug;
-            const expectedTarget = `${slug}.teachific.app`;
+            const expectedTarget = `${slug}.course360.app`;
             setImmediate(async () => {
               try {
                 const db2 = await getDb();
@@ -1328,7 +1328,7 @@ export const appRouter = router({
         domainVerificationStatus: org.domainVerificationStatus,
         domainVerifiedAt: org.domainVerifiedAt ?? null,
         domainVerificationError: org.domainVerificationError ?? null,
-        expectedCname: `${org.slug}.teachific.app`,
+        expectedCname: `${org.slug}.course360.app`,
         sslStatus,
       };
     }),
@@ -1347,7 +1347,7 @@ export const appRouter = router({
       if (!org.customDomain) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No custom domain configured. Please save a custom domain first." });
       }
-      const expectedTarget = `${org.slug}.teachific.app`;
+      const expectedTarget = `${org.slug}.course360.app`;
       // Set status to pending while we check
       await db.update(organizations)
         .set({ domainVerificationStatus: "pending", domainVerificationError: null })
@@ -3362,7 +3362,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
           const isPaid = qRole !== "none" && !isTrialing;
           if (!isPaid) {
             const wsWatermark = XLSX.utils.json_to_sheet([{
-              "": "Created with Teachific\u2122 \u2014 This export was generated on the free/trial plan. Upgrade at teachific.com to remove this notice.",
+              "": "Created with Course360™ — This export was generated on the free/trial plan. Upgrade at course360.app to remove this notice.",
             }]);
             XLSX.utils.book_append_sheet(wb, wsWatermark, "Teachific\u2122");
           }
@@ -4286,10 +4286,10 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
             <tr><td style="padding:8px 12px;font-weight:bold;background:#f3f4f6;vertical-align:top">Message</td><td style="padding:8px 12px;white-space:pre-wrap">${safeMessage}</td></tr>
             ${ctx.user ? `<tr><td style="padding:8px 12px;font-weight:bold;background:#f3f4f6">User ID</td><td style="padding:8px 12px">${ctx.user.id}</td></tr>` : ""}
           </table>
-          <p style="color:#6b7280;font-size:12px;margin-top:16px">Submitted via the Teachific support form.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:16px">Submitted via the Course360 support form.</p>
         `;
         await sendEmail({
-          to: "support@teachific.net",
+          to: "support@course360.app",
           subject: `[Support] ${input.subject}`,
           html,
           replyTo: input.email,

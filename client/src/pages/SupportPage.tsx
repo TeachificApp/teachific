@@ -44,8 +44,8 @@ const FAQ_CATEGORIES = [
         a: "Navigate to your organization's Content Library and click 'Upload Content'. You can upload SCORM 1.2, SCORM 2004, or plain HTML5 packages as a ZIP file. Once uploaded, the system will automatically detect the SCORM version and entry point.",
       },
       {
-        q: "What file formats does Teachific support?",
-        a: "Teachific supports SCORM 1.2, SCORM 2004 (all editions), xAPI/Tin Can, HTML5 packages, Articulate Storyline exports, iSpring exports, and plain HTML/ZIP bundles. Maximum file size is determined by your subscription plan.",
+        q: "What file formats does Course360 support?",
+        a: "Course360 supports SCORM 1.2, SCORM 2004 (all editions), xAPI/Tin Can, HTML5 packages, Articulate Storyline exports, iSpring exports, and plain HTML/ZIP bundles. Maximum file size is determined by your subscription plan.",
       },
       {
         q: "How do I invite learners to my organization?",
@@ -68,11 +68,11 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "How does SCORM tracking work?",
-        a: "Teachific fully supports SCORM 1.2 and SCORM 2004 data models. Completion status, score, time spent, and suspend data are all captured and stored per learner. You can view detailed reports in the Analytics section.",
+        a: "Course360 fully supports SCORM 1.2 and SCORM 2004 data models. Completion status, score, time spent, and suspend data are all captured and stored per learner. You can view detailed reports in the Analytics section.",
       },
       {
         q: "Can I set a passing score for a course?",
-        a: "Yes. In the course settings, you can define a minimum passing score. Learners who meet or exceed this score will be marked as 'Passed'. This works with both SCORM-tracked content and Teachific's built-in quiz engine.",
+        a: "Yes. In the course settings, you can define a minimum passing score. Learners who meet or exceed this score will be marked as 'Passed'. This works with both SCORM-tracked content and Course360's built-in quiz engine.",
       },
       {
         q: "Is there a limit on how many courses I can create?",
@@ -91,7 +91,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Can I have multiple organizations?",
-        a: "Yes. A single Teachific account can be a member of multiple organizations. Use the organization switcher in the top navigation to switch between them. Each organization has its own content library, learners, and settings.",
+        a: "Yes. A single Course360 account can be a member of multiple organizations. Use the organization switcher in the top navigation to switch between them. Each organization has its own content library, learners, and settings.",
       },
       {
         q: "How do I manage admin roles?",
@@ -110,7 +110,7 @@ const FAQ_CATEGORIES = [
     items: [
       {
         q: "What plans are available?",
-        a: "Teachific offers Free, Starter, Pro, and Enterprise plans. Each plan includes different storage limits, learner seats, and feature access. Visit the Pricing page or contact us for a custom Enterprise quote.",
+        a: "Course360 offers Starter, Builder, Pro, and Enterprise plans. Each plan includes different storage limits, learner seats, and feature access. Starter includes a 14-day trial. Visit the Pricing page or contact us for a custom Enterprise quote.",
       },
       {
         q: "Can I upgrade or downgrade my plan?",
@@ -122,7 +122,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Do you offer refunds?",
-        a: "We offer a 14-day money-back guarantee for new paid subscriptions. If you're not satisfied, contact support@teachific.net within 14 days of your first payment and we'll issue a full refund.",
+        a: "We offer a 14-day money-back guarantee for new paid subscriptions. If you're not satisfied, contact support@course360.app within 14 days of your first payment and we'll issue a full refund.",
       },
     ],
   },
@@ -256,7 +256,7 @@ export default function SupportPage() {
                 </p>
                 <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
                   <Mail className="w-4 h-4" />
-                  <span>Replies go to support@teachific.net</span>
+                  <span>Replies go to support@course360.app</span>
                 </div>
                 <Button
                   variant="outline"
@@ -276,8 +276,8 @@ export default function SupportPage() {
                 <CardTitle className="text-lg">Contact Support</CardTitle>
                 <CardDescription>
                   Fill in the details below and we'll get back to you at{" "}
-                  <a href="mailto:support@teachific.net" className="text-teal-600 hover:underline">
-                    support@teachific.net
+                  <a href="mailto:support@course360.app" className="text-teal-600 hover:underline">
+                    support@course360.app
                   </a>
                 </CardDescription>
               </CardHeader>
@@ -368,7 +368,7 @@ export default function SupportPage() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Badge variant="outline" className="text-xs font-normal">
                         <Mail className="w-3 h-3 mr-1" />
-                        support@teachific.net
+                        support@course360.app
                       </Badge>
                     </div>
                     <Button

@@ -1,7 +1,7 @@
 import type { CookieOptions, Request } from "express";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
-const PLATFORM_COOKIE_DOMAINS = ["course360.app", "teachific.app"] as const;
+const PLATFORM_COOKIE_DOMAINS = ["course360.app"] as const;
 
 function isIpAddress(host: string) {
   // Basic IPv4 check and IPv6 presence detection.

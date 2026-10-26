@@ -9,13 +9,9 @@ const adminSource = fs.readFileSync(
 );
 
 describe("Course360 Site Pages platform domains", () => {
-  it("makes Course360 platform domains available without removing legacy record access", () => {
-    expect(SITE_PAGE_DOMAINS.slice(0, 2).map((domain) => domain.value)).toEqual([
-      "course360.app",
-      "www.course360.app",
-    ]);
-    expect(SITE_PAGE_DOMAINS.map((domain) => domain.value)).toContain("teachific.app");
-    expect(SITE_PAGE_DOMAINS.find((domain) => domain.value === "teachific.app")?.label).toContain("Legacy");
+  it("exposes only the canonical Course360 platform domain for new page administration", () => {
+    expect(SITE_PAGE_DOMAINS.map((domain) => domain.value)).toEqual(["course360.app"]);
+    expect(SITE_PAGE_DOMAINS.map((domain) => domain.value)).not.toContain("teachific.app");
   });
 
   it("defaults administration to the Course360 platform domain and omits clinical sidebar guidance", () => {

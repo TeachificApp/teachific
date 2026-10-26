@@ -55,6 +55,9 @@ export function getCourse360PlatformEmailIdentity() {
 
 export function getCourse360PlatformAppUrl() {
   const configuredAppUrl = process.env.VITE_SITE_URL?.trim();
+  if (/^https:\/\/www\.course360\.app\/?$/i.test(configuredAppUrl ?? "")) {
+    return "https://course360.app";
+  }
   return configuredAppUrl && !isRetiredPlatformValue(configuredAppUrl) && !/manus\.im/i.test(configuredAppUrl)
     ? configuredAppUrl
     : "https://course360.app";
@@ -70,7 +73,7 @@ export function getBrandDisplayConfig(_mode?: BrandMode): BrandDisplayConfig {
     senderEmail: platformEmail.senderEmail,
     senderName: platformEmail.senderName,
     supportEmail: "support@course360.app",
-    websiteUrl: "https://www.course360.app",
+    websiteUrl: "https://course360.app",
     appUrl: getCourse360PlatformAppUrl(),
     logoUrl: "",
     primaryColor: "#189aa1",

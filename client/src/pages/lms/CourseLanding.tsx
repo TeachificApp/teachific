@@ -220,6 +220,12 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
 }) {
   const d = block.data;
   switch (block.type) {
+    case "column_layout": {
+      const leftBlocks = Array.isArray(d.leftBlocks) ? d.leftBlocks as Block[] : [];
+      const rightBlocks = Array.isArray(d.rightBlocks) ? d.rightBlocks as Block[] : [];
+      const renderChild = (child: Block) => <RenderBlock key={child.id} block={child} course={course} onEnroll={onEnroll} onEnrollWithOption={onEnrollWithOption} enrolling={enrolling} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={onSelectPricingOption} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={onFreePreviewClick} />;
+      return <section className="px-5 py-6" style={{ backgroundColor: d.bgColor ?? "transparent" }}><div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row" style={{ gap: `${d.gap ?? 32}px` }}><div className="min-w-0 flex-1" style={{ flex: d.leftRatio ?? 50 }}>{leftBlocks.map(renderChild)}</div><div className="min-w-0 flex-1" style={{ flex: 100 - (d.leftRatio ?? 50) }}>{rightBlocks.map(renderChild)}</div></div></section>;
+    }
     case "lms_course_embed": {
       const linked = course.landingEmbeddedResources?.courses?.[block.id];
       if (!linked) return null;

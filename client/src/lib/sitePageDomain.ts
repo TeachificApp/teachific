@@ -18,22 +18,20 @@ export function getSitePageDomain(): SitePageDomain | string {
     return host as SitePageDomain;
   }
 
-  if (isLearnDomain()) return "teachific.app/learn";
+  if (isLearnDomain()) return "course360.app";
   if (isMembersDomain()) return window.location.hostname;
   if (isAccreditationDomain()) return window.location.hostname;
-  if (host === "app.teachific.net") return "app.teachific.net";
-  if (isMarketingStagingDomain()) return "teachific.app";
+  if (isMarketingStagingDomain()) return "course360.app";
 
-  if (host === "teachific.app" || host.startsWith("app.")) {
-    return "teachific.app";
+  if (host === "www.course360.app" || host === "teachific.app" || host === "www.teachific.app" || host.startsWith("app.")) {
+    return "course360.app";
   }
 
   if (host === "localhost" || host.endsWith(".localhost")) {
     const params = new URLSearchParams(window.location.search);
     const forced = params.get("siteDomain");
     if (forced && DOMAIN_VALUES.has(forced)) return forced;
-    if (isLearnDomain()) return "teachific.app/learn";
-    return "teachific.app";
+    return "course360.app";
   }
 
   return host;

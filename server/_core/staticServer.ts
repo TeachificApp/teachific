@@ -10,11 +10,10 @@ import { getOrgBaseUrl } from "../lib/orgUrl";
  * This file has NO vite imports so it can be safely bundled for production.
  */
 
-const PLATFORM_ROOT_DOMAINS = ["course360.app", "teachific.app"] as const;
+const PLATFORM_ROOT_DOMAINS = ["course360.app"] as const;
 const PLATFORM_ROOT_HOSTNAMES = new Set([
   ...PLATFORM_ROOT_DOMAINS,
   "www.course360.app",
-  "www.teachific.app",
 ]);
 const RESERVED_SUBDOMAINS = new Set([
   "www", "learn", "app", "api", "admin", "mail", "status", "help", "cdn",

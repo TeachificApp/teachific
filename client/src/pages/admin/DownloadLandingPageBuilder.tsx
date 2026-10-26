@@ -524,7 +524,7 @@ export default function DownloadLandingPageBuilder() {
                     <div className="px-2 py-1.5">
                       <p className="text-[10px] font-semibold text-gray-800 truncate">{seoTitle || productInfo?.title}</p>
                       {seoDescription && <p className="text-[9px] text-gray-500 line-clamp-2">{seoDescription}</p>}
-                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'teachific.app'}</p>
+                      <p className="text-[9px] text-[var(--org-primary)] mt-0.5 truncate">{typeof window !== 'undefined' ? window.location.hostname : 'course360.app'}</p>
                     </div>
                   </div>
                 )}

@@ -275,10 +275,10 @@ export const adminUserRouter = router({
         supportEmail: string | null;
         supportName: string | null;
       } = {
-        name: "Teachific™",
+        name: "Course360™",
         logoUrl: null,
-        website: "teachific.app",
-        supportEmail: "support@teachific.app",
+        website: "course360.app",
+        supportEmail: "support@course360.app",
         supportName: null,
       };
       if (orgId) {
@@ -298,13 +298,13 @@ export const adminUserRouter = router({
           const website = org.customDomain
             ? org.customDomain
             : org.customSubdomain
-            ? `${org.customSubdomain}.teachific.app`
-            : `teachific.app`;
+            ? `${org.customSubdomain}.course360.app`
+            : "course360.app";
           orgBranding = {
             name: org.name,
             logoUrl: org.logoUrl ?? null,
             website,
-            supportEmail: org.customSenderEmail ?? "support@teachific.app",
+            supportEmail: org.customSenderEmail ?? "support@course360.app",
             supportName: org.customSenderName ?? null,
           };
         }

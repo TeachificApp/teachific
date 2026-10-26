@@ -5,10 +5,11 @@ import {
 } from "./stripeRouter";
 
 describe("Course360 product checkout return origins", () => {
-  it("accepts approved Course360, legacy compatibility, preview, and localhost browser origins", () => {
+  it("uses canonical Course360 returns for platform, retired, preview, and localhost browser origins", () => {
     expect(parseApprovedPlatformCheckoutOrigin("https://course360.app")).toBe("https://course360.app");
     expect(parseApprovedPlatformCheckoutOrigin("https://academy.course360.app")).toBe("https://academy.course360.app");
-    expect(parseApprovedPlatformCheckoutOrigin("https://teachific.app")).toBe("https://teachific.app");
+    expect(parseApprovedPlatformCheckoutOrigin("https://teachific.app")).toBe("https://course360.app");
+    expect(parseApprovedPlatformCheckoutOrigin("https://academy.teachific.app")).toBe("https://academy.course360.app");
     expect(parseApprovedPlatformCheckoutOrigin("https://3000-example.manus.computer", "https://3000-example.manus.computer")).toBe("https://3000-example.manus.computer");
     expect(parseApprovedPlatformCheckoutOrigin("http://localhost:5173")).toBe("http://localhost:5173");
   });

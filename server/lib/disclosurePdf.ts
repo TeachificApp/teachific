@@ -86,7 +86,7 @@ export async function generateDisclosurePdf(data: DisclosurePdfData): Promise<Bu
     y += doc.heightOfString(intro1, { width: pageW, fontSize: 8.5 }) + 6;
 
     ensureSpace(55);
-    const contactEmail = data.orgEmail || "admin@teachific.app";
+    const contactEmail = data.orgEmail || "admin@course360.app";
     const intro2 = `The ACCME Standards for Integrity and Independence require that individuals who refuse to disclose relevant financial relationships be disqualified from involvement in the planning and implementation of accredited continuing education. Thank you for your diligence and cooperation. If you have questions, please contact: ${contactEmail}`;
     doc.fillColor(DARK).fontSize(8.5).font("Helvetica").text(intro2, 50, y, { width: pageW, lineGap: 1.5 });
     y += doc.heightOfString(intro2, { width: pageW, fontSize: 8.5 }) + 8;

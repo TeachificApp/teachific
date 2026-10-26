@@ -79,7 +79,7 @@ export const organizations = mysqlTable("organizations", {
   maxStorageBytes: bigint("maxStorageBytes", { mode: "number" }).default(10737418240),
   usedStorageBytes: bigint("usedStorageBytes", { mode: "number" }).default(0),
   isActive: boolean("isActive").default(true).notNull(),
-  // Subdomain on teachific.app (uses org slug by default)
+  // Subdomain on course360.app (uses org slug by default)
   subdomainEnabled: boolean("subdomainEnabled").default(false).notNull(),
   customSubdomain: varchar("customSubdomain", { length: 100 }),
   // Custom domain for Pro+ orgs
@@ -6168,7 +6168,7 @@ export const accreditationFormTemplates = mysqlTable("accreditationFormTemplates
   formType: varchar("formType", { length: 100 }).notNull(), // e.g. "image_quality", "peer_review", "physician_peer_review"
   version: int("version").default(1).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
-  hostDomain: varchar("hostDomain", { length: 255 }).default("teachific.app"),
+  hostDomain: varchar("hostDomain", { length: 255 }).default("course360.app"),
   themeSettings: longtext("themeSettings"),
   importedFromUrl: varchar("importedFromUrl", { length: 1000 }),
   successMessage: longtext("successMessage"),

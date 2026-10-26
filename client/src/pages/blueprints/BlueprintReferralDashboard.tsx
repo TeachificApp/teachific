@@ -136,7 +136,7 @@ export default function BlueprintReferralDashboard() {
         <div className="grid sm:grid-cols-3 gap-4 text-sm">
           {[
             { step: "1", title: "Create a link", desc: "Choose a blueprint and a memorable subdomain slug (e.g. my-fitness-school)" },
-            { step: "2", title: "Share it", desc: "Your link is slug.teachific.app?ref=1 — share it anywhere: email, social, your course" },
+            { step: "2", title: "Share it", desc: "Your link is slug.course360.app?ref=1 — share it anywhere: email, social, your course" },
             { step: "3", title: "Earn commissions", desc: "When someone signs up and subscribes, you earn a commission on their subscription" },
           ].map((item) => (
             <div key={item.step} className="flex gap-3">
@@ -243,7 +243,7 @@ export default function BlueprintReferralDashboard() {
           <DialogHeader>
             <DialogTitle>Create Referral Link</DialogTitle>
             <DialogDescription>
-              Choose a blueprint and a subdomain slug. Your link will be <strong>slug.teachific.app?ref=1</strong>
+              Choose a blueprint and a subdomain slug. Your link will be <strong>slug.course360.app?ref=1</strong>
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 py-2">
@@ -281,11 +281,11 @@ export default function BlueprintReferralDashboard() {
                   />
                 </div>
                 <div className="h-10 px-3 flex items-center bg-muted border border-l-0 rounded-r-md text-sm text-muted-foreground whitespace-nowrap">
-                  .teachific.app
+                  .course360.app
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Your link: <strong>{newSlug || "slug"}.teachific.app?ref=1</strong>
+                Your link: <strong>{newSlug || "slug"}.course360.app?ref=1</strong>
               </p>
             </div>
             <div className="space-y-1.5">

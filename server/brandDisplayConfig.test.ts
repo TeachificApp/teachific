@@ -16,7 +16,7 @@ describe("Course360 shared platform display configuration", () => {
     expect(config.senderName).toBe("Course360™");
     expect(config.senderEmail).toBe("noreply@course360.app");
     expect(config.supportEmail).toBe("support@course360.app");
-    expect(config.websiteUrl).toBe("https://www.course360.app");
+    expect(config.websiteUrl).toBe("https://course360.app");
     expect(config.appUrl).toBe("https://course360.app");
   });
 

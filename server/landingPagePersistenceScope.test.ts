@@ -87,6 +87,8 @@ describe("Course360 landing page ownership and persistence", () => {
     expect(publicLandingSource).toContain("trpc.lmsPublic.getCourse.useQuery");
     expect(publicLandingSource).toContain("linked.courseUrl");
     expect(publicLandingSource).toContain("linked.quizUrl");
+    expect(publicLandingSource).toContain('case "column_layout"');
+    expect(publicLandingSource).toContain("leftBlocks.map(renderChild)");
     expect(publicLandingSource).not.toContain("EmbeddedQuizPlayer quizId");
     expect(builderSource).toContain("eligibleQuizzes");
   });

@@ -334,7 +334,7 @@ async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, pa
             eq(orgMembers.orgId, purchase.orgId),
             inArray(orgMembers.role, ORG_ADMIN_ROLES),
           ));
-        const adminDashboardUrl = `https://teachific.com/admin?tab=enrollments`;
+        const adminDashboardUrl = `https://course360.app/admin?tab=enrollments`;
         const { subject: adminSubject, htmlBody: adminHtml, previewText: adminPreview } =
           buildOrgAdminNewPurchaseEmail({
             orgName,

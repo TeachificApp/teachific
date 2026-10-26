@@ -12,8 +12,8 @@ describe("Course360 session cookie domains", () => {
     } as never)).toMatchObject({ domain: ".course360.app", secure: true, sameSite: "none" });
   });
 
-  it("keeps legacy platform-domain session sharing for existing organization subdomains", () => {
-    expect(getPlatformSessionCookieDomain("academy.teachific.app")).toBe(".teachific.app");
+  it("does not issue a new shared session cookie for a retired platform domain", () => {
+    expect(getPlatformSessionCookieDomain("academy.teachific.app")).toBeUndefined();
   });
 
   it("does not assign a shared platform cookie domain to a custom organization domain or localhost", () => {

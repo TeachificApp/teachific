@@ -24,8 +24,8 @@ const features = [
 
 function getRootAppUrl(path: string) {
   const { protocol, hostname, port } = window.location;
-  if (hostname.endsWith(".teachific.app") && hostname !== "teachific.app" && hostname !== "www.teachific.app") {
-    return `${protocol}//teachific.app${path}`;
+  if (hostname.endsWith(".course360.app") && hostname !== "course360.app" && hostname !== "www.course360.app") {
+    return `${protocol}//course360.app${path}`;
   }
   const portSuffix = port ? `:${port}` : "";
   return `${protocol}//${hostname}${portSuffix}${path}`;

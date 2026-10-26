@@ -6,4 +6,4 @@ Disallow: /embed/
 Disallow: /dashboard/
 
 # Sitemap
-Sitemap: https://teachific.app/sitemap.xml
+Sitemap: https://course360.app/sitemap.xml

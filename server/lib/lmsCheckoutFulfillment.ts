@@ -517,7 +517,7 @@ export async function reconcileLmsCheckoutFromStripeSession(
     }
     const courseTitle = course?.title ?? `Course #${courseId}`;
     const stripeLink = `https://dashboard.stripe.com/payments/${paymentIntentFromSession}`;
-    const adminEmail = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@teachific.app";
+    const adminEmail = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@course360.app";
     // Notify owner via in-app notification
     await notifyOwner({
       title: "⚠️ Duplicate LMS Payment — Action Required",

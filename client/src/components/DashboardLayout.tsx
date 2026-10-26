@@ -620,7 +620,7 @@ function DashboardLayoutContent({
                                   toggleGroup(item.path);
                                 } else if (item.external) {
                                   const resolvedPath = item.path === "__ORG_HOME__"
-                                    ? (orgSlug ? getOrgBaseUrl(orgSlug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus) : "https://teachific.app")
+                                    ? (orgSlug ? getOrgBaseUrl(orgSlug, activeOrg?.customDomain, activeOrg?.domainVerificationStatus) : "https://course360.app")
                                     : item.path;
                                   window.open(resolvedPath, "_blank", "noopener,noreferrer");
                                 } else {

@@ -121,9 +121,9 @@ export default function RegisterPage() {
         if (data.orgSlug) {
           const { protocol, port } = window.location;
           const portSuffix = port ? `:${port}` : "";
-          const isProduction = window.location.hostname.endsWith(".teachific.app") || window.location.hostname === "teachific.app";
+          const isProduction = window.location.hostname.endsWith(".course360.app") || window.location.hostname === "course360.app";
           if (isProduction) {
-            window.location.href = `${protocol}//${data.orgSlug}.teachific.app/lms`;
+            window.location.href = `${protocol}//${data.orgSlug}.course360.app/lms`;
           } else {
             navigate("/lms");
           }

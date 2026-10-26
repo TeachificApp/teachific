@@ -28,6 +28,7 @@ import uploadCourseImageRouter from "../uploadCourseImageRoute";
 import uploadAiGenerationSourceRouter from "../routes/uploadAiGenerationSource";
 import { handleScheduledEmailCampaignSend } from "../routers/emailCampaignRouter";
 import { handleScheduledEmailWorkflowSend } from "../lib/emailWorkflowEngine";
+import { getCanonicalCourse360Url } from "../lib/canonicalCourse360Domain";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -51,6 +52,16 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Retired platform hostnames may only redirect to Course360. Preserve the
+  // request path/query for web visitors while leaving APIs and webhooks alone.
+  app.use((req, res, next) => {
+    if ((req.method !== "GET" && req.method !== "HEAD") || req.path.startsWith("/api/")) return next();
+    const target = getCanonicalCourse360Url(req.hostname, req.originalUrl);
+    if (!target) return next();
+    res.setHeader("Vary", "Host");
+    return res.redirect(308, target);
+  });
 
   // Increase timeout to 30 minutes for large file uploads (up to 3 GB)
   server.timeout = 30 * 60 * 1000;

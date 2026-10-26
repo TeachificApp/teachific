@@ -2160,9 +2160,9 @@ function AdminInvoiceView({ t, fmtCurrency, fmtDate, orgBranding }: { t: any; fm
             {orgBranding?.logoUrl ? (
               <img src={orgBranding.logoUrl} alt={orgBranding.name ?? 'Logo'} className="h-8 object-contain mb-1" />
             ) : (
-              <p className="text-base font-bold tracking-tight">{orgBranding?.name ?? 'Teachific™'}</p>
+              <p className="text-base font-bold tracking-tight">{orgBranding?.name ?? 'Course360™'}</p>
             )}
-            <p className="text-xs text-teal-100 mt-0.5">{orgBranding?.website ?? 'teachific.app'}</p>
+            <p className="text-xs text-teal-100 mt-0.5">{orgBranding?.website ?? 'course360.app'}</p>
           </div>
           <div className="text-right">
             <p className="text-xs text-teal-100">Receipt / Invoice</p>
@@ -2239,8 +2239,8 @@ function AdminInvoiceView({ t, fmtCurrency, fmtDate, orgBranding }: { t: any; fm
       </div>
       {/* Footer */}
       <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-center">
-        <p className="text-[10px] text-gray-400">{orgBranding?.name ?? 'Teachific™'} &bull; {orgBranding?.website ?? 'teachific.app'}</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">For support, contact {orgBranding?.supportEmail ?? 'support@teachific.app'}</p>
+        <p className="text-[10px] text-gray-400">{orgBranding?.name ?? 'Course360™'} &bull; {orgBranding?.website ?? 'course360.app'}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">For support, contact {orgBranding?.supportEmail ?? 'support@course360.app'}</p>
       </div>
     </div>
   );

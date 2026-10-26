@@ -3906,11 +3906,11 @@ function AppVersionsTab() {
             </div>
             <div className="space-y-1.5">
               <Label>Windows Download URL (.exe)</Label>
-              <Input placeholder="https://cdn.teachific.app/releases/creator/TeachificCreator-1.0.0-Setup.exe" value={form.windowsUrl} onChange={e => setForm(f => ({ ...f, windowsUrl: e.target.value }))} />
+              <Input placeholder="https://cdn.course360.app/releases/creator/Course360Creator-1.0.0-Setup.exe" value={form.windowsUrl} onChange={e => setForm(f => ({ ...f, windowsUrl: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>macOS Download URL (.dmg)</Label>
-              <Input placeholder="https://cdn.teachific.app/releases/creator/TeachificCreator-1.0.0.dmg" value={form.macUrl} onChange={e => setForm(f => ({ ...f, macUrl: e.target.value }))} />
+              <Input placeholder="https://cdn.course360.app/releases/creator/Course360Creator-1.0.0.dmg" value={form.macUrl} onChange={e => setForm(f => ({ ...f, macUrl: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>Release Notes (optional)</Label>

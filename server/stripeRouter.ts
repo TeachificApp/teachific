@@ -10,6 +10,7 @@ import { getStripe, STRIPE_PRICE_IDS, PLAN_LIMITS, type PlanTier } from "./strip
 import { getOrgSubscription, upsertOrgSubscription } from "./lmsDb";
 import { ENV } from "./_core/env";
 import { getOrgBaseUrl } from "./lib/orgUrl";
+import { canonicalizeCourse360Origin } from "./lib/canonicalCourse360Domain";
 
 async function getDb() {
   const { getDb: _getDb } = await import("./db");
@@ -44,7 +45,7 @@ export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPr
     const isSecure = parsed.protocol === "https:" || isLocalhost;
 
     if (isSecure && (isLocalhost || isConfiguredPreview || isPlatformSubdomain || COURSE360_CHECKOUT_PLATFORM_HOSTS.has(hostname))) {
-      return parsed.origin;
+      return canonicalizeCourse360Origin(parsed.origin) ?? parsed.origin;
     }
   } catch {
     // The request schema validates URL syntax; this is a separate, fail-closed host check.

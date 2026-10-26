@@ -332,8 +332,8 @@ export default function FormEmbedSharePanel({
                   </Select>
                   {domainMode === "allowlist" && (
                     <div>
-                      <Label className="text-xs">Allowed domains (one per line, wildcards supported e.g. *.teachific.app)</Label>
-                      <Textarea value={allowedDomainsText} onChange={e => setAllowedDomainsText(e.target.value)} rows={5} className="mt-1 font-mono text-xs" placeholder={"teachific.app\n*.teachific.app"} />
+                      <Label className="text-xs">Allowed domains (one per line, wildcards supported e.g. *.course360.app)</Label>
+                      <Textarea value={allowedDomainsText} onChange={e => setAllowedDomainsText(e.target.value)} rows={5} className="mt-1 font-mono text-xs" placeholder={"course360.app\n*.course360.app"} />
                     </div>
                   )}
                 </TabsContent>

@@ -1,8 +1,6 @@
 const PLATFORM_ROOT_HOSTS = new Set([
   "course360.app",
   "www.course360.app",
-  "teachific.app",
-  "www.teachific.app",
   "localhost",
   "127.0.0.1",
 ]);

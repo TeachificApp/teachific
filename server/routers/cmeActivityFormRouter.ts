@@ -873,7 +873,7 @@ export const cmeActivityFormRouter = router({
       const formData = (input.formData as any) ?? form ?? { activityTitle: course.title };
       const htmlBuffer = await generateCmePdfBuffer(formData as any, orgName);
 
-      const senderEmail = org?.customSenderEmail ?? process.env.SENDGRID_FROM_EMAIL ?? "admin@teachific.app";
+      const senderEmail = org?.customSenderEmail ?? process.env.SENDGRID_FROM_EMAIL ?? "admin@course360.app";
       const senderName = org?.customSenderName ?? orgName;
 
       // Build TO and CC lists

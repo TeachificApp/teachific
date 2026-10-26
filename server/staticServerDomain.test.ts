@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { getOrgMetadataUrl, getOrgSlugFromHostname } from "./_core/staticServer";
 
 describe("Course360 static organization metadata routing", () => {
-  it("recognizes Course360 and legacy platform subdomains without treating reserved names as organizations", () => {
+  it("recognizes Course360 subdomains without treating reserved names or retired hosts as organizations", () => {
     expect(getOrgSlugFromHostname("school.course360.app")).toBe("school");
-    expect(getOrgSlugFromHostname("school.teachific.app")).toBe("school");
+    expect(getOrgSlugFromHostname("school.teachific.app")).toBeNull();
     expect(getOrgSlugFromHostname("learn.course360.app")).toBeNull();
     expect(getOrgSlugFromHostname("course360.app")).toBeNull();
     expect(getOrgSlugFromHostname("www.course360.app")).toBeNull();

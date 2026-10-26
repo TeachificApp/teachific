@@ -1494,7 +1494,7 @@ export async function sendPurchaseConfirmationEmail(userId: number, productId: n
     .where(eq(digitalProductFiles.productId, productId))
     .orderBy(asc(digitalProductFiles.sortOrder));
 
-  const appUrl = 'https://app.teachific.com';
+  const appUrl = 'https://course360.app';
   const filesPath = `/downloads/${product.slug}/files`;
   const filesUrl = `${appUrl}${filesPath}`;
 
@@ -1520,7 +1520,7 @@ export async function sendPurchaseConfirmationEmail(userId: number, productId: n
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
         <tr><td style="background:linear-gradient(135deg,#0e1e2e 0%,#0e4a50 60%,#189aa1 100%);padding:28px 32px;text-align:center;">
-          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp" alt="Teachific" width="60" height="60" style="border-radius:50%;display:block;margin:0 auto 12px;" />
+          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/UrcfdRVE8J6mpMNR48QuFe/aaus_logo_ring_01cc7ccd.webp" alt="Course360™" width="60" height="60" style="border-radius:50%;display:block;margin:0 auto 12px;" />
           <div style="font-size:18px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Purchase Confirmed</div>
         </td></tr>
         <tr><td style="padding:32px;">
@@ -1534,10 +1534,10 @@ export async function sendPurchaseConfirmationEmail(userId: number, productId: n
             <a href="${accessUrl}" style="display:inline-block;background:linear-gradient(135deg,#189aa1,#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;">Access Your Files</a>
           </div>
           <p style="margin:4px 0 16px;font-size:12px;color:#94a3b8;text-align:center;">This link signs you in automatically — no password needed.</p>
-          <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">Questions? Contact us at <a href="mailto:support@teachific.com" style="color:#189aa1;">support@teachific.com</a>.</p>
+          <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">Questions? Contact us at <a href="mailto:support@course360.app" style="color:#189aa1;">support@course360.app</a>.</p>
         </td></tr>
         <tr><td style="background:#f8fffe;border-top:1px solid #e5f7f8;padding:20px 32px;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#94a3b8;">© Teachific™ · <a href="https://www.teachific.com" style="color:#189aa1;text-decoration:none;">www.teachific.com</a></p>
+          <p style="margin:0;font-size:12px;color:#94a3b8;">© Course360™ · <a href="https://course360.app" style="color:#189aa1;text-decoration:none;">course360.app</a></p>
         </td></tr>
       </table>
     </td></tr>

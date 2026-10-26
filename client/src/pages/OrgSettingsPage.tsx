@@ -499,7 +499,7 @@ export default function OrgSettingsPage() {
                     placeholder="acme-learning"
                     className="rounded-r-none border-r-0 flex-1"
                   />
-                  <span className="h-10 px-3 flex items-center bg-muted border border-input rounded-r-md text-sm text-muted-foreground whitespace-nowrap select-none">.teachific.app</span>
+                  <span className="h-10 px-3 flex items-center bg-muted border border-input rounded-r-md text-sm text-muted-foreground whitespace-nowrap select-none">.course360.app</span>
                 </div>
                 {/* Availability indicator */}
                 {orgSlug.length >= 2 && (
@@ -508,9 +508,9 @@ export default function OrgSettingsPage() {
                       <><Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /><span className="text-muted-foreground">Checking availability…</span></>
                     ) : subdomainChanged ? (
                       subdomainAvailable ? (
-                        <><Check className="h-3 w-3 text-emerald-600" /><span className="text-emerald-600 font-medium">{orgSlug}.teachific.app is available</span></>
+                        <><Check className="h-3 w-3 text-emerald-600" /><span className="text-emerald-600 font-medium">{orgSlug}.course360.app is available</span></>
                       ) : (
-                        <><AlertCircle className="h-3 w-3 text-destructive" /><span className="text-destructive font-medium">{orgSlug}.teachific.app is already taken</span></>
+                        <><AlertCircle className="h-3 w-3 text-destructive" /><span className="text-destructive font-medium">{orgSlug}.course360.app is already taken</span></>
                       )
                     ) : (
                       <><Check className="h-3 w-3 text-muted-foreground" /><span className="text-muted-foreground">Current subdomain</span></>
@@ -520,12 +520,12 @@ export default function OrgSettingsPage() {
                 <p className="text-xs text-muted-foreground">
                   Your school will be accessible at:{" "}
                   <a
-                    href={`https://${orgSlug}.teachific.app`}
+                    href={`https://${orgSlug}.course360.app`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-mono text-teal-600 hover:underline"
                   >
-                    {orgSlug}.teachific.app
+                    {orgSlug}.course360.app
                   </a>
                 </p>
               </div>
@@ -1000,21 +1000,21 @@ export default function OrgSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-primary" /> Your Teachific Subdomain
+                <Globe className="h-5 w-5 text-primary" /> Your Course360 Subdomain
               </CardTitle>
               <CardDescription>Your school is live at this address. Share it with your students.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border border-border/60">
                 <span className="font-mono text-sm font-semibold text-primary flex-1 truncate">
-                  {orgCtx?.org?.slug ? `${orgCtx.org.slug}.teachific.app` : "(subdomain not set)"}
+                  {orgCtx?.org?.slug ? `${orgCtx.org.slug}.course360.app` : "(subdomain not set)"}
                 </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1.5 shrink-0"
                   onClick={() => {
-                    const url = `https://${orgCtx?.org?.slug}.teachific.app`;
+                    const url = `https://${orgCtx?.org?.slug}.course360.app`;
                     navigator.clipboard.writeText(url);
                     toast.success("Subdomain URL copied!");
                   }}
@@ -1027,7 +1027,7 @@ export default function OrgSettingsPage() {
                   className="h-8 gap-1.5 shrink-0"
                   asChild
                 >
-                  <a href={`https://${orgCtx?.org?.slug}.teachific.app`} target="_blank" rel="noopener noreferrer">
+                  <a href={`https://${orgCtx?.org?.slug}.course360.app`} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3.5 w-3.5" /> Visit
                   </a>
                 </Button>
@@ -1049,7 +1049,7 @@ export default function OrgSettingsPage() {
                   <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/40 bg-amber-500/10 ml-auto">Pro+ required</Badge>
                 )}
               </CardTitle>
-              <CardDescription>Point your own domain (e.g. learn.acme.com) to your Teachific school.</CardDescription>
+              <CardDescription>Point your own domain (e.g. learn.acme.com) to your Course360 school.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {!isProPlus && (
@@ -1077,7 +1077,7 @@ export default function OrgSettingsPage() {
                         <div className="grid grid-cols-3 px-3 py-2 gap-2 text-xs">
                           <span className="text-blue-500">CNAME</span>
                           <span>learn <span className="text-muted-foreground">(or @)</span></span>
-                          <span className="text-green-500 truncate">{orgCtx?.org?.slug ? `${orgCtx.org.slug}.teachific.app` : "yourschool.teachific.app"}</span>
+                          <span className="text-green-500 truncate">{orgCtx?.org?.slug ? `${orgCtx.org.slug}.course360.app` : "yourschool.course360.app"}</span>
                         </div>
                       </div>
                     </div>
@@ -1086,7 +1086,7 @@ export default function OrgSettingsPage() {
                     <span className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">2</span>
                     <div>
                       <p className="text-sm font-medium">Enter your custom domain below and save</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Once DNS is configured, enter your domain here so Teachific knows to route traffic to your school.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Once DNS is configured, enter your domain here so Course360 can route traffic to your school.</p>
                     </div>
                   </li>
                   <li className="flex gap-3">
@@ -2702,7 +2702,7 @@ function OrgLandingPageTab({ orgId, orgSlug, orgName, plan }: {
     });
   };
 
-  const previewUrl = orgSlug ? `https://${orgSlug}.teachific.app` : null;
+  const previewUrl = orgSlug ? `https://${orgSlug}.course360.app` : null;
 
   return (
     <TabsContent value="landing" className="space-y-0 p-0">

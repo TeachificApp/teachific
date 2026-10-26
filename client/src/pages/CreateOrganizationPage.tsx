@@ -145,7 +145,7 @@ export default function CreateOrganizationPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Your school will be accessible at <strong>{orgSlug || "your-slug"}.teachific.app</strong>
+                  Your school will be accessible at <strong>{orgSlug || "your-slug"}.course360.app</strong>
                 </p>
               </div>
 
