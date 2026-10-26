@@ -1050,19 +1050,26 @@ export const adminUserRouter = router({
   // ─── Activity Log ─────────────────────────────────────────────────────────
 
   getUserActivityLog: protectedProcedure
-    .input(z.object({ userId: z.number(), page: z.number().default(1), pageSize: z.number().default(50) }))
+    .input(z.object({
+      userId: z.number().int().positive(),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(50),
+    }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
+      const { db, orgId } = await requireActiveOrgUserMembership(ctx, input.userId);
       const offset = (input.page - 1) * input.pageSize;
-      const rows = await db
-        .select()
-        .from(memberActivityEvents)
-        .where(eq(memberActivityEvents.userId, input.userId))
-        .orderBy(desc(memberActivityEvents.createdAt))
-        .limit(input.pageSize)
-        .offset(offset);
-      return { events: rows, total: rows.length };
+      const conditions = and(
+        eq(memberActivityEvents.userId, input.userId),
+        eq(memberActivityEvents.orgId, orgId),
+      );
+      const [rows, countRows] = await Promise.all([
+        db.select().from(memberActivityEvents).where(conditions)
+          .orderBy(desc(memberActivityEvents.createdAt)).limit(input.pageSize).offset(offset),
+        db.select({ total: sql<number>`COUNT(*)` }).from(memberActivityEvents).where(conditions),
+      ]);
+      const total = Number(countRows[0]?.total ?? 0);
+      return { events: rows, total, totalPages: Math.max(1, Math.ceil(total / input.pageSize)) };
     }),
 
   // ─── Login History ────────────────────────────────────────────────────────
@@ -1072,15 +1079,24 @@ export const adminUserRouter = router({
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       const { db } = await requireActiveOrgUserMembership(ctx, input.userId);
+      // Login rows predate organization attribution. Do not expose a user's
+      // account-wide history to an organization administrator as though it
+      // belonged solely to the selected organization.
+      if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Organization administrators cannot view account-wide login history.",
+        });
+      }
       const offset = (input.page - 1) * input.pageSize;
-      const rows = await db
-        .select()
-        .from(userLoginEvents)
-        .where(eq(userLoginEvents.userId, input.userId))
-        .orderBy(desc(userLoginEvents.createdAt))
-        .limit(input.pageSize)
-        .offset(offset);
-      return { logins: rows, total: rows.length };
+      const conditions = eq(userLoginEvents.userId, input.userId);
+      const [rows, countRows] = await Promise.all([
+        db.select().from(userLoginEvents).where(conditions)
+          .orderBy(desc(userLoginEvents.createdAt)).limit(input.pageSize).offset(offset),
+        db.select({ total: sql<number>`COUNT(*)` }).from(userLoginEvents).where(conditions),
+      ]);
+      const total = Number(countRows[0]?.total ?? 0);
+      return { logins: rows, total, totalPages: Math.max(1, Math.ceil(total / input.pageSize)) };
     }),
 
   // ─── Email Aliases ────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSubdomain } from "@/hooks/useSubdomain";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 import { shouldAutoCompleteCmeLessonOnAdvance } from "@shared/cmeLessonCompletion";
 import { lessonHasRequiredGradedInlineQuiz } from "@shared/inlineLessonQuizCompletion";
 import { getVisibleInlineLessonQuizQuestionIndexes, inlineLessonQuizQuestionKey } from "@shared/inlineLessonQuizFlow";
@@ -983,7 +984,7 @@ export default function CoursePlayer() {
   const isPreviewMode = searchString.includes("preview=student") || searchString.includes("preview=admin");
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "site_owner" || user?.role === "site_admin" || user?.role === "org_super_admin" || user?.role === "org_admin";
   // adminPreviewStudent must be declared BEFORE adminBypass (useMemo depends on it)
   const [adminPreviewStudent, setAdminPreviewStudent] = useState(isPreviewMode);
   // adminBypass must be defined BEFORE hooks (useEffect references it in a closure)
@@ -1017,13 +1018,13 @@ export default function CoursePlayer() {
     { slug: organizationSlug! },
     { enabled: !!organizationSlug },
   );
-  const playerLogo = organization?.logoUrl ?? LOGO;
-  const playerBrandName = organization?.name ?? (data as any)?.course?.organizationName ?? "Course360™";
+  const playerLogo = (organization as any)?.logoUrl ?? LOGO;
 
   const { data, isLoading } = trpc.lmsLearner.getCoursePlayer.useQuery(
     { slug: slug!, preview: isPreviewMode || adminPreviewStudent || isAdmin },
     { enabled: !!slug && !!user && (!organizationSlug || !!organization?.id) }
   );
+  const playerBrandName = organization?.name ?? (data as any)?.course?.organizationName ?? "Course360™";
   const { data: lessonData, isLoading: lessonLoading, isError: lessonError, error: lessonQueryError, refetch: refetchLesson } = trpc.lmsLearner.getLesson.useQuery(
     { lessonId: selectedLessonId! },
     { enabled: !!selectedLessonId }
@@ -1044,6 +1045,14 @@ export default function CoursePlayer() {
     { lessonId: selectedLessonId!, courseSlug: slug! },
     { enabled: !!selectedLessonId && !!slug && !!user && !data?.isAdminPreview }
   );
+  useActivityTracker({
+    // The event endpoint verifies this claimed value against the signed-in
+    // user's active organization and the selected course/lesson records.
+    orgId: data?.course?.orgId ?? 0,
+    courseId: data?.course?.id,
+    lessonId: selectedLessonId ?? undefined,
+    enabled: !!data?.enrollment && !!data?.course?.orgId && !data?.isAdminPreview,
+  });
 
   const [optimisticCompleted, setOptimisticCompleted] = useState<Set<number>>(new Set());
   const [optimisticOpened, setOptimisticOpened] = useState<Set<number>>(new Set());

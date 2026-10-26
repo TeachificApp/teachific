@@ -838,6 +838,84 @@ export async function getActivityEventsByOrg(
     .offset(opts.offset ?? 0);
 }
 
+/**
+ * Counts activity rows using the same tenant and filter predicates as
+ * getActivityEventsByOrg. Organization-facing reports must never derive their
+ * totals from a page of results, which would make pagination misleading.
+ */
+export async function countActivityEventsByOrg(
+  orgId: number,
+  opts: {
+    userId?: number;
+    courseId?: number;
+    eventType?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  } = {},
+) {
+  const conditions = [eq(memberActivityEvents.orgId, orgId)];
+  if (opts.userId) conditions.push(eq(memberActivityEvents.userId, opts.userId));
+  if (opts.courseId) conditions.push(eq(memberActivityEvents.courseId, opts.courseId));
+  if (opts.eventType) conditions.push(eq(memberActivityEvents.eventType, opts.eventType as any));
+  if (opts.dateFrom) conditions.push(gte(memberActivityEvents.createdAt, opts.dateFrom));
+  if (opts.dateTo) conditions.push(sql`${memberActivityEvents.createdAt} <= ${opts.dateTo}`);
+
+  const [row] = await db
+    .select({ total: sql<number>`COUNT(*)` })
+    .from(memberActivityEvents)
+    .where(and(...conditions));
+  return Number(row?.total ?? 0);
+}
+
+/** Platform-only feed helper. Authorization remains in the router. */
+export async function getActivityEventsAcrossOrganizations(
+  opts: {
+    userId?: number;
+    courseId?: number;
+    eventType?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    limit?: number;
+    offset?: number;
+  } = {},
+) {
+  const conditions = [];
+  if (opts.userId) conditions.push(eq(memberActivityEvents.userId, opts.userId));
+  if (opts.courseId) conditions.push(eq(memberActivityEvents.courseId, opts.courseId));
+  if (opts.eventType) conditions.push(eq(memberActivityEvents.eventType, opts.eventType as any));
+  if (opts.dateFrom) conditions.push(gte(memberActivityEvents.createdAt, opts.dateFrom));
+  if (opts.dateTo) conditions.push(sql`${memberActivityEvents.createdAt} <= ${opts.dateTo}`);
+
+  return db.select().from(memberActivityEvents)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(memberActivityEvents.createdAt))
+    .limit(opts.limit ?? 200)
+    .offset(opts.offset ?? 0);
+}
+
+/** Platform-only exact total paired with getActivityEventsAcrossOrganizations. */
+export async function countActivityEventsAcrossOrganizations(
+  opts: {
+    userId?: number;
+    courseId?: number;
+    eventType?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  } = {},
+) {
+  const conditions = [];
+  if (opts.userId) conditions.push(eq(memberActivityEvents.userId, opts.userId));
+  if (opts.courseId) conditions.push(eq(memberActivityEvents.courseId, opts.courseId));
+  if (opts.eventType) conditions.push(eq(memberActivityEvents.eventType, opts.eventType as any));
+  if (opts.dateFrom) conditions.push(gte(memberActivityEvents.createdAt, opts.dateFrom));
+  if (opts.dateTo) conditions.push(sql`${memberActivityEvents.createdAt} <= ${opts.dateTo}`);
+
+  const [row] = await db.select({ total: sql<number>`COUNT(*)` })
+    .from(memberActivityEvents)
+    .where(conditions.length ? and(...conditions) : undefined);
+  return Number(row?.total ?? 0);
+}
+
 export async function getActivitySummaryByUser(orgId: number, userId: number) {
   // Total session time (sum of session_heartbeat durationMs + page_exit durationMs)
   const [timeRow] = await db
@@ -889,12 +967,19 @@ export async function getActivitySummaryByUser(orgId: number, userId: number) {
 }
 
 export async function getActivityMemberList(orgId: number) {
-  // Get distinct users who have activity in this org
-  const rows = await db
-    .selectDistinct({ userId: memberActivityEvents.userId })
-    .from(memberActivityEvents)
-    .where(and(eq(memberActivityEvents.orgId, orgId), sql`${memberActivityEvents.userId} IS NOT NULL`));
-  return rows.map((r) => r.userId).filter(Boolean) as number[];
+  // Return every organization member, including people who have not yet
+  // generated an activity event. This is the safe source for report filters.
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: orgMembers.role,
+    })
+    .from(orgMembers)
+    .innerJoin(users, eq(orgMembers.userId, users.id))
+    .where(eq(orgMembers.orgId, orgId))
+    .orderBy(asc(users.name), asc(users.email));
 }
 
 // ─── Notification Settings ────────────────────────────────────────────────────

@@ -39,7 +39,7 @@ interface ActivityEvent {
   durationMs?: number | null;
   videoPositionSec?: number | null;
   videoDurationSec?: number | null;
-  metadata?: string | null;
+  metadata?: Record<string, unknown> | null;
   referrer?: string;
 }
 
@@ -56,20 +56,17 @@ const SESSION_KEY = nanoid(16);
 const FLUSH_INTERVAL_MS = 30_000; // flush every 30 seconds
 const HEARTBEAT_INTERVAL_MS = 60_000; // heartbeat every 60 seconds
 
-// Global queue so multiple tracker instances share the same buffer
-const globalQueue: ActivityEvent[] = [];
-let globalFlushFn: (() => void) | null = null;
-
 export function useActivityTracker(opts: TrackerOptions) {
   const { orgId, courseId, lessonId, quizId, enabled = true } = opts;
-  const ingestMutation = trpc.lms.activity.ingest.useMutation();
+  const logMutation = trpc.lms.activity.log.useMutation();
   const pageEnterTimeRef = useRef<number>(Date.now());
   const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const queueRef = useRef<ActivityEvent[]>([]);
 
   const enqueue = useCallback((event: Omit<ActivityEvent, "sessionKey">) => {
     if (!enabled) return;
-    globalQueue.push({
+    queueRef.current.push({
       ...event,
       sessionKey: SESSION_KEY,
       pageUrl: event.pageUrl ?? window.location.pathname,
@@ -79,16 +76,17 @@ export function useActivityTracker(opts: TrackerOptions) {
   }, [enabled]);
 
   const flush = useCallback(() => {
-    if (!globalQueue.length || !enabled) return;
-    const batch = globalQueue.splice(0, globalQueue.length);
-    ingestMutation.mutate({ orgId, events: batch });
-  }, [orgId, enabled, ingestMutation]);
-
-  // Register flush function globally so video/click trackers can trigger it
-  useEffect(() => {
-    globalFlushFn = flush;
-    return () => { globalFlushFn = null; };
-  }, [flush]);
+    if (!queueRef.current.length || !enabled || logMutation.isPending) return;
+    const batch = queueRef.current.splice(0, 50);
+    logMutation.mutate({ orgId, events: batch }, {
+      onError: () => {
+        // Keep a bounded retry buffer. Activity telemetry must never interfere
+        // with the learner experience if the network is briefly unavailable.
+        const remainingCapacity = Math.max(0, 50 - queueRef.current.length);
+        queueRef.current.unshift(...batch.slice(0, remainingCapacity));
+      },
+    });
+  }, [orgId, enabled, logMutation]);
 
   // Track page view on mount, page exit on unmount
   useEffect(() => {
@@ -138,12 +136,8 @@ export function useActivityTracker(opts: TrackerOptions) {
     if (!enabled) return;
     const handleUnload = () => {
       enqueue({ eventType: "session_end", courseId, durationMs: Date.now() - pageEnterTimeRef.current });
-      // Use sendBeacon for reliability on unload
-      const batch = globalQueue.splice(0, globalQueue.length);
-      if (batch.length) {
-        const payload = JSON.stringify({ orgId, events: batch });
-        navigator.sendBeacon?.("/api/trpc/lms.activity.ingest", payload);
-      }
+      // Flush while React is still mounted; unsent telemetry is non-critical.
+      flush();
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);
@@ -197,7 +191,7 @@ export function useActivityTracker(opts: TrackerOptions) {
               courseId, lessonId,
               videoPositionSec: video.currentTime,
               videoDurationSec: video.duration,
-              metadata: JSON.stringify({ percent: milestone }),
+              metadata: { percent: milestone },
             });
           }
         }
@@ -229,7 +223,7 @@ export function useActivityTracker(opts: TrackerOptions) {
       enqueue({
         eventType,
         courseId, lessonId,
-        metadata: JSON.stringify({ label }),
+        metadata: { label },
       });
     },
     [enabled, courseId, lessonId, enqueue]

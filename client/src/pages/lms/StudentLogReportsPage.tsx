@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,18 +58,31 @@ const EVENT_COLORS: Record<string, string> = {
   session_end: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 };
 
-function OrgPicker({ value, onChange }: { value: number | null; onChange: (id: number | null) => void }) {
-  const { data: orgs } = trpc.orgs.list.useQuery();
+function OrgPicker({
+  orgs,
+  value,
+  allOrganizations,
+  onChange,
+}: {
+  orgs: Array<{ id: number; name: string }>;
+  value: number | null;
+  allOrganizations: boolean;
+  onChange: (id: number | null, allOrganizations: boolean) => void;
+}) {
   return (
     <div className="space-y-1.5">
       <Label>Organization</Label>
       <select
         className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+        value={allOrganizations ? "all" : value ?? ""}
+        onChange={(e) => onChange(
+          e.target.value && e.target.value !== "all" ? Number(e.target.value) : null,
+          e.target.value === "all",
+        )}
       >
+        <option value="all">All organizations</option>
         <option value="">Select an organization…</option>
-        {orgs?.map((o) => (
+        {orgs.map((o) => (
           <option key={o.id} value={o.id}>{o.name}</option>
         ))}
       </select>
@@ -78,10 +93,13 @@ function OrgPicker({ value, onChange }: { value: number | null; onChange: (id: n
 const PAGE_SIZE = 50;
 
 export default function StudentLogReportsPage() {
-  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const { user } = useAuth();
+  const { orgId: selectedOrgId, orgs, ready, setSelectedOrgId } = useOrgScope();
+  const isPlatformAdmin = user?.role === "site_owner" || user?.role === "site_admin";
+  const [allOrganizations, setAllOrganizations] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | undefined>(undefined);
   const [selectedCourseId, setSelectedCourseId] = useState<number | undefined>(undefined);
-  const [selectedEventType, setSelectedEventType] = useState<string | undefined>(undefined);
+  const [selectedEventType, setSelectedEventType] = useState<(typeof EVENT_TYPES)[number] | undefined>(undefined);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [offset, setOffset] = useState(0);
@@ -90,19 +108,20 @@ export default function StudentLogReportsPage() {
   // Fetch members for filter
   const { data: members } = trpc.lms.activity.memberList.useQuery(
     { orgId: selectedOrgId! },
-    { enabled: !!selectedOrgId }
+    { enabled: !!selectedOrgId && !allOrganizations }
   );
 
   // Fetch courses for filter
-  const { data: courses } = trpc.lms.courses.list.useQuery(
+  const { data: courses } = trpc.lms.activity.courseList.useQuery(
     { orgId: selectedOrgId! },
-    { enabled: !!selectedOrgId }
+    { enabled: !!selectedOrgId && !allOrganizations }
   );
 
   // Fetch activity events
-  const { data: events, isLoading, refetch } = trpc.lms.activity.list.useQuery(
+  const { data: activityFeed, isLoading, refetch } = trpc.lms.activity.list.useQuery(
     {
-      orgId: selectedOrgId!,
+      orgId: allOrganizations ? undefined : selectedOrgId!,
+      allOrganizations: allOrganizations || undefined,
       userId: selectedUserId,
       courseId: selectedCourseId,
       eventType: selectedEventType,
@@ -111,12 +130,17 @@ export default function StudentLogReportsPage() {
       limit: PAGE_SIZE,
       offset,
     },
-    { enabled: !!selectedOrgId }
+    { enabled: allOrganizations || !!selectedOrgId }
+  );
+  const events = activityFeed?.events ?? [];
+  const organizationNameById = useMemo(
+    () => new Map((orgs as Array<{ id: number; name: string }>).map((org) => [org.id, org.name])),
+    [orgs],
   );
 
   // Filter by search (client-side on the current page)
   const filtered = useMemo(() => {
-    if (!events || !search.trim()) return events ?? [];
+    if (!search.trim()) return events;
     const q = search.toLowerCase();
     return events.filter((e: any) =>
       e.pageTitle?.toLowerCase().includes(q) ||
@@ -141,9 +165,10 @@ export default function StudentLogReportsPage() {
       toast.error("No data to export");
       return;
     }
-    const headers = ["Timestamp", "Event Type", "User ID", "Course ID", "Lesson ID", "Page Title", "Page URL", "Duration (ms)"];
+    const headers = ["Timestamp", "Organization", "Event Type", "User ID", "Course ID", "Lesson ID", "Page Title", "Page URL", "Duration (ms)"];
     const rows = filtered.map((e: any) => [
       new Date(e.createdAt).toISOString(),
+      organizationNameById.get(e.orgId) ?? `Organization #${e.orgId}`,
       e.eventType,
       e.userId,
       e.courseId ?? "",
@@ -164,7 +189,7 @@ export default function StudentLogReportsPage() {
   }
 
   // Summary stats
-  const totalEvents = filtered.length;
+  const totalEvents = activityFeed?.total ?? 0;
   const uniqueUsers = new Set(filtered.map((e: any) => e.userId)).size;
   const completions = filtered.filter((e: any) => e.eventType === "lesson_complete" || e.eventType === "course_complete").length;
 
@@ -191,10 +216,26 @@ export default function StudentLogReportsPage() {
         </div>
       </div>
 
-      {/* Org Picker */}
-      <OrgPicker value={selectedOrgId} onChange={(id) => { setSelectedOrgId(id); resetFilters(); }} />
+      {/* Platform administrators may choose the organization to inspect. Organization
+          administrators are deliberately pinned to their active organization. */}
+      {isPlatformAdmin ? (
+        <OrgPicker
+          orgs={orgs as Array<{ id: number; name: string }>}
+          value={selectedOrgId}
+          allOrganizations={allOrganizations}
+          onChange={(id, includeAllOrganizations) => {
+            setAllOrganizations(includeAllOrganizations);
+            if (id) void setSelectedOrgId(id);
+            resetFilters();
+          }}
+        />
+      ) : selectedOrgId ? (
+        <p className="text-sm text-muted-foreground">
+          Showing activity for your active organization. Switch organizations from the dashboard to view a different organization you administer.
+        </p>
+      ) : null}
 
-      {selectedOrgId && (
+      {(allOrganizations && isPlatformAdmin) || (ready && selectedOrgId) ? (
         <>
           {/* Summary Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -205,7 +246,7 @@ export default function StudentLogReportsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{totalEvents}</p>
-                  <p className="text-xs text-muted-foreground">Events (this page)</p>
+                  <p className="text-xs text-muted-foreground">Events matching filters</p>
                 </div>
               </CardContent>
             </Card>
@@ -248,6 +289,7 @@ export default function StudentLogReportsPage() {
                   <Select
                     value={selectedUserId?.toString() ?? "all"}
                     onValueChange={(v) => { setSelectedUserId(v === "all" ? undefined : Number(v)); setOffset(0); }}
+                    disabled={allOrganizations}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All students" />
@@ -269,6 +311,7 @@ export default function StudentLogReportsPage() {
                   <Select
                     value={selectedCourseId?.toString() ?? "all"}
                     onValueChange={(v) => { setSelectedCourseId(v === "all" ? undefined : Number(v)); setOffset(0); }}
+                    disabled={allOrganizations}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All courses" />
@@ -289,7 +332,7 @@ export default function StudentLogReportsPage() {
                   <Label>Event Type</Label>
                   <Select
                     value={selectedEventType ?? "all"}
-                    onValueChange={(v) => { setSelectedEventType(v === "all" ? undefined : v); setOffset(0); }}
+                    onValueChange={(v) => { setSelectedEventType(v === "all" ? undefined : v as (typeof EVENT_TYPES)[number]); setOffset(0); }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All event types" />
@@ -379,6 +422,11 @@ export default function StudentLogReportsPage() {
                         </span>
                       </div>
                       <div className="space-y-0.5">
+                        {allOrganizations && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {organizationNameById.get(e.orgId) ?? `Organization #${e.orgId}`}
+                          </p>
+                        )}
                         {e.pageTitle && <p className="text-sm font-medium truncate">{e.pageTitle}</p>}
                         {e.pageUrl && <p className="text-xs text-muted-foreground truncate">{e.pageUrl}</p>}
                       </div>
@@ -408,6 +456,7 @@ export default function StudentLogReportsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Timestamp</TableHead>
+                      {allOrganizations && <TableHead>Organization</TableHead>}
                       <TableHead>Event</TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Course</TableHead>
@@ -421,6 +470,11 @@ export default function StudentLogReportsPage() {
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {new Date(e.createdAt).toLocaleString()}
                         </TableCell>
+                        {allOrganizations && (
+                          <TableCell className="text-sm text-muted-foreground max-w-40 truncate">
+                            {organizationNameById.get(e.orgId) ?? `Organization #${e.orgId}`}
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Badge
                             className={`text-xs font-medium ${EVENT_COLORS[e.eventType] ?? "bg-gray-100 text-gray-700"}`}
@@ -457,7 +511,7 @@ export default function StudentLogReportsPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
-                  Showing {offset + 1}–{offset + filtered.length} events
+                  Showing {filtered.length ? offset + 1 : 0}–{offset + filtered.length} of {totalEvents} events
                 </span>
                 <div className="flex gap-2">
                   <Button
@@ -471,7 +525,7 @@ export default function StudentLogReportsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={(events?.length ?? 0) < PAGE_SIZE}
+                    disabled={offset + PAGE_SIZE >= totalEvents}
                     onClick={() => setOffset(offset + PAGE_SIZE)}
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -481,6 +535,12 @@ export default function StudentLogReportsPage() {
             </>
           )}
         </>
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            Loading your organization context…
+          </CardContent>
+        </Card>
       )}
     </div>
   );

@@ -4,8 +4,10 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { and, asc, eq } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { getDb, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { lmsCourses, lmsLessons, lmsQuizzes, lmsSections } from "../drizzle/schema";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
@@ -192,6 +194,10 @@ import {
   getOrgCourseAnalytics,
   insertActivityEvents,
   getActivityEventsByOrg,
+  countActivityEventsByOrg,
+  getActivityEventsAcrossOrganizations,
+  countActivityEventsAcrossOrganizations,
+  getActivityMemberList,
   getOrgNotificationSettings,
   updateOrgNotificationSettings,
   getWorkshopsByOrg,
@@ -224,6 +230,122 @@ async function requireOrgId(userId: number): Promise<number> {
   const orgId = await getOrgIdForUserWithFallback(userId, user?.role ?? "member");
   if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No org found for user" });
   return orgId;
+}
+
+const ACTIVITY_EVENT_TYPES = [
+  "page_view", "page_exit", "session_start", "session_heartbeat", "session_end",
+  "video_play", "video_pause", "video_seek", "video_complete", "video_progress",
+  "lesson_start", "lesson_complete", "quiz_start", "quiz_submit",
+  "download", "link_click", "button_click", "search", "enrollment", "course_complete",
+] as const;
+
+const activityEventInput = z.object({
+  eventType: z.enum(ACTIVITY_EVENT_TYPES),
+  courseId: z.number().int().positive().optional(),
+  lessonId: z.number().int().positive().optional(),
+  quizId: z.number().int().positive().optional(),
+  pageUrl: z.string().max(2048).optional(),
+  pageTitle: z.string().max(500).optional(),
+  durationMs: z.number().int().min(0).max(86_400_000).optional(),
+  videoPositionSec: z.number().min(0).max(86_400).optional(),
+  videoDurationSec: z.number().min(0).max(86_400).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  sessionKey: z.string().min(1).max(64).optional(),
+  referrer: z.string().max(2048).optional(),
+}).strict();
+
+function isPlatformAdministrator(role: string) {
+  return role === "site_owner" || role === "site_admin";
+}
+
+/**
+ * Organization admins are deliberately bound to their selected active
+ * organization. Platform administrators may inspect a specific organization,
+ * which keeps platform oversight complete without turning an org report into a
+ * cross-tenant feed.
+ */
+async function requireActivityReportOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+) {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (!isPlatformAdministrator(ctx.user.role) && requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Activity reports must use the active organization." });
+  }
+  const orgId = isPlatformAdministrator(ctx.user.role) && requestedOrgId !== undefined
+    ? requestedOrgId
+    : activeOrgId;
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return orgId;
+}
+
+/** Resolve only the active organization for browser-originated learner events. */
+async function requireActivityWriteOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+) {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Activity events must use the active organization." });
+  }
+  return activeOrgId;
+}
+
+/**
+ * Prevent a browser from attaching an activity row to another organization's
+ * course, lesson, or quiz. Course context is resolved from trusted rows, not
+ * from the browser's claimed tenant identifier.
+ */
+async function resolveActivityEventContext(
+  orgId: number,
+  event: z.infer<typeof activityEventInput>,
+) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+  let courseId = event.courseId;
+  if (courseId) {
+    const [course] = await db.select({ id: lmsCourses.id })
+      .from(lmsCourses)
+      .where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, orgId)))
+      .limit(1);
+    if (!course) throw new TRPCError({ code: "FORBIDDEN", message: "Course activity context is not in the active organization." });
+  }
+
+  if (event.lessonId) {
+    const [lesson] = await db.select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
+      .from(lmsLessons)
+      .where(eq(lmsLessons.id, event.lessonId))
+      .limit(1);
+    if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson activity context was not found." });
+    const lessonCourseId = lesson.courseId ?? (lesson.sectionId
+      ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
+      : undefined);
+    if (!lessonCourseId) throw new TRPCError({ code: "FORBIDDEN", message: "Lesson activity context is incomplete." });
+    if (courseId && courseId !== lessonCourseId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to the supplied course." });
+    }
+    const [course] = await db.select({ id: lmsCourses.id })
+      .from(lmsCourses)
+      .where(and(eq(lmsCourses.id, lessonCourseId), eq(lmsCourses.orgId, orgId)))
+      .limit(1);
+    if (!course) throw new TRPCError({ code: "FORBIDDEN", message: "Lesson activity context is not in the active organization." });
+    courseId = lessonCourseId;
+  }
+
+  if (event.quizId) {
+    const [quiz] = await db.select({ courseId: lmsQuizzes.courseId })
+      .from(lmsQuizzes)
+      .where(and(eq(lmsQuizzes.id, event.quizId), eq(lmsQuizzes.orgId, orgId)))
+      .limit(1);
+    if (!quiz) throw new TRPCError({ code: "FORBIDDEN", message: "Quiz activity context is not in the active organization." });
+    if (courseId && courseId !== quiz.courseId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Quiz does not belong to the supplied course." });
+    }
+    courseId = quiz.courseId;
+  }
+
+  return { courseId: courseId ?? null };
 }
 
 async function requireActiveBundleOrg(
@@ -1826,33 +1948,95 @@ export const lmsRouter = router({
     log: protectedProcedure
       .input(z.object({
         orgId: z.number().optional(),
-        events: z.array(z.object({
-          eventType: z.string(),
-          courseId: z.number().optional(),
-          lessonId: z.number().optional(),
-          durationMs: z.number().optional(),
-          metadata: z.record(z.string(), z.unknown()).optional(),
-        })),
+        events: z.array(activityEventInput).min(1).max(50),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await insertActivityEvents(input.events.map(e => ({
+        const orgId = await requireActivityWriteOrg(ctx, input.orgId);
+        const resolvedEvents = await Promise.all(input.events.map(async (event) => ({
+          event,
+          context: await resolveActivityEventContext(orgId, event),
+        })));
+        await insertActivityEvents(resolvedEvents.map(({ event, context }) => ({
           orgId,
           userId: ctx.user.id,
-          eventType: e.eventType as any,
-          courseId: e.courseId ?? null,
-          lessonId: e.lessonId ?? null,
-          durationMs: e.durationMs ?? null,
-          metadata: e.metadata ? JSON.stringify(e.metadata) : null,
+          eventType: event.eventType,
+          courseId: context.courseId,
+          lessonId: event.lessonId ?? null,
+          quizId: event.quizId ?? null,
+          pageUrl: event.pageUrl ?? null,
+          pageTitle: event.pageTitle ?? null,
+          durationMs: event.durationMs ?? null,
+          videoPositionSec: event.videoPositionSec ?? null,
+          videoDurationSec: event.videoDurationSec ?? null,
+          metadata: event.metadata ? JSON.stringify(event.metadata) : null,
+          sessionKey: event.sessionKey ?? null,
+          referrer: event.referrer ?? null,
         })));
-        return { ok: true };
+        return { ok: true, accepted: resolvedEvents.length };
       }),
     list: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), userId: z.number().optional(), courseId: z.number().optional(), limit: z.number().optional() }).optional())
+      .input(z.object({
+        orgId: z.number().int().positive().optional(),
+        allOrganizations: z.boolean().optional(),
+        userId: z.number().int().positive().optional(),
+        courseId: z.number().int().positive().optional(),
+        eventType: z.enum(ACTIVITY_EVENT_TYPES).optional(),
+        dateFrom: z.string().date().optional(),
+        dateTo: z.string().date().optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().min(0).default(0),
+      }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        return getActivityEventsByOrg(orgId, { userId: input?.userId, courseId: input?.courseId, limit: input?.limit });
+        if (input?.allOrganizations && input.orgId !== undefined) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Choose one organization or all organizations, not both." });
+        }
+        if (input?.allOrganizations && !isPlatformAdministrator(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Platform administrator access is required for an all-organization activity report." });
+        }
+        const dateFrom = input?.dateFrom ? new Date(`${input.dateFrom}T00:00:00.000Z`) : undefined;
+        const dateTo = input?.dateTo ? new Date(`${input.dateTo}T23:59:59.999Z`) : undefined;
+        if (dateFrom && dateTo && dateFrom > dateTo) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "End date must be on or after start date." });
+        }
+        const options = {
+          userId: input?.userId,
+          courseId: input?.courseId,
+          eventType: input?.eventType,
+          dateFrom,
+          dateTo,
+          limit: input?.limit ?? 50,
+          offset: input?.offset ?? 0,
+        };
+        if (input?.allOrganizations) {
+          const [events, total] = await Promise.all([
+            getActivityEventsAcrossOrganizations(options),
+            countActivityEventsAcrossOrganizations(options),
+          ]);
+          return { events, total, orgId: null, scope: "platform" as const };
+        }
+        const orgId = await requireActivityReportOrg(ctx, input?.orgId);
+        const [events, total] = await Promise.all([
+          getActivityEventsByOrg(orgId, options),
+          countActivityEventsByOrg(orgId, options),
+        ]);
+        return { events, total, orgId, scope: "organization" as const };
+      }),
+    memberList: protectedProcedure
+      .input(z.object({ orgId: z.number().int().positive().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = await requireActivityReportOrg(ctx, input?.orgId);
+        return getActivityMemberList(orgId);
+      }),
+    courseList: protectedProcedure
+      .input(z.object({ orgId: z.number().int().positive().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = await requireActivityReportOrg(ctx, input?.orgId);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        return db.select({ id: lmsCourses.id, title: lmsCourses.title })
+          .from(lmsCourses)
+          .where(eq(lmsCourses.orgId, orgId))
+          .orderBy(asc(lmsCourses.title));
       }),
   }),
 

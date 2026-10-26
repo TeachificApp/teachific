@@ -3006,12 +3006,14 @@ function ActivityTab({ userId, enrollments }: { userId: number; enrollments?: an
 
   const exportCSV = () => {
     if (!events.length) return;
-    const header = ["Event", "Description", "Path", "IP", "Time (ET)"];
+    const header = ["Event", "Page / Content", "URL", "Course ID", "Lesson ID", "Duration (ms)", "Time (ET)"];
     const csvRows = events.map((e: any) => [
       e.eventType,
-      `"${(e.description ?? "").replace(/"/g, '""')}"`,
-      e.path ?? "",
-      e.ipAddress ?? "",
+      `"${(e.pageTitle ?? "").replace(/"/g, '""')}"`,
+      e.pageUrl ?? "",
+      e.courseId ?? "",
+      e.lessonId ?? "",
+      e.durationMs ?? "",
       toET(e.createdAt),
     ]);
     const csv = [header, ...csvRows].map(r => r.join(",")).join("\n");
@@ -3023,17 +3025,15 @@ function ActivityTab({ userId, enrollments }: { userId: number; enrollments?: an
   };
 
   const EVENT_COLORS: Record<string, string> = {
-    login: "bg-blue-100 text-blue-700",
     page_view: "bg-gray-100 text-gray-600",
-    video_play: "bg-purple-100 text-purple-700",
+    video_play: "bg-teal-100 text-teal-700",
     video_complete: "bg-green-100 text-green-700",
-    quiz_attempt: "bg-amber-100 text-amber-700",
-    quiz_pass: "bg-emerald-100 text-emerald-700",
-    quiz_fail: "bg-red-100 text-red-700",
-    course_enroll: "bg-teal-100 text-teal-700",
+    quiz_start: "bg-amber-100 text-amber-700",
+    quiz_submit: "bg-amber-100 text-amber-700",
+    enrollment: "bg-teal-100 text-teal-700",
     course_complete: "bg-teal-100 text-teal-800",
     download: "bg-indigo-100 text-indigo-700",
-    module_complete: "bg-cyan-100 text-cyan-700",
+    lesson_complete: "bg-cyan-100 text-cyan-700",
   };
 
   return (
@@ -3107,9 +3107,9 @@ function ActivityTab({ userId, enrollments }: { userId: number; enrollments?: an
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600">Event</th>
-                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-600">Description</th>
-                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-600">Path</th>
-                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-600">IP</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-600">Page / Content</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-600">Course / Lesson</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-600">Duration</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600">Time</th>
               </tr>
             </thead>
@@ -3126,12 +3126,14 @@ function ActivityTab({ userId, enrollments }: { userId: number; enrollments?: an
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-gray-700 max-w-xs">
-                    <p className="truncate">{e.description}</p>
+                    <p className="truncate">{e.pageTitle ?? "—"}</p>
+                    {e.pageUrl && <p className="text-xs text-gray-400 truncate">{e.pageUrl}</p>}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-gray-400 font-mono max-w-[160px]">
-                    <p className="truncate">{e.path ?? "—"}</p>
+                    <p className="truncate">{e.courseId ? `Course #${e.courseId}` : "—"}</p>
+                    {e.lessonId && <p className="truncate">Lesson #{e.lessonId}</p>}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{e.ipAddress ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{e.durationMs ? `${Math.round(e.durationMs / 1000)}s` : "—"}</td>
                   <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
                     {toET(e.createdAt)}
                   </td>
@@ -3704,6 +3706,8 @@ export default function AdminUserDetailPage() {
   const [mergeOpen, setMergeOpen] = useState(false);
 
   const isAdmin = !loading && !!adminUser && (adminUser.role === "site_owner" || adminUser.role === "site_admin" || adminUser.role === "org_admin" || adminUser.role === "org_super_admin");
+  const canViewAccountLoginHistory = adminUser?.role === "site_owner" || adminUser?.role === "site_admin";
+  const visibleTabs = TABS.filter((tab) => tab.key !== "logins" || canViewAccountLoginHistory);
   const { data, isLoading, error, refetch } = trpc.adminUser.getUserDetail.useQuery(
     { userId: userId! },
     { enabled: !!userId && isAdmin, retry: false }
@@ -3791,7 +3795,7 @@ export default function AdminUserDetailPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
           {/* Tab Navigation */}
           <div className="flex gap-1 bg-white rounded-xl border border-gray-100 shadow-sm p-1 mb-8 overflow-x-auto">
-            {TABS.map(t => (
+            {visibleTabs.map(t => (
               <button
                 key={t.key}
                 onClick={() => handleTabChange(t.key)}
@@ -3816,7 +3820,7 @@ export default function AdminUserDetailPage() {
           {activeTab === "cme"            && userId && <SdmsCmeUserTab userId={userId} />}
           {activeTab === "communications"  && <CommunicationsTab userId={userId!} />}
           {activeTab === "activity"      && <ActivityTab      userId={userId!} enrollments={data?.enrollments} />}
-          {activeTab === "logins"        && <LoginsTab        userId={userId!} />}
+          {activeTab === "logins"        && canViewAccountLoginHistory && <LoginsTab userId={userId!} />}
           {activeTab === "teams"         && <TeamsTab         userId={userId!} data={data} />}
         </div>
       </div>

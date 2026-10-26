@@ -1116,7 +1116,11 @@ export const memberActivityEvents = mysqlTable("member_activity_events", {
   referrer: varchar("referrer", { length: 2048 }),
   // Timestamp
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Organization reports are always newest-first and commonly filter by member.
+  orgCreatedAtIndex: index("member_activity_events_org_created_at_idx").on(table.orgId, table.createdAt),
+  orgUserCreatedAtIndex: index("member_activity_events_org_user_created_at_idx").on(table.orgId, table.userId, table.createdAt),
+}));
 
 export type MemberActivityEvent = typeof memberActivityEvents.$inferSelect;
 export type InsertMemberActivityEvent = typeof memberActivityEvents.$inferInsert;
