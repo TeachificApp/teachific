@@ -570,7 +570,7 @@ BLOCK_CATALOG.push(
     label: "Course Embed Card",
     icon: <BookOpen size={14} />,
     category: "Content",
-    defaultData: { courseSlug: "", courseTitle: "", courseDescription: "", coursePrice: "Free", courseThumbnail: "", ctaText: "Enroll Now", accentColor: "#179ca3", bgColor: "#f8fafc" },
+    defaultData: { courseId: null, courseSlug: "", courseTitle: "", courseDescription: "", coursePrice: "Free", courseThumbnail: "", ctaText: "Enroll Now", accentColor: "#179ca3", bgColor: "#f8fafc" },
   },
   {
     type: "lms_quiz_embed",
@@ -598,7 +598,7 @@ BLOCK_CATALOG.push(
     label: "Social Proof / Live Activity",
     icon: <Users size={14} />,
     category: "Marketing",
-    defaultData: { headline: "Learning community", enrollCount: "0", recentActivity: [], accentColor: "#179ca3", bgColor: "#f0fdfa" },
+    defaultData: { headline: "Learning community", activityStyle: "enrolling", accentColor: "#179ca3", bgColor: "#f0fdfa" },
   },
 );
 
@@ -4814,7 +4814,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
         </div>
       );
     case "lms_course_embed": {
-      const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 200 });
+      const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "public", type: "course", page: 1, pageSize: 200 });
       const courses = coursesData?.courses ?? [];
       return (
         <div className="space-y-3">
@@ -4822,8 +4822,8 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
             <label className="text-xs text-gray-500 block mb-1">Link to Course</label>
             <select value={d.courseSlug ?? ""} onChange={e => {
               const c = (courses ?? []).find((x: any) => x.slug === e.target.value);
-              if (c) { set("courseSlug", c.slug); set("courseTitle", c.title); set("courseDescription", c.description ?? ""); set("courseThumbnail", c.thumbnailUrl ?? ""); }
-              else set("courseSlug", e.target.value);
+              if (c) { set("courseId", c.id); set("courseSlug", c.slug); set("courseTitle", c.title); set("courseDescription", c.description ?? ""); set("courseThumbnail", c.coverImageUrl ?? c.thumbnailUrl ?? ""); }
+              else { set("courseId", null); set("courseSlug", ""); }
             }} className="w-full h-8 text-xs rounded border border-gray-200 px-2">
               <option value="">-- Select a course --</option>
               {(courses ?? []).map((c: any) => <option key={c.id} value={c.slug}>{c.title}</option>)}
@@ -4837,17 +4837,18 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
     }
     case "lms_quiz_embed": {
       const { data: quizzes } = trpc.quizMaker.listQuizzes.useQuery();
+      const eligibleQuizzes = (quizzes ?? []).filter((quiz: any) => quiz.isPublished && quiz.shareToken && ["published", "hidden"].includes(quiz.visibility));
       return (
         <div className="space-y-3">
           <div>
             <label className="text-xs text-gray-500 block mb-1">Link to Quiz</label>
             <select value={d.quizId ?? ""} onChange={e => {
-              const q = (quizzes ?? []).find((x: any) => String(x.id) === e.target.value) as any;
-              if (q) { set("quizId", q.id); set("quizTitle", q.title); set("questionCount", q.questionCount ?? 0); set("passingScore", q.passingScore ?? 70); }
+              const q = eligibleQuizzes.find((x: any) => String(x.id) === e.target.value) as any;
+              if (q) { set("quizId", q.id); set("quizTitle", q.title); set("questionCount", q.questionCount ?? 0); set("passingScore", q.passScorePercent ?? q.passingScore ?? 70); }
               else set("quizId", e.target.value ? Number(e.target.value) : null);
             }} className="w-full h-8 text-xs rounded border border-gray-200 px-2">
               <option value="">-- Select a quiz --</option>
-              {(quizzes ?? []).map((q: any) => <option key={q.id} value={q.id}>{q.title}</option>)}
+              {eligibleQuizzes.map((q: any) => <option key={q.id} value={q.id}>{q.title}</option>)}
             </select>
           </div>
           <BSTextField data={d} onSet={set} label="Description" field="description" />
@@ -4858,7 +4859,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
       );
     }
     case "lms_course_card": {
-      const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 200 });
+      const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery({ status: "public", type: "course", page: 1, pageSize: 200 });
       const courses = coursesData?.courses ?? [];
       const selectedIds: number[] = (d.cards ?? []).map((c: any) => c.id).filter(Boolean);
       return (
@@ -4872,7 +4873,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
                 <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer">
                   <input type="checkbox" checked={selectedIds.includes(c.id)} onChange={e => {
                     const existing = d.cards ?? [];
-                    if (e.target.checked) set("cards", [...existing, { id: c.id, title: c.title, description: c.description ?? "", price: c.price ? `$${Number(c.price).toFixed(2)}` : "Free", thumbnail: c.thumbnailUrl ?? "", slug: c.slug }]);
+                    if (e.target.checked) set("cards", [...existing, { id: c.id, courseId: c.id, title: c.title, description: c.description ?? "", price: c.isFree ? "Free" : `$${Number(c.price).toFixed(2)}`, thumbnail: c.coverImageUrl ?? c.thumbnailUrl ?? "", slug: c.slug, courseSlug: c.slug }]);
                     else set("cards", existing.filter((x: any) => x.id !== c.id));
                   }} />
                   {c.title}

@@ -1880,6 +1880,16 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
       return <RemainingSeatsBlock data={d} preview={true} />;
     case "enrollment_counter":
       return <EnrollmentCounterBlockPreview d={d} />;
+    case "lms_course_embed":
+      return wrapWidth(<div className="p-6" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><div className="mx-auto max-w-3xl rounded-xl border border-dashed border-slate-300 bg-white p-5"><p className="text-xs font-bold uppercase tracking-wider" style={{ color: d.accentColor ?? "#179ca3" }}>Selected course preview</p><h3 className="mt-2 text-lg font-bold text-slate-900">{d.courseTitle || "Select a course"}</h3><p className="mt-1 text-sm text-slate-500">{d.courseDescription || "The public landing page will use the current course details."}</p></div></div>);
+    case "lms_quiz_embed":
+      return wrapWidth(<div className="p-6 text-center" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><div className="mx-auto max-w-xl rounded-xl border border-dashed border-slate-300 bg-white p-5"><p className="text-xs font-bold uppercase tracking-wider" style={{ color: d.accentColor ?? "#179ca3" }}>Selected public quiz</p><h3 className="mt-2 text-lg font-bold text-slate-900">{d.quizTitle || "Select a published quiz"}</h3><p className="mt-1 text-sm text-slate-500">{d.quizId ? "Public delivery uses the quiz’s current share link." : "A published public quiz is required before this block can appear."}</p></div></div>);
+    case "lms_course_card":
+      return wrapWidth(<div className="p-6" style={{ backgroundColor: d.bgColor ?? "#fff" }}><h3 className="text-center text-lg font-bold text-slate-900">{d.headline || "Featured Courses"}</h3><div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">{(d.cards?.length ? d.cards : [{ title: "Select courses in block settings" }]).slice(0, 3).map((card: any, index: number) => <div key={card.id ?? index} className="rounded-lg border border-dashed border-slate-300 bg-white p-3"><p className="text-sm font-semibold text-slate-800">{card.title || "Selected course"}</p><p className="mt-1 text-xs text-slate-500">Public details refresh on the live page.</p></div>)}</div></div>);
+    case "countdown_enrollment":
+      return wrapWidth(<div className="p-6 text-center" style={{ backgroundColor: d.bgColor ?? "#fff1f2" }}><h3 className="text-lg font-bold text-slate-900">{d.headline || "Enrollment Countdown"}</h3><p className="mt-2 text-sm text-slate-600">{d.targetDate ? `Closes ${new Date(d.targetDate).toLocaleString()}` : "Choose an enrollment close date in block settings."}</p></div>);
+    case "social_proof_live":
+      return wrapWidth(<div className="p-6 text-center" style={{ backgroundColor: d.bgColor ?? "#f0fdfa" }}><Users className="mx-auto h-7 w-7" style={{ color: d.accentColor ?? "#179ca3" }} /><h3 className="mt-2 text-lg font-bold text-slate-900">{d.headline || "Learning community"}</h3><p className="mt-1 text-sm text-slate-600">The public page shows an aggregate course enrollment count only—never learner names or activity records.</p></div>);
     case "quiz_embed": {
       const quizId = d.quizId ? Number(d.quizId) : null;
       if (!quizId) {

@@ -36,6 +36,7 @@ import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 import { getFreePreviewCourseUrl } from "../lib/freePreviewUrl";
 import { resolvePublicOrganizationScope } from "../lib/publicOrgRequestScope";
+import { resolvePublicLandingEmbeddedResources, sanitizePublicLandingBlocks } from "../lib/landingEmbeddedResources";
 import { canPreviewNonPublicCourseInActiveOrg } from "../lib/courseVisibility";
 import { canUseHiddenPrivateCourseVisibility } from "../lib/courseVisibilityEntitlement";
 import { ensureInlineLessonQuizSchema } from "../lib/ensureInlineLessonQuizSchema";
@@ -495,7 +496,23 @@ export const lmsPublicRouter = router({
         }).filter(Boolean);
       }
 
-      const landingPage = landingPageRow[0] ?? null;
+      const storedLandingPage = landingPageRow[0] ?? null;
+      const [publicOrganization] = await db.select({
+        slug: organizations.slug,
+        customDomain: organizations.customDomain,
+        domainVerificationStatus: organizations.domainVerificationStatus,
+      }).from(organizations).where(eq(organizations.id, publicScope.id)).limit(1);
+      const landingEmbeddedResources = storedLandingPage && publicOrganization
+        ? await resolvePublicLandingEmbeddedResources(db, {
+            blocks: storedLandingPage.blocks,
+            organizationId: publicScope.id,
+            organization: publicOrganization,
+            sourceCourseId: course.id,
+          })
+        : { courses: {}, courseCards: {}, quizzes: {}, socialProof: {} };
+      const landingPage = storedLandingPage
+        ? { ...storedLandingPage, blocks: sanitizePublicLandingBlocks(storedLandingPage.blocks) }
+        : null;
 
       // Course groups and sessions are historical records after their end time,
       // but must disappear from public enrollment choices. Keep their capacity
@@ -533,6 +550,7 @@ export const lmsPublicRouter = router({
         sections: sectionsWithLessons,
         instructors: instructors.filter(Boolean),
         landingPage,
+        landingEmbeddedResources,
         pricingOptions,
         cohortSessions: visibleCohortSessions,
         featuredGroup: featuredGroup ? toPublicCohortGroup(featuredGroup) : null,

@@ -79,6 +79,7 @@ import {
   organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
+import { validateLandingEmbeddedReferences } from "../lib/landingEmbeddedResources";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -622,6 +623,9 @@ Rules:
       if (!owningCourse?.orgId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
       }
+      // Reject invalid cross-organization, private, or unpublished linked
+      // resources before any landing-page mutation can occur.
+      await validateLandingEmbeddedReferences(db, owningCourse.orgId, input.blocks);
       const [existing] = await db.select({ id: lmsLandingPages.id })
         .from(lmsLandingPages).where(eq(lmsLandingPages.courseId, input.courseId)).limit(1);
       if (existing) {

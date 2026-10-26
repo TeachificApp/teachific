@@ -137,7 +137,7 @@ import { zapierRouter } from "./zapierRouter";
 import { embeddedCheckoutRouter } from "./embeddedCheckoutRouter";
 import { funnelRouter, funnelPublicRouter, funnelAdminRouter } from "./routers/funnelRouter";
 import { lmsAdminRouter } from "./routers/lmsAdminRouter";
-import { lmsLearnerRouter, lmsGroupRouter } from "./routers/lmsRouter";
+import { lmsPublicRouter, lmsLearnerRouter, lmsGroupRouter } from "./routers/lmsRouter";
 import { lmsEnrollmentAdminRouter } from "./routers/lmsEnrollmentAdminRouter";
 import { lmsCheckoutPublicRouter, lmsCheckoutLearnerRouter, lmsCheckoutAdminRouter } from "./routers/lmsCheckoutRouter";
 import { mediaRepoRouter } from "./routers/mediaRepoRouter";
@@ -265,6 +265,7 @@ async function requireActiveAnalyticsAdmin(userId: number, userRole: string) {
 export const appRouter = router({
   system: systemRouter,
   lms: lmsRouter,
+  lmsPublic: lmsPublicRouter,
   emailCampaigns: emailCampaignsRouter,
   forms: formsRouter,
   customAuth: customAuthRouter,

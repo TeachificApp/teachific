@@ -220,6 +220,41 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
 }) {
   const d = block.data;
   switch (block.type) {
+    case "lms_course_embed": {
+      const linked = course.landingEmbeddedResources?.courses?.[block.id];
+      if (!linked) return null;
+      const accent = d.accentColor ?? course.primaryColor ?? "#179ca3";
+      return <section className="px-5 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><div className="max-w-4xl mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:flex">
+        {linked.coverImageUrl && <img src={linked.coverImageUrl} alt="" className="h-48 w-full object-cover md:h-auto md:w-5/12" />}
+        <div className="flex-1 p-6 md:p-8"><p className="text-xs font-bold uppercase tracking-wider" style={{ color: accent }}>Featured course</p><h2 className="mt-2 text-2xl font-bold text-slate-900">{linked.title}</h2>{linked.description && <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">{linked.description}</p>}<div className="mt-5 flex flex-wrap items-center gap-4"><span className="text-lg font-bold" style={{ color: accent }}>{formatPrice(linked)}</span><a href={linked.courseUrl} className="rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ backgroundColor: accent }}>{d.ctaText ?? "View course"}</a></div></div>
+      </div></section>;
+    }
+    case "lms_quiz_embed": {
+      const linked = course.landingEmbeddedResources?.quizzes?.[block.id];
+      if (!linked) return null;
+      const accent = d.accentColor ?? course.primaryColor ?? "#179ca3";
+      return <section className="px-5 py-10" style={{ backgroundColor: d.bgColor ?? "#f8fafc" }}><div className="max-w-3xl mx-auto rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm"><HelpCircle className="mx-auto h-9 w-9" style={{ color: accent }} /><h2 className="mt-3 text-2xl font-bold text-slate-900">{linked.title}</h2>{linked.description && <p className="mt-2 text-sm text-slate-600">{linked.description}</p>}<p className="mt-3 text-xs text-slate-500">{linked.questionCount} question{linked.questionCount === 1 ? "" : "s"} · {linked.passingScore}% to pass</p><a href={linked.quizUrl} className="mt-5 inline-block rounded-lg px-5 py-2.5 text-sm font-semibold text-white" style={{ backgroundColor: accent }}>{d.ctaText ?? "Start quiz"}</a></div></section>;
+    }
+    case "lms_course_card": {
+      const linked = course.landingEmbeddedResources?.courseCards?.[block.id] ?? [];
+      if (linked.length === 0) return null;
+      const accent = d.accentColor ?? course.primaryColor ?? "#179ca3";
+      return <section className="px-5 py-10" style={{ backgroundColor: d.bgColor ?? "#ffffff" }}><div className="max-w-5xl mx-auto">{d.headline && <h2 className="text-center text-2xl font-bold text-slate-900">{d.headline}</h2>}{d.subtext && <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-slate-600">{d.subtext}</p>}<div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{linked.map((item: any) => <article key={item.courseUrl} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">{item.coverImageUrl && <img src={item.coverImageUrl} alt="" className="h-36 w-full object-cover" />}<div className="p-5"><h3 className="font-bold text-slate-900">{item.title}</h3>{item.description && <p className="mt-2 line-clamp-2 text-sm text-slate-600">{item.description}</p>}<div className="mt-4 flex items-center justify-between gap-3"><span className="font-semibold" style={{ color: accent }}>{formatPrice(item)}</span><a href={item.courseUrl} className="text-sm font-semibold" style={{ color: accent }}>View course</a></div></div></article>)}</div></div></section>;
+    }
+    case "countdown_enrollment": {
+      const closeAt = typeof d.targetDate === "string" ? Date.parse(d.targetDate) : NaN;
+      if (!Number.isFinite(closeAt)) return null;
+      const closed = closeAt <= Date.now();
+      const accent = d.accentColor ?? "#dc2626";
+      return <section className="px-5 py-10 text-center" style={{ backgroundColor: d.bgColor ?? "#fff1f2" }}>{d.headline && <h2 className="text-2xl font-bold text-slate-900">{d.headline}</h2>}{d.subtext && <p className="mt-2 text-sm text-slate-600">{d.subtext}</p>}{closed ? <p className="mt-5 font-semibold text-slate-700">Enrollment for this offer has closed.</p> : <div className="mt-5"><CountdownTimer mode="event" targetDate={d.targetDate} textColor={accent} /></div>}{!closed && <button onClick={onEnroll} disabled={enrolling} className="mt-6 rounded-lg px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60" style={{ backgroundColor: accent }}>{d.ctaText ?? ctaText}</button>}</section>;
+    }
+    case "social_proof_live": {
+      const proof = course.landingEmbeddedResources?.socialProof?.[block.id];
+      if (!proof) return null;
+      const accent = d.accentColor ?? course.primaryColor ?? "#179ca3";
+      const count = new Intl.NumberFormat("en-US").format(proof.enrollmentCount);
+      return <section className="px-5 py-8 text-center" style={{ backgroundColor: d.bgColor ?? "#f0fdfa" }}><Users className="mx-auto h-7 w-7" style={{ color: accent }} /><h2 className="mt-2 text-xl font-bold text-slate-900">{d.headline ?? "Learning community"}</h2><p className="mt-2 text-sm text-slate-600">{count} learner{proof.enrollmentCount === 1 ? "" : "s"} {proof.activityStyle === "learning" ? "learning in this course" : "enrolled in this course"}.</p></section>;
+    }
     case "hero": {
       const bgType = d.bgType ?? "color";
       let heroBg: React.CSSProperties = {};
@@ -982,9 +1017,9 @@ export default function CourseLanding() {
     { slug: organizationSlug! },
     { enabled: !!organizationSlug },
   );
-  const { data: course, isLoading } = trpc.lms.getCourse.useQuery(
-    { slug: slug!, orgId: organization?.id, preview: isPreview || undefined },
-    { enabled: !!slug && (!organizationSlug || !!organization?.id) },
+  const { data: course, isLoading } = trpc.lmsPublic.getCourse.useQuery(
+    { slug: slug!, orgSlug: organizationSlug ?? undefined, preview: isPreview || undefined },
+    { enabled: !!slug },
   );
   const { data: myCourses } = trpc.lmsLearner.getMyCourses.useQuery(undefined, { enabled: !!user });
   const enrollment = myCourses?.find((e: any) => e.courseId === course?.id);
