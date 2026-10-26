@@ -682,6 +682,12 @@ export default function CoursePlayerPage() {
     // Check drip lock
     const lesson = allLessons[idx] as any;
     if (lesson?.isDripLocked) return true;
+    // Sequential courses require every earlier lesson to be completed. This is
+    // intentionally separate from the per-lesson prerequisite option so an
+    // author can use either behavior without overwriting existing settings.
+    if (course?.requireSequential) {
+      return allLessons.slice(0, idx).some((previous: any) => getLessonStatus(previous.id) !== "completed");
+    }
     // Walk backwards through all lessons before this one
     for (let i = 0; i < idx; i++) {
       const prev = allLessons[i] as any;
@@ -796,9 +802,10 @@ export default function CoursePlayerPage() {
     // Block navigation to locked lessons
     if (isLessonLocked(lessonId)) {
       const lockedLesson = allLessons.find((l: any) => l.id === lessonId) as any;
-      // Find the blocking prerequisite
       const idx = allLessons.findIndex((l: any) => l.id === lessonId);
-      const blocker = allLessons.slice(0, idx).reverse().find((l: any) => (l as any).isPrerequisite && getLessonStatus((l as any).id) !== "completed") as any;
+      const blocker = allLessons.slice(0, idx).reverse().find((l: any) =>
+        getLessonStatus((l as any).id) !== "completed" && (course?.requireSequential || (l as any).isPrerequisite)
+      ) as any;
       toast.error(`Complete "${blocker?.title || 'previous lesson'}" first to unlock "${lockedLesson?.title || 'this lesson'}".`);
       return;
     }

@@ -136,8 +136,6 @@ import { lmsQuizLandingRouter } from "./lmsQuizLandingRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
 
-type LmsDatabase = NonNullable<Awaited<ReturnType<typeof getDb>>>;
-
 /**
  * Learner-private data (notes, bookmarks, certificate availability, and quiz
  * status) must follow the same active-organization boundary as player
@@ -146,7 +144,7 @@ type LmsDatabase = NonNullable<Awaited<ReturnType<typeof getDb>>>;
  * organization against the server-side active organization.
  */
 async function requireActiveOrganizationCourse(
-  db: LmsDatabase,
+  db: any,
   userId: number,
   role: string,
   courseSlug: string,
@@ -166,7 +164,7 @@ async function requireActiveOrganizationCourse(
 }
 
 async function requireActiveOrganizationCourseById(
-  db: LmsDatabase,
+  db: any,
   userId: number,
   role: string,
   courseId: number,
@@ -186,7 +184,7 @@ async function requireActiveOrganizationCourseById(
 }
 
 /** A section-owned lesson is valid only when its section belongs to the same course. */
-async function requireLessonBelongsToCourse(db: LmsDatabase, lessonId: number, courseId: number) {
+async function requireLessonBelongsToCourse(db: any, lessonId: number, courseId: number) {
   const [lesson] = await db
     .select({ courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId })
     .from(lmsLessons)
@@ -2542,7 +2540,7 @@ export const lmsLearnerRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
       await requireLessonBelongsToCourse(db, input.lessonId, course.id);
-      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
       if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       const [progress] = await db.select({
         quizPassed: lmsLessonProgress.quizPassed,
@@ -2572,19 +2570,22 @@ export const lmsLearnerRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
-      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
       if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       const notes = await db.select({
         id: lmsLessonNotes.id,
         lessonId: lmsLessonNotes.lessonId,
-        note: lmsLessonNotes.note,
+        note: lmsLessonNotes.noteContent,
         createdAt: lmsLessonNotes.createdAt,
         updatedAt: lmsLessonNotes.updatedAt,
         lessonTitle: lmsLessons.title,
       })
         .from(lmsLessonNotes)
         .innerJoin(lmsLessons, eq(lmsLessonNotes.lessonId, lmsLessons.id))
-        .where(and(eq(lmsLessonNotes.userId, ctx.user.id), eq(lmsLessonNotes.courseId, course.id)))
+        .where(and(
+          eq(lmsLessonNotes.orgId, course.orgId),
+          eq(lmsLessonNotes.enrollmentId, enrollment.id),
+        ))
         .orderBy(desc(lmsLessonNotes.updatedAt));
       return notes;
     }),
@@ -2600,24 +2601,24 @@ export const lmsLearnerRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
-      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
       if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       await requireLessonBelongsToCourse(db, input.lessonId, course.id);
       const [existing] = await db.select({ id: lmsLessonNotes.id }).from(lmsLessonNotes)
         .where(and(
-          eq(lmsLessonNotes.userId, ctx.user.id),
           eq(lmsLessonNotes.lessonId, input.lessonId),
-          eq(lmsLessonNotes.courseId, course.id),
+          eq(lmsLessonNotes.enrollmentId, enrollment.id),
+          eq(lmsLessonNotes.orgId, course.orgId),
         )).limit(1);
       if (existing) {
-        await db.update(lmsLessonNotes).set({ note: input.note }).where(eq(lmsLessonNotes.id, existing.id));
+        await db.update(lmsLessonNotes).set({ noteContent: input.note }).where(eq(lmsLessonNotes.id, existing.id));
         return { id: existing.id };
       }
       const [result] = await db.insert(lmsLessonNotes).values({
-        userId: ctx.user.id,
+        orgId: course.orgId,
+        enrollmentId: enrollment.id,
         lessonId: input.lessonId,
-        courseId: course.id,
-        note: input.note,
+        noteContent: input.note,
       }).$returningId();
       return { id: result.id };
     }),
@@ -2628,10 +2629,20 @@ export const lmsLearnerRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [note] = await db.select({ userId: lmsLessonNotes.userId, courseId: lmsLessonNotes.courseId })
+      const [note] = await db.select({ orgId: lmsLessonNotes.orgId, enrollmentId: lmsLessonNotes.enrollmentId })
         .from(lmsLessonNotes).where(eq(lmsLessonNotes.id, input.noteId)).limit(1);
-      if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      await requireActiveOrganizationCourseById(db, ctx.user.id, ctx.user.role, note.courseId);
+      if (!note) throw new TRPCError({ code: "NOT_FOUND", message: "Note not found" });
+      const [enrollment] = await db.select({ courseId: lmsEnrollments.courseId })
+        .from(lmsEnrollments)
+        .where(and(
+          eq(lmsEnrollments.id, note.enrollmentId),
+          eq(lmsEnrollments.userId, ctx.user.id),
+          eq(lmsEnrollments.orgId, note.orgId),
+        ))
+        .limit(1);
+      if (!enrollment) throw new TRPCError({ code: "FORBIDDEN" });
+      const course = await requireActiveOrganizationCourseById(db, ctx.user.id, ctx.user.role, enrollment.courseId);
+      if (course.orgId !== note.orgId) throw new TRPCError({ code: "FORBIDDEN" });
       await db.delete(lmsLessonNotes).where(eq(lmsLessonNotes.id, input.noteId));
       return { success: true };
     }),
@@ -2645,19 +2656,22 @@ export const lmsLearnerRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
-      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
       if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       const bookmarks = await db.select({
         id: lmsLessonBookmarks.id,
         lessonId: lmsLessonBookmarks.lessonId,
-        createdAt: lmsLessonBookmarks.createdAt,
+        createdAt: lmsLessonBookmarks.bookmarkedAt,
         lessonTitle: lmsLessons.title,
         lessonType: lmsLessons.type,
       })
         .from(lmsLessonBookmarks)
         .innerJoin(lmsLessons, eq(lmsLessonBookmarks.lessonId, lmsLessons.id))
-        .where(and(eq(lmsLessonBookmarks.userId, ctx.user.id), eq(lmsLessonBookmarks.courseId, course.id)))
-        .orderBy(desc(lmsLessonBookmarks.createdAt));
+        .where(and(
+          eq(lmsLessonBookmarks.orgId, course.orgId),
+          eq(lmsLessonBookmarks.enrollmentId, enrollment.id),
+        ))
+        .orderBy(desc(lmsLessonBookmarks.bookmarkedAt));
       return bookmarks;
     }),
 
@@ -2668,23 +2682,23 @@ export const lmsLearnerRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const course = await requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug);
-      const enrollment = await getActiveEnrollment(db, ctx.user.id, course.id);
+      const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
       if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Active enrollment required" });
       await requireLessonBelongsToCourse(db, input.lessonId, course.id);
       const [existing] = await db.select({ id: lmsLessonBookmarks.id }).from(lmsLessonBookmarks)
         .where(and(
-          eq(lmsLessonBookmarks.userId, ctx.user.id),
           eq(lmsLessonBookmarks.lessonId, input.lessonId),
-          eq(lmsLessonBookmarks.courseId, course.id),
+          eq(lmsLessonBookmarks.enrollmentId, enrollment.id),
+          eq(lmsLessonBookmarks.orgId, course.orgId),
         )).limit(1);
       if (existing) {
         await db.delete(lmsLessonBookmarks).where(eq(lmsLessonBookmarks.id, existing.id));
         return { bookmarked: false };
       }
       await db.insert(lmsLessonBookmarks).values({
-        userId: ctx.user.id,
+        orgId: course.orgId,
+        enrollmentId: enrollment.id,
         lessonId: input.lessonId,
-        courseId: course.id,
       });
       return { bookmarked: true };
     }),

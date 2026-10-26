@@ -1014,7 +1014,7 @@
 - [x] CoursePlayerPage: Notes panel (when playerAllowNotes is true)
 - [ ] CoursePlayerPage: Completion screen with certificate download
 - [x] CoursePlayerPage: showCompleteButton respect course setting
-- [ ] CoursePlayerPage: requireSequential lock future lessons
+- [x] CoursePlayerPage: requireSequential lock future lessons
 - [x] Student My Courses dashboard (/school/my-courses and /school/:orgSlug/my-courses)
 - [ ] Enrollment flow: enroll button, confirm, redirect to player
 - [ ] Free course auto-enrollment on click

@@ -84,8 +84,10 @@ describe("Course360 learner-private data organization isolation", () => {
 
     expect(privateData).toContain("requireActiveOrganizationCourse(db, ctx.user.id, ctx.user.role, input.courseSlug)");
     expect(privateData).toContain("requireLessonBelongsToCourse(db, input.lessonId, course.id)");
-    expect(privateData).toContain("getActiveEnrollment(db, ctx.user.id, course.id)");
+    expect(privateData).toContain("getActiveEnrollment(db as any, ctx.user.id, course.id)");
     expect(privateData).toContain("eq(lmsCertificates.orgId, course.orgId)");
-    expect(privateData).toContain("requireActiveOrganizationCourseById(db, ctx.user.id, ctx.user.role, note.courseId)");
+    expect(privateData).toContain("eq(lmsLessonNotes.enrollmentId, enrollment.id)");
+    expect(privateData).toContain("eq(lmsLessonBookmarks.enrollmentId, enrollment.id)");
+    expect(privateData).toContain("requireActiveOrganizationCourseById(db, ctx.user.id, ctx.user.role, enrollment.courseId)");
   });
 });
