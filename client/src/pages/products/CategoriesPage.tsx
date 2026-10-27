@@ -73,7 +73,14 @@ export default function CategoriesPage() {
 
   const handleUpdate = () => {
     if (!editId || !name.trim()) return;
-    updateMut.mutate({ id: editId, name, description: description || undefined, color });
+    updateMut.mutate({
+      id: editId,
+      data: {
+        name,
+        description: description || null,
+        color,
+      },
+    });
   };
 
   const handleDelete = (id: number) => {

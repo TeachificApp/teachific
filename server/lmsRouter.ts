@@ -7,10 +7,11 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById, getUserByEmail, getOrgMember, updateOrgMemberRole } from "./db";
-import { lmsCourses, lmsLessons, lmsQuizzes, lmsSections } from "../drizzle/schema";
+import { groupMembers, groups, lmsCourses, lmsLessons, lmsQuizzes, lmsSections } from "../drizzle/schema";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { sendEmailViaOrg } from "./_core/email";
 import { getOrgBaseUrl } from "./lib/orgUrl";
+import { resolvePublicOrganizationScope } from "./lib/publicOrgRequestScope";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
 import { scrapeVideoFromUrl, cleanupScrapedVideo } from "./videoScraper";
@@ -475,6 +476,102 @@ async function requireActiveFlashcardOrg(
   }
   await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
   return activeOrgId;
+}
+
+/**
+ * Categories are an active-school administration surface. The optional orgId
+ * retained by older clients is a consistency hint only, never tenant authority.
+ */
+async function requireActiveLegacyCategoryOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Categories must use the active organization.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+/**
+ * Retained Groups administration follows the same selected-school rule as the
+ * modern LMS team tools. A stale browser orgId cannot switch the data tenant.
+ */
+async function requireActiveLegacyGroupOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const { orgId, isAdmin } = await getActiveLegacyGroupAccess(ctx, requestedOrgId);
+  if (!isAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You need school administrator access to manage groups.",
+    });
+  }
+  return orgId;
+}
+
+async function getActiveLegacyGroupAccess(
+  ctx: { user: { id: number; role: string; email?: string } },
+  requestedOrgId?: number,
+) {
+  const orgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Groups must use the active organization.",
+    });
+  }
+  const membership = await getOrgMember(orgId, ctx.user.id);
+  const isAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role)
+    || ["org_super_admin", "org_admin", "sub_admin"].includes(membership?.role ?? "");
+  const isGroupManager = membership?.role === "group_manager"
+    || membership?.memberSubRole === "group_manager";
+  if (!isAdmin && !isGroupManager) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this group's organization." });
+  }
+  return { orgId, isAdmin };
+}
+
+async function requireLegacyGroupInActiveOrg(
+  ctx: { user: { id: number; role: string; email?: string } },
+  groupId: number,
+  requestedOrgId?: number,
+) {
+  const { orgId, isAdmin } = await getActiveLegacyGroupAccess(ctx, requestedOrgId);
+  const group = await getGroupById(groupId);
+  if (!group || group.orgId !== orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Group does not belong to the active organization.",
+    });
+  }
+  const managesGroup = group.managerId === ctx.user.id
+    || (!!group.managerEmail && group.managerEmail.toLowerCase() === ctx.user.email?.toLowerCase());
+  if (!isAdmin && !managesGroup) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You are not assigned to manage this group." });
+  }
+  return { orgId, group, isAdmin };
+}
+
+async function requireLegacyGroupAdminInActiveOrg(
+  ctx: { user: { id: number; role: string; email?: string } },
+  groupId: number,
+  requestedOrgId?: number,
+) {
+  const orgId = await requireActiveLegacyGroupOrg(ctx, requestedOrgId);
+  const group = await getGroupById(groupId);
+  if (!group || group.orgId !== orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Group does not belong to the active organization.",
+    });
+  }
+  return { orgId, group };
 }
 
 /**
@@ -2057,34 +2154,57 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyCategoryOrg(ctx, input?.orgId);
         return getCategoriesByOrg(orgId);
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), slug: z.string().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        name: z.string().trim().min(1).max(255),
+        slug: z.string().trim().min(1).max(255).optional(),
+        description: z.string().max(5_000).optional(),
+        color: z.string().max(32).optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyCategoryOrg(ctx, input.orgId);
         const slug = input.slug ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        return createCategory({ orgId, name: input.name, slug });
+        return createCategory({
+          orgId,
+          name: input.name,
+          slug,
+          description: input.description ?? null,
+          color: input.color ?? "#0ea5e9",
+        });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().trim().min(1).max(255).optional(),
+          slug: z.string().trim().min(1).max(255).optional(),
+          description: z.string().max(5_000).nullable().optional(),
+          color: z.string().max(32).nullable().optional(),
+          sortOrder: z.number().int().min(0).optional(),
+        }).strict(),
+      }))
       .mutation(async ({ input, ctx }) => {
-        const { getCategoryById } = await import("./lmsDb");
         const category = await getCategoryById(input.id);
         if (!category) throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, category.orgId);
-        return updateCategory(input.id, input.data as any);
+        const orgId = await requireActiveLegacyCategoryOrg(ctx);
+        if (category.orgId !== orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Category does not belong to the active organization." });
+        }
+        return updateCategory(input.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const { getCategoryById } = await import("./lmsDb");
         const category = await getCategoryById(input.id);
         if (!category) throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, category.orgId);
+        const orgId = await requireActiveLegacyCategoryOrg(ctx);
+        if (category.orgId !== orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Category does not belong to the active organization." });
+        }
         await deleteCategory(input.id);
         return { ok: true };
       }),
@@ -2095,180 +2215,279 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        return getGroupsByOrg(orgId);
+        const orgId = await requireActiveLegacyGroupOrg(ctx, input?.orgId);
+        const groups = await getGroupsByOrg(orgId);
+        return Promise.all(groups.map(async (group) => ({
+          ...group,
+          members: await getGroupMembers(group.id),
+        })));
       }),
     listManaged: protectedProcedure
       .query(async ({ ctx }) => {
-        const orgId = await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        return getGroupsByOrg(orgId);
+        const { orgId, isAdmin } = await getActiveLegacyGroupAccess(ctx);
+        const groups = await getGroupsByOrg(orgId);
+        const managedGroups = isAdmin
+          ? groups
+          : groups.filter((group) => group.managerId === ctx.user.id
+            || (!!group.managerEmail && group.managerEmail.toLowerCase() === ctx.user.email.toLowerCase()));
+        return Promise.all(managedGroups.map(async (group) => ({
+          ...group,
+          members: await getGroupMembers(group.id),
+        })));
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), seats: z.number().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        name: z.string().trim().min(1).max(255),
+        managerName: z.string().max(255).optional(),
+        managerTitle: z.string().max(255).optional(),
+        managerEmail: z.string().email().max(320).optional(),
+        managerPhone: z.string().max(50).optional(),
+        productIds: z.array(z.number().int().positive()).max(100).optional(),
+        seats: z.number().int().min(1).max(100_000).optional(),
+        notes: z.string().max(10_000).optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        return createGroup({ orgId, name: input.name, seats: input.seats ?? 10 });
+        const orgId = await requireActiveLegacyGroupOrg(ctx, input.orgId);
+        if (input.productIds?.length) {
+          for (const courseId of input.productIds) {
+            const course = await getCourseById(courseId);
+            if (!course || course.orgId !== orgId) {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Group courses must belong to the active organization." });
+            }
+          }
+        }
+        return createGroup({
+          orgId,
+          name: input.name,
+          managerName: input.managerName ?? null,
+          managerTitle: input.managerTitle ?? null,
+          managerEmail: input.managerEmail ?? null,
+          managerPhone: input.managerPhone ?? null,
+          productIds: input.productIds?.length ? JSON.stringify(input.productIds) : null,
+          seats: input.seats ?? 10,
+          notes: input.notes ?? null,
+        });
       }),
     update: protectedProcedure
-      .input(z.object({ groupId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({
+        groupId: z.number(),
+        data: z.object({
+          name: z.string().trim().min(1).max(255).optional(),
+          managerName: z.string().max(255).nullable().optional(),
+          managerTitle: z.string().max(255).nullable().optional(),
+          managerEmail: z.string().email().max(320).nullable().optional(),
+          managerPhone: z.string().max(50).nullable().optional(),
+          productIds: z.array(z.number().int().positive()).max(100).nullable().optional(),
+          seats: z.number().int().min(1).max(100_000).optional(),
+          notes: z.string().max(10_000).nullable().optional(),
+        }).strict(),
+      }))
       .mutation(async ({ input, ctx }) => {
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
-        return updateGroup(input.groupId, input.data as any);
+        const { orgId } = await requireLegacyGroupAdminInActiveOrg(ctx, input.groupId);
+        if (input.data.productIds?.length) {
+          for (const courseId of input.data.productIds) {
+            const course = await getCourseById(courseId);
+            if (!course || course.orgId !== orgId) {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Group courses must belong to the active organization." });
+            }
+          }
+        }
+        const { productIds, ...groupData } = input.data;
+        return updateGroup(input.groupId, {
+          ...groupData,
+          ...(productIds === undefined ? {} : { productIds: productIds?.length ? JSON.stringify(productIds) : null }),
+        });
       }),
     delete: protectedProcedure
       .input(z.object({ groupId: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
+        await requireLegacyGroupAdminInActiveOrg(ctx, input.groupId);
         await deleteGroup(input.groupId);
         return { ok: true };
       }),
     addMember: protectedProcedure
       .input(z.object({ groupId: z.number(), email: z.string().email(), name: z.string().optional(), userId: z.number().optional() }))
       .mutation(async ({ input, ctx }) => {
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
+        const { orgId, group } = await requireLegacyGroupInActiveOrg(ctx, input.groupId);
+        if (input.userId && !await getOrgMember(orgId, input.userId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Group members must belong to the active organization." });
+        }
+        const activeMembers = (await getGroupMembers(input.groupId)).filter((member) => member.status === "active");
+        if (activeMembers.length >= group.seats) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This group is full." });
+        }
+        const duplicate = activeMembers.find((member) => member.email.toLowerCase() === input.email.toLowerCase());
+        if (duplicate) return duplicate;
         return addGroupMember({ groupId: input.groupId, email: input.email, name: input.name ?? null, userId: input.userId ?? null });
       }),
     removeMember: protectedProcedure
       .input(z.object({ memberId: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const { getGroupMemberById, getGroupById } = await import("./lmsDb");
+        const { getGroupMemberById } = await import("./lmsDb");
         const member = await getGroupMemberById(input.memberId);
         if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Group member not found" });
-        const group = await getGroupById(member.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
+        await requireLegacyGroupInActiveOrg(ctx, member.groupId);
         await removeGroupMember(input.memberId);
         return { ok: true };
       }),
     assignSeat: protectedProcedure
-      .input(z.object({ groupId: z.number(), userId: z.number(), orgId: z.number().optional() }))
+      .input(z.object({
+        groupId: z.number(),
+        userId: z.number().optional(),
+        email: z.string().email().optional(),
+        name: z.string().max(255).optional(),
+        orgId: z.number().optional(),
+      }).refine((input) => input.userId !== undefined || input.email !== undefined, {
+        message: "A learner identifier is required.",
+      }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
-        if (!group || group.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Group does not belong to the requested organization" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { lmsGroupSeats } = await import("../drizzle/schema");
-        await db.insert(lmsGroupSeats).values({ groupId: input.groupId, userId: input.userId, orgId });
-        return { ok: true };
+        const { orgId, group } = await requireLegacyGroupInActiveOrg(ctx, input.groupId, input.orgId);
+        const matchedUser = input.userId
+          ? await getUserById(input.userId)
+          : await getUserByEmail(input.email!);
+        if (matchedUser && !await getOrgMember(orgId, matchedUser.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Group members must belong to the active organization." });
+        }
+        const email = matchedUser?.email ?? input.email!;
+        const activeMembers = (await getGroupMembers(input.groupId)).filter((member) => member.status === "active");
+        const existing = activeMembers.find((member) => member.email.toLowerCase() === email.toLowerCase());
+        if (existing) return { ok: true, memberId: existing.id, alreadyAssigned: true };
+        if (activeMembers.length >= group.seats) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This group is full." });
+        }
+        const member = await addGroupMember({
+          groupId: input.groupId,
+          userId: matchedUser?.id ?? null,
+          email,
+          name: input.name ?? matchedUser?.name ?? null,
+          status: "active",
+        });
+        return { ok: true, memberId: member?.id ?? null, alreadyAssigned: false };
       }),
     revokeSeat: protectedProcedure
-      .input(z.object({ seatId: z.number() }))
+      .input(z.object({ memberId: z.number().optional(), seatId: z.number().optional() }).refine(
+        (input) => input.memberId !== undefined || input.seatId !== undefined,
+        { message: "A group member is required." },
+      ))
       .mutation(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { lmsGroupSeats } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [seat] = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.id, input.seatId)).limit(1);
-        if (!seat) throw new TRPCError({ code: "NOT_FOUND", message: "Group seat not found" });
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(seat.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
-        await db.delete(lmsGroupSeats).where(eq(lmsGroupSeats.id, input.seatId));
+        const { getGroupMemberById } = await import("./lmsDb");
+        const member = await getGroupMemberById(input.memberId ?? input.seatId!);
+        if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Group member not found" });
+        await requireLegacyGroupInActiveOrg(ctx, member.groupId);
+        await removeGroupMember(member.id);
         return { ok: true };
       }),
     bulkEnroll: protectedProcedure
       .input(z.object({ groupId: z.number(), courseId: z.number(), orgId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
+        const { orgId, group } = await requireLegacyGroupInActiveOrg(ctx, input.groupId, input.orgId);
         const course = await getCourseById(input.courseId);
-        if (!group || group.orgId !== orgId || !course || course.orgId !== orgId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Group and course must belong to the requested organization" });
+        if (!course || course.orgId !== orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Group and course must belong to the active organization." });
         }
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         const members = await getGroupMembers(input.groupId);
-        const results = [];
+        let enrolled = 0;
+        let skipped = 0;
         for (const m of members) {
-          if (!m.userId) continue;
+          if (m.status !== "active" || !m.userId || !await getOrgMember(orgId, m.userId)) {
+            skipped++;
+            continue;
+          }
           const existing = await getEnrollment(input.courseId, m.userId);
           if (!existing) {
             await createEnrollment({ courseId: input.courseId, userId: m.userId, orgId, amountPaid: 0, isActive: true });
-            results.push(m.userId);
+            enrolled++;
+          } else {
+            skipped++;
           }
         }
-        return { enrolled: results.length };
+        return { enrolled, skipped, groupId: group.id };
       }),
     generateInviteLink: protectedProcedure
       .input(z.object({ groupId: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
-        const { getDb } = await import("./db");
+        const { orgId, group } = await requireLegacyGroupInActiveOrg(ctx, input.groupId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { lmsGroups } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const crypto = await import("crypto");
-        const token = crypto.randomBytes(24).toString("hex");
-        await db.update(lmsGroups).set({ inviteToken: token } as any).where(eq(lmsGroups.id, input.groupId));
-        return { token };
+        const token = nanoid(48);
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await db.update(groups).set({ inviteToken: token, inviteExpiresAt: expiresAt }).where(and(
+          eq(groups.id, group.id),
+          eq(groups.orgId, orgId),
+        ));
+        const organization = await getOrgById(orgId);
+        if (!organization?.slug) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+        const inviteUrl = `${getOrgBaseUrl(organization.slug, organization.customDomain, organization.domainVerificationStatus)}/join-group?token=${encodeURIComponent(token)}`;
+        return { token, inviteUrl, expiresAt };
       }),
     joinByInvite: publicProcedure
       .input(z.object({ token: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { lmsGroups, lmsGroupSeats } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [group] = await db.select().from(lmsGroups).where(eq((lmsGroups as any).inviteToken, input.token)).limit(1);
+        const [group] = await db.select().from(groups).where(eq(groups.inviteToken, input.token)).limit(1);
         if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite link" });
-        const userId = (ctx as any).user?.id;
+        if (!group.inviteExpiresAt || group.inviteExpiresAt.getTime() <= Date.now()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This invite link has expired" });
+        }
+        const publicScope = await resolvePublicOrganizationScope(db, ctx.req);
+        if (!publicScope || publicScope.id !== group.orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Open this invitation on the inviting school's website." });
+        }
+        const userId = ctx.user?.id;
         if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
-        const existing = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, group.id)).then((rows: any[]) => rows.find((r: any) => r.userId === userId));
-        if (existing) return { ok: true, groupId: group.id, alreadyMember: true };
-        const usedSeats = await db.select().from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, group.id)).then((r: any[]) => r.length);
+        const memberIdentity = await getUserById(userId);
+        const email = (ctx.user?.email ?? memberIdentity?.email)?.trim().toLowerCase();
+        if (!email) throw new TRPCError({ code: "BAD_REQUEST", message: "An email address is required to accept this invitation" });
+        const members = await getGroupMembers(group.id);
+        const existing = members.find((member) => member.userId === userId || member.email.toLowerCase() === email);
+        if (existing?.status === "active") return { ok: true, groupId: group.id, groupName: group.name, alreadyMember: true };
+        const usedSeats = members.filter((member) => member.status === "active").length;
         if (group.seats && usedSeats >= group.seats) throw new TRPCError({ code: "FORBIDDEN", message: "This group is full" });
-        await db.insert(lmsGroupSeats).values({ groupId: group.id, userId, email: null, name: null, role: "member" } as any);
-        return { ok: true, groupId: group.id, alreadyMember: false };
+        if (!await getOrgMember(group.orgId, userId)) {
+          await addOrgMember(group.orgId, userId, "member", undefined, "group_member");
+        }
+        const memberValues = {
+          userId,
+          email,
+          name: memberIdentity?.name ?? null,
+          status: "active" as const,
+        };
+        if (existing) {
+          await db.update(groupMembers).set(memberValues).where(eq(groupMembers.id, existing.id));
+        } else {
+          await db.insert(groupMembers).values({ groupId: group.id, ...memberValues });
+        }
+        return { ok: true, groupId: group.id, groupName: group.name, alreadyMember: false };
       }),
     bulkImportCSV: protectedProcedure
       .input(z.object({
         groupId: z.number(),
-        rows: z.array(z.object({ email: z.string().email(), name: z.string().optional() })),
+        rows: z.array(z.object({ email: z.string().email(), name: z.string().max(255).optional() })).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { getGroupById } = await import("./lmsDb");
-        const group = await getGroupById(input.groupId);
-        if (!group) throw new TRPCError({ code: "NOT_FOUND", message: "Group not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { lmsGroupSeats, users } = await import("../drizzle/schema");
-        const { eq, inArray } = await import("drizzle-orm");
-        const emails = input.rows.map((r: any) => r.email.toLowerCase());
-        const existingUsers = await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.email, emails));
-        const userByEmail = Object.fromEntries(existingUsers.map((u: any) => [u.email.toLowerCase(), u.id]));
-        const existing = await db.select({ email: lmsGroupSeats.email }).from(lmsGroupSeats).where(eq(lmsGroupSeats.groupId, input.groupId));
-        const existingEmails = new Set(existing.map((r: any) => r.email?.toLowerCase()).filter(Boolean));
+        const { orgId, group } = await requireLegacyGroupInActiveOrg(ctx, input.groupId);
+        const rows = input.rows ?? [];
+        const existingMembers = await getGroupMembers(input.groupId);
+        const existingEmails = new Set(existingMembers.filter((member) => member.status !== "removed").map((member) => member.email.toLowerCase()));
+        let usedSeats = existingMembers.filter((member) => member.status === "active").length;
         let added = 0; let skipped = 0;
-        for (const row of input.rows) {
+        for (const row of rows) {
           const email = row.email.toLowerCase();
           if (existingEmails.has(email)) { skipped++; continue; }
-          const userId = (userByEmail as any)[email] ?? null;
-          await db.insert(lmsGroupSeats).values({ groupId: input.groupId, userId, email: row.email, name: row.name ?? null, role: "member" } as any);
+          if (usedSeats >= group.seats) { skipped++; continue; }
+          const user = await getUserByEmail(email);
+          if (user && !await getOrgMember(orgId, user.id)) { skipped++; continue; }
+          await addGroupMember({
+            groupId: input.groupId,
+            userId: user?.id ?? null,
+            email,
+            name: row.name ?? user?.name ?? null,
+            status: "active",
+          });
+          existingEmails.add(email);
+          usedSeats++;
           added++;
         }
         return { added, skipped };

@@ -114,7 +114,6 @@ export default function GroupsPage() {
       productIds: selectedProductIds.length > 0 ? selectedProductIds : undefined,
       seats: parseInt(seats) || 10,
       notes: notes || undefined,
-      sendWelcomeEmail,
     });
   };
 
@@ -133,15 +132,17 @@ export default function GroupsPage() {
     if (!editId || !name.trim()) return;
     if (sendWelcomeEmail && !managerEmail.trim()) { toast.error("Manager email required to send welcome email"); return; }
     updateMut.mutate({
-      id: editId, name,
-      managerName: managerName || undefined,
-      managerTitle: managerTitle || undefined,
-      managerEmail: managerEmail || null,
-      managerPhone: managerPhone || null,
-      productIds: selectedProductIds.length > 0 ? selectedProductIds : null,
-      seats: parseInt(seats) || 10,
-      notes: notes || undefined,
-      sendWelcomeEmail,
+      groupId: editId,
+      data: {
+        name,
+        managerName: managerName || null,
+        managerTitle: managerTitle || null,
+        managerEmail: managerEmail || null,
+        managerPhone: managerPhone || null,
+        productIds: selectedProductIds,
+        seats: parseInt(seats) || 10,
+        notes: notes || null,
+      },
     });
   };
 
@@ -157,8 +158,7 @@ export default function GroupsPage() {
   });
   const generateInviteMut = trpc.lms.groups.generateInviteLink.useMutation({
     onSuccess: (res) => {
-      const link = `${window.location.origin}/join-group?token=${res.token}`;
-      setInviteLink(link);
+      setInviteLink(res.inviteUrl);
     },
     onError: (e) => toast.error(e.message),
   });
@@ -168,7 +168,18 @@ export default function GroupsPage() {
   };
   const handleCsvImport = () => {
     if (!csvImportGroupId || !csvText.trim()) { toast.error("Paste CSV data first"); return; }
-    csvImportMut.mutate({ groupId: csvImportGroupId, csvData: csvText });
+    const rows = csvText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.split(",").map((value) => value.trim()))
+      .filter((columns, index) => !(index === 0 && columns[0]?.toLowerCase() === "name" && columns[1]?.toLowerCase() === "email"))
+      .map(([name, email]) => ({ name: name || undefined, email }));
+    if (!rows.length || rows.some((row) => !row.email)) {
+      toast.error("Use one name,email entry per line.");
+      return;
+    }
+    csvImportMut.mutate({ groupId: csvImportGroupId, rows });
   };
   const openInviteLink = (groupId: number) => {
     setInviteLinkGroupId(groupId); setInviteLink(""); setCopiedLink(false); setInviteLinkOpen(true);
@@ -609,7 +620,7 @@ export default function GroupsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { if (deleteConfirmId) { deleteMut.mutate({ id: deleteConfirmId }); setDeleteConfirmId(null); } }} disabled={deleteMut.isPending}>
+            <Button variant="destructive" onClick={() => { if (deleteConfirmId) { deleteMut.mutate({ groupId: deleteConfirmId }); setDeleteConfirmId(null); } }} disabled={deleteMut.isPending}>
               {deleteMut.isPending ? "Deleting..." : "Delete Group"}
             </Button>
           </DialogFooter>

@@ -1364,8 +1364,14 @@ export const groups = mysqlTable("groups", {
   courseId: int("courseId"),
   notes: text("notes"),
   expiresAt: timestamp("expiresAt"),
+  // A regenerated group invite replaces only this group's prior token. It is
+  // intentionally separate from member and course data so existing groups stay intact.
+  inviteToken: varchar("inviteToken", { length: 96 }),
+  inviteExpiresAt: timestamp("inviteExpiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("groups_invite_token_idx").on(table.inviteToken),
+]);
 export type Group = typeof groups.$inferSelect;
 export type InsertGroup = typeof groups.$inferInsert;
 

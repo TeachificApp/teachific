@@ -4435,10 +4435,13 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("groups: router({"),
       routerSource.indexOf("// ── Cohorts")
     );
-    expect(categorySource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, category.orgId);");
-    expect(groupSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, group.orgId);");
-    expect(groupSource).toContain("Group does not belong to the requested organization");
-    expect(groupSource).toContain("Group and course must belong to the requested organization");
+    expect(routerSource).toContain("async function requireActiveLegacyCategoryOrg");
+    expect(routerSource).toContain("async function requireActiveLegacyGroupOrg");
+    expect(categorySource).toContain("requireActiveLegacyCategoryOrg(ctx, input?.orgId)");
+    expect(categorySource).toContain("Category does not belong to the active organization.");
+    expect(groupSource).toContain("requireLegacyGroupAdminInActiveOrg(ctx, input.groupId)");
+    expect(groupSource).toContain("requireLegacyGroupInActiveOrg(ctx, input.groupId");
+    expect(groupSource).toContain("Group and course must belong to the active organization.");
   });
 
   it("requires organization-admin ownership for legacy LMS discussions and assignments and user ownership for notes and bookmarks", () => {
