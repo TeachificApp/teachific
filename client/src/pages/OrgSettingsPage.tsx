@@ -1409,12 +1409,14 @@ export default function OrgSettingsPage() {
                   if (!org?.id) return;
                   updateNotifSettings.mutate({
                     orgId: org.id,
-                    enrollment: notifEnrollment,
-                    completion: notifCompletion,
-                    quizResult: notifQuizResult,
-                    reminder: notifReminder,
-                    announcement: notifAnnouncement,
-                    weeklyDigest: notifWeeklyDigest,
+                    settings: {
+                      enrollment: notifEnrollment,
+                      completion: notifCompletion,
+                      quizResult: notifQuizResult,
+                      reminder: notifReminder,
+                      announcement: notifAnnouncement,
+                      weeklyDigest: notifWeeklyDigest,
+                    },
                   });
                 }}
               >

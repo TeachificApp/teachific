@@ -4565,10 +4565,19 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("courseOrders: router({"),
       routerSource.indexOf("// ── Memberships")
     );
-    expect((notificationsSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
-    expect(partnersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, partner.orgId);");
-    expect(ordersSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, order.orgId);");
+    expect(routerSource).toContain("async function requireActiveLegacyOperationalOrg");
+    expect(notificationsSource).toContain("requireActiveLegacyOperationalOrg(ctx, input?.orgId)");
+    expect(notificationsSource).toContain("requireActiveLegacyOperationalOrg(ctx, input.orgId)");
+    expect(partnersSource).toContain("requireActiveLegacyOperationalOrg(ctx, input?.orgId)");
+    expect(partnersSource).toContain("const orgId = await requireActiveLegacyOperationalOrg(ctx);");
+    expect(partnersSource).toContain("delete data.orgId;");
+    expect(ordersSource).toContain("requireActiveLegacyOperationalOrg(ctx, input?.orgId)");
+    expect(ordersSource).toContain("requireActiveLegacyOperationalOrg(ctx, input.orgId)");
+    expect(ordersSource).toContain("const orgId = await requireActiveLegacyOperationalOrg(ctx);");
     expect(ordersSource).toContain("delete data.orgId;");
+    expect(notificationsSource).not.toContain("input?.orgId ?? await requireOrgId");
+    expect(partnersSource).not.toContain("input.orgId ?? await requireOrgId");
+    expect(ordersSource).not.toContain("input?.orgId ?? await requireOrgId");
   });
 
   it("requires organization-admin ownership for high-impact mounted legacy LMS course administration", () => {

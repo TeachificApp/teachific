@@ -59,8 +59,8 @@ export default function OrdersPage() {
                     <TableCell>
                       <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {o.status !== "completed" && <DropdownMenuItem onClick={() => updateMut.mutate({ id: o.id, status: "completed" })}><CheckCircle className="h-4 w-4 mr-2" />Mark Completed</DropdownMenuItem>}
-                          {o.status === "completed" && <DropdownMenuItem onClick={() => updateMut.mutate({ id: o.id, status: "refunded" })}><RefreshCw className="h-4 w-4 mr-2" />Refund</DropdownMenuItem>}
+                          {o.status !== "completed" && <DropdownMenuItem onClick={() => updateMut.mutate({ id: o.id, data: { status: "completed" } })}><CheckCircle className="h-4 w-4 mr-2" />Mark Completed</DropdownMenuItem>}
+                          {o.status === "completed" && <DropdownMenuItem onClick={() => updateMut.mutate({ id: o.id, data: { status: "refunded" } })}><RefreshCw className="h-4 w-4 mr-2" />Refund</DropdownMenuItem>}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

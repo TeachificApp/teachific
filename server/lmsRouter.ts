@@ -648,6 +648,26 @@ async function requireActiveLegacyMemberOrg(
   return activeOrgId;
 }
 
+/**
+ * Notifications and sales administration are operational school work. Retain
+ * optional orgId inputs for existing screens as stale-cache consistency hints,
+ * but never allow a browser to select a different organization's data.
+ */
+async function requireActiveLegacyOperationalOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing LMS operational data." });
+  }
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "LMS operational data must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
 const legacyMemberRoleSchema = z.enum(["org_super_admin", "org_admin", "user"]);
 const legacyMemberSubRoleSchema = z.enum(["basic_member", "instructor", "group_manager", "group_member"]);
 
@@ -2718,8 +2738,7 @@ export const lmsRouter = router({
     getOrgSettings: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input?.orgId);
         return getOrgNotificationSettings(orgId);
       }),
     updateOrgSettings: protectedProcedure
@@ -2735,8 +2754,7 @@ export const lmsRouter = router({
         }),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input.orgId);
         return updateOrgNotificationSettings(orgId, input.settings);
       }),
   }),
@@ -2746,31 +2764,47 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input?.orgId);
         return getRevenuePartnersByOrg(orgId);
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), email: z.string(), shareValue: z.number().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        name: z.string(),
+        email: z.string(),
+        shareType: z.enum(["percentage", "fixed"]).optional(),
+        shareValue: z.number().optional(),
+        appliesTo: z.enum(["all", "specific"]).optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        return createRevenuePartner({ orgId, name: input.name, email: input.email, shareValue: input.shareValue ?? 10 });
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input.orgId);
+        return createRevenuePartner({
+          orgId,
+          name: input.name,
+          email: input.email,
+          shareType: input.shareType ?? "percentage",
+          shareValue: input.shareValue ?? 10,
+          appliesTo: input.appliesTo ?? "all",
+        });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyOperationalOrg(ctx);
         const partner = await getRevenuePartnerById(input.id);
         if (!partner) throw new TRPCError({ code: "NOT_FOUND", message: "Revenue partner not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, partner.orgId);
-        return updateRevenuePartner(input.id, input.data as any);
+        if (partner.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Revenue partner does not belong to the active organization." });
+        const data = { ...input.data } as Record<string, unknown>;
+        delete data.orgId;
+        return updateRevenuePartner(input.id, data as any);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyOperationalOrg(ctx);
         const partner = await getRevenuePartnerById(input.id);
         if (!partner) throw new TRPCError({ code: "NOT_FOUND", message: "Revenue partner not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, partner.orgId);
+        if (partner.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Revenue partner does not belong to the active organization." });
         await deleteRevenuePartner(input.id);
         return { ok: true };
       }),
@@ -2781,35 +2815,35 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input?.orgId);
         return getCourseOrdersByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyOperationalOrg(ctx);
         const order = await getCourseOrderById(input.id);
         if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Course order not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, order.orgId);
+        if (order.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course order does not belong to the active organization." });
         return order;
       }),
     create: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), userId: z.number().optional(), courseId: z.number().optional(), customerEmail: z.string(), amount: z.number().optional(), status: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input.orgId);
         if (input.courseId) {
           const course = await getCourseById(input.courseId);
-          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
+          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization" });
         }
         return createCourseOrder({ orgId, userId: input.userId ?? null, courseId: input.courseId ?? null, customerEmail: input.customerEmail, amount: input.amount ?? 0, status: (input.status ?? "pending") as any });
       }),
     update: protectedProcedure
       .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyOperationalOrg(ctx);
         const order = await getCourseOrderById(input.id);
         if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Course order not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, order.orgId);
+        if (order.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course order does not belong to the active organization." });
         const data = { ...input.data } as Record<string, unknown>;
         delete data.orgId;
         return updateCourseOrder(input.id, data as any);
@@ -2817,8 +2851,7 @@ export const lmsRouter = router({
     stats: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyOperationalOrg(ctx, input?.orgId);
         return getCourseOrderStats(orgId);
       }),
   }),

@@ -36,7 +36,7 @@ export default function RevenuePartnersPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [shareType, setShareType] = useState<"percentage"|"fixed">("percentage"); const [shareValue, setShareValue] = useState(""); const [appliesTo, setAppliesTo] = useState<"all"|"specific">("all"); const [isActive, setIsActive] = useState(true);
   const resetForm = () => { setName(""); setEmail(""); setShareType("percentage"); setShareValue(""); setAppliesTo("all"); setIsActive(true); };
-  const openEdit = (p: any) => { setEditId(p.id); setName(p.name ?? ""); setShareType(p.shareType ?? "percentage"); setShareValue(String(p.shareValue ?? "")); setAppliesTo(p.appliesTo ?? "all"); setIsActive(p.isActive !== false); setEditOpen(true); };
+  const openEdit = (p: any) => { setEditId(p.id); setName(p.name ?? ""); setEmail(p.email ?? ""); setShareType(p.shareType ?? "percentage"); setShareValue(String(p.shareValue ?? "")); setAppliesTo(p.appliesTo ?? "all"); setIsActive(p.isActive !== false); setEditOpen(true); };
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto">
@@ -75,7 +75,7 @@ export default function RevenuePartnersPage() {
         )}
 
       {[{ open: createOpen, setOpen: setCreateOpen, title: "Add Revenue Partner", onSave: () => { if (!name.trim()) { toast.error("Name required"); return; } createMut.mutate({ orgId: orgId!, name, email, shareType, shareValue: shareValue ? parseFloat(shareValue) : undefined, appliesTo }); }, isPending: createMut.isPending, btnLabel: "Add Partner" },
-        { open: editOpen, setOpen: setEditOpen, title: "Edit Revenue Partner", onSave: () => { if (!editId) return; updateMut.mutate({ id: editId, name, shareType, shareValue: shareValue ? parseFloat(shareValue) : undefined, appliesTo, isActive }); }, isPending: updateMut.isPending, btnLabel: "Save Changes" }
+        { open: editOpen, setOpen: setEditOpen, title: "Edit Revenue Partner", onSave: () => { if (!editId) return; updateMut.mutate({ id: editId, data: { name, email, shareType, shareValue: shareValue ? parseFloat(shareValue) : undefined, appliesTo, isActive } }); }, isPending: updateMut.isPending, btnLabel: "Save Changes" }
       ].map(({ open, setOpen, title, onSave, isPending, btnLabel }) => (
         <Dialog key={title} open={open} onOpenChange={setOpen}>
           <DialogContent><DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
