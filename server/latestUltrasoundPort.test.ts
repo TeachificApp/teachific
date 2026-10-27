@@ -1629,8 +1629,11 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("// ── Media")
     );
     expect(routerSource).toContain("async function requireLegacyFlashcardDeckAccess");
-    expect(flashcardSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
-    expect(flashcardSource).toContain("orgId: z.number().optional(), topic: z.string()");
+    expect(routerSource).toContain("async function requireActiveFlashcardOrg(");
+    expect(routerSource).toContain('message: "This flashcard deck belongs to another organization."');
+    expect(flashcardSource).toContain("requireActiveFlashcardOrg(ctx, input?.orgId)");
+    expect(flashcardSource).toContain("requireActiveFlashcardOrg(ctx, input.orgId)");
+    expect(flashcardSource).toContain("count: z.number().int().min(1).max(50).optional()");
     expect((flashcardSource.match(/await requireLegacyFlashcardDeckAccess\(ctx, input\.(?:id|deckId)\);/g) ?? []).length).toBe(3);
   });
 

@@ -207,7 +207,12 @@ function DeckEditor({ deck, orgId, onBack }: { deck: FlashDeck; orgId: number; o
 
   const handleAIGenerate = async () => {
     if (!aiTopic.trim()) return;
-    const result = await generateAI.mutateAsync({ orgId, topic: aiTopic, numCards: aiCount, context: aiContext || undefined });
+    const result = await generateAI.mutateAsync({
+      orgId,
+      topic: aiTopic,
+      count: aiCount,
+      context: aiContext || undefined,
+    });
     if (result.cards.length > 0) {
       const newCards = result.cards.map((c, i) => ({ front: c.front, back: c.back, sortOrder: localCards.length + i }));
       setLocalCards(prev => [...prev, ...newCards]);

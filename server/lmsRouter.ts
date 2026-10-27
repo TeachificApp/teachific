@@ -453,6 +453,26 @@ async function requireActiveMembershipOrg(
   return activeOrgId;
 }
 
+/**
+ * Flashcard authoring is an active-school administration surface. A browser may
+ * retain an organization id in its query cache while a user switches schools,
+ * but that value is only a consistency hint and can never select the tenant.
+ */
+async function requireActiveFlashcardOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to the flashcard deck's organization before managing its flashcards.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
 async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
   const webinar = await getWebinarById(webinarId);
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
@@ -483,7 +503,10 @@ async function requireLegacyBundleAccess(ctx: { user: { id: number; role: string
 async function requireLegacyFlashcardDeckAccess(ctx: { user: { id: number; role: string } }, deckId: number) {
   const deck = await getFlashcardDeckById(deckId);
   if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "Flashcard deck not found" });
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, deck.orgId);
+  const activeOrgId = await requireActiveFlashcardOrg(ctx);
+  if (deck.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This flashcard deck belongs to another organization." });
+  }
   return deck;
 }
 
@@ -2591,15 +2614,13 @@ export const lmsRouter = router({
     listDecks: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveFlashcardOrg(ctx, input?.orgId);
         return getFlashcardDecksByOrg(orgId);
       }),
     createDeck: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), title: z.string(), description: z.string().optional(), category: z.string().optional(), isPublic: z.boolean().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveFlashcardOrg(ctx, input.orgId);
         return createFlashcardDeck({ orgId, title: input.title, description: input.description, category: input.category, isPublic: input.isPublic, createdBy: ctx.user.id });
       }),
     deleteDeck: protectedProcedure
@@ -2623,14 +2644,19 @@ export const lmsRouter = router({
         return { ok: true };
       }),
     generateAI: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), topic: z.string(), count: z.number().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        topic: z.string().trim().min(1).max(1_000),
+        count: z.number().int().min(1).max(50).optional(),
+        context: z.string().trim().max(12_000).optional(),
+      }))
       .mutation(async ({ input, ctx }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        await requireActiveFlashcardOrg(ctx, input.orgId);
+        const authorContext = input.context ? `\n\nAdditional author context:\n${input.context}` : "";
         const response = await invokeLLM({
           messages: [
             { role: "system", content: "Generate flashcards as a JSON array of {front, back} objects. Return only valid JSON." },
-            { role: "user", content: `Create ${input.count ?? 10} flashcards about: ${input.topic}` },
+            { role: "user", content: `Create ${input.count ?? 10} flashcards about: ${input.topic}${authorContext}` },
           ],
         });
         const content = (response.choices[0]?.message?.content ?? "[]") as string;
