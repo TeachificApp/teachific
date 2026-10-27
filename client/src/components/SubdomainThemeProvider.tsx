@@ -11,10 +11,10 @@ interface SubdomainThemeProviderProps {
 /**
  * Fetches the org's theme and applies it to all learner-facing pages:
  *  - studentTheme (light/dark) → ThemeProvider
- *  - primaryColor, accentColor, buttonColor, buttonTextColor → CSS custom properties
+ *  - student-facing primary, accent, button, and button-text colors → CSS custom properties
  *    injected via OrgThemeProvider so every child can use var(--org-primary) etc.
  *
- * Defaults to Teachific teal (#189aa1) if no theme is set.
+ * Defaults to Course360 teal (#189aa1) if no theme is set.
  */
 export function SubdomainThemeProvider({ subdomain, children }: SubdomainThemeProviderProps) {
   const { data: theme } = trpc.lms.publicSchool.themeBySlug.useQuery(
@@ -23,6 +23,12 @@ export function SubdomainThemeProvider({ subdomain, children }: SubdomainThemePr
   );
 
   const studentTheme = (theme?.studentTheme as "light" | "dark") ?? "light";
+  // Learner views deliberately prefer the student-facing palette. The general
+  // branding fields remain a backwards-compatible fallback for older schools.
+  const studentPrimaryColor = theme?.studentPrimaryColor ?? theme?.primaryColor ?? "#189aa1";
+  const studentAccentColor = theme?.studentAccentColor ?? theme?.accentColor ?? "#4ad9e0";
+  const buttonColor = (theme as any)?.buttonColor ?? studentPrimaryColor;
+  const buttonTextColor = (theme as any)?.buttonTextColor ?? "#ffffff";
 
   useEffect(() => {
     if (!theme) return;
@@ -55,10 +61,10 @@ export function SubdomainThemeProvider({ subdomain, children }: SubdomainThemePr
     <ThemeProvider defaultTheme={studentTheme}>
       <OrgThemeProvider
         theme={theme ? {
-          primaryColor: theme.primaryColor ?? "#189aa1",
-          accentColor: theme.accentColor ?? "#4ad9e0",
-          buttonColor: (theme as any).buttonColor ?? theme.primaryColor ?? "#189aa1",
-          buttonTextColor: (theme as any).buttonTextColor ?? "#ffffff",
+          primaryColor: studentPrimaryColor,
+          accentColor: studentAccentColor,
+          buttonColor,
+          buttonTextColor,
           studentTheme: theme.studentTheme as "light" | "dark" | undefined,
           fontFamily: theme.fontFamily ?? undefined,
           adminLogoUrl: theme.adminLogoUrl ?? undefined,

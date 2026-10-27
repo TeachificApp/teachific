@@ -29,6 +29,14 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
+  // Learner organization branding is fetched after the initial shell renders.
+  // Non-switchable providers therefore need to adopt a resolved organization
+  // light/dark setting, while user-switchable platform themes retain their
+  // chosen state.
+  useEffect(() => {
+    if (!switchable) setTheme(defaultTheme);
+  }, [defaultTheme, switchable]);
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") {
