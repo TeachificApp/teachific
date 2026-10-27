@@ -275,7 +275,10 @@ export async function issueCertificateIfEnabled(
       issuedAt,
       credentials: user.credentials,
       creditHours: course.creditHours ?? null,
-      template,
+      template: {
+        ...(template ?? {}),
+        organizationName: organization?.name ?? null,
+      },
     });
   }
 

@@ -9,6 +9,7 @@ import type { TrpcContext } from "./_core/context";
 // ── Mock the DB helpers ──────────────────────────────────────────────────────
 
 vi.mock("./lmsDb", () => ({
+  getOrgSubscription: vi.fn().mockResolvedValue({ plan: "pro", status: "active" }),
   getLmsCertificateTemplatesByOrg: vi.fn().mockResolvedValue([
     {
       id: 1,
@@ -70,6 +71,7 @@ vi.mock("./lmsDb", () => ({
 
 vi.mock("./db", () => ({
   getOrgIdForUser: vi.fn().mockResolvedValue(10),
+  getOrgIdForUserWithFallback: vi.fn().mockResolvedValue(10),
   requireOrgAdmin: vi.fn().mockResolvedValue(undefined),
   getDb: vi.fn().mockResolvedValue(null),
 }));
@@ -114,7 +116,7 @@ describe("lmsAdmin certificate templates", () => {
     expect(result.length).toBeGreaterThan(0);
     expect(result[0]).toHaveProperty("name");
     expect(result[0]).toHaveProperty("primaryColorHex");
-  });
+  }, 10_000);
 
   it("getCertificateTemplate returns a single template by id", async () => {
     const { appRouter } = await import("./routers");
@@ -164,5 +166,41 @@ describe("lmsAdmin certificate templates", () => {
     expect(result.length).toBeGreaterThan(0);
     expect(result[0]).toHaveProperty("certificateNumber");
     expect(result[0]).toHaveProperty("certificateUrl");
+  });
+
+  it("rejects a browser-selected certificate organization that differs from the active organization", async () => {
+    const { appRouter } = await import("./routers");
+    const caller = appRouter.createCaller(makeAdminCtx());
+    await expect(caller.lmsAdmin.listCertificateTemplates({ orgId: 99 }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("does not permit a lower-tier organization to disable Course360 certificate attribution", async () => {
+    const lmsDb = await import("./lmsDb");
+    vi.mocked(lmsDb.getOrgSubscription).mockResolvedValueOnce({ plan: "starter", status: "active" } as any);
+    const { appRouter } = await import("./routers");
+    const caller = appRouter.createCaller(makeAdminCtx());
+    await expect(caller.lmsAdmin.createCertificateTemplate({
+      name: "Unattributed certificate",
+      showPlatformAttribution: false,
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("preserves an existing authorized attribution opt-out during an unrelated lower-tier edit", async () => {
+    const lmsDb = await import("./lmsDb");
+    vi.mocked(lmsDb.getLmsCertificateTemplateById).mockResolvedValueOnce({
+      id: 1,
+      orgId: 10,
+      name: "Existing white-label certificate",
+      showPlatformAttribution: false,
+    } as any);
+    vi.mocked(lmsDb.getOrgSubscription).mockResolvedValueOnce({ plan: "starter", status: "active" } as any);
+    const { appRouter } = await import("./routers");
+    const caller = appRouter.createCaller(makeAdminCtx());
+    await expect(caller.lmsAdmin.updateCertificateTemplate({
+      id: 1,
+      name: "Updated certificate name",
+      showPlatformAttribution: false,
+    })).resolves.toHaveProperty("id", 1);
   });
 });

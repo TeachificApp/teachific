@@ -24,4 +24,13 @@ describe("Course360 certificate fallback identity", () => {
       footerText: "Example Academy · Issued to the learner",
     });
   });
+
+  it("adds Course360 attribution to an organization default but honors an authorized template opt-out", () => {
+    expect(resolveCertificateIdentity({ organizationName: "Example Academy" }).footerText)
+      .toBe("© Example Academy · Course360™");
+    expect(resolveCertificateIdentity({
+      organizationName: "Example Academy",
+      showPlatformAttribution: false,
+    }).footerText).toBe("© Example Academy");
+  });
 });

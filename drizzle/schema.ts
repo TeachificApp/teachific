@@ -3242,6 +3242,9 @@ export const lmsCertificateTemplates = mysqlTable("lms_certificate_templates", {
   layout: mysqlEnum("layout", ["classic", "modern", "minimal"]).default("classic"),
   // Org default
   isDefault: boolean("is_default").default(false),
+  // Existing templates retain platform attribution unless a Pro or Enterprise
+  // organization deliberately opts out through the protected admin route.
+  showPlatformAttribution: boolean("show_platform_attribution").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

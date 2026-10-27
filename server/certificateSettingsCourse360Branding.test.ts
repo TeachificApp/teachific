@@ -8,12 +8,14 @@ const source = fs.readFileSync(
 );
 
 describe("Course360 certificate settings branding", () => {
-  it("uses Course360 and organization-neutral display copy while preserving the serialized compatibility field", () => {
+  it("uses Course360 and organization-neutral display copy with the persisted attribution field", () => {
     expect(source).toContain("Course360 platform attribution");
     expect(source).toContain("This certificate is issued by your organization");
     expect(source).not.toContain("Teachific branding");
     expect(source).not.toContain("Teachific branded");
     expect(source).not.toContain("issued by Teachific");
-    expect(source).toContain("showTeachificBranding");
+    expect(source).toContain("showPlatformAttribution");
+    expect(source).toContain("trpc.lms.certificateTemplates.list");
+    expect(source).not.toContain("showTeachificBranding");
   });
 });

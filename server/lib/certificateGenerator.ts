@@ -29,6 +29,8 @@ export interface CertificateTemplate {
   logoUrl?: string | null;
   footerText?: string | null;
   layout?: "classic" | "modern" | "minimal" | null;
+  /** Defaults to true; the protected admin route permits false for Pro/Enterprise. */
+  showPlatformAttribution?: boolean | null;
 }
 
 export interface CertificateOptions {
@@ -46,11 +48,16 @@ export interface CertificateOptions {
 export function resolveCertificateIdentity(template?: CertificateTemplate | null) {
   const tmpl = template ?? {};
   const organizationName = tmpl.organizationName?.trim() || "Course360™";
+  const defaultFooter = tmpl.showPlatformAttribution === false
+    ? `© ${organizationName}`
+    : organizationName === "Course360™"
+      ? "© Course360™"
+      : `© ${organizationName} · Course360™`;
   return {
     organizationName,
     signatureName: tmpl.signatureText || tmpl.signatureName || "Course360 Team",
     signatureTitle: tmpl.signatureTitleText || tmpl.signatureTitle || `Certificate Administrator, ${organizationName}`,
-    footerText: tmpl.footerText || `© ${organizationName}`,
+    footerText: tmpl.footerText || defaultFooter,
   };
 }
 
@@ -223,11 +230,11 @@ export async function generateCertificatePdf(opts: CertificateOptions): Promise<
           doc.font("Helvetica").fontSize(9).fillColor(TEAL).text(orgName, 0, 76, { align: "center" });
         } catch {
           doc.font("Helvetica-Bold").fontSize(22).fillColor("#ffffff").text(orgName, 0, 38, { align: "center" });
-          doc.font("Helvetica").fontSize(10).fillColor(TEAL).text("General & Vascular Ultrasound Clinical Intelligence", 0, 64, { align: "center" });
+          doc.font("Helvetica").fontSize(10).fillColor(TEAL).text("Certificate of Completion", 0, 64, { align: "center" });
         }
       } else {
         doc.font("Helvetica-Bold").fontSize(22).fillColor("#ffffff").text(orgName, 0, 38, { align: "center" });
-        doc.font("Helvetica").fontSize(10).fillColor(TEAL).text("General & Vascular Ultrasound Clinical Intelligence", 0, 64, { align: "center" });
+        doc.font("Helvetica").fontSize(10).fillColor(TEAL).text("Certificate of Completion", 0, 64, { align: "center" });
       }
 
       doc.font("Helvetica").fontSize(13).fillColor(TEAL)

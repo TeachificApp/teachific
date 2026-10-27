@@ -293,6 +293,15 @@ export async function getEnrollment(courseId: number, userId: number) {
   return rows[0] ?? null;
 }
 
+export async function getEnrollmentById(enrollmentId: number) {
+  const rows = await db
+    .select()
+    .from(courseEnrollments)
+    .where(eq(courseEnrollments.id, enrollmentId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function createEnrollment(data: typeof courseEnrollments.$inferInsert) {
   const result = await db.insert(courseEnrollments).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;
@@ -636,6 +645,14 @@ export async function getCertificatesByUser(userId: number) {
     .select()
     .from(certificates)
     .where(eq(certificates.userId, userId))
+    .orderBy(desc(certificates.issuedAt));
+}
+
+export async function getCertificatesByOrg(orgId: number) {
+  return db
+    .select()
+    .from(certificates)
+    .where(eq(certificates.orgId, orgId))
     .orderBy(desc(certificates.issuedAt));
 }
 

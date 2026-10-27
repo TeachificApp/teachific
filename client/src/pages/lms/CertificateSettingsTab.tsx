@@ -3,7 +3,7 @@
  * Allows orgs to customise logo, colors, signature, footer text.
  * White-label toggle is only visible on Pro/Enterprise plans.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -38,21 +38,21 @@ interface Props {
 
 export function CertificateSettingsTab({ orgId }: Props) {
   const utils = trpc.useUtils();
-  const { data: templates, isLoading } = trpc.lms.certificates.templates.list.useQuery({ orgId });
+  const { data: templates, isLoading } = trpc.lms.certificateTemplates.list.useQuery({ orgId });
   const { data: sub } = trpc.lms.subscription.get.useQuery({ orgId });
   const plan = sub?.effectivePlan ?? sub?.plan ?? "free";
   const canWhiteLabel = WHITE_LABEL_PLANS.includes(plan);
 
-  const createMutation = trpc.lms.certificates.templates.create.useMutation({
-    onSuccess: () => { utils.lms.certificates.templates.list.invalidate({ orgId }); toast.success("Template created"); },
+  const createMutation = trpc.lms.certificateTemplates.create.useMutation({
+    onSuccess: () => { utils.lms.certificateTemplates.list.invalidate({ orgId }); toast.success("Template created"); },
     onError: (e) => toast.error(e.message),
   });
-  const updateMutation = trpc.lms.certificates.templates.update.useMutation({
-    onSuccess: () => { utils.lms.certificates.templates.list.invalidate({ orgId }); toast.success("Template saved"); },
+  const updateMutation = trpc.lms.certificateTemplates.update.useMutation({
+    onSuccess: () => { utils.lms.certificateTemplates.list.invalidate({ orgId }); toast.success("Template saved"); },
     onError: (e) => toast.error(e.message),
   });
-  const deleteMutation = trpc.lms.certificates.templates.delete.useMutation({
-    onSuccess: () => { utils.lms.certificates.templates.list.invalidate({ orgId }); toast.success("Template deleted"); },
+  const deleteMutation = trpc.lms.certificateTemplates.delete.useMutation({
+    onSuccess: () => { utils.lms.certificateTemplates.list.invalidate({ orgId }); toast.success("Template deleted"); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -133,7 +133,7 @@ export function CertificateSettingsTab({ orgId }: Props) {
                     {/* Color preview */}
                     <div
                       className="w-10 h-10 rounded-lg shrink-0 border"
-                      style={{ background: tpl.primaryColor ?? "#0ea5e9" }}
+                      style={{ background: tpl.primaryColorHex ?? "#189aa1" }}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -144,13 +144,13 @@ export function CertificateSettingsTab({ orgId }: Props) {
                             Default
                           </Badge>
                         )}
-                        {tpl.showTeachificBranding && (
+                        {tpl.showPlatformAttribution !== false && (
                           <Badge variant="outline" className="text-xs">Course360 platform attribution</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {tpl.bgStyle} background
-                        {tpl.signatureName ? ` · Signed by ${tpl.signatureName}` : ""}
+                        {(tpl.backgroundColorHex ?? "#f0fbfc")} background
+                        {tpl.signatureText ? ` · Signed by ${tpl.signatureText}` : ""}
                       </p>
                     </div>
                   </div>
@@ -221,30 +221,30 @@ function TemplateDialog({ open, onClose, template, canWhiteLabel, onSave, isSavi
     name: template?.name ?? "Default Certificate",
     isDefault: template?.isDefault ?? false,
     logoUrl: template?.logoUrl ?? "",
-    primaryColor: template?.primaryColor ?? "#0ea5e9",
-    accentColor: template?.accentColor ?? "#0f2942",
-    bgStyle: template?.bgStyle ?? "white",
-    signatureName: template?.signatureName ?? "",
-    signatureTitle: template?.signatureTitle ?? "",
+    primaryColor: template?.primaryColorHex ?? "#189aa1",
+    accentColor: template?.accentColorHex ?? "#0f2942",
+    bgStyle: template?.backgroundColorHex === "#0e1e2e" ? "dark" : template?.backgroundColorHex === "#f0f4f7" ? "light" : "white",
+    signatureName: template?.signatureText ?? "",
+    signatureTitle: template?.signatureTitleText ?? "",
     footerText: template?.footerText ?? "",
-    showTeachificBranding: template?.showTeachificBranding ?? !canWhiteLabel,
+    showPlatformAttribution: template?.showPlatformAttribution ?? true,
   }));
 
   // Reset form when template changes
-  useState(() => {
+  useEffect(() => {
     setForm({
       name: template?.name ?? "Default Certificate",
       isDefault: template?.isDefault ?? false,
       logoUrl: template?.logoUrl ?? "",
-      primaryColor: template?.primaryColor ?? "#0ea5e9",
-      accentColor: template?.accentColor ?? "#0f2942",
-      bgStyle: template?.bgStyle ?? "white",
-      signatureName: template?.signatureName ?? "",
-      signatureTitle: template?.signatureTitle ?? "",
+      primaryColor: template?.primaryColorHex ?? "#189aa1",
+      accentColor: template?.accentColorHex ?? "#0f2942",
+      bgStyle: template?.backgroundColorHex === "#0e1e2e" ? "dark" : template?.backgroundColorHex === "#f0f4f7" ? "light" : "white",
+      signatureName: template?.signatureText ?? "",
+      signatureTitle: template?.signatureTitleText ?? "",
       footerText: template?.footerText ?? "",
-      showTeachificBranding: template?.showTeachificBranding ?? !canWhiteLabel,
+      showPlatformAttribution: template?.showPlatformAttribution ?? true,
     });
-  });
+  }, [template]);
 
   function set(key: string, value: any) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -252,11 +252,18 @@ function TemplateDialog({ open, onClose, template, canWhiteLabel, onSave, isSavi
 
   async function handleSave() {
     await onSave({
-      ...form,
+      name: form.name,
+      isDefault: form.isDefault,
       logoUrl: form.logoUrl || undefined,
-      signatureName: form.signatureName || undefined,
-      signatureTitle: form.signatureTitle || undefined,
+      primaryColorHex: form.primaryColor,
+      accentColorHex: form.accentColor,
+      backgroundColorHex: form.bgStyle === "dark" ? "#0e1e2e" : form.bgStyle === "light" ? "#f0f4f7" : "#ffffff",
+      signatureText: form.signatureName || undefined,
+      signatureTitleText: form.signatureTitle || undefined,
       footerText: form.footerText || undefined,
+      showPlatformAttribution: canWhiteLabel
+        ? form.showPlatformAttribution
+        : (template?.showPlatformAttribution ?? true),
     });
   }
 
@@ -378,8 +385,8 @@ function TemplateDialog({ open, onClose, template, canWhiteLabel, onSave, isSavi
                 <p className="text-xs text-muted-foreground">When off, only your org's branding appears on the certificate.</p>
               </div>
               <Switch
-                checked={form.showTeachificBranding}
-                onCheckedChange={(v) => set("showTeachificBranding", v)}
+                checked={form.showPlatformAttribution}
+                onCheckedChange={(v) => set("showPlatformAttribution", v)}
               />
             </div>
           )}

@@ -4411,10 +4411,13 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("certificateTemplates: router({"),
       routerSource.indexOf("// ── Webinars")
     );
-    expect(certificatesSource).toContain("Course does not belong to the requested organization");
-    expect((certificatesSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
-    expect(templatesSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);");
-    expect(templatesSource).toContain("Certificate template does not belong to the requested organization");
+    expect(routerSource).toContain("async function requireLegacyCertificateOrg");
+    expect(certificatesSource).toContain("Course does not belong to the active organization");
+    expect(certificatesSource).toContain("Certificate enrollment must belong to the active organization");
+    expect(certificatesSource).toContain("certificate.userId !== ctx.user.id || certificate.orgId !== orgId");
+    expect(templatesSource).toContain("requireLegacyCertificateOrg(ctx, input?.orgId)");
+    expect(templatesSource).toContain("Certificate template does not belong to the active organization.");
+    expect(templatesSource).toContain("assertLegacyCertificateAttributionEntitlement");
     expect(templatesSource).toContain("org-${orgId}/certificate-assets/");
   });
 

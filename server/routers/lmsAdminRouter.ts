@@ -15,8 +15,10 @@ import {
   updateLmsCertificateTemplate,
   deleteLmsCertificateTemplate,
   listIssuedCertificates,
+  getOrgSubscription,
 } from "../lmsDb";
 import { storagePut, storagePresignedPut } from "../storage";
+import { getEffectiveSubscriptionPlan } from "../../shared/subscriptionEntitlement";
 import {
   lmsCourses,
   lmsLandingPages,
@@ -26,6 +28,7 @@ import {
   blockTemplates,
   courseLessons,
   cmeActivityForms,
+  organizations,
 } from "../../drizzle/schema";
 
 async function assertAdmin(ctx: { user: { id: number; role: string } }) {
@@ -48,6 +51,44 @@ async function resolveActiveAdminOrg(
   const orgId = requestedOrgId && isPlatformAdministrator(ctx.user.role) ? requestedOrgId : activeOrgId;
   await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
   return orgId;
+}
+
+/**
+ * Certificate authoring is operational work. Unlike intentionally labelled
+ * platform-global management, it always follows the caller's selected school,
+ * including for platform administrators.
+ */
+async function resolveActiveCertificateOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+) {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing certificate templates." });
+  }
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Certificate templates must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+async function assertCertificateAttributionEntitlement(
+  orgId: number,
+  showPlatformAttribution?: boolean,
+  existingShowPlatformAttribution?: boolean | null,
+) {
+  // Preserve a historical authorized opt-out on unrelated edits. Only a new
+  // opt-out is gated, so a downgrade never silently rewrites saved content.
+  if (showPlatformAttribution !== false || existingShowPlatformAttribution === false) return;
+  const subscription = await getOrgSubscription(orgId);
+  const plan = getEffectiveSubscriptionPlan(subscription?.plan, subscription?.status);
+  if (plan !== "pro" && plan !== "enterprise") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Removing Course360 platform attribution from certificates is available on Pro and Enterprise plans.",
+    });
+  }
 }
 
 const _lmsAdminBaseRouter = router({
@@ -345,16 +386,18 @@ const _lmsCertificateTemplatesRouter = router({
   listCertificateTemplates: protectedProcedure
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
+      const orgId = await resolveActiveCertificateOrg(ctx, input?.orgId);
       return getLmsCertificateTemplatesByOrg(orgId);
     }),
   getCertificateTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
+      const orgId = await resolveActiveCertificateOrg(ctx);
       const template = await getLmsCertificateTemplateById(input.id);
       if (!template) throw new TRPCError({ code: "NOT_FOUND" });
-      if (template.orgId == null) throw new TRPCError({ code: "FORBIDDEN", message: "Global templates are not editable here." });
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+      if (template.orgId !== null && template.orgId !== orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Certificate template does not belong to the active organization." });
+      }
       return template;
     }),
   createCertificateTemplate: protectedProcedure
@@ -380,9 +423,11 @@ const _lmsCertificateTemplatesRouter = router({
       borderWidth: z.number().int().optional(),
       layout: z.enum(["classic", "modern", "minimal"]).optional(),
       isDefault: z.boolean().optional(),
+      showPlatformAttribution: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const orgId = await resolveActiveAdminOrg(ctx, input.orgId);
+      const orgId = await resolveActiveCertificateOrg(ctx, input.orgId);
+      await assertCertificateAttributionEntitlement(orgId, input.showPlatformAttribution);
       const { orgId: _orgId, ...rest } = input;
       return createLmsCertificateTemplate({ orgId, ...rest } as any);
     }),
@@ -409,38 +454,54 @@ const _lmsCertificateTemplatesRouter = router({
       borderWidth: z.number().int().optional(),
       layout: z.enum(["classic", "modern", "minimal"]).optional(),
       isDefault: z.boolean().optional(),
+      showPlatformAttribution: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const orgId = await resolveActiveCertificateOrg(ctx);
       const template = await getLmsCertificateTemplateById(id);
       if (!template) throw new TRPCError({ code: "NOT_FOUND" });
       if (template.orgId == null) throw new TRPCError({ code: "FORBIDDEN", message: "Global templates are not editable here." });
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+      if (template.orgId !== orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Certificate template does not belong to the active organization." });
+      }
+      await assertCertificateAttributionEntitlement(orgId, data.showPlatformAttribution, template.showPlatformAttribution);
       return updateLmsCertificateTemplate(id, data as any);
     }),
   deleteCertificateTemplate: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const orgId = await resolveActiveCertificateOrg(ctx);
       const template = await getLmsCertificateTemplateById(input.id);
       if (!template) throw new TRPCError({ code: "NOT_FOUND" });
       if (template.orgId == null) throw new TRPCError({ code: "FORBIDDEN", message: "Global templates are not deletable here." });
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, template.orgId);
+      if (template.orgId !== orgId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Certificate template does not belong to the active organization." });
+      }
       await deleteLmsCertificateTemplate(input.id);
       return { ok: true };
     }),
   listIssuedCertificates: protectedProcedure
     .input(z.object({ orgId: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = await resolveActiveAdminOrg(ctx, input?.orgId);
+      const orgId = await resolveActiveCertificateOrg(ctx, input?.orgId);
       return listIssuedCertificates(orgId);
     }),
   previewCertificateTemplate: protectedProcedure
     .input(z.object({ templateId: z.number().optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await resolveActiveCertificateOrg(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [organization] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, orgId)).limit(1);
       const { generateCertificatePdf } = await import("../lib/certificateGenerator");
       let template = null;
       if (input.templateId) {
         template = await getLmsCertificateTemplateById(input.templateId);
+        if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Certificate template not found" });
+        if (template.orgId !== null && template.orgId !== orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Certificate template does not belong to the active organization." });
+        }
       }
       const pdfBuffer = await generateCertificatePdf({
         learnerName: "Jane Smith",
@@ -458,16 +519,24 @@ const _lmsCertificateTemplatesRouter = router({
           logoUrl: template.logoUrl,
           footerText: template.footerText,
           layout: template.layout as any,
-        } : null,
+          showPlatformAttribution: template.showPlatformAttribution,
+          organizationName: organization?.name ?? null,
+        } : { organizationName: organization?.name ?? null },
       });
-      const key = `certificate-previews/preview-${Date.now()}.pdf`;
+      const key = `org-${orgId}/certificate-previews/preview-${Date.now()}.pdf`;
       const { url } = await storagePut(key, pdfBuffer, "application/pdf");
       return { url };
     }),
   uploadCertificateAsset: protectedProcedure
-    .input(z.object({ filename: z.string(), contentType: z.string() }))
-    .mutation(async ({ input }) => {
-      const key = `certificate-assets/${Date.now()}-${input.filename}`;
+    .input(z.object({
+      filename: z.string().min(1).max(255),
+      contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const orgId = await resolveActiveCertificateOrg(ctx);
+      const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+      if (!safeFilename) throw new TRPCError({ code: "BAD_REQUEST", message: "A valid certificate asset filename is required." });
+      const key = `org-${orgId}/certificate-assets/${Date.now()}-${safeFilename}`;
       const { uploadUrl, fileUrl } = await storagePresignedPut(key, input.contentType);
       const publicUrl = fileUrl;
       return { uploadUrl, publicUrl, key };

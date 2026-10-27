@@ -4,6 +4,7 @@ const organizationId = 77;
 const templateRows: unknown[][] = [];
 const insertedCertificate = vi.fn();
 const sendCertificateEmail = vi.fn().mockResolvedValue(true);
+const generateCertificatePdf = vi.fn().mockResolvedValue(Buffer.from("certificate"));
 const mockDb = {
   select: () => ({
     from: () => ({
@@ -24,7 +25,7 @@ vi.mock("./storage", () => ({
 }));
 
 vi.mock("./lib/certificateGenerator", () => ({
-  generateCertificatePdf: vi.fn().mockResolvedValue(Buffer.from("certificate")),
+  generateCertificatePdf,
 }));
 
 vi.mock("./lib/certificateEmail", () => ({ sendCertificateEmail }));
@@ -45,7 +46,7 @@ describe("Course360 certificate issuance organization scope", () => {
       [{ name: "Taylor Learner", email: "taylor@example.test", displayName: null, credentials: null }],
       [{ name: "Northstar Learning", logoUrl: "https://assets.example.test/northstar.png", customSenderEmail: "learning@northstar.example", customSenderName: "Northstar Learning", senderDomainVerified: true }],
       [],
-      [{ id: 123, orgId: organizationId, isDefault: true, titleText: "Certificate of Completion" }],
+      [{ id: 123, orgId: organizationId, isDefault: true, titleText: "Certificate of Completion", showPlatformAttribution: true }],
     );
 
     await issueCertificateIfEnabled(mockDb as any, 31, 22, 14, "learner");
@@ -62,6 +63,12 @@ describe("Course360 certificate issuance organization scope", () => {
       organizationLogoUrl: "https://assets.example.test/northstar.png",
       senderEmail: "learning@northstar.example",
       senderName: "Northstar Learning",
+    }));
+    expect(generateCertificatePdf).toHaveBeenCalledWith(expect.objectContaining({
+      template: expect.objectContaining({
+        organizationName: "Northstar Learning",
+        showPlatformAttribution: true,
+      }),
     }));
   });
 });
