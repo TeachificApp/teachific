@@ -1740,8 +1740,9 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("members: router({"),
       routerSource.indexOf("// ── Email Marketing")
     );
-    expect((membersSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(4);
-    expect(membersSource).toContain("Course does not belong to the requested organization");
+    expect(routerSource).toContain("async function requireActiveLegacyMemberOrg");
+    expect((membersSource.match(/requireActiveLegacyMemberOrg\(ctx, input\??\.orgId\)/g) ?? []).length).toBeGreaterThanOrEqual(6);
+    expect(membersSource).toContain("Course does not belong to the active organization");
   });
 
   it("requires organization-admin ownership for legacy LMS pages, instructors, and affiliates", () => {
@@ -4577,7 +4578,9 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("// ── Curriculum")
     );
     expect(routerSource).toContain("async function requireLegacyCourseAccess");
-    expect(courseSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect(routerSource).toContain("async function requireActiveLegacyCourseAdminOrg");
+    expect(courseSource).toContain("requireActiveLegacyCourseAdminOrg(ctx, input?.orgId)");
+    expect(courseSource).toContain("requireActiveLegacyCourseAdminOrg(ctx, input.orgId)");
     expect((courseSource.match(/await requireLegacyCourseAccess\(ctx, input\.id\);/g) ?? []).length).toBe(2);
     expect(courseSource).toContain("const course = await requireLegacyCourseAccess(ctx, id);");
     expect(courseSource).toContain("input.courseIds.map((courseId) => requireLegacyCourseAccess(ctx, courseId))");

@@ -293,6 +293,30 @@ export async function getEnrollment(courseId: number, userId: number) {
   return rows[0] ?? null;
 }
 
+/** Finds a learner's existing legacy enrollment without hiding an inactive record. */
+export async function getEnrollmentIncludingInactive(courseId: number, userId: number) {
+  const rows = await db
+    .select()
+    .from(courseEnrollments)
+    .where(
+      and(
+        eq(courseEnrollments.courseId, courseId),
+        eq(courseEnrollments.userId, userId),
+      ),
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Restores an existing enrollment without altering its historic learner progress. */
+export async function reactivateEnrollment(enrollmentId: number) {
+  await db
+    .update(courseEnrollments)
+    .set({ isActive: true })
+    .where(eq(courseEnrollments.id, enrollmentId));
+  return getEnrollmentById(enrollmentId);
+}
+
 export async function getEnrollmentById(enrollmentId: number) {
   const rows = await db
     .select()
@@ -1358,6 +1382,7 @@ export async function getMembersWithEnrollments(orgId: number) {
     .select({
       userId: orgMembers.userId,
       role: orgMembers.role,
+      memberSubRole: orgMembers.memberSubRole,
       joinedAt: orgMembers.joinedAt,
       name: users.name,
       email: users.email,

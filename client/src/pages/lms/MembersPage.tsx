@@ -42,7 +42,7 @@ export default function MembersPage() {
     courseIds: [] as number[],
   });
   const [showAddPassword, setShowAddPassword] = useState(false);
-  const [accessMember, setAccessMember] = useState<{ userId: number; name?: string | null; email?: string | null; role: "org_super_admin" | "org_admin" | "member" | "user"; memberSubRole: "basic_member" | "instructor" | "group_manager" | "group_member" } | null>(null);
+  const [accessMember, setAccessMember] = useState<{ userId: number; name?: string | null; email?: string | null; role: "org_super_admin" | "org_admin" | "user"; memberSubRole: "basic_member" | "instructor" | "group_manager" | "group_member" } | null>(null);
   const [grantAccessMember, setGrantAccessMember] = useState<{ userId: number; name?: string | null; email?: string | null } | null>(null);
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogFilter, setCatalogFilter] = useState<MemberAccessCatalogFilter>("all");
@@ -52,7 +52,13 @@ export default function MembersPage() {
 
   // Bulk import state
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
-  const [bulkPreview, setBulkPreview] = useState<Array<{name: string; email: string; password?: string; role: "org_admin" | "user"; memberSubRole: "basic_member" | "instructor"}>>([]);
+  const [bulkPreview, setBulkPreview] = useState<Array<{
+    name: string;
+    email: string;
+    password?: string;
+    role: "org_super_admin" | "org_admin" | "user";
+    memberSubRole: "basic_member" | "instructor" | "group_manager" | "group_member";
+  }>>([]);
   const [bulkFileName, setBulkFileName] = useState("");
   const [bulkParseError, setBulkParseError] = useState("");
   const [bulkResult, setBulkResult] = useState<{created: number; updated: number; failed: number; errors: string[]; total: number; setupEmailsSent: number; setupEmailsFailed: number; importedMembers: Array<{name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated"}>} | null>(null);
@@ -119,7 +125,7 @@ export default function MembersPage() {
   const [resetPwdMember, setResetPwdMember] = useState<{ userId: number; name?: string | null; email?: string | null } | null>(null);
   const [resetPwdValue, setResetPwdValue] = useState("");
   const [resetPwdConfirm, setResetPwdConfirm] = useState("");
-  const resetPasswordMutation = trpc.orgs.members.resetPassword.useMutation({
+  const resetPasswordMutation = trpc.lms.members.resetPassword.useMutation({
     onSuccess: () => {
       toast.success("Password reset successfully");
       setResetPwdMember(null);
@@ -386,7 +392,7 @@ export default function MembersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setAccessMember({ userId: m.userId, name: m.name, email: m.email, role: (m.role === "org_super_admin" || m.role === "org_admin" ? m.role : "user"), memberSubRole: (m.memberSubRole === "instructor" ? "instructor" : "basic_member") })}>
+                        <DropdownMenuItem onClick={() => setAccessMember({ userId: m.userId, name: m.name, email: m.email, role: (m.role === "org_super_admin" || m.role === "org_admin" ? m.role : "user"), memberSubRole: (m.memberSubRole === "instructor" || m.memberSubRole === "group_manager" || m.memberSubRole === "group_member" ? m.memberSubRole : "basic_member") })}>
                           Edit Access
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
@@ -451,7 +457,7 @@ export default function MembersPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setAccessMember({ userId: m.userId, name: m.name, email: m.email, role: (m.role === "org_super_admin" || m.role === "org_admin" ? m.role : "user"), memberSubRole: (m.memberSubRole === "instructor" ? "instructor" : "basic_member") })}>Edit Access</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setAccessMember({ userId: m.userId, name: m.name, email: m.email, role: (m.role === "org_super_admin" || m.role === "org_admin" ? m.role : "user"), memberSubRole: (m.memberSubRole === "instructor" || m.memberSubRole === "group_manager" || m.memberSubRole === "group_member" ? m.memberSubRole : "basic_member") })}>Edit Access</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => { setEnrollEmail(m.email ?? ""); setEnrollDialogOpen(true); }}>
                         Enroll in Course
                       </DropdownMenuItem>
@@ -831,7 +837,7 @@ export default function MembersPage() {
           {accessMember && <div className="space-y-4">
             <p className="text-sm text-muted-foreground">{accessMember.name ?? accessMember.email}</p>
             <div className="space-y-2"><Label>Organization role</Label><Select value={accessMember.role} onValueChange={(role) => setAccessMember((member) => member ? { ...member, role: role as typeof member.role } : member)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="user">Member</SelectItem><SelectItem value="org_admin">Org Admin</SelectItem><SelectItem value="org_super_admin">Org Super Admin</SelectItem></SelectContent></Select></div>
-            {accessMember.role === "user" && <div className="space-y-2"><Label>Member access</Label><Select value={accessMember.memberSubRole} onValueChange={(memberSubRole) => setAccessMember((member) => member ? { ...member, memberSubRole: memberSubRole as typeof member.memberSubRole } : member)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="basic_member">Member</SelectItem><SelectItem value="instructor">Instructor</SelectItem></SelectContent></Select></div>}
+            {accessMember.role === "user" && <div className="space-y-2"><Label>Member access</Label><Select value={accessMember.memberSubRole} onValueChange={(memberSubRole) => setAccessMember((member) => member ? { ...member, memberSubRole: memberSubRole as typeof member.memberSubRole } : member)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="basic_member">Member</SelectItem><SelectItem value="instructor">Instructor</SelectItem><SelectItem value="group_manager">Group Manager</SelectItem><SelectItem value="group_member">Group Member</SelectItem></SelectContent></Select></div>}
           </div>}
           <DialogFooter><Button variant="outline" onClick={() => setAccessMember(null)}>Cancel</Button><Button disabled={!accessMember || updateMemberAccess.isPending || !orgId} onClick={() => accessMember && orgId && updateMemberAccess.mutate({ orgId, userId: accessMember.userId, role: accessMember.role, memberSubRole: accessMember.memberSubRole })}>{updateMemberAccess.isPending ? "Saving..." : "Save Access"}</Button></DialogFooter>
         </DialogContent>

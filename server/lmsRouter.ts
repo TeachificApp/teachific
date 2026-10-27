@@ -6,9 +6,11 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getDb, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { getDb, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById, getUserByEmail, getOrgMember, updateOrgMemberRole } from "./db";
 import { lmsCourses, lmsLessons, lmsQuizzes, lmsSections } from "../drizzle/schema";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
+import { sendEmailViaOrg } from "./_core/email";
+import { getOrgBaseUrl } from "./lib/orgUrl";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
 import { scrapeVideoFromUrl, cleanupScrapedVideo } from "./videoScraper";
@@ -47,6 +49,8 @@ import {
   updatePricing,
   deletePricing,
   getEnrollment,
+  getEnrollmentIncludingInactive,
+  reactivateEnrollment,
   createEnrollment,
   updateEnrollmentProgress,
   getAllLessonProgress,
@@ -605,6 +609,80 @@ async function requireLegacyFlashcardDeckAccess(ctx: { user: { id: number; role:
   return deck;
 }
 
+/**
+ * Legacy course administration callers can retain an organization id in a
+ * browser cache. Preserve that input as a consistency hint only: the server's
+ * selected active organization is the tenant authority for list and create.
+ */
+async function requireActiveLegacyCourseAdminOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing courses." });
+  }
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Course administration must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+/**
+ * Member lists, invitations, imports, and manual enrollments are always bound
+ * to the selected school. A supplied orgId is never allowed to choose a tenant.
+ */
+async function requireActiveLegacyMemberOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing members." });
+  }
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Member administration must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+const legacyMemberRoleSchema = z.enum(["org_super_admin", "org_admin", "user"]);
+const legacyMemberSubRoleSchema = z.enum(["basic_member", "instructor", "group_manager", "group_member"]);
+
+function toOrganizationMemberRole(role: z.infer<typeof legacyMemberRoleSchema>): "org_super_admin" | "org_admin" | "member" {
+  return role === "org_super_admin" ? "org_super_admin" : role === "org_admin" ? "org_admin" : "member";
+}
+
+function escapeMemberEmailHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[character] ?? character);
+}
+
+function buildMemberSetupEmailHtml(memberName: string, organizationName: string, setupUrl: string): string {
+  const safeName = escapeMemberEmailHtml(memberName);
+  const safeOrganizationName = escapeMemberEmailHtml(organizationName);
+  const safeSetupUrl = escapeMemberEmailHtml(setupUrl);
+  return `<!doctype html><html><body style="margin:0;padding:24px;background:#f0fbfc;font-family:Arial,sans-serif;color:#0e1e2e;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;width:100%;background:#fff;border-radius:12px;overflow:hidden;">
+        <tr><td style="background:#189aa1;padding:28px 32px;color:#fff;"><h1 style="margin:0;font-size:22px;">Welcome to ${safeOrganizationName}</h1></td></tr>
+        <tr><td style="padding:32px;"><p style="margin:0 0 16px;font-size:16px;">Hello ${safeName},</p>
+          <p style="margin:0 0 24px;line-height:1.6;">An administrator created an account for you. Use the secure link below to choose your password and sign in.</p>
+          <p style="margin:0 0 24px;text-align:center;"><a href="${safeSetupUrl}" style="display:inline-block;background:#189aa1;color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:7px;">Set up your account</a></p>
+          <p style="margin:0;color:#64748b;font-size:13px;line-height:1.5;">This link expires in 24 hours. If you were not expecting this invitation, you can safely ignore this email.</p>
+        </td></tr>
+      </table>
+    </td></tr></table>
+  </body></html>`;
+}
+
 async function requireLegacyCourseInActiveOrg(ctx: { user: { id: number; role: string } }, courseId: number) {
   const course = await getCourseById(courseId);
   if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
@@ -698,8 +776,7 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyCourseAdminOrg(ctx, input?.orgId);
         return getCoursesByOrg(orgId);
       }),
     get: protectedProcedure
@@ -721,8 +798,7 @@ export const lmsRouter = router({
         status: z.enum(["draft", "published", "hidden", "private", "archived"]).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyCourseAdminOrg(ctx, input.orgId);
         const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
         return createCourse({ ...input, orgId, slug });
       }),
@@ -1496,78 +1572,266 @@ export const lmsRouter = router({
     listWithEnrollments: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyMemberOrg(ctx, input?.orgId);
         return getMembersWithEnrollments(orgId);
       }),
     manualEnroll: protectedProcedure
-      .input(z.object({ userId: z.number(), courseId: z.number(), orgId: z.number().optional() }))
+      .input(z.object({
+        userId: z.number().int().positive().optional(),
+        email: z.string().email().optional(),
+        courseId: z.number().int().positive(),
+        orgId: z.number().optional(),
+      }).refine((input) => Boolean(input.userId || input.email), {
+        message: "A member email or user id is required.",
+      }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyMemberOrg(ctx, input.orgId);
         const course = await getCourseById(input.courseId);
-        if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
-        const existing = await getEnrollment(input.courseId, input.userId);
-        if (existing) return existing;
-        return createEnrollment({ courseId: input.courseId, userId: input.userId, orgId, amountPaid: 0, isActive: true });
+        if (!course || course.orgId !== orgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the active organization." });
+        }
+        const learner = input.userId ? await getUserById(input.userId) : await getUserByEmail(input.email!);
+        if (!learner || !(await getOrgMember(orgId, learner.id))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "That learner is not a member of the active organization." });
+        }
+        const existing = await getEnrollmentIncludingInactive(input.courseId, learner.id);
+        if (existing) {
+          if (!existing.isActive) await reactivateEnrollment(existing.id);
+          return { success: true, enrollmentId: existing.id, alreadyEnrolled: true };
+        }
+        const enrollment = await createEnrollment({
+          courseId: input.courseId,
+          userId: learner.id,
+          orgId,
+          amountPaid: 0,
+          isActive: true,
+          progressPct: 0,
+          certificateIssued: false,
+        });
+        return { success: true, enrollmentId: enrollment?.id ?? null, alreadyEnrolled: false };
       }),
     createAndAdd: protectedProcedure
       .input(z.object({
         orgId: z.number().optional(),
-        name: z.string(),
+        name: z.string().trim().min(1).max(255),
         email: z.string().email(),
-        role: z.enum(["member", "user"]).optional(),
+        password: z.string().min(6, "Password must be at least 6 characters"),
+        role: legacyMemberRoleSchema.default("user"),
+        memberSubRole: legacyMemberSubRoleSchema.default("basic_member"),
+        courseIds: z.array(z.number().int().positive()).max(100).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        const openId = `manual-${nanoid(16)}`;
-        await createManualUser({
-          openId,
-          name: input.name,
-          email: input.email,
-          passwordHash: "",
-          role: input.role ?? "member",
-          loginMethod: "manual",
-        });
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { users } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [newUser] = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-        if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        await addOrgMember(orgId, newUser.id, input.role ?? "member");
-        return newUser;
+        const orgId = await requireActiveLegacyMemberOrg(ctx, input.orgId);
+        const requestedRole = toOrganizationMemberRole(input.role);
+        const callerMembership = await getOrgMember(orgId, ctx.user.id);
+        const mayManageSuperAdmins = ["site_owner", "site_admin"].includes(ctx.user.role)
+          || callerMembership?.role === "org_super_admin";
+        if (requestedRole === "org_super_admin" && !mayManageSuperAdmins) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only a super administrator can grant super administrator access." });
+        }
+
+        let member = await getUserByEmail(input.email);
+        if (member) {
+          const existingMembership = await getOrgMember(orgId, member.id);
+          if (!existingMembership) {
+            await addOrgMember(orgId, member.id, requestedRole, ctx.user.id, input.memberSubRole);
+          } else if (existingMembership.role === "org_super_admin" && !mayManageSuperAdmins) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Only a super administrator can change this member's access." });
+          } else {
+            await updateOrgMemberRole(orgId, member.id, requestedRole, input.memberSubRole);
+          }
+        } else {
+          const bcrypt = await import("bcryptjs");
+          const passwordHash = await bcrypt.default.hash(input.password, 10);
+          const openId = `manual_${nanoid(20)}`;
+          await createManualUser({
+            openId,
+            name: input.name,
+            email: input.email,
+            passwordHash,
+            role: "user",
+            loginMethod: "email",
+            emailVerified: true,
+          });
+          member = await getUserByEmail(input.email);
+          if (!member) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The member account could not be created." });
+          await addOrgMember(orgId, member.id, requestedRole, ctx.user.id, input.memberSubRole);
+        }
+
+        for (const courseId of [...new Set(input.courseIds ?? [])]) {
+          const course = await getCourseById(courseId);
+          if (!course || course.orgId !== orgId) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Each selected course must belong to the active organization." });
+          }
+          const existing = await getEnrollmentIncludingInactive(courseId, member.id);
+          if (existing && !existing.isActive) {
+            await reactivateEnrollment(existing.id);
+          } else if (!existing) {
+            await createEnrollment({
+              courseId,
+              userId: member.id,
+              orgId,
+              amountPaid: 0,
+              isActive: true,
+              progressPct: 0,
+              certificateIssued: false,
+            });
+          }
+        }
+        return { success: true, userId: member.id };
       }),
     bulkImport: protectedProcedure
       .input(z.object({
         orgId: z.number().optional(),
-        members: z.array(z.object({ name: z.string(), email: z.string().email() })),
+        users: z.array(z.object({
+          name: z.string().trim().min(1).max(255),
+          email: z.string().email(),
+          password: z.string().min(6).optional(),
+          role: legacyMemberRoleSchema.default("user"),
+          memberSubRole: legacyMemberSubRoleSchema.default("basic_member"),
+        })).min(1).max(500),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        const results = [];
-        for (const m of input.members) {
+        const orgId = await requireActiveLegacyMemberOrg(ctx, input.orgId);
+        const organization = await getOrgById(orgId);
+        if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Active organization not found." });
+        const callerMembership = await getOrgMember(orgId, ctx.user.id);
+        const mayManageSuperAdmins = ["site_owner", "site_admin"].includes(ctx.user.role)
+          || callerMembership?.role === "org_super_admin";
+        const organizationBaseUrl = getOrgBaseUrl(
+          organization.slug,
+          organization.customDomain,
+          organization.domainVerificationStatus,
+        );
+        const bcrypt = await import("bcryptjs");
+        let created = 0;
+        let updated = 0;
+        let failed = 0;
+        let setupEmailsSent = 0;
+        let setupEmailsFailed = 0;
+        const errors: string[] = [];
+        const importedMembers: Array<{ name: string; email: string; role: string; memberSubRole: string | null; status: "created" | "updated" }> = [];
+        for (const candidate of input.users) {
           try {
-            const openId = `manual-${nanoid(16)}`;
-            await createManualUser({ openId, name: m.name, email: m.email, passwordHash: "", role: "member", loginMethod: "manual" });
-            const { getDb } = await import("./db");
-            const db = await getDb();
-            if (!db) continue;
-            const { users } = await import("../drizzle/schema");
-            const { eq } = await import("drizzle-orm");
-            const [newUser] = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-            if (newUser) {
-              await addOrgMember(orgId, newUser.id, "member");
-              results.push({ email: m.email, status: "created" });
+            const requestedRole = toOrganizationMemberRole(candidate.role);
+            if (requestedRole === "org_super_admin" && !mayManageSuperAdmins) {
+              throw new Error("Only a super administrator can grant super administrator access");
             }
-          } catch {
-            results.push({ email: m.email, status: "error" });
+            const existingUser = await getUserByEmail(candidate.email);
+            if (existingUser) {
+              const existingMembership = await getOrgMember(orgId, existingUser.id);
+              if (!existingMembership) {
+                await addOrgMember(orgId, existingUser.id, requestedRole, ctx.user.id, candidate.memberSubRole);
+              } else if (existingMembership.role === "org_super_admin" && !mayManageSuperAdmins) {
+                throw new Error("Only a super administrator can change this member's access");
+              } else {
+                await updateOrgMemberRole(orgId, existingUser.id, requestedRole, candidate.memberSubRole);
+              }
+              updated++;
+              importedMembers.push({
+                name: candidate.name,
+                email: candidate.email,
+                role: requestedRole,
+                memberSubRole: candidate.memberSubRole,
+                status: "updated",
+              });
+              continue;
+            }
+            const requiresPasswordSetup = !candidate.password;
+            const resetToken = requiresPasswordSetup ? nanoid(48) : undefined;
+            const passwordHash = await bcrypt.default.hash(candidate.password ?? nanoid(48), 10);
+            await createManualUser({
+              openId: `manual_${nanoid(20)}`,
+              name: candidate.name,
+              email: candidate.email,
+              passwordHash,
+              role: "user",
+              loginMethod: "email",
+              emailVerified: !requiresPasswordSetup,
+              resetToken,
+              resetTokenExpiry: requiresPasswordSetup ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined,
+            });
+            const newUser = await getUserByEmail(candidate.email);
+            if (!newUser) throw new Error("The member account could not be created");
+            await addOrgMember(orgId, newUser.id, requestedRole, ctx.user.id, candidate.memberSubRole);
+            if (requiresPasswordSetup && resetToken) {
+              const setupUrl = `${organizationBaseUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+              const wasSent = await sendEmailViaOrg({
+                to: { name: candidate.name, email: candidate.email },
+                subject: `Set up your ${organization.name} account`,
+                htmlBody: buildMemberSetupEmailHtml(candidate.name, organization.name, setupUrl),
+                previewText: `Choose your password to access ${organization.name}.`,
+              }, orgId);
+              if (wasSent) setupEmailsSent++;
+              else {
+                setupEmailsFailed++;
+                errors.push(`${candidate.email}: the account was created, but its setup email could not be sent`);
+              }
+            }
+            created++;
+            importedMembers.push({
+              name: candidate.name,
+              email: candidate.email,
+              role: requestedRole,
+              memberSubRole: candidate.memberSubRole,
+              status: "created",
+            });
+          } catch (error: any) {
+            failed++;
+            errors.push(`${candidate.email}: ${error?.message ?? "import failed"}`);
           }
         }
-        return results;
+        return { total: input.users.length, created, updated, failed, errors, importedMembers, setupEmailsSent, setupEmailsFailed };
+      }),
+    updateMemberRole: protectedProcedure
+      .input(z.object({
+        orgId: z.number().optional(),
+        userId: z.number().int().positive(),
+        role: legacyMemberRoleSchema,
+        memberSubRole: legacyMemberSubRoleSchema.default("basic_member"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = await requireActiveLegacyMemberOrg(ctx, input.orgId);
+        const targetMembership = await getOrgMember(orgId, input.userId);
+        if (!targetMembership) throw new TRPCError({ code: "NOT_FOUND", message: "Member not found in the active organization." });
+        const callerMembership = await getOrgMember(orgId, ctx.user.id);
+        const mayManageSuperAdmins = ["site_owner", "site_admin"].includes(ctx.user.role)
+          || callerMembership?.role === "org_super_admin";
+        if ((targetMembership.role === "org_super_admin" || input.role === "org_super_admin") && !mayManageSuperAdmins) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only a super administrator can change super administrator access." });
+        }
+        await updateOrgMemberRole(orgId, input.userId, toOrganizationMemberRole(input.role), input.memberSubRole);
+        return { success: true };
+      }),
+    resetPassword: protectedProcedure
+      .input(z.object({
+        orgId: z.number().optional(),
+        userId: z.number().int().positive(),
+        newPassword: z.string().min(6, "Password must be at least 6 characters"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = await requireActiveLegacyMemberOrg(ctx, input.orgId);
+        if (!(await getOrgMember(orgId, input.userId))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Member not found in the active organization." });
+        }
+        const targetUser = await getUserById(input.userId);
+        if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "Member account not found." });
+        const callerIsPlatformAdmin = ["site_owner", "site_admin"].includes(ctx.user.role);
+        if (["site_owner", "site_admin"].includes(targetUser.role) && !callerIsPlatformAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only a platform administrator can reset a platform administrator password." });
+        }
+        const bcrypt = await import("bcryptjs");
+        const passwordHash = await bcrypt.default.hash(input.newPassword, 10);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
+        const { users } = await import("../drizzle/schema");
+        await db.update(users).set({
+          passwordHash,
+          emailVerified: true,
+          resetToken: null,
+          resetTokenExpiry: null,
+        }).where(eq(users.id, input.userId));
+        return { success: true };
       }),
   }),
 
