@@ -28,6 +28,34 @@ describe("Course360 public catalog request scope", () => {
     })).toBe("northwind.course360.app");
   });
 
+  it("accepts a forwarded organization host only from the Course360 Cloudflare Worker", () => {
+    expect(getPublicRequestHostname({
+      hostname: "scormhost-fjxmsdmk.manus.space",
+      headers: {
+        host: "scormhost-fjxmsdmk.manus.space",
+        "cf-worker": "course360.app",
+        "x-course360-original-host": "northwind.course360.app",
+      },
+    })).toBe("northwind.course360.app");
+
+    expect(getPublicRequestHostname({
+      hostname: "scormhost-fjxmsdmk.manus.space",
+      headers: {
+        host: "scormhost-fjxmsdmk.manus.space",
+        "x-course360-original-host": "attacker.course360.app",
+      },
+    })).toBe("scormhost-fjxmsdmk.manus.space");
+
+    expect(getPublicRequestHostname({
+      hostname: "other-origin.example",
+      headers: {
+        host: "other-origin.example",
+        "cf-worker": "course360.app",
+        "x-course360-original-host": "attacker.course360.app",
+      },
+    })).toBe("other-origin.example");
+  });
+
   it("gives a verified custom learner domain precedence over a legacy orgSlug hint", async () => {
     const scope = await resolvePublicOrganizationScope(dbWithRows([[{ id: 7, slug: "northwind" }]]), {
       headers: { host: "learn.northwind.example:443" },
@@ -75,5 +103,29 @@ describe("Course360 public catalog request scope", () => {
     expect(publicSource).not.toContain("getPrimaryOrgId()");
     expect(publicSource).not.toContain("sqRows");
     expect(publicSource).not.toContain('_source: "sono_quiz"');
+  });
+
+  it("keeps public download cards scoped, visibility-safe, and compatible with separately stored decimal prices", () => {
+    const routerSource = readFileSync(new URL("./routers/lmsRouter.ts", import.meta.url), "utf8");
+    const helperStart = routerSource.indexOf("async function listPublicDigitalProductCards");
+    const helperEnd = routerSource.indexOf("// ─── Admin Router", helperStart);
+    const helperSource = routerSource.slice(helperStart, helperEnd);
+    expect(helperSource).toContain("eq(digitalProducts.orgId, orgId)");
+    expect(helperSource).toContain("eq(digitalProducts.isPublished, true)");
+    expect(helperSource).toContain('eq(digitalProducts.visibility, "published")');
+    expect(helperSource).toContain("notInArray(digitalProducts.visibility, [\"hidden\", \"private\", \"archived\"])");
+    expect(helperSource).toContain("digitalProductPrices.amount");
+    expect(helperSource).toContain("eq(digitalProductPrices.isActive, true)");
+    expect(helperSource).toContain('price: priceAmount');
+    expect(helperSource).not.toContain("digitalProducts.status");
+    expect(helperSource).not.toContain("digitalProducts.showInLibrary");
+    expect(helperSource).not.toContain("digitalProducts.fileUrl");
+    expect(helperSource).not.toContain("digitalProducts.fileKey");
+    const publicSource = routerSource.slice(
+      routerSource.indexOf("export const lmsPublicRouter"),
+      routerSource.indexOf("export const lmsLearnerRouter"),
+    );
+    expect(publicSource).toContain("Number(count) + dpMapped.length");
+    expect(publicSource).not.toContain("dpRows.length");
   });
 });

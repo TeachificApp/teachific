@@ -23,7 +23,7 @@
 
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "drizzle-orm";
+import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, notInArray, or } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
@@ -70,6 +70,7 @@ import {
   lmsPricingOptions,
   platformSettings,
   digitalProducts,
+  digitalProductPrices,
   lmsThinkificImports,
   lmsArchive,
   sonoQuizzes,
@@ -201,6 +202,71 @@ async function requireLessonBelongsToCourse(db: any, lessonId: number, courseId:
   }
 }
 
+/**
+ * Public download cards use only display-safe fields. The long-lived download
+ * table stores price options separately, so this query intentionally avoids
+ * newer product fields that are absent from existing databases and never sends
+ * file URLs or storage keys to unauthenticated visitors.
+ */
+async function listPublicDigitalProductCards(db: any, orgId: number, isFree?: boolean) {
+  const products = await db.select({
+    id: digitalProducts.id,
+    slug: digitalProducts.slug,
+    title: digitalProducts.title,
+    description: digitalProducts.description,
+    thumbnailUrl: digitalProducts.thumbnailUrl,
+    createdAt: digitalProducts.createdAt,
+    updatedAt: digitalProducts.updatedAt,
+  }).from(digitalProducts).where(and(
+    eq(digitalProducts.orgId, orgId),
+    or(eq(digitalProducts.isPublished, true), eq(digitalProducts.visibility, "published")),
+    notInArray(digitalProducts.visibility, ["hidden", "private", "archived"]),
+  )).orderBy(desc(digitalProducts.createdAt));
+
+  const productIds = products.map((product: { id: number }) => product.id);
+  const activePrices = productIds.length > 0
+    ? await db.select({
+      productId: digitalProductPrices.productId,
+      amount: digitalProductPrices.amount,
+      createdAt: digitalProductPrices.createdAt,
+    }).from(digitalProductPrices).where(and(
+      inArray(digitalProductPrices.productId, productIds),
+      eq(digitalProductPrices.isActive, true),
+    )).orderBy(asc(digitalProductPrices.createdAt))
+    : [];
+
+  const firstActivePriceByProductId = new Map<number, typeof activePrices[number]>();
+  for (const price of activePrices) {
+    if (!firstActivePriceByProductId.has(price.productId)) {
+      firstActivePriceByProductId.set(price.productId, price);
+    }
+  }
+
+  return products.map((product: typeof products[number]) => {
+    const priceAmount = firstActivePriceByProductId.get(product.id)?.amount ?? "0";
+    const productIsFree = Number(priceAmount) === 0;
+    return {
+      id: product.id,
+      slug: product.slug,
+      title: product.title,
+      subtitle: null,
+      description: product.description ?? null,
+      coverImageUrl: product.thumbnailUrl ?? null,
+      status: "public" as const,
+      type: "download" as const,
+      // Course360 prices stay decimal-dollar values; Stripe conversion happens only at checkout.
+      price: priceAmount,
+      isFree: productIsFree,
+      isFeatured: false,
+      showInLibrary: true,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+      instructor: null,
+      _source: "digital_product" as const,
+    };
+  }).filter((product: { isFree: boolean }) => isFree === undefined || product.isFree === isFree);
+}
+
 // ─── Admin Router (merged from sub-routers) ───────────────────────────────────
 export const lmsAdminRouter = router({
   ...lmsCourseBuilderRouter._def.procedures,
@@ -254,33 +320,14 @@ export const lmsPublicRouter = router({
 
       // If type is explicitly "download", pull from digitalProducts table and return in same shape
       if (input.type === "download") {
-        const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true), eq(digitalProducts.orgId, scopeOrgId)];
-        if (input.isFree !== undefined) dpConditions.push(eq(digitalProducts.isFree, input.isFree));
         const offset = (input.page - 1) * input.pageSize;
-        const [dpRows, dpCount] = await Promise.all([
-          db.select().from(digitalProducts).where(and(...dpConditions)).orderBy(desc(digitalProducts.createdAt)).limit(input.pageSize).offset(offset),
-          db.select({ count: sql<number>`count(*)` }).from(digitalProducts).where(and(...dpConditions)),
-        ]);
-        // Map digitalProducts to same shape as lmsCourses for the frontend
-        const mapped = dpRows.map(p => ({
-          id: p.id,
-          slug: p.slug,
-          title: p.title,
-          subtitle: p.subtitle ?? null,
-          description: p.description ?? null,
-          coverImageUrl: p.thumbnailUrl ?? null,
-          status: "public" as const,
-          type: "download" as const,
-          price: p.price,
-          isFree: p.isFree,
-          isFeatured: false,
-          showInLibrary: p.showInLibrary,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-          instructor: null,
-          _source: "digital_product" as const,
-        }));
-        return { courses: mapped, total: Number(dpCount[0]?.count ?? 0), page: input.page, pageSize: input.pageSize };
+        const downloads = await listPublicDigitalProductCards(db, scopeOrgId, input.isFree);
+        return {
+          courses: downloads.slice(offset, offset + input.pageSize),
+          total: downloads.length,
+          page: input.page,
+          pageSize: input.pageSize,
+        };
       }
 
       const conditions = [eq(lmsCourses.status, "public"), eq(lmsCourses.showInLibrary, true), eq(lmsCourses.orgId, scopeOrgId)];
@@ -317,33 +364,12 @@ export const lmsPublicRouter = router({
 
       // When no type filter (All Types), also include organization-owned digital products.
       if (!input.type) {
-        const dpConditions = [eq(digitalProducts.status, "published"), eq(digitalProducts.showInLibrary, true), eq(digitalProducts.orgId, scopeOrgId)];
-        if (input.isFree !== undefined) dpConditions.push(eq(digitalProducts.isFree, input.isFree));
-        const dpRows = await db.select().from(digitalProducts).where(and(...dpConditions)).orderBy(desc(digitalProducts.createdAt));
-        const dpMapped = dpRows.map(p => ({
-          id: p.id,
-          slug: p.slug,
-          title: p.title,
-          subtitle: p.subtitle ?? null,
-          description: p.description ?? null,
-          coverImageUrl: p.thumbnailUrl ?? null,
-          status: "public" as const,
-          type: "download" as const,
-          
-          price: p.price,
-          isFree: p.isFree,
-          isFeatured: false,
-          showInLibrary: p.showInLibrary,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-          instructor: null,
-          _source: "digital_product" as const,
-        }));
+        const dpMapped = await listPublicDigitalProductCards(db, scopeOrgId, input.isFree);
         // Merge all, sort by createdAt desc, then paginate
         const combined = [...enriched, ...dpMapped].sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        const totalCombined = Number(count) + dpRows.length;
+        const totalCombined = Number(count) + dpMapped.length;
         const paginated = combined.slice(offset, offset + input.pageSize);
         return { courses: paginated, total: totalCombined, page: input.page, pageSize: input.pageSize };
       }

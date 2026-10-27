@@ -2,6 +2,7 @@ import express, { type Express, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
 import { getOrgBaseUrl } from "../lib/orgUrl";
+import { getPublicRequestHostname } from "../lib/publicOrgRequestScope";
 
 /**
  * Production static file server.
@@ -33,8 +34,7 @@ type OrgBranding = {
 };
 
 function getRequestHostname(req: Request): string {
-  const rawHost = (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
-  return rawHost.split(",")[0].trim().split(":")[0].toLowerCase();
+  return getPublicRequestHostname(req) ?? "";
 }
 
 function isPlatformRootHostname(hostname: string): boolean {

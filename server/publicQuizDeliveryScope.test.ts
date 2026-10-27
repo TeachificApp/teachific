@@ -13,6 +13,14 @@ describe("Course360 public QuizMaker delivery scope", () => {
   it("accepts only the owning Course360 organization subdomain or verified custom learner domain", () => {
     expect(() => assertPublicQuizDeliveryHost({ headers: { host: "northwind.course360.app" } }, organization)).not.toThrow();
     expect(() => assertPublicQuizDeliveryHost({ headers: { host: "learn.northwind.example" } }, organization)).not.toThrow();
+    expect(() => assertPublicQuizDeliveryHost({
+      hostname: "scormhost-fjxmsdmk.manus.space",
+      headers: {
+        host: "scormhost-fjxmsdmk.manus.space",
+        "cf-worker": "course360.app",
+        "x-course360-original-host": "northwind.course360.app",
+      },
+    }, organization)).not.toThrow();
   });
 
   it("rejects a valid public share credential when it is requested from a different organization domain", () => {

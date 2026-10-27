@@ -14,6 +14,12 @@ type RequestLike = {
   hostname?: string;
 };
 
+// The Worker proxies Course360 organization subdomains to this hosted origin.
+// A forwarded hostname is never browser authority: Cloudflare adds CF-Worker
+// to Worker fetch() subrequests and identifies the zone that created them.
+const COURSE360_WORKER_ORIGIN_HOST = "scormhost-fjxmsdmk.manus.space";
+const COURSE360_WORKER_ZONE = "course360.app";
+
 function firstHeaderValue(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw) return null;
@@ -31,9 +37,27 @@ export function normalizePublicHostname(value: string | null | undefined): strin
   }
 }
 
-/** Obtain the request host without accepting caller-controlled forwarded-host hints. */
+/**
+ * Obtain the request hostname. Direct request hosts remain authoritative. The
+ * Course360 Worker is the sole exception: when the hosted origin receives a
+ * Cloudflare-identified Worker subrequest from this zone, its dedicated
+ * original-host header is safe to use for public tenant resolution.
+ */
 export function getPublicRequestHostname(req: RequestLike | null | undefined): string | null {
-  return normalizePublicHostname(req?.hostname ?? firstHeaderValue(req?.headers?.host));
+  const directHostname = normalizePublicHostname(req?.hostname ?? firstHeaderValue(req?.headers?.host));
+  const workerZone = normalizePublicHostname(firstHeaderValue(req?.headers?.["cf-worker"]));
+  const workerOriginalHostname = normalizePublicHostname(firstHeaderValue(req?.headers?.["x-course360-original-host"]));
+
+  if (
+    directHostname === COURSE360_WORKER_ORIGIN_HOST
+    && workerZone === COURSE360_WORKER_ZONE
+    && workerOriginalHostname
+    && isCourse360Subdomain(workerOriginalHostname)
+  ) {
+    return workerOriginalHostname;
+  }
+
+  return directHostname;
 }
 
 function isCourse360Subdomain(hostname: string): boolean {
