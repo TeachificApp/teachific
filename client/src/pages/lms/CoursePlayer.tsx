@@ -1005,6 +1005,7 @@ export default function CoursePlayer() {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradePromptReason, setUpgradePromptReason] = useState<"entry" | "exit" | "locked_lesson">("entry");
   const [instructorPopup, setInstructorPopup] = useState<any>(null);
+  const [showCourseWelcome, setShowCourseWelcome] = useState(false);
   const [contentFullscreen, setContentFullscreen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const inlineSurveySubmitters = useRef(new Map<string, () => Promise<void>>());
@@ -1095,6 +1096,19 @@ export default function CoursePlayer() {
   });
 
   useEffect(() => { setVideoWatched(false); setRightPanelTab("info"); }, [selectedLessonId]);
+  // A learner sees the welcome panel once per browser and enrolled course. It is
+  // intentionally not shown during administrator previews or public previews.
+  useEffect(() => {
+    const courseId = data?.course?.id;
+    if (!courseId || !data?.enrollment || data.isAdminPreview) return;
+    try {
+      setShowCourseWelcome(localStorage.getItem(`course360:course-welcome:${courseId}`) !== "1");
+    } catch {
+      // Private-mode storage can be unavailable. Showing the non-blocking panel
+      // for this visit is preferable to interrupting learner access.
+      setShowCourseWelcome(true);
+    }
+  }, [data?.course?.id, data?.enrollment?.id, data?.isAdminPreview]);
   // Exit fullscreen on Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && contentFullscreen) setContentFullscreen(false); };
@@ -1356,6 +1370,22 @@ export default function CoursePlayer() {
   const daysSinceEnroll = Math.floor((Date.now() - enrolledAt.getTime()) / (1000 * 60 * 60 * 24));
 
   const allLessons = [...topLevelLessons, ...sections.flatMap((s: any) => s.lessons)];
+  const welcomeInstructors = ((data.instructors ?? []) as Array<{
+    id: number;
+    name: string;
+    title?: string | null;
+    bio?: string | null;
+    avatarUrl?: string | null;
+  }>).slice(0, 3);
+  const courseWelcomeDescription = String(course.description ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&[a-z#0-9]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const dismissCourseWelcome = () => {
+    try { localStorage.setItem(`course360:course-welcome:${course.id}`, "1"); } catch { /* storage is optional */ }
+    setShowCourseWelcome(false);
+  };
 
   // ── Prerequisite Gate Logic ──────────────────────────────────────────────────
   // Build a Set of lesson IDs that are locked by prerequisite gates.
@@ -1513,6 +1543,90 @@ export default function CoursePlayer() {
 
   return (
     <div className={cn("flex flex-col h-screen overflow-hidden", isDarkTheme ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900")}>
+      <Dialog open={showCourseWelcome} onOpenChange={(open) => { if (!open) dismissCourseWelcome(); }}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2" style={primaryText}>
+              <BookOpen className="h-5 w-5" />
+              Welcome to {course.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <p className="text-sm leading-relaxed text-gray-600">
+              You are ready to begin. Your progress is saved automatically, so you can return to {playerBrandName} whenever you are ready.
+            </p>
+            {courseWelcomeDescription && (
+              <p className="text-sm leading-relaxed text-gray-700">
+                {courseWelcomeDescription.length > 420 ? `${courseWelcomeDescription.slice(0, 420).trimEnd()}…` : courseWelcomeDescription}
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Learning plan</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {allLessons.length} {allLessons.length === 1 ? "lesson" : "lessons"}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {sections.length} {sections.length === 1 ? lbl.section.toLowerCase() : `${lbl.section.toLowerCase()}s`}
+                </p>
+              </div>
+              <div className="rounded-xl border px-4 py-3" style={{
+                borderColor: primaryColor,
+                backgroundColor: `color-mix(in srgb, ${primaryColor} 8%, white)`,
+              }}>
+                <p className="text-xs font-medium uppercase tracking-wide" style={primaryLightText}>Learning status</p>
+                <p className="mt-1 text-sm font-semibold" style={primaryText}>Not started</p>
+                <p className="text-xs text-gray-500">Choose a lesson to begin</p>
+              </div>
+            </div>
+            {welcomeInstructors.length > 0 && (
+              <section className="border-t border-gray-100 pt-4">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <User className="h-4 w-4" style={primaryText} />
+                  Meet your instructor{welcomeInstructors.length === 1 ? "" : "s"}
+                </h3>
+                <div className="mt-3 space-y-3">
+                  {welcomeInstructors.map((instructor) => {
+                    const bio = String(instructor.bio ?? "")
+                      .replace(/<[^>]*>/g, " ")
+                      .replace(/&[a-z#0-9]+;/gi, " ")
+                      .replace(/\s+/g, " ")
+                      .trim();
+                    return (
+                      <div key={instructor.id} className="flex items-start gap-3">
+                        {instructor.avatarUrl ? (
+                          <img src={instructor.avatarUrl} alt={instructor.name} className="h-11 w-11 rounded-full border object-cover" style={primaryBorder} />
+                        ) : (
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border" style={{ ...primaryLightBg, ...primaryBorder }}>
+                            <User className="h-5 w-5" style={primaryText} />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">{instructor.name}</p>
+                          {instructor.title && <p className="text-xs" style={primaryText}>{instructor.title}</p>}
+                          {bio && <p className="mt-1 text-xs leading-relaxed text-gray-600">{bio.length > 220 ? `${bio.slice(0, 220).trimEnd()}…` : bio}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+            {course.hasCertificate && (
+              <div className="flex items-start gap-2 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2.5 text-xs leading-relaxed text-teal-900">
+                <Award className="mt-0.5 h-4 w-4 shrink-0" style={primaryText} />
+                Complete the required course work to unlock your certificate of completion.
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button className="text-white" style={primaryBg} onClick={dismissCourseWelcome}>
+              <PlayCircle className="mr-2 h-4 w-4" /> Start Learning
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Upgrade Prompt Dialog for preview lesson users */}
       <Dialog open={showUpgradePrompt} onOpenChange={setShowUpgradePrompt}>
         <DialogContent className="max-w-md">

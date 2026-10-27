@@ -988,14 +988,51 @@ export const lmsLearnerRouter = router({
         logIpAccess({ userId: ctx.user.id, ipAddress: ip, userAgent: ctx.req?.headers?.["user-agent"] || undefined, contentType: "course", contentId: course.id }).catch(() => {});
       }
 
-      // Fetch course instructors (for right-panel instructor card)
-      const courseInstructorLinks = await db.select().from(lmsCourseInstructors)
-        .where(eq(lmsCourseInstructors.courseId, course.id));
-      const instructorIds = courseInstructorLinks.map(l => l.instructorId);
-      let instructors: typeof lmsInstructors.$inferSelect[] = [];
+      // Return only active, same-organization instructor display fields. This
+      // remains fail-closed even if a historic course-instructor link is ever
+      // malformed or created outside the current organization boundary.
+      const courseInstructorLinks = await db.select({
+        instructorId: lmsCourseInstructors.instructorId,
+        role: lmsCourseInstructors.role,
+      }).from(lmsCourseInstructors).where(and(
+        eq(lmsCourseInstructors.courseId, course.id),
+        eq(lmsCourseInstructors.orgId, course.orgId),
+      ));
+      const instructorIds = [...new Set(courseInstructorLinks.map((link) => link.instructorId))];
+      let instructors: Array<{
+        id: number;
+        name: string;
+        title: string | null;
+        bio: string | null;
+        avatarUrl: string | null;
+        role: "primary" | "secondary";
+      }> = [];
       if (instructorIds.length > 0) {
-        instructors = await db.select().from(lmsInstructors)
-          .where(sql`${lmsInstructors.id} IN (${sql.join(instructorIds.map(id => sql`${id}`), sql`, `)})`);
+        const instructorRows = await db.select({
+          id: lmsInstructors.id,
+          name: lmsInstructors.displayName,
+          title: lmsInstructors.title,
+          bio: lmsInstructors.bio,
+          avatarUrl: lmsInstructors.profileImageUrl,
+        }).from(lmsInstructors).where(and(
+          eq(lmsInstructors.orgId, course.orgId),
+          eq(lmsInstructors.isActive, true),
+          inArray(lmsInstructors.id, instructorIds),
+        ));
+        const instructorsById = new Map(instructorRows.map((instructor) => [instructor.id, instructor]));
+        instructors = courseInstructorLinks
+          .sort((left, right) => (left.role === "primary" ? -1 : 0) - (right.role === "primary" ? -1 : 0))
+          .flatMap((link) => {
+            const instructor = instructorsById.get(link.instructorId);
+            return instructor ? [{
+              id: instructor.id,
+              name: instructor.name?.trim() || "Instructor",
+              title: instructor.title,
+              bio: instructor.bio,
+              avatarUrl: instructor.avatarUrl,
+              role: link.role as "primary" | "secondary",
+            }] : [];
+          });
       }
 
       const enrollmentWithAlias = effectiveEnrollment ? { ...effectiveEnrollment, progressPct: Number((effectiveEnrollment as any).progressPercent ?? (effectiveEnrollment as any).progressPct ?? 0) } : null;
