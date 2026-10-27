@@ -1551,36 +1551,59 @@ export async function getDiscussionById(id: number) {
   const rows = await db.select().from(discussions).where(eq(discussions.id, id));
   return rows[0] ?? null;
 }
+export async function getDiscussionByIdForOrg(id: number, orgId: number) {
+  const rows = await db.select().from(discussions).where(and(eq(discussions.id, id), eq(discussions.orgId, orgId)));
+  return rows[0] ?? null;
+}
 export async function createDiscussion(data: typeof discussions.$inferInsert) {
   const result = await db.insert(discussions).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;
   return getDiscussionById(Number(id));
 }
-export async function updateDiscussion(id: number, data: Partial<typeof discussions.$inferInsert>) {
-  await db.update(discussions).set(data).where(eq(discussions.id, id));
-  return getDiscussionById(id);
+export async function updateDiscussion(id: number, orgId: number, data: Partial<typeof discussions.$inferInsert>) {
+  await db.update(discussions).set(data).where(and(eq(discussions.id, id), eq(discussions.orgId, orgId)));
+  return getDiscussionByIdForOrg(id, orgId);
 }
-export async function deleteDiscussion(id: number) {
-  await db.delete(discussionReplies).where(eq(discussionReplies.discussionId, id));
-  await db.delete(discussions).where(eq(discussions.id, id));
+export async function deleteDiscussion(id: number, orgId: number) {
+  // Replies do not carry their own orgId. Tie cleanup to the organization-owned
+  // parent row so a raw discussion ID can never delete another school's replies.
+  await db.delete(discussionReplies).where(and(
+    eq(discussionReplies.discussionId, id),
+    sql`EXISTS (SELECT 1 FROM ${discussions} WHERE ${discussions.id} = ${discussionReplies.discussionId} AND ${discussions.orgId} = ${orgId})`,
+  ));
+  await db.delete(discussions).where(and(eq(discussions.id, id), eq(discussions.orgId, orgId)));
 }
-export async function getRepliesByDiscussion(discussionId: number) {
-  return db.select().from(discussionReplies).where(eq(discussionReplies.discussionId, discussionId)).orderBy(asc(discussionReplies.createdAt));
+export async function getRepliesByDiscussion(discussionId: number, orgId: number) {
+  return db.select().from(discussionReplies).where(and(
+    eq(discussionReplies.discussionId, discussionId),
+    sql`EXISTS (SELECT 1 FROM ${discussions} WHERE ${discussions.id} = ${discussionReplies.discussionId} AND ${discussions.orgId} = ${orgId})`,
+  )).orderBy(asc(discussionReplies.createdAt));
 }
-export async function createDiscussionReply(data: typeof discussionReplies.$inferInsert) {
+export async function createDiscussionReply(data: typeof discussionReplies.$inferInsert, orgId: number) {
   const result = await db.insert(discussionReplies).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;
   // Increment reply count
-  await db.update(discussions).set({ replyCount: sql`${discussions.replyCount} + 1` }).where(eq(discussions.id, data.discussionId!));
+  await db.update(discussions).set({ replyCount: sql`${discussions.replyCount} + 1` }).where(and(
+    eq(discussions.id, data.discussionId!),
+    eq(discussions.orgId, orgId),
+  ));
   const rows = await db.select().from(discussionReplies).where(eq(discussionReplies.id, Number(id)));
   return rows[0];
 }
-export async function deleteDiscussionReply(id: number) {
-  const rows = await db.select().from(discussionReplies).where(eq(discussionReplies.id, id));
+export async function deleteDiscussionReply(id: number, discussionId: number, orgId: number) {
+  const scopedReply = and(
+    eq(discussionReplies.id, id),
+    eq(discussionReplies.discussionId, discussionId),
+    sql`EXISTS (SELECT 1 FROM ${discussions} WHERE ${discussions.id} = ${discussionReplies.discussionId} AND ${discussions.orgId} = ${orgId})`,
+  );
+  const rows = await db.select().from(discussionReplies).where(scopedReply);
   if (rows[0]) {
-    await db.update(discussions).set({ replyCount: sql`GREATEST(${discussions.replyCount} - 1, 0)` }).where(eq(discussions.id, rows[0].discussionId));
+    await db.update(discussions).set({ replyCount: sql`GREATEST(${discussions.replyCount} - 1, 0)` }).where(and(
+      eq(discussions.id, discussionId),
+      eq(discussions.orgId, orgId),
+    ));
   }
-  await db.delete(discussionReplies).where(eq(discussionReplies.id, id));
+  await db.delete(discussionReplies).where(scopedReply);
 }
 
 // ─── Assignments ─────────────────────────────────────────────────────────────
@@ -1592,21 +1615,33 @@ export async function getAssignmentById(id: number) {
   const rows = await db.select().from(assignments).where(eq(assignments.id, id));
   return rows[0] ?? null;
 }
+export async function getAssignmentByIdForOrg(id: number, orgId: number) {
+  const rows = await db.select().from(assignments).where(and(eq(assignments.id, id), eq(assignments.orgId, orgId)));
+  return rows[0] ?? null;
+}
 export async function createAssignment(data: typeof assignments.$inferInsert) {
   const result = await db.insert(assignments).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;
   return getAssignmentById(Number(id));
 }
-export async function updateAssignment(id: number, data: Partial<typeof assignments.$inferInsert>) {
-  await db.update(assignments).set(data).where(eq(assignments.id, id));
-  return getAssignmentById(id);
+export async function updateAssignment(id: number, orgId: number, data: Partial<typeof assignments.$inferInsert>) {
+  await db.update(assignments).set(data).where(and(eq(assignments.id, id), eq(assignments.orgId, orgId)));
+  return getAssignmentByIdForOrg(id, orgId);
 }
-export async function deleteAssignment(id: number) {
-  await db.delete(assignmentSubmissions).where(eq(assignmentSubmissions.assignmentId, id));
-  await db.delete(assignments).where(eq(assignments.id, id));
+export async function deleteAssignment(id: number, orgId: number) {
+  // Submissions inherit tenant ownership from their assignment. Scope child
+  // cleanup through that parent before deleting the organization-owned record.
+  await db.delete(assignmentSubmissions).where(and(
+    eq(assignmentSubmissions.assignmentId, id),
+    sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${assignments.id} = ${assignmentSubmissions.assignmentId} AND ${assignments.orgId} = ${orgId})`,
+  ));
+  await db.delete(assignments).where(and(eq(assignments.id, id), eq(assignments.orgId, orgId)));
 }
-export async function getSubmissionsByAssignment(assignmentId: number) {
-  return db.select().from(assignmentSubmissions).where(eq(assignmentSubmissions.assignmentId, assignmentId)).orderBy(desc(assignmentSubmissions.submittedAt));
+export async function getSubmissionsByAssignment(assignmentId: number, orgId: number) {
+  return db.select().from(assignmentSubmissions).where(and(
+    eq(assignmentSubmissions.assignmentId, assignmentId),
+    sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${assignments.id} = ${assignmentSubmissions.assignmentId} AND ${assignments.orgId} = ${orgId})`,
+  )).orderBy(desc(assignmentSubmissions.submittedAt));
 }
 export async function createSubmission(data: typeof assignmentSubmissions.$inferInsert) {
   const result = await db.insert(assignmentSubmissions).values(data);
@@ -1614,9 +1649,18 @@ export async function createSubmission(data: typeof assignmentSubmissions.$infer
   const rows = await db.select().from(assignmentSubmissions).where(eq(assignmentSubmissions.id, Number(id)));
   return rows[0];
 }
-export async function gradeSubmission(id: number, grade: string, score: number | null, feedback: string | null) {
-  await db.update(assignmentSubmissions).set({ grade, score: score ?? undefined, feedback: feedback ?? undefined, status: 'graded', gradedAt: new Date() }).where(eq(assignmentSubmissions.id, id));
-  const rows = await db.select().from(assignmentSubmissions).where(eq(assignmentSubmissions.id, id));
+export async function getSubmissionById(id: number) {
+  const rows = await db.select().from(assignmentSubmissions).where(eq(assignmentSubmissions.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+export async function gradeSubmission(id: number, assignmentId: number, orgId: number, grade: string, score: number | null, feedback: string | null) {
+  const scopedSubmission = and(
+    eq(assignmentSubmissions.id, id),
+    eq(assignmentSubmissions.assignmentId, assignmentId),
+    sql`EXISTS (SELECT 1 FROM ${assignments} WHERE ${assignments.id} = ${assignmentSubmissions.assignmentId} AND ${assignments.orgId} = ${orgId})`,
+  );
+  await db.update(assignmentSubmissions).set({ grade, score: score ?? undefined, feedback: feedback ?? undefined, status: 'graded', gradedAt: new Date() }).where(scopedSubmission);
+  const rows = await db.select().from(assignmentSubmissions).where(scopedSubmission);
   return rows[0];
 }
 

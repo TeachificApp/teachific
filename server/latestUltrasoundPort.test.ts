@@ -4448,7 +4448,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(groupSource).toContain("Group and course must belong to the active organization.");
   });
 
-  it("requires organization-admin ownership for legacy LMS discussions and assignments and user ownership for notes and bookmarks", () => {
+  it("requires active-organization ownership for legacy LMS discussions and assignments and user ownership for notes and bookmarks", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const discussionsSource = routerSource.slice(
       routerSource.indexOf("discussions: router({"),
@@ -4466,8 +4466,14 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("bookmarks: router({"),
       routerSource.indexOf("// ── Dashboard")
     );
-    expect(discussionsSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);");
-    expect(assignmentsSource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);");
+    expect(routerSource).toContain("async function requireActiveLegacyDiscussionOrg");
+    expect(routerSource).toContain("async function requireActiveLegacyAssignmentOrg");
+    expect(discussionsSource).toContain("requireActiveLegacyDiscussionOrg(ctx, input?.orgId)");
+    expect(discussionsSource).toContain("requireLegacyDiscussionInActiveOrg(ctx, input.id)");
+    expect(discussionsSource).toContain("learnerList: protectedProcedure");
+    expect(assignmentsSource).toContain("requireActiveLegacyAssignmentOrg(ctx, input?.orgId)");
+    expect(assignmentsSource).toContain("requireLegacyAssignmentInActiveOrg(ctx, input.id)");
+    expect(assignmentsSource).not.toContain("z.record(z.string(), z.unknown())");
     expect(notesSource).toContain("You can only update your own notes");
     expect(notesSource).toContain("You can only delete your own notes");
     expect(bookmarksSource).toContain("You can only delete your own bookmarks");

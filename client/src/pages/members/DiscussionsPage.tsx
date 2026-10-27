@@ -78,15 +78,15 @@ export default function DiscussionsPage() {
                       <p className="text-xs text-muted-foreground mt-1">{d.authorName} · {new Date(d.createdAt).toLocaleDateString()} · {d.replyCount} replies</p>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setReplyId(d.id); }}>
-                        <Reply className="h-3 w-3" />Reply
-                      </Button>
-                      <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => updateMut.mutate({ id: d.id, isPinned: !d.isPinned })}><Pin className="h-4 w-4 mr-2" />{d.isPinned ? "Unpin" : "Pin"}</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updateMut.mutate({ id: d.id, status: d.status === "open" ? "resolved" : "open" })}><CheckCircle className="h-4 w-4 mr-2" />{d.status === "open" ? "Mark Resolved" : "Reopen"}</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => { if (confirm("Delete?")) deleteMut.mutate({ id: d.id }); }} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
+                        <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs" onClick={() => { setReplyId(d.id); }}>
+                          <Reply className="h-3 w-3" />Reply
+                        </Button>
+                        <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: d.id, data: { isPinned: !d.isPinned } })}><Pin className="h-4 w-4 mr-2" />{d.isPinned ? "Unpin" : "Pin"}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: d.id, data: { status: d.status === "open" ? "resolved" : "open" } })}><CheckCircle className="h-4 w-4 mr-2" />{d.status === "open" ? "Mark Resolved" : "Reopen"}</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { if (confirm("Delete?")) deleteMut.mutate({ id: d.id }); }} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   </div>

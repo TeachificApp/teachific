@@ -122,13 +122,14 @@ import {
   deleteDiscussion,
   getRepliesByDiscussion,
   createDiscussionReply,
-  deleteDiscussionReply,
   getAssignmentsByOrg,
   getAssignmentById,
   createAssignment,
   updateAssignment,
   deleteAssignment,
   getSubmissionsByAssignment,
+  getSubmissionById,
+  gradeSubmission,
   getCertificateTemplatesByOrg,
   getCertificateTemplateById,
   createCertificateTemplate,
@@ -794,6 +795,98 @@ async function serializeLegacyBundleCourseIds(orgId: number, courseIds: number[]
     throw new TRPCError({ code: "FORBIDDEN", message: "Every selected course must belong to the active organization." });
   }
   return JSON.stringify(uniqueCourseIds);
+}
+
+/** Retained Discussion administration stays bound to the selected active school. */
+async function requireActiveLegacyDiscussionOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Discussion administration must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+/** Retained Assignment administration stays bound to the selected active school. */
+async function requireActiveLegacyAssignmentOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Assignment administration must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+async function requireLegacyDiscussionInActiveOrg(
+  ctx: { user: { id: number; role: string } },
+  discussionId: number,
+) {
+  const discussion = await getDiscussionById(discussionId);
+  if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
+  const activeOrgId = await requireActiveLegacyDiscussionOrg(ctx);
+  if (discussion.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This discussion belongs to another organization." });
+  }
+  return discussion;
+}
+
+async function requireLegacyAssignmentInActiveOrg(
+  ctx: { user: { id: number; role: string } },
+  assignmentId: number,
+) {
+  const assignment = await getAssignmentById(assignmentId);
+  if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
+  const activeOrgId = await requireActiveLegacyAssignmentOrg(ctx);
+  if (assignment.orgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This assignment belongs to another organization." });
+  }
+  return assignment;
+}
+
+/**
+ * Learner discussion delivery has a deliberately separate access path. It
+ * authorizes the server-selected organization plus the course enrollment (or an
+ * administrator preview), without turning retained administration endpoints
+ * into learner-accessible APIs.
+ */
+async function requireLegacyLearnerDiscussionCourse(
+  ctx: { user: { id: number; role: string } },
+  courseId: number,
+) {
+  return requireLegacyCourseLearnerAccess(ctx, courseId);
+}
+
+const legacyDiscussionUpdateSchema = z.object({
+  courseId: z.number().int().positive().nullable().optional(),
+  title: z.string().trim().min(1).max(500).optional(),
+  body: z.string().max(20_000).nullable().optional(),
+  isPinned: z.boolean().optional(),
+  status: z.enum(["open", "resolved", "closed"]).optional(),
+}).strict();
+
+const legacyAssignmentUpdateSchema = z.object({
+  courseId: z.number().int().positive().nullable().optional(),
+  title: z.string().trim().min(1).max(500).optional(),
+  description: z.string().max(20_000).nullable().optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+  maxScore: z.number().int().min(0).max(1_000_000).nullable().optional(),
+  status: z.enum(["draft", "active", "closed"]).optional(),
+  allowFileUpload: z.boolean().optional(),
+  allowTextSubmission: z.boolean().optional(),
+}).strict();
+
+async function assertLegacyDiscussionOrAssignmentCourse(orgId: number, courseId?: number | null) {
+  if (courseId === undefined || courseId === null) return;
+  const course = await getCourseById(courseId);
+  if (!course || course.orgId !== orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Course must belong to the active organization." });
+  }
 }
 
 async function requireLegacyFlashcardDeckAccess(ctx: { user: { id: number; role: string } }, deckId: number) {
@@ -2599,54 +2692,84 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), courseId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyDiscussionOrg(ctx, input?.orgId);
+        await assertLegacyDiscussionOrAssignmentCourse(orgId, input?.courseId);
         return getDiscussionsByOrg(orgId, input?.courseId);
       }),
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input, ctx }) => {
-        const d = await getDiscussionById(input.id);
-        if (!d) throw new TRPCError({ code: "NOT_FOUND" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, d.orgId);
-        const replies = await getRepliesByDiscussion(input.id);
-        return { ...d, replies };
+        const discussion = await requireLegacyDiscussionInActiveOrg(ctx, input.id);
+        const replies = await getRepliesByDiscussion(input.id, discussion.orgId);
+        return { ...discussion, replies };
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), courseId: z.number().optional(), title: z.string(), body: z.string().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        courseId: z.number().int().positive().optional(),
+        title: z.string().trim().min(1).max(500),
+        body: z.string().max(20_000).optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        if (input.courseId) {
-          const course = await getCourseById(input.courseId);
-          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
-        }
-        return createDiscussion({ orgId, courseId: input.courseId ?? null, title: input.title, body: input.body ?? null, authorId: ctx.user.id });
+        const orgId = await requireActiveLegacyDiscussionOrg(ctx, input.orgId);
+        await assertLegacyDiscussionOrAssignmentCourse(orgId, input.courseId);
+        return createDiscussion({
+          orgId,
+          courseId: input.courseId ?? null,
+          title: input.title,
+          body: input.body ?? null,
+          authorId: ctx.user.id,
+          authorName: (ctx.user as any).name ?? null,
+        });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number().int().positive(), data: legacyDiscussionUpdateSchema }).strict())
       .mutation(async ({ input, ctx }) => {
-        const discussion = await getDiscussionById(input.id);
-        if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);
-        return updateDiscussion(input.id, input.data as any);
+        const discussion = await requireLegacyDiscussionInActiveOrg(ctx, input.id);
+        await assertLegacyDiscussionOrAssignmentCourse(discussion.orgId, input.data.courseId);
+        return updateDiscussion(input.id, discussion.orgId, input.data);
       }),
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number().int().positive() }).strict())
       .mutation(async ({ input, ctx }) => {
-        const discussion = await getDiscussionById(input.id);
-        if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);
-        await deleteDiscussion(input.id);
+        const discussion = await requireLegacyDiscussionInActiveOrg(ctx, input.id);
+        await deleteDiscussion(input.id, discussion.orgId);
         return { ok: true };
       }),
     reply: protectedProcedure
-      .input(z.object({ discussionId: z.number(), body: z.string() }))
+      .input(z.object({ discussionId: z.number().int().positive(), body: z.string().trim().min(1).max(20_000) }).strict())
       .mutation(async ({ ctx, input }) => {
-        const discussion = await getDiscussionById(input.discussionId);
-        if (!discussion) throw new TRPCError({ code: "NOT_FOUND", message: "Discussion not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, discussion.orgId);
-        return createDiscussionReply({ discussionId: input.discussionId, body: input.body, authorId: ctx.user.id });
+        const discussion = await requireLegacyDiscussionInActiveOrg(ctx, input.discussionId);
+        return createDiscussionReply({
+          discussionId: input.discussionId,
+          body: input.body,
+          authorId: ctx.user.id,
+          authorName: (ctx.user as any).name ?? null,
+          isInstructorReply: true,
+        }, discussion.orgId);
+      }),
+    learnerList: protectedProcedure
+      .input(z.object({ courseId: z.number().int().positive() }).strict())
+      .query(async ({ ctx, input }) => {
+        const course = await requireLegacyLearnerDiscussionCourse(ctx, input.courseId);
+        return getDiscussionsByOrg(course.orgId, input.courseId);
+      }),
+    learnerCreate: protectedProcedure
+      .input(z.object({
+        courseId: z.number().int().positive(),
+        title: z.string().trim().min(1).max(500),
+        body: z.string().trim().min(1).max(20_000).optional(),
+      }).strict())
+      .mutation(async ({ ctx, input }) => {
+        const course = await requireLegacyLearnerDiscussionCourse(ctx, input.courseId);
+        return createDiscussion({
+          orgId: course.orgId,
+          courseId: course.id,
+          title: input.title,
+          body: input.body ?? null,
+          authorId: ctx.user.id,
+          authorName: (ctx.user as any).name ?? null,
+        });
       }),
   }),
 
@@ -2655,53 +2778,85 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyAssignmentOrg(ctx, input?.orgId);
         return getAssignmentsByOrg(orgId);
       }),
     get: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number().int().positive() }).strict())
       .query(async ({ input, ctx }) => {
-        const a = await getAssignmentById(input.id);
-        if (!a) throw new TRPCError({ code: "NOT_FOUND" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, a.orgId);
-        return a;
+        const assignment = await requireLegacyAssignmentInActiveOrg(ctx, input.id);
+        const submissions = await getSubmissionsByAssignment(input.id, assignment.orgId);
+        return {
+          ...assignment,
+          submissions: submissions.map((submission) => ({
+            ...submission,
+            studentName: submission.userName,
+            studentEmail: submission.userEmail,
+          })),
+        };
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), courseId: z.number().optional(), title: z.string(), description: z.string().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        courseId: z.number().int().positive().optional(),
+        title: z.string().trim().min(1).max(500),
+        description: z.string().max(20_000).optional(),
+        dueDate: z.coerce.date().optional(),
+        maxScore: z.number().int().min(0).max(1_000_000).optional(),
+        status: z.enum(["draft", "active", "closed"]).optional(),
+        allowFileUpload: z.boolean().optional(),
+        allowTextSubmission: z.boolean().optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        if (input.courseId) {
-          const course = await getCourseById(input.courseId);
-          if (!course || course.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Course does not belong to the requested organization" });
-        }
-        return createAssignment({ orgId, courseId: input.courseId ?? null, title: input.title, description: input.description ?? null });
+        const orgId = await requireActiveLegacyAssignmentOrg(ctx, input.orgId);
+        await assertLegacyDiscussionOrAssignmentCourse(orgId, input.courseId);
+        return createAssignment({
+          orgId,
+          courseId: input.courseId ?? null,
+          title: input.title,
+          description: input.description ?? null,
+          dueDate: input.dueDate ?? null,
+          maxScore: input.maxScore,
+          status: input.status,
+          allowFileUpload: input.allowFileUpload,
+          allowTextSubmission: input.allowTextSubmission,
+        });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number().int().positive(), data: legacyAssignmentUpdateSchema }).strict())
       .mutation(async ({ input, ctx }) => {
-        const assignment = await getAssignmentById(input.id);
-        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);
-        return updateAssignment(input.id, input.data as any);
+        const assignment = await requireLegacyAssignmentInActiveOrg(ctx, input.id);
+        await assertLegacyDiscussionOrAssignmentCourse(assignment.orgId, input.data.courseId);
+        return updateAssignment(input.id, assignment.orgId, input.data);
       }),
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number().int().positive() }).strict())
       .mutation(async ({ input, ctx }) => {
-        const assignment = await getAssignmentById(input.id);
-        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);
-        await deleteAssignment(input.id);
+        const assignment = await requireLegacyAssignmentInActiveOrg(ctx, input.id);
+        await deleteAssignment(input.id, assignment.orgId);
         return { ok: true };
       }),
     submissions: protectedProcedure
-      .input(z.object({ assignmentId: z.number() }))
+      .input(z.object({ assignmentId: z.number().int().positive() }).strict())
       .query(async ({ input, ctx }) => {
-        const assignment = await getAssignmentById(input.assignmentId);
-        if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, assignment.orgId);
-        return getSubmissionsByAssignment(input.assignmentId);
+        const assignment = await requireLegacyAssignmentInActiveOrg(ctx, input.assignmentId);
+        return getSubmissionsByAssignment(input.assignmentId, assignment.orgId);
+      }),
+    grade: protectedProcedure
+      .input(z.object({
+        submissionId: z.number().int().positive(),
+        grade: z.string().trim().min(1).max(32),
+        score: z.number().int().min(0).nullable(),
+        feedback: z.string().max(20_000).nullable(),
+      }).strict())
+      .mutation(async ({ ctx, input }) => {
+        const submission = await getSubmissionById(input.submissionId);
+        if (!submission) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment submission not found" });
+        const assignment = await requireLegacyAssignmentInActiveOrg(ctx, submission.assignmentId);
+        if (input.score !== null && assignment.maxScore !== null && input.score > assignment.maxScore) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Score cannot exceed the assignment maximum." });
+        }
+        return gradeSubmission(input.submissionId, assignment.id, assignment.orgId, input.grade, input.score, input.feedback);
       }),
   }),
 

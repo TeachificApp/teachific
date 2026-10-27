@@ -114,13 +114,13 @@ export default function AssignmentsPage() {
             <div className="space-y-2"><Label>Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} /></div>
             <div className="space-y-2"><Label>Max Score</Label><Input type="number" value={maxScore} onChange={e => setMaxScore(e.target.value)} /></div>
             <div className="space-y-2"><Label>Status</Label>
-              <Select onValueChange={v => editId && updateMut.mutate({ id: editId, status: v as any })}>
+              <Select onValueChange={v => editId && updateMut.mutate({ id: editId, data: { status: v as "draft" | "active" | "closed" } })}>
                 <SelectTrigger><SelectValue placeholder="Change status" /></SelectTrigger>
                 <SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="closed">Closed</SelectItem></SelectContent>
               </Select>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button><Button onClick={() => { if (!editId) return; updateMut.mutate({ id: editId, title, description: description || undefined, maxScore: parseInt(maxScore) || 100 }); }} disabled={updateMut.isPending}>{updateMut.isPending ? "Saving..." : "Save"}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button><Button onClick={() => { if (!editId) return; updateMut.mutate({ id: editId, data: { title, description: description || null, maxScore: parseInt(maxScore, 10) || 100 } }); }} disabled={updateMut.isPending}>{updateMut.isPending ? "Saving..." : "Save"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -147,7 +147,7 @@ export default function AssignmentsPage() {
             <div className="space-y-2"><Label>Score</Label><Input type="number" value={score} onChange={e => setScore(e.target.value)} /></div>
             <div className="space-y-2"><Label>Feedback</Label><Textarea value={feedback} onChange={e => setFeedback(e.target.value)} rows={3} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setGradeOpen(false)}>Cancel</Button><Button onClick={() => { if (!gradeSubId || !grade) return; gradeMut.mutate({ submissionId: gradeSubId, grade, score: score ? parseFloat(score) : null, feedback: feedback || null }); }} disabled={gradeMut.isPending}>{gradeMut.isPending ? "Saving..." : "Save Grade"}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setGradeOpen(false)}>Cancel</Button><Button onClick={() => { if (!gradeSubId || !grade) return; const numericScore = score ? Number(score) : null; if (numericScore !== null && (!Number.isInteger(numericScore) || numericScore < 0)) { toast.error("Score must be a whole number of zero or greater"); return; } gradeMut.mutate({ submissionId: gradeSubId, grade, score: numericScore, feedback: feedback || null }); }} disabled={gradeMut.isPending}>{gradeMut.isPending ? "Saving..." : "Save Grade"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -618,12 +618,12 @@ export default function CoursePlayerPage() {
   const isCmeCourse = Boolean(cmeStatus?.enabled && course?.creditHours);
   const shouldAutoCompleteCmeLesson = Boolean(isCmeCourse && currentLesson && !["video", "quiz"].includes(currentLesson.type));
 
-  // Discussions for current lesson
-  const { data: lessonDiscussions, refetch: refetchDiscussions } = trpc.lms.discussions.list.useQuery(
-    { courseId, orgId: course?.orgId ?? 0, lessonId: currentLesson?.id },
-    { enabled: !!currentLesson && discussionsOpen && !!course }
-  );
-  const createDiscussion = trpc.lms.discussions.create.useMutation({
+    // Discussions for current lesson
+    const { data: lessonDiscussions, refetch: refetchDiscussions } = trpc.lms.discussions.learnerList.useQuery(
+      { courseId },
+      { enabled: !!currentLesson && discussionsOpen && !!course }
+    );
+    const createDiscussion = trpc.lms.discussions.learnerCreate.useMutation({
     onSuccess: () => { setNewDiscussionText(""); refetchDiscussions(); },
   });
 
@@ -1251,17 +1251,14 @@ export default function CoursePlayerPage() {
                     size="sm"
                     className="h-7 text-xs"
                     disabled={!newDiscussionText.trim() || createDiscussion.isPending}
-                    onClick={() => {
-                      if (!newDiscussionText.trim() || !course || !currentLesson) return;
-                      createDiscussion.mutate({
-                        courseId,
-                        orgId: course.orgId,
-                        lessonId: currentLesson.id,
-                        title: newDiscussionText.slice(0, 80),
-                        body: newDiscussionText,
-                        authorId: user.id,
-                      });
-                    }}
+                      onClick={() => {
+                        if (!newDiscussionText.trim() || !course || !currentLesson) return;
+                        createDiscussion.mutate({
+                          courseId,
+                          title: newDiscussionText.slice(0, 80),
+                          body: newDiscussionText,
+                        });
+                      }}
                   >
                     Post
                   </Button>

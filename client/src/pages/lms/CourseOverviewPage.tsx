@@ -84,19 +84,19 @@ export default function CourseOverviewPage() {
     { courseId },
     { enabled: !!courseId && activeTab === "announcements" }
   );
-  const { data: discussions } = trpc.lms.discussions.list.useQuery(
-    { courseId, orgId: course?.orgId ?? 0 },
-    { enabled: !!courseId && activeTab === "discussions" && !!course }
-  );
+    const { data: discussions } = trpc.lms.discussions.learnerList.useQuery(
+      { courseId },
+      { enabled: !!courseId && activeTab === "discussions" && !!course }
+    );
   const { data: resources } = trpc.lms.resources.list.useQuery(
     { courseId },
     { enabled: !!courseId && activeTab === "resources" }
   );
   const utils = trpc.useUtils();
-  const createDiscussion = trpc.lms.discussions.create.useMutation({
-    onSuccess: () => {
-      setNewDiscussionText("");
-      utils.lms.discussions.list.invalidate({ courseId, orgId: course?.orgId ?? 0 });
+    const createDiscussion = trpc.lms.discussions.learnerCreate.useMutation({
+      onSuccess: () => {
+        setNewDiscussionText("");
+        utils.lms.discussions.learnerList.invalidate({ courseId });
     },
   });
 
@@ -259,10 +259,8 @@ export default function CourseOverviewPage() {
                         if (!newDiscussionText.trim() || !course) return;
                         createDiscussion.mutate({
                           courseId,
-                          orgId: course.orgId,
                           title: newDiscussionText.slice(0, 80),
                           body: newDiscussionText,
-                          authorId: user.id,
                         });
                       }}
                     >
