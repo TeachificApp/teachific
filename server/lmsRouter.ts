@@ -12,6 +12,7 @@ import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
 import { scrapeVideoFromUrl, cleanupScrapedVideo } from "./videoScraper";
+import { resolveCourseTheme } from "../shared/courseTheme";
 import {
   buildFullLessonExpansionPrompt,
   cleanGeneratedLessonContent,
@@ -428,18 +429,29 @@ async function requireLegacyFlashcardDeckAccess(ctx: { user: { id: number; role:
   return deck;
 }
 
-async function requireLegacyCourseAccess(ctx: { user: { id: number; role: string } }, courseId: number) {
+async function requireLegacyCourseInActiveOrg(ctx: { user: { id: number; role: string } }, courseId: number) {
   const course = await getCourseById(courseId);
   if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId || course.orgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to this course's organization before accessing it.",
+    });
+  }
+  return course;
+}
+
+async function requireLegacyCourseAccess(ctx: { user: { id: number; role: string } }, courseId: number) {
+  const course = await requireLegacyCourseInActiveOrg(ctx, courseId);
   await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
   return course;
 }
 
 async function requireLegacyCourseLearnerAccess(ctx: { user: { id: number; role: string } }, courseId: number) {
-  const course = await getCourseById(courseId);
-  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  const course = await requireLegacyCourseInActiveOrg(ctx, courseId);
   const enrollment = await getEnrollment(courseId, ctx.user.id);
-  if (enrollment?.isActive) return course;
+  if (enrollment?.isActive && enrollment.orgId === course.orgId) return course;
   await requireOrgAdmin(ctx.user.id, ctx.user.role, course.orgId);
   return course;
 }
@@ -492,7 +504,12 @@ export const lmsRouter = router({
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
-        return requireLegacyCourseAccess(ctx, input.id);
+        const course = await requireLegacyCourseLearnerAccess(ctx, input.id);
+        const organizationTheme = await getOrgTheme(course.orgId);
+        return {
+          ...course,
+          resolvedCourseTheme: resolveCourseTheme(course, organizationTheme),
+        };
       }),
     create: protectedProcedure
       .input(z.object({
@@ -544,7 +561,7 @@ export const lmsRouter = router({
     get: protectedProcedure
       .input(z.object({ courseId: z.number() }))
       .query(async ({ ctx, input }) => {
-        await requireLegacyCourseAccess(ctx, input.courseId);
+        await requireLegacyCourseLearnerAccess(ctx, input.courseId);
         return getFullCurriculum(input.courseId);
       }),
     getLesson: protectedProcedure

@@ -598,13 +598,16 @@ export default function CoursePlayerPage() {
   const { data: curriculum } = trpc.lms.curriculum.get.useQuery({ courseId });
   const { data: progressData } = trpc.lms.enrollments.progress.useQuery({ courseId }, { enabled: !!user });
   const courseOrgId = course?.orgId;
-  const { data: theme } = trpc.lms.themes.get.useQuery({ orgId: courseOrgId! }, { enabled: !!courseOrgId });
-  const { data: cmeStatus } = trpc.cme.getCmeStatus.useQuery({ orgId: courseOrgId! }, { enabled: !!user && !!courseOrgId });
+  const { data: cmeStatus } = trpc.cme.getCmeStatus.useQuery({}, { enabled: !!user && !!courseOrgId });
 
   const updateProgress = trpc.lms.enrollments.updateLessonProgress.useMutation();
   const utils = trpc.useUtils();
 
-  const primaryColor = course?.playerThemeColor || theme?.primaryColor || "#24abbc";
+  // The course query resolves this from the course's owner organization after
+  // checking the active learner context. Do not fetch a theme by a browser
+  // supplied organization ID here: it could otherwise drift from the course
+  // the learner is authorized to access.
+  const primaryColor = course?.resolvedCourseTheme?.playerColor || course?.playerColor || "#24abbc";
 
   // Flatten all lessons for prev/next navigation
   const allLessons = (curriculum || []).flatMap((s: any) => s.lessons || []);
