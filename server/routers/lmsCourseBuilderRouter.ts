@@ -478,12 +478,16 @@ export const lmsCourseBuilderRouter = router({
       courseOverviewBottomBlocks: z.string().nullable().optional(), // JSON array — below curriculum
       metaTitle: z.string().optional(),
       metaDescription: z.string().optional(),
+      // Allows learner-facing screens to use the owning organization's palette
+      // while retaining all stored per-course colors as a reversible override.
+      inheritOrganizationTheme: z.boolean().optional(),
       // Course color scheme
       primaryColor: z.string().max(20).nullable().optional(),
       accentColor: z.string().max(20).nullable().optional(),
       gradientFrom: z.string().max(20).nullable().optional(),
       gradientTo: z.string().max(20).nullable().optional(),
       gradientDirection: z.string().max(30).nullable().optional(),
+      playerColor: z.string().max(20).nullable().optional(),
       thumbnailUrl: z.string().nullable().optional(),
       showInLibrary: z.boolean().optional(),
       sendEnrollmentEmail: z.boolean().optional(),

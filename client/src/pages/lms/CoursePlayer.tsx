@@ -1318,7 +1318,9 @@ export default function CoursePlayer() {
   }
 
   if (!data) return null;
-  const { course } = data;
+  // The server resolves either the course override or the owning
+  // organization's learner palette. The browser never selects another org.
+  const course = { ...data.course, ...(data.resolvedCourseTheme ?? {}) };
   const showLessonIcons = course.showLessonIcons !== false;
   // Filter out preview_hide_after_purchase lessons for enrolled students
   const sections: any[] = (data.sections ?? []).map((s: any) => ({

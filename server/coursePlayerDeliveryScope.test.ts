@@ -46,6 +46,7 @@ describe("Course360 learner Course Player delivery", () => {
   it("uses the server-resolved active organization and retains section-owned published lessons", async () => {
     getDb.mockResolvedValue(queuedDb([
       [{ id: 41, orgId: 7, slug: "course-41", isFree: true }],
+      [{ studentPrimaryColor: "#0d8f99", studentAccentColor: "#075965", studentTheme: "light" }],
       [{ id: 501, courseId: 41, title: "Section one", position: 0 }],
       [
         { id: 601, courseId: 41, sectionId: null, title: "Top-level", lessonStatus: "published", position: 0 },

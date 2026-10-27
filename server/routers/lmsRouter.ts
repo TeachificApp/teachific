@@ -42,6 +42,7 @@ import { canUseHiddenPrivateCourseVisibility } from "../lib/courseVisibilityEnti
 import { ensureInlineLessonQuizSchema } from "../lib/ensureInlineLessonQuizSchema";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getActiveEnrollment } from "../lib/enrollmentAccess";
+import { resolveCourseTheme } from "../../shared/courseTheme";
 import {
   lmsCourses,
   lmsSections,
@@ -96,6 +97,7 @@ import {
   userRoles,
   userActivityLogs,
   organizations,
+  orgThemes,
   orgSubscriptions,
   coupons,
   lmsQuizAttempts,
@@ -447,7 +449,7 @@ export const lmsPublicRouter = router({
 
       // Sections + preview lessons
       // Batch all sub-queries in parallel to avoid sequential round-trips
-      const [sections, allLessonsRaw, cis, landingPageRow, pricingOptions, cohortSessions, cohortGroupsRaw] = await Promise.all([
+      const [sections, allLessonsRaw, cis, landingPageRow, pricingOptions, cohortSessions, cohortGroupsRaw, organizationTheme] = await Promise.all([
         db.select().from(lmsSections).where(eq(lmsSections.courseId, course.id)).orderBy(asc(lmsSections.position)),
         db.select({
           id: lmsLessons.id, title: lmsLessons.title, type: lmsLessons.type,
@@ -494,6 +496,14 @@ export const lmsPublicRouter = router({
             eq(lmsCohortGroups.orgId, publicScope.id),
             sql`${lmsCohortGroups.status} NOT IN ('archived', 'draft')`,
           )),
+        db.select({
+          primaryColor: orgThemes.primaryColor,
+          accentColor: orgThemes.accentColor,
+          buttonColor: orgThemes.buttonColor,
+          studentPrimaryColor: orgThemes.studentPrimaryColor,
+          studentAccentColor: orgThemes.studentAccentColor,
+          studentTheme: orgThemes.studentTheme,
+        }).from(orgThemes).where(eq(orgThemes.orgId, publicScope.id)).limit(1).then((rows) => rows[0] ?? null),
       ]);
 
       // Group lessons by sectionId
@@ -573,6 +583,7 @@ export const lmsPublicRouter = router({
 
       return {
         ...course,
+        resolvedCourseTheme: resolveCourseTheme(course, organizationTheme),
         sections: sectionsWithLessons,
         instructors: instructors.filter(Boolean),
         landingPage,
@@ -907,6 +918,14 @@ export const lmsLearnerRouter = router({
         .where(and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, activeOrgId)))
         .limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const [organizationTheme] = await db.select({
+        primaryColor: orgThemes.primaryColor,
+        accentColor: orgThemes.accentColor,
+        buttonColor: orgThemes.buttonColor,
+        studentPrimaryColor: orgThemes.studentPrimaryColor,
+        studentAccentColor: orgThemes.studentAccentColor,
+        studentTheme: orgThemes.studentTheme,
+      }).from(orgThemes).where(eq(orgThemes.orgId, course.orgId)).limit(1);
       // Check enrollment first — must happen before isAdminPreview check
       const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
 
@@ -1049,7 +1068,16 @@ export const lmsLearnerRouter = router({
       const enrichedSections = sectionsWithLessons.map(s => ({ ...s, lessons: s.lessons.map(addExpiryInfo) }));
       const enrichedTopLevel = topLevelLessons.map(addExpiryInfo);
 
-      return { course, enrollment: enrollmentWithAlias, sections: enrichedSections, topLevelLessons: enrichedTopLevel, progress, isAdminPreview: !!isAdminPreview && !enrollment, instructors };
+      return {
+        course,
+        resolvedCourseTheme: resolveCourseTheme(course, organizationTheme ?? null),
+        enrollment: enrollmentWithAlias,
+        sections: enrichedSections,
+        topLevelLessons: enrichedTopLevel,
+        progress,
+        isAdminPreview: !!isAdminPreview && !enrollment,
+        instructors,
+      };
     }),
 
   /** Get a single lesson (must be enrolled or lesson is preview) */
@@ -2790,8 +2818,20 @@ export const lmsLearnerRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.slug, input.slug)).limit(1);
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization context." });
+      const [course] = await db.select().from(lmsCourses)
+        .where(and(eq(lmsCourses.slug, input.slug), eq(lmsCourses.orgId, activeOrgId)))
+        .limit(1);
       if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+      const [organizationTheme] = await db.select({
+        primaryColor: orgThemes.primaryColor,
+        accentColor: orgThemes.accentColor,
+        buttonColor: orgThemes.buttonColor,
+        studentPrimaryColor: orgThemes.studentPrimaryColor,
+        studentAccentColor: orgThemes.studentAccentColor,
+        studentTheme: orgThemes.studentTheme,
+      }).from(orgThemes).where(eq(orgThemes.orgId, activeOrgId)).limit(1);
 
       // Check enrollment first — must happen before isAdminPreview check
       const [enrollment] = await db.select().from(lmsEnrollments)
@@ -2833,16 +2873,29 @@ export const lmsLearnerRouter = router({
 
       // Instructors
       const courseInstructorLinks = await db.select().from(lmsCourseInstructors)
-        .where(eq(lmsCourseInstructors.courseId, course.id));
+        .where(and(eq(lmsCourseInstructors.courseId, course.id), eq(lmsCourseInstructors.orgId, activeOrgId)));
       const instructorIds = courseInstructorLinks.map(l => l.instructorId);
       let instructors: typeof lmsInstructors.$inferSelect[] = [];
       if (instructorIds.length > 0) {
         instructors = await db.select().from(lmsInstructors)
-          .where(sql`${lmsInstructors.id} IN (${sql.join(instructorIds.map(id => sql`${id}`), sql`, `)})`);
+          .where(and(
+            eq(lmsInstructors.orgId, activeOrgId),
+            eq(lmsInstructors.isActive, true),
+            sql`${lmsInstructors.id} IN (${sql.join(instructorIds.map(id => sql`${id}`), sql`, `)})`,
+          ));
       }
 
       const enrollmentWithAlias2 = effectiveEnrollment ? { ...effectiveEnrollment, progressPct: Number((effectiveEnrollment as any).progressPercent ?? (effectiveEnrollment as any).progressPct ?? 0) } : null;
-      return { course, enrollment: enrollmentWithAlias2, sections: sectionsWithLessons, topLevelLessons, progress, instructors, isAdminPreview: !!isAdminPreview && !enrollment };
+      return {
+        course,
+        resolvedCourseTheme: resolveCourseTheme(course, organizationTheme ?? null),
+        enrollment: enrollmentWithAlias2,
+        sections: sectionsWithLessons,
+        topLevelLessons,
+        progress,
+        instructors,
+        isAdminPreview: !!isAdminPreview && !enrollment,
+      };
     }),
 
   /** Get cohort schedule (sessions + assignments) for an enrolled student */

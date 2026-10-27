@@ -2686,6 +2686,9 @@ export const lmsCourses = mysqlTable("lms_courses", {
   courseOverviewBlocks: longtext("course_overview_blocks"),
   courseOverviewBottomBlocks: longtext("course_overview_bottom_blocks"),
   sendEnrollmentEmail: boolean("send_enrollment_email").default(true).notNull(),
+  // Uses the owning organization's learner palette while retaining the stored
+  // course palette as a reversible per-course override.
+  inheritOrganizationTheme: boolean("inherit_organization_theme").default(true).notNull(),
   primaryColor: varchar("primary_color", { length: 20 }).default("#179ca3"),
   accentColor: varchar("accent_color", { length: 20 }).default("#0d9488"),
   gradientFrom: varchar("gradient_from", { length: 20 }).default("#179ca3"),

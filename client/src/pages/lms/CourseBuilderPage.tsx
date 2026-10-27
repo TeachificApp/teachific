@@ -1674,6 +1674,7 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
   const [defaultMarkComplete, setDefaultMarkComplete] = useState<boolean>(course.defaultMarkComplete !== 0);
   const [playerTheme, setPlayerTheme] = useState<"light" | "dark">(course.playerTheme ?? "light");
   const [playerColor, setPlayerColor] = useState(course.playerColor ?? "#00b4b4");
+  const [inheritOrganizationTheme, setInheritOrganizationTheme] = useState<boolean>(course.inheritOrganizationTheme ?? true);
   // Purchase Terms Override
   const [purchaseTermsAgreement, setPurchaseTermsAgreement] = useState<string>((course as any).purchaseTermsAgreement ?? "");
   const [enrollmentClosed, setEnrollmentClosed] = useState<boolean>((course as any).enrollmentClosed ?? false);
@@ -1801,6 +1802,7 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
             trialDays: pricingType === "trial_then_subscription" ? (trialDays ? parseInt(trialDays) : null) : null,
             accessDurationDays: accessDurationDays ? parseInt(accessDurationDays) : null,
             coverImageUrl: coverImageUrl.trim() || undefined,
+            inheritOrganizationTheme,
             primaryColor: primaryColor || null,
             accentColor: accentColor || null,
             gradientFrom: useGradient ? (gradientStart || null) : null,
@@ -2272,28 +2274,35 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
       {/* Color Scheme Section */}
       <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50">
         <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">🎨 Course Color Scheme</h3>
-        <p className="text-xs text-gray-500">These colors are applied to the course player sidebar, course overview curriculum, and landing page curriculum block.</p>
-        <div className="grid grid-cols-2 gap-4">
+        <p className="text-xs text-gray-500">Choose whether learner-facing screens follow this organization’s theme or use this course’s saved color override.</p>
+        <div className="flex items-start gap-3 rounded-lg border border-[color:color-mix(in_srgb,var(--org-primary)_28%,transparent)] bg-white p-3">
+          <Switch checked={inheritOrganizationTheme} onCheckedChange={setInheritOrganizationTheme} id="inherit-organization-theme-switch" className="mt-0.5" />
+          <div>
+            <Label htmlFor="inherit-organization-theme-switch" className="text-sm">Use organization learner theme</Label>
+            <p className="mt-0.5 text-xs text-gray-500">Recommended. Updates to your organization’s learner colors apply automatically. Turn this off to use the saved course colors below; they are preserved either way.</p>
+          </div>
+        </div>
+        <div className={`grid grid-cols-2 gap-4 transition-opacity ${inheritOrganizationTheme ? "opacity-60" : ""}`}>
           <div>
             <Label className="text-sm">Primary Color</Label>
             <div className="mt-1 flex items-center gap-2">
-              <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5" />
-              <Input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} placeholder="#0d9488" className="flex-1 font-mono text-xs" maxLength={20} />
+              <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} disabled={inheritOrganizationTheme} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5 disabled:cursor-not-allowed" />
+              <Input value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} disabled={inheritOrganizationTheme} placeholder="#0d9488" className="flex-1 font-mono text-xs" maxLength={20} />
             </div>
           </div>
           <div>
             <Label className="text-sm">Accent Color</Label>
             <div className="mt-1 flex items-center gap-2">
-              <input type="color" value={accentColor} onChange={e => setAccentColor(e.target.value)} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5" />
-              <Input value={accentColor} onChange={e => setAccentColor(e.target.value)} placeholder="#0f766e" className="flex-1 font-mono text-xs" maxLength={20} />
+              <input type="color" value={accentColor} onChange={e => setAccentColor(e.target.value)} disabled={inheritOrganizationTheme} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5 disabled:cursor-not-allowed" />
+              <Input value={accentColor} onChange={e => setAccentColor(e.target.value)} disabled={inheritOrganizationTheme} placeholder="#0f766e" className="flex-1 font-mono text-xs" maxLength={20} />
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch checked={useGradient} onCheckedChange={setUseGradient} id="use-gradient-switch" />
+          <Switch checked={useGradient} onCheckedChange={setUseGradient} disabled={inheritOrganizationTheme} id="use-gradient-switch" />
           <Label htmlFor="use-gradient-switch" className="text-sm">Use gradient header</Label>
         </div>
-        {useGradient && (
+        {!inheritOrganizationTheme && useGradient && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -2438,10 +2447,11 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
           </div>
           <div className="flex gap-1 border rounded-lg p-1 bg-white">
             {(["light", "dark"] as const).map(t => (
-              <button key={t} onClick={() => setPlayerTheme(t)}
+              <button key={t} onClick={() => setPlayerTheme(t)} disabled={inheritOrganizationTheme}
                 className={`px-3 py-1 text-xs rounded-md font-medium transition-colors capitalize ${
                   playerTheme === t ? "bg-[var(--org-primary)] text-white shadow" : "text-gray-500 hover:text-gray-700"
-                }`}>
+                } ${inheritOrganizationTheme ? "cursor-not-allowed opacity-50" : ""}`}
+              >
                 {t === "light" ? "☀️ Light" : "🌙 Dark"}
               </button>
             ))}
@@ -2457,9 +2467,9 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
           <p className="text-xs text-gray-400 mt-0.5">Sets the controls bar and play button color for media repository videos in the course player.</p>
         </div>
         <div className="flex items-center gap-2">
-          <input type="color" value={playerColor} onChange={e => setPlayerColor(e.target.value)} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5" />
-          <Input value={playerColor} onChange={e => setPlayerColor(e.target.value)} placeholder="#00b4b4" className="flex-1 font-mono text-xs" maxLength={20} />
-          <button onClick={() => setPlayerColor(primaryColor)} className="text-xs text-[var(--org-primary)] hover:underline whitespace-nowrap px-2">Use primary</button>
+          <input type="color" value={playerColor} onChange={e => setPlayerColor(e.target.value)} disabled={inheritOrganizationTheme} className="w-10 h-9 rounded border border-gray-300 cursor-pointer p-0.5 disabled:cursor-not-allowed" />
+          <Input value={playerColor} onChange={e => setPlayerColor(e.target.value)} disabled={inheritOrganizationTheme} placeholder="#00b4b4" className="flex-1 font-mono text-xs" maxLength={20} />
+          <button onClick={() => setPlayerColor(primaryColor)} disabled={inheritOrganizationTheme} className="text-xs text-[var(--org-primary)] hover:underline whitespace-nowrap px-2 disabled:cursor-not-allowed disabled:opacity-50">Use primary</button>
         </div>
         <div className="rounded overflow-hidden h-8 flex items-center justify-center text-white text-xs font-semibold shadow" style={{ backgroundColor: playerColor }}>▶ Player Preview</div>
       </div>
@@ -2573,12 +2583,14 @@ function CourseSettingsForm({ course, activeOrgId, onSave, saving }: { course: a
           trialDays: pricingType === "trial_then_subscription" ? (trialDays ? parseInt(trialDays) : null) : null,
           accessDurationDays: accessDurationDays ? parseInt(accessDurationDays) : null,
           coverImageUrl: coverImageUrl.trim() || undefined,
+          inheritOrganizationTheme,
           primaryColor: primaryColor || null,
           accentColor: accentColor || null,
                     gradientFrom: useGradient ? (gradientStart || null) : null,
           gradientTo: useGradient ? (gradientEnd || null) : null,
           gradientDirection: gradientDirection || null,
           sendEnrollmentEmail,
+          playerTheme,
           playerColor: playerColor || null,
           customLabels: buildCustomLabels(),
           purchaseTermsAgreement: purchaseTermsAgreement.trim() || null,

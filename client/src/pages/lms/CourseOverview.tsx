@@ -146,7 +146,8 @@ export default function CourseOverview() {
     );
   }
 
-  const { course, sections, topLevelLessons, progress, instructors } = data as any;
+  const { course: rawCourse, sections, topLevelLessons, progress, instructors } = data as any;
+  const course = { ...rawCourse, ...((data as any).resolvedCourseTheme ?? {}) };
   // ── Course Color Scheme ──────────────────────────────────────────────────────
   const primaryColor = course.primaryColor ?? "#0d9488";
   const accentColor = course.accentColor ?? "#0f766e";
