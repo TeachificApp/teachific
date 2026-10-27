@@ -45,6 +45,7 @@ export default function BundleEditorPage() {
   const [enrollmentClosed, setEnrollmentClosed] = useState(false);
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
+  const [courseSelectionChanged, setCourseSelectionChanged] = useState(false);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function BundleEditorPage() {
       } catch {
         setSelectedCourseIds([]);
       }
+      setCourseSelectionChanged(false);
     }
   }, [bundle]);
 
@@ -78,7 +80,7 @@ export default function BundleEditorPage() {
         isActive,
         enrollmentClosed,
         thumbnailUrl: thumbnailUrl || null,
-        courseIds: JSON.stringify(selectedCourseIds),
+        ...(courseSelectionChanged ? { courseIds: selectedCourseIds } : {}),
       },
     });
     setDirty(false);
@@ -88,6 +90,7 @@ export default function BundleEditorPage() {
     setSelectedCourseIds((prev) =>
       prev.includes(courseId) ? prev.filter((id) => id !== courseId) : [...prev, courseId]
     );
+    setCourseSelectionChanged(true);
     markDirty();
   };
 

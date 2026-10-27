@@ -1851,17 +1851,21 @@ export async function getBundleById(id: number) {
   const rows = await db.select().from(bundles).where(eq(bundles.id, id));
   return rows[0] ?? null;
 }
+export async function getBundleByIdForOrg(id: number, orgId: number) {
+  const rows = await db.select().from(bundles).where(and(eq(bundles.id, id), eq(bundles.orgId, orgId)));
+  return rows[0] ?? null;
+}
 export async function createBundle(data: typeof bundles.$inferInsert) {
   const result = await db.insert(bundles).values(data);
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;
   return getBundleById(Number(id));
 }
-export async function updateBundle(id: number, data: Partial<typeof bundles.$inferInsert>) {
-  await db.update(bundles).set(data).where(eq(bundles.id, id));
-  return getBundleById(id);
+export async function updateBundle(id: number, orgId: number, data: Partial<typeof bundles.$inferInsert>) {
+  await db.update(bundles).set(data).where(and(eq(bundles.id, id), eq(bundles.orgId, orgId)));
+  return getBundleByIdForOrg(id, orgId);
 }
-export async function deleteBundle(id: number) {
-  await db.delete(bundles).where(eq(bundles.id, id));
+export async function deleteBundle(id: number, orgId: number) {
+  await db.delete(bundles).where(and(eq(bundles.id, id), eq(bundles.orgId, orgId)));
 }
 
 // ─── Flashcard Decks ─────────────────────────────────────────────────────────

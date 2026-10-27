@@ -3955,9 +3955,13 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(lmsRouterSource).toContain('message: "This bundle belongs to another organization."');
     expect(lmsRouterSource).toContain("const orgId = await requireActiveBundleOrg(ctx, input?.orgId);");
     expect(lmsRouterSource).toContain("const orgId = await requireActiveBundleOrg(ctx, input.orgId);");
+    expect(lmsRouterSource).toContain("const legacyBundleUpdateSchema = z.object(");
+    expect(lmsRouterSource).toContain("serializeLegacyBundleCourseIds");
+    expect(lmsRouterSource).toContain("Every selected course must belong to the active organization.");
     expect(bundleEditorSource).toContain("trpc.lms.courses.list.useQuery(");
     expect(bundleEditorSource).toContain("{ orgId: orgId! },");
     expect(bundleEditorSource).toContain("{ enabled: !!orgId },");
+    expect(bundleEditorSource).toContain("courseSelectionChanged ? { courseIds: selectedCourseIds } : {}");
   });
 
   it("routes legacy bundle entry points away from the retired unscoped bundle router", () => {

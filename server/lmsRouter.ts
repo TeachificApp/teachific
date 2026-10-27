@@ -767,6 +767,35 @@ async function requireLegacyBundleAccess(ctx: { user: { id: number; role: string
   return bundle;
 }
 
+const legacyBundleUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(255).optional(),
+  description: z.string().max(20_000).nullable().optional(),
+  price: z.number().finite().min(0).max(1_000_000).optional(),
+  salePrice: z.number().finite().min(0).max(1_000_000).nullable().optional(),
+  isActive: z.boolean().optional(),
+  enrollmentClosed: z.boolean().optional(),
+  thumbnailUrl: z.string().max(4_096).nullable().optional(),
+  courseIds: z.array(z.number().int().positive()).max(200).optional(),
+}).strict();
+
+/**
+ * Legacy Bundle course IDs are content references, never tenant authority. Only
+ * validate them when an author intentionally changes the selection so older
+ * saved Bundle records remain intact until they are explicitly edited.
+ */
+async function serializeLegacyBundleCourseIds(orgId: number, courseIds: number[]) {
+  const uniqueCourseIds = [...new Set(courseIds)];
+  if (uniqueCourseIds.length !== courseIds.length) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A bundle cannot include the same course more than once." });
+  }
+
+  const courses = await Promise.all(uniqueCourseIds.map((courseId) => getCourseById(courseId)));
+  if (courses.some((course) => !course || course.orgId !== orgId)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Every selected course must belong to the active organization." });
+  }
+  return JSON.stringify(uniqueCourseIds);
+}
+
 async function requireLegacyFlashcardDeckAccess(ctx: { user: { id: number; role: string } }, deckId: number) {
   const deck = await getFlashcardDeckById(deckId);
   if (!deck) throw new TRPCError({ code: "NOT_FOUND", message: "Flashcard deck not found" });
@@ -3315,26 +3344,36 @@ export const lmsRouter = router({
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
-        await requireLegacyBundleAccess(ctx, input.id);
-        return getBundleById(input.id);
+        const bundle = await requireLegacyBundleAccess(ctx, input.id);
+        return bundle;
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), description: z.string().optional(), price: z.number().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        name: z.string().trim().min(1).max(255),
+        description: z.string().max(20_000).optional(),
+        price: z.number().finite().min(0).max(1_000_000).optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
         const orgId = await requireActiveBundleOrg(ctx, input.orgId);
         return createBundle({ orgId, name: input.name, description: input.description ?? null, price: input.price ?? 0, courseIds: "[]" });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number().int().positive(), data: legacyBundleUpdateSchema }))
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyBundleAccess(ctx, input.id);
-        return updateBundle(input.id, input.data as any);
+        const bundle = await requireLegacyBundleAccess(ctx, input.id);
+        const { courseIds, ...bundleFields } = input.data;
+        const data = {
+          ...bundleFields,
+          ...(courseIds !== undefined ? { courseIds: await serializeLegacyBundleCourseIds(bundle.orgId, courseIds) } : {}),
+        };
+        return updateBundle(input.id, bundle.orgId, data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyBundleAccess(ctx, input.id);
-        await deleteBundle(input.id);
+        const bundle = await requireLegacyBundleAccess(ctx, input.id);
+        await deleteBundle(input.id, bundle.orgId);
         return { ok: true };
       }),
   }),
