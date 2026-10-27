@@ -1020,6 +1020,27 @@ async function requireLegacyCourseLearnerAccess(ctx: { user: { id: number; role:
   return course;
 }
 
+/** Learner-private legacy notes and bookmarks require the caller's active enrollment. */
+async function requireLegacyLearnerPrivateCourseAccess(
+  ctx: { user: { id: number; role: string } },
+  courseId: number,
+  lessonId?: number,
+) {
+  const course = await requireLegacyCourseInActiveOrg(ctx, courseId);
+  const enrollment = await getEnrollment(courseId, ctx.user.id);
+  if (!enrollment?.isActive || enrollment.orgId !== course.orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "An active enrollment is required for learner notes and bookmarks." });
+  }
+  if (lessonId !== undefined) {
+    const lesson = await getLessonById(lessonId);
+    if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Course lesson not found" });
+    if (lesson.courseId !== course.id) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Lesson does not belong to this course." });
+    }
+  }
+  return { course, enrollment };
+}
+
 /**
  * A learner's account can legitimately be enrolled in more than one school.
  * Dashboard delivery therefore starts with the server-selected organization and
@@ -2863,35 +2884,47 @@ export const lmsRouter = router({
   // ── Notes ──────────────────────────────────────────────────────────────────
   notes: router({
     byLesson: protectedProcedure
-      .input(z.object({ lessonId: z.number() }))
+      .input(z.object({ courseId: z.number().int().positive(), lessonId: z.number().int().positive() }).strict())
       .query(async ({ ctx, input }) => {
-        return getNotesByLesson(ctx.user.id, input.lessonId);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, input.courseId, input.lessonId);
+        return getNotesByLesson(ctx.user.id, course.id, input.lessonId, enrollment.id);
       }),
     byCourse: protectedProcedure
-      .input(z.object({ courseId: z.number() }))
+      .input(z.object({ courseId: z.number().int().positive() }).strict())
       .query(async ({ ctx, input }) => {
-        return getNotesByCourse(ctx.user.id, input.courseId);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, input.courseId);
+        return getNotesByCourse(ctx.user.id, course.id, enrollment.id);
       }),
     create: protectedProcedure
-      .input(z.object({ lessonId: z.number(), courseId: z.number(), enrollmentId: z.number(), content: z.string(), videoTimestamp: z.number().optional() }))
+      .input(z.object({
+        lessonId: z.number().int().positive(),
+        courseId: z.number().int().positive(),
+        content: z.string().trim().min(1).max(20_000),
+        videoTimestamp: z.number().min(0).max(86_400).optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
-        return createNote({ userId: ctx.user.id, lessonId: input.lessonId, courseId: input.courseId, enrollmentId: input.enrollmentId, content: input.content, videoTimestamp: input.videoTimestamp });
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, input.courseId, input.lessonId);
+        return createNote({ userId: ctx.user.id, lessonId: input.lessonId, courseId: course.id, enrollmentId: enrollment.id, content: input.content, videoTimestamp: input.videoTimestamp });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), content: z.string() }))
+      .input(z.object({ id: z.number().int().positive(), content: z.string().trim().min(1).max(20_000) }).strict())
       .mutation(async ({ input, ctx }) => {
         const { getNoteById } = await import("./lmsDb");
         const note = await getNoteById(input.id);
         if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only update your own notes" });
-        return updateNote(input.id, input.content);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, note.courseId, note.lessonId);
+        if (note.enrollmentId !== enrollment.id) throw new TRPCError({ code: "FORBIDDEN", message: "This note belongs to another enrollment." });
+        return updateNote(input.id, ctx.user.id, course.id, enrollment.id, input.content);
       }),
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number().int().positive() }).strict())
       .mutation(async ({ input, ctx }) => {
         const { getNoteById } = await import("./lmsDb");
         const note = await getNoteById(input.id);
         if (!note || note.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete your own notes" });
-        await deleteNote(input.id);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, note.courseId, note.lessonId);
+        if (note.enrollmentId !== enrollment.id) throw new TRPCError({ code: "FORBIDDEN", message: "This note belongs to another enrollment." });
+        await deleteNote(input.id, ctx.user.id, course.id, enrollment.id);
         return { ok: true };
       }),
   }),
@@ -2899,24 +2932,40 @@ export const lmsRouter = router({
   // ── Bookmarks ──────────────────────────────────────────────────────────────
   bookmarks: router({
     byCourse: protectedProcedure
-      .input(z.object({ courseId: z.number() }))
+      .input(z.object({ courseId: z.number().int().positive() }).strict())
       .query(async ({ ctx, input }) => {
-        return getBookmarksByCourse(ctx.user.id, input.courseId);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, input.courseId);
+        return getBookmarksByCourse(ctx.user.id, course.id, enrollment.id);
       }),
     create: protectedProcedure
-      .input(z.object({ lessonId: z.number(), courseId: z.number(), enrollmentId: z.number(), label: z.string().optional() }))
+      .input(z.object({ lessonId: z.number().int().positive(), courseId: z.number().int().positive(), label: z.string().trim().min(1).max(255).optional() }).strict())
       .mutation(async ({ ctx, input }) => {
-        const existing = await getBookmark(ctx.user.id, input.lessonId);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, input.courseId, input.lessonId);
+        const existing = await getBookmark(ctx.user.id, course.id, input.lessonId, enrollment.id);
         if (existing) return existing;
-        return createBookmark({ userId: ctx.user.id, lessonId: input.lessonId, courseId: input.courseId, enrollmentId: input.enrollmentId, label: input.label });
+        return createBookmark({ userId: ctx.user.id, lessonId: input.lessonId, courseId: course.id, enrollmentId: enrollment.id, label: input.label });
+      }),
+    toggle: protectedProcedure
+      .input(z.object({ courseId: z.number().int().positive(), lessonId: z.number().int().positive() }).strict())
+      .mutation(async ({ ctx, input }) => {
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, input.courseId, input.lessonId);
+        const existing = await getBookmark(ctx.user.id, course.id, input.lessonId, enrollment.id);
+        if (existing) {
+          await deleteBookmark(existing.id, ctx.user.id, course.id, enrollment.id);
+          return { bookmarked: false };
+        }
+        await createBookmark({ userId: ctx.user.id, lessonId: input.lessonId, courseId: course.id, enrollmentId: enrollment.id });
+        return { bookmarked: true };
       }),
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number().int().positive() }).strict())
       .mutation(async ({ input, ctx }) => {
         const { getBookmarkById } = await import("./lmsDb");
         const bookmark = await getBookmarkById(input.id);
         if (!bookmark || bookmark.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only delete your own bookmarks" });
-        await deleteBookmark(input.id);
+        const { course, enrollment } = await requireLegacyLearnerPrivateCourseAccess(ctx, bookmark.courseId, bookmark.lessonId);
+        if (bookmark.enrollmentId !== enrollment.id) throw new TRPCError({ code: "FORBIDDEN", message: "This bookmark belongs to another enrollment." });
+        await deleteBookmark(input.id, ctx.user.id, course.id, enrollment.id);
         return { ok: true };
       }),
   }),

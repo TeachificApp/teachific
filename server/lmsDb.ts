@@ -1947,19 +1947,28 @@ export async function bulkUpsertCards(deckId: number, cards: Array<{ front: stri
 
 // ─── Lesson Notes ─────────────────────────────────────────────────────────────
 
-export async function getNotesByLesson(userId: number, lessonId: number) {
+export async function getNotesByLesson(userId: number, courseId: number, lessonId: number, enrollmentId: number) {
   return db
     .select()
     .from(lessonNotes)
-    .where(and(eq(lessonNotes.userId, userId), eq(lessonNotes.lessonId, lessonId)))
+    .where(and(
+      eq(lessonNotes.userId, userId),
+      eq(lessonNotes.courseId, courseId),
+      eq(lessonNotes.lessonId, lessonId),
+      eq(lessonNotes.enrollmentId, enrollmentId),
+    ))
     .orderBy(asc(lessonNotes.createdAt));
 }
 
-export async function getNotesByCourse(userId: number, courseId: number) {
+export async function getNotesByCourse(userId: number, courseId: number, enrollmentId: number) {
   return db
     .select()
     .from(lessonNotes)
-    .where(and(eq(lessonNotes.userId, userId), eq(lessonNotes.courseId, courseId)))
+    .where(and(
+      eq(lessonNotes.userId, userId),
+      eq(lessonNotes.courseId, courseId),
+      eq(lessonNotes.enrollmentId, enrollmentId),
+    ))
     .orderBy(desc(lessonNotes.createdAt));
 }
 
@@ -1981,30 +1990,51 @@ export async function createNote(data: {
   return getNoteById(Number(id));
 }
 
-export async function updateNote(id: number, content: string) {
-  await db.update(lessonNotes).set({ content, updatedAt: new Date() }).where(eq(lessonNotes.id, id));
-  return getNoteById(id);
+export async function updateNote(id: number, userId: number, courseId: number, enrollmentId: number, content: string) {
+  const ownership = and(
+    eq(lessonNotes.id, id),
+    eq(lessonNotes.userId, userId),
+    eq(lessonNotes.courseId, courseId),
+    eq(lessonNotes.enrollmentId, enrollmentId),
+  );
+  await db.update(lessonNotes).set({ content, updatedAt: new Date() }).where(ownership);
+  const rows = await db.select().from(lessonNotes).where(ownership).limit(1);
+  return rows[0] ?? null;
 }
 
-export async function deleteNote(id: number) {
-  await db.delete(lessonNotes).where(eq(lessonNotes.id, id));
+export async function deleteNote(id: number, userId: number, courseId: number, enrollmentId: number) {
+  await db.delete(lessonNotes).where(and(
+    eq(lessonNotes.id, id),
+    eq(lessonNotes.userId, userId),
+    eq(lessonNotes.courseId, courseId),
+    eq(lessonNotes.enrollmentId, enrollmentId),
+  ));
 }
 
 // ─── Lesson Bookmarks ─────────────────────────────────────────────────────────
 
-export async function getBookmarksByCourse(userId: number, courseId: number) {
+export async function getBookmarksByCourse(userId: number, courseId: number, enrollmentId: number) {
   return db
     .select()
     .from(lessonBookmarks)
-    .where(and(eq(lessonBookmarks.userId, userId), eq(lessonBookmarks.courseId, courseId)))
+    .where(and(
+      eq(lessonBookmarks.userId, userId),
+      eq(lessonBookmarks.courseId, courseId),
+      eq(lessonBookmarks.enrollmentId, enrollmentId),
+    ))
     .orderBy(desc(lessonBookmarks.createdAt));
 }
 
-export async function getBookmark(userId: number, lessonId: number) {
+export async function getBookmark(userId: number, courseId: number, lessonId: number, enrollmentId: number) {
   const rows = await db
     .select()
     .from(lessonBookmarks)
-    .where(and(eq(lessonBookmarks.userId, userId), eq(lessonBookmarks.lessonId, lessonId)))
+    .where(and(
+      eq(lessonBookmarks.userId, userId),
+      eq(lessonBookmarks.courseId, courseId),
+      eq(lessonBookmarks.lessonId, lessonId),
+      eq(lessonBookmarks.enrollmentId, enrollmentId),
+    ))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -2026,8 +2056,13 @@ export async function createBookmark(data: {
   return getBookmarkById(Number(id));
 }
 
-export async function deleteBookmark(id: number) {
-  await db.delete(lessonBookmarks).where(eq(lessonBookmarks.id, id));
+export async function deleteBookmark(id: number, userId: number, courseId: number, enrollmentId: number) {
+  await db.delete(lessonBookmarks).where(and(
+    eq(lessonBookmarks.id, id),
+    eq(lessonBookmarks.userId, userId),
+    eq(lessonBookmarks.courseId, courseId),
+    eq(lessonBookmarks.enrollmentId, enrollmentId),
+  ));
 }
 
 // ─── Org Analytics with Group Breakdown ───────────────────────────────────────
