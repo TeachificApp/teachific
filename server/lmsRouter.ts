@@ -294,6 +294,27 @@ async function requireActivityWriteOrg(
 }
 
 /**
+ * Administrative dashboard and analytics views are operational tenant views.
+ * Even platform administrators must switch their active organization before
+ * reading one school's data; explicit platform-wide reporting uses its own,
+ * deliberately labeled procedures.
+ */
+async function requireLegacyReportingOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before viewing LMS reporting." });
+  }
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "LMS reporting must use the active organization." });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+/**
  * Prevent a browser from attaching an activity row to another organization's
  * course, lesson, or quiz. Course context is resolved from trusted rows, not
  * from the browser's claimed tenant identifier.
@@ -1948,29 +1969,25 @@ export const lmsRouter = router({
     metrics: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), days: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getDashboardMetrics(orgId, input?.days ?? 30);
       }),
     chartData: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), days: z.number().optional(), groupBy: z.enum(["day", "week", "month"]).optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getRevenueChartData(orgId, input?.days ?? 30, input?.groupBy ?? "day");
       }),
     recentActivity: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), limit: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getRecentActivity(orgId, input?.limit ?? 20);
       }),
     recentCourses: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), limit: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getRecentlyEditedCourses(orgId, input?.limit ?? 6);
       }),
     enrolledCourses: protectedProcedure
@@ -1986,22 +2003,19 @@ export const lmsRouter = router({
     overview: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getLmsAnalyticsByOrg(orgId);
       }),
     byGroup: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), groupId: z.number().optional(), dateFrom: z.date().optional(), dateTo: z.date().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getOrgAnalyticsByGroup(orgId, { groupId: input?.groupId, dateFrom: input?.dateFrom, dateTo: input?.dateTo });
       }),
     courses: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), dateFrom: z.date().optional(), dateTo: z.date().optional(), groupBy: z.enum(["day", "week", "month"]).optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireLegacyReportingOrg(ctx, input?.orgId);
         return getOrgCourseAnalytics(orgId, { dateFrom: input?.dateFrom, dateTo: input?.dateTo, groupBy: input?.groupBy });
       }),
   }),

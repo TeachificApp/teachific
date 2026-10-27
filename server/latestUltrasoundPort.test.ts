@@ -4465,7 +4465,9 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("dashboard: router({"),
       routerSource.indexOf("// ── Analytics")
     );
-    expect((dashboardSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(4);
+    expect(routerSource).toContain("async function requireLegacyReportingOrg");
+    expect((dashboardSource.match(/requireLegacyReportingOrg\(ctx, input\?\.orgId\)/g) ?? []).length).toBe(4);
+    expect(dashboardSource).not.toContain("input?.orgId ?? await requireOrgId");
   });
 
   it("requires organization-admin ownership for legacy LMS analytics, activity reporting, and coupon administration", () => {
@@ -4497,8 +4499,10 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("coupons: router({"),
       routerSource.indexOf("// ── Notifications")
     );
-    expect((analyticsSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(3);
-    expect(activitySource).toContain("await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);");
+    expect((analyticsSource.match(/requireLegacyReportingOrg\(ctx, input\?\.orgId\)/g) ?? []).length).toBe(3);
+    expect(analyticsSource).not.toContain("input?.orgId ?? await requireOrgId");
+    expect(routerSource).toContain("async function requireActivityReportOrg");
+    expect(activitySource).toContain("const orgId = await requireActivityReportOrg(ctx, input?.orgId);");
     expect(couponSource).toContain("Coupon administration must use the active organization.");
     expect(couponSource).toContain("Coupon does not belong to the active organization");
     expect(couponSource).toContain("listTargetableProducts: protectedProcedure");
