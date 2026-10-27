@@ -24,8 +24,12 @@ export default function SchoolMyCoursesPage() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "in_progress" | "completed" | "not_started">("all");
+  // This is a consistency hint for local /school/:slug routes and never an
+  // authority. The router derives the organization from the signed-in session
+  // and rejects a mismatch with this tenant route.
+  const enrollmentQueryInput = useMemo(() => orgSlug ? { orgSlug } : undefined, [orgSlug]);
 
-  const { data: enrollments, isLoading } = trpc.lms.dashboard.enrolledCourses.useQuery(undefined, {
+  const { data: enrollments, isLoading } = trpc.lms.dashboard.enrolledCourses.useQuery(enrollmentQueryInput, {
     enabled: !!user,
   });
 

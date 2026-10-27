@@ -456,6 +456,31 @@ async function requireLegacyCourseLearnerAccess(ctx: { user: { id: number; role:
   return course;
 }
 
+/**
+ * A learner's account can legitimately be enrolled in more than one school.
+ * Dashboard delivery therefore starts with the server-selected organization and
+ * additionally rejects a tenant host that does not match that selected context.
+ */
+async function requireLegacyLearnerDashboardOrg(ctx: {
+  user: { id: number; role: string };
+  req: any;
+}, orgSlug?: string): Promise<number> {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!activeOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before viewing your courses." });
+  }
+
+  const db = await getDb();
+  const publicScope = db ? await resolvePublicOrganizationScope(db as any, ctx.req, orgSlug) : null;
+  if (publicScope && publicScope.id !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This learner dashboard belongs to another organization. Sign in at that school's domain or switch organizations.",
+    });
+  }
+  return activeOrgId;
+}
+
 async function requireLegacyWorkshopAccess(ctx: { user: { id: number; role: string } }, workshopId: number) {
   const workshop = await getWorkshopById(workshopId);
   if (!workshop) throw new TRPCError({ code: "NOT_FOUND", message: "Workshop not found" });
@@ -675,8 +700,10 @@ export const lmsRouter = router({
   // ── Enrollments ────────────────────────────────────────────────────────────
   enrollments: router({
     myEnrollments: protectedProcedure
-      .query(async ({ ctx }) => {
-        return getEnrolledCoursesForUser(ctx.user.id);
+      .input(z.object({ orgSlug: z.string().trim().min(1).max(120).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = await requireLegacyLearnerDashboardOrg(ctx, input?.orgSlug);
+        return getEnrolledCoursesForUser(ctx.user.id, orgId);
       }),
     enroll: protectedProcedure
       .input(z.object({ courseId: z.number(), orgId: z.number().optional(), amountPaid: z.number().optional() }))
@@ -1947,8 +1974,10 @@ export const lmsRouter = router({
         return getRecentlyEditedCourses(orgId, input?.limit ?? 6);
       }),
     enrolledCourses: protectedProcedure
-      .query(async ({ ctx }) => {
-        return getEnrolledCoursesForUser(ctx.user.id);
+      .input(z.object({ orgSlug: z.string().trim().min(1).max(120).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const orgId = await requireLegacyLearnerDashboardOrg(ctx, input?.orgSlug);
+        return getEnrolledCoursesForUser(ctx.user.id, orgId);
       }),
   }),
 

@@ -775,7 +775,12 @@ export async function getRecentlyEditedCourses(orgId: number, limit: number = 6)
     .limit(limit);
 }
 
-export async function getEnrolledCoursesForUser(userId: number) {
+/**
+ * Learner dashboards are tenant views. The same person may hold independent
+ * enrollments in multiple schools, so callers must pass the server-resolved
+ * organization rather than returning an account-wide course list.
+ */
+export async function getEnrolledCoursesForUser(userId: number, orgId: number) {
   const db = await getDb();
   return db
     .select({
@@ -794,7 +799,12 @@ export async function getEnrolledCoursesForUser(userId: number) {
     })
     .from(courseEnrollments)
     .innerJoin(courses, eq(courseEnrollments.courseId, courses.id))
-    .where(and(eq(courseEnrollments.userId, userId), eq(courseEnrollments.isActive, true)))
+    .where(and(
+      eq(courseEnrollments.userId, userId),
+      eq(courseEnrollments.isActive, true),
+      eq(courseEnrollments.orgId, orgId),
+      eq(courses.orgId, orgId),
+    ))
     .orderBy(desc(courseEnrollments.lastAccessedAt));
 }
 
