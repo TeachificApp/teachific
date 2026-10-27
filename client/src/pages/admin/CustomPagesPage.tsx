@@ -34,6 +34,7 @@ import type { Block } from "@/components/WysiwygPageBuilder";
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Building2, ChevronDown, X, Layout, Copy, Globe, GlobeLock, Save, SquarePen, ExternalLink } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { getOrgCustomPageUrl } from "@/lib/orgUrl";
 import { toast } from "sonner";
 
 // ─── Searchable Org Selector ──────────────────────────────────────────────────
@@ -190,6 +191,11 @@ export default function CustomPagesPage() {
     { orgId: selectedOrgId! },
     { enabled: !!selectedOrgId }
   );
+  const publicOrgInfoInput = useMemo(() => ({ orgId: selectedOrgId ?? 0 }), [selectedOrgId]);
+  const { data: publicOrgInfo } = trpc.lms.pages.getPublicOrgInfo.useQuery(
+    publicOrgInfoInput,
+    { enabled: !!selectedOrgId },
+  );
 
   const createPage = trpc.lms.pages.create.useMutation({
     onSuccess: () => {
@@ -255,16 +261,18 @@ export default function CustomPagesPage() {
 
     if (editingPage.id) {
       await updatePage.mutateAsync({
-        id: editingPage.id,
-        title: editingPage.title,
-        slug: editingPage.slug,
-        blocksJson: editingPage.blocksJson,
-        isPublished: editingPage.isPublished,
-        showHeader: editingPage.showHeader,
-        showFooter: editingPage.showFooter,
-        metaTitle: editingPage.metaTitle ?? "",
-        metaDescription: editingPage.metaDescription ?? "",
-        customCss: editingPage.customCss ?? "",
+        pageId: editingPage.id,
+        data: {
+          title: editingPage.title,
+          slug: editingPage.slug,
+          blocksJson: editingPage.blocksJson,
+          isPublished: editingPage.isPublished,
+          showHeader: editingPage.showHeader,
+          showFooter: editingPage.showFooter,
+          metaTitle: editingPage.metaTitle ?? "",
+          metaDescription: editingPage.metaDescription ?? "",
+          customCss: editingPage.customCss ?? "",
+        },
       });
     } else {
       const created = await createPage.mutateAsync({
@@ -280,10 +288,33 @@ export default function CustomPagesPage() {
 
   const handleDeletePage = async () => {
     if (!pageToDelete) return;
-    await deletePage.mutateAsync({ id: pageToDelete });
+    await deletePage.mutateAsync({ pageId: pageToDelete });
   };
 
   const orgList: Array<{ id: number; name: string }> = orgs ?? [];
+  const selectedOrg = orgList.find((org) => org.id === selectedOrgId) ?? null;
+  const getPublicPageUrl = (page: { slug?: string | null }) => {
+    if (!publicOrgInfo?.slug || !page.slug) return null;
+    return getOrgCustomPageUrl(
+      publicOrgInfo.slug,
+      page.slug,
+      publicOrgInfo.customDomain,
+      publicOrgInfo.domainVerificationStatus,
+    );
+  };
+  const copyPublicPageUrl = async (page: { slug?: string | null }) => {
+    const url = getPublicPageUrl(page);
+    if (!url) {
+      toast.error("Add a page slug before copying a public link.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Organization page link copied");
+    } catch {
+      toast.error("Could not copy the page link. Please try again.");
+    }
+  };
 
   return (
     <div className="container py-8 p-4 sm:p-6 max-w-7xl mx-auto">
@@ -363,6 +394,9 @@ export default function CustomPagesPage() {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {(() => {
+                      const publicPageUrl = page.isPublished ? getPublicPageUrl(page) : null;
+                      return (
                     <div className="flex gap-1 flex-wrap">
                       <Button
                         variant="default"
@@ -377,13 +411,38 @@ export default function CustomPagesPage() {
                         variant="outline"
                         size="sm"
                         className={`gap-1.5 text-xs h-7 px-2 ${page.isPublished ? 'border-amber-300 text-amber-700 hover:bg-amber-50' : 'border-green-300 text-green-700 hover:bg-green-50'}`}
-                        onClick={() => togglePublish.mutate({ id: page.id, isPublished: !page.isPublished })}
+                        onClick={() => togglePublish.mutate({
+                          pageId: page.id,
+                          data: { isPublished: !page.isPublished },
+                        })}
                         disabled={togglePublish.isPending}
                         title={page.isPublished ? "Unpublish" : "Publish"}
                       >
                         {page.isPublished ? <GlobeLock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
                         {page.isPublished ? "Unpublish" : "Publish"}
                       </Button>
+                      {publicPageUrl && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => window.open(publicPageUrl, "_blank", "noopener,noreferrer")}
+                            title="Open public page on this organization’s domain"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => void copyPublicPageUrl(page)}
+                            title="Copy organization page link"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -397,7 +456,7 @@ export default function CustomPagesPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => duplicatePage.mutate({ id: page.id })}
+                        onClick={() => duplicatePage.mutate({ pageId: page.id })}
                         disabled={duplicatePage.isPending}
                         title="Duplicate"
                       >
@@ -416,6 +475,8 @@ export default function CustomPagesPage() {
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
+                      );
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}

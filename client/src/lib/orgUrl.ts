@@ -174,7 +174,7 @@ export function getOrgCustomPageUrl(
   customDomain?: string | null,
   domainVerificationStatus?: string | null
 ): string {
-  return `${getOrgBaseUrl(slug, customDomain, domainVerificationStatus)}/p/${pageSlug}`;
+  return `${getOrgBaseUrl(slug, customDomain, domainVerificationStatus)}/p/${encodeURIComponent(pageSlug)}`;
 }
 
 /**

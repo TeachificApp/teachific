@@ -56,6 +56,16 @@ export function getOrgQuizUrl(
   return `${getOrgBaseUrl(slug, customDomain, domainVerificationStatus)}/quiz/${encodeURIComponent(shareToken)}`;
 }
 
+/** Returns an organization-owned Custom Page URL. */
+export function getOrgCustomPageUrl(
+  slug: string,
+  pageSlug: string,
+  customDomain?: string | null,
+  domainVerificationStatus?: string | null,
+): string {
+  return `${getOrgBaseUrl(slug, customDomain, domainVerificationStatus)}/p/${encodeURIComponent(pageSlug)}`;
+}
+
 /** Returns the full URL for the my-courses dashboard on the org's subdomain. */
 export function getOrgMyCoursesUrl(
   slug: string,

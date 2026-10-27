@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { renderBlockPreview } from "@/components/PageBuilder";
 import type { Block as PBBlock } from "@/components/PageBuilder";
 import { useOrgScope } from "@/hooks/useOrgScope";
+import { getOrgCustomPageUrl } from "@/lib/orgUrl";
 
 // ─── View Mode Types ─────────────────────────────────────────────────────────
 type ViewMode = "editor" | "visitor" | "customer";
@@ -57,8 +58,13 @@ export default function PageBuilderPage() {
 
   // Load page data (for page type)
   const { data: page, isLoading: pageLoading } = trpc.lms.pages.get.useQuery(
-    { id: context.id! },
+    { pageId: context.id! },
     { enabled: context.type === "page" && !!context.id }
+  );
+  const publicPageOrgInfoInput = useMemo(() => ({ orgId: page?.orgId ?? 0 }), [page?.orgId]);
+  const { data: publicPageOrgInfo } = trpc.lms.pages.getPublicOrgInfo.useQuery(
+    publicPageOrgInfoInput,
+    { enabled: context.type === "page" && !!page?.orgId },
   );
 
   // Load page by course (for course type)
@@ -212,10 +218,16 @@ export default function PageBuilderPage() {
     const blocksJson = JSON.stringify(blocks);
 
     if (context.type === "page" && context.id) {
-      updatePage.mutate({ id: context.id, blocksJson, title: pageTitle, slug: pageSlug || undefined, isPublished });
+      updatePage.mutate({
+        pageId: context.id,
+        data: { blocksJson, title: pageTitle, slug: pageSlug || undefined, isPublished },
+      });
     } else if (context.type === "course") {
       if (coursePage?.id) {
-        updatePage.mutate({ id: coursePage.id, blocksJson, title: pageTitle, slug: pageSlug || undefined, isPublished });
+        updatePage.mutate({
+          pageId: coursePage.id,
+          data: { blocksJson, title: pageTitle, slug: pageSlug || undefined, isPublished },
+        });
       } else if (orgId && context.id) {
         createPage.mutate({ orgId, courseId: context.id, pageType: "course_sales", title: pageTitle, slug: pageSlug || undefined } as any);
       }
@@ -241,7 +253,14 @@ export default function PageBuilderPage() {
     ? `/webinar/${webinar.slug}/register`
     : context.type === "thankyou" && context.id
     ? `/courses/${context.id}/thank-you`
-    : page?.slug ? `/p/${page.slug}` : null;
+    : page?.slug && publicPageOrgInfo?.slug
+    ? getOrgCustomPageUrl(
+        publicPageOrgInfo.slug,
+        page.slug,
+        publicPageOrgInfo.customDomain,
+        publicPageOrgInfo.domainVerificationStatus,
+      )
+    : null;
 
   // Determine product name for header
   const productName = context.type === "product"
@@ -385,7 +404,7 @@ export default function PageBuilderPage() {
             initialBlocks={blocks}
             onChange={handleBlocksChange}
             courses={courseList}
-            orgId={orgId}
+            orgId={orgId ?? undefined}
           />
         </div>
       ) : (

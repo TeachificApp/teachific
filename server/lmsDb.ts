@@ -494,6 +494,26 @@ export async function getPublishedPageBySlug(slug: string) {
   return rows[0] ?? null;
 }
 
+/**
+ * Public custom pages are selected through their owning organization. Page
+ * slugs are author-controlled and not globally unique, so a bare slug must
+ * never resolve a different school's published content.
+ */
+export async function getPublishedPageBySlugForOrg(orgId: number, slug: string) {
+  const rows = await db
+    .select()
+    .from(pageBuilderPages)
+    .where(
+      and(
+        eq(pageBuilderPages.orgId, orgId),
+        eq(pageBuilderPages.slug, slug),
+        eq(pageBuilderPages.isPublished, true)
+      )
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function duplicatePage(id: number) {
   const original = await getPageById(id);
   if (!original) return null;

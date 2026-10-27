@@ -239,6 +239,7 @@ function BareRouter() {
         <Route path="/checkout/:contentType/:slug" component={HostedCheckoutPage} />
         <Route path="/forms/:orgSlug/:slug" component={FormPlayerPage} />
         <Route path="/forms/:slug" component={FormPlayerPage} />
+        <Route path="/school/:orgSlug/p/:slug" component={PublicPagePage} />
         <Route path="/school">{() => <SchoolPage />}</Route>
         <Route path="/school/:orgSlug">{() => <SchoolPage />}</Route>
         <Route path="/school/courses/:courseId/thank-you" component={ThankYouPage} />

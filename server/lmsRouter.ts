@@ -60,7 +60,7 @@ import {
   updatePage,
   deletePage,
   duplicatePage,
-  getPublishedPageBySlug,
+  getPublishedPageBySlugForOrg,
   getInstructorsByOrg,
   upsertInstructor,
   updateInstructorById,
@@ -211,6 +211,7 @@ import {
   createWorkshopRegistration,
   updateWorkshopRegistration,
 } from "./lmsDb";
+import { resolvePublicOrganizationScope } from "./lib/publicOrgRequestScope";
 import { getEffectiveSubscriptionPlan } from "../shared/subscriptionEntitlement";
 import { downloadsAdminRouter } from "./routers/downloadsRouter";
 import { orderBumpsAdminRouter } from "./routers/orderBumpsRouter";
@@ -782,6 +783,18 @@ export const lmsRouter = router({
         await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
         return getPagesByOrg(orgId);
       }),
+    getPublicOrgInfo: protectedProcedure
+      .input(z.object({ orgId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+        const organization = await getOrgById(input.orgId);
+        if (!organization) throw new TRPCError({ code: "NOT_FOUND", message: "Organization not found" });
+        return {
+          slug: organization.slug,
+          customDomain: organization.customDomain,
+          domainVerificationStatus: organization.domainVerificationStatus,
+        };
+      }),
     get: protectedProcedure
       .input(z.object({ pageId: z.number() }))
       .query(async ({ input, ctx }) => {
@@ -797,9 +810,13 @@ export const lmsRouter = router({
         return getPageByCourse(input.courseId);
       }),
     getBySlug: publicProcedure
-      .input(z.object({ slug: z.string() }))
-      .query(async ({ input }) => {
-        return getPublishedPageBySlug(input.slug);
+      .input(z.object({ slug: z.string().min(1), orgSlug: z.string().optional() }))
+      .query(async ({ input, ctx }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+        if (!publicScope) return null;
+        return getPublishedPageBySlugForOrg(publicScope.id, input.slug);
       }),
     create: protectedProcedure
       .input(z.object({

@@ -3,13 +3,16 @@ import { sanitize, sanitizeCss } from "@/lib/sanitize";
 import { trpc } from "@/lib/trpc";
 import { renderBlockPreview } from "@/components/PageBuilder";
 import type { Block } from "@/components/PageBuilder";
+import { getSubdomain } from "@/hooks/useSubdomain";
 
 export default function PublicPagePage() {
-  const [, params] = useRoute("/p/:slug");
-  const slug = params?.slug ?? "";
+  const [, pathFallbackParams] = useRoute("/school/:orgSlug/p/:slug");
+  const [, publicParams] = useRoute("/p/:slug");
+  const slug = pathFallbackParams?.slug ?? publicParams?.slug ?? "";
+  const orgSlug = getSubdomain() ?? pathFallbackParams?.orgSlug;
 
   const { data: page, isLoading, error } = trpc.lms.pages.getBySlug.useQuery(
-    { slug },
+    { slug, ...(orgSlug ? { orgSlug } : {}) },
     { enabled: !!slug, retry: false }
   );
 
