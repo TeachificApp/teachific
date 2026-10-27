@@ -5,7 +5,7 @@
  * POST /api/media-upload
  *   Accepts: multipart/form-data with fields:
  *     - file: the file to upload
- *     - orgId: the organization ID (for path namespacing)
+ *     - orgId: optional active-organization consistency hint
  *     - folder: optional subfolder (e.g. "downloads", "forms", "media")
  *   Returns: { key, url, fileName, fileSize, fileType }
  *
@@ -21,11 +21,57 @@ import multer from "multer";
 import { tmpdir } from "os";
 import { nanoid } from "nanoid";
 import { storagePutStream } from "./storage";
-import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
-import { getDb, requireOrgAdmin } from "./db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
 import { orgMediaLibrary } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+
+class MediaUploadRouteError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+function parseOptionalOrganizationId(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const orgId = Number(value);
+  if (!Number.isInteger(orgId) || orgId <= 0) {
+    throw new MediaUploadRouteError(400, "Organization ID must be a positive integer.");
+  }
+  return orgId;
+}
+
+function normalizeMediaFolder(value: unknown): string {
+  const folder = String(value ?? "media")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return folder || "media";
+}
+
+async function requireActiveMediaUploadOrganization(
+  user: { id: number; role?: string | null },
+  requestedOrgId?: number,
+): Promise<number> {
+  const role = user.role ?? "member";
+  const activeOrgId = await getOrgIdForUserWithFallback(user.id, role);
+  if (!activeOrgId) {
+    throw new MediaUploadRouteError(403, "Select an active organization before uploading media.");
+  }
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new MediaUploadRouteError(403, "Switch to the requested organization before uploading media.");
+  }
+  try {
+    await requireOrgAdmin(user.id, role, activeOrgId);
+  } catch {
+    throw new MediaUploadRouteError(403, "Organization administrator access is required to upload media.");
+  }
+  return activeOrgId;
+}
 
 const router = express.Router();
 
@@ -54,15 +100,15 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
       return;
     }
 
-    const orgId = req.body.orgId ? Number(req.body.orgId) : 0;
-    if (orgId > 0) {
-      await requireOrgAdmin(user.id, (user as any).role ?? "user", orgId);
-    }
-    const folder = (req.body.folder as string) ?? "media";
+    const orgId = await requireActiveMediaUploadOrganization(
+      user,
+      parseOptionalOrganizationId(req.body.orgId),
+    );
+    const folder = normalizeMediaFolder(req.body.folder);
     const safeName = req.file.originalname
       .replace(/[^a-zA-Z0-9._-]/g, "_")
       .slice(0, 100);
-    const key = `${folder}/${orgId}/${Date.now()}-${nanoid(8)}-${safeName}`;
+    const key = `org-${orgId}/${folder}/${Date.now()}-${nanoid(8)}-${safeName}`;
 
     const { url } = await storagePutStream(
       key,
@@ -78,8 +124,12 @@ router.post("/", upload.single("file"), async (req: Request, res: Response) => {
       fileType: req.file.mimetype,
     });
   } catch (err: any) {
-    console.error("[media-upload] error:", err);
-    res.status(500).json({ error: err.message ?? "Upload failed" });
+    if (err instanceof MediaUploadRouteError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    console.error("[media-upload] error:", err instanceof Error ? err.name : "unknown error");
+    res.status(500).json({ error: "Upload failed" });
   }
 });
 
@@ -91,6 +141,7 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
+    const activeOrgId = await requireActiveMediaUploadOrganization(user);
 
     if (!req.file) {
       res.status(400).json({ error: "No file provided" });
@@ -126,7 +177,10 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
       res.status(403).json({ error: "Media item is not associated with an organization" });
       return;
     }
-    await requireOrgAdmin(user.id, (user as any).role ?? "user", item.orgId);
+    if (item.orgId !== activeOrgId) {
+      res.status(404).json({ error: "Media item not found in the active organization" });
+      return;
+    }
 
     // Overwrite the same S3 key — the CDN URL will remain identical
     const { url } = await storagePutStream(
@@ -153,8 +207,12 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
       fileType: req.file.mimetype || item.mimeType,
     });
   } catch (err: any) {
-    console.error("[media-upload/replace] error:", err);
-    res.status(500).json({ error: err.message ?? "Replace failed" });
+    if (err instanceof MediaUploadRouteError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    console.error("[media-upload/replace] error:", err instanceof Error ? err.name : "unknown error");
+    res.status(500).json({ error: "Replace failed" });
   }
 });
 

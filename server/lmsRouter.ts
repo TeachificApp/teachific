@@ -473,6 +473,101 @@ async function requireActiveFlashcardOrg(
   return activeOrgId;
 }
 
+/**
+ * The retained Media Library has older callers that still include orgId in
+ * inputs. Treat that value as a stale-cache consistency hint, never as tenant
+ * authority. Existing media remain in place; only cross-school access is
+ * rejected.
+ */
+async function requireActiveLegacyMediaOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to the media library's organization before managing media.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+function normalizeLegacyMediaFolder(folder?: string): string {
+  const normalized = (folder ?? "media")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized || "media";
+}
+
+function isLegacyMediaStorageKeyForOrg(fileKey: string, orgId: number): boolean {
+  // `org-<id>/` is the current legacy media prefix. The other two forms retain
+  // compatibility for media created by earlier direct-upload and URL-import
+  // flows, without accepting another organization's key.
+  return fileKey.startsWith(`org-${orgId}/`)
+    || fileKey.startsWith(`lms-media/${orgId}/`)
+    || new RegExp(`^[a-z0-9-]+/${orgId}/`, "i").test(fileKey);
+}
+
+async function requireLegacyMediaItemInActiveOrg(
+  ctx: { user: { id: number; role: string } },
+  mediaItemId: number,
+  requestedOrgId?: number,
+) {
+  const orgId = await requireActiveLegacyMediaOrg(ctx, requestedOrgId);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const { orgMediaLibrary } = await import("../drizzle/schema");
+  const [mediaItem] = await db.select().from(orgMediaLibrary).where(and(
+    eq(orgMediaLibrary.id, mediaItemId),
+    eq(orgMediaLibrary.orgId, orgId),
+  )).limit(1);
+  if (!mediaItem) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This media item belongs to another organization." });
+  }
+  return { db, mediaItem, orgId };
+}
+
+async function requireLegacyMediaFolderInActiveOrg(
+  db: any,
+  orgId: number,
+  folderId?: number | null,
+) {
+  if (folderId === undefined || folderId === null) return null;
+  const { mediaFolders } = await import("../drizzle/schema");
+  const [folder] = await db.select().from(mediaFolders).where(and(
+    eq(mediaFolders.id, folderId),
+    eq(mediaFolders.orgId, orgId),
+  )).limit(1);
+  if (!folder) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This media folder belongs to another organization." });
+  }
+  return folder;
+}
+
+async function requireLegacyMediaClipInActiveOrg(
+  ctx: { user: { id: number; role: string } },
+  clipId: number,
+  requestedOrgId?: number,
+) {
+  const orgId = await requireActiveLegacyMediaOrg(ctx, requestedOrgId);
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const { videoClips } = await import("../drizzle/schema");
+  const [clip] = await db.select().from(videoClips).where(and(
+    eq(videoClips.id, clipId),
+    eq(videoClips.orgId, orgId),
+  )).limit(1);
+  if (!clip) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This video clip belongs to another organization." });
+  }
+  return { db, clip, orgId };
+}
+
 async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
   const webinar = await getWebinarById(webinarId);
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
@@ -2670,11 +2765,10 @@ export const lmsRouter = router({
     getUploadUrl: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), fileName: z.string(), mimeType: z.string().optional(), contentType: z.string().optional(), folder: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
         const mimeType = input.mimeType ?? input.contentType ?? "application/octet-stream";
-        const folder = input.folder ?? "media";
-        const ext = input.fileName.split(".").pop() ?? "bin";
+        const folder = normalizeLegacyMediaFolder(input.folder);
+        const ext = (input.fileName.split(".").pop() ?? "bin").replace(/[^a-z0-9]/gi, "").slice(0, 10) || "bin";
         const key = `org-${orgId}/${folder}/${nanoid(12)}.${ext}`;
         const result = await storagePresignedPut(key, mimeType);
         return { ...result, fileUrl: result.fileUrl || result.uploadUrl, orgId, folder };
@@ -2682,12 +2776,13 @@ export const lmsRouter = router({
     listOrgMedia: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), folderId: z.number().optional(), mimeType: z.string().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input?.orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) return [];
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq, and } = await import("drizzle-orm");
+        await requireLegacyMediaFolderInActiveOrg(db, orgId, input?.folderId);
         const conditions: any[] = [eq(orgMediaLibrary.orgId, orgId)];
         if (input?.folderId !== undefined) conditions.push(eq(orgMediaLibrary.folderId, input.folderId));
         return db.select().from(orgMediaLibrary).where(and(...conditions));
@@ -2709,13 +2804,16 @@ export const lmsRouter = router({
         tags: z.array(z.string()).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
         const resolvedFilename = input.filename ?? input.fileName ?? "untitled";
+        if (!isLegacyMediaStorageKeyForOrg(input.fileKey, orgId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Media storage key does not belong to the active organization." });
+        }
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
+        await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
         const [result] = await db.insert(orgMediaLibrary).values({
           orgId,
           uploadedBy: ctx.user.id,
@@ -2735,14 +2833,15 @@ export const lmsRouter = router({
     // Import a video from an external URL (YouTube, Facebook, LinkedIn, direct .mp4)
     importFromUrl: protectedProcedure
       .input(z.object({
-        orgId: z.number(),
+        orgId: z.number().optional(),
         url: z.string().url(),
         folderId: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
         const db = await (await import("./db")).getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
 
         console.log(`[importFromUrl] User ${ctx.user.id} importing from: ${input.url}`);
         let scraped;
@@ -2759,14 +2858,14 @@ export const lmsRouter = router({
         try {
           const suffix = `${Date.now()}-${nanoid(6)}`;
           const safeFileName = scraped.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const fileKey = `lms-media/${input.orgId}/${suffix}-${safeFileName}`;
+          const fileKey = `lms-media/${orgId}/${suffix}-${safeFileName}`;
 
           const { url: s3Url } = await storagePutStream(fileKey, scraped.filePath, scraped.mimeType);
 
           const { orgMediaLibrary } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
           const [result] = await db.insert(orgMediaLibrary).values({
-            orgId: input.orgId,
+            orgId,
             uploadedBy: ctx.user.id,
             filename: scraped.title || scraped.fileName,
             mimeType: scraped.mimeType,
@@ -2790,63 +2889,61 @@ export const lmsRouter = router({
     deleteOrgMedia: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
-        await db.delete(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id));
+        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.id);
+        await db.delete(orgMediaLibrary).where(and(eq(orgMediaLibrary.id, input.id), eq(orgMediaLibrary.orgId, orgId)));
         return { ok: true };
       }),
     renameOrgMedia: protectedProcedure
       .input(z.object({ id: z.number(), filename: z.string() }))
       .mutation(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
-        await db.update(orgMediaLibrary).set({ filename: input.filename }).where(eq(orgMediaLibrary.id, input.id));
+        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.id);
+        await db.update(orgMediaLibrary).set({ filename: input.filename }).where(and(eq(orgMediaLibrary.id, input.id), eq(orgMediaLibrary.orgId, orgId)));
         return { ok: true };
       }),
     bulkDelete: protectedProcedure
       .input(z.object({ ids: z.array(z.number()) }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyMediaOrg(ctx);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { inArray } = await import("drizzle-orm");
-        const mediaItems = await db.select().from(orgMediaLibrary).where(inArray(orgMediaLibrary.id, input.ids));
-        if (mediaItems.length !== input.ids.length) throw new TRPCError({ code: "NOT_FOUND", message: "One or more media items were not found" });
-        await Promise.all([...new Set(mediaItems.map((item) => item.orgId))].map((orgId) => requireOrgAdmin(ctx.user.id, ctx.user.role, orgId)));
-        await db.delete(orgMediaLibrary).where(inArray(orgMediaLibrary.id, input.ids));
+        const mediaItems = await db.select().from(orgMediaLibrary).where(and(
+          inArray(orgMediaLibrary.id, input.ids),
+          eq(orgMediaLibrary.orgId, orgId),
+        ));
+        if (mediaItems.length !== input.ids.length) throw new TRPCError({ code: "FORBIDDEN", message: "One or more media items belong to another organization." });
+        await db.delete(orgMediaLibrary).where(and(inArray(orgMediaLibrary.id, input.ids), eq(orgMediaLibrary.orgId, orgId)));
         return { ok: true };
       }),
     bulkMoveToFolder: protectedProcedure
       .input(z.object({ ids: z.array(z.number()), folderId: z.number().nullable() }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyMediaOrg(ctx);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { inArray } = await import("drizzle-orm");
-        const mediaItems = await db.select().from(orgMediaLibrary).where(inArray(orgMediaLibrary.id, input.ids));
-        if (mediaItems.length !== input.ids.length) throw new TRPCError({ code: "NOT_FOUND", message: "One or more media items were not found" });
-        await Promise.all([...new Set(mediaItems.map((item) => item.orgId))].map((orgId) => requireOrgAdmin(ctx.user.id, ctx.user.role, orgId)));
-        await db.update(orgMediaLibrary).set({ folderId: input.folderId }).where(inArray(orgMediaLibrary.id, input.ids));
+        await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
+        const mediaItems = await db.select().from(orgMediaLibrary).where(and(
+          inArray(orgMediaLibrary.id, input.ids),
+          eq(orgMediaLibrary.orgId, orgId),
+        ));
+        if (mediaItems.length !== input.ids.length) throw new TRPCError({ code: "FORBIDDEN", message: "One or more media items belong to another organization." });
+        await db.update(orgMediaLibrary).set({ folderId: input.folderId }).where(and(
+          inArray(orgMediaLibrary.id, input.ids),
+          eq(orgMediaLibrary.orgId, orgId),
+        ));
         return { ok: true };
       }),
     listFolders: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input?.orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) return [];
@@ -2857,55 +2954,53 @@ export const lmsRouter = router({
     createFolder: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), name: z.string(), parentFolderId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { mediaFolders } = await import("../drizzle/schema");
+        await requireLegacyMediaFolderInActiveOrg(db, orgId, input.parentFolderId);
         await db.insert(mediaFolders).values({ orgId, name: input.name, parentFolderId: input.parentFolderId ?? null });
         return { ok: true };
       }),
     deleteFolder: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyMediaOrg(ctx);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { mediaFolders } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        const [folder] = await db.select().from(mediaFolders).where(eq(mediaFolders.id, input.id)).limit(1);
+        const folder = await requireLegacyMediaFolderInActiveOrg(db, orgId, input.id);
         if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, folder.orgId);
-        await db.delete(mediaFolders).where(eq(mediaFolders.id, input.id));
+        await db.delete(mediaFolders).where(and(eq(mediaFolders.id, input.id), eq(mediaFolders.orgId, orgId)));
         return { ok: true };
       }),
     renameFolder: protectedProcedure
       .input(z.object({ id: z.number(), name: z.string() }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveLegacyMediaOrg(ctx);
         const { getDb } = await import("./db");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { mediaFolders } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        const [folder] = await db.select().from(mediaFolders).where(eq(mediaFolders.id, input.id)).limit(1);
+        const folder = await requireLegacyMediaFolderInActiveOrg(db, orgId, input.id);
         if (!folder) throw new TRPCError({ code: "NOT_FOUND", message: "Media folder not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, folder.orgId);
-        await db.update(mediaFolders).set({ name: input.name }).where(eq(mediaFolders.id, input.id));
+        await db.update(mediaFolders).set({ name: input.name }).where(and(eq(mediaFolders.id, input.id), eq(mediaFolders.orgId, orgId)));
         return { ok: true };
       }),
     listClips: protectedProcedure
       .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional() }))
       .query(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) return [];
-        const { videoClips, orgMediaLibrary } = await import("../drizzle/schema");
+        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
+        const { videoClips } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
-        return db.select().from(videoClips).where(eq(videoClips.mediaItemId, input.mediaItemId));
+        return db.select().from(videoClips).where(and(
+          eq(videoClips.mediaItemId, input.mediaItemId),
+          eq(videoClips.orgId, orgId),
+        ));
       }),
     saveClip: protectedProcedure
       .input(z.object({
@@ -2921,20 +3016,14 @@ export const lmsRouter = router({
       .mutation(async ({ input, ctx }) => {
         const startSec = input.startSec ?? input.startSeconds ?? 0;
         const endSec = input.endSec ?? input.endSeconds ?? 0;
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { videoClips, orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
+        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
+        const { videoClips } = await import("../drizzle/schema");
         const [result] = await db.insert(videoClips).values({
           mediaItemId: input.mediaItemId,
           label: input.label,
           startSec,
           endSec,
-          orgId: mediaItem.orgId,
+          orgId,
           createdBy: ctx.user.id,
         }).$returningId();
         return { ok: true, id: result.id };
@@ -2955,44 +3044,30 @@ export const lmsRouter = router({
         // Server-side clip extraction is not supported (requires ffmpeg).
         // Return the source URL so the frontend can download the full video.
         // The frontend will handle trimming client-side or the user can download.
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
-        const sourceUrl = input.sourceUrl ?? "";
-        if (!sourceUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No source URL provided for clip extraction" });
-        return { ok: true, url: sourceUrl };
+        const { mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
+        if (input.clipId) {
+          const { clip } = await requireLegacyMediaClipInActiveOrg(ctx, input.clipId, input.orgId);
+          if (clip.mediaItemId !== mediaItem.id || clip.orgId !== orgId) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "This video clip does not belong to the selected media item." });
+          }
+        }
+        if (!mediaItem.url) throw new TRPCError({ code: "NOT_FOUND", message: "No source URL is available for this media item." });
+        return { ok: true, url: mediaItem.url };
       }),
     deleteClip: protectedProcedure
       .input(z.object({ id: z.number(), orgId: z.number().optional() }))
       .mutation(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { videoClips } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [clip] = await db.select().from(videoClips).where(eq(videoClips.id, input.id)).limit(1);
-        if (!clip) throw new TRPCError({ code: "NOT_FOUND", message: "Video clip not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, clip.orgId);
-        await db.delete(videoClips).where(eq(videoClips.id, input.id));
+        const { db, orgId } = await requireLegacyMediaClipInActiveOrg(ctx, input.id, input.orgId);
+        await db.delete(videoClips).where(and(eq(videoClips.id, input.id), eq(videoClips.orgId, orgId)));
         return { ok: true };
       }),
     generateCaptions: protectedProcedure
       .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional(), fileUrl: z.string().optional() }))
       .mutation(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { db, mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
-        const audioUrl = input.fileUrl ?? mediaItem.url;
+        const audioUrl = mediaItem.url;
         if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL available" });
         // Transcribe with word-level timestamps
         const { transcribeAudio } = await import("./_core/voiceTranscription");
@@ -3018,11 +3093,14 @@ export const lmsRouter = router({
           vttLines.push("");
         }
         const vttContent = vttLines.join("\n");
-        const key = `captions/${input.mediaItemId}-${nanoid(8)}.vtt`;
+        const key = `captions/org-${orgId}/${input.mediaItemId}-${nanoid(8)}.vtt`;
         const { url: captionsUrl } = await storagePut(key, Buffer.from(vttContent), "text/vtt");
         // Store transcript JSON and captions URL on the media item
         const transcriptJson = JSON.stringify({ words, segments, language: result.language, duration: result.duration });
-        await db.update(orgMediaLibrary).set({ captionsUrl, transcriptJson }).where(eq(orgMediaLibrary.id, input.mediaItemId));
+        await db.update(orgMediaLibrary).set({ captionsUrl, transcriptJson }).where(and(
+          eq(orgMediaLibrary.id, input.mediaItemId),
+          eq(orgMediaLibrary.orgId, orgId),
+        ));
         return { ok: true, captionsUrl, segments, words, language: result.language, duration: result.duration };
       }),
     updateCaptions: protectedProcedure
@@ -3036,14 +3114,8 @@ export const lmsRouter = router({
         duration: z.number().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const [mediaItem] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-        if (!mediaItem) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, mediaItem.orgId);
         const fmtVtt = (sec: number) => {
           const h = Math.floor(sec / 3600);
           const m = Math.floor((sec % 3600) / 60);
@@ -3063,7 +3135,7 @@ export const lmsRouter = router({
           vttContent = vttLines.join("\n");
         }
         if (!vttContent) throw new TRPCError({ code: "BAD_REQUEST", message: "No captions content provided" });
-        const key = `captions/${input.mediaItemId}-${nanoid(8)}.vtt`;
+        const key = `captions/org-${orgId}/${input.mediaItemId}-${nanoid(8)}.vtt`;
         const { url } = await storagePut(key, Buffer.from(vttContent), "text/vtt");
         // Also store transcriptJson if words/segments provided
         const updateData: any = { captionsUrl: url };
@@ -3075,7 +3147,10 @@ export const lmsRouter = router({
             duration: input.duration ?? 0,
           });
         }
-        await db.update(orgMediaLibrary).set(updateData).where(eq(orgMediaLibrary.id, input.mediaItemId));
+        await db.update(orgMediaLibrary).set(updateData).where(and(
+          eq(orgMediaLibrary.id, input.mediaItemId),
+          eq(orgMediaLibrary.orgId, orgId),
+        ));
         return { ok: true, captionsUrl: url };
       }),
     transcribe: protectedProcedure
@@ -3091,13 +3166,14 @@ export const lmsRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         const { eq } = await import("drizzle-orm");
-        const fallbackOrgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, fallbackOrgId);
+        const fallbackOrgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
         let audioUrl = input.fileUrl ?? null;
         if (!audioUrl && input.mediaItemId) {
-          const [item] = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.mediaItemId)).limit(1);
-          if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found" });
-          await requireOrgAdmin(ctx.user.id, ctx.user.role, item.orgId);
+          const [item] = await db.select().from(orgMediaLibrary).where(and(
+            eq(orgMediaLibrary.id, input.mediaItemId),
+            eq(orgMediaLibrary.orgId, fallbackOrgId),
+          )).limit(1);
+          if (!item) throw new TRPCError({ code: "FORBIDDEN", message: "This media item belongs to another organization." });
           audioUrl = item.url;
         }
         if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL or media item ID provided" });
@@ -3112,9 +3188,8 @@ export const lmsRouter = router({
     saveRecording: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional(), fileKey: z.string().optional(), durationSeconds: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
-        if (input.fileKey && !input.fileKey.startsWith(`org-${orgId}/`)) {
+        const orgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
+        if (input.fileKey && !isLegacyMediaStorageKeyForOrg(input.fileKey, orgId)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Recording file key does not belong to the active organization." });
         }
         const { getDb } = await import("./db");
