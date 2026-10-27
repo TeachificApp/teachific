@@ -155,6 +155,7 @@ import {
   getCourseOrderStats,
   getMembershipsByOrg,
   getMembershipById,
+  getDigitalProduct,
   createMembership,
   updateMembership,
   deleteMembership,
@@ -684,6 +685,76 @@ async function requireLegacyMembershipAccess(ctx: { user: { id: number; role: st
     throw new TRPCError({ code: "FORBIDDEN", message: "This membership belongs to another organization." });
   }
   return membership;
+}
+
+const legacyMembershipContentTypeSchema = z.enum(["course", "digital_product", "community", "webinar"]);
+const legacyMembershipRuleTriggerSchema = z.enum([
+  "course_purchase",
+  "product_purchase",
+  "webinar_registration",
+  "tag_added",
+  "manual",
+]);
+const legacyMembershipActionSchema = z.enum(["add_to_membership", "remove_from_membership"]);
+const legacyMembershipMemberStatusSchema = z.enum(["active", "paused", "cancelled", "expired"]);
+
+/**
+ * Membership content is a cross-resource reference. Resolve its owner on the
+ * server before it can be saved so an administrator cannot grant another
+ * school's course, product, or webinar through an otherwise valid membership.
+ * Communities predate organization ownership and are intentionally preserved
+ * in existing memberships, but cannot be newly linked until their own tenant
+ * model is available.
+ */
+async function assertLegacyMembershipContentTarget(
+  orgId: number,
+  contentType: z.infer<typeof legacyMembershipContentTypeSchema>,
+  contentId: number,
+) {
+  if (contentType === "community") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Communities cannot be newly added to memberships until they support organization-scoped ownership.",
+    });
+  }
+
+  const target = contentType === "course"
+    ? await getCourseById(contentId)
+    : contentType === "digital_product"
+      ? await getDigitalProduct(contentId)
+      : await getWebinarById(contentId);
+
+  if (!target) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Membership content was not found." });
+  }
+  if (target.orgId !== orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Membership content belongs to another organization." });
+  }
+}
+
+/** Validate a resource-specific membership rule without treating a raw ID as tenant authority. */
+async function assertLegacyMembershipRuleTarget(
+  orgId: number,
+  triggerType: z.infer<typeof legacyMembershipRuleTriggerSchema>,
+  triggerEntityId?: number,
+) {
+  if (triggerType === "tag_added" || triggerType === "manual") {
+    if (triggerEntityId !== undefined) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "This membership rule type cannot target a resource." });
+    }
+    return;
+  }
+  if (triggerEntityId === undefined) return;
+
+  await assertLegacyMembershipContentTarget(
+    orgId,
+    triggerType === "course_purchase"
+      ? "course"
+      : triggerType === "product_purchase"
+        ? "digital_product"
+        : "webinar",
+    triggerEntityId,
+  );
 }
 
 async function requireLegacyBundleAccess(ctx: { user: { id: number; role: string } }, bundleId: number) {
@@ -3084,22 +3155,49 @@ export const lmsRouter = router({
         return getMembershipsByOrg(orgId);
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), name: z.string(), price: z.number().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        name: z.string().trim().min(1).max(255),
+        description: z.string().max(20_000).optional(),
+        price: z.number().finite().min(0).optional(),
+        billingInterval: z.enum(["monthly", "yearly", "one_time"]).optional(),
+        trialDays: z.number().int().min(0).max(365).optional(),
+        enrollmentClosed: z.boolean().optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
         const orgId = await requireActiveMembershipOrg(ctx, input.orgId);
-        return createMembership({ orgId, name: input.name, price: input.price ?? 0, courseIds: "[]" });
+        return createMembership({
+          orgId,
+          name: input.name,
+          description: input.description ?? null,
+          price: input.price ?? 0,
+          billingInterval: input.billingInterval ?? "monthly",
+          trialDays: input.trialDays ?? 0,
+          enrollmentClosed: input.enrollmentClosed ?? false,
+          courseIds: "[]",
+        });
       }),
     update: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({
+        id: z.number(),
+        name: z.string().trim().min(1).max(255).optional(),
+        description: z.string().max(20_000).optional(),
+        price: z.number().finite().min(0).optional(),
+        billingInterval: z.enum(["monthly", "yearly", "one_time"]).optional(),
+        trialDays: z.number().int().min(0).max(365).optional(),
+        isActive: z.boolean().optional(),
+        enrollmentClosed: z.boolean().optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyMembershipAccess(ctx, input.id);
-        return updateMembership(input.id, input.data as any);
+        const membership = await requireLegacyMembershipAccess(ctx, input.id);
+        const { id, ...data } = input;
+        return updateMembership(id, membership.orgId, data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyMembershipAccess(ctx, input.id);
-        await deleteMembership(input.id);
+        const membership = await requireLegacyMembershipAccess(ctx, input.id);
+        await deleteMembership(input.id, membership.orgId);
         return { ok: true };
       }),
     getMembers: protectedProcedure
@@ -3109,18 +3207,28 @@ export const lmsRouter = router({
         return getMembershipMembers(input.membershipId);
       }),
     addMember: protectedProcedure
-      .input(z.object({ membershipId: z.number(), userId: z.number(), status: z.enum(["active", "paused", "cancelled", "expired"]).optional() }))
+      .input(z.object({ membershipId: z.number(), userId: z.number(), status: legacyMembershipMemberStatusSchema.optional() }))
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyMembershipAccess(ctx, input.membershipId);
+        const membership = await requireLegacyMembershipAccess(ctx, input.membershipId);
+        const organizationMember = await getOrgMember(membership.orgId, input.userId);
+        if (!organizationMember) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Membership members must belong to the active organization." });
+        }
         return addMembershipMember({ membershipId: input.membershipId, userId: input.userId, status: input.status ?? "active" });
       }),
     updateMember: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({
+        id: z.number(),
+        status: legacyMembershipMemberStatusSchema.optional(),
+        expiresAt: z.coerce.date().nullable().optional(),
+        cancelledAt: z.coerce.date().nullable().optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
         const membershipId = await getMembershipIdByMemberRecordId(input.id);
         if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership member not found" });
         await requireLegacyMembershipAccess(ctx, membershipId);
-        await updateMembershipMember(input.id, input.data as any);
+        const { id, ...data } = input;
+        await updateMembershipMember(id, membershipId, data);
         return { ok: true };
       }),
     removeMember: protectedProcedure
@@ -3129,7 +3237,7 @@ export const lmsRouter = router({
         const membershipId = await getMembershipIdByMemberRecordId(input.id);
         if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership member not found" });
         await requireLegacyMembershipAccess(ctx, membershipId);
-        await removeMembershipMember(input.id);
+        await removeMembershipMember(input.id, membershipId);
         return { ok: true };
       }),
     getContent: protectedProcedure
@@ -3139,9 +3247,10 @@ export const lmsRouter = router({
         return getMembershipContentItems(input.membershipId);
       }),
     addContent: protectedProcedure
-      .input(z.object({ membershipId: z.number(), contentType: z.enum(["course", "digital_product", "community", "webinar"]), contentId: z.number() }))
+      .input(z.object({ membershipId: z.number(), contentType: legacyMembershipContentTypeSchema, contentId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyMembershipAccess(ctx, input.membershipId);
+        const membership = await requireLegacyMembershipAccess(ctx, input.membershipId);
+        await assertLegacyMembershipContentTarget(membership.orgId, input.contentType, input.contentId);
         return addMembershipContent(input);
       }),
     removeContent: protectedProcedure
@@ -3150,7 +3259,7 @@ export const lmsRouter = router({
         const membershipId = await getMembershipIdByContentRecordId(input.id);
         if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership content item not found" });
         await requireLegacyMembershipAccess(ctx, membershipId);
-        await removeMembershipContent(input.id);
+        await removeMembershipContent(input.id, membershipId);
         return { ok: true };
       }),
     getRules: protectedProcedure
@@ -3160,18 +3269,28 @@ export const lmsRouter = router({
         return getMembershipRules(input.membershipId);
       }),
     addRule: protectedProcedure
-      .input(z.object({ membershipId: z.number(), triggerType: z.string(), triggerEntityId: z.number().optional(), triggerTag: z.string().optional(), action: z.string().optional() }))
+      .input(z.object({
+        membershipId: z.number(),
+        triggerType: legacyMembershipRuleTriggerSchema,
+        triggerEntityId: z.number().optional(),
+        triggerTag: z.string().trim().min(1).max(255).optional(),
+        action: legacyMembershipActionSchema.optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
-        await requireLegacyMembershipAccess(ctx, input.membershipId);
-        return addMembershipRule(input as any);
+        const membership = await requireLegacyMembershipAccess(ctx, input.membershipId);
+        if (input.triggerType === "tag_added" && !input.triggerTag) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Tag-triggered rules require a tag." });
+        }
+        await assertLegacyMembershipRuleTarget(membership.orgId, input.triggerType, input.triggerEntityId);
+        return addMembershipRule({ ...input, action: input.action ?? "add_to_membership" });
       }),
     updateRule: protectedProcedure
-      .input(z.object({ id: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(z.object({ id: z.number(), isActive: z.boolean() }).strict())
       .mutation(async ({ ctx, input }) => {
         const membershipId = await getMembershipIdByRuleRecordId(input.id);
         if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership rule not found" });
         await requireLegacyMembershipAccess(ctx, membershipId);
-        await updateMembershipRule(input.id, input.data as any);
+        await updateMembershipRule(input.id, membershipId, { isActive: input.isActive });
         return { ok: true };
       }),
     removeRule: protectedProcedure
@@ -3180,7 +3299,7 @@ export const lmsRouter = router({
         const membershipId = await getMembershipIdByRuleRecordId(input.id);
         if (!membershipId) throw new TRPCError({ code: "NOT_FOUND", message: "Membership rule not found" });
         await requireLegacyMembershipAccess(ctx, membershipId);
-        await removeMembershipRule(input.id);
+        await removeMembershipRule(input.id, membershipId);
         return { ok: true };
       }),
   }),

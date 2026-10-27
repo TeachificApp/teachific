@@ -1774,12 +1774,12 @@ export async function createMembership(data: typeof memberships.$inferInsert) {
   const id = (result as any)[0]?.insertId ?? (result as any).insertId;
   return getMembershipById(Number(id));
 }
-export async function updateMembership(id: number, data: Partial<typeof memberships.$inferInsert>) {
-  await db.update(memberships).set(data).where(eq(memberships.id, id));
+export async function updateMembership(id: number, orgId: number, data: Partial<typeof memberships.$inferInsert>) {
+  await db.update(memberships).set(data).where(and(eq(memberships.id, id), eq(memberships.orgId, orgId)));
   return getMembershipById(id);
 }
-export async function deleteMembership(id: number) {
-  await db.delete(memberships).where(eq(memberships.id, id));
+export async function deleteMembership(id: number, orgId: number) {
+  await db.delete(memberships).where(and(eq(memberships.id, id), eq(memberships.orgId, orgId)));
 }
 
 // ─── Membership Members ─────────────────────────────────────────────────────
@@ -1792,15 +1792,15 @@ export async function addMembershipMember(data: { membershipId: number; userId: 
   const rows = await db.select().from(membershipMembers).where(eq(membershipMembers.id, Number(id)));
   return rows[0] ?? null;
 }
-export async function updateMembershipMember(id: number, data: Partial<{ status: string; expiresAt: Date | null; cancelledAt: Date | null }>) {
-  await db.update(membershipMembers).set(data as any).where(eq(membershipMembers.id, id));
+export async function updateMembershipMember(id: number, membershipId: number, data: Partial<{ status: string; expiresAt: Date | null; cancelledAt: Date | null }>) {
+  await db.update(membershipMembers).set(data as any).where(and(eq(membershipMembers.id, id), eq(membershipMembers.membershipId, membershipId)));
 }
 export async function getMembershipIdByMemberRecordId(id: number) {
   const rows = await db.select({ membershipId: membershipMembers.membershipId }).from(membershipMembers).where(eq(membershipMembers.id, id)).limit(1);
   return rows[0]?.membershipId ?? null;
 }
-export async function removeMembershipMember(id: number) {
-  await db.delete(membershipMembers).where(eq(membershipMembers.id, id));
+export async function removeMembershipMember(id: number, membershipId: number) {
+  await db.delete(membershipMembers).where(and(eq(membershipMembers.id, id), eq(membershipMembers.membershipId, membershipId)));
 }
 
 // ─── Membership Content ─────────────────────────────────────────────────────
@@ -1817,8 +1817,8 @@ export async function getMembershipIdByContentRecordId(id: number) {
   const rows = await db.select({ membershipId: membershipContent.membershipId }).from(membershipContent).where(eq(membershipContent.id, id)).limit(1);
   return rows[0]?.membershipId ?? null;
 }
-export async function removeMembershipContent(id: number) {
-  await db.delete(membershipContent).where(eq(membershipContent.id, id));
+export async function removeMembershipContent(id: number, membershipId: number) {
+  await db.delete(membershipContent).where(and(eq(membershipContent.id, id), eq(membershipContent.membershipId, membershipId)));
 }
 
 // ─── Membership Rules ───────────────────────────────────────────────────────
@@ -1831,15 +1831,15 @@ export async function addMembershipRule(data: { membershipId: number; triggerTyp
   const rows = await db.select().from(membershipRules).where(eq(membershipRules.id, Number(id)));
   return rows[0] ?? null;
 }
-export async function updateMembershipRule(id: number, data: Partial<{ isActive: boolean; triggerType: string; triggerEntityId: number; triggerTag: string; action: string }>) {
-  await db.update(membershipRules).set(data as any).where(eq(membershipRules.id, id));
+export async function updateMembershipRule(id: number, membershipId: number, data: Partial<{ isActive: boolean; triggerType: string; triggerEntityId: number; triggerTag: string; action: string }>) {
+  await db.update(membershipRules).set(data as any).where(and(eq(membershipRules.id, id), eq(membershipRules.membershipId, membershipId)));
 }
 export async function getMembershipIdByRuleRecordId(id: number) {
   const rows = await db.select({ membershipId: membershipRules.membershipId }).from(membershipRules).where(eq(membershipRules.id, id)).limit(1);
   return rows[0]?.membershipId ?? null;
 }
-export async function removeMembershipRule(id: number) {
-  await db.delete(membershipRules).where(eq(membershipRules.id, id));
+export async function removeMembershipRule(id: number, membershipId: number) {
+  await db.delete(membershipRules).where(and(eq(membershipRules.id, id), eq(membershipRules.membershipId, membershipId)));
 }
 
 // ─── Bundles ──────────────────────────────────────────────────────────────────
