@@ -16,7 +16,7 @@ import { writeFileSync, unlinkSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { storagePut } from "./storage";
-import { requireOrgAdmin } from "./db";
+import { getOrgIdForUserWithFallback, getPackageById, requireOrgAdmin, updatePackage } from "./db";
 import { parseQuizExcel, exportQuizToExcel, parsedToDbQuestions } from "./quizExcel";
 import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb";
 import { getQuestionsByOrg, getQuestionsByIds } from "./questionBankDb";
@@ -34,6 +34,29 @@ const TEMPLATE_XLSX_URL =
 const router = express.Router();
 // Accept up to 3 GB for ZIP files with media
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 3 * 1024 * 1024 * 1024 } });
+
+/**
+ * Import requests may carry display hints, but their organization is always
+ * derived from the authenticated user's active administrative context.
+ */
+async function requireActiveQuestionBankImportOrg(user: { id: number; role: string }, res: Response): Promise<number | null> {
+  const orgId = await getOrgIdForUserWithFallback(user.id, user.role);
+  if (!orgId) {
+    res.status(403).json({ error: "Select an active organization before importing questions." });
+    return null;
+  }
+  try {
+    await requireOrgAdmin(user.id, user.role, orgId);
+    return orgId;
+  } catch {
+    res.status(403).json({ error: "Organization administrator access is required." });
+    return null;
+  }
+}
+
+function isOwnedStagedImportKey(key: string, orgId: number): boolean {
+  return key.startsWith(`question-bank-imports/${orgId}/`);
+}
 
 /**
  * Extract a ZIP buffer into:
@@ -137,10 +160,11 @@ router.post("/import/preview", upload.single("file"), async (req: Request, res: 
   try {
     const authUser = await authenticateRequest(req);
     if (!authUser) return res.status(401).json({ error: "Unauthorized" });
+    const orgId = await requireActiveQuestionBankImportOrg(authUser, res);
+    if (!orgId) return;
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-    const orgId = (authUser as any).orgId?.toString() ?? "unknown";
     const originalName = req.file.originalname.toLowerCase();
     let xlsxBuffer = req.file.buffer;
     let mediaUrlMap = new Map<string, string>();
@@ -153,7 +177,7 @@ router.post("/import/preview", upload.single("file"), async (req: Request, res: 
       }
       xlsxBuffer = extracted;
       if (mediaMap.size > 0) {
-        mediaUrlMap = await uploadMediaToS3(mediaMap, orgId);
+        mediaUrlMap = await uploadMediaToS3(mediaMap, String(orgId));
       }
     }
 
@@ -190,11 +214,14 @@ router.get("/export/:quizId", async (req: Request, res: Response) => {
   try {
     const authUser = await authenticateRequest(req);
     if (!authUser) return res.status(401).json({ error: "Unauthorized" });
+    const orgId = await requireActiveQuestionBankImportOrg(authUser, res);
+    if (!orgId) return;
     const quizId = parseInt(req.params.quizId, 10);
     if (isNaN(quizId)) return res.status(400).json({ error: "Invalid quiz ID" });
 
     const quiz = await getQuizById(quizId);
     if (!quiz) return res.status(404).json({ error: "Quiz not found" });
+    if (quiz.orgId !== orgId) return res.status(404).json({ error: "Quiz not found" });
 
     const questions = await getQuestionsByQuiz(quizId);
     const questionsWithChoices = await Promise.all(
@@ -228,17 +255,18 @@ router.get("/export/:quizId", async (req: Request, res: Response) => {
 });
 
 // ── POST /api/quiz/bank-import/preview ───────────────────────────────────────
-// Parse a CSV, SCORM ZIP/XML, iSpring/Teachific .quiz, or XLSX file and return questions for preview.
+// Parse a CSV, SCORM ZIP/XML, iSpring/Course360 .quiz, or XLSX file and return questions for preview.
 // ZIP/.quiz uploads are also hosted so admins can keep the original package while optionally extracting questions.
 router.post("/bank-import/preview", upload.single("file"), async (req: Request, res: Response) => {
   try {
     const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const orgId = await requireActiveQuestionBankImportOrg(user, res);
+    if (!orgId) return;
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     const originalName = req.file.originalname.toLowerCase();
     const source = req.body.source as string ?? "auto";
-    const orgId = (user as any)?.orgId?.toString() ?? "unknown";
-    const hostedPackage = await hostUploadedPackage(req.file, orgId);
+    const hostedPackage = await hostUploadedPackage(req.file, String(orgId));
     const withHostedPackage = (payload: Record<string, unknown>) => res.json({
       ...payload,
       hostedPackageUrl: hostedPackage?.url ?? null,
@@ -274,7 +302,7 @@ router.post("/bank-import/preview", upload.single("file"), async (req: Request, 
 
       const { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer } = await extractBankZip(req.file.buffer);
       let mediaUrlMap = new Map<string, string>();
-      if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, orgId);
+      if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, String(orgId));
 
       if (quizDocumentBuffer) {
         try {
@@ -307,7 +335,7 @@ router.post("/bank-import/preview", upload.single("file"), async (req: Request, 
             const zipEntries = zip.getEntries();
             const allRefs = parsed.allImageRefs;
             const storageUrlMap = allRefs.length > 0
-              ? await uploadISpringImagesFromZip(zipEntries, allRefs)
+            ? await uploadISpringImagesFromZip(zipEntries, allRefs, orgId)
               : new Map<string, string>();
             // Merge with mediaUrlMap (relative path media)
             for (const [k, v] of mediaUrlMap) storageUrlMap.set(k, v);
@@ -935,12 +963,8 @@ router.get("/bank-export", async (req: Request, res: Response) => {
   try {
     const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    const orgId = Number(req.query.orgId);
-    if (!Number.isFinite(orgId)) return res.status(400).json({ error: "orgId is required" });
-    const role = String((user as any).role ?? "");
-    if (!["site_owner", "site_admin", "org_super_admin", "org_admin"].includes(role)) {
-      return res.status(403).json({ error: "Organization admin access required" });
-    }
+    const orgId = await requireActiveQuestionBankImportOrg(user, res);
+    if (!orgId) return;
 
     const format = String(req.query.format ?? "xlsx").toLowerCase();
     const ids = String(req.query.ids ?? "")
@@ -989,10 +1013,17 @@ router.post("/bank-import/extract-from-package", async (req: Request, res: Respo
   try {
     const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    const { packageKey, orgId: orgIdStr } = req.body as { packageKey: string; orgId: string };
-    if (!packageKey || !orgIdStr) return res.status(400).json({ error: "packageKey and orgId are required" });
-    const orgId = parseInt(orgIdStr, 10);
-    if (!Number.isFinite(orgId)) return res.status(400).json({ error: "Invalid orgId" });
+    const orgId = await requireActiveQuestionBankImportOrg(user, res);
+    if (!orgId) return;
+    const { packageId } = req.body as { packageId?: number };
+    if (!Number.isInteger(packageId) || !packageId || packageId < 1) {
+      return res.status(400).json({ error: "A hosted package is required." });
+    }
+    const contentPackage = await getPackageById(packageId);
+    if (!contentPackage || contentPackage.orgId !== orgId || !contentPackage.originalZipKey) {
+      return res.status(404).json({ error: "Hosted package not found." });
+    }
+    const packageKey = contentPackage.originalZipKey;
     // Download the ZIP from S3
     const { storageGet } = await import("./storage");
     const { url: downloadUrl } = await storageGet(packageKey);
@@ -1003,7 +1034,7 @@ router.post("/bank-import/extract-from-package", async (req: Request, res: Respo
     // Run the same extraction pipeline as bank-import/preview
     const { xlsxBuffer, xmlBuffers, mediaMap, quizDocumentBuffer } = await extractBankZip(zipBuffer);
     let mediaUrlMap = new Map<string, string>();
-    if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, orgId.toString());
+    if (mediaMap.size > 0) mediaUrlMap = await uploadMediaToS3(mediaMap, String(orgId));
     // Try iSpring document.json
     if (quizDocumentBuffer) {
       try {
@@ -1022,7 +1053,7 @@ router.post("/bank-import/extract-from-package", async (req: Request, res: Respo
         if (parsed.groups.length > 0) {
           const zipEntries = zip.getEntries();
           const storageUrlMap = parsed.allImageRefs.length > 0
-            ? await uploadISpringImagesFromZip(zipEntries, parsed.allImageRefs)
+            ? await uploadISpringImagesFromZip(zipEntries, parsed.allImageRefs, orgId)
             : new Map<string, string>();
           for (const [k, v] of mediaUrlMap) storageUrlMap.set(k, v);
           const questions = parsedQuizToBankQuestions(parsed, storageUrlMap);
@@ -1042,10 +1073,38 @@ router.post("/bank-import/extract-from-package", async (req: Request, res: Respo
       for (const xmlBuf of xmlBuffers) allQuestions.push(...parseSCORMQTIToBank(xmlBuf.toString("utf-8"), mediaUrlMap));
       return res.json({ source: "scorm", questions: allQuestions, totalRows: allQuestions.length, validCount: allQuestions.length, errorCount: 0, warnings: [], mediaUploaded: mediaUrlMap.size });
     }
-    return res.status(400).json({ error: "No supported quiz content found in this package. Expected iSpring/Teachific quiz data, XLSX, or QTI XML." });
+    return res.status(400).json({ error: "No supported quiz content was found in this package. Expected iSpring or Course360 quiz data, XLSX, or QTI XML." });
   } catch (err: unknown) {
     console.error("[ExtractFromPackage] Error:", err);
     return res.status(500).json({ error: "Failed to extract questions", detail: String(err) });
+  }
+});
+
+// ── GET /api/quiz/bank-import/package/:packageId/download ───────────────────
+// Create a short-lived storage download only after current active-organization
+// ownership has been verified. New native-package records point here rather
+// than persisting a temporary S3 signed URL.
+router.get("/bank-import/package/:packageId/download", async (req: Request, res: Response) => {
+  try {
+    const user = await authenticateRequest(req);
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
+    const orgId = await requireActiveQuestionBankImportOrg(user, res);
+    if (!orgId) return;
+    const packageId = Number(req.params.packageId);
+    if (!Number.isInteger(packageId) || packageId < 1) {
+      return res.status(400).json({ error: "A hosted package is required." });
+    }
+    const contentPackage = await getPackageById(packageId);
+    if (!contentPackage || contentPackage.orgId !== orgId || !contentPackage.originalZipKey) {
+      return res.status(404).json({ error: "Hosted package not found." });
+    }
+    const { storageGet } = await import("./storage");
+    const { url } = await storageGet(contentPackage.originalZipKey);
+    res.set("Cache-Control", "private, no-store");
+    return res.redirect(url);
+  } catch (err: unknown) {
+    console.error("[NativePackageDownload] Error:", err);
+    return res.status(500).json({ error: "Failed to download hosted package" });
   }
 });
 
@@ -1057,26 +1116,20 @@ router.post("/bank-import/confirm-native", async (req: Request, res: Response) =
   try {
     const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
-    const { hostedPackageKey, hostedPackageUrl, title, description, orgId: orgIdStr } = req.body as {
+    const orgId = await requireActiveQuestionBankImportOrg(user, res);
+    if (!orgId) return;
+    const { hostedPackageKey, title, description } = req.body as {
       hostedPackageKey: string;
-      hostedPackageUrl: string;
       title: string;
       description?: string;
-      orgId: string;
     };
-    if (!hostedPackageKey || !hostedPackageUrl || !title || !orgIdStr) {
-      return res.status(400).json({ error: "hostedPackageKey, hostedPackageUrl, title, and orgId are required" });
+    if (!hostedPackageKey || !title) {
+      return res.status(400).json({ error: "A hosted package and title are required." });
     }
-    const orgId = parseInt(orgIdStr, 10);
-    if (!Number.isFinite(orgId)) return res.status(400).json({ error: "Invalid orgId" });
-    const userId = (user as any).id;
-    try {
-      await requireOrgAdmin(userId, (user as any).role ?? "user", orgId);
-    } catch (error) {
-      return res.status(403).json({
-        error: error instanceof Error ? error.message : "You do not have admin access to this organisation",
-      });
+    if (!isOwnedStagedImportKey(hostedPackageKey, orgId)) {
+      return res.status(403).json({ error: "The hosted package does not belong to the active organization." });
     }
+    const userId = user.id;
     // Import createPackage and processZip lazily to avoid circular deps
     const { createPackage } = await import("./db");
     const { processZip } = await import("./scormUploadRoutes");
@@ -1093,43 +1146,35 @@ router.post("/bank-import/confirm-native", async (req: Request, res: Response) =
     const tmpPath = join(tmpdir(), `native-import-${suffix}.zip`);
     writeFileSync(tmpPath, zipBuffer);
     // Create the content_packages record
-    const pkg = await createPackage({
+    const createdPackage = await createPackage({
       orgId,
       uploadedBy: userId,
       title: title.trim(),
       description: description?.trim() ?? null,
       originalZipKey: hostedPackageKey,
-      originalZipUrl: hostedPackageUrl,
+      // The schema keeps this field non-null. Replace this non-routable value
+      // with the protected package-ID route before returning the package.
+      originalZipUrl: "/api/quiz/bank-import/package/pending/download",
       originalZipSize: zipSize,
       contentType: "unknown",
       scormVersion: "none",
       displayMode: "native",
       status: "processing",
     });
-    // Fetch the newly created package ID
-    const { getDb } = await import("./db");
-    const { contentPackages } = await import("../drizzle/schema");
-    const { desc, eq } = await import("drizzle-orm");
-    const db = await getDb();
-    if (!db) {
-      if (existsSync(tmpPath)) unlinkSync(tmpPath);
-      return res.status(500).json({ error: "DB unavailable" });
-    }
-    const pkgs = await db.select().from(contentPackages)
-      .where(eq(contentPackages.orgId, orgId))
-      .orderBy(desc(contentPackages.createdAt))
-      .limit(1);
-    const newPkg = pkgs[0];
-    if (!newPkg) {
+    const packageId = Number((createdPackage as { insertId?: number }).insertId);
+    if (!Number.isInteger(packageId) || packageId < 1) {
       if (existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(500).json({ error: "Package creation failed" });
     }
+    await updatePackage(packageId, {
+      originalZipUrl: `/api/quiz/bank-import/package/${packageId}/download`,
+    });
     // Kick off async ZIP processing (extraction + S3 upload + manifest parse)
-    processZip(tmpPath, zipSize, newPkg.id, orgId, suffix).catch((err: unknown) => {
-      console.error(`[NativeImport] Package ${newPkg.id} processing failed:`, err);
+    processZip(tmpPath, zipSize, packageId, orgId, suffix).catch((err: unknown) => {
+      console.error(`[NativeImport] Package ${packageId} processing failed:`, err);
     });
     return res.json({
-      packageId: newPkg.id,
+      packageId,
       message: "Package created and processing started.",
     });
   } catch (err: unknown) {

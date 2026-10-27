@@ -276,7 +276,7 @@ type BankPreviewQuestion = {
   stem: string;
   dataJson: string;
   points?: number;
-  difficulty?: string;
+  difficulty?: "easy" | "medium" | "hard";
   explanation?: string;
   tags?: string;
 };
@@ -296,9 +296,9 @@ const QTYPE_LABELS: Record<string, string> = {
   ordering: "Ordering", numeric: "Numeric", fill_blank: "Fill in the Blank",
 };
 
-function SaveToBankDialog({ open, onClose, packageTitle, originalZipKey }: {
+function SaveToBankDialog({ open, onClose, packageId, packageTitle, hasOriginalZip }: {
   open: boolean; onClose: () => void;
-  packageTitle: string; originalZipKey?: string | null;
+  packageId: number; packageTitle: string; hasOriginalZip: boolean;
 }) {
   const { orgId, ready } = useOrgScope();
   const [step, setStep] = useState<"idle" | "loading" | "preview" | "importing" | "done">("idle");
@@ -321,14 +321,14 @@ function SaveToBankDialog({ open, onClose, packageTitle, originalZipKey }: {
   }, [open]);
 
   const handleExtract = useCallback(async () => {
-    if (!orgId || !originalZipKey) return;
+    if (!orgId || !hasOriginalZip) return;
     setStep("loading"); setError(null);
     try {
       const res = await fetch("/api/quiz/bank-import/extract-from-package", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ packageKey: originalZipKey, orgId: String(orgId) }),
+        body: JSON.stringify({ packageId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Extraction failed");
@@ -340,7 +340,7 @@ function SaveToBankDialog({ open, onClose, packageTitle, originalZipKey }: {
       setError(err instanceof Error ? err.message : "Extraction failed");
       setStep("idle");
     }
-  }, [orgId, originalZipKey]);
+  }, [orgId, hasOriginalZip, packageId]);
 
   const handleImport = async () => {
     if (!preview || !orgId || selectedIndices.size === 0) return;
@@ -386,19 +386,19 @@ function SaveToBankDialog({ open, onClose, packageTitle, originalZipKey }: {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {step === "idle" && !originalZipKey && (
+          {step === "idle" && !hasOriginalZip && (
             <div className="text-center py-8 space-y-2">
               <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
               <p className="text-sm font-medium">No original ZIP available</p>
               <p className="text-xs text-muted-foreground">This package does not have an original ZIP stored. Only packages uploaded with the original .zip or .quiz file can be extracted.</p>
             </div>
           )}
-          {step === "idle" && originalZipKey && (
+          {step === "idle" && hasOriginalZip && (
             <div className="text-center py-8 space-y-3">
               <Database className="h-10 w-10 text-primary/60 mx-auto" />
               <div className="space-y-1">
                 <p className="text-sm font-medium">Extract questions from this package</p>
-                <p className="text-xs text-muted-foreground">Supports iSpring, Teachific .quiz, QTI XML, and XLSX formats inside the ZIP.</p>
+                <p className="text-xs text-muted-foreground">Supports iSpring, Course360 .quiz, QTI XML, and XLSX formats inside the ZIP.</p>
               </div>
               <Button onClick={handleExtract} className="gap-2"><Database className="h-4 w-4" />Extract Questions</Button>
             </div>
@@ -1148,8 +1148,9 @@ export default function FileDetailPage() {
       <SaveToBankDialog
         open={saveToBankOpen}
         onClose={() => setSaveToBankOpen(false)}
+        packageId={packageId}
         packageTitle={pkg.title}
-        originalZipKey={(pkg as any).originalZipKey}
+        hasOriginalZip={Boolean((pkg as any).originalZipKey)}
       />
     </div>
   );

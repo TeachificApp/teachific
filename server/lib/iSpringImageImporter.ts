@@ -34,6 +34,7 @@ function mimeFromPath(filePath: string): string {
 export async function uploadISpringImagesFromZip(
   entries: ZipEntry[],
   imageRefs: string[],
+  orgId?: number,
 ): Promise<Map<string, string>> {
   const urlMap = new Map<string, string>();
   const uniqueRefs = [...new Set(imageRefs)];
@@ -57,7 +58,8 @@ export async function uploadISpringImagesFromZip(
     if (!buf.length) continue;
 
     const fileName = withoutScheme.split("/").pop() ?? "image.png";
-    const key = `question-bank/ispring/${Date.now()}-${Math.random().toString(36).slice(2)}-${fileName}`;
+    const keyPrefix = orgId ? `question-bank/org-${orgId}/ispring` : "question-bank/ispring";
+    const key = `${keyPrefix}/${Date.now()}-${Math.random().toString(36).slice(2)}-${fileName}`;
     const { url } = await storagePut(key, buf, mimeFromPath(fileName));
     urlMap.set(ref, url);
   }

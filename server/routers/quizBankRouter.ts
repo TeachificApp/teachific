@@ -91,6 +91,8 @@ function toDecimalString(value: number | undefined): string | undefined {
 type RequestContext = { user: { id: number; role: string } };
 
 async function requireOwnedOrg(ctx: RequestContext, orgId: number) {
+  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  assertActiveQuizBankOrganization(activeOrgId, orgId);
   return requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
 }
 
@@ -487,7 +489,7 @@ export const quizBankRouter = router({
       jobId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      await requireImportJobAccess(ctx, input.jobId);
+      const importJobAccess = await requireImportJobAccess(ctx, input.jobId);
       const [job] = await (await db()).select({ source: quizImportJobs.source, fileUrl: quizImportJobs.fileUrl, filename: quizImportJobs.filename })
         .from(quizImportJobs).where(eq(quizImportJobs.id, input.jobId)).limit(1);
       if (!job?.fileUrl) throw new TRPCError({ code: "NOT_FOUND", message: "Import source not found." });
@@ -513,7 +515,7 @@ export const quizBankRouter = router({
             const zip = new AdmZip(buffer);
             try {
               const parsed = await parseISpringQuizFromBuffer(buffer);
-              const imageMap = await uploadISpringImagesFromZip(zip.getEntries(), parsed.allImageRefs);
+              const imageMap = await uploadISpringImagesFromZip(zip.getEntries(), parsed.allImageRefs, importJobAccess.orgId);
               parsedQuestions = parsed.groups.flatMap((group) => group.questions.map((question) => {
                 const questionHtml = rewriteStorageRefs(question.questionHtml || question.questionText, imageMap);
                 const mediaUrl = question.imageRefs.map((ref) => imageMap.get(ref)).find(Boolean);
@@ -543,7 +545,7 @@ export const quizBankRouter = router({
                 question.packageMediaRef,
                 ...question.choices.map((choice: any) => choice.packageMediaRef),
               ].filter((ref): ref is string => !!ref));
-              const qtiImageMap = await uploadISpringImagesFromZip(zip.getEntries(), qtiImageRefs);
+              const qtiImageMap = await uploadISpringImagesFromZip(zip.getEntries(), qtiImageRefs, importJobAccess.orgId);
               parsedQuestions = parsedQtiQuestions.map((question) => ({
                 ...question,
                 mediaType: question.packageMediaRef && qtiImageMap.get(question.packageMediaRef) ? "image" : "none",

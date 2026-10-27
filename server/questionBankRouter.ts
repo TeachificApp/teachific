@@ -38,6 +38,22 @@ async function requireActiveOrgAdmin(userId: number, requestedOrgId: number | un
   return activeOrgId;
 }
 
+/**
+ * Folder IDs are references, not authority. Any folder selected by an author
+ * must be part of the same server-resolved organization as the question write.
+ */
+async function requireQuestionBankFolderInOrg(folderId: number | null | undefined, orgId: number) {
+  if (folderId === null || folderId === undefined) return null;
+  const folder = await getFolderById(folderId);
+  if (!folder || folder.orgId !== orgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "The selected Question Bank folder does not belong to the active organization",
+    });
+  }
+  return folder;
+}
+
 function normalizeTags(tags: string | undefined): string | null {
   if (!tags) return null;
   try {
@@ -72,6 +88,7 @@ export const questionBankRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await requireQuestionBankFolderInOrg(input.parentId, orgId);
       return createFolder({
         orgId,
         name: input.name,
@@ -93,7 +110,13 @@ export const questionBankRouter = router({
     .mutation(async ({ ctx, input }) => {
       const folder = await getFolderById(input.id);
       if (!folder) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireActiveOrgAdmin(ctx.user.id, folder.orgId, ctx.user.role);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, folder.orgId, ctx.user.role);
+      if (input.parentId === input.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "A Question Bank folder cannot be its own parent" });
+      }
+      if (input.parentId !== undefined) {
+        await requireQuestionBankFolderInOrg(input.parentId, orgId);
+      }
       const { id, ...updates } = input;
       await updateFolder(id, updates as any);
       return { success: true };
@@ -122,6 +145,7 @@ export const questionBankRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await requireQuestionBankFolderInOrg(input.folderId, orgId);
       const questions = await getQuestionsByOrg(orgId, {
         folderId: input.folderId,
         questionType: input.questionType,
@@ -161,6 +185,7 @@ export const questionBankRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await requireQuestionBankFolderInOrg(input.folderId, orgId);
       if (input.questionType === "flashcard" && (!input.flashcardFront?.trim() || !input.flashcardBack?.trim())) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Flashcards need both a front and back before they can be saved" });
       }
@@ -201,7 +226,10 @@ export const questionBankRouter = router({
     .mutation(async ({ ctx, input }) => {
       const q = await getQuestionById(input.id);
       if (!q) throw new TRPCError({ code: "NOT_FOUND" });
-      await requireActiveOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
+      const orgId = await requireActiveOrgAdmin(ctx.user.id, q.orgId, ctx.user.role);
+      if (input.folderId !== undefined) {
+        await requireQuestionBankFolderInOrg(input.folderId, orgId);
+      }
       const resultingType = input.questionType ?? q.questionType;
       const resultingFront = input.flashcardFront ?? q.flashcardFront;
       const resultingBack = input.flashcardBack ?? q.flashcardBack;
@@ -239,6 +267,7 @@ export const questionBankRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await requireQuestionBankFolderInOrg(input.folderId, orgId);
       await moveQuestionsToFolder(orgId, input.ids, input.folderId);
       return { success: true };
     }),
@@ -251,6 +280,7 @@ export const questionBankRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await requireQuestionBankFolderInOrg(input.folderId, orgId);
       const copied = await copyQuestionsToFolder(orgId, input.ids, input.folderId, ctx.user.id);
       return { success: true, copied };
     }),
@@ -272,6 +302,7 @@ export const questionBankRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const orgId = await requireActiveOrgAdmin(ctx.user.id, input.orgId, ctx.user.role);
+      await requireQuestionBankFolderInOrg(input.folderId, orgId);
       let imported = 0;
       const errors: string[] = [];
       for (const q of input.questions) {

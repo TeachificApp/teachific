@@ -413,9 +413,10 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("requires organization-admin ownership before creating a native package from a Question Bank import", () => {
     const importRouteSource = readFileSync(new URL("./quizImportRoutes.ts", import.meta.url), "utf8");
-    expect(importRouteSource).toContain('import { requireOrgAdmin } from "./db"');
-    expect(importRouteSource).toContain('await requireOrgAdmin(userId, (user as any).role ?? "user", orgId);');
-    expect(importRouteSource).toContain("return res.status(403).json({");
+    expect(importRouteSource).toContain("getOrgIdForUserWithFallback");
+    expect(importRouteSource).toContain("async function requireActiveQuestionBankImportOrg");
+    expect(importRouteSource).toContain("await requireOrgAdmin(user.id, user.role, orgId);");
+    expect(importRouteSource).toContain("isOwnedStagedImportKey(hostedPackageKey, orgId)");
   });
 
   it("applies organization-owned LMS shell configuration without platform branding in package playback", () => {
@@ -3290,7 +3291,8 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(importPageSource).toContain("confirm-native");
     expect(fileDetailSource).toContain("Save to Question Bank");
     expect(fileDetailSource).toContain("extract-from-package");
-    expect(fileDetailSource).toContain("originalZipKey");
+    expect(fileDetailSource).toContain("hasOriginalZip");
+    expect(fileDetailSource).toContain("JSON.stringify({ packageId })");
     const questionBankDialogSource = readFileSync(new URL("../client/src/pages/lms/QuestionBankPage.tsx", import.meta.url), "utf8");
     expect(questionBankDialogSource).toContain("Choose hosting options");
     expect(questionBankDialogSource).toContain("Host &amp; import");
