@@ -51,7 +51,7 @@ vi.mock("./stripePlans", () => ({
   PLAN_LIMITS: { enterprise: {} },
 }));
 
-import { stripeRouter } from "./stripeRouter";
+import { parseApprovedPlatformSignupOrigin, stripeRouter } from "./stripeRouter";
 
 const context = {
   user: { id: 71, role: "org_admin", email: "owner@example.test", name: "School Owner" },
@@ -67,30 +67,29 @@ const pageBuilderSource = readFileSync(new URL("../client/src/components/PageBui
 const wysiwygPageBuilderSource = readFileSync(new URL("../client/src/components/WysiwygPageBuilder.tsx", import.meta.url), "utf8");
 const customAuthSource = readFileSync(new URL("./customAuthRouter.ts", import.meta.url), "utf8");
 const subscriptionSchemaSource = readFileSync(new URL("../drizzle/schema.ts", import.meta.url), "utf8");
-const trialMigrationSource = readFileSync(new URL("../drizzle/0005_chemical_shape.sql", import.meta.url), "utf8");
 const stripeWebhookSource = readFileSync(new URL("./stripeWebhookRoutes.ts", import.meta.url), "utf8");
 
 const originalStripeSecret = ENV.stripeSecretKey;
 
-describe("Starter trial and legacy Free tier presentation", () => {
+describe("Course360 paid-plan trials and checkout-first school signup", () => {
   beforeEach(() => {
     checkoutCalls.splice(0);
     subscriptionUpserts.splice(0);
     subscription = null;
-    (ENV as any).stripeSecretKey = "sk_test_starter_trial";
+    (ENV as any).stripeSecretKey = "sk_test_platform_trial";
     vi.clearAllMocks();
   });
 
-  it("hides the Free offer from public pricing, registration, login, and selectable billing plans", () => {
+  it("hides the Free offer while presenting every paid plan as a card-backed 14-day trial", () => {
     expect(landingSource).not.toContain('name: "Free"');
     expect(landingSource).not.toContain('>Free</th>');
     expect(landingSource).not.toContain("Sign up free");
-    expect(landingSource).toContain("Start 14-Day Trial");
-    expect(registerSource).not.toContain("Create free account");
-    expect(registerSource).not.toContain("Free forever");
-    expect(registerSource).not.toContain(">teach</span>");
-    expect(registerSource).not.toContain("/policies/teachific");
-    expect(registerSource).toContain("Start a 14-day Starter trial");
+    expect(landingSource).toContain("Every paid plan begins with a 14-day card-backed trial");
+    expect(landingSource).toContain('`/register?plan=${tier.name.toLowerCase()}`');
+    expect(registerSource).toContain("14-day trial on every paid plan");
+    expect(registerSource).toContain("createPlatformTrialCheckout");
+    expect(registerSource).toContain("A card is required now");
+    expect(registerSource).not.toContain("Create account & start trial");
     expect(registerSource).toContain("COURSE360_PLATFORM_LOGO_URL");
     expect(loginSource).not.toContain("Start for free");
     expect(loginSource).toContain("Start 14-day trial");
@@ -98,26 +97,27 @@ describe("Starter trial and legacy Free tier presentation", () => {
     expect(billingSource).toContain('currentPlan === "free" ? "Legacy Access"');
     expect(billingSource).not.toContain("Always Free");
     expect(creatorLandingSource).not.toContain("Start Building for Free");
-    expect(creatorLandingSource).not.toContain("14-day free trial");
     expect(creatorLandingSource).toContain("Start 14-Day Trial");
     expect(studioDashboardSource).not.toContain("Start free — no credit card required");
-    expect(studioDashboardSource).not.toContain("Teachific Studio subscription");
-    expect(studioDashboardSource).toContain("Choose a paid Studio plan to continue.");
     expect(pageBuilderSource).not.toContain("Create your free account");
     expect(wysiwygPageBuilderSource).not.toContain("Create your free account");
-    expect(customAuthSource).toContain("Magic links are sign-in only");
-    expect(customAuthSource).not.toContain("Auto-register new user via magic link");
+    expect(customAuthSource).toContain("Start a new Course360 school by choosing a paid plan and completing secure checkout first.");
+    expect(customAuthSource).toContain("resolvePublicOrganizationScope(");
+    expect(customAuthSource).toContain("ctx.req,");
     expect(subscriptionSchemaSource).toContain('starterTrialClaimed: boolean("starterTrialClaimed").default(false).notNull()');
-    expect(trialMigrationSource).toContain("ADD `starterTrialClaimed` boolean DEFAULT false NOT NULL");
+    expect(subscriptionSchemaSource).toContain('platformTrialSignupFulfillments');
   });
 
-  it("creates a 14-day, payment-method-backed trial only for a first Starter subscription", async () => {
-    const caller = stripeRouter.createCaller(context);
+  it("starts checkout-first signup with card collection and a 14-day trial for the selected paid plan", async () => {
+    const caller = stripeRouter.createCaller({ user: null } as any);
 
-    await caller.createCheckoutSession({
-      plan: "starter",
-      interval: "monthly",
+    await caller.createPlatformTrialCheckout({
+      name: "New School Owner",
+      email: "owner@example.test",
+      plan: "pro",
+      interval: "annual",
       origin: "https://course360.app",
+      blueprintInstallToken: "a".repeat(64),
     });
 
     expect(checkoutCalls).toHaveLength(1);
@@ -125,50 +125,72 @@ describe("Starter trial and legacy Free tier presentation", () => {
       mode: "subscription",
       payment_method_types: ["card"],
       payment_method_collection: "always",
-      success_url: "https://course360.app/billing?success=1&plan=starter&trial=1",
+      customer_email: "owner@example.test",
+      success_url: "https://course360.app/account-setup?checkout=platform_trial&session_id={CHECKOUT_SESSION_ID}",
+      metadata: {
+        type: "platform_trial_signup",
+        signup_name: "New School Owner",
+        signup_email: "owner@example.test",
+        plan: "pro",
+        interval: "annual",
+        blueprint_install_token: "a".repeat(64),
+      },
       subscription_data: {
         trial_period_days: 14,
-        metadata: { org_id: "41", plan: "starter" },
+        metadata: { type: "platform_trial_signup", plan: "pro", interval: "annual" },
       },
     });
-    expect(subscriptionUpserts).toEqual([]);
-    expect(stripeWebhookSource).toContain('...(plan === "starter" ? { starterTrialClaimed: true } : {})');
   });
 
-  it("does not grant repeat trials or apply the Starter trial to higher paid plans", async () => {
+  it("does not permit public school-owner signup to return through a tenant domain", () => {
+    expect(parseApprovedPlatformSignupOrigin("https://course360.app")).toBe("https://course360.app");
+    expect(parseApprovedPlatformSignupOrigin("https://northwind.course360.app")).toBeNull();
+  });
+
+  it("applies a first paid-plan trial to Starter, Builder, and Pro, but never repeats it", async () => {
     const caller = stripeRouter.createCaller(context);
 
+    for (const plan of ["starter", "builder", "pro"] as const) {
+      subscription = null;
+      await caller.createCheckoutSession({ plan, interval: "monthly", origin: "https://course360.app" });
+      const checkout = checkoutCalls.at(-1)!;
+      expect(checkout).toMatchObject({
+        success_url: `https://course360.app/billing?success=1&plan=${plan}&trial=1`,
+        subscription_data: {
+          trial_period_days: 14,
+          metadata: { org_id: "41", plan },
+        },
+      });
+    }
+
     subscription = { stripeSubscriptionId: "sub_existing", starterTrialClaimed: true };
-    await caller.createCheckoutSession({
-      plan: "starter",
-      interval: "annual",
-      origin: "https://course360.app",
+    await caller.createCheckoutSession({ plan: "pro", interval: "annual", origin: "https://course360.app" });
+    const repeatCheckout = checkoutCalls.at(-1)!;
+    expect(repeatCheckout).toMatchObject({
+      success_url: "https://course360.app/billing?success=1&plan=pro",
+      subscription_data: { metadata: { org_id: "41", plan: "pro" } },
     });
-    expect(checkoutCalls[0]).toMatchObject({
-      success_url: "https://course360.app/billing?success=1&plan=starter",
-      subscription_data: { metadata: { org_id: "41", plan: "starter" } },
-    });
-    expect((checkoutCalls[0].subscription_data as Record<string, unknown>).trial_period_days).toBeUndefined();
+    expect((repeatCheckout.subscription_data as Record<string, unknown>).trial_period_days).toBeUndefined();
+    expect(subscriptionUpserts).toEqual([]);
+  });
 
-    subscription = { stripeSubscriptionId: null, starterTrialClaimed: true };
-    await caller.createCheckoutSession({
-      plan: "starter",
-      interval: "monthly",
-      origin: "https://course360.app",
-    });
-    expect((checkoutCalls[1].subscription_data as Record<string, unknown>).trial_period_days).toBeUndefined();
-
-    subscription = null;
-    await caller.createCheckoutSession({
-      plan: "builder",
-      interval: "monthly",
-      origin: "https://course360.app",
-    });
-    expect(checkoutCalls[2]).toMatchObject({
-      success_url: "https://course360.app/billing?success=1&plan=builder",
-      subscription_data: { metadata: { org_id: "41", plan: "builder" } },
-    });
-    expect((checkoutCalls[2].subscription_data as Record<string, unknown>).trial_period_days).toBeUndefined();
+  it("fulfills platform signup only from the completed Stripe webhook and marks every first paid plan as claimed", () => {
+    const completedSessionHandler = stripeWebhookSource.slice(
+      stripeWebhookSource.indexOf('case "checkout.session.completed"'),
+      stripeWebhookSource.indexOf("// ── Native physical-product purchase"),
+    );
+    expect(completedSessionHandler).toContain('session.metadata?.type === "platform_trial_signup"');
+    expect(completedSessionHandler).toContain("await fulfillPlatformTrialSignup(session)");
+    expect(stripeWebhookSource).toContain("platformTrialSignupFulfillments");
+    expect(stripeWebhookSource).toContain("stripeCheckoutSessionId");
+    expect(stripeWebhookSource).toContain("starterTrialClaimed: true");
+    expect(stripeWebhookSource).toContain("accountSetupHtml");
+    expect(stripeWebhookSource).toContain("trialActivatedHtml");
+    expect(stripeWebhookSource).toContain("Failed to attach platform trial subscription metadata");
+    expect(stripeWebhookSource).toContain("org_id: String(result.orgId)");
+    expect(stripeWebhookSource).toContain("async function resolveSubscriptionOrgId");
+    expect(stripeWebhookSource).toContain("eq(orgSubscriptions.stripeSubscriptionId, subscription.id)");
+    expect(stripeWebhookSource).not.toContain('...(plan === "starter" ? { starterTrialClaimed: true } : {})');
   });
 });
 

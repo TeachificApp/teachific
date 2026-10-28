@@ -206,6 +206,7 @@ import HostedCheckoutPage from "./pages/lms/HostedCheckoutPage";
 import CheckoutCompletePage from "./pages/lms/CheckoutCompletePage";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
+import AccountSetupPage from "./pages/auth/AccountSetupPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
@@ -216,7 +217,7 @@ import LinkOrganizationPage from "./pages/LinkOrganizationPage";
 
 
 
-const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/magic-link"];
+const AUTH_PATHS = ["/login", "/register", "/account-setup", "/forgot-password", "/reset-password", "/verify-email", "/magic-link"];
 
 // Bare routes — no admin sidebar (share links, embeds, auth pages, student player)
 function BareRouter() {
@@ -268,6 +269,7 @@ function BareRouter() {
         <Route path="/policies/:orgSlug" component={OrgPoliciesPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
+        <Route path="/account-setup" component={AccountSetupPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />

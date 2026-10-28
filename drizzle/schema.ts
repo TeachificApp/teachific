@@ -485,8 +485,9 @@ export const orgSubscriptions = mysqlTable("org_subscriptions", {
   currentPeriodStart: timestamp("currentPeriodStart"),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
   cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
-  // Keeps the introductory Starter offer one-time per organization even after
-  // a canceled Checkout session or later subscription cancellation.
+  // Keeps the introductory paid-plan offer one-time per organization even after
+  // a canceled Checkout session or later subscription cancellation. The legacy
+  // column name is retained to preserve existing subscription records.
   starterTrialClaimed: boolean("starterTrialClaimed").default(false).notNull(),
   // Manual Enterprise pricing set by site admin/owner
   customPriceUsd: decimal("customPriceUsd", { precision: 10, scale: 2 }), // price in cents, null = use standard pricing
@@ -497,6 +498,22 @@ export const orgSubscriptions = mysqlTable("org_subscriptions", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 export type OrgSubscription = typeof orgSubscriptions.$inferSelect;
+
+// ─── Platform Trial Signup Fulfillment ───────────────────────────────────────
+// Stripe can retry completed webhook events. This record prevents a retry from
+// creating another organization or sending duplicate account-setup messages.
+export const platformTrialSignupFulfillments = mysqlTable("platform_trial_signup_fulfillments", {
+  id: int("id").autoincrement().primaryKey(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }).notNull().unique(),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  userId: int("userId"),
+  orgId: int("orgId"),
+  status: mysqlEnum("status", ["processing", "completed", "failed"]).default("processing").notNull(),
+  errorMessage: varchar("errorMessage", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PlatformTrialSignupFulfillment = typeof platformTrialSignupFulfillments.$inferSelect;
 
 // ─── Instructors ──────────────────────────────────────────────────────────────
 export const instructors = mysqlTable("instructors", {

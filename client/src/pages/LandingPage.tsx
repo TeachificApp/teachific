@@ -120,8 +120,8 @@ function LandingNav({ user }: { user?: { name?: string | null; email?: string | 
                 href="/register"
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90 hover:shadow-md"
                 style={{ background: `linear-gradient(135deg, ${TEAL}, ${AQUA})` }}
-              >
-                Create an Account <ArrowRight className="w-3.5 h-3.5" />
+               >
+                Start 14-Day Trial <ArrowRight className="w-3.5 h-3.5" />
               </a>
             </>
           )}
@@ -181,8 +181,8 @@ function HeroSection() {
             href="/register"
             className="inline-flex items-center gap-2 text-base font-bold px-8 py-4 rounded-xl text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
             style={{ background: `linear-gradient(135deg, ${TEAL}, ${AQUA})` }}
-          >
-            Create an Account <ArrowRight className="w-4 h-4" />         </a>
+           >
+            Start 14-Day Trial <ArrowRight className="w-4 h-4" />         </a>
           <a
             href="#how-it-works"
             className="inline-flex items-center gap-2 text-base font-semibold text-gray-700 px-8 py-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-all"
@@ -339,7 +339,7 @@ function HowItWorksSection() {
       number: "01",
       title: "Create Your School",
       description:
-        "Start your 14-day Starter trial and let Course360™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
+        "Choose any paid plan, start your card-backed 14-day trial, and let Course360™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
       icon: Sparkles,
     },
     {
@@ -501,7 +501,7 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Starter",
     price: "$39",
     period: "per month",
-    description: "For creators building their course and membership catalog. Includes a 14-day trial.",
+    description: "For creators building their course and membership catalog. Includes a 14-day card-backed trial.",
     cta: "Start 14-Day Trial",
     highlighted: false,
     features: [
@@ -517,8 +517,8 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Builder",
     price: "$99",
     period: "per month",
-    description: "For schools using courses, communities, and multiple instructors.",
-    cta: "Choose Builder",
+    description: "For schools using courses, communities, and multiple instructors. Includes a 14-day card-backed trial.",
+    cta: "Start 14-Day Trial",
     highlighted: true,
     features: [
       "Up to 20 courses",
@@ -534,8 +534,8 @@ const PRICING_TIERS: PricingTier[] = [
     name: "Pro",
     price: "$199",
     period: "per month",
-    description: "For schools using analytics, email marketing, and broader plan limits.",
-    cta: "Choose Pro",
+    description: "For schools using analytics, email marketing, and broader plan limits. Includes a 14-day card-backed trial.",
+    cta: "Start 14-Day Trial",
     highlighted: false,
     features: [
       "Up to 50 courses",
@@ -611,7 +611,7 @@ function PricingSection() {
             Plans for every stage
           </h2>
           <p className="text-xl text-gray-500 max-w-2xl mx-auto">
-            Every new school begins with a 14-day Starter trial, then continues as a paid subscription unless cancelled before renewal.
+            Every paid plan begins with a 14-day card-backed trial, then continues as a paid subscription unless cancelled before renewal.
           </p>
         </div>
 
@@ -676,7 +676,7 @@ function PricingSection() {
                 href={
                   tier.name === "Enterprise"
                     ? "mailto:hello@course360.app"
-                    : "/register"
+                    : `/register?plan=${tier.name.toLowerCase()}`
                 }
                 className={`w-full text-center py-3 px-6 rounded-xl text-sm font-bold transition-all block ${
                   tier.highlighted

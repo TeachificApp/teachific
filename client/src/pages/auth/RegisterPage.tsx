@@ -15,7 +15,7 @@ const TEAL = "#24abbc";
 const TEAL_LIGHT = "#4ad9e0";
 
 const perks = [
-  { icon: Sparkles, text: "14-day Starter trial for new schools" },
+  { icon: Sparkles, text: "14-day trial on every paid plan" },
   { icon: Zap, text: "Launch your school in under 10 minutes" },
   { icon: Globe, text: "Custom school page with your own branding" },
   { icon: Shield, text: "Payment collected securely by Stripe" },
@@ -45,6 +45,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [plan, setPlan] = useState<"starter" | "builder" | "pro">("starter");
+  const [interval, setInterval] = useState<"monthly" | "annual">("monthly");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -56,38 +58,40 @@ export default function RegisterPage() {
   const { blueprintToken, blueprintName } = useBlueprintInstallContext();
   const hasBlueprintInstall = !!blueprintToken;
 
+  useEffect(() => {
+    const selectedPlan = new URLSearchParams(window.location.search).get("plan");
+    if (selectedPlan === "starter" || selectedPlan === "builder" || selectedPlan === "pro") {
+      setPlan(selectedPlan);
+    }
+  }, []);
+
   const utils = trpc.useUtils();
   const claimInstall = trpc.blueprintReferrals.claimPendingInstall.useMutation();
-  const startStarterTrial = trpc.billing.createCheckoutSession.useMutation();
+  const startPlatformTrial = trpc.billing.createPlatformTrialCheckout.useMutation();
 
-  const beginStarterTrial = async (postTrialPath?: string) => {
-    // School owners register on the platform domain. Student sign-up inside an
-    // organization remains organization-scoped and must not create a platform plan.
-    if (isOrgSubdomain) return false;
+  const beginPlatformTrial = async () => {
     try {
-      const checkout = await startStarterTrial.mutateAsync({
-        plan: "starter",
-        interval: "monthly",
+      const checkout = await startPlatformTrial.mutateAsync({
+        name,
+        email,
+        plan,
+        interval,
         origin: window.location.origin,
+        ...(blueprintToken ? { blueprintInstallToken: blueprintToken } : {}),
       });
       if (!checkout.url) throw new Error("Stripe checkout did not return a URL.");
-      if (postTrialPath) {
-        try { localStorage.setItem("course360_post_trial_path", postTrialPath); } catch {}
-      }
       window.location.assign(checkout.url);
-      return true;
     } catch (checkoutError) {
-      const message = checkoutError instanceof Error ? checkoutError.message : "Unable to start the Starter trial checkout.";
-      setError(`Your account was created, but ${message} Please sign in and choose the Starter plan to continue.`);
-      navigate("/billing");
-      return false;
+      const message = checkoutError instanceof Error ? checkoutError.message : "Unable to start the secure trial checkout.";
+      setError(message);
     }
   };
 
   const register = trpc.customAuth.register.useMutation({
     onSuccess: async (data) => {
       if (data.autoSignedIn && data.user) {
-        // Seed the auth.me cache so DashboardLayout doesn't flash the sign-in screen
+        // Organization-domain student registration remains direct and should
+        // retain the existing immediate authenticated experience.
         utils.auth.me.setData(undefined, data.user as never);
         try { localStorage.setItem("teachific_auth_cache", JSON.stringify(data.user)); } catch {}
 
@@ -100,12 +104,6 @@ export default function RegisterPage() {
               localStorage.removeItem("blueprint_install_token");
               localStorage.removeItem("blueprint_install_name");
             } catch {}
-            // The paid-plan trial is opened before the school owner continues
-            // to the installed blueprint workspace.
-            if (!isOrgSubdomain) {
-              await beginStarterTrial(`/blueprints/install-confirm?pending=${claimed.pendingInstallId}`);
-              return;
-            }
             navigate(`/blueprints/install-confirm?pending=${claimed.pendingInstallId}`);
             return;
           } catch {
@@ -113,11 +111,6 @@ export default function RegisterPage() {
           }
         }
 
-        // Normal post-signup redirect
-        if (!isOrgSubdomain) {
-          await beginStarterTrial();
-          return;
-        }
         if (data.orgSlug) {
           const { protocol, port } = window.location;
           const portSuffix = port ? `:${port}` : "";
@@ -140,7 +133,11 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    register.mutate({ name, email, password });
+    if (isOrgSubdomain) {
+      register.mutate({ name, email, password });
+      return;
+    }
+    void beginPlatformTrial();
   };
 
   if (success) {
@@ -229,7 +226,7 @@ export default function RegisterPage() {
                 Start today.
               </h1>
               <p className="text-white/60 text-base leading-relaxed max-w-sm">
-                Start with a 14-day Starter trial, then automatically continue on the paid plan unless you cancel before the trial ends.
+                Every paid plan starts with a 14-day trial. Enter checkout first to securely save your card, then we will create your account.
               </p>
             </div>
           )}
@@ -283,7 +280,7 @@ export default function RegisterPage() {
               {isOrgSubdomain ? `Join ${displayName}` : "Create your account"}
             </h2>
             <p className="text-sm text-slate-500">
-              {isOrgSubdomain ? `Create your student account` : "Start a 14-day Starter trial. Your subscription continues automatically after the trial."}
+              {isOrgSubdomain ? `Create your student account` : "Choose a paid plan, complete secure checkout, then set your password from our email."}
             </p>
           </div>
 
@@ -333,7 +330,7 @@ export default function RegisterPage() {
                 className="h-11 border-slate-200 focus:border-[#24abbc] focus:ring-[#24abbc]/20 text-slate-800 placeholder:text-slate-400"
               />
             </div>
-            <div className="space-y-1.5">
+            {isOrgSubdomain && <div className="space-y-1.5">
               <Label htmlFor="password" className="text-sm font-medium" style={{ color: NAVY }}>Password</Label>
               <div className="relative">
                 <Input
@@ -358,21 +355,49 @@ export default function RegisterPage() {
               {password.length > 0 && password.length < 8 && (
                 <p className="text-amber-600 text-xs">Password must be at least 8 characters</p>
               )}
-            </div>
+            </div>}
+            {!isOrgSubdomain && <>
+              <div className="space-y-1.5">
+                <Label htmlFor="plan" className="text-sm font-medium" style={{ color: NAVY }}>Choose your plan</Label>
+                <select
+                  id="plan"
+                  value={plan}
+                  onChange={(event) => setPlan(event.target.value as "starter" | "builder" | "pro")}
+                  className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-[#24abbc] focus:outline-none focus:ring-2 focus:ring-[#24abbc]/20"
+                >
+                  <option value="starter">Starter — $39/month</option>
+                  <option value="builder">Builder — $99/month</option>
+                  <option value="pro">Pro — $199/month</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="interval" className="text-sm font-medium" style={{ color: NAVY }}>Billing schedule</Label>
+                <select
+                  id="interval"
+                  value={interval}
+                  onChange={(event) => setInterval(event.target.value as "monthly" | "annual")}
+                  className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-[#24abbc] focus:outline-none focus:ring-2 focus:ring-[#24abbc]/20"
+                >
+                  <option value="monthly">Monthly billing</option>
+                  <option value="annual">Annual billing</option>
+                </select>
+                <p className="text-xs text-slate-500">A card is required now. Your plan begins charging automatically after the 14-day trial unless cancelled.</p>
+              </div>
+            </>}
             <Button
               type="submit"
-              disabled={register.isPending || claimInstall.isPending || startStarterTrial.isPending}
+              disabled={register.isPending || claimInstall.isPending || startPlatformTrial.isPending}
               className="w-full h-11 font-semibold rounded-lg transition-all shadow-sm"
               style={{
                 background: isOrgSubdomain ? primary : `linear-gradient(135deg, ${TEAL} 0%, #15b8c0 100%)`,
                 color: buttonText,
               }}
             >
-              {register.isPending || claimInstall.isPending || startStarterTrial.isPending
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{claimInstall.isPending ? "Installing blueprint..." : startStarterTrial.isPending ? "Opening trial checkout..." : "Creating account..."}</>
+              {register.isPending || claimInstall.isPending || startPlatformTrial.isPending
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{claimInstall.isPending ? "Installing blueprint..." : startPlatformTrial.isPending ? "Opening secure checkout..." : "Creating account..."}</>
                 : hasBlueprintInstall
-                  ? "Create account & install blueprint"
-                  : isOrgSubdomain ? "Create account" : "Create account & start trial"}
+                  ? isOrgSubdomain ? "Create account & install blueprint" : "Continue to checkout"
+                  : isOrgSubdomain ? "Create account" : "Continue to secure checkout"}
             </Button>
           </form>
 

@@ -35,7 +35,14 @@ function hostFromUrl(url: string | undefined): string | null {
   }
 }
 
-export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPreviewUrl = ENV.appUrl): string | null {
+function getConfiguredPreviewUrl(): string | undefined {
+  // Some deployment environments expose the preview URL at runtime even though
+  // this older ENV type does not declare it. Retain the established protected
+  // checkout behavior without widening browser-provided origin authority.
+  return (ENV as { appUrl?: string }).appUrl;
+}
+
+export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPreviewUrl = getConfiguredPreviewUrl()): string | null {
   try {
     const parsed = new URL(origin);
     const hostname = parsed.hostname.toLowerCase();
@@ -51,6 +58,22 @@ export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPr
     // The request schema validates URL syntax; this is a separate, fail-closed host check.
   }
   return null;
+}
+
+/**
+ * School-owner signup starts on Course360's platform site, not a tenant school.
+ * Tenant/custom-domain checkout returns are intentionally supported only for
+ * authenticated product billing paths that prove organization membership.
+ */
+export function parseApprovedPlatformSignupOrigin(origin: string, configuredPreviewUrl = getConfiguredPreviewUrl()): string | null {
+  const approved = parseApprovedPlatformCheckoutOrigin(origin, configuredPreviewUrl);
+  if (!approved) return null;
+  const hostname = hostFromUrl(approved);
+  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  const isConfiguredPreview = hostname === hostFromUrl(configuredPreviewUrl);
+  return hostname && (COURSE360_CHECKOUT_PLATFORM_HOSTS.has(hostname) || isLocalhost || isConfiguredPreview)
+    ? approved
+    : null;
 }
 
 function normalizeConfiguredDomain(domain: string | null | undefined): string | null {
@@ -138,6 +161,69 @@ export async function getOrCreateOrgPaymentSettings(orgId: number) {
 }
 
 export const stripeRouter = router({
+  // ── New school-owner checkout (account and organization are webhook-created) ──
+  createPlatformTrialCheckout: publicProcedure
+    .input(z.object({
+      name: z.string().trim().min(1).max(100),
+      email: z.string().trim().email().max(320),
+      plan: z.enum(["starter", "builder", "pro"]),
+      interval: z.enum(["monthly", "annual"]),
+      origin: z.string().url(),
+      blueprintInstallToken: z.string().min(32).max(255).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      if (!ENV.stripeSecretKey) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
+      }
+
+      const returnOrigin = parseApprovedPlatformSignupOrigin(input.origin);
+      if (!returnOrigin) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Checkout return URL is not permitted" });
+      }
+
+      const priceKey = `${input.plan}_${input.interval}`;
+      const priceId = STRIPE_PRICE_IDS[priceKey];
+      if (!priceId) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Price not found for ${priceKey}. Stripe plans may not be initialized yet.`,
+        });
+      }
+
+      const email = input.email.toLowerCase();
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        payment_method_types: ["card"],
+        // A saved card is mandatory even during the $0 introductory period so
+        // Stripe can charge the selected plan automatically when it ends.
+        payment_method_collection: "always",
+        line_items: [{ price: priceId, quantity: 1 }],
+        allow_promotion_codes: true,
+        customer_email: email,
+        metadata: {
+          type: "platform_trial_signup",
+          signup_name: input.name,
+          signup_email: email,
+          plan: input.plan,
+          interval: input.interval,
+          ...(input.blueprintInstallToken ? { blueprint_install_token: input.blueprintInstallToken } : {}),
+        },
+        subscription_data: {
+          trial_period_days: 14,
+          metadata: {
+            type: "platform_trial_signup",
+            plan: input.plan,
+            interval: input.interval,
+          },
+        },
+        success_url: `${returnOrigin}/account-setup?checkout=platform_trial&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${returnOrigin}/register?cancelled=1`,
+      });
+
+      return { url: session.url };
+    }),
+
   // ── Get current subscription ───────────────────────────────────────────────
   getSubscription: protectedProcedure.query(async ({ ctx }) => {
     // Platform owners/admins always get enterprise-level access — no subscription needed
@@ -209,14 +295,11 @@ export const stripeRouter = router({
 
       const stripe = getStripe();
       const sub = await getOrgSubscription(orgCtx.orgId);
-      const isStarterTrial = input.plan === "starter"
-        && !sub?.stripeSubscriptionId
-        && !sub?.starterTrialClaimed;
+      const isIntroductoryTrial = !sub?.stripeSubscriptionId && !sub?.starterTrialClaimed;
       const subscriptionData = {
-        ...(isStarterTrial
+        ...(isIntroductoryTrial
           ? {
-              // 14-day Starter trial — Checkout still collects a payment method
-              // so Stripe can automatically convert the subscription to paid at trial end.
+              // Every first paid plan includes a card-backed 14-day trial.
               trial_period_days: 14,
             }
           : {}),
@@ -244,7 +327,7 @@ export const stripeRouter = router({
           customer_name: ctx.user.name ?? "",
         },
         subscription_data: subscriptionData,
-        success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}${isStarterTrial ? "&trial=1" : ""}`,
+        success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}${isIntroductoryTrial ? "&trial=1" : ""}`,
         cancel_url: `${returnOrigin}/billing?cancelled=1`,
       });
 

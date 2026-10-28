@@ -11,9 +11,9 @@ import { upsertOrgSubscription, createEnrollment, getEnrollment } from "./lmsDb"
 import { getUserByEmail, getOrCreateUserByEmail, getDb } from "./db";
 import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
-import { courseEnrollmentHtml } from "./emailTemplates";
+import { accountSetupHtml, courseEnrollmentHtml, trialActivatedHtml } from "./emailTemplates";
 import { getCourseById } from "./lmsDb";
-import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments, coupons, couponRedemptions, physicalProducts, physicalProductOrders } from "../drizzle/schema";
+import { teachificPayDisputes, teachificPayCharges, organizations, users, digitalBundlePurchases, digitalBundleItems, digitalPurchases, membershipSubscriptions, orgMembers, orgInvoices, orgPaymentSettings, digitalProducts, digitalBundles, membershipPlans, blueprintPendingInstalls, blueprintReferralLinks, blueprintCommissions, lmsEnrollments, coupons, couponRedemptions, physicalProducts, physicalProductOrders, orgSubscriptions, platformTrialSignupFulfillments, userActiveOrg } from "../drizzle/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
@@ -24,6 +24,8 @@ import { fulfillBookvaultOrder } from "./lib/fulfillBookvaultOrder";
 import { fulfillPrintfulOrder } from "./lib/fulfillPrintfulOrder";
 import { fulfillPrintifyOrder } from "./lib/fulfillPrintifyOrder";
 import { emitEmailWorkflowEvent } from "./lib/emailWorkflowEngine";
+import { generateUniqueOrgSlug } from "../shared/slugUtils";
+import { randomBytes, randomUUID } from "node:crypto";
 
 export function getOrgAdminPurchaseDashboardUrl(org: {
   slug: string;
@@ -225,7 +227,7 @@ async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
   try {
     const db = await getDb();
     if (!db) return;
-    const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];
+    const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"] as const;
     const [orgRow] = await db.select({
       name: organizations.name,
       slug: organizations.slug,
@@ -275,6 +277,206 @@ function normalizeStripeStatus(stripeStatus: string): DbSubStatus {
   return valid.includes(stripeStatus as DbSubStatus) ? (stripeStatus as DbSubStatus) : "active";
 }
 
+/** Resolve lifecycle ownership from signed Stripe metadata, with a saved subscription fallback for webhook ordering/retry safety. */
+async function resolveSubscriptionOrgId(subscription: Stripe.Subscription): Promise<number> {
+  const metadataOrgId = parseInt(subscription.metadata?.org_id ?? "0");
+  if (metadataOrgId) return metadataOrgId;
+  const db = await getDb();
+  if (!db) return 0;
+  const [storedSubscription] = await db.select({ orgId: orgSubscriptions.orgId })
+    .from(orgSubscriptions)
+    .where(eq(orgSubscriptions.stripeSubscriptionId, subscription.id))
+    .limit(1);
+  return storedSubscription?.orgId ?? 0;
+}
+
+/**
+ * Creates a new owner account and school only after Stripe confirms the
+ * card-backed platform trial Checkout session. The fulfillment marker makes
+ * normal Stripe webhook retries safe: one completed session can never create a
+ * second organization or send a second setup invitation.
+ */
+export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Session): Promise<void> {
+  if (session.mode !== "subscription" || session.metadata?.type !== "platform_trial_signup") return;
+
+  const sessionId = session.id;
+  const subscriptionId = typeof session.subscription === "string" ? session.subscription : null;
+  const customerId = typeof session.customer === "string" ? session.customer : null;
+  const rawPlan = session.metadata?.plan;
+  const email = (session.customer_details?.email ?? session.customer_email ?? session.metadata?.signup_email ?? "").trim().toLowerCase();
+  const requestedName = (session.metadata?.signup_name ?? session.customer_details?.name ?? "").trim();
+  const blueprintInstallToken = session.metadata?.blueprint_install_token?.trim() || null;
+
+  if (!sessionId || !subscriptionId || !customerId || !email || !["starter", "builder", "pro"].includes(rawPlan ?? "")) {
+    console.error("[Stripe Webhook] Skipped platform trial signup fulfillment: required checkout data is missing");
+    return;
+  }
+  const plan = rawPlan as "starter" | "builder" | "pro";
+
+  const stripe = getStripe();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const item = subscription.items.data[0];
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable during platform trial signup fulfillment");
+
+  const result: (
+    | { duplicate: true; setupToken: null }
+    | {
+        duplicate: false;
+        setupToken: string | null;
+        userId: number;
+        orgId: number;
+        userName: string | null;
+        plan: "starter" | "builder" | "pro";
+      }
+  ) = await db.transaction(async (tx) => {
+    const [existingFulfillment] = await tx.select()
+      .from(platformTrialSignupFulfillments)
+      .where(eq(platformTrialSignupFulfillments.stripeCheckoutSessionId, sessionId))
+      .limit(1);
+    if (existingFulfillment) {
+      return { duplicate: true as const, setupToken: null };
+    }
+
+    await tx.insert(platformTrialSignupFulfillments).values({
+      stripeCheckoutSessionId: sessionId,
+      stripeSubscriptionId: subscriptionId,
+      status: "processing",
+    });
+
+    let [user] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+    let setupToken: string | null = null;
+    if (!user) {
+      setupToken = randomBytes(32).toString("hex");
+      await tx.insert(users).values({
+        openId: `checkout_${randomUUID().replace(/-/g, "")}`,
+        name: requestedName || email.split("@")[0],
+        email,
+        loginMethod: "email",
+        role: "user",
+        // The email was supplied to and confirmed through Stripe Checkout. The
+        // separate password-setup token remains the account-access secret.
+        emailVerified: true,
+        resetToken: setupToken,
+        resetTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        lastSignedIn: new Date(),
+      });
+      [user] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+    }
+    if (!user) throw new Error("Could not create or resolve the checkout owner account");
+
+    const schoolOwnerName = (user.name || requestedName || email.split("@")[0]).trim();
+    const orgName = `${schoolOwnerName}'s School`;
+    const slug = await generateUniqueOrgSlug(orgName, async (candidate) => {
+      const [match] = await tx.select({ id: organizations.id })
+        .from(organizations)
+        .where(eq(organizations.slug, candidate))
+        .limit(1);
+      return !!match;
+    });
+    await tx.insert(organizations).values({
+      name: orgName,
+      slug,
+      description: "Default workspace",
+      ownerId: user.id,
+      subdomainEnabled: true,
+    });
+    const [organization] = await tx.select().from(organizations).where(eq(organizations.slug, slug)).limit(1);
+    if (!organization) throw new Error("Could not create the checkout organization");
+
+    await tx.insert(orgMembers).values({
+      orgId: organization.id,
+      userId: user.id,
+      role: "org_super_admin",
+      memberSubRole: "basic_member",
+    }).onDuplicateKeyUpdate({ set: { role: "org_super_admin", memberSubRole: "basic_member" } });
+    if (!["site_owner", "site_admin"].includes(user.role)) {
+      await tx.update(users).set({ role: "org_super_admin" }).where(eq(users.id, user.id));
+    }
+    await tx.insert(userActiveOrg).values({ userId: user.id, orgId: organization.id })
+      .onDuplicateKeyUpdate({ set: { orgId: organization.id } });
+    await tx.insert(orgSubscriptions).values({
+      orgId: organization.id,
+      plan,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscriptionId,
+      status: normalizeStripeStatus(subscription.status),
+      currentPeriodStart: item ? new Date(item.current_period_start * 1000) : null,
+      currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      starterTrialClaimed: true,
+    });
+
+    // Preserve existing pending Blueprint referral records across the new
+    // checkout-first step. Actual Blueprint installation remains in its own
+    // reviewed installation workflow and is never fabricated by billing code.
+    if (blueprintInstallToken) {
+      const [pendingInstall] = await tx.select().from(blueprintPendingInstalls)
+        .where(and(
+          eq(blueprintPendingInstalls.sessionToken, blueprintInstallToken),
+          eq(blueprintPendingInstalls.status, "pending"),
+        ))
+        .limit(1);
+      if (pendingInstall && pendingInstall.expiresAt >= new Date()) {
+        await tx.update(blueprintPendingInstalls).set({
+          status: "claimed",
+          userId: user.id,
+          orgId: organization.id,
+          claimedAt: new Date(),
+        }).where(eq(blueprintPendingInstalls.id, pendingInstall.id));
+      }
+    }
+
+    await tx.update(platformTrialSignupFulfillments).set({
+      userId: user.id,
+      orgId: organization.id,
+      status: "completed",
+      errorMessage: null,
+    }).where(eq(platformTrialSignupFulfillments.stripeCheckoutSessionId, sessionId));
+
+    return {
+      duplicate: false as const,
+      setupToken,
+      userId: user.id,
+      orgId: organization.id,
+      userName: user.name ?? requestedName,
+      plan,
+    };
+  });
+
+  if (!result.duplicate) {
+    // Subscription lifecycle webhooks carry subscription metadata, not Checkout
+    // metadata. Attach the new server-owned organization identifiers after the
+    // organization exists so renewal, payment failure, and cancellation updates
+    // remain scoped to this school.
+    await stripe.subscriptions.update(subscriptionId, {
+      metadata: {
+        ...subscription.metadata,
+        type: "platform_trial_signup",
+        org_id: String(result.orgId),
+        user_id: String(result.userId),
+        plan: result.plan ?? plan,
+      },
+    }).catch((error: unknown) => {
+      console.error("[Stripe Webhook] Failed to attach platform trial subscription metadata:", error instanceof Error ? error.message : error);
+    });
+  }
+
+  if (!result.duplicate) {
+    const accountUrl = result.setupToken
+      ? `${getCourse360PlatformAppUrl()}/reset-password?token=${result.setupToken}`
+      : `${getCourse360PlatformAppUrl()}/login`;
+    await sendEmail({
+      to: email,
+      subject: result.setupToken ? "Set up your Course360 account" : "Your Course360 school is ready",
+      html: result.setupToken
+        ? accountSetupHtml(result.userName ?? requestedName, accountUrl, result.plan ?? plan)
+        : trialActivatedHtml(result.userName ?? requestedName, accountUrl, result.plan ?? plan),
+    }).catch((error: unknown) => {
+      console.error("[Stripe Webhook] Course360 account setup email failed:", error instanceof Error ? error.message : error);
+    });
+  }
+}
 // Raw body parser for Stripe signature verification
 router.post(
   "/webhook",
@@ -319,6 +521,12 @@ router.post(
         case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
           await recordCouponRedemption(session);
+
+          // ── Checkout-first platform owner signup ────────────────────────────────
+          if (session.mode === "subscription" && session.metadata?.type === "platform_trial_signup") {
+            await fulfillPlatformTrialSignup(session);
+            break;
+          }
 
           // ── Native physical-product purchase ────────────────────────────────────────
           if (session.mode === "payment" && session.metadata?.type === "physical_product") {
@@ -751,8 +959,9 @@ router.post(
             currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             // A visitor has redeemed the introductory offer only after their
-            // Checkout session completes and the subscription exists in Stripe.
-            ...(plan === "starter" ? { starterTrialClaimed: true } : {}),
+            // first paid Checkout session completes and the subscription exists
+            // in Stripe. The retained column name preserves prior records.
+            ...(plan !== "free" ? { starterTrialClaimed: true } : {}),
           });
 
           console.log(`[Stripe Webhook] Org ${orgId} upgraded to ${plan}`);
@@ -761,7 +970,7 @@ router.post(
 
         case "customer.subscription.updated": {
           const subscription = event.data.object as Stripe.Subscription;
-          const orgId = parseInt(subscription.metadata?.org_id ?? "0");
+          const orgId = await resolveSubscriptionOrgId(subscription);
           if (!orgId) break;
 
           // Determine plan from price metadata
@@ -788,7 +997,7 @@ router.post(
 
         case "customer.subscription.deleted": {
           const subscription = event.data.object as Stripe.Subscription;
-          const orgId = parseInt(subscription.metadata?.org_id ?? "0");
+          const orgId = await resolveSubscriptionOrgId(subscription);
           const productType = subscription.metadata?.product_type as string | undefined;
           const userId = parseInt(subscription.metadata?.user_id ?? "0");
           const contentType = subscription.metadata?.content_type as string | undefined;
@@ -852,7 +1061,7 @@ router.post(
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const productType = subscription.metadata?.product_type as string | undefined;
           const userId = parseInt(subscription.metadata?.user_id ?? "0");
-          const orgId = parseInt(subscription.metadata?.org_id ?? "0");
+          const orgId = await resolveSubscriptionOrgId(subscription);
           const item = subscription.items.data[0];
           const contentType = subscription.metadata?.content_type as string | undefined;
           const contentId = parseInt(subscription.metadata?.content_id ?? "0");
@@ -977,7 +1186,7 @@ router.post(
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const productType = subscription.metadata?.product_type as string | undefined;
           const userId = parseInt(subscription.metadata?.user_id ?? "0");
-          const orgId = parseInt(subscription.metadata?.org_id ?? "0");
+          const orgId = await resolveSubscriptionOrgId(subscription);
           const contentType = subscription.metadata?.content_type as string | undefined;
           const contentId = parseInt(subscription.metadata?.content_id ?? "0");
 

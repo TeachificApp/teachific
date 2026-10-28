@@ -153,6 +153,46 @@ export function resetPasswordHtml(name: string, resetUrl: string): string {
   });
 }
 
+// ─── Template: Stripe-confirmed account setup ────────────────────────────────
+
+export function accountSetupHtml(name: string, setupUrl: string, plan: string): string {
+  const planName = escapeHtml(plan.charAt(0).toUpperCase() + plan.slice(1));
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Your Course360™ trial is ready</h2>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your 14-day ${planName} plan trial is active. Set a password to finish creating your Course360 account and start building your school.</p>
+    ${ctaButton("Set up your account", setupUrl)}
+    ${infoBox("A payment method was securely collected at checkout. Your selected plan will automatically continue after 14 days unless you cancel before the trial ends. This setup link expires in <strong>7 days</strong>.")}
+    ${divider()}
+    <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">Can't click the button? Copy and paste this link into your browser:<br/><a href="${setupUrl}" style="color:#24abbc;word-break:break-all;">${setupUrl}</a></p>
+  `;
+  return emailLayout({
+    preheader: "Set a password to access your Course360 trial.",
+    title: "Set up your Course360 account",
+    body,
+    footerNote: "You're receiving this email because a Course360 subscription checkout was completed with this email address.",
+  });
+}
+
+// ─── Template: Checkout completed for an existing account ────────────────────
+
+export function trialActivatedHtml(name: string, signInUrl: string, plan: string): string {
+  const planName = escapeHtml(plan.charAt(0).toUpperCase() + plan.slice(1));
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Your new Course360™ school is ready</h2>
+    <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your 14-day ${planName} plan trial is active. We connected the new school to your existing Course360 account—sign in to begin setting it up.</p>
+    ${ctaButton("Sign in to Course360", signInUrl)}
+    ${infoBox("A payment method was securely collected at checkout. Your selected plan will automatically continue after 14 days unless you cancel before the trial ends.")}
+  `;
+  return emailLayout({
+    preheader: "Your new Course360 school is ready.",
+    title: "Your Course360 school is ready",
+    body,
+    footerNote: "You're receiving this email because a Course360 subscription checkout was completed with this email address.",
+  });
+}
+
 // ─── Template: Welcome (post-verification) ───────────────────────────────────
 
 export function welcomeEmailHtml(name: string, dashboardUrl: string = `${SITE_URL}/lms`): string {

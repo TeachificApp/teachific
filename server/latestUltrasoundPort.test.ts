@@ -717,7 +717,7 @@ describe("latest Ultrasound-App learning feature port", () => {
     expect(landingPageSource).toContain("Course tools for online educators");
     expect(landingPageSource).toContain("Build Your Knowledge");
     expect(landingPageSource).toContain("Organization workspaces");
-    expect(landingPageSource).toContain("Every new school begins with a 14-day Starter trial");
+    expect(landingPageSource).toContain("Every paid plan begins with a 14-day card-backed trial");
     expect(landingPageSource).toContain("hello@course360.app");
     expect(landingPageSource).toContain('<span className="text-white">Course</span>');
     expect(quizCreatorLandingSource).not.toContain("TESTIMONIALS");

@@ -11,7 +11,6 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import { users, orgMembers, organizations, magicLinkTokens } from "../drizzle/schema";
 import { eq, and, lt } from "drizzle-orm";
-import { generateUniqueOrgSlug } from "../shared/slugUtils";
 import { sendEmail } from "./sendgrid";
 import * as dbHelpers from "./db";
 import { verifyEmailHtml, resetPasswordHtml, magicLinkEmailHtml } from "./emailTemplates";
@@ -19,6 +18,7 @@ import { signSessionToken } from "./_core/context";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { getCourse360PlatformAppUrl } from "../shared/brands";
+import { resolvePublicOrganizationScope } from "./lib/publicOrgRequestScope";
 
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -165,6 +165,21 @@ export const customAuthRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
 
+      // School-owner accounts are created only after card-backed Stripe Checkout
+      // succeeds. Direct registration is retained for learners joining an actual
+      // organization domain; the request host, not a browser-supplied org ID,
+      // determines that organization.
+      const publicOrgScope = await resolvePublicOrganizationScope(
+        db as unknown as Parameters<typeof resolvePublicOrganizationScope>[0],
+        ctx.req,
+      );
+      if (!publicOrgScope || !["course360_subdomain", "custom_domain"].includes(publicOrgScope.source)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Start a new Course360 school by choosing a paid plan and completing secure checkout first.",
+        });
+      }
+
       const settings = await dbHelpers.getPlatformSettings();
       if (!settings?.allowPublicRegistration) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Public registration is currently closed." });
@@ -204,14 +219,8 @@ export const customAuthRouter = router({
       let orgSlug: string | null = null;
       if (newUser) {
         try {
-          const orgName = `${input.name}'s School`;
-          const slug = await generateUniqueOrgSlug(orgName, async (s) => !!(await dbHelpers.getOrgBySlug(s)));
-          await dbHelpers.createOrg({ name: orgName, slug, description: "Default workspace", ownerId: newUser.id });
-          const org = await dbHelpers.getOrgBySlug(slug);
-          if (org) {
-            await dbHelpers.addOrgMember(org.id, newUser.id, "org_admin");
-            orgSlug = slug;
-          }
+          await dbHelpers.addOrgMember(publicOrgScope.id, newUser.id, "member");
+          orgSlug = publicOrgScope.slug;
         } catch {}
 
         // Send verification email in background (non-blocking)

@@ -466,7 +466,7 @@ export default function BillingPage() {
                       onClick={() => handleUpgrade(tier as "starter" | "builder" | "pro")}
                       disabled={loadingPlan === tier || createCheckout.isPending || changePlan.isPending}
                     >
-                      {loadingPlan === tier ? "Loading..." : subscription?.stripeSubscriptionId ? "Switch to this plan" : tier === "starter" ? "Start 14-Day Trial" : "Choose this plan"}
+                      {loadingPlan === tier ? "Loading..." : subscription?.stripeSubscriptionId ? "Switch to this plan" : "Start 14-Day Trial"}
                       {loadingPlan !== tier && <ArrowUpRight className="h-3.5 w-3.5" />}
                     </Button>
                   )}
